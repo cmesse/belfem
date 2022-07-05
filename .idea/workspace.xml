@@ -1,0 +1,573 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="CMakeRunConfigurationManager">
+    <generated>
+      <config projectName="belfem" targetName="pentatest" />
+      <config projectName="belfem" targetName="libbelfem_graph.a" />
+      <config projectName="belfem" targetName="libbelfem_sparse.a" />
+      <config projectName="belfem" targetName="banner" />
+      <config projectName="belfem" targetName="libbelfem_io.a" />
+      <config projectName="belfem" targetName="libbelfem_bezier.a" />
+      <config projectName="belfem" targetName="libbelfem_mesh.a" />
+      <config projectName="belfem" targetName="material" />
+      <config projectName="belfem" targetName="example_udfiber.cpp" />
+      <config projectName="belfem" targetName="libbelfem_bspline.a" />
+      <config projectName="belfem" targetName="libbelfem_iwg.a" />
+      <config projectName="belfem" targetName="libbelfem_materials.a" />
+      <config projectName="belfem" targetName="libbelfem_ode.a" />
+      <config projectName="belfem" targetName="test_curved" />
+      <config projectName="belfem" targetName="libbelfem_core.a" />
+      <config projectName="belfem" targetName="libbelfem_interpolation.a" />
+      <config projectName="belfem" targetName="solvertest" />
+      <config projectName="belfem" targetName="reset" />
+      <config projectName="belfem" targetName="normaltest" />
+      <config projectName="belfem" targetName="petsctest" />
+      <config projectName="belfem" targetName="stationaryheat" />
+      <config projectName="belfem" targetName="libbelfem_integration.a" />
+      <config projectName="belfem" targetName="mappertest" />
+      <config projectName="belfem" targetName="interpolation" />
+      <config projectName="belfem" targetName="test_tape" />
+      <config projectName="belfem" targetName="doc" />
+      <config projectName="belfem" targetName="libbelfem_postproc.a" />
+      <config projectName="belfem" targetName="petsctst" />
+      <config projectName="belfem" targetName="test_input" />
+      <config projectName="belfem" targetName="libbelfem_spline.a" />
+      <config projectName="belfem" targetName="transientheat" />
+      <config projectName="belfem" targetName="ode" />
+      <config projectName="belfem" targetName="libbelfem_comm.a" />
+      <config projectName="belfem" targetName="libbelfem_kernel.a" />
+      <config projectName="belfem" targetName="libbelfem_containers.a" />
+      <config projectName="belfem" targetName="meshtest" />
+      <config projectName="belfem" targetName="libbelfem_edgeinterpolation.a" />
+      <config projectName="belfem" targetName="tensiletest" />
+      <config projectName="belfem" targetName="libbelfem_maxwell.a" />
+    </generated>
+  </component>
+  <component name="CMakeSettings">
+    <configurations>
+      <configuration PROFILE_NAME="Debug" ENABLED="true" CONFIG_NAME="Debug" />
+    </configurations>
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="120f1831-a9f1-4c21-bf0a-19444f852628" name="Changes" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:Debug" />
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="CMakeLists.txt" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitSEFilterConfiguration">
+    <file-type-list>
+      <filtered-out-file-type name="LOCAL_BRANCH" />
+      <filtered-out-file-type name="REMOTE_BRANCH" />
+      <filtered-out-file-type name="TAG" />
+      <filtered-out-file-type name="COMMIT_BY_MESSAGE" />
+    </file-type-list>
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectId" id="1yPhZ4Ko6bsR7uGBbqFVhDaCWSk" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;cmake.loaded.for.project&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/fem/maxwell/old" />
+      <recent name="$PROJECT_DIR$/src/fem/edgeinterpolation" />
+      <recent name="$PROJECT_DIR$/src/fem/maxwell" />
+      <recent name="$PROJECT_DIR$/src/core" />
+      <recent name="$PROJECT_DIR$/src/fem/kernel" />
+    </key>
+  </component>
+  <component name="RunManager" selected="CMake Application.test_tape">
+    <configuration default="true" type="GradleAppRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="com.jetbrains.cidr.cpp.gradle.execution.GradleNativeBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="banner" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="banner" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="banner">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="doc" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="doc" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="example_udfiber.cpp" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="example_udfiber.cpp" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="example_udfiber.cpp">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="interpolation" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="interpolation" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="interpolation">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="libbelfem_bezier.a" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="libbelfem_bezier.a" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="libbelfem_bspline.a" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="libbelfem_bspline.a" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="libbelfem_comm.a" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="libbelfem_comm.a" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="libbelfem_containers.a" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="libbelfem_containers.a" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="libbelfem_core.a" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="libbelfem_core.a" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="libbelfem_edgeinterpolation.a" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="libbelfem_edgeinterpolation.a" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="libbelfem_graph.a" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="libbelfem_graph.a" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="libbelfem_integration.a" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="libbelfem_integration.a" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="libbelfem_interpolation.a" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="libbelfem_interpolation.a" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="libbelfem_io.a" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="libbelfem_io.a" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="libbelfem_iwg.a" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="libbelfem_iwg.a" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="libbelfem_kernel.a" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="libbelfem_kernel.a" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="libbelfem_materials.a" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="libbelfem_materials.a" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="libbelfem_maxwell.a" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="libbelfem_maxwell.a" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="libbelfem_mesh.a" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="libbelfem_mesh.a" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="libbelfem_ode.a" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="libbelfem_ode.a" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="libbelfem_postproc.a" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="libbelfem_postproc.a" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="libbelfem_sparse.a" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="libbelfem_sparse.a" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="libbelfem_spline.a" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="libbelfem_spline.a" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="mappertest" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="mappertest" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="mappertest">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="material" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="material" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="material">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="meshtest" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="meshtest" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="meshtest">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="normaltest" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="normaltest" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="normaltest">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="ode" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="ode" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="ode">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="pentatest" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="pentatest" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="pentatest">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="petsctest" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="petsctest" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="petsctest">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="petsctst" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="petsctst" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="petsctst">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="reset" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="reset" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="solvertest" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="solvertest" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="solvertest">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="stationaryheat" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="stationaryheat" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="stationaryheat">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="tensiletest" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$PROJECT_DIR$/cmake-build-debug" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="tensiletest" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="tensiletest">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test_brandt" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$PROJECT_DIR$/cmake-build-debug" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="test_brandt" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="test_brandt">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test_curved" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$PROJECT_DIR$/cmake-build-debug" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="test_curved" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="test_curved">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test_cut" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$PROJECT_DIR$/cmake-build-debug" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="test_cut" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="test_cut">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test_input" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$PROJECT_DIR$/cmake-build-debug/examples/example4" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="test_input" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="test_input">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test_l2" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$PROJECT_DIR$/cmake-build-debug" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="test_l2" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="test_l2">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test_maxwell" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$PROJECT_DIR$/cmake-build-debug/examples/example4" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="test_maxwell" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="test_maxwell">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test_tape" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$PROJECT_DIR$/cmake-build-debug/" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="test_input" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="test_input">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="transientheat" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="transientheat" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="transientheat">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="All CTest" type="CTestRunConfiguration" factoryName="CTestRun" PROGRAM_PARAMS="--extra-verbose" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$CMakeCurrentLocalGenerationDir$" PASS_PARENT_ENVS_2="true" CONFIG_NAME="Debug" RUN_PATH="$CTestCurrentExecutableName$" EXPLICIT_BUILD_TARGET_NAME="all" TEST_MODE="SUITE_TEST">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+        <option name="BeforeTestRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <list>
+      <item itemvalue="CMake Application.test_brandt" />
+      <item itemvalue="CMake Application.banner" />
+      <item itemvalue="CMake Application.doc" />
+      <item itemvalue="CMake Application.reset" />
+      <item itemvalue="CMake Application.libbelfem_comm.a" />
+      <item itemvalue="CMake Application.libbelfem_containers.a" />
+      <item itemvalue="CMake Application.libbelfem_core.a" />
+      <item itemvalue="CMake Application.libbelfem_bspline.a" />
+      <item itemvalue="CMake Application.libbelfem_edgeinterpolation.a" />
+      <item itemvalue="CMake Application.interpolation" />
+      <item itemvalue="CMake Application.libbelfem_interpolation.a" />
+      <item itemvalue="CMake Application.libbelfem_iwg.a" />
+      <item itemvalue="CMake Application.libbelfem_kernel.a" />
+      <item itemvalue="CMake Application.petsctest" />
+      <item itemvalue="CMake Application.stationaryheat" />
+      <item itemvalue="CMake Application.tensiletest" />
+      <item itemvalue="CMake Application.transientheat" />
+      <item itemvalue="CMake Application.libbelfem_maxwell.a" />
+      <item itemvalue="CMake Application.libbelfem_postproc.a" />
+      <item itemvalue="CMake Application.mappertest" />
+      <item itemvalue="CMake Application.normaltest" />
+      <item itemvalue="CMake Application.pentatest" />
+      <item itemvalue="CMake Application.libbelfem_io.a" />
+      <item itemvalue="CMake Application.petsctst" />
+      <item itemvalue="CMake Application.test_curved" />
+      <item itemvalue="CMake Application.test_cut" />
+      <item itemvalue="CMake Application.test_input" />
+      <item itemvalue="CMake Application.test_tape" />
+      <item itemvalue="CMake Application.test_l2" />
+      <item itemvalue="CMake Application.libbelfem_graph.a" />
+      <item itemvalue="CMake Application.example_udfiber.cpp" />
+      <item itemvalue="CMake Application.libbelfem_mesh.a" />
+      <item itemvalue="CMake Application.meshtest" />
+      <item itemvalue="CMake Application.libbelfem_bezier.a" />
+      <item itemvalue="CMake Application.libbelfem_integration.a" />
+      <item itemvalue="CMake Application.libbelfem_ode.a" />
+      <item itemvalue="CMake Application.ode" />
+      <item itemvalue="CMake Application.libbelfem_spline.a" />
+      <item itemvalue="CMake Application.libbelfem_materials.a" />
+      <item itemvalue="CMake Application.material" />
+      <item itemvalue="CMake Application.libbelfem_sparse.a" />
+      <item itemvalue="CMake Application.solvertest" />
+      <item itemvalue="CMake Application.test_maxwell" />
+      <item itemvalue="CTest Application.All CTest" />
+    </list>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="120f1831-a9f1-4c21-bf0a-19444f852628" name="Changes" comment="" />
+      <created>1632159185821</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1632159185821</updated>
+      <workItem from="1632159190803" duration="24502000" />
+      <workItem from="1632246569455" duration="14642000" />
+      <workItem from="1632849908789" duration="75000" />
+      <workItem from="1632850070331" duration="33644000" />
+      <workItem from="1633023423606" duration="44023000" />
+      <workItem from="1633370218399" duration="7171000" />
+      <workItem from="1633384943874" duration="96420000" />
+      <workItem from="1633741689025" duration="5577000" />
+      <workItem from="1633973301404" duration="17731000" />
+      <workItem from="1633995178827" duration="54428000" />
+      <workItem from="1634235547891" duration="11583000" />
+      <workItem from="1634251025562" duration="27327000" />
+      <workItem from="1634583094228" duration="38545000" />
+      <workItem from="1634794590354" duration="8000" />
+      <workItem from="1634840592492" duration="27761000" />
+      <workItem from="1634926656378" duration="28236000" />
+      <workItem from="1635186405266" duration="32981000" />
+      <workItem from="1635358507038" duration="14898000" />
+      <workItem from="1635376903004" duration="29000" />
+      <workItem from="1635376969449" duration="10021000" />
+      <workItem from="1635453999238" duration="36960000" />
+      <workItem from="1635558667935" duration="4386000" />
+      <workItem from="1635791156966" duration="64878000" />
+      <workItem from="1636138479772" duration="19431000" />
+      <workItem from="1636403131684" duration="24000" />
+      <workItem from="1636403184523" duration="571000" />
+      <workItem from="1636403892192" duration="2000" />
+      <workItem from="1636403906187" duration="41544000" />
+      <workItem from="1636572585957" duration="51981000" />
+      <workItem from="1636743777520" duration="5550000" />
+      <workItem from="1637176122515" duration="17000" />
+      <workItem from="1637206078399" duration="381000" />
+      <workItem from="1637206470670" duration="4355000" />
+      <workItem from="1637703113981" duration="21707000" />
+      <workItem from="1637795757469" duration="22000" />
+      <workItem from="1638235180899" duration="6000" />
+      <workItem from="1638235245670" duration="2058000" />
+      <workItem from="1638301118022" duration="15696000" />
+      <workItem from="1638332986132" duration="5937000" />
+      <workItem from="1638388352574" duration="45136000" />
+      <workItem from="1638561879072" duration="15644000" />
+      <workItem from="1638814195480" duration="4035000" />
+      <workItem from="1638822481866" duration="4082000" />
+      <workItem from="1638826582679" duration="17574000" />
+      <workItem from="1638927729071" duration="9924000" />
+      <workItem from="1639001831670" duration="9269000" />
+      <workItem from="1639096080192" duration="36017000" />
+      <workItem from="1640029181060" duration="33324000" />
+      <workItem from="1640208046037" duration="2241000" />
+      <workItem from="1640210344839" duration="558000" />
+      <workItem from="1640210914574" duration="31650000" />
+      <workItem from="1641324161273" duration="407000" />
+      <workItem from="1641324582612" duration="5071000" />
+      <workItem from="1641346464435" duration="7966000" />
+      <workItem from="1641416852675" duration="55981000" />
+      <workItem from="1641857528314" duration="24818000" />
+      <workItem from="1641930381582" duration="12719000" />
+      <workItem from="1642117221447" duration="32043000" />
+      <workItem from="1642229312435" duration="1603000" />
+      <workItem from="1642529818348" duration="6851000" />
+      <workItem from="1642547183112" duration="12083000" />
+      <workItem from="1642563985916" duration="2053000" />
+      <workItem from="1642614614292" duration="11574000" />
+      <workItem from="1642643770088" duration="66410000" />
+      <workItem from="1642970403716" duration="1474000" />
+      <workItem from="1643066178454" duration="25812000" />
+      <workItem from="1643225258993" duration="21597000" />
+      <workItem from="1643311668793" duration="9804000" />
+      <workItem from="1643329348880" duration="1000" />
+      <workItem from="1643329544315" duration="2512000" />
+      <workItem from="1643390553377" duration="13244000" />
+      <workItem from="1643661481484" duration="14381000" />
+      <workItem from="1643746266134" duration="10059000" />
+      <workItem from="1643761543204" duration="242000" />
+      <workItem from="1643761893851" duration="11830000" />
+      <workItem from="1643828568952" duration="70925000" />
+      <workItem from="1644050541134" duration="530000" />
+      <workItem from="1644100913143" duration="527000" />
+      <workItem from="1644268187014" duration="16187000" />
+      <workItem from="1644295684633" duration="9868000" />
+      <workItem from="1644308961459" duration="4000" />
+      <workItem from="1644316545270" duration="2956000" />
+      <workItem from="1644356570043" duration="12237000" />
+      <workItem from="1644443274652" duration="2205000" />
+      <workItem from="1644629753895" duration="474000" />
+      <workItem from="1644881348620" duration="5054000" />
+      <workItem from="1644961894606" duration="3336000" />
+      <workItem from="1645233272573" duration="15277000" />
+      <workItem from="1645564929139" duration="19737000" />
+      <workItem from="1645748143234" duration="880000" />
+      <workItem from="1646344063130" duration="46737000" />
+      <workItem from="1646603554202" duration="66000" />
+      <workItem from="1646678144407" duration="15561000" />
+      <workItem from="1647379624957" duration="55000" />
+      <workItem from="1647380147759" duration="2000" />
+      <workItem from="1647380165224" duration="139000" />
+      <workItem from="1647380319146" duration="16000" />
+      <workItem from="1647383469581" duration="5146000" />
+      <workItem from="1647541504740" duration="11923000" />
+      <workItem from="1647558948676" duration="94000" />
+      <workItem from="1647559122087" duration="3214000" />
+      <workItem from="1647562346704" duration="13771000" />
+      <workItem from="1647895430278" duration="13299000" />
+      <workItem from="1647909331763" duration="18747000" />
+      <workItem from="1648072210159" duration="57835000" />
+      <workItem from="1648504395764" duration="83564000" />
+      <workItem from="1649978287359" duration="18868000" />
+      <workItem from="1650155240293" duration="92870000" />
+      <workItem from="1651012715709" duration="1533000" />
+      <workItem from="1651017162117" duration="23000" />
+      <workItem from="1651017646558" duration="12775000" />
+      <workItem from="1656706786418" duration="4163000" />
+      <workItem from="1656728719509" duration="496000" />
+      <workItem from="1657048127263" duration="742000" />
+      <workItem from="1657053266785" duration="1213000" />
+      <workItem from="1657054497858" duration="418000" />
+      <workItem from="1657055025361" duration="5791000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.History.Properties">
+    <option name="COLUMN_ID_ORDER">
+      <list>
+        <option value="Default.Root" />
+        <option value="Default.Author" />
+        <option value="Default.Date" />
+        <option value="Default.Subject" />
+      </list>
+    </option>
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofMgr_Parameters.hpp</url>
+          <line>7</line>
+          <option name="timeStamp" value="37" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/src/mesh/cl_Face.cpp</url>
+          <line>34</line>
+          <option name="timeStamp" value="41" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/src/physics/materials/nist_functions.hpp</url>
+          <line>52</line>
+          <option name="timeStamp" value="48" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+    <watches-manager>
+      <configuration name="CMakeRunConfiguration">
+        <watch expression="tWeights" />
+      </configuration>
+    </watches-manager>
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
+  </component>
+</project>

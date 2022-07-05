@@ -1,0 +1,727 @@
+//
+// Created by Christian Messe on 2018-12-28.
+//
+
+#include "meshtools.hpp"
+#include "stringtools.hpp"
+#include "assert.hpp"
+
+namespace belfem
+{
+    namespace mesh
+    {
+//------------------------------------------------------------------------------
+
+        unsigned int
+        number_of_nodes(const enum ElementType aElementType )
+        {
+            switch ( aElementType )
+            {
+                case ( ElementType::VERTEX ) :
+                {
+                    return 1;
+                }
+                case ( ElementType::LINE2 ) :
+                {
+                    return 2;
+                }
+                case ( ElementType::LINE3 ) :
+                {
+                    return 3;
+                }
+                case ( ElementType::LINE4 ) :
+                {
+                    return 4;
+                }
+                case ( ElementType::TRI3 ) :
+                {
+                    return 3;
+                }
+                case ( ElementType::TRI6 ) :
+                {
+                    return 6;
+                }
+                case ( ElementType::TRI10 ) :
+                {
+                    return 10;
+                }
+                case ( ElementType::QUAD4 ) :
+                {
+                    return 4;
+                }
+                case ( ElementType::QUAD8 ) :
+                {
+                    return 8;
+                }
+                case ( ElementType::QUAD9 ) :
+                {
+                    return 9;
+                }
+                case ( ElementType::QUAD16 ) :
+                {
+                    return 16;
+                }
+                case ( ElementType::TET4 ) :
+                {
+                    return 4;
+                }
+                case ( ElementType::TET10 ) :
+                {
+                    return 10;
+                }
+                case ( ElementType::TET20 ) :
+                {
+                    return 20;
+                }
+                case ( ElementType::PENTA6 ) :
+                {
+                    return 6;
+                }
+                case ( ElementType::PENTA15 ) :
+                {
+                    return 15;
+                }
+                case ( ElementType::PENTA18 ) :
+                {
+                    return 18;
+                }
+                case ( ElementType::HEX8 ) :
+                {
+                    return 8;
+                }
+                case ( ElementType::HEX20 ) :
+                {
+                    return 20;
+                }
+                case ( ElementType::HEX27 ) :
+                {
+                    return 27;
+                }
+                case ( ElementType::HEX64 ) :
+                {
+                    return 64;
+                }
+                default:
+                {
+                    return 0;
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        unsigned int
+        number_of_edges(const enum ElementType aElementType )
+        {
+            switch ( aElementType )
+            {
+                case ( ElementType::VERTEX ) :
+                {
+                    return 0;
+                }
+                case ( ElementType::LINE2 ) :
+                case ( ElementType::LINE3 ) :
+                case ( ElementType::LINE4 ) :
+                {
+                    return 1;
+                }
+                case ( ElementType::TRI3 ) :
+                case ( ElementType::TRI6 ) :
+                case ( ElementType::TRI10 ) :
+                {
+                    return 3;
+                }
+                case ( ElementType::QUAD4 ) :
+                case ( ElementType::QUAD8 ) :
+                case ( ElementType::QUAD9 ) :
+                case ( ElementType::QUAD16 ) :
+                {
+                    return 4;
+                }
+                case ( ElementType::TET4 ) :
+                case ( ElementType::TET10 ) :
+                case ( ElementType::TET20 ) :
+                {
+                    return 6;
+                }
+                case ( ElementType::PENTA6 ) :
+                case ( ElementType::PENTA15 ) :
+                case ( ElementType::PENTA18 ) :
+                {
+                    return 9;
+                }
+                case ( ElementType::HEX8 ) :
+                case ( ElementType::HEX20 ) :
+                case ( ElementType::HEX27 ) :
+                case ( ElementType::HEX64 ) :
+                {
+                    return 12;
+                }
+                default:
+                {
+                    return 0;
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        belfem::InterpolationOrder
+        interpolation_order(const enum ElementType  aElementType )
+        {
+            switch ( aElementType )
+            {
+                case ( ElementType::VERTEX ) :
+                {
+                    return belfem::InterpolationOrder::CONSTANT;
+                }
+                case ( ElementType::LINE2 ) :
+                case ( ElementType::TRI3 ) :
+                case ( ElementType::QUAD4 ) :
+                case ( ElementType::TET4 ) :
+                case ( ElementType::PENTA6 ) :
+                case ( ElementType::HEX8 ) :
+                {
+                    return belfem::InterpolationOrder::LINEAR;
+                }
+                case ( ElementType::QUAD8 ) :
+                case ( ElementType::PENTA15 ) :
+                case ( ElementType::HEX20 ) :
+                {
+                    return belfem::InterpolationOrder::SERENDIPITY;
+                }
+                case ( ElementType::LINE3 ) :
+                case ( ElementType::TRI6 ) :
+                case ( ElementType::QUAD9 ) :
+                case ( ElementType::TET10 ) :
+                case ( ElementType::PENTA18 ) :
+                case ( ElementType::HEX27 ) :
+                {
+                    return  belfem::InterpolationOrder::QUADRATIC;
+                }
+                case ( ElementType::LINE4 ) :
+                case ( ElementType::TRI10 ) :
+                case ( ElementType::QUAD16 ):
+                case ( ElementType::TET20 ) :
+                case ( ElementType::HEX64 ) :
+                {
+                    return belfem::InterpolationOrder::CUBIC;
+                }
+                default:
+                {
+                    return belfem::InterpolationOrder::UNDEFINED;
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        unsigned int
+        interpolation_order_numeric(const enum ElementType  aElementType )
+        {
+            switch ( aElementType )
+            {
+                case( ElementType::EMPTY ) :
+                case ( ElementType::VERTEX ) :
+                {
+                    return 0;
+                }
+                case ( ElementType::LINE2 ) :
+                case ( ElementType::TRI3 ) :
+                case ( ElementType::QUAD4 ) :
+                case ( ElementType::TET4 ) :
+                case ( ElementType::PENTA6 ) :
+                case ( ElementType::HEX8 ) :
+                {
+                    return 1;
+                }
+                case ( ElementType::QUAD8 ) :
+                case ( ElementType::PENTA15 ) :
+                case ( ElementType::HEX20 ) :
+                {
+                    return 2;
+                }
+                case ( ElementType::LINE3 ) :
+                case ( ElementType::TRI6 ) :
+                case ( ElementType::QUAD9 ) :
+                case ( ElementType::TET10 ) :
+                case ( ElementType::PENTA18 ) :
+                case ( ElementType::HEX27 ) :
+                {
+                    return 2;
+                }
+                case ( ElementType::LINE4 ) :
+                case ( ElementType::TRI10 ) :
+                case ( ElementType::QUAD16 ):
+                case ( ElementType::TET20 ) :
+                case ( ElementType::HEX64 ) :
+                {
+                    return 3;
+                }
+                default:
+                {
+                    return BELFEM_UINT_MAX;
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        belfem::GeometryType
+        geometry_type( const enum ElementType aElementType )
+        {
+            switch ( aElementType )
+            {
+                case ( ElementType::VERTEX ) :
+                {
+                    return belfem::GeometryType::VERTEX;
+                }
+                case ( ElementType::LINE2 ) :
+                case ( ElementType::LINE3 ) :
+                case ( ElementType::LINE4 ) :
+                {
+                    return belfem::GeometryType::LINE;
+                }
+                case ( ElementType::TRI3 ) :
+                case ( ElementType::TRI6 ) :
+                case ( ElementType::TRI10 ) :
+                {
+                    return belfem::GeometryType::TRI;
+                }
+                case ( ElementType::QUAD4 ) :
+                case ( ElementType::QUAD8 ) :
+                case ( ElementType::QUAD9 ) :
+                case ( ElementType::QUAD16 ) :
+                {
+                    return belfem::GeometryType::QUAD;
+                }
+                case ( ElementType::TET4 ) :
+                case ( ElementType::TET10 ) :
+                case ( ElementType::TET20 ) :
+                {
+                    return belfem::GeometryType::TET;
+                }
+                case ( ElementType::PENTA6 ) :
+                case ( ElementType::PENTA15 ) :
+                case ( ElementType::PENTA18 ) :
+                {
+                    return belfem::GeometryType::PENTA;
+                }
+                case ( ElementType::HEX8 ) :
+                case ( ElementType::HEX20 ) :
+                case ( ElementType::HEX27 ) :
+                case ( ElementType::HEX64 ) :
+                {
+                    return belfem::GeometryType::HEX;
+                }
+                default:
+                {
+                    return belfem::GeometryType::UNDEFINED;
+                }
+            }
+        }
+//------------------------------------------------------------------------------
+
+        int
+        dimension( const enum GeometryType aGeometryType )
+        {
+            switch ( aGeometryType )
+            {
+                case ( GeometryType::VERTEX ) :
+                {
+                    return 0;
+                }
+                case ( GeometryType::LINE ) :
+                {
+                    return 1;
+                }
+                case ( GeometryType::TRI ) :
+                case ( GeometryType::QUAD ) :
+                {
+                    return 2;
+                }
+                case ( GeometryType::TET ) :
+                case ( GeometryType::PENTA ) :
+                case ( GeometryType::HEX ) :
+                {
+                    return 3;
+                }
+                default:
+                {
+                    return -1;
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        int
+        dimension( const enum ElementType  aElementType )
+        {
+            return belfem::mesh::dimension(
+                    belfem::mesh::geometry_type( aElementType ) );
+        }
+
+//------------------------------------------------------------------------------
+
+        ElementType
+        element_type_from_gmsh( const int  aGmshNumber )
+        {
+            return static_cast< ElementType >( aGmshNumber );
+        }
+
+//------------------------------------------------------------------------------
+
+        int
+        gmsh_from_element_type( const ElementType  aElementType )
+        {
+            return static_cast< int >( aElementType );
+        }
+
+//------------------------------------------------------------------------------
+
+        ElementType
+        linear_element_type( const ElementType  aElementType )
+        {
+            switch ( aElementType )
+            {
+                case ( ElementType::VERTEX ) :
+                {
+                    return ElementType::VERTEX ;
+                }
+                case ( ElementType::LINE2 ) :
+                case ( ElementType::LINE3 ) :
+                case ( ElementType::LINE4 ) :
+                case ( ElementType::LINE5 ) :
+                case ( ElementType::LINE6 ) :
+                {
+                    return ElementType::LINE2 ;
+                }
+                case ( ElementType::TRI3  ) :
+                case ( ElementType::TRI6  ) :
+                case ( ElementType::TRI10 ) :
+                case ( ElementType::TRI15 ) :
+                case ( ElementType::TRI21 ) :
+                {
+                    return ElementType::TRI3 ;
+                }
+                case ( ElementType::QUAD4  ) :
+                case ( ElementType::QUAD8  ) :
+                case ( ElementType::QUAD9  ) :
+                case ( ElementType::QUAD16 ) :
+                {
+                    return ElementType::QUAD4 ;
+                }
+                case ( ElementType::TET4  ) :
+                case ( ElementType::TET10 ) :
+                case ( ElementType::TET20 ) :
+                case ( ElementType::TET35 ) :
+                {
+                    return ElementType::TET4 ;
+                }
+                case ( ElementType::PENTA6  ) :
+                case ( ElementType::PENTA15 ) :
+                case ( ElementType::PENTA18 ) :
+                {
+                    return ElementType::PENTA6 ;
+                }
+                case ( ElementType::HEX8  ) :
+                case ( ElementType::HEX20 ) :
+                case ( ElementType::HEX27 ) :
+                case ( ElementType::HEX64 ) :
+                {
+                    return ElementType::HEX8 ;
+                }
+                default:
+                {
+                    BELFEM_ERROR( false, "Unknown element type");
+                    return ElementType::EMPTY ;
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        unsigned int
+        number_of_corner_nodes(  const enum ElementType  aElementType )
+        {
+            // get the geometry type
+            belfem::GeometryType tGeoType = geometry_type( aElementType );
+
+            switch( tGeoType )
+            {
+                case( belfem::GeometryType::VERTEX ) :
+                {
+                    return 1;
+                }
+                case( belfem::GeometryType::LINE ) :
+                {
+                    return 2;
+                }
+                case( belfem::GeometryType::TRI ) :
+                {
+                    return 3;
+                }
+                case( belfem::GeometryType::QUAD ) :
+                {
+                    return 4;
+                }
+                case( belfem::GeometryType::TET ) :
+                {
+                    return 4;
+                }
+                case( belfem::GeometryType::PYRA ) :
+                {
+                    return 5;
+                }
+                case( belfem::GeometryType::PENTA ) :
+                {
+                    return 6;
+                }
+                case( belfem::GeometryType::HEX ) :
+                {
+                    return 8;
+                }
+                default:
+                {
+                    return 0;
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        unsigned int
+        number_of_facets(  const enum ElementType  aElementType )
+        {
+            // get the geometry type
+            switch(  geometry_type( aElementType ) )
+            {
+                case( belfem::GeometryType::VERTEX ) :
+                {
+                    return 0;
+                }
+                case( belfem::GeometryType::LINE ) :
+                {
+                    return 0;
+                }
+                case( belfem::GeometryType::TRI ) :
+                {
+                    return 3;
+                }
+                case( belfem::GeometryType::QUAD ) :
+                {
+                    return 4;
+                }
+                case( belfem::GeometryType::TET ) :
+                {
+                    return 4;
+                }
+                case( belfem::GeometryType::PYRA ) :
+                {
+                    return 5;
+                }
+                case( belfem::GeometryType::PENTA ) :
+                {
+                    return 5;
+                }
+                case( belfem::GeometryType::HEX ) :
+                {
+                    return 6;
+                }
+                default:
+                {
+                    return 0;
+                }
+            }
+        }
+//------------------------------------------------------------------------------
+
+        unsigned int
+        number_of_faces ( const enum ElementType  aElementType )
+        {
+            // get the geometry type
+            switch( geometry_type( aElementType ) )
+            {
+                case( belfem::GeometryType::VERTEX ) :
+                {
+                    return 0;
+                }
+                case( belfem::GeometryType::LINE ) :
+                {
+                    return 0;
+                }
+                case( belfem::GeometryType::TRI ) :
+                {
+                    return 1;
+                }
+                case( belfem::GeometryType::QUAD ) :
+                {
+                    return 1;
+                }
+                case( belfem::GeometryType::TET ) :
+                {
+                    return 4;
+                }
+                case( belfem::GeometryType::PYRA ) :
+                {
+                    return 5;
+                }
+                case( belfem::GeometryType::PENTA ) :
+                {
+                    return 5;
+                }
+                case( belfem::GeometryType::HEX ) :
+                {
+                    return 6;
+                }
+                default:
+                {
+                    return 0;
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        ElementType
+        element_type_of_facet(
+                const ElementType  aElementType,
+                const  unsigned int  aFacetIndex )
+        {
+            // get the geometry type
+            switch ( aElementType )
+            {
+                case( ElementType::TRI3 ) :
+                case( ElementType::QUAD4 ) :
+                {
+                    return ElementType::LINE2;
+                }
+                case( ElementType::TRI6 )  :
+                case( ElementType::QUAD8 ) :
+                case( ElementType::QUAD9 ) :
+                {
+                    return ElementType::LINE3;
+                }
+                case( ElementType::TRI10 ):
+                case( ElementType::QUAD16 ):
+                {
+                    return ElementType::LINE4;
+                }
+                case( ElementType::TRI15 ) :
+                {
+                    return ElementType::LINE5;
+                }
+                case( ElementType::TRI21 ) :
+                {
+                    return ElementType::LINE6;
+                }
+                case( ElementType::TET4 ) :
+                {
+                    return ElementType::TRI3;
+                }
+                case( ElementType::TET10 ) :
+                {
+                    return ElementType::TRI6;
+                }
+                case( ElementType::TET20 ) :
+                {
+                    return ElementType::TRI10;
+                }
+                case( ElementType::HEX8 ) :
+                {
+                    return ElementType::QUAD4;
+                }
+                case( ElementType::HEX20 ) :
+                {
+                    return ElementType::QUAD8;
+                }
+                case( ElementType::HEX27 ) :
+                {
+                    return ElementType::QUAD9;
+                }
+                case( ElementType::HEX64 ) :
+                {
+                    return ElementType::QUAD16;
+                }
+                case( ElementType::PENTA6 ) :
+                {
+                    if( aFacetIndex < 3 )
+                    {
+                        return ElementType::QUAD4;
+                    }
+                    else
+                    {
+                        return ElementType::TRI3;
+                    }
+                }
+                case ( ElementType::PENTA15 ) :
+                {
+                    if( aFacetIndex < 3 )
+                    {
+                        return ElementType::QUAD8;
+                    }
+                    else
+                    {
+                        return ElementType::TRI6;
+                    }
+                }
+                case ( ElementType::PENTA18 ) :
+                {
+                    if( aFacetIndex < 3 )
+                    {
+                        return ElementType::QUAD9;
+                    }
+                    else
+                    {
+                        return ElementType::TRI6;
+                    }
+                }
+                default:
+                {
+                    return ElementType::UNDEFINED;
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        double
+        length_scale_factor( const std::string  aUnitLabel )
+        {
+            // convert unit to lower case
+            std::string tUnit = string_to_lower( aUnitLabel );
+
+            if( tUnit == "m" )
+            {
+                return 1.0 ;
+            }
+            else if ( tUnit == "cm" )
+            {
+                return 0.01 ;
+            }
+            else if ( tUnit == "mm" )
+            {
+                return 0.001 ;
+            }
+            else if ( tUnit == "mum" )
+            {
+                return 1e-6 ;
+            }
+            else if ( ( tUnit == "in" ) ||  ( tUnit == "inch" ) )
+            {
+                return 0.0254 ;
+            }
+            else if ( ( tUnit == "ft" ) ||  ( tUnit == "feet" ) )
+            {
+                return 0.3048 ;
+            }
+            else
+            {
+                BELFEM_ERROR( false, "unknown unit: %s", aUnitLabel.c_str() );
+                return BELFEM_SIGNALING_NAN ;
+            }
+        }
+
+    }
+}

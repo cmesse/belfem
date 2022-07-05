@@ -1,0 +1,5 @@
+if( USE_EXAMPLES )
+    set( EXECNAME example_udfiber.cpp)
+    set( MAIN example_udfiber.cpp)
+    include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
+endif()
