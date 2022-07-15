@@ -414,11 +414,13 @@ namespace belfem
             Vector< real > & tnxB = mGroup->work_sigma() ;
 
             // sub mass matrix
-            Matrix< real > & tMi = mGroup->work_M() ;
+            Matrix< real > & tMlayer = mGroup->work_M() ;
 
+            // sub stiffness matrix
+            Matrix< real > & tKlayer = mGroup->work_M() ;
 
             // the sign of the edge
-            const real tS = aElement->edge_direction( 0 ) ? 1.0 : -1.0 ;
+            const real tSign = aElement->edge_direction( 0 ) ? 1.0 : -1.0 ;
 
             // reset values
             tM.fill( 0.0 );
@@ -479,16 +481,16 @@ namespace belfem
             // lambda-condition for master element, sheet side
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             j--;
-            tM( i, j ) = tS ;
-            tM( j, i ) = tS ;
+            tM( i, j ) = tSign ;
+            tM( j, i ) = tSign ;
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // lambda-condition for slave element, sheet side
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             i = j-1 ;
             j++;
-            tM( i, j ) = tS ;
-            tM( j, i ) = tS ;
+            tM( i, j ) = tSign ;
+            tM( j, i ) = tSign ;
 
             // scale mass matrix with element length
             // ( thus simplifying an integral over constant)
@@ -497,26 +499,64 @@ namespace belfem
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // contribution for mass matrix
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            tMi( 0, 0 ) = 2.0 ;
-            tMi( 1, 0 ) = 1.0 ;
-            tMi( 1, 0 ) = 1.0 ;
-            tMi( 1, 1 ) = 2.0 ;
-            tMi *= tElementLength / 6.0 ;
+            tMlayer( 0, 0 ) = 2.0 ;
+            tMlayer( 1, 0 ) = 1.0 ;
+            tMlayer( 0, 1 ) = 1.0 ;
+            tMlayer( 1, 1 ) = 2.0 ;
+            tMlayer *= tElementLength * constant::nu0 / 6.0 ;
 
-            i = 2 * n ;
-            j = i ;
+            // need thicknesses here
+            i = 2 * mNumberOfNodesPerElement ;
+
+            uint tNumLayers = mGroup->number_of_thin_shell_layers() ;
 
             // loop over all layers
-            //for( uint l=0; l<tNumLayers; ++l )
-          //  {
+            for( uint l=0; l<tNumLayers; ++l )
+            {
 
-           // }
+                // get thickness of thin shell
+                real t = mGroup->thin_shell_thickness( l );
 
-            tM.print("M");
-            std::cout << " l " << tElementLength << " " << mNumberOfLayersPerShell << std::endl ;
+                tM(i,i) += tMlayer(0,0) * t ;
+                tM(i+1,i) += tMlayer(1,0) * t ;
+                tM(i,i+1) += tMlayer(0,1) * t ;
+                tM(i+1,i+1) += tMlayer(1,1) * t ;
+
+                ++i ;
+
+            }
+
+            // not doing  the laplace flux thing for now (Alves doesn't do it either)
+
+            // now we need the edges
+            //tM.print("M");
+            //std::cout << " l " << tElementLength << " " << mNumberOfLayersPerShell << std::endl ;
+
+
+            this->compute_layer_stiffness( aElement, 2, tKlayer );
 
             //mGroup->master_integration( )
             exit( 0 );
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        IWG_Maxwell_HPhi_Tri3::compute_layer_stiffness(
+                Element * aElement,
+                const uint aLayer,
+                Matrix< real > & aK )
+        {
+            // reset matrix
+            aK.fill( 0.0 );
+
+            // grab ghost element
+            mesh::Facet * tFacet = mMesh->ghost_facet( aElement->id(), aLayer );
+
+            std::cout << "edge " << tFacet->edge( 0 )->id() << std::endl ;
+
+            std::cout << "nodes" << tFacet->edge( 0 )->node( 0 ) ->id() << " " <<tFacet->edge( 0 )->node( 1 )->id() << std::endl ;
+            aK.print( "K_layer" );
         }
 
 //------------------------------------------------------------------------------

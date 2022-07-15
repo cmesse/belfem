@@ -20,7 +20,10 @@ namespace belfem
 
         Facet::~Facet()
         {
-            delete mElement;
+            if( mOwnElement )
+            {
+                delete mElement;
+            }
         }
 
 //------------------------------------------------------------------------------

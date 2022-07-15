@@ -77,6 +77,9 @@ namespace belfem
                 Vector< real > mRhsVector;
                 Matrix< real > mRhsMatrix;
 
+                // contains the norm of the rhs vector
+                real mRhsNorm = BELFEM_QUIET_NAN ;
+
                 // special field needed for timestepping
                 Vector< real > mFieldValues ;
 

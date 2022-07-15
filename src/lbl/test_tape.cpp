@@ -30,15 +30,20 @@ int main( int    argc,
     // create communicator
     gComm = Communicator( &argc, &argv );
 
+    // read the input file
+    InputFile tInputFile( "input.txt" );
+
+    // create a new factory
+    MaxwellFactory * tFactory = new MaxwellFactory( tInputFile );
 
     // get the mesh
-    Mesh * tMesh = new Mesh( "tape.msh") ;
+    Mesh * tMesh = tFactory->mesh() ;
 
     if( comm_rank() == 0 )
     {
         //Vector< id_t > tSideSets = { 9, 10, 11, 12 };
         Vector< id_t > tSideSets = { 11, 12, 13, 14 };
-        tMesh->create_edges( false, {}, tSideSets );
+        //tMesh->create_edges( false, {}, tSideSets );
         //tMesh->create_faces( false, {}, tSideSets ) ) ;
 
         // count elements on these sidesets
@@ -77,23 +82,27 @@ int main( int    argc,
 
     comm_barrier() ;
 
-    KernelParameters tParams( tMesh ) ;
-    Kernel tKernel( &tParams );
+    Kernel *  tKernel = tFactory->kernel() ;
 
     if( comm_rank() == 0 )
     {
-        tKernel.mesh()->save( "mesh.exo");
+        tKernel->mesh()->save( "mesh.exo");
     }
     else
     {
-        tKernel.mesh()->save( "submesh.exo");
+        tKernel->mesh()->save( "submesh.exo");
     }
 
 
+
+    // create the IWG
+
     // tMesh->save( "test.exo");
 
-
+    delete tFactory ;
+    delete tKernel ;
     delete tMesh ;
+
     // close communicator
     return gComm.finalize();
 }

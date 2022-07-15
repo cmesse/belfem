@@ -245,7 +245,7 @@ namespace belfem
 
 
             //! needed if tapes are implemented in this IWG
-            uint mNumberOfLayersPerShell = 0 ;
+            //uint mNumberOfLayersPerShell = 0 ;
 
 //------------------------------------------------------------------------------
         public:
@@ -287,8 +287,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
-            set_thin_shell_mode( const index_t aNumberOfLayers,
-                                 const SideSetDofLinkMode aLinkMode );
+            set_thin_shell_link_mode( const SideSetDofLinkMode aLinkMode );
 
 //------------------------------------------------------------------------------
 

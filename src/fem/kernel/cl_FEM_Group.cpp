@@ -219,6 +219,37 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        uint
+        Group::number_of_thin_shell_layers() const
+        {
+            BELFEM_ERROR( false, "number_of_thin_shell_layers() can only be called for sidesets or shells");
+            return 0 ;
+        }
+
+//------------------------------------------------------------------------------
+
+        const Material *
+        Group::thin_shell_material( const uint aLayerIndex ) const
+        {
+            BELFEM_ERROR( false, "thin_shell_material() can only be called for sidesets or shells");
+            return nullptr ;
+        }
+
+//------------------------------------------------------------------------------
+
+        /**
+         * dummy function, throws error unless sideset or shell
+         * @return
+         */
+        real
+        Group::thin_shell_thickness( const uint aLayerIndex ) const
+        {
+            BELFEM_ERROR( false, "thin_shell_thickness() can only be called for sidesets or shells");
+            return BELFEM_QUIET_NAN ;
+        }
+
+//------------------------------------------------------------------------------
+
         const IntegrationData *
         Group::thinshell_integration() const
         {

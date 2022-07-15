@@ -9,6 +9,7 @@
 #include "en_FEM_DomainType.hpp"
 #include "fn_unique.hpp"
 #include "fn_check_unit.hpp"
+#include "cl_Block.hpp"
 #include "cl_Mesh_Scissors.hpp"
 #include "cl_Mesh_TapeRoller.hpp"
 #include "cl_MaterialFactory.hpp"
@@ -1313,7 +1314,23 @@ namespace belfem
                         // add material to kernel
                         aDofManager->parent()->add_material( tMaterial );
                     }
+                }
 
+                // loop over all sidesets on the mesh
+                for( mesh::SideSet * tMeshSideSet : mKernel->mesh()->sidesets() )
+                {
+                    // check if sideset exists on dof manager
+                    if( aDofManager->sideset_exists( tMeshSideSet->id() ) )
+                    {
+                        // grab sideset
+                        SideSet * tSideSet = aDofManager->sideset( tMeshSideSet->id() );
+
+                        // check if sideset is a thin shell
+                        if( tSideSet->domain_type() == DomainType::ThinShell )
+                        {
+                            tSideSet->set_thin_shells( mTapeMaterials, mTapeThicknesses );
+                        }
+                    }
                 }
             }
         }
@@ -1364,6 +1381,7 @@ namespace belfem
             if( mGhostMaster > 0 )
             {
                 tMaxwell->set_ghost_sidesets( mGhostMaster, mGhostSideSets );
+                this->set_layer_labels() ;
             }
 
 
@@ -1373,8 +1391,7 @@ namespace belfem
             }
 
             // for thin shells
-            tMaxwell->set_thin_shell_mode( mTapeMaterialLabels.size(),
-                SideSetDofLinkMode::MasterAndSlave );
+            tMaxwell->set_thin_shell_link_mode( SideSetDofLinkMode::MasterAndSlave );
 
             mKernel->add_equation( tMaxwell );
 
@@ -2667,7 +2684,7 @@ namespace belfem
                         tTapeRoller.add_sidesets( tTape->groups() );;
                     }
 
-                    tTapeRoller.run() ;
+                    mMaxBlockID = tTapeRoller.run() ;
 
                     // remember ids of new sidesets
                     mGhostSideSets = tTapeRoller.ghost_sideset_ids() ;
@@ -3047,9 +3064,21 @@ namespace belfem
 // -----------------------------------------------------------------------------
 
         void
-        MaxwellFactory::set_sheet_types()
+        MaxwellFactory::set_layer_labels()
         {
+            // set the names of the sidesets
+            unsigned int tNumLayers = mGhostSideSets.length() ;
 
+            for( unsigned int k=0; k<tNumLayers; ++k )
+            {
+                // create layer name
+
+                mMesh->block( k + mMaxBlockID + 1)->label() =
+                sprint( "Layer_%u_%s_%uu",
+                         k + 1,
+                         mTapeMaterialLabels( k  ).c_str() ,
+                         ( unsigned int ) std::ceil( mTapeThicknesses( k ) *1e6 ) );
+            }
         }
 
 // -----------------------------------------------------------------------------

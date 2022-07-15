@@ -771,8 +771,10 @@ namespace belfem
         /**
          * create the ghost layers for selected elements
          * called by tape roller on master proc.
+         *
+         * returns the max id of the mesh before layer creation
          */
-         void
+         id_t
          create_ghost_sidesets(
                  const Vector< id_t >    & aGhostSideSetIDs,
                  const Vector< id_t >    & aElementIDs,

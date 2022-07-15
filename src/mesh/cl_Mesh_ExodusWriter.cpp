@@ -104,7 +104,17 @@ namespace belfem
 
             mNumElements = mMesh->number_of_elements();
             mNumBlocks   = mMesh->number_of_blocks();
-            mNumSideSets = mMesh->number_of_sidesets();
+
+
+            // count visible sidesets
+            mNumSideSets = 0 ;
+            for( SideSet * tSideSet : mMesh->sidesets() )
+            {
+                if( ! tSideSet->is_hidden() )
+                {
+                    ++mNumSideSets ;
+                }
+            }
 
             mError = ex_put_init( mHandle,
                     "Go Buffs!",
@@ -371,60 +381,62 @@ namespace belfem
         ExodusWriter::populate_sidesets()
         {
 #ifdef BELFEM_EXODUS
-            StringList tLabels( mNumSideSets );
-
             Cell< SideSet * > & tSideSets = mMesh->sidesets() ;
 
-            for( int64_t k=0; k<mNumSideSets; ++k )
+            StringList tLabels( mNumSideSets );
+
+
+            for( SideSet * tSideSet : tSideSets )
             {
-                // get sideset
-                SideSet * tSideSet = tSideSets( k );
-
-                // number of facets
-                int64_t tNumFacets = tSideSet->number_of_facets();
-
-                ex_put_set_param(
-                        mHandle,
-                        EX_SIDE_SET,
-                        tSideSet->id(),
-                        tNumFacets,
-                        0 );
-
-                this->check( "ex_put_set_param");
-
-                // allocate containers
-                int * tElementIDs = ( int * ) malloc( tNumFacets * sizeof( int ) );
-                int * tSideSetIDs = ( int * ) malloc( tNumFacets * sizeof( int ) );
-
-                for( int64_t i=0; i<tNumFacets; ++i )
+                // check if sideset exists on exodus
+                if ( !tSideSet->is_hidden() )
                 {
-                    tElementIDs[ i ]= tSideSet->facet_by_index( i )->master_id();
+                    // number of facets
+                    int64_t tNumFacets = tSideSet->number_of_facets();
+
+                    ex_put_set_param(
+                            mHandle,
+                            EX_SIDE_SET,
+                            tSideSet->id(),
+                            tNumFacets,
+                            0 );
+
+                    this->check( "ex_put_set_param" );
+
+                    // allocate containers
+                    int * tElementIDs = ( int * ) malloc( tNumFacets * sizeof( int ));
+                    int * tSideSetIDs = ( int * ) malloc( tNumFacets * sizeof( int ));
+
+                    for ( int64_t i = 0; i < tNumFacets; ++i )
+                    {
+                        tElementIDs[ i ] = tSideSet->facet_by_index( i )->master_id();
+                    }
+
+                    for ( int64_t i = 0; i < tNumFacets; ++i )
+                    {
+                        tSideSetIDs[ i ] = tSideSet->facet_by_index( i )->master_index() + 1;
+                    }
+
+                    mError = ex_put_set(
+                            mHandle,
+                            EX_SIDE_SET,
+                            tSideSet->id(),
+                            tElementIDs,
+                            tSideSetIDs );
+
+                    this->check( "ex_put_set" );
+
+                    free( tElementIDs );
+                    free( tSideSetIDs );
+
+                    tLabels.push( tSideSet->label() );
                 }
-
-                for( int64_t i=0; i<tNumFacets; ++i )
-                {
-                    tSideSetIDs[ i ] = tSideSet->facet_by_index( i )->master_index() + 1;
-                }
-
-                mError = ex_put_set (
-                        mHandle,
-                        EX_SIDE_SET,
-                        tSideSet->id(),
-                        tElementIDs,
-                        tSideSetIDs );
-
-                this->check( "ex_put_set");
-
-                free ( tElementIDs );
-                free ( tSideSetIDs );
-
-                tLabels.push( tSideSet->label() );
             }
 
             mError = ex_put_names(
                     mHandle,
                     EX_SIDE_SET,
-                    tLabels.data() );
+                    tLabels.data());
 
             this->check( "ex_put_names");
 #endif

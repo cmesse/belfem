@@ -167,6 +167,10 @@ namespace belfem
             //! container with tape materials. Todo: add to sidesets
             Cell< Material * > mTapeMaterials ;
 
+
+            //! maximim block id of original mesh
+            id_t mMaxBlockID = gNoID ;
+
 //------------------------------------------------------------------------------
         public:
 //------------------------------------------------------------------------------
@@ -413,6 +417,11 @@ namespace belfem
 
             void
             set_domain_types() ;
+
+// -----------------------------------------------------------------------------
+
+            void
+            set_layer_labels() ;
 
 // -----------------------------------------------------------------------------
         };

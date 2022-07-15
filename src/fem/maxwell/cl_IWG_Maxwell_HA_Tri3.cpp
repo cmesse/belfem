@@ -39,8 +39,6 @@ namespace belfem
             mNumberOfRhsDofsPerEdge = 1 ;
             mNumberOfRhsDofsPerFace = 0 ;
 
-            mNumberOfLayersPerShell = 3 ;
-
         }
 //------------------------------------------------------------------------------
 

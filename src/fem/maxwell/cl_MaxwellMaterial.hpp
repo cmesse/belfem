@@ -129,8 +129,6 @@ namespace belfem
         void
         set_rho_el_ejbt( const real aEc, const real aJc0, const real aN0, const real aN1, const real aB0, const real aT0, const real aTc  );
 
-
-
 //----------------------------------------------------------------------------
 
         void

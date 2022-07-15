@@ -1,7 +1,7 @@
 //
 // Created by Christian Messe on 2019-07-25.
 //
-
+#include "cl_Block.hpp"
 #include "cl_Mesh.hpp"
 #include "cl_Mesh_ExodusWriter.hpp"
 #include "fn_unique.hpp"
@@ -1887,7 +1887,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-    void
+    id_t
     Mesh::create_ghost_sidesets(
             const Vector< id_t >    & aGhostSideSetIDs,
             const Vector< id_t >    & aElementIDs,
@@ -2005,6 +2005,16 @@ namespace belfem
         mGhostSideSetIDs = aGhostSideSetIDs ;
         mGhostFacetIDs = aElementIDs ;
 
+        // get max block ID
+        id_t aMaxBlockID = 0 ;
+        for( mesh::Block * tBlock : mBlocks )
+        {
+            aMaxBlockID = tBlock->id() > aMaxBlockID ?
+                    tBlock->id() : aMaxBlockID ;
+        }
+
+        id_t tMaxBlockID = aMaxBlockID ;
+
         // loop over all layers
         for( uint l=0; l<aGhostSideSetIDs.length(); ++l )
         {
@@ -2016,8 +2026,13 @@ namespace belfem
             // create the new sideset
             mesh::SideSet * tSideSet = new mesh::SideSet( aGhostSideSetIDs( l ),
                                                           tNumFacets );
+
+            // create a new block
+            mesh::Block * tBlock = new mesh::Block( ++tMaxBlockID, tNumFacets );
+
             // grab the facet container
             Cell< mesh::Facet * > & tFacets = tSideSet->facets();
+            Cell< mesh::Element * > & tBlockElements = tBlock->elements() ;;
 
             // loop over all elements
             for( index_t e = 0; e<tNumFacets; ++e )
@@ -2039,14 +2054,24 @@ namespace belfem
                     tFacet->set_slave( tOriginal->slave(), tOriginal->slave_index() );
                 }
                 tFacets( e ) = tFacet ;
+                tBlockElements( e ) = tFacet->element() ;
+
+                // the facet wrapps an element. By default, this is deleted by
+                // the facet destructor. We don't do this in here since the element
+                // is exposed and will be destroyed by the block
+                tFacet->destruct_wrapped_element( false );
+
             } // end loop over all facets
 
+            // hide this sideset from exodus
+            tSideSet->hide();
+
             mSideSets.push( tSideSet );
+            mBlocks.push( tBlock );
+
             //mSideSetMap[ tSideSet->id() ] = tSideSet ;
 
         } // end loop over all layers
-
-        mGhostSideSetIDs.print("Ghost");
 
         this->unfinalize() ;
         this->finalize() ;
@@ -2066,6 +2091,8 @@ namespace belfem
         {
             mGhostFacetMap[ tElementID ] = tCount++ ;
         }
+
+        return aMaxBlockID ;
     }
 
 //------------------------------------------------------------------------------

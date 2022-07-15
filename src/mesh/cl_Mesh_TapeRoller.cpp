@@ -57,9 +57,11 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        void
+        id_t
         TapeRoller::run()
         {
+            id_t aMaxBlockID = 0 ;
+
             if ( comm_rank() == 0 )
             {
                 // make sidesets unique
@@ -85,9 +87,12 @@ namespace belfem
                 {
                     mGhostSideSetIDs( l ) = ++mMaxSideSetId;
                 }
-                mMesh->create_ghost_sidesets( mGhostSideSetIDs, mElementIDs, mLayers );
+
+                aMaxBlockID = mMesh->create_ghost_sidesets( mGhostSideSetIDs, mElementIDs, mLayers );
 
             }
+
+            return aMaxBlockID ;
         }
 
 //------------------------------------------------------------------------------
@@ -308,7 +313,9 @@ namespace belfem
                             tClone->insert_node( tLayerNodes( mNodeMap( tElement->node( k )->id())), k );
                         }
 
-                        // add element to container
+                        // print
+                        std::cout << "#elements " << tElement->id() << " - " << l << " : " << tClone->id() << " - " << tClone->node( 0 )->id() << " " << tClone->node( 1 )->id() << std::endl ;
+
                         tLayerElements( tCount++ ) = tClone;
                     } // end loop over all facets
                 } // end loop over all sidesets

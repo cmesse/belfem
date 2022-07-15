@@ -523,5 +523,28 @@ namespace belfem
         }
 
  //------------------------------------------------------------------------------
+
+        void
+        SideSet::set_thin_shells( Cell< Material* > & aMaterials,
+                         const Vector< real > & aLayerThicknesses )
+        {
+            BELFEM_ERROR( aMaterials.size() == aLayerThicknesses.length() ,
+                          "Number of material labels must match number of layer thicknesses ( %u vs %u )",
+                          ( unsigned int ) aMaterials.size(), ( unsigned  int ) aLayerThicknesses.length() );
+
+            // get number of layers
+            mNumberOfThinShellLayers = aMaterials.size() ;
+
+            // allocate memory
+            mThinShellMaterials.set_size( mNumberOfThinShellLayers, nullptr );
+
+            for( uint k=0; k<mNumberOfThinShellLayers; ++k )
+            {
+                mThinShellMaterials( k ) = aMaterials( k );
+            }
+            mThinShellThicknesses = aLayerThicknesses ;
+        }
+
+//------------------------------------------------------------------------------
     }
 }

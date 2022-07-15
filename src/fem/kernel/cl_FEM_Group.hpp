@@ -642,6 +642,33 @@ namespace belfem
             boundary_condition() const ;
 
 //------------------------------------------------------------------------------
+
+            /**
+             * dummy function, throws error unless sideset or shell
+             * @return
+             */
+            virtual uint
+            number_of_thin_shell_layers() const ;
+
+//------------------------------------------------------------------------------
+
+            /**
+             * dummy function, throws error unless sideset or shell
+             * @return
+             */
+            virtual const Material *
+            thin_shell_material( const uint aLayerIndex ) const ;
+
+//------------------------------------------------------------------------------
+
+            /**
+             * dummy function, throws error unless sideset or shell
+             * @return
+             */
+            virtual real
+            thin_shell_thickness( const uint aLayerIndex ) const ;
+
+//------------------------------------------------------------------------------
         protected:
 //------------------------------------------------------------------------------
 

@@ -58,6 +58,14 @@ namespace belfem
             Cell< IntegrationData * > mMasterIntegration ;
             Cell< IntegrationData * > mSlaveIntegration ;
 
+            // thin shell materials, owned by kernel
+            Cell< Material * > mThinShellMaterials ;
+
+            // thin shell thicknesses
+            Vector< real > mThinShellThicknesses ;
+
+            uint mNumberOfThinShellLayers = 0 ;
+
 //------------------------------------------------------------------------------
         public:
 //------------------------------------------------------------------------------
@@ -174,6 +182,27 @@ namespace belfem
             slave_integration( const uint aSideSetIndex ) ;
 
 //------------------------------------------------------------------------------
+
+            void
+            set_thin_shells( Cell< Material* > & aMaterials,
+                             const Vector< real > & aLayerThicknesses );
+
+//------------------------------------------------------------------------------
+
+            inline uint
+            number_of_thin_shell_layers() const ;
+
+//------------------------------------------------------------------------------
+
+            inline const Material *
+            thin_shell_material( const uint aLayerIndex ) const ;
+
+//------------------------------------------------------------------------------
+
+            inline real
+            thin_shell_thickness( const uint aLayerIndex ) const ;
+
+//------------------------------------------------------------------------------
         protected:
 //------------------------------------------------------------------------------
 
@@ -268,6 +297,30 @@ namespace belfem
         SideSet::slave_integration( const uint aSideSetIndex )
         {
             return mSlaveIntegration( aSideSetIndex );
+        }
+
+//------------------------------------------------------------------------------
+
+        inline uint
+        SideSet::number_of_thin_shell_layers() const
+        {
+            return mNumberOfThinShellLayers ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline const Material *
+        SideSet::thin_shell_material( const uint aLayerIndex ) const
+        {
+            return mThinShellMaterials( aLayerIndex );
+        }
+
+//------------------------------------------------------------------------------
+
+        inline real
+        SideSet::thin_shell_thickness( const uint aLayerIndex ) const
+        {
+            return mThinShellThicknesses( aLayerIndex );
         }
 
 //------------------------------------------------------------------------------

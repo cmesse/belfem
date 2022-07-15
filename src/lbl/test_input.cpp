@@ -156,6 +156,8 @@ int main( int    argc,
     real tOmegaP = tNonlinear.picardOmega ;
     real tOmegaN = tNonlinear.newtonOmega ;
 
+    tMesh->save( "test.exo");
+
     while( tTime < tMaxTime )
     {
         // increment timestep

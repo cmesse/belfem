@@ -1467,6 +1467,9 @@ namespace belfem
 
                     if(  tIWG->num_rhs_cols() == 1 ) // right hand side is vector
                     {
+                        // compute the norm of the rhs vector
+                        mRhsNorm = norm( mRhsVector );
+
                         switch( tIWG->mode() )
                         {
                             case( IwgMode::Direct ) :
@@ -1663,28 +1666,10 @@ namespace belfem
             {
                 if( mKernel->is_master() )
                 {
-
-                    /*Vector< real > & tError =  mKernel->mesh()->field_exists("error") ?
-                            mKernel->mesh()->field_data("error") : mKernel->mesh()->create_field("error");
-
-                    BELFEM_ASSERT( mParent->iwg()->num_rhs_cols() == 1, "Iwg must have only 1 col for calling Field::residual()" );
-
-                    tError.fill( 0.0 );
-
-                    for( Dof * tDof : mDOFs )
-                    {
-                        if( ! tDof->is_fixed() && tDof->is_node() )
-                        {
-                            tError( tDof->dof_index_on_field() ) +=
-                                    mRhsVector( tDof->index() ) *  mRhsVector( tDof->index() ) ;
-                        }
-                    }
-                    for ( index_t k=0; k<mParent->mesh()->number_of_nodes(); ++k )
-                    {
-                        tError( k ) = std::sqrt( tError( k ) );
-                    } */
                     // compute value
-                    real aResidual = norm( mRhsVector );
+                    // note that this vector now contains the error r=A*x-b
+                    // while the value of mRhsNorm was computed before with the real rhs vectror
+                    real aResidual = norm( mRhsVector ) / mRhsNorm ;
 
                     // distribute data
                     Vector< real > tResidual( mKernel->comm_table().length(), aResidual );

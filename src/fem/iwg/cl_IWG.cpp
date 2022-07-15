@@ -309,11 +309,9 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        IWG::set_thin_shell_mode(
-                const index_t aNumberOfLayers,
+        IWG::set_thin_shell_link_mode(
                 const SideSetDofLinkMode aLinkMode )
         {
-            mNumberOfLayersPerShell = aNumberOfLayers ;
             mThinShellDofLinkMode = aLinkMode ;
         }
 
@@ -464,7 +462,7 @@ namespace belfem
                                 {
                                     mNumberOfEdgeDofsPerElement =
                                             ( mNumberOfEdgesPerElement * mNumberOfDofsPerEdge
-                                            + mNumberOfFacesPerElement * mNumberOfDofsPerFace ) * mNumberOfLayersPerShell ;
+                                            + mNumberOfFacesPerElement * mNumberOfDofsPerFace ) * aGroup->number_of_thin_shell_layers() ;
                                 }
                                 else
                                 {
@@ -688,7 +686,7 @@ namespace belfem
                     else
                     {
                         return    tNumberOfVolumeDofs + tNumberOfDofsPerFacet
-                                  + mNumberOfLayersPerShell *
+                                  + aSideSet->number_of_thin_shell_layers()  *
                                     ( mesh::number_of_edges( aSideSet->element_type() )
                                     * tNumberOfDofsPerEdge
                                     + mesh::number_of_faces( aSideSet->element_type() )

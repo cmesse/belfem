@@ -110,6 +110,7 @@ namespace belfem
                 switch( aElementType )
                 {
                     // linear elements
+                    case( ElementType::LINE2 ) :
                     case( ElementType::TRI3 ) :
                     case( ElementType::QUAD4 ) :
                     {
@@ -141,6 +142,7 @@ namespace belfem
             {
                 switch( aElementType )
                 {
+                    case( ElementType::LINE2 ) :
                     case( ElementType::TRI3 ) :
                     case( ElementType::QUAD4 ) :
                     case( ElementType::TET4 ) :
