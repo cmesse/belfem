@@ -488,6 +488,8 @@ namespace belfem
             }
             if( mSlaveType != ElementType::UNDEFINED )
             {
+                mMasterAndSlaveSameType = false ;
+
                 if( mesh::geometry_type( mSlaveType ) == GeometryType::TRI )
                 {
                     mSlaveIntegration.set_size( 3, nullptr );

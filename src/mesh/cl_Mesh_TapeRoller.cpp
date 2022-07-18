@@ -90,9 +90,53 @@ namespace belfem
 
                 aMaxBlockID = mMesh->create_ghost_sidesets( mGhostSideSetIDs, mElementIDs, mLayers );
 
+                // fix node connectivity, because the finalize command messes up with the linking
+                this->fix_tape_to_node_connectivities( aMaxBlockID );
+
             }
 
             return aMaxBlockID ;
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        TapeRoller::fix_tape_to_node_connectivities( const id_t aMaxBlockID )
+        {
+            // get number of elements per layer
+            index_t tNumElements = mElementIDs.length() ;
+
+            // loop over all laters
+            for ( uint l = 0; l < mNumberOfLayers; ++l )
+            {
+                // grab block
+                Block * tBlock = mMesh->block( aMaxBlockID + l + 1 );
+
+                uint tNumNodes = mMesh->facet( mElementIDs( 0 ) )->element()->number_of_nodes() ;
+
+                Cell< Node * > & tLayerNodes = mLayers( l )->Nodes ;
+
+                // loop over all elements
+                for( index_t e=0; e<tNumElements; ++e )
+                {
+                    // grab the original element
+                    Element * tElement = mMesh->facet( mElementIDs( e ) )->element() ;
+
+                    // grab the element from the block
+                    Element * tClone = tBlock->element( e );
+
+                    // relink nodes
+                    for( uint k=0; k<tNumNodes; ++k )
+                    {
+                        tClone->insert_node( tLayerNodes( mNodeMap( tElement->node( k )->id())), k );
+                    }
+
+                    // this will be used later on to restore the element ownership
+                    tClone->reset_element_container();
+                    tClone->allocate_element_container( 1 );
+                    tClone->insert_element( tElement );
+                }
+            }
         }
 
 //------------------------------------------------------------------------------
@@ -302,10 +346,6 @@ namespace belfem
 
                         // create a new element
                         Element * tClone = tFactory.create_lagrange_element( tType, ++mMaxElementID );
-
-                        // this is needed to get the ownerships right later on
-                        tClone->allocate_element_container( 1 ) ;
-                        tClone->insert_element( tElement );
 
                         // link the nodes
                         for ( uint k = 0; k < tNumNodes; ++k )

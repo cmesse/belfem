@@ -10,8 +10,9 @@ namespace belfem
     {
 //------------------------------------------------------------------------------
 
-        Facet::Facet( Element * aElement ) :
-                mElement( aElement )
+        Facet::Facet( Element * aElement, const bool aOwnElement ) :
+                mElement( aElement ),
+                mOwnElement( aOwnElement )
         {
             this->set_id( aElement->id() );
         }

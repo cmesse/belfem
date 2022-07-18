@@ -19,7 +19,7 @@ namespace belfem
             Element * mElement;
 
             // flag telling if we own the element
-            bool mOwnElement = true ;
+            const bool mOwnElement = true ;
 
             // master element for facet
             Element * mMaster = nullptr;
@@ -40,7 +40,7 @@ namespace belfem
         public:
 //------------------------------------------------------------------------------
 
-            Facet( Element * aElement );
+            Facet( Element * aElement, const bool aOwnElement = true );
 
 //------------------------------------------------------------------------------
 
@@ -232,12 +232,6 @@ namespace belfem
 
             uint
             orientation_on_slave() const ;
-
-//-----------------------------------------------------------------------------
-
-            // tell mesh of face deletes element on destruction
-            void
-            destruct_wrapped_element( const bool aSwitch );
 
 //-----------------------------------------------------------------------------
         };
@@ -496,13 +490,6 @@ namespace belfem
         Facet::orientation_on_slave() const
         {
             return mOrientationOnSlave ;
-        }
-//------------------------------------------------------------------------------
-
-        inline void
-        Facet::destruct_wrapped_element( const bool aSwitch )
-        {
-            mOwnElement = aSwitch ;
         }
 
 //------------------------------------------------------------------------------

@@ -69,8 +69,11 @@ namespace belfem
         {
             BELFEM_ASSERT( mNodeCounter == 0, "container is already allocated");
 
-            mNodes = new Node * [ aNumberOfNodes ];
-            mNodeCounter = aNumberOfNodes ;
+            if( aNumberOfNodes > 0 )
+            {
+                mNodes = new Node * [ aNumberOfNodes ];
+                mNodeCounter = aNumberOfNodes ;
+            }
         }
 
 //------------------------------------------------------------------------------
@@ -126,8 +129,12 @@ namespace belfem
         {
             BELFEM_ASSERT( mEdgeCounter == 0, "container is already allocated");
 
-            mEdges = new Edge * [ aNumberOfEdges ];
-            mEdgeCounter = aNumberOfEdges ;
+            if( aNumberOfEdges > 0 )
+            {
+                mEdges = new Edge * [ aNumberOfEdges ];
+                mEdgeCounter = aNumberOfEdges ;
+            }
+
         }
 
 //------------------------------------------------------------------------------

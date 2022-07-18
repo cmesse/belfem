@@ -33,7 +33,7 @@ namespace belfem
 
 
             // non-dof fields
-            mFields.MagneticFieldDensity     = { "bx", "by" };
+            mFields.MagneticFieldDensity     =  { "bx", "by", "bz" };
             mFields.CurrentDensity = {  "jz" };
             mFields.CurrentBC = { "lambda_I" };
 

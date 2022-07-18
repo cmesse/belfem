@@ -459,21 +459,25 @@ namespace belfem
             for( uint k=0; k<tNumFields; ++k )
             {
                 mesh::Field * tField = mMesh->field( k );
-                switch ( tField->entity_type() )
+
+                if( tField->write_field_to_file() )
                 {
-                    case ( EntityType::NODE ) :
+                    switch ( tField->entity_type())
                     {
-                        ++tNodeFieldCount;
-                        break;
-                    }
-                    case ( EntityType::ELEMENT ):
-                    {
-                        ++tElementFieldCount;
-                        break;
-                    }
-                    default :
-                    {
-                        break;
+                        case ( EntityType::NODE ) :
+                        {
+                            ++tNodeFieldCount;
+                            break;
+                        }
+                        case ( EntityType::ELEMENT ):
+                        {
+                            ++tElementFieldCount;
+                            break;
+                        }
+                        default :
+                        {
+                            break;
+                        }
                     }
                 }
             }
@@ -490,22 +494,25 @@ namespace belfem
             for( uint k=0; k<tNumFields; ++k )
             {
                 mesh::Field * tField = mMesh->field( k );
-                switch( tField->entity_type() )
+                if( tField->write_field_to_file() )
                 {
-                    case( EntityType::NODE ) :
+                    switch ( tField->entity_type())
                     {
-                        tNodeFields( tNodeFieldCount++ ) = tField;
-                        break;
-                    }
-                    case( EntityType::ELEMENT ):
-                    {
-                        tElementFields( tElementFieldCount++ ) = tField;
-                        break;
-                    }
-                    default:
-                    {
-                        // do nothing
-                        break;
+                        case ( EntityType::NODE ) :
+                        {
+                            tNodeFields( tNodeFieldCount++ ) = tField;
+                            break;
+                        }
+                        case ( EntityType::ELEMENT ):
+                        {
+                            tElementFields( tElementFieldCount++ ) = tField;
+                            break;
+                        }
+                        default:
+                        {
+                            // do nothing
+                            break;
+                        }
                     }
                 }
             }

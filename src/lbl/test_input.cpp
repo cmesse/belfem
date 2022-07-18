@@ -146,134 +146,139 @@ int main( int    argc,
         tTimeCount = 0 ;
     }
 
-    const real tDeltaTime = tFormulation->timestep();
-    real & tTime = tMesh->time_stamp() ;
-
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    // begin timeloop
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-    real tOmegaP = tNonlinear.picardOmega ;
-    real tOmegaN = tNonlinear.newtonOmega ;
-
     tMesh->save( "test.exo");
+    std::cout << tMaxTime << std::endl ;
 
-    while( tTime < tMaxTime )
-    {
-        // increment timestep
-        tTime += tDeltaTime;
+    /*
+     *
+   const real tDeltaTime = tFormulation->timestep();
+   real & tTime = tMesh->time_stamp() ;
 
-        // increment time counter
-        tTimeCount++;
+   // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   // begin timeloop
+   // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        // reset number of iterations
-        tFormulation->shift_fields();
-        tFormulation->compute_boundary_conditions( tTime );
-
-
-        uint tIter = 0;
-
-        // residual
-        real tEpsilon = BELFEM_REAL_MAX;
-        real tEpsilon0 ;
-
-        if ( tKernel->is_master() )
-        {
-            std::cout << std::endl << "  --------------------------------------------------------------------------"
-                      << std::endl;
-            std::cout << "   time : " << tTime << " s " << std::endl;
-            std::cout << "  --------------------------------------------------------------------------" << std::endl;
-        }
-
-        Timer tTimer;
-
-        index_t tCountP = 0 ;
-        index_t tCountN = 0 ;
-
-        while ( tEpsilon > tNonlinear.newtonEpsilon || tIter < tNonlinear.minIter )
-        {
-            if ( tEpsilon > tNonlinear.picardEpsilon )
-            {
-                tFormulation->set_algorithm( SolverAlgorithm::Picard );
-                tFormulation->set_omega( tOmegaP );
-                if( tCountP++ > 0 )
-                {
-                    if ( tEpsilon < tEpsilon0 )
-                    {
-
-                        tOmegaP *= tCountP + std::min( std::pow( tEpsilon0 / tEpsilon, 0.25 ), 1.05 );
-                        tOmegaP /= tCountP + 1 ;
-                        if ( tOmegaP > 0.99 )
-                        {
-                            tOmegaP = 0.99;
-                        }
-                    }
-                    else
-                    {
-                        tOmegaP *= tCountP;
-                        tOmegaP /= tCountP + 1 ;
-                    }
-                }
-                tCountN = 0 ;
-            }
-            else
-            {
-                tFormulation->set_algorithm( SolverAlgorithm::NewtonRaphson );
-                tFormulation->set_omega( tOmegaN );
-                if( tCountN++ > 1 )
-                {
-                    if ( tEpsilon < tEpsilon0 )
-                    {
-
-                        tOmegaN *= tCountN + std::min( std::pow( tEpsilon0 / tEpsilon, 0.25 ), 1.05 );
-                        tOmegaN /= tCountN + 1 ;
-                        if ( tOmegaN > 0.99 )
-                        {
-                            tOmegaN = 0.99;
-                        }
-                    }
-                    else
-                    {
-                        tOmegaN *= tCountN ;
-                        tOmegaN /= tCountN + 1 ;
-                    }
-                }
-            }
-
-            tMagfield->compute_jacobian_and_rhs();
-            tMagfield->solve();
-
-            tEpsilon0 = tEpsilon ;
-            tEpsilon = tMagfield->residual( tIter++ );
+   real tOmegaP = tNonlinear.picardOmega ;
+   real tOmegaN = tNonlinear.newtonOmega ;
 
 
-            if ( tKernel->is_master() )
-            {
-                string tAlgLabel = tFormulation->algorithm() == SolverAlgorithm::Picard ? " P " : " NR";
 
-                std::cout << "    iteration:  " << tIter << tAlgLabel << " omega " << tFormulation->omega()
-                          << " log10(epsilon): " << std::round( std::log10( tEpsilon ) * 100 ) * 0.01 << std::endl;
-            }
+  while( tTime < tMaxTime )
+   {
+       // increment timestep
+       tTime += tDeltaTime;
 
-            BELFEM_ERROR( tIter < tNonlinear.maxIter, "too many iterations" );
-        }
-        if ( tKernel->is_master() )
-        {
-            gLog.message( 1, "    timestep completed in %4.2f seconds", ( float ) tTimer.stop() * 0.001 );
-        }
+       // increment time counter
+       tTimeCount++;
 
-        // postprocess
-        tMagfield->postprocess() ;
+       // reset number of iterations
+       tFormulation->shift_fields();
+       tFormulation->compute_boundary_conditions( tTime );
 
-        // save mesh
-        tMesh->save( tOutFile );
-        tMesh->save( "test.exo");
 
-        // save backup
-        tFormulation->save( tBackupFile );
+       uint tIter = 0;
 
-        comm_barrier() ;
-    }
+       // residual
+       real tEpsilon = BELFEM_REAL_MAX;
+       real tEpsilon0 ;
+
+       if ( tKernel->is_master() )
+       {
+           std::cout << std::endl << "  --------------------------------------------------------------------------"
+                     << std::endl;
+           std::cout << "   time : " << tTime << " s " << std::endl;
+           std::cout << "  --------------------------------------------------------------------------" << std::endl;
+       }
+
+       Timer tTimer;
+
+       index_t tCountP = 0 ;
+       index_t tCountN = 0 ;
+
+       while ( tEpsilon > tNonlinear.newtonEpsilon || tIter < tNonlinear.minIter )
+       {
+           if ( tEpsilon > tNonlinear.picardEpsilon )
+           {
+               tFormulation->set_algorithm( SolverAlgorithm::Picard );
+               tFormulation->set_omega( tOmegaP );
+               if( tCountP++ > 0 )
+               {
+                   if ( tEpsilon < tEpsilon0 )
+                   {
+
+                       tOmegaP *= tCountP + std::min( std::pow( tEpsilon0 / tEpsilon, 0.25 ), 1.05 );
+                       tOmegaP /= tCountP + 1 ;
+                       if ( tOmegaP > 0.99 )
+                       {
+                           tOmegaP = 0.99;
+                       }
+                   }
+                   else
+                   {
+                       tOmegaP *= tCountP;
+                       tOmegaP /= tCountP + 1 ;
+                   }
+               }
+               tCountN = 0 ;
+           }
+           else
+           {
+               tFormulation->set_algorithm( SolverAlgorithm::NewtonRaphson );
+               tFormulation->set_omega( tOmegaN );
+               if( tCountN++ > 1 )
+               {
+                   if ( tEpsilon < tEpsilon0 )
+                   {
+
+                       tOmegaN *= tCountN + std::min( std::pow( tEpsilon0 / tEpsilon, 0.25 ), 1.05 );
+                       tOmegaN /= tCountN + 1 ;
+                       if ( tOmegaN > 0.99 )
+                       {
+                           tOmegaN = 0.99;
+                       }
+                   }
+                   else
+                   {
+                       tOmegaN *= tCountN ;
+                       tOmegaN /= tCountN + 1 ;
+                   }
+               }
+           }
+
+           tMagfield->compute_jacobian_and_rhs();
+           tMagfield->solve();
+
+           tEpsilon0 = tEpsilon ;
+           tEpsilon = tMagfield->residual( tIter++ );
+
+
+           if ( tKernel->is_master() )
+           {
+               string tAlgLabel = tFormulation->algorithm() == SolverAlgorithm::Picard ? " P " : " NR";
+
+               std::cout << "    iteration:  " << tIter << tAlgLabel << " omega " << tFormulation->omega()
+                         << " log10(epsilon): " << std::round( std::log10( tEpsilon ) * 100 ) * 0.01 << std::endl;
+           }
+
+           BELFEM_ERROR( tIter < tNonlinear.maxIter, "too many iterations" );
+       }
+       if ( tKernel->is_master() )
+       {
+           gLog.message( 1, "    timestep completed in %4.2f seconds", ( float ) tTimer.stop() * 0.001 );
+       }
+
+       // postprocess
+       tMagfield->postprocess() ;
+
+       // save mesh
+       tMesh->save( tOutFile );
+       tMesh->save( "test.exo");
+
+       // save backup
+       tFormulation->save( tBackupFile );
+
+       comm_barrier() ;
+   } */
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // tidy up

@@ -2041,7 +2041,7 @@ namespace belfem
                 mesh::Facet * tOriginal = this->facet( aElementIDs( e ) );
 
                 // create the new facet
-                mesh::Facet * tFacet = new mesh::Facet( tElements( e ) );
+                mesh::Facet * tFacet = new mesh::Facet( tElements( e ), false );
 
                 // std::cout << "check for sideset " << tOriginal->id() << " " << tFacet->id() << std::endl ;
 
@@ -2054,12 +2054,10 @@ namespace belfem
                     tFacet->set_slave( tOriginal->slave(), tOriginal->slave_index() );
                 }
                 tFacets( e ) = tFacet ;
-                tBlockElements( e ) = tFacet->element() ;
 
-                // the facet wrapps an element. By default, this is deleted by
-                // the facet destructor. We don't do this in here since the element
-                // is exposed and will be destroyed by the block
-                tFacet->destruct_wrapped_element( false );
+                tBlockElements( e ) = tElements( e );
+
+                std::cout << " adding element to block " << tBlock->id() << " " << tElements( e )->id() << " (facet " << tFacet->element()->id() << " )" <<std::endl ;
 
             } // end loop over all facets
 
@@ -2084,6 +2082,10 @@ namespace belfem
         {
             this->finalize_faces() ;
         }
+
+        std::cout << "#test 93 : " << this->element( 93 )->node( 0 )->id() << " " << this->element( 93 )->node( 1 )->id() << std::endl ;
+
+
         // create the map
         tCount = 0 ;
         mGhostFacetMap.clear() ;

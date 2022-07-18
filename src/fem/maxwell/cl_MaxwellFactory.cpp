@@ -174,12 +174,6 @@ namespace belfem
                 aMesh->scale_mesh( tValue.first );
             }
 
-            // Since Paraview 5.10, we need a three-dimensional vector to
-            // display Glyphs. This is a quick workaround to make this work.
-            aMesh->create_field("bx");
-            aMesh->create_field("by");
-            aMesh->create_field("bz");
-
             return aMesh ;
         }
 //------------------------------------------------------------------------------
