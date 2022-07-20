@@ -533,7 +533,7 @@ namespace belfem
             //std::cout << " l " << tElementLength << " " << mNumberOfLayersPerShell << std::endl ;
 
 
-            this->compute_layer_stiffness( aElement, 2, tKlayer );
+            this->compute_layer_stiffness( aElement, 0, tKlayer );
 
             //mGroup->master_integration( )
             exit( 0 );

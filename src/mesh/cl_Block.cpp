@@ -47,6 +47,17 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
+        Block::unflag_elements()
+        {
+            for( Element* tElement : mElements )
+            {
+                tElement->unflag();
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
         Block::flag_nodes()
         {
             for( Element* tElement : mElements )

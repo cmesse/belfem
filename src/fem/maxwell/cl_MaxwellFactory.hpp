@@ -258,11 +258,6 @@ namespace belfem
             void
             remove_coils();
 
-//-----------------------------------------------------------------------------
-
-            void
-            set_sheet_types();
-
 //------------------------------------------------------------------------------
 
             void
@@ -277,6 +272,8 @@ namespace belfem
 
             Material *
             create_maxwell_material( const input::Section * aInput ) ;
+
+//------------------------------------------------------------------------------
 
             void
             create_layers();

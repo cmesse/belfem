@@ -126,7 +126,10 @@ int main( int    argc,
     // get the timestep
     uint & tTimeCount = tMesh->time_step() ;
 
+    tMesh->save( "test.exo");
+
     // check if we have to load a field from HDF5
+
 
     tMagfield->initialize() ; // must be called before loading mesh data
     //tFormulation->set_nan_values() ;
@@ -147,10 +150,7 @@ int main( int    argc,
     }
 
     tMesh->save( "test.exo");
-    std::cout << tMaxTime << std::endl ;
 
-    /*
-     *
    const real tDeltaTime = tFormulation->timestep();
    real & tTime = tMesh->time_stamp() ;
 
@@ -278,7 +278,7 @@ int main( int    argc,
        tFormulation->save( tBackupFile );
 
        comm_barrier() ;
-   } */
+   }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // tidy up

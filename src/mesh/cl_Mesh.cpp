@@ -2013,8 +2013,8 @@ namespace belfem
                     tBlock->id() : aMaxBlockID ;
         }
 
-        id_t tMaxBlockID = aMaxBlockID ;
-
+        // #addblocks
+        // id_t tMaxBlockID = aMaxBlockID ;
         // loop over all layers
         for( uint l=0; l<aGhostSideSetIDs.length(); ++l )
         {
@@ -2028,11 +2028,11 @@ namespace belfem
                                                           tNumFacets );
 
             // create a new block
-            mesh::Block * tBlock = new mesh::Block( ++tMaxBlockID, tNumFacets );
+            //mesh::Block * tBlock = new mesh::Block( ++tMaxBlockID, tNumFacets );
 
             // grab the facet container
             Cell< mesh::Facet * > & tFacets = tSideSet->facets();
-            Cell< mesh::Element * > & tBlockElements = tBlock->elements() ;;
+            //Cell< mesh::Element * > & tBlockElements = tBlock->elements() ;;
 
             // loop over all elements
             for( index_t e = 0; e<tNumFacets; ++e )
@@ -2042,8 +2042,6 @@ namespace belfem
 
                 // create the new facet
                 mesh::Facet * tFacet = new mesh::Facet( tElements( e ), false );
-
-                // std::cout << "check for sideset " << tOriginal->id() << " " << tFacet->id() << std::endl ;
 
                 if( tOriginal->has_master() )
                 {
@@ -2055,9 +2053,9 @@ namespace belfem
                 }
                 tFacets( e ) = tFacet ;
 
-                tBlockElements( e ) = tElements( e );
+                //tBlockElements( e ) = tElements( e );
 
-                std::cout << " adding element to block " << tBlock->id() << " " << tElements( e )->id() << " (facet " << tFacet->element()->id() << " )" <<std::endl ;
+                //std::cout << " adding element to block " << tBlock->id() << " " << tElements( e )->id() << " (facet " << tFacet->element()->id() << " )" <<std::endl ;
 
             } // end loop over all facets
 
@@ -2065,7 +2063,7 @@ namespace belfem
             tSideSet->hide();
 
             mSideSets.push( tSideSet );
-            mBlocks.push( tBlock );
+            //mBlocks.push( tBlock );
 
             //mSideSetMap[ tSideSet->id() ] = tSideSet ;
 
@@ -2082,9 +2080,6 @@ namespace belfem
         {
             this->finalize_faces() ;
         }
-
-        std::cout << "#test 93 : " << this->element( 93 )->node( 0 )->id() << " " << this->element( 93 )->node( 1 )->id() << std::endl ;
-
 
         // create the map
         tCount = 0 ;

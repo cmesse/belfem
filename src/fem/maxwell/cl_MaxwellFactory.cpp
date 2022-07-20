@@ -37,6 +37,8 @@
 #include "fn_polyval.hpp"
 #include "fn_dpolyval.hpp"
 
+#include "fn_Mesh_compute_surface_normals.hpp"
+
 namespace belfem
 {
     namespace fem
@@ -765,6 +767,7 @@ namespace belfem
             return aMaterial ;
         }
 
+
 //------------------------------------------------------------------------------
 
         void
@@ -886,7 +889,6 @@ namespace belfem
                     return new DomainSolid( tType, tLabel, tData );
                 }
                 case ( DomainType::Cut ) :
-                case( DomainType::ThinShell ) :
                 {
                     // make sure that data can be divided by three
                     BELFEM_ERROR( tData.length() % 3 == 0, "Number of cut data must be divisible by three" );
@@ -908,7 +910,35 @@ namespace belfem
                     }
 
                     // create the group object
-                    return new DomainCut( tLabel, tGroups, tPlus, tMinus, tType  );
+                    return new DomainCut( tLabel, tGroups,
+                                          tPlus, tMinus, tType  );
+                }
+                case( DomainType::ThinShell ) :
+                {
+                    // make sure that data can be divided by three
+                    BELFEM_ERROR( tData.length() % 4 == 0, "Number of cut data must be divisible by four" );
+
+                    index_t tN = tData.length() / 4 ;
+
+                    // populate data
+                    Vector< id_t > tGroups( tN );
+                    Vector< id_t > tPlus( tN );
+                    Vector< id_t > tMinus( tN );
+                    Vector< id_t > tMaster( tN );
+
+                    index_t tCount = 0;
+
+                    for ( uint i = 0; i < tN; ++i )
+                    {
+                        tGroups( i ) = tData( tCount++ );
+                        tPlus( i )   = tData( tCount++ );
+                        tMinus( i )  = tData( tCount++ );
+                        tMaster( i ) = tData( tCount++ );
+                    }
+
+                    // create the group object
+                    return new DomainThinShell( tLabel, tGroups,
+                                                tPlus, tMinus, tMaster, tType  );
                 }
                 case ( DomainType::Air ) :
                 case ( DomainType::Boundary ) :
@@ -1283,8 +1313,11 @@ namespace belfem
         {
             if( mTapeMaterialLabels.size() > 0 )
             {
+
+                std::cout << "rewrite #tapeMaterials!" << std::endl ;
+
                 // get sideset ids
-                const Vector< id_t > & tGhostSidesetIDs
+                /*const Vector< id_t > & tGhostSidesetIDs
                     = mKernel->mesh()->ghost_sideset_ids() ;
 
                 index_t tCount = 0 ;
@@ -1325,7 +1358,7 @@ namespace belfem
                             tSideSet->set_thin_shells( mTapeMaterials, mTapeThicknesses );
                         }
                     }
-                }
+                }  */
             }
         }
 
@@ -1375,7 +1408,7 @@ namespace belfem
             if( mGhostMaster > 0 )
             {
                 tMaxwell->set_ghost_sidesets( mGhostMaster, mGhostSideSets );
-                this->set_layer_labels() ;
+                //this->set_layer_labels() ;
             }
 
 
@@ -2671,14 +2704,28 @@ namespace belfem
                 // add tapes
                 if( mTapes.size() > 0 )
                 {
-                    mesh::TapeRoller tTapeRoller( mMesh, mTapeMaterialLabels.size() );
+                    mesh::TapeRoller tTapeRoller( mMesh,
+                                                  mTapeMaterialLabels.size() ,
+                                                  mMesh->max_element_order() );
 
                     for( DomainGroup * tTape : mTapes )
                     {
-                        tTapeRoller.add_sidesets( tTape->groups() );;
+                        tTapeRoller.add_sidesets( tTape->groups() );
+                        tTapeRoller.add_master_blocks( tTape->master() );
                     }
 
                     mMaxBlockID = tTapeRoller.run() ;
+
+                    // change the element orientation so that the normals point into the right direction
+                    tTapeRoller.flip_element_orientation() ;
+
+                    // grab the sidesets and compute the normals
+                    Vector< id_t > tSideSets ;
+                    tTapeRoller.get_sidesets( tSideSets );
+                    mesh::compute_surface_normals( mMesh, tSideSets );
+
+                    // revert the element orientation
+                    tTapeRoller.revert_element_orientation();
 
                     // remember ids of new sidesets
                     mGhostSideSets = tTapeRoller.ghost_sideset_ids() ;
@@ -2694,11 +2741,9 @@ namespace belfem
                         if ( tGroup->type() == DomainType::Coil ||
                              tGroup->type() == DomainType::SuperConductor )
                         {
-
                             // check if a current bc is given for this entity
                             if ( mCurrentBcMap.key_exists( tGroup->label()) )
                             {
-
                                 // get cut
                                 DomainGroup * tCut = mCutMap( tGroup->label() );
 
@@ -3066,8 +3111,7 @@ namespace belfem
             for( unsigned int k=0; k<tNumLayers; ++k )
             {
                 // create layer name
-
-                mMesh->block( k + mMaxBlockID + 1)->label() =
+                mMesh->block( k + mMaxBlockID + 1 )->label() =
                 sprint( "Layer_%u_%s_%uu",
                          k + 1,
                          mTapeMaterialLabels( k  ).c_str() ,

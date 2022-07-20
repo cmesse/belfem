@@ -22,9 +22,12 @@ namespace belfem
             const proc_t mMyRank ;
             Mesh * mMesh ;
 
-            Cell< id_t > mSelectedSideSets ;
+            const uint mNumberOfBlocks ; // physical layers
+            const uint mElementOrder ;
+            const uint mNumberOfGhostLayers ; // dof layers
 
-            const uint mNumberOfLayers ;
+            Cell< id_t > mSelectedSideSets ;
+            Cell< id_t > mMasterBlocks ;
 
             id_t mMaxNodeId ;
             id_t mMaxEdgeId ;
@@ -36,7 +39,7 @@ namespace belfem
             // ids with elements that are to be cloned
             Vector< index_t > mElementIDs ;
 
-            Cell< Layer * > mLayers ;
+            Cell< Layer * > mGhostLayers ;
 
             // map that links old node ids to position in layer
             Map< id_t, index_t > mNodeMap ;
@@ -45,11 +48,14 @@ namespace belfem
 
             Vector< id_t > mGhostSideSetIDs ;
 
+            // backup container for orientation flipping
+            Cell< mesh::Node * > mOrientationBackup ;
+
 //------------------------------------------------------------------------------
         public:
 //------------------------------------------------------------------------------
 
-            TapeRoller( Mesh * aMesh, const uint aNumberOfLayers );
+            TapeRoller( Mesh * aMesh, const uint aNumberOfLayers, const uint aElementOrder );
 
 //------------------------------------------------------------------------------
 
@@ -58,12 +64,17 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
-            add_sideset( const id_t aSideSetID );
+            add_sidesets( const Vector< id_t > & aSideSetIDs );
 
 //------------------------------------------------------------------------------
 
             void
-            add_sidesets( const Vector< id_t > & aSideSetID );
+            get_sidesets( Vector< id_t > & aSideSetIDs );
+
+//------------------------------------------------------------------------------
+
+            void
+            add_master_blocks( const Vector< id_t > & aMasterBlockIDs );
 
 //------------------------------------------------------------------------------
 
@@ -82,9 +93,22 @@ namespace belfem
              ghost_sideset_ids() const;
 
 //------------------------------------------------------------------------------
+
+            void
+            flip_element_orientation();
+
+//------------------------------------------------------------------------------
+
+            void
+            revert_element_orientation();
+
+//------------------------------------------------------------------------------
         private:
 //------------------------------------------------------------------------------
 
+
+
+//------------------------------------------------------------------------------
             void
             get_max_ids();
 
@@ -119,6 +143,11 @@ namespace belfem
             fix_tape_to_node_connectivities( const id_t aMaxBlockID );
 
 //------------------------------------------------------------------------------
+
+            void
+            shift_nodes();
+
+//------------------------------------------------------------------------------
         };
 //------------------------------------------------------------------------------
 
@@ -129,6 +158,7 @@ namespace belfem
         }
 
 //------------------------------------------------------------------------------
+
     }
 }
 #endif //BELFEM_CL_MESH_TAPEROLLER_HPP

@@ -904,6 +904,35 @@ namespace belfem
                     const string   & aFieldLabel,
                     real & aData ) ;
 
+
+//------------------------------------------------------------------------------
+
+            void
+            collect_node_data_from_layer(
+                    Element        * aElement,
+                    const string   & aLabel,
+                    const uint       aLayer,
+                    Vector< real > & aData );
+
+//------------------------------------------------------------------------------
+
+            void
+            collect_edge_data_from_layer(
+                    Element        * aElement,
+                    const string   & aEdgeFieldLabel,
+                    const uint       aLayer,
+                    Vector< real > & aData );
+
+//------------------------------------------------------------------------------
+
+            void
+            collect_edge_data_from_layer(
+                    Element        * aElement,
+                    const string   & aEdgeFieldLabel,
+                    const string   & aFaceFieldLabel,
+                    const uint       aLayer,
+                    Vector< real > & aData );
+
 //------------------------------------------------------------------------------
 
             /**
@@ -929,7 +958,6 @@ namespace belfem
              */
              bool
              compute_jacobian_on_sideset() const ;
-
 
 //---------------------------------------------------------------------------------
 

@@ -679,6 +679,10 @@ namespace belfem
                                                    mSideSetDofs( tIndex )->Node.length() ;
                     uint tNumberOfDofsPerFacet =  mSideSetDofs( tIndex )->Lambda.length() ;
 
+                    std::cout << "#numdofs " << tNumberOfDofsPerEdge << " " << tNumberOfDofsPerFace << " " << tNumberOfVolumeDofs << " " << tNumberOfDofsPerFacet << std::endl ;
+
+                    std::cout << "#numlayers " <<  aSideSet->number_of_thin_shell_layers() << std::endl ;
+
                     if ( tNumberOfDofsPerEdge == 0 && tNumberOfDofsPerFace == 0 )
                     {
                         return tNumberOfVolumeDofs + tNumberOfDofsPerFacet ;
@@ -952,7 +956,6 @@ namespace belfem
                 aData( tCount++ ) = tFaceField( tIndex + tIndex );
                 aData( tCount++ ) = tFaceField( tIndex + tIndex + 1 );
             }
-
         }
 
 //------------------------------------------------------------------------------
@@ -971,6 +974,140 @@ namespace belfem
                     "Field '%s' is not a lambda field", aFieldLabel.c_str() );
 
             aData = tField( aElement->element()->index() );
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        IWG::collect_node_data_from_layer(
+                Element        * aElement,
+                const string   & aLabel,
+                const uint       aLayer,
+                Vector< real > & aData )
+        {
+            // grab ghost element
+            mesh::Element * tElement = mMesh->ghost_facet( aElement->id(), aLayer )->element();
+
+            // get number of nodes
+            uint tNumNodes = tElement->number_of_nodes() ;
+
+            // check memory
+            BELFEM_ASSERT( aData.length() == tElement->number_of_nodes(), "Length of vector does not match" );
+
+            // get field from mesh
+            Vector< real > & tField = mMesh->field_data( aLabel );
+
+            // populate data
+            for( uint k=0; k<tNumNodes; ++k )
+            {
+                aData( k ) = tField( tElement->node( k )->index() ) ;
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        IWG::collect_edge_data_from_layer(
+                Element        * aElement,
+                const string   & aEdgeFieldLabel,
+                const uint       aLayer,
+                Vector< real > & aData )
+        {
+            BELFEM_ASSERT( mNumberOfRhsDofsPerEdge == 1,
+                           "this function can be used for linear interpolation only ( one dof per edge )" );
+
+            BELFEM_ASSERT( mNumberOfRhsDofsPerFace == 0,
+                           "this function can be used for quadratic interpolation only ( zero dofs per face )" );
+
+            BELFEM_ASSERT(
+                    aData.length() >= mNumberOfEdgesPerElement,
+                    "Length of vector does not fit does not fit ( is %u, but need at least %u )",
+                    ( unsigned int ) aData.length(),
+                    ( unsigned int ) mNumberOfEdgesPerElement );
+
+            BELFEM_ASSERT(
+                    mMesh->field( aEdgeFieldLabel )->entity_type() == EntityType::EDGE,
+                    "Field '%s' is not an edge field", aEdgeFieldLabel.c_str() );
+
+            // grab ghost element
+            mesh::Element * tElement = mMesh->ghost_facet( aElement->id(), aLayer )->element();
+
+            // get ref to field on mesh
+            Vector< real > & tField = mMesh->field_data( aEdgeFieldLabel );
+
+            // loop over all edges
+            for( uint e=0; e< mNumberOfEdgesPerElement; ++e )
+            {
+                aData( e ) = tField( tElement->edge( e )->index() );
+            }
+        }
+
+
+//------------------------------------------------------------------------------
+
+        void
+        IWG::collect_edge_data_from_layer(
+                Element        * aElement,
+                const string   & aEdgeFieldLabel,
+                const string   & aFaceFieldLabel,
+                const uint       aLayer,
+                Vector< real > & aData )
+        {
+            BELFEM_ASSERT( mNumberOfRhsDofsPerEdge == 2,
+                           "this function can be used for quadratic interpolation only ( two dofs per edge )" );
+
+            BELFEM_ASSERT( mNumberOfRhsDofsPerFace == 2,
+                           "this function can be used for quadratic interpolation only ( two dofs per face )" );
+
+            // check length of memory container
+            BELFEM_ASSERT(
+                    aData.length() >= 2 * ( mNumberOfEdgesPerElement + mNumberOfFacesPerElement ),
+                    "Length of vector does not fit does not fit ( is %u, but need at least %u )",
+                    ( unsigned int ) aData.length(),
+                    ( unsigned int ) 2 * ( mNumberOfEdgesPerElement + mNumberOfFacesPerElement ) );
+
+            // get ref to edge field on mesh
+            Vector< real > & tEdgeField = mMesh->field_data( aEdgeFieldLabel );
+
+            // get ref to face field on mesh
+            Vector< real > & tFaceField = mMesh->field_data( aFaceFieldLabel );
+
+            // grab ghost element
+            mesh::Element * tElement = mMesh->ghost_facet( aElement->id(), aLayer )->element();
+
+            // initialize counter
+            uint tCount = 0 ;
+
+            for( uint e=0; e< mNumberOfEdgesPerElement; ++e )
+            {
+
+                // get index of edge
+                index_t tIndex = tElement->edge( e )->index() ;
+
+                // check direction of edge
+                if( aElement->edge_direction( e ) )
+                {
+                    aData( tCount ++ ) = tEdgeField( tIndex + tIndex );
+                    aData( tCount ++ ) = tEdgeField( tIndex + tIndex + 1 );
+                }
+                else
+                {
+                    aData( tCount ++ ) = tEdgeField( tIndex + tIndex + 1 );
+                    aData( tCount ++ ) = tEdgeField( tIndex + tIndex  );
+                }
+            }
+
+            // face dofs orientation are handeled differently in 3D, we can just populate here
+            for( uint f=0; f<mNumberOfFacesPerElement; ++f )
+            {
+                // get index of face
+                index_t tIndex = tElement->face( f )->index() ;
+
+                // write data into container
+                aData( tCount++ ) = tFaceField( tIndex + tIndex );
+                aData( tCount++ ) = tFaceField( tIndex + tIndex + 1 );
+            }
+
         }
 
 //------------------------------------------------------------------------------

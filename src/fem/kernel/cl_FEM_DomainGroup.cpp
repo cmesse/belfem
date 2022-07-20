@@ -88,6 +88,16 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        const Vector< id_t > &
+        DomainGroup::master() const
+        {
+            BELFEM_ERROR( false,
+                          "Invalid call to base class function DomainGroup::master()") ;
+            return mGroupIDs ;
+        }
+
+//------------------------------------------------------------------------------
+
         DomainCut::DomainCut( const string & aLabel,
                    const Vector< id_t > & aGroupIDs,
                    const Vector< id_t > & aPlus,
@@ -96,6 +106,20 @@ namespace belfem
                 DomainGroup( aType, aLabel, aGroupIDs ),
                 mPlus( aPlus ),
                 mMinus( aMinus )
+        {
+
+        }
+
+//------------------------------------------------------------------------------
+
+        DomainThinShell::DomainThinShell( const string & aLabel,
+                         const Vector< id_t > & aGroupIDs,
+                         const Vector< id_t > & aPlus,
+                         const Vector< id_t > & aMinus,
+                         const Vector< id_t > & aMaster,
+                         const DomainType aType ) :
+                DomainCut( aLabel, aGroupIDs, aPlus, aMinus, aType ) ,
+                mMaster( aMaster )
         {
 
         }

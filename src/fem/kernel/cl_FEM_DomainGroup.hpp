@@ -79,6 +79,12 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             // these functions do nothing for the base class
+            virtual const Vector< id_t > &
+            master() const ;
+
+//------------------------------------------------------------------------------
+
+            // these functions do nothing for the base class
             virtual id_t
             master_block_id() const ;
 
@@ -110,9 +116,11 @@ namespace belfem
 
         class DomainCut : public DomainGroup
         {
+//------------------------------------------------------------------------------
+        protected:
+//------------------------------------------------------------------------------
             const Vector< id_t > mPlus ;
             const Vector< id_t > mMinus ;
-
 //------------------------------------------------------------------------------
         public:
 //------------------------------------------------------------------------------
@@ -138,6 +146,36 @@ namespace belfem
             // the block IDs for the minus side
             const Vector< id_t > &
             minus() const ;
+
+//------------------------------------------------------------------------------
+        };
+
+//------------------------------------------------------------------------------
+
+        class DomainThinShell : public DomainCut
+        {
+            const Vector< id_t > mMaster ;
+
+//------------------------------------------------------------------------------
+        public:
+//------------------------------------------------------------------------------
+
+            DomainThinShell( const string & aLabel,
+                       const Vector< id_t > & aGroupIDs,
+                       const Vector< id_t > & aPlus,
+                       const Vector< id_t > & aMinus,
+                       const Vector< id_t > & aMaster,
+                       const DomainType aType = DomainType::ThinShell );
+
+//------------------------------------------------------------------------
+
+            ~DomainThinShell() = default ;
+
+//------------------------------------------------------------------------
+
+            // the master blocks for the orientation
+            const Vector< id_t > &
+            master() const ;
 
 //------------------------------------------------------------------------------
 
@@ -167,6 +205,7 @@ namespace belfem
         {
             const id_t mMasterBlockID ;
             const id_t mSlaveBlockID ;
+
 //------------------------------------------------------------------------------
         public:
 //------------------------------------------------------------------------------
@@ -257,6 +296,14 @@ namespace belfem
         DomainInterface::slave_block_id() const
         {
             return mSlaveBlockID ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline const Vector< id_t > &
+        DomainThinShell::master() const
+        {
+            return mMaster ;
         }
 
 //------------------------------------------------------------------------------

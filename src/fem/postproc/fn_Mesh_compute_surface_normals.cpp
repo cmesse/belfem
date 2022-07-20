@@ -12,6 +12,7 @@
 #include "fn_cross.hpp"
 #include "cl_Timer.hpp"
 #include "cl_Logger.hpp"
+#include "fn_sum.hpp"
 
 namespace belfem
 {
@@ -132,7 +133,8 @@ namespace belfem
                     }
 
                     // get string for error message
-                    string tGroupString = aGroupType == GroupType::SIDESET ? "sideset" : "block" ;
+                    bool tIsSideSet = aGroupType == GroupType::SIDESET ;
+                    string tGroupString = tIsSideSet ? "sideset" : "block" ;
 
                     // make sure that this is a 2D type
                     BELFEM_ERROR(
@@ -154,6 +156,24 @@ namespace belfem
                     // Cell with evaluated shape
                     Cell< Matrix< real > > tdNdXi( tNumNodesPerElement, Matrix< real >( 1, tNumNodesPerElement ));
 
+                    // center of master element
+                    real tXm = BELFEM_QUIET_NAN ;
+                    real tYm = BELFEM_QUIET_NAN ;
+
+                    Vector< real > tXmaster ;
+                    Vector< real > tYmaster ;
+
+                    uint tNumNodesOnMaster = 0 ;
+                    if( tIsSideSet )
+                    {
+                        if( aMesh->sideset( tID )->number_of_facets() > 0 )
+                        {
+                            tNumNodesOnMaster = aMesh->sideset( tID )->facets()( 0 )->master()->number_of_nodes() ;
+                            tXmaster.set_size( tNumNodesOnMaster );
+                            tYmaster.set_size( tNumNodesOnMaster );
+                        }
+                    }
+
                     // evaluate shape function
                     for( uint k=0; k<tNumNodesPerElement; ++k )
                     {
@@ -172,39 +192,104 @@ namespace belfem
 
                     Matrix< real > tDeriv( 2, 1 );
 
-                    // Loop over all elements
-                    for( Element * tElement : tElements )
+                    if( tIsSideSet )
                     {
-                        // collect node coords
-                        for( uint k=0; k<tNumNodesPerElement; ++k )
+                        // Loop over all elements
+                        for ( Element * tElement: tElements )
                         {
-                            tNodeCoords( 0, k ) = tElement->node( k )->x() ;
-                            tNodeCoords( 1, k ) = tElement->node( k )->y() ;
-                        }
+                            // collect node coords
+                            for ( uint k = 0; k < tNumNodesPerElement; ++k )
+                            {
+                                tNodeCoords( 0, k ) = tElement->node( k )->x();
+                                tNodeCoords( 1, k ) = tElement->node( k )->y();
+                            }
 
-                        // loop over all nodes of element
-                        for( uint k=0; k<tNumNodesPerElement; ++k )
-                        {
-                            // get index of node
-                            index_t tIndex = tElement->node( k )->index() ;
+                            // grab node coords of master
+                            Element * tMaster = aMesh->sideset( tID )->facet( tElement->id())->master();
 
-                            // flag this node
-                            tElement->node( k )->flag() ;
+                            for ( uint k = 0; k < tNumNodesOnMaster; ++k )
+                            {
+                                tXmaster( k ) = tMaster->node( k )->x();
+                                tYmaster( k ) = tMaster->node( k )->y();
+                            }
 
-                            // compute derivative for node
-                            //       ( 3 x n ) * ( n x 1 )
-                            tDeriv = tNodeCoords * tdNdXi( k ) ;
+                            // compute center of element
+                            tXm = sum( tXmaster ) / tNumNodesOnMaster;
+                            tYm = sum( tYmaster ) / tNumNodesOnMaster;
 
-                            // compute normal
-                            tNorm( 0 ) =  tDeriv( 1, 0 ) ;
-                            tNorm( 1 ) = -tDeriv( 0, 0 ) ;
+                            // loop over all nodes of element
+                            for ( uint k = 0; k < tNumNodesPerElement; ++k )
+                            {
+                                // get index of node
+                                index_t tIndex = tElement->node( k )->index();
 
-                            // add values to fields
-                            tNormalX( tIndex ) += tNorm( 0 );
-                            tNormalY( tIndex ) += tNorm( 1 );
+                                // flag this node
+                                tElement->node( k )->flag();
+
+                                // compute derivative for node
+                                //       ( 3 x n ) * ( n x 1 )
+                                tDeriv = tNodeCoords * tdNdXi( k );
+
+                                // compute normal
+                                tNorm( 0 ) = tDeriv( 1, 0 );
+                                tNorm( 1 ) = -tDeriv( 0, 0 );
+
+                                // check sign.
+                                // let g = X + a * tDeriv
+                                //     h = Xm + b * n
+
+                                if( (  tNorm( 0 ) * ( tNodeCoords( 0, k ) - tXm )
+                                     + tNorm( 1 ) * ( tNodeCoords( 1, k ) - tYm ) ) > 0 )
+                                {
+                                    // add values to fields
+                                    tNormalX( tIndex ) += tNorm( 0 );
+                                    tNormalY( tIndex ) += tNorm( 1 );
+                                }
+                                else
+                                {
+                                    // add values to fields, but flip sign
+                                    tNormalX( tIndex ) -= tNorm( 0 );
+                                    tNormalY( tIndex ) -= tNorm( 1 );
+                                }
+                            }
+
                         }
                     }
+                    else
+                    {
+                        // Loop over all elements
+                        for ( Element * tElement: tElements )
+                        {
+                            // collect node coords
+                            for ( uint k = 0; k < tNumNodesPerElement; ++k )
+                            {
+                                tNodeCoords( 0, k ) = tElement->node( k )->x();
+                                tNodeCoords( 1, k ) = tElement->node( k )->y();
+                            }
 
+                            // loop over all nodes of element
+                            for ( uint k = 0; k < tNumNodesPerElement; ++k )
+                            {
+                                // get index of node
+                                index_t tIndex = tElement->node( k )->index();
+
+                                // flag this node
+                                tElement->node( k )->flag();
+
+                                // compute derivative for node
+                                //       ( 3 x n ) * ( n x 1 )
+                                tDeriv = tNodeCoords * tdNdXi( k );
+
+                                // compute normal
+                                tNorm( 0 ) = tDeriv( 1, 0 );
+                                tNorm( 1 ) = -tDeriv( 0, 0 );
+
+                                // add values to fields
+                                tNormalX( tIndex ) += tNorm( 0 );
+                                tNormalY( tIndex ) += tNorm( 1 );
+                            }
+                        }
+                    }
                     delete tShape;
                 }
 
@@ -380,7 +465,7 @@ namespace belfem
                 {
                     aMesh->create_field( "SurfaceNormalsy") ;
                 }
-                if( ! aMesh->field_exists( "SurfaceNormalsz") && aMesh->number_of_dimensions()==3 )
+                if( ! aMesh->field_exists( "SurfaceNormalsz") )
                 {
                     aMesh->create_field( "SurfaceNormalsz") ;
                 }

@@ -21,9 +21,6 @@ namespace belfem
 {
     namespace fem
     {
-
-
-
 //------------------------------------------------------------------------------
 
         IWG_Maxwell::IWG_Maxwell(

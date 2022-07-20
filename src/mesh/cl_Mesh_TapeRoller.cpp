@@ -11,10 +11,12 @@ namespace belfem
     {
 //------------------------------------------------------------------------------
 
-        TapeRoller::TapeRoller( Mesh * aMesh, const uint aNumberOfLayers ) :
-                mMyRank( comm_rank()),
+        TapeRoller::TapeRoller( Mesh * aMesh, const uint aNumberOfLayers, const uint aElementOrder ) :
+                mMyRank( comm_rank() ),
                 mMesh( aMesh ),
-                mNumberOfLayers( aNumberOfLayers )
+                mNumberOfBlocks( aNumberOfLayers ),
+                mElementOrder( aElementOrder ),
+                mNumberOfGhostLayers( aNumberOfLayers * aElementOrder + 1 )
         {
 
         }
@@ -23,22 +25,10 @@ namespace belfem
 
         TapeRoller::~TapeRoller()
         {
-            for ( Layer * tLayer: mLayers )
+            for ( Layer * tLayer: mGhostLayers )
             {
                 delete tLayer;
             }
-        }
-
-//------------------------------------------------------------------------------
-
-        void
-        TapeRoller::add_sideset( const id_t aSideSetID )
-        {
-            if ( comm_rank() == 0 )
-            {
-                mSelectedSideSets.push( aSideSetID );
-            }
-
         }
 
 //------------------------------------------------------------------------------
@@ -57,6 +47,35 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        void
+        TapeRoller::get_sidesets( Vector< id_t > & aSideSetIDs )
+        {
+
+            // we must convert the cell to a vector
+            aSideSetIDs.set_size( mSelectedSideSets.size() );
+            index_t tCount = 0 ;
+            for( id_t s : mSelectedSideSets )
+            {
+                aSideSetIDs( tCount++ ) = s ;
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        TapeRoller::add_master_blocks( const Vector< id_t > & aMasterBlockIDs )
+        {
+            if ( comm_rank() == 0 )
+            {
+                for ( id_t tID: aMasterBlockIDs )
+                {
+                    mMasterBlocks.push( tID );
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
         id_t
         TapeRoller::run()
         {
@@ -66,6 +85,8 @@ namespace belfem
             {
                 // make sidesets unique
                 unique( mSelectedSideSets );
+
+
 
                 mMesh->unflag_all_nodes();
                 mMesh->unflag_all_edges();
@@ -81,18 +102,21 @@ namespace belfem
                 this->clone_faces();
 
                 // create the list with the sideset ids
-                mGhostSideSetIDs.set_size( mNumberOfLayers );
+                mGhostSideSetIDs.set_size( mNumberOfGhostLayers );
 
-                for ( uint l = 0; l < mNumberOfLayers; ++l )
+                for ( uint l = 0; l < mNumberOfGhostLayers; ++l )
                 {
                     mGhostSideSetIDs( l ) = ++mMaxSideSetId;
                 }
 
-                aMaxBlockID = mMesh->create_ghost_sidesets( mGhostSideSetIDs, mElementIDs, mLayers );
+                // this command contains a finalize
+                aMaxBlockID = mMesh->create_ghost_sidesets(
+                        mGhostSideSetIDs,
+                        mElementIDs,
+                        mGhostLayers );
 
                 // fix node connectivity, because the finalize command messes up with the linking
                 this->fix_tape_to_node_connectivities( aMaxBlockID );
-
             }
 
             return aMaxBlockID ;
@@ -107,34 +131,225 @@ namespace belfem
             index_t tNumElements = mElementIDs.length() ;
 
             // loop over all laters
-            for ( uint l = 0; l < mNumberOfLayers; ++l )
+            for ( uint l = 0; l < mNumberOfGhostLayers; ++l )
             {
-                // grab block
-                Block * tBlock = mMesh->block( aMaxBlockID + l + 1 );
+                uint tNumNodes = mMesh->facet(
+                        mElementIDs( 0 ) )->element()->number_of_nodes() ;
 
-                uint tNumNodes = mMesh->facet( mElementIDs( 0 ) )->element()->number_of_nodes() ;
-
-                Cell< Node * > & tLayerNodes = mLayers( l )->Nodes ;
+                Cell< Node * > & tLayerNodes = mGhostLayers( l )->Nodes ;
 
                 // loop over all elements
                 for( index_t e=0; e<tNumElements; ++e )
                 {
                     // grab the original element
-                    Element * tElement = mMesh->facet( mElementIDs( e ) )->element() ;
+                    Element * tElement = mMesh->facet(
+                            mElementIDs( e ) )->element() ;
 
                     // grab the element from the block
-                    Element * tClone = tBlock->element( e );
+                    Element * tClone = mMesh->ghost_facet(
+                            mElementIDs( e ), l )->element() ;
 
                     // relink nodes
                     for( uint k=0; k<tNumNodes; ++k )
                     {
-                        tClone->insert_node( tLayerNodes( mNodeMap( tElement->node( k )->id())), k );
+                        tClone->insert_node(
+                                tLayerNodes( mNodeMap( tElement->node( k )->id())), k );
                     }
 
                     // this will be used later on to restore the element ownership
                     tClone->reset_element_container();
                     tClone->allocate_element_container( 1 );
                     tClone->insert_element( tElement );
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        TapeRoller::shift_nodes()
+        {
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            // step 1: create backup of original master and slave setup
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        TapeRoller::flip_element_orientation()
+        {
+            // unflag all elements on the mesh
+            mMesh->unflag_all_elements();
+
+            uint tNumSidesets = mSelectedSideSets.size();
+
+            // count memory
+            index_t tCount = 0;
+
+            for ( uint s = 0; s < tNumSidesets; ++s )
+            {
+
+                // grab the facets
+                Cell< Facet * > & tFacets
+                        = mMesh->sideset( mSelectedSideSets( s ))->facets();
+
+                index_t tNumNodes = mesh::number_of_nodes(
+                        mMesh->sideset( mSelectedSideSets( s ) )->element_type());
+
+                tCount += tNumNodes * tFacets.size() ;
+
+            }
+
+            // allocate backup container
+            mOrientationBackup.set_size( tCount, nullptr );
+
+            // reset counter
+            tCount = 0;
+
+            for ( uint s = 0; s < tNumSidesets; ++s )
+            {
+                // flag the master block
+                mMesh->block( mMasterBlocks( s ))->flag_elements();
+
+                // grab the facets
+                Cell< Facet * > & tFacets
+                        = mMesh->sideset( mSelectedSideSets( s ))->facets();
+
+                // get the number of nodes per facet
+                uint tNumNodes = mesh::number_of_nodes(
+                        mMesh->sideset( mSelectedSideSets( s ) )->element_type());
+
+                // loop over all facets
+                for ( Facet * tFacet: tFacets )
+                {
+                    // backup nodes
+                    for ( uint k = 0; k < tNumNodes; ++k )
+                    {
+                        mOrientationBackup( tCount++ ) = tFacet->element()->node( k );
+                    }
+
+                    // check if we need to swap
+                    if ( tFacet->slave()->is_flagged() )
+                    {
+                        // backup element
+                        Element * tMaster = tFacet->slave();
+                        uint tMasterIndex = tFacet->slave_index();
+
+                        // swap
+                        tFacet->set_slave( tFacet->master(), tFacet->master_index() );
+                        tFacet->set_master( tMaster, tMasterIndex );
+                        tFacet->flag();
+                    }
+                    else
+                    {
+                        // relink nodes
+                        tFacet->set_master( tFacet->master(), tFacet->master_index()  );
+                        tFacet->unflag();
+                    }
+                }
+
+                // flag the master block
+                mMesh->block( mMasterBlocks( s ))->unflag_elements();
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        TapeRoller::revert_element_orientation()
+        {
+            uint tNumSidesets = mSelectedSideSets.size() ;
+
+            index_t tCount = 0 ;
+
+            // grab the normal fields
+            Vector< real > & tNx = mMesh->field_data("SurfaceNormalsx");
+            Vector< real > & tNy = mMesh->field_data("SurfaceNormalsy");
+            Vector< real > & tNz = mMesh->field_data("SurfaceNormalsz");
+
+            // loop over all facets
+            for ( uint s = 0; s < tNumSidesets; ++s )
+            {
+                // flag the master block
+                mMesh->block( mMasterBlocks( s ))->flag_elements();
+
+                // grab the facets
+                Cell< Facet * > & tFacets
+                        = mMesh->sideset( mSelectedSideSets( s ))->facets();
+
+                // get the number of nodes per facet
+                uint tNumNodes = mesh::number_of_nodes(
+                        mMesh->sideset( mSelectedSideSets( s ))->element_type());
+
+                Vector< index_t > tIndices( tNumNodes );
+
+                for ( Facet * tFacet: tFacets )
+                {
+                    // check if we need to swap
+                    if ( tFacet->slave()->is_flagged() )
+                    {
+                        // backup element
+                        Element * tMaster = tFacet->slave();
+                        uint tMasterIndex = tFacet->slave_index();
+
+                        // swap
+                        tFacet->set_slave( tFacet->master(), tFacet->master_index());
+                        tFacet->set_master( tMaster, tMasterIndex, false );
+
+                        // grab indices in reverse order
+                        uint c = 0 ;
+                        for( int k=tNumNodes-1; k>=0; k-- )
+                        {
+                            tIndices( c++ ) = tFacet->element()->node( k )->index() ;
+                        }
+
+                        // relink nodes
+                        for ( uint k = 0; k < tNumNodes; ++k )
+                        {
+                            tFacet->element()->insert_node( mOrientationBackup( tCount++ ), k );
+                        }
+
+                        // fix normal data
+                        for( uint k=0; k<tNumNodes; ++k )
+                        {
+                            index_t i = tFacet->element()->node( k )->index() ;
+                            index_t j = tIndices( k );
+
+                            tNx( i ) = tNx( j );
+                            tNy( i ) = tNy( j );
+                            tNz( i ) = tNz( j );
+                        }
+
+                        tFacet->unflag() ;
+                    }
+                    else
+                    {
+                        // grab indices in normal
+                        for( uint k = 0; k < tNumNodes; ++k )
+                        {
+                            tIndices( k ) = tFacet->element()->node( k )->index() ;
+                        }
+
+                        // relink nodes
+                        for ( uint k = 0; k < tNumNodes; ++k )
+                        {
+                            tFacet->element()->insert_node( mOrientationBackup( tCount++ ), k );
+                        }
+
+                        // fix normal data
+                        for( uint k=0; k<tNumNodes; ++k )
+                        {
+                            index_t i = tFacet->element()->node( k )->index() ;
+                            index_t j = tIndices( k );
+
+                            tNx( i ) = tNx( j );
+                            tNy( i ) = tNy( j );
+                            tNz( i ) = tNz( j );
+                        }
+
+                    }
                 }
             }
         }
@@ -204,10 +419,10 @@ namespace belfem
         void
         TapeRoller::create_layers()
         {
-            mLayers.set_size( mNumberOfLayers, nullptr );
-            for ( uint t = 0; t < mNumberOfLayers; ++t )
+            mGhostLayers.set_size( mNumberOfGhostLayers, nullptr );
+            for ( uint t = 0; t < mNumberOfGhostLayers; ++t )
             {
-                mLayers( t ) = new Layer;
+                mGhostLayers( t ) = new Layer;
             }
         }
 
@@ -242,10 +457,10 @@ namespace belfem
             }
 
             // now we populate the nodes for each layer
-            for ( uint l = 0; l < mNumberOfLayers; ++l )
+            for ( uint l = 0; l < mNumberOfGhostLayers; ++l )
             {
                 // grab object
-                Cell< Node * > & tLayerNodes = mLayers( l )->Nodes;
+                Cell< Node * > & tLayerNodes = mGhostLayers( l )->Nodes;
 
                 // allocate the memory
                 tLayerNodes.set_size( tCount, nullptr );
@@ -311,13 +526,13 @@ namespace belfem
             ElementFactory tFactory;
 
             // next, we clone the elements
-            for ( uint l = 0; l < mNumberOfLayers; ++l )
+            for ( uint l = 0; l < mNumberOfGhostLayers; ++l )
             {
                 // grab node container
-                Cell< Node * > & tLayerNodes = mLayers( l )->Nodes;
+                Cell< Node * > & tLayerNodes = mGhostLayers( l )->Nodes;
 
                 // grab element container
-                Cell< Element * > & tLayerElements = mLayers( l )->Elements;
+                Cell< Element * > & tLayerElements = mGhostLayers( l )->Elements;
 
                 // allocate the memory
                 tLayerElements.set_size( tCount, nullptr );
@@ -400,12 +615,12 @@ namespace belfem
                 }
 
                 // clone the edges
-                for( uint l=0; l<mNumberOfLayers; ++l )
+                for( uint l=0; l<mNumberOfGhostLayers; ++l )
                 {
                     // get the layer containers
-                    Cell< Node * >    & tLayerNodes    = mLayers( l )->Nodes ;
-                    Cell< Edge * >    & tLayerEdges    = mLayers( l )->Edges ;
-                    Cell< Element * > & tLayerElements = mLayers( l )->Elements ;
+                    Cell< Node * >    & tLayerNodes    = mGhostLayers( l )->Nodes ;
+                    Cell< Edge * >    & tLayerEdges    = mGhostLayers( l )->Edges ;
+                    Cell< Element * > & tLayerElements = mGhostLayers( l )->Elements ;
 
                     // allocate memory
                     tLayerEdges.set_size( tCount, nullptr );
@@ -486,11 +701,11 @@ namespace belfem
                 Cell< Face * > & tFaces = mMesh->faces() ;
 
                 // clone the edges
-                for( uint l=0; l<mNumberOfLayers; ++l )
+                for( uint l=0; l<mNumberOfGhostLayers; ++l )
                 {
                     // get the layer containers
-                    Cell< Face * > & tLayerFaces = mLayers( l )->Faces;
-                    Cell< Element * > & tLayerElements = mLayers( l )->Elements ;
+                    Cell< Face * > & tLayerFaces = mGhostLayers( l )->Faces;
+                    Cell< Element * > & tLayerElements = mGhostLayers( l )->Elements ;
 
                     // allocate memory
                     tLayerFaces.set_size( tCount, nullptr );
