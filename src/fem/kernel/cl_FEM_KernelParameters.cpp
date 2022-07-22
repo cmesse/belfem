@@ -86,6 +86,9 @@ namespace belfem
         {
             if( mMesh->master() == mMyRank )
             {
+                // remember block IDs
+                mBlockIDs = aBlockIDs ;
+
                 // the map that links the block ids with indices
                 Map <id_t, index_t> tMap;
 

@@ -35,11 +35,15 @@ namespace belfem
             id_t mMaxElementID ;
 
             id_t mMaxSideSetId ;
+            id_t mMaxBlockID = 0 ;
 
             // ids with elements that are to be cloned
             Vector< index_t > mElementIDs ;
 
             Cell< Layer * > mGhostLayers ;
+
+            // list of NodeIDs that are to be cloned
+            Vector< id_t > mNodeIDs ;
 
             // map that links old node ids to position in layer
             Map< id_t, index_t > mNodeMap ;
@@ -103,12 +107,14 @@ namespace belfem
             revert_element_orientation();
 
 //------------------------------------------------------------------------------
+
+            void
+            shift_nodes( const Vector< real > & aLayerThicknesses );
+
+//------------------------------------------------------------------------------
         private:
 //------------------------------------------------------------------------------
 
-
-
-//------------------------------------------------------------------------------
             void
             get_max_ids();
 
@@ -140,12 +146,37 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
-            fix_tape_to_node_connectivities( const id_t aMaxBlockID );
+            fix_tape_to_node_connectivities();
+
+//------------------------------------------------------------------------------
+
+            id_t
+            create_tape_blocks();
 
 //------------------------------------------------------------------------------
 
             void
-            shift_nodes();
+            create_tape_blocks_quad4( mesh::Block * aBlock, uint & aLayerOffset );
+
+//------------------------------------------------------------------------------
+
+            void
+            create_tape_blocks_quad9( mesh::Block * aBlock, uint & aLayerOffset );
+
+//------------------------------------------------------------------------------
+
+            void
+            create_tape_blocks_penta6( mesh::Block * aBlock, uint & aLayerOffset );
+
+//------------------------------------------------------------------------------
+
+            void
+            create_tape_blocks_penta18( mesh::Block * aBlock, uint & aLayerOffset );
+
+//------------------------------------------------------------------------------
+
+            void
+            create_tape_blocks_tri6();
 
 //------------------------------------------------------------------------------
         };

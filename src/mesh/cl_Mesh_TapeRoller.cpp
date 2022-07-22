@@ -4,6 +4,7 @@
 #include "commtools.hpp"
 #include "cl_Mesh_TapeRoller.hpp"
 #include "cl_Element_Factory.hpp"
+#include "fn_sum.hpp"
 
 namespace belfem
 {
@@ -101,6 +102,9 @@ namespace belfem
                 this->clone_edges();
                 this->clone_faces();
 
+                // for visualization
+                aMaxBlockID = this->create_tape_blocks() ;
+
                 // create the list with the sideset ids
                 mGhostSideSetIDs.set_size( mNumberOfGhostLayers );
 
@@ -110,13 +114,13 @@ namespace belfem
                 }
 
                 // this command contains a finalize
-                aMaxBlockID = mMesh->create_ghost_sidesets(
+                mMesh->create_ghost_sidesets(
                         mGhostSideSetIDs,
                         mElementIDs,
                         mGhostLayers );
 
                 // fix node connectivity, because the finalize command messes up with the linking
-                this->fix_tape_to_node_connectivities( aMaxBlockID );
+                this->fix_tape_to_node_connectivities();
             }
 
             return aMaxBlockID ;
@@ -125,7 +129,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        TapeRoller::fix_tape_to_node_connectivities( const id_t aMaxBlockID )
+        TapeRoller::fix_tape_to_node_connectivities()
         {
             // get number of elements per layer
             index_t tNumElements = mElementIDs.length() ;
@@ -166,13 +170,362 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        void
-        TapeRoller::shift_nodes()
+        id_t
+        TapeRoller::create_tape_blocks()
         {
-            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            // step 1: create backup of original master and slave setup
-            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            // compute the max block id
+            id_t aMaxBlockID ;
+            mMaxBlockID = 0 ;
+            for( mesh::Block * tBlock : mMesh->blocks() )
+            {
+                mMaxBlockID = tBlock->id() > mMaxBlockID ?
+                              tBlock->id() : mMaxBlockID ;
+            }
 
+            // save value for return
+            aMaxBlockID = mMaxBlockID ;
+
+            // number of elements per block
+            index_t tNumElements = mElementIDs.length() ;
+
+            // offset to bottom layer
+            uint tLayerOffset = 0 ;
+
+            // get element type
+            ElementType tType = mGhostLayers( 0 )->Elements( 0 )->type() ;
+
+            for( uint b=0; b<mNumberOfBlocks; ++b )
+            {
+                // create a new block
+                Block * tBock = new mesh::Block( ++mMaxBlockID, tNumElements );
+
+                // populate the block
+                switch( tType )
+                {
+                    case( ElementType::LINE2 ) :
+                    {
+                        this->create_tape_blocks_quad4( tBock, tLayerOffset );
+                        break ;
+                    }
+                    case( ElementType::LINE3 ) :
+                    {
+                        this->create_tape_blocks_quad9( tBock, tLayerOffset );
+                        break ;
+                    }
+                    case( ElementType::TRI3 ) :
+                    {
+                        this->create_tape_blocks_penta6( tBock, tLayerOffset );
+                        break ;
+                    }
+                    case( ElementType::PENTA18 ) :
+                    {
+                        this->create_tape_blocks_penta18( tBock, tLayerOffset );
+                        break ;
+                    }
+                    default:
+                    {
+                        BELFEM_ERROR( false, "Invalid Element Type");
+                    }
+                }
+
+                // add block to mesh
+                mMesh->blocks().push( tBock );
+            }
+
+            // return the value
+            return aMaxBlockID ;
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        TapeRoller::create_tape_blocks_quad4(
+                mesh::Block * aBlock, uint & aLayerOffset )
+        {
+            // Create an element factort
+            ElementFactory tFactory ;
+
+            // grab element container
+            Cell< Element * > & tElements = aBlock->elements() ;
+
+            // grab first layer
+            Cell< Element * > & tLayer0 = mGhostLayers( aLayerOffset++ )->Elements ;
+
+            // grab second layer
+            Cell< Element * > & tLayer1 = mGhostLayers( aLayerOffset )->Elements ;
+
+            // get number of elements
+            index_t tNumElements = aBlock->number_of_elements() ;
+
+            // loop over all elements
+            for( index_t e=0; e<tNumElements; ++e )
+            {
+                // grab faces
+                Element * tFacet0 = tLayer0( e );
+                Element * tFacet1 = tLayer1( e );
+
+                // create a new element
+                Element * tElement = tFactory.create_lagrange_element( ElementType::QUAD4, ++mMaxElementID );
+
+                // link nodes
+
+                tElement->insert_node( tFacet0->node( 0 ), 0 );
+                tElement->insert_node( tFacet0->node( 1 ), 1 );
+                tElement->insert_node( tFacet1->node( 1 ), 2 );
+                tElement->insert_node( tFacet1->node( 0 ), 3 );
+
+                // add element to Container
+                tElements( e ) = tElement ;
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        TapeRoller::create_tape_blocks_quad9(
+                mesh::Block * aBlock, uint & aLayerOffset )
+        {
+            // Create an element factort
+            ElementFactory tFactory ;
+
+            // grab element container
+            Cell< Element * > & tElements = aBlock->elements() ;
+
+            // grab first layer
+            Cell< Element * > & tLayer0 = mGhostLayers( aLayerOffset++ )->Elements ;
+
+            // grab second layer
+            Cell< Element * > & tLayer1 = mGhostLayers( aLayerOffset++ )->Elements ;
+
+            // grab third layer
+            Cell< Element * > & tLayer2 = mGhostLayers( aLayerOffset )->Elements ;
+
+            // get number of elements
+            index_t tNumElements = aBlock->number_of_elements() ;
+
+            // loop over all elements
+            for( index_t e=0; e<tNumElements; ++e )
+            {
+                // grab faces
+                Element * tFacet0 = tLayer0( e );
+                Element * tFacet1 = tLayer1( e );
+                Element * tFacet2 = tLayer2( e );
+
+                // create a new element
+                Element * tElement = tFactory.create_lagrange_element( ElementType::QUAD9, ++mMaxElementID );
+
+                // link nodes
+                tElement->insert_node( tFacet0->node( 0 ), 0 );
+                tElement->insert_node( tFacet0->node( 1 ), 1 );
+                tElement->insert_node( tFacet2->node( 1 ), 2 );
+                tElement->insert_node( tFacet2->node( 0 ), 3 );
+                tElement->insert_node( tFacet0->node( 2 ), 4 );
+                tElement->insert_node( tFacet1->node( 1 ), 5 );
+                tElement->insert_node( tFacet2->node( 2 ), 6 );
+                tElement->insert_node( tFacet1->node( 0 ), 7 );
+                tElement->insert_node( tFacet1->node( 1 ), 8 );
+
+                // add element to Container
+                tElements( e ) = tElement ;
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        TapeRoller::create_tape_blocks_penta6(
+                mesh::Block * aBlock, uint & aLayerOffset )
+        {
+            // Create an element factort
+            ElementFactory tFactory ;
+
+            // grab element container
+            Cell< Element * > & tElements = aBlock->elements() ;
+
+            // grab first layer
+            Cell< Element * > & tLayer0 = mGhostLayers( aLayerOffset++ )->Elements ;
+
+            // grab second layer
+            Cell< Element * > & tLayer1 = mGhostLayers( aLayerOffset )->Elements ;
+
+            // get number of elements
+            index_t tNumElements = aBlock->number_of_elements() ;
+
+            // loop over all elements
+            for( index_t e=0; e<tNumElements; ++e )
+            {
+                // grab faces
+                Element * tFacet0 = tLayer0( e );
+                Element * tFacet1 = tLayer1( e );
+
+                // create a new element
+                Element * tElement = tFactory.create_lagrange_element( ElementType::PENTA6, ++mMaxElementID );
+
+                // link nodes
+                tElement->insert_node( tFacet0->node( 0 ), 0 );
+                tElement->insert_node( tFacet0->node( 1 ), 1 );
+                tElement->insert_node( tFacet0->node( 2 ), 2 );
+
+                tElement->insert_node( tFacet1->node( 0 ), 3 );
+                tElement->insert_node( tFacet1->node( 1 ), 4 );
+                tElement->insert_node( tFacet1->node( 2 ), 5 );
+
+                // add element to Container
+                tElements( e ) = tElement ;
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        TapeRoller::create_tape_blocks_penta18(
+                mesh::Block * aBlock, uint & aLayerOffset )
+        {
+            // Create an element factort
+            ElementFactory tFactory ;
+
+            // grab element container
+            Cell< Element * > & tElements = aBlock->elements() ;
+
+            // grab first layer
+            Cell< Element * > & tLayer0 = mGhostLayers( aLayerOffset++ )->Elements ;
+
+            // grab second layer
+            Cell< Element * > & tLayer1 = mGhostLayers( aLayerOffset++ )->Elements ;
+
+            // grab third layer
+            Cell< Element * > & tLayer2 = mGhostLayers( aLayerOffset )->Elements ;
+
+            // get number of elements
+            index_t tNumElements = aBlock->number_of_elements() ;
+
+            // loop over all elements
+            for( index_t e=0; e<tNumElements; ++e )
+            {
+                // grab faces
+                Element * tFacet0 = tLayer0( e );
+                Element * tFacet1 = tLayer1( e );
+                Element * tFacet2 = tLayer2( e );
+
+                // create a new element
+                Element * tElement = tFactory.create_lagrange_element( ElementType::PENTA18, ++mMaxElementID );
+
+                // link nodes
+                tElement->insert_node( tFacet0->node( 0 ),  0 );
+                tElement->insert_node( tFacet0->node( 1 ),  1 );
+                tElement->insert_node( tFacet0->node( 2 ),  2 );
+                tElement->insert_node( tFacet2->node( 0 ),  3 );
+                tElement->insert_node( tFacet2->node( 1 ),  4 );
+                tElement->insert_node( tFacet2->node( 2 ),  5 );
+                tElement->insert_node( tFacet0->node( 3 ),   6 );
+                tElement->insert_node( tFacet0->node( 4 ),   7 );
+                tElement->insert_node( tFacet0->node( 5 ),   8 );
+                tElement->insert_node( tFacet1->node( 0 ),   9 );
+                tElement->insert_node( tFacet1->node( 1 ),  10 );
+                tElement->insert_node( tFacet1->node( 2 ),  11 );
+                tElement->insert_node( tFacet2->node( 3 ),  12 );
+                tElement->insert_node( tFacet2->node( 4 ),  13 );
+                tElement->insert_node( tFacet2->node( 5 ),  14 );
+                tElement->insert_node( tFacet1->node( 3 ),  15 );
+                tElement->insert_node( tFacet1->node( 4 ),  16 );
+                tElement->insert_node( tFacet1->node( 5 ),  17 );
+
+                // add element to Container
+                tElements( e ) = tElement ;
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        TapeRoller::shift_nodes(const Vector< real > & aLayerThicknesses )
+        {
+            // field data
+            Vector< real > & tNx = mMesh->field_data( "SurfaceNormalsx" );
+            Vector< real > & tNy = mMesh->field_data( "SurfaceNormalsy" );
+            Vector< real > & tNz = mMesh->field_data( "SurfaceNormalsz" );
+
+            // container for normals
+            Vector< real > tX( 3 );
+            Vector< real > tN( 3 );
+
+            uint tNumLayers = mGhostLayers.size() ;
+
+            Vector< real > tShift( tNumLayers, BELFEM_QUIET_NAN );
+
+            // create shifts
+            switch( mElementOrder )
+            {
+                case( 1 ) :
+                {
+                    tShift( 0 ) = -0.5 * sum( aLayerThicknesses );
+                    for ( uint l = 1; l < tNumLayers; ++l )
+                    {
+                        tShift( l ) = tShift( l - 1 ) + aLayerThicknesses( l - 1 );
+                    }
+                    break;
+                }
+                case( 2 ) :
+                {
+                    uint tCount = 0;
+                    tShift( 0 ) = -0.5 * sum( aLayerThicknesses );
+                    for ( uint l = 1; l < tNumLayers; ++l )
+                    {
+                        real tX0 = tShift( tCount );
+                        tShift( ++tCount ) = tX0 + 0.5 * aLayerThicknesses( l - 1 );
+                        tShift( ++tCount ) = tX0 +       aLayerThicknesses( l - 1 );
+                    }
+                    break;
+                }
+                default:
+                {
+                    BELFEM_ERROR( false, "unsupported element order: %u", ( unsigned int ) mElementOrder );
+                }
+            }
+
+
+            // loop over all layers
+            for( uint l=0 ; l<tNumLayers; ++l )
+            {
+                index_t tIndex;
+
+                Cell< Node * > & tNodes = mGhostLayers( l )->Nodes;
+                index_t tNumNodes = tNodes.size();
+
+                // loop over all nodes
+                for ( index_t k = 0; k < tNumNodes; ++k )
+                {
+                    // get index from original node
+                    tIndex = mMesh->node( mNodeIDs( k ) )->index();
+
+                    // grab node on layer
+                    Node * tNode = tNodes( k );
+
+                    // grab node coords
+                    tX( 0 ) = tNode->x();
+                    tX( 1 ) = tNode->y();
+                    tX( 2 ) = tNode->z();
+
+                    // populate normal vector
+                    tN( 0 ) = tNx( tIndex );
+                    tN( 1 ) = tNy( tIndex );
+                    tN( 2 ) = tNz( tIndex );
+
+                    // shift node
+                    tX += tShift( l ) * tN;
+
+                    // write node coordinates back
+                    tNode->set_coords( tX );
+
+                    // grab index from this node
+                    tIndex = tNode->index();
+
+                    // write normal into field
+                    tNx( tIndex ) = tN( 0 );
+                    tNy( tIndex ) = tN( 1 );
+                    tNz( tIndex ) = tN( 2 );
+                }
+            }
         }
 
 //------------------------------------------------------------------------------
@@ -456,6 +809,17 @@ namespace belfem
                 }
             }
 
+            // allocate container
+            mNodeIDs.set_size( tCount );
+            tCount = 0 ;
+            for ( Node * tNode: tNodes )
+            {
+                if ( tNode->is_flagged() )
+                {
+                   mNodeIDs( tCount++ ) = tNode->id() ;
+                }
+            }
+
             // now we populate the nodes for each layer
             for ( uint l = 0; l < mNumberOfGhostLayers; ++l )
             {
@@ -567,9 +931,6 @@ namespace belfem
                         {
                             tClone->insert_node( tLayerNodes( mNodeMap( tElement->node( k )->id())), k );
                         }
-
-                        // print
-                        std::cout << "#elements " << tElement->id() << " - " << l << " : " << tClone->id() << " - " << tClone->node( 0 )->id() << " " << tClone->node( 1 )->id() << std::endl ;
 
                         tLayerElements( tCount++ ) = tClone;
                     } // end loop over all facets

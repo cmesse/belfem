@@ -14,6 +14,11 @@
 #include "cl_Profiler.hpp"
 #include "fn_FEM_compute_normb.hpp"
 
+#ifdef BELFEM_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#endif
+
 using namespace belfem ;
 using namespace fem ;
 
@@ -149,7 +154,7 @@ int main( int    argc,
         tTimeCount = 0 ;
     }
 
-    tMesh->save( "test.exo");
+    //tMesh->save( "test.exo");
 
    const real tDeltaTime = tFormulation->timestep();
    real & tTime = tMesh->time_stamp() ;
@@ -162,8 +167,8 @@ int main( int    argc,
    real tOmegaN = tNonlinear.newtonOmega ;
 
 
-
-  while( tTime < tMaxTime )
+    /*
+    while( tTime < tMaxTime )
    {
        // increment timestep
        tTime += tDeltaTime;
@@ -278,7 +283,7 @@ int main( int    argc,
        tFormulation->save( tBackupFile );
 
        comm_barrier() ;
-   }
+   } */
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // tidy up
@@ -290,3 +295,7 @@ int main( int    argc,
     // close communicator
     return gComm.finalize();
 }
+
+#ifdef BELFEM_GCC
+#pragma GCC diagnostic pop
+#endif

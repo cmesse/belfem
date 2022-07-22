@@ -24,13 +24,13 @@ namespace belfem
         compute_surface_normals(
                 Mesh * aMesh,
                 const Vector< id_t > & aGroupIDs,
-                const GroupType aGroupType
+                const GroupType aGroupType,
+                const bool aComputeInParallel
         )
         {
             if( comm_rank() == 0 )
             {
                 Timer tTimer ;
-
                 switch( aMesh->number_of_dimensions() )
                 {
                     case( 2 ) :
@@ -49,12 +49,11 @@ namespace belfem
                     }
                 }
 
-                message( 2, "    Time for computing surface normals:    %8.1f ms", tTimer.stop() );
-
+                message( 2, "    Time for computing surface normals:    %u ms", tTimer.stop() );
                 proc_t tCommSize = comm_size() ;
 
                 // the next block is only necessary in parallel mode
-                if( tCommSize > 1 )
+                if( tCommSize > 1 && aComputeInParallel )
                 {
                     comm_barrier() ;
 
@@ -71,12 +70,14 @@ namespace belfem
                     }
 
                     comm_barrier() ;
-                    message( 2, "    Time for distributing surface normals: %8.1f ms\n", tTimer.stop() );
+                    message( 2, "    Time for distributing surface normals: %u ms\n", tTimer.stop() );
 
                 }
             }
-            else
+            else if ( aComputeInParallel )
             {
+                comm_barrier() ;
+
                 if( aMesh->number_of_dimensions() == 2 )
                 {
                     normals::receive_surface_normals_2d( aMesh, aGroupIDs, aGroupType );

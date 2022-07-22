@@ -18,9 +18,6 @@ namespace belfem
             // wrapped element
             Element * mElement;
 
-            // flag telling if we own the element
-            const bool mOwnElement = true ;
-
             // master element for facet
             Element * mMaster = nullptr;
 
@@ -40,7 +37,7 @@ namespace belfem
         public:
 //------------------------------------------------------------------------------
 
-            Facet( Element * aElement, const bool aOwnElement = true );
+            Facet( Element * aElement );
 
 //------------------------------------------------------------------------------
 

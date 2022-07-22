@@ -228,6 +228,15 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        uint
+        Group::number_of_ghost_sidesets() const
+        {
+            BELFEM_ERROR( false, "number_of_ghost_sidesets() can only be called for sidesets or shells");
+            return 0 ;
+        }
+
+//------------------------------------------------------------------------------
+
         const Material *
         Group::thin_shell_material( const uint aLayerIndex ) const
         {

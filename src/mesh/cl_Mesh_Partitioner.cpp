@@ -24,6 +24,7 @@ namespace belfem
             mNumberOfPartitions( aNumberOfPartitions )
         {
 #ifdef BELFEM_SUITESPARSE
+
             // prepare the graph
             this->create_graph();
 
@@ -53,6 +54,7 @@ namespace belfem
                 // set owners of domain cuts
                 aMesh->set_connector_owners();
             }
+
 #elif
          message( 0, "WARNING: The mesh partitioner was called, but the executable  is not" );
          message( 0,"          linked against METIS. The mesh will not be partitioned!");
@@ -85,21 +87,39 @@ namespace belfem
             // get pointer to mesh Cell
             Cell< Element * > & tElements = mMesh->elements();
 
-            // count elements
-            mNumberOfElements = mMesh->number_of_elements();
 
+            // number of flagged elements
+            mNumberOfElements = 0 ;
+
+            // siye of adjacency
             mAdjacencySize = 0;
 
+            // counter for elements
             metis_t tCount = 0;
 
             // loop over all elements
             for( Element * tElement : tElements )
             {
-                // increment adjacency counter
-                mAdjacencySize += tElement->number_of_elements();
+                if( tElement->is_flagged() )
+                {
+                    // increment adjacency counter
+                    uint tNumElements = tElement->number_of_elements();
 
-                // also, update the element index, just to be safe
-                tElement->set_index( tCount++ );
+                    // loop over all elements
+                    for ( uint e = 0; e < tNumElements; ++e )
+                    {
+                        if ( tElement->element( e )->is_flagged())
+                        {
+                            mAdjacencySize += 1;
+                        }
+                    }
+
+                    // also, update the element index
+                    tElement->set_index( tCount++ );
+
+                    // increment element counter
+                    ++mNumberOfElements ;
+                }
             }
 
             if( mNumberOfElements > 0 )
@@ -117,17 +137,30 @@ namespace belfem
             // loop over all elements
             for( Element * tElement : tElements )
             {
+                if( tElement->is_flagged() )
+                {
                     mElementPointers[ tElement->index() ] = tCount;
 
                     uint tNumConnectedElements = ( metis_t ) tElement->number_of_elements();
 
                     for ( uint k = 0; k < tNumConnectedElements; ++k )
                     {
-                        mAdjacency[ tCount++ ] = ( metis_t ) tElement->element( k )->index();
+                        if( tElement->element( k )->is_flagged() )
+                        {
+                            mAdjacency[ tCount++ ] = ( metis_t ) tElement->element( k )->index();
+                        }
                     }
+                }
             }
 
             mElementPointers[ mNumberOfElements ] = tCount;
+
+            // reset element index
+            tCount = 0 ;
+            for( Element * tElement : tElements )
+            {
+                tElement->set_index( tCount++ );
+            }
 
             message( 4, "    Created Mesh Graph: %i ms\n", ( uint ) tTimer.stop() );
 
@@ -242,8 +275,15 @@ namespace belfem
             // loop over all nodes
             for( Element * tElement : tElements )
             {
-                // set the owner
-                tElement->set_owner( mPartition( tCount++ ) );
+                if( tElement->is_flagged() )
+                {
+                    // set the owner
+                    tElement->set_owner( mPartition( tCount++ ) );
+                }
+                else
+                {
+                    tElement->set_owner( mNumberOfPartitions ) ;
+                }
             }
 
             message( 4, "    ... time for setting element owners : %u ms",

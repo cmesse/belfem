@@ -85,6 +85,9 @@ namespace belfem
             Cell< DomainType >  mBlockTypes ;
             Cell< DomainType >  mSideSetTypes ;
 
+            // needed for communication
+            Vector< proc_t > mCommTable ;
+
             // list of nedelec blocks
             Vector< id_t > mNedelecBlocks ;
             Vector< id_t > mNedelecSideSets ;
@@ -376,6 +379,11 @@ namespace belfem
 
             void
             fix_facet_masters();
+
+// -----------------------------------------------------------------------------
+
+            void
+            create_commtable();
 
 // -----------------------------------------------------------------------------
 

@@ -656,6 +656,15 @@ namespace belfem
              * dummy function, throws error unless sideset or shell
              * @return
              */
+            virtual uint
+            number_of_ghost_sidesets() const ;
+
+//------------------------------------------------------------------------------
+
+            /**
+             * dummy function, throws error unless sideset or shell
+             * @return
+             */
             virtual const Material *
             thin_shell_material( const uint aLayerIndex ) const ;
 

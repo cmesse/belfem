@@ -65,7 +65,16 @@ namespace belfem
             // partition the mesh if in parallel mode
             if ( mNumberOfProcs > 1 && mMyRank == mMesh->master() )
             {
-                mMesh->partition( mNumberOfProcs );
+
+                // check if we have defined specific blocks for the partitioning
+                if( mParams->selected_blocks().length() == 0 )
+                {
+                    mMesh->partition( mNumberOfProcs );
+                }
+                else
+                {
+                    mMesh->partition( mNumberOfProcs, mParams->selected_blocks() );
+                }
 
                 // this->fix_ownerships();
                 // allocate memory for node table
@@ -86,12 +95,15 @@ namespace belfem
                 mConnectorTable.set_size( mNumberOfProcs, {} );
             }
 
-            this->distribute_mesh();
+
+            this->distribute_mesh() ;
 
             if( aLegacyMode )
             {
                 this->create_fields();
             }
+
+            comm_barrier() ;
         }
 
 //------------------------------------------------------------------------------
@@ -285,8 +297,13 @@ namespace belfem
         void
         Kernel::distribute_mesh()
         {
+
+
             if( mNumberOfProcs > 1 )
             {
+                // wait for other procs
+                comm_barrier();
+
                 if ( mMyRank == mMasterRank )
                 {
                     message( 4, " Distributing Mesh to %u procs...",
@@ -326,15 +343,21 @@ namespace belfem
         void
         Kernel::send_submesh( const proc_t & aTarget )
         {
+            if( aTarget == mMyRank ) return;
+
             BELFEM_ASSERT( mMyRank == mMasterRank,
                     "send_submesh() must only be called by maste proc only" );
 
             // get ref to all elements on mesh
             Cell< mesh::Element * > & tElements = mMesh->elements();
+            Cell< mesh::Facet * >   & tFacets   = mMesh->facets() ;
 
             // unflag all nodes and elements on mesh
             mMesh->unflag_all_nodes();
             mMesh->unflag_all_elements();
+            mMesh->unflag_all_edges() ;
+            mMesh->unflag_all_faces() ;
+            mMesh->unflag_all_facets() ;
             mMesh->unflag_all_vertices();
 
             // loop over all elements
@@ -347,10 +370,18 @@ namespace belfem
                 }
             }
 
+            for( mesh::Facet * tFacet : tFacets )
+            {
+                if( tFacet->owner() == aTarget )
+                {
+                    tFacet->flag() ;
+                }
+            }
+
             // now also flag all element neighbors in order to create the aura
             for ( mesh::Element * tElement : tElements )
             {
-                if( tElement->is_flagged() && tElement->owner() == aTarget )
+                if( tElement->is_flagged() )
                 {
                     // get number of neighbors
                     index_t tNumNeighbors = tElement->number_of_elements();
@@ -387,6 +418,14 @@ namespace belfem
                         tElement->flag_edges() ;
                     }
                 }
+
+                for( mesh::Facet * tFacet : tFacets )
+                {
+                    if( tFacet->is_flagged() )
+                    {
+                        tFacet->element()->flag_edges() ;
+                    }
+                }
             }
 
             // flag faces, if they exist
@@ -401,6 +440,13 @@ namespace belfem
                     {
                         // flag all edges
                         tElement->flag_faces() ;
+                    }
+                }
+                for( mesh::Facet * tFacet : tFacets )
+                {
+                    if( tFacet->is_flagged() )
+                    {
+                        tFacet->element()->flag_faces() ;
                     }
                 }
             }
@@ -456,13 +502,14 @@ namespace belfem
 
             this->send_nodes( aTarget );
             this->send_elements( aTarget );
-            this->send_facets( aTarget, false );
             this->send_edges( aTarget );
+            this->send_faces( aTarget );
+            this->send_facets( aTarget, false );
 
 
             // send connectors
             this->send_facets( aTarget, true );
-            this->send_faces( aTarget );
+
 
             mMesh->unflag_all_nodes();
 
@@ -498,7 +545,7 @@ namespace belfem
             send( aTarget, tNedelecBlocks );
             send( aTarget, tNedelecSideSets );
 
-            mMesh->distribute_ghost_sidesets( aTarget, this->master() );
+            mMesh->distribute_ghost_sidesets( aTarget, mMyRank );
         }
 
 //------------------------------------------------------------------------------
@@ -523,15 +570,16 @@ namespace belfem
             // get elements
             this->receive_elements();
 
+            this->receive_edges() ;
+
+            this->receive_faces() ;
+
             // get facets
             this->receive_facets( false );
-
-            this->receive_edges() ;
 
             // get connectors
             this->receive_facets( true );
 
-            this->receive_faces() ;
 
             this->receive_vertices();
 
@@ -555,6 +603,7 @@ namespace belfem
             mSubMesh->finalize_faces() ;
 
             mSubMesh->distribute_ghost_sidesets( mMyRank, this->master() );
+
         }
 
 //------------------------------------------------------------------------------
@@ -1441,11 +1490,12 @@ namespace belfem
         {
             // loop over all blockst
             uint tNumSideSets = aConnectorSwitch ?
-                        mMesh->cuts().size() :
-                        mMesh->number_of_sidesets() ;
+                                mMesh->cuts().size() :
+                                mMesh->number_of_sidesets() ;
 
             // send number of blocks
             send( aTarget, tNumSideSets );
+
 
             Cell< mesh::SideSet * > & tSideSets =
                     aConnectorSwitch ? mMesh->cuts() : mMesh->sidesets();
@@ -1457,12 +1507,27 @@ namespace belfem
                     mConnectorTable( mCommMap( aTarget ) ) :
                     mFacetTable( mCommMap( aTarget ) );
 
+            // get mesh dimension
+            uint tDimension = mMesh->number_of_dimensions() ;
+
             // count all indices
+            // additional counters
+
             index_t tFacetCount = 0 ;
+            index_t tElementHasEdgesCount  = 0 ;
+            index_t tElementHasFacesCount  = 0 ;
+            index_t tEdgeCount = 0 ;
+            index_t tFaceCount = 0 ;
+
+            Vector< id_t > tEdgeIDs;
+            Vector< id_t > tFaceIDs;
+            Vector< id_t > tElementsWithEdges;
+            Vector< id_t > tElementsWithFaces;
 
             // count size of facet table
             if( aConnectorSwitch )
             {
+                // connector mode
                 for( uint s=0; s<tNumSideSets; ++s )
                 {
                     for ( mesh::Facet * tFacet: tSideSets( s )->facets())
@@ -1476,20 +1541,51 @@ namespace belfem
             }
             else
             {
+                // facet mode
                 for( uint s=0; s<tNumSideSets; ++s )
                 {
-                    for ( mesh::Facet * tFacet: tSideSets( s )->facets())
+                    for ( mesh::Facet * tFacet: tSideSets( s )->facets() )
                     {
+                        // grab element
+                        mesh::Element * tElement = tFacet->element();
+
                         if ( tFacet->owner() == aTarget )
                         {
+                            if ( tElement->has_edges() )
+                            {
+                                ++tElementHasEdgesCount;
+                                tEdgeCount += tElement->number_of_edges();
+                            }
+                            if ( tElement->has_faces() && tDimension == 3 )
+                            {
+                                ++tElementHasFacesCount;
+                                tFaceCount += tElement->number_of_faces();
+                            }
                             ++tFacetCount;
                         }
                     }
+                } // end loop over all sidesets
+
+                // set sized for containers
+                if ( tElementHasEdgesCount > 0 )
+                {
+                    tElementsWithEdges.set_size( tElementHasEdgesCount, 0 );
+                    tEdgeIDs.set_size( tEdgeCount, 0 );
+                    tElementHasEdgesCount  = 0 ;
+                    tEdgeCount = 0 ;
+                }
+                if ( tElementHasFacesCount > 0 )
+                {
+                    tElementsWithFaces.set_size( tElementHasFacesCount, 0 );
+                    tFaceIDs.set_size( tFaceCount, 0 );
+                    tElementHasFacesCount  = 0 ;
+                    tFaceCount = 0 ;
                 }
             }
 
             tAllIndices.set_size( tFacetCount );
             tFacetCount = 0 ;
+
 
             for( uint s=0; s<tNumSideSets; ++s )
             {
@@ -1507,6 +1603,7 @@ namespace belfem
 
                 if( aConnectorSwitch )
                 {
+                    // connector mode
                     for ( mesh::Facet * tFacet: tSideSets( s )->facets() )
                     {
                         if( tFacet->owner() == aTarget )
@@ -1518,11 +1615,35 @@ namespace belfem
                 }
                 else
                 {
+                    // facet mode
                     for ( mesh::Facet * tFacet: tSideSets( s )->facets() )
                     {
                         if ( tFacet->owner() == aTarget )
                         {
-                            tFacet->element()->flag();
+                            // grab element
+                            mesh::Element * tElement = tFacet->element();
+
+                            // flag element
+                            tElement->flag();
+                            if ( tElement->has_edges() )
+                            {
+                                tElementsWithEdges( tElementHasEdgesCount++ ) = tFacet->id();
+
+                                for ( uint e = 0; e < tElement->number_of_edges(); ++e )
+                                {
+                                    tEdgeIDs( tEdgeCount++ ) = tElement->edge( e )->id();
+                                }
+                            }
+                            if ( tElement->has_faces() && tDimension == 3 )
+                            {
+                                tElementsWithFaces( tElementHasFacesCount++ ) = tFacet->id();
+
+                                for ( uint f = 0; f < tElement->number_of_faces(); ++f )
+                                {
+                                    tFaceIDs( tFaceCount++ ) = tElement->face( f )->id();
+                                }
+                            }
+
                             ++tCount;
                         }
                     }
@@ -1632,11 +1753,22 @@ namespace belfem
                             tFacetIndices( k ) = tFacets( k )->slave_index();
                         }
                         send( aTarget, tFacetIndices );
+
+
                     }
                 }
-            }
+            } // end loop over sidesets
 
+            if( ! aConnectorSwitch )
+            {
+
+                send( aTarget, tElementsWithEdges );
+                send( aTarget, tEdgeIDs );
+                send( aTarget, tElementsWithFaces );
+                send( aTarget, tFaceIDs );
+            }
         }
+
 
 //------------------------------------------------------------------------------
 
@@ -1689,6 +1821,18 @@ namespace belfem
                     // Slave Facet Indices
                     Vector< uint > tSlaveIndices;
 
+                    // facets that have elements
+                    Vector< id_t > tElementsWithEdges ;
+
+                    // edges on facets
+                    Vector< id_t > tEdgeIDs ;
+
+                    // facets that have faces
+                    Vector< id_t > tElementsWithFaces ;
+
+                    // faces on facets
+                    Vector< id_t > tFaceIDs ;
+
                     receive( mMasterRank, tMasteIDs );
 
                     receive( mMasterRank, tSlaveIDs );
@@ -1702,6 +1846,7 @@ namespace belfem
                         receive( mMasterRank, tMasterIndices );
 
                         receive( mMasterRank, tSlaveIndices );
+
                     }
 
                     // create a new sideset
@@ -1805,6 +1950,57 @@ namespace belfem
                 tSets( s ) = tSideSets( s );
             }
 
+
+
+
+            if( ! aConnectorSwitch )
+            {
+                Vector< id_t > tEdgeIDs ;
+                Vector< id_t > tFaceIDs ;
+                Vector< id_t > tElementsWithEdges ;
+                Vector< id_t > tElementsWithFaces ;
+
+                receive( mMasterRank, tElementsWithEdges );
+                receive( mMasterRank, tEdgeIDs );
+                receive( mMasterRank, tElementsWithFaces );
+                receive( mMasterRank, tFaceIDs );
+
+                // initialize counter
+                index_t tCount = 0 ;
+
+                // link facets with edges
+                for( id_t tID : tElementsWithEdges )
+                {
+                    // grab element
+                    mesh::Element * tElement = mFacetMap[ tID ]->element();
+
+                    tElement->allocate_edge_container() ;
+
+                    // link edges
+                    for( uint e=0; e<tElement->number_of_edges(); ++e )
+                    {
+                        tElement->insert_edge( mEdgeMap[ tEdgeIDs( tCount++ ) ], e );
+                    }
+                }
+
+                // reset counter
+                tCount = 0 ;
+
+                // link facets with faces
+                for( id_t tID : tElementsWithFaces )
+                {
+                    // grab element
+                    mesh::Element * tElement = mFacetMap[ tID ]->element();
+
+                    tElement->allocate_face_container();
+
+                    // link faces
+                    for ( uint f = 0; f < tElement->number_of_edges(); ++f )
+                    {
+                        tElement->insert_face( mFaceMap[ tFaceIDs( tCount++ ) ], f );
+                    }
+                }
+            } // end if face mode
         }
 
 //------------------------------------------------------------------------------

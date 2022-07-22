@@ -1048,6 +1048,10 @@ namespace belfem
                 {
                     for( uint d: aThinShellEdgeDofTypes )
                     {
+                        std::cout << "#check " << tLayer->edge( k )->id() << " "
+                        << d << " " << aDofManager->calculate_dof_id(
+                                tLayer->edge( k ), d ) << std::endl ;
+
                         mDOFs[ tCount++ ] = aDofManager->dof(
                                 aDofManager->calculate_dof_id(
                                         tLayer->edge( k ), d ) );
@@ -1470,8 +1474,12 @@ namespace belfem
 
             Cell< mesh::Node * > tNodes ;
 
+
             for( uint e=0; e<tNumEdges; ++e )
             {
+                BELFEM_ASSERT( mElement->has_edges(), "edges not allocated for this element %lu",
+                               ( long unsigned int ) mElement->id() );
+
                 // grab node IDs
                 id_t tA = mElement->edge( e )->node( 0 )->id();
                 id_t tB = mElement->edge( e )->node( 1 )->id();

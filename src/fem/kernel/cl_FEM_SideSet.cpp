@@ -534,15 +534,34 @@ namespace belfem
                           "Number of material labels must match number of layer thicknesses ( %u vs %u )",
                           ( unsigned int ) aMaterials.size(), ( unsigned  int ) aLayerThicknesses.length() );
 
+            // determine interpolation order
+            uint tInterpolationOrder = mesh::interpolation_order_numeric( this->element_type() );
+
             // get number of layers
             mNumberOfThinShellLayers = aMaterials.size() ;
+            mNumberOfGhostSideSets = tInterpolationOrder * mNumberOfThinShellLayers + 1 ;
 
             // allocate memory
             mThinShellMaterials.set_size( mNumberOfThinShellLayers, nullptr );
 
+            // get pointer to kernel
+            Kernel * tKernel = this->parent()->parent() ;
+
             for( uint k=0; k<mNumberOfThinShellLayers; ++k )
             {
-                mThinShellMaterials( k ) = aMaterials( k );
+                // get material
+                Material * tMaterial = aMaterials( k );
+
+                // check if material has been added already
+                if( ! tMaterial->is_flagged() )
+                {
+                    // add material to kernel
+                    tKernel->add_material( tMaterial );
+
+                    // flag material
+                    tMaterial->flag() ;
+                }
+                mThinShellMaterials( k ) = tMaterial ;
             }
             mThinShellThicknesses = aLayerThicknesses ;
         }

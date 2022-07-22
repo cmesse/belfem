@@ -28,7 +28,7 @@ namespace belfem
     {
 //------------------------------------------------------------------------------
 
-              uint       mInfoLevel;
+              uint       mInfoLevel = 0 ;
               std::FILE* mStream;
               bool       mWriteToAscii = false;
 

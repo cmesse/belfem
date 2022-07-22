@@ -132,6 +132,14 @@ namespace belfem
                                                    tEdgeDofTypes,
                                                    tEdgeProcs );
 
+                    std::cout << "#EdgeDof Table" << std::endl ;
+                    for( index_t k=0; k<tEdgeProcs.size() ; ++k )
+                    {
+                        std::cout << tEdgeProcs(k).test( 0 ) << " " << tEdgeProcs(k).test( 1 )
+                         << " " << tEdgeProcs(k).test( 2 ) << " " << tEdgeProcs(k).test( 3 ) << std::endl ;
+
+                    }
+
                     tEdgeDofIDs.set_size( tNumEdgeDofs );
 
                     // make list with EDGE IDs
@@ -1046,6 +1054,54 @@ namespace belfem
                     }
                 }
 
+                /**
+                 * for edge dofs such as h-phi, the ghost sidesets don't see nodes
+                 * for others such as temperature, they do !
+                 */
+                if( ! aIWG->has_edge_dofs() )
+                {
+                    for( id_t tSideSetID: aIWG->ghost_sidesets() )
+                    {
+                        // grab block on mesh
+                        mesh::SideSet * tSideSet = mMesh->sideset( tSideSetID );
+
+                        // grab the DOFs for this entity
+                        const Vector< index_t > & tSelectedDofs = aIWG->dofs_per_node( tSideSetID );
+
+                        if ( tSelectedDofs.length() > 0 )
+                        {
+                            // get the number of nodes per element on this block.
+                            // We must check if linearity is enforced
+                            uint tNumEntities = mParams->enforce_linear() ?
+                                                mesh::number_of_corner_nodes( tSideSet->element_type() ) :
+                                                mesh::number_of_nodes( tSideSet->element_type() );
+
+
+                            // loop over all elements on this sideset
+                            for ( mesh::Facet * tFacet: tSideSet->facets() )
+                            {
+                                mesh::Element * tElement = tFacet->element() ;
+
+                                // loop over all entities on this element
+                                for ( uint k = 0; k < tNumEntities; ++k )
+                                {
+                                    // loop over all selected dofs
+                                    for ( index_t d: tSelectedDofs )
+                                    {
+                                        // compute the unique dof ID
+                                        luint tID = tElement->node( k )->id() * BELFEM_MAX_DOFTYPES + d;
+
+                                        // grab the corresponding bitset
+                                        Bitset< BELFEM_MAX_NUMPROCS > & tBitset = aProcFlags( tDofMap( tID ));
+
+                                        // set the proc bitset
+                                        tBitset.set( tElement->owner());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 // return the number of DOFs
                 return aDofCount ;
             }
@@ -1101,14 +1157,18 @@ namespace belfem
                 }
 
                 // also flag ghost sidesets (if they exist)
+                aIWG->ghost_sideset_ids().print("Ghost");
                 for( id_t tID : aIWG->ghost_sideset_ids() )
                 {
+
                     if ( aIWG->dofs_per_edge_on_sideset( tID ).length() > 0 )
                     {
                         tHaveEntityDofs = true;
                         mMesh->sideset( tID )->flag_edges() ;
                     }
                 }
+
+
 
                 // exit the routine if no entity dofs exist
                 if( ! tHaveEntityDofs )
@@ -1189,6 +1249,7 @@ namespace belfem
                 // also consider ghost dofs
                 for( id_t tSideSetID: aIWG->ghost_sidesets() )
                 {
+
                     // grab block pointer on mesh
                     mesh::SideSet * tSideSet = mMesh->sideset( tSideSetID );
 
@@ -1330,6 +1391,48 @@ namespace belfem
                         // loop over all elements on this block
                         for( mesh::Element * tElement : tBlock->elements() )
                         {
+                            // loop over all entities on this element
+                            for( uint k=0; k<tNumEntities; ++k )
+                            {
+                                // loop over all selected dofs
+                                for( index_t s : tSelectedDofs )
+                                {
+                                    for( index_t i=0; i<tMultiplicity; ++i )
+                                    {
+                                        // compute the unique dof ID
+                                        luint tID = tElement->edge( k )->id() * BELFEM_MAX_DOFTYPES + s + i ;
+
+                                        // grab the corresponding bitset
+                                        Bitset< BELFEM_MAX_NUMPROCS > & tBitset = aProcFlags( tDofMap( tID ));
+
+                                        // set the proc bitset
+                                        tBitset.set( tElement->owner() );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // also consider ghost dofs
+                for( id_t tSideSetID: aIWG->ghost_sidesets() )
+                {
+                    // grab sideset on mesh
+                    mesh::SideSet * tSideSet = mMesh->sideset( tSideSetID );
+
+                    // grab the DOFs for this entity
+                    const Vector< index_t > & tSelectedDofs = aIWG->dofs_per_edge_on_sideset( tSideSetID );
+
+                    if ( tSelectedDofs.length() > 0 )
+                    {
+                        // get the number of edges per element
+                        uint tNumEntities = mesh::number_of_edges( tSideSet->element_type() );
+
+                        // loop over all elements on this block
+                        for( mesh::Facet * tFacet : tSideSet->facets() )
+                        {
+                            mesh::Element * tElement = tFacet->element() ;
+
                             // loop over all entities on this element
                             for( uint k=0; k<tNumEntities; ++k )
                             {
@@ -1652,6 +1755,48 @@ namespace belfem
                     }
                 }
 
+                // also consider ghost sidesets
+                for( id_t tSideSetID : aIWG->ghost_sideset_ids() )
+                {
+                    // grab block on mesh
+                    mesh::SideSet * tSideSet = mMesh->sideset( tSideSetID );
+
+                    // grab the DOFs for this entity
+                    const Vector< index_t > & tSelectedDofs = aIWG->dofs_per_face_on_sideset( tSideSetID );
+
+                    if ( tSelectedDofs.length() > 0 )
+                    {
+                        // get the number of faces per element
+                        uint tNumEntities = mesh::number_of_faces( tSideSet->element_type() );
+
+                        // loop over all elements on this block
+                        for( mesh::Facet * tFacet : tSideSet->facets() )
+                        {
+                            mesh::Element * tElement = tFacet->element() ;
+
+                            // loop over all entities on this element
+                            for( uint k=0; k<tNumEntities; ++k )
+                            {
+                                // loop over all selected dofs
+                                for( index_t s : tSelectedDofs )
+                                {
+                                    for( index_t i=0; i<tMultiplicity; ++i )
+                                    {
+                                        // compute the unique dof ID
+                                        luint tID = tElement->face( k )->id() * BELFEM_MAX_DOFTYPES + s + i ;
+
+                                        // grab the corresponding bitset
+                                        Bitset< BELFEM_MAX_NUMPROCS > & tBitset = aProcFlags( tDofMap( tID ));
+
+                                        // set the proc bitset
+                                        tBitset.set( tElement->owner() );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // return the number of DOFs
                 return aDofCount ;
             }
@@ -1901,13 +2046,13 @@ namespace belfem
             index_t
             DofData::count_dofs_for_proc(
                     const index_t                              aProc,
-                    const Vector< id_t >                     & aDofIDs,
-                    const Vector< id_t >                     & aEntityIDs,
-                    const Vector< index_t >                  & aDofTypes,
+                    const Vector< id_t >                      & aDofIDs,
+                    const Vector< id_t >                      & aEntityIDs,
+                    const Vector< index_t >                   & aDofTypes,
                     const Cell< Bitset<BELFEM_MAX_NUMPROCS> > & aProcFlags,
-                    Vector< id_t >                           & aProcDofIDs,
-                    Vector< id_t >                           & aProcEntityIDs,
-                    Vector< index_t >                        & aProcDofTypes  )
+                    Vector< id_t >                            & aProcDofIDs,
+                    Vector< id_t >                            & aProcEntityIDs,
+                    Vector< index_t >                         & aProcDofTypes  )
             {
                 // get the number of entitues
                 index_t tNumEntities = aEntityIDs.length() ;

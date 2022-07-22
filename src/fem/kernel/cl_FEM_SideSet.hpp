@@ -65,6 +65,7 @@ namespace belfem
             Vector< real > mThinShellThicknesses ;
 
             uint mNumberOfThinShellLayers = 0 ;
+            uint mNumberOfGhostSideSets = 0 ;
 
 //------------------------------------------------------------------------------
         public:
@@ -194,6 +195,11 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            inline uint
+            number_of_ghost_sidesets() const ;
+
+//------------------------------------------------------------------------------
+
             inline const Material *
             thin_shell_material( const uint aLayerIndex ) const ;
 
@@ -305,6 +311,14 @@ namespace belfem
         SideSet::number_of_thin_shell_layers() const
         {
             return mNumberOfThinShellLayers ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline uint
+        SideSet::number_of_ghost_sidesets() const
+        {
+            return mNumberOfGhostSideSets ;
         }
 
 //------------------------------------------------------------------------------

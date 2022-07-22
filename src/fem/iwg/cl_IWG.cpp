@@ -462,7 +462,7 @@ namespace belfem
                                 {
                                     mNumberOfEdgeDofsPerElement =
                                             ( mNumberOfEdgesPerElement * mNumberOfDofsPerEdge
-                                            + mNumberOfFacesPerElement * mNumberOfDofsPerFace ) * aGroup->number_of_thin_shell_layers() ;
+                                            + mNumberOfFacesPerElement * mNumberOfDofsPerFace ) * aGroup->number_of_ghost_sidesets() ;
                                 }
                                 else
                                 {
@@ -681,7 +681,7 @@ namespace belfem
 
                     std::cout << "#numdofs " << tNumberOfDofsPerEdge << " " << tNumberOfDofsPerFace << " " << tNumberOfVolumeDofs << " " << tNumberOfDofsPerFacet << std::endl ;
 
-                    std::cout << "#numlayers " <<  aSideSet->number_of_thin_shell_layers() << std::endl ;
+                    std::cout << "#numlayers " <<  aSideSet->number_of_ghost_sidesets() << std::endl ;
 
                     if ( tNumberOfDofsPerEdge == 0 && tNumberOfDofsPerFace == 0 )
                     {
@@ -690,7 +690,7 @@ namespace belfem
                     else
                     {
                         return    tNumberOfVolumeDofs + tNumberOfDofsPerFacet
-                                  + aSideSet->number_of_thin_shell_layers()  *
+                                  + aSideSet->number_of_ghost_sidesets()  *
                                     ( mesh::number_of_edges( aSideSet->element_type() )
                                     * tNumberOfDofsPerEdge
                                     + mesh::number_of_faces( aSideSet->element_type() )

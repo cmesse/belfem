@@ -50,6 +50,9 @@ namespace belfem
             mInputFile( aInputFile ),
             mParameters( new KernelParameters( this->mesh() ) )
         {
+            // create communication table
+            this->create_commtable();
+
             this->create_domain_groups();
             this->select_blocks();
 
@@ -155,6 +158,24 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        void
+        MaxwellFactory::create_commtable()
+        {
+            // create the comm table ( we don't have a kernel yet )
+            proc_t tNumProcs = comm_size() ;
+
+            if( comm_rank() == 0 && tNumProcs > 1 )
+            {
+                mCommTable.set_size( tNumProcs-1 );
+                uint tCount = 0 ;
+                for( proc_t p=1; p<tNumProcs; ++p )
+                {
+                    mCommTable( tCount++ ) = p ;
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
 
         Mesh *
         MaxwellFactory::load_mesh( const InputFile & aInputFile )
@@ -1254,13 +1275,35 @@ namespace belfem
 
             //mParameters->set_sideset_integration_orders( 5 );
             //mParameters->set_block_integration_orders( 5 );
+            if( comm_rank() == 0 )
+            {
+                // count selected blocks ( blocks for visualization are not included )
+                uint tCount = 0;
+                for ( uint b = 0; b < mMesh->number_of_blocks(); ++b )
+                {
+                    if ( mMesh->blocks()( b )->id() <= mMaxBlockID )
+                    {
+                        ++tCount;
+                    }
+                }
+                Vector< id_t > tSelectedBlocks( tCount );
+                tCount = 0;
+                for ( uint b = 0; b < mMesh->number_of_blocks(); ++b )
+                {
+                    id_t tID = mMesh->blocks()( b )->id();
+                    if ( tID <= mMaxBlockID )
+                    {
+                        tSelectedBlocks( tCount++ ) = tID;
+                    }
+                }
+                mParameters->select_blocks( tSelectedBlocks );
+            }
 
             // create the kernel
             mKernel = new Kernel( mParameters );
 
             // claim parameter ownership
             mKernel->claim_parameter_ownership( true );
-
         }
 
 //------------------------------------------------------------------------------
@@ -1313,6 +1356,22 @@ namespace belfem
         {
             if( mTapeMaterialLabels.size() > 0 )
             {
+                // loop over all sidesets on the mesh
+                for( mesh::SideSet * tMeshSideSet : mKernel->mesh()->sidesets() )
+                {
+                    // check if sideset exists on dof manager
+                    if( aDofManager->sideset_exists( tMeshSideSet->id() ) )
+                    {
+                        // grab sideset
+                        SideSet * tSideSet = aDofManager->sideset( tMeshSideSet->id() );
+
+                        // check if sideset is a thin shell
+                        if( tSideSet->domain_type() == DomainType::ThinShell )
+                        {
+                            tSideSet->set_thin_shells( mTapeMaterials, mTapeThicknesses );
+                        }
+                    }
+                }
 
                 std::cout << "rewrite #tapeMaterials!" << std::endl ;
 
@@ -1341,24 +1400,9 @@ namespace belfem
                         // add material to kernel
                         aDofManager->parent()->add_material( tMaterial );
                     }
-                }
+                }   */
 
-                // loop over all sidesets on the mesh
-                for( mesh::SideSet * tMeshSideSet : mKernel->mesh()->sidesets() )
-                {
-                    // check if sideset exists on dof manager
-                    if( aDofManager->sideset_exists( tMeshSideSet->id() ) )
-                    {
-                        // grab sideset
-                        SideSet * tSideSet = aDofManager->sideset( tMeshSideSet->id() );
 
-                        // check if sideset is a thin shell
-                        if( tSideSet->domain_type() == DomainType::ThinShell )
-                        {
-                            tSideSet->set_thin_shells( mTapeMaterials, mTapeThicknesses );
-                        }
-                    }
-                }  */
             }
         }
 
@@ -1382,6 +1426,9 @@ namespace belfem
                     mSideSetIDs( s ) = mSideSetToCutMap( mSideSetIDs( s ) );
                 }
             }
+
+            // wait for other procs
+            comm_barrier();
 
             // flag curved elements on kernel mesh
             mKernel->mesh()->flag_curved_elements() ;
@@ -1408,7 +1455,6 @@ namespace belfem
             if( mGhostMaster > 0 )
             {
                 tMaxwell->set_ghost_sidesets( mGhostMaster, mGhostSideSets );
-                //this->set_layer_labels() ;
             }
 
 
@@ -2479,19 +2525,11 @@ namespace belfem
                     }
                 }
 
-                // create the comm table ( we don't have a kernel yet )
-                proc_t tNumProcs = comm_size() ;
-                Vector< proc_t > tCommTable( tNumProcs );
-                for( proc_t p=0; p<tNumProcs; ++p )
-                {
-                    tCommTable( p ) = p ;
-                }
-
                 comm_barrier() ;
-                send_same( tCommTable, tSideSetIDs );
-                send_same( tCommTable, tMasterBlockIDs );
-                send_same( tCommTable, tSlaveBlockIDs );
-                send_same( tCommTable, tSideSetTypes );
+                send_same( mCommTable, tSideSetIDs );
+                send_same( mCommTable, tMasterBlockIDs );
+                send_same( mCommTable, tSlaveBlockIDs );
+                send_same( mCommTable, tSideSetTypes );
             }
             else
             {
@@ -2704,31 +2742,54 @@ namespace belfem
                 // add tapes
                 if( mTapes.size() > 0 )
                 {
-                    mesh::TapeRoller tTapeRoller( mMesh,
-                                                  mTapeMaterialLabels.size() ,
-                                                  mMesh->max_element_order() );
-
-                    for( DomainGroup * tTape : mTapes )
+                    if( comm_rank() == 0 )
                     {
-                        tTapeRoller.add_sidesets( tTape->groups() );
-                        tTapeRoller.add_master_blocks( tTape->master() );
+                        mesh::TapeRoller tTapeRoller( mMesh,
+                                                      mTapeMaterialLabels.size(),
+                                                      mMesh->max_element_order());
+
+                        for ( DomainGroup * tTape: mTapes )
+                        {
+                            tTapeRoller.add_sidesets( tTape->groups());
+                            tTapeRoller.add_master_blocks( tTape->master() );
+                        }
+
+                        mMaxBlockID = tTapeRoller.run();
+
+                        comm_barrier() ;
+                        send( mCommTable, mMaxBlockID );
+
+                        // change the element orientation so that the normals point into the right direction
+                        tTapeRoller.flip_element_orientation();
+
+                        // grab the sidesets and compute the normals
+                        Vector< id_t > tSideSets;
+                        tTapeRoller.get_sidesets( tSideSets );
+                        mesh::compute_surface_normals( mMesh, tSideSets, GroupType::SIDESET, false );
+
+                        // revert the element orientation, otherwise the logic is messed up
+                        tTapeRoller.revert_element_orientation();
+
+                        // correct the node positions
+                        tTapeRoller.shift_nodes( mTapeThicknesses );
+
+                        // set the labels of the blocks
+                        this->set_layer_labels();
+
+                        // remember ids of new sidesets
+                        mGhostSideSets = tTapeRoller.ghost_sideset_ids();
+
+                        comm_barrier() ;
+                        send_same( mCommTable, mGhostSideSets );
+
                     }
-
-                    mMaxBlockID = tTapeRoller.run() ;
-
-                    // change the element orientation so that the normals point into the right direction
-                    tTapeRoller.flip_element_orientation() ;
-
-                    // grab the sidesets and compute the normals
-                    Vector< id_t > tSideSets ;
-                    tTapeRoller.get_sidesets( tSideSets );
-                    mesh::compute_surface_normals( mMesh, tSideSets );
-
-                    // revert the element orientation
-                    tTapeRoller.revert_element_orientation();
-
-                    // remember ids of new sidesets
-                    mGhostSideSets = tTapeRoller.ghost_sideset_ids() ;
+                    else
+                    {
+                        comm_barrier() ;
+                        receive( 0, mMaxBlockID );
+                        comm_barrier() ;
+                        receive( 0, mGhostSideSets );
+                    }
                 }
 
                 // link cut BCs
@@ -3106,16 +3167,20 @@ namespace belfem
         MaxwellFactory::set_layer_labels()
         {
             // set the names of the sidesets
-            unsigned int tNumLayers = mGhostSideSets.length() ;
+            unsigned int tNumLayers = mTapeThicknesses.length();
 
             for( unsigned int k=0; k<tNumLayers; ++k )
             {
+                // grab Block
+                mesh::Block * tBlock = mMesh->block( k + mMaxBlockID + 1 );
+
                 // create layer name
-                mMesh->block( k + mMaxBlockID + 1 )->label() =
+                tBlock->label() =
                 sprint( "Layer_%u_%s_%uu",
                          k + 1,
                          mTapeMaterialLabels( k  ).c_str() ,
                          ( unsigned int ) std::ceil( mTapeThicknesses( k ) *1e6 ) );
+
             }
         }
 

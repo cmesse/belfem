@@ -1544,8 +1544,42 @@ namespace belfem
         {
             BELFEM_ERROR( aNumberOfPartitions > 1, "Must have more than one partition" );
 
+            // assume that all elements are part of the mesh
+            this->unflag_all_elements() ;
+
             // create a partitioner
             mesh::Partitioner( this, aNumberOfPartitions, aSetProcOwners );
+
+            // assume that all elements are part of the mesh
+            this->unflag_all_elements() ;
+        }
+    }
+
+//------------------------------------------------------------------------------
+
+    void
+    Mesh::partition( const uint & aNumberOfPartitions,
+                     const Vector< id_t > & aSelectedBlocks,
+                     const bool aSetProcOwners )
+    {
+        if( comm_rank() == mMasterProc )
+        {
+            BELFEM_ERROR( aNumberOfPartitions > 1, "Must have more than one partition" );
+
+            // assume that all elements are part of the mesh
+            this->unflag_all_elements() ;
+
+            // flag elements on selected blocks
+            for( id_t tID : aSelectedBlocks )
+            {
+                this->block( tID )->flag_elements() ;
+            }
+
+            // create a partitioner
+            mesh::Partitioner( this, aNumberOfPartitions, aSetProcOwners );
+
+            // assume that all elements are part of the mesh
+            this->unflag_all_elements() ;
         }
     }
 
@@ -1665,6 +1699,7 @@ namespace belfem
         }
 
         // reset block map
+        mBlockMap.clear() ;
         for( mesh::Block * tBlock : mBlocks )
         {
             // add block to map
@@ -1871,7 +1906,7 @@ namespace belfem
         {
             message( 4, "\n    Flagging curved elements ...\n"  );
         }
-
+        comm_barrier() ;
         // check curved elements
         mesh::CurvedElementChecker tChecker( mNumberOfDimensions, mBlocks, mSideSets );
 
@@ -1887,7 +1922,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-    id_t
+    void
     Mesh::create_ghost_sidesets(
             const Vector< id_t >    & aGhostSideSetIDs,
             const Vector< id_t >    & aElementIDs,
@@ -2005,16 +2040,6 @@ namespace belfem
         mGhostSideSetIDs = aGhostSideSetIDs ;
         mGhostFacetIDs = aElementIDs ;
 
-        // get max block ID
-        id_t aMaxBlockID = 0 ;
-        for( mesh::Block * tBlock : mBlocks )
-        {
-            aMaxBlockID = tBlock->id() > aMaxBlockID ?
-                    tBlock->id() : aMaxBlockID ;
-        }
-
-        // #addblocks
-        // id_t tMaxBlockID = aMaxBlockID ;
         // loop over all layers
         for( uint l=0; l<aGhostSideSetIDs.length(); ++l )
         {
@@ -2027,12 +2052,8 @@ namespace belfem
             mesh::SideSet * tSideSet = new mesh::SideSet( aGhostSideSetIDs( l ),
                                                           tNumFacets );
 
-            // create a new block
-            //mesh::Block * tBlock = new mesh::Block( ++tMaxBlockID, tNumFacets );
-
             // grab the facet container
             Cell< mesh::Facet * > & tFacets = tSideSet->facets();
-            //Cell< mesh::Element * > & tBlockElements = tBlock->elements() ;;
 
             // loop over all elements
             for( index_t e = 0; e<tNumFacets; ++e )
@@ -2041,7 +2062,7 @@ namespace belfem
                 mesh::Facet * tOriginal = this->facet( aElementIDs( e ) );
 
                 // create the new facet
-                mesh::Facet * tFacet = new mesh::Facet( tElements( e ), false );
+                mesh::Facet * tFacet = new mesh::Facet( tElements( e ) );
 
                 if( tOriginal->has_master() )
                 {
@@ -2053,19 +2074,12 @@ namespace belfem
                 }
                 tFacets( e ) = tFacet ;
 
-                //tBlockElements( e ) = tElements( e );
-
-                //std::cout << " adding element to block " << tBlock->id() << " " << tElements( e )->id() << " (facet " << tFacet->element()->id() << " )" <<std::endl ;
-
             } // end loop over all facets
 
             // hide this sideset from exodus
             tSideSet->hide();
 
             mSideSets.push( tSideSet );
-            //mBlocks.push( tBlock );
-
-            //mSideSetMap[ tSideSet->id() ] = tSideSet ;
 
         } // end loop over all layers
 
@@ -2088,8 +2102,6 @@ namespace belfem
         {
             mGhostFacetMap[ tElementID ] = tCount++ ;
         }
-
-        return aMaxBlockID ;
     }
 
 //------------------------------------------------------------------------------
@@ -2103,15 +2115,7 @@ namespace belfem
         {
             if ( comm_rank() == aMasterProc  )
             {
-
-                // list with all procs
-                Vector< proc_t > tCommTable( tNumProcs );
-                for ( proc_t p = 0; p < tNumProcs; ++p )
-                {
-                    tCommTable( p ) = p ;
-                }
-
-                send_same( tCommTable, mGhostSideSetIDs );
+                send( aTarget, mGhostSideSetIDs );
 
                 if( mGhostSideSetIDs.length() > 0 )
                 {
@@ -2164,8 +2168,6 @@ namespace belfem
                     }
                 }
             }
-
-            comm_barrier();
         }
     }
 

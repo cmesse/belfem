@@ -555,6 +555,16 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        /**
+         * partition the mesh and set element and node ownerships, but also pass selected blocks
+         */
+        void
+        partition( const uint & aNumberOfPartitions,
+                   const Vector< id_t > & aSelectedBlocks,
+                   const bool aSetProcOwners = true );
+
+//------------------------------------------------------------------------------
+
         void
         update_node_indices();
 
@@ -772,7 +782,7 @@ namespace belfem
          * create the ghost layers for selected elements
          * called by tape roller on master proc.
          */
-         id_t
+         void
          create_ghost_sidesets(
                  const Vector< id_t >    & aGhostSideSetIDs,
                  const Vector< id_t >    & aElementIDs,

@@ -32,6 +32,9 @@ namespace belfem
             // List of Blocks that contribute to this Kernel ( Block Indices ) ( default: all )
             Vector< index_t > mBlockIndices;
 
+            // ids of blocks that contribute to this kernel ( default : all )
+            Vector< id_t > mBlockIDs ;
+
             // dimensions for each field, legacy
             Vector< uint > mNumDofsPerNode = { 1 };
             Vector< uint > mNumDofsPerEdge = { 0 };
@@ -140,6 +143,8 @@ namespace belfem
             /**
              * Select the IDs of the blocks that are to be used.
              * Only the Master proc that owns the mesh is responsible for this
+             *
+             * in this case, we use these blocks for the partitioning
              */
             void
             select_blocks( const Vector< id_t > & aBlockIDs );
@@ -151,6 +156,14 @@ namespace belfem
              */
             const Vector< uint > &
             block_indices();
+
+//------------------------------------------------------------------------------
+
+            /**
+             * return the indices of the selected blocks
+             */
+            const Vector< id_t > &
+            selected_blocks();
 
 //------------------------------------------------------------------------------
 
@@ -300,7 +313,15 @@ namespace belfem
         inline const Vector< uint > &
         KernelParameters::block_indices()
         {
-            return mBlockIndices;
+            return mBlockIndices ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline const Vector< id_t > &
+        KernelParameters::selected_blocks()
+        {
+            return mBlockIDs ;
         }
 
 //------------------------------------------------------------------------------

@@ -20,7 +20,8 @@ namespace belfem
         compute_surface_normals(
                 Mesh * aMesh,
                 const Vector< id_t > & aGroupIDs,
-                const GroupType aGroupType=GroupType::SIDESET
+                const GroupType aGroupType=GroupType::SIDESET,
+                const bool aComputeInParallel=true
                 );
 
 //------------------------------------------------------------------------------
