@@ -13,11 +13,14 @@
 #include "cl_Material_Ti6Al4V.hpp"
 #include "cl_Material_CuCrZr.hpp"
 #include "cl_Material_Zirconia.hpp"
+#include "cl_Material_Inconel750X.hpp"
+#include "cl_Material_Hastelloy.hpp"
+#include "cl_Material_Silver.hpp"
 #ifdef BELFEM_GASMODELS
 #include "cl_Material_Air.hpp"
 #endif
-#include "cl_Material_Inconel750X.hpp"
-#include "cl_Material_Hastelloy.hpp"
+
+
 namespace belfem
 {
 //----------------------------------------------------------------------------
@@ -79,6 +82,10 @@ namespace belfem
             case( MaterialType::Hastelloy ) :
             {
                 return new material::Hastelloy ;
+            }
+            case( MaterialType::Silver ) :
+            {
+                return new material::Silver ;
             }
             default :
             {

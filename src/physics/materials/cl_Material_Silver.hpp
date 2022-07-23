@@ -9,6 +9,7 @@
 #include "cl_Vector.hpp"
 
 #include "cl_IsotropicMaterial.hpp"
+#include "cl_Spline.hpp"
 
 namespace belfem
 {
@@ -19,6 +20,13 @@ namespace belfem
         class Silver : public IsotropicMaterial
         {
             real mRRR = 206 ;
+
+            real mTref = 273.0 ;
+
+            Spline * mCpSpline = nullptr ;
+            Spline * mRhoSpline = nullptr ;
+
+            real mRhoRef ; // density at reference temperature
 
             const real mSwitchET0 = 300.0;
             const real mSwitchET1 = 600.0;
@@ -32,17 +40,22 @@ namespace belfem
             Vector <real> mSpecificHeatPoly2;
             Vector <real> mSpecificHeatPoly3;
             Vector <real> mSpecificHeatPoly4;
+            Vector <real> mSpecificHeatPoly5;
 
             const real mSwitchCT0 = 8.0;
             const real mSwitchCT1 = 50.0;
-            const real mSwitchCT2 = 60.0;
+            const real mSwitchCT2 = 80.0;
             const real mSwitchCT3 = 300.0;
+            const real mSwitchCT4 = 500.0;
 
             const real mSwitchRT0 = 4.0;
             const real mSwitchRT1 = 10.0;
             const real mSwitchRT2 = 15.0;
             const real mSwitchRT3 = 50.0;
             const real mSwitchRT4 = 75.0;
+
+            const real mSwitchLT0 = 50.0;
+            const real mSwitchLT1 = 80.0;
 
             Vector< real > mResistivityPoly0 ;
             Vector< real > mResistivityPoly1 ;
@@ -52,6 +65,8 @@ namespace belfem
             Vector< real > mResistivityPoly5 ;
 
             Vector <real> mThermalConductivityPoly1;
+            Vector <real> mThermalConductivityPoly2;
+            Vector <real> mThermalConductivityPoly3;
 
             const Vector< real > mKohlerA = {  0.0151959,
                                               -0.0931658,
@@ -81,7 +96,7 @@ namespace belfem
 
 //----------------------------------------------------------------------------
 
-            ~Silver() = default;
+            ~Silver();
 
  //----------------------------------------------------------------------------
 
@@ -112,6 +127,22 @@ namespace belfem
 //----------------------------------------------------------------------------
 
             /**
+             * thermal conductivity in W/(m*K)
+             */
+            real
+            lambda( const real aT = BELFEM_TREF ) const;
+
+//----------------------------------------------------------------------------
+
+            /**
+             * thermal conductivity in W/(m*K)
+             */
+            real
+            lambda( const real aT, const real aB ) const;
+
+//----------------------------------------------------------------------------
+
+            /**
              * Shear Modulus in Pa
              */
             real
@@ -137,7 +168,17 @@ namespace belfem
 //--------------------------------------------------------------------------
 
             void
+            create_specific_heat_spline();
+
+//--------------------------------------------------------------------------
+
+            void
             create_resistivity_polys();
+
+//--------------------------------------------------------------------------
+
+            void
+            create_resistivity_spline();
 
 //----------------------------------------------------------------------------
 
@@ -149,8 +190,37 @@ namespace belfem
             real
             rho_el0_poly( const real aT ) const ;
 
+//----------------------------------------------------------------------------
+
+            real
+            rho_el0_spline( const real aT ) const ;
+
+//----------------------------------------------------------------------------
+
+            /**
+             * specific heat capacity in J/(kg*K)
+             */
+            real
+            c_poly( const real aT = BELFEM_TREF ) const;
+
 //--------------------------------------------------------------------------
         };
+
+//----------------------------------------------------------------------------
+
+        inline real
+        Silver::c( const real aT ) const
+        {
+            return mCpSpline->eval( aT );
+        }
+
+//----------------------------------------------------------------------------
+
+        inline real
+        Silver::rho_el0_spline( const real aT ) const
+        {
+            return mRhoSpline->eval( aT );
+        }
 
 //----------------------------------------------------------------------------
     }

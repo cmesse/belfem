@@ -16,6 +16,7 @@ set( SOURCES
         cl_Material_Zirconia.cpp
         cl_Material_Inconel750X.cpp
         cl_Material_Hastelloy.cpp
+        cl_Material_Silver.cpp
 	    cl_MaterialFactory.cpp
 	    nist_functions.cpp
         )

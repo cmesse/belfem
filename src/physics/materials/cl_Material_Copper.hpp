@@ -10,14 +10,19 @@
 #include "cl_Vector.hpp"
 
 #include "cl_IsotropicMaterial.hpp"
+#include "cl_Spline.hpp"
 
 namespace belfem
 {
     namespace material
     {
 //----------------------------------------------------------------------------
+
         class Copper : public IsotropicMaterial
         {
+
+            Spline * mCpSpline = nullptr ;
+            Spline * mRhoSpline = nullptr ;
 
             const real mSwitchCT0 = 9.;
             const real mSwitchCT1 = 15.;
@@ -28,6 +33,7 @@ namespace belfem
             const real mSwitchCT6 = 280.;
             const real mSwitchCT7 = 300. ;
                   real mSwitchCT8 = 1125.0 ;
+
 
             Vector <real> mSpecificHeatPoly0;
             Vector <real> mSpecificHeatPoly1;
@@ -123,14 +129,14 @@ namespace belfem
 
 //----------------------------------------------------------------------------
 
-            ~Copper() = default;
+            ~Copper();
 
 //----------------------------------------------------------------------------
 
             /**
              * specific heat capacity in J/(kg*K)
              */
-            real
+            inline real
             c( const real aT = BELFEM_TREF ) const;
 
 //----------------------------------------------------------------------------
@@ -189,6 +195,19 @@ namespace belfem
 
 //----------------------------------------------------------------------------
 
+            /**
+             * thermal conductivity in W/(m*K)
+             */
+            real
+            c_poly( const real aT ) const;
+
+//----------------------------------------------------------------------------
+
+            void
+            create_specific_heat_spline();
+
+//----------------------------------------------------------------------------
+
             void
             create_conductivity_polys();
 
@@ -214,6 +233,11 @@ namespace belfem
 
 //----------------------------------------------------------------------------
 
+            void
+            create_resistivity_spline();
+
+//----------------------------------------------------------------------------
+
             /**
              * resistivity for zero field
              */
@@ -231,6 +255,14 @@ namespace belfem
 //----------------------------------------------------------------------------
 
             /**
+             * polynomial created from nist dataset
+             */
+            real
+            rho_el0_spline( const real aT ) const;
+
+//----------------------------------------------------------------------------
+
+            /**
              * computes the temperature where the thermal conductivity peaks
              */
             real
@@ -239,6 +271,21 @@ namespace belfem
 //----------------------------------------------------------------------------
         };
 //----------------------------------------------------------------------------
+
+        inline real
+        Copper::rho_el0_spline( const real aT ) const
+        {
+            return mRhoSpline->eval( aT );
+        }
+
+//----------------------------------------------------------------------------
+
+        inline real
+        Copper::c( const real aT ) const
+        {
+            return mCpSpline->eval( aT );
+        }
+
 //----------------------------------------------------------------------------
     } /* end namespace material */
 }  /* end namespace belfem */

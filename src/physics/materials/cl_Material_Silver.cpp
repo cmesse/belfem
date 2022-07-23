@@ -23,14 +23,26 @@ namespace belfem
 
             mKohlerXmin = nist::extend_kohler( mKohlerA, mKohlerKmin, 4.0, mKohlerB ) ;
 
+
+            this->create_conductivity_polys() ;
             this->create_specific_heat_polys();
+            this->create_specific_heat_spline() ;
             this->create_mech_polys() ;
 
             this->set_rrr( mRRR );
 
             mHasMechanical = true ;
             mHasResistivity = true ;
+            mHasThermal = true ;
 
+        }
+
+//----------------------------------------------------------------------------
+
+        Silver::~Silver()
+        {
+            delete mCpSpline ;
+            delete mRhoSpline ;
         }
 
 //----------------------------------------------------------------------------
@@ -38,8 +50,10 @@ namespace belfem
         void
         Silver::set_rrr( const real aRRR )
         {
-            this->create_resistivity_polys() ;
-
+            mRRR = aRRR ;
+            // this->create_resistivity_polys() ;
+            this->create_resistivity_spline();
+            mRhoRef = this->rho_el0_spline( mTref );
         }
 
 //----------------------------------------------------------------------------
@@ -49,21 +63,18 @@ namespace belfem
         {
 
             // polynomials based in Smith and Fickett, 10.6028/jres.100.012
-            mSpecificHeatPoly1 = {  1.685959e+3,
-                                   -7.397296e+2,
-                                    1.292855e+2,
-                                   -1.126873e+1,
-                                    4.915730e-1,
-                                   -7.351090e-3,
-                                    3.940887e-5 };
+            mSpecificHeatPoly1 = {  4.65503e2, -2.92254e2,   6.75689e1,
+                                   -7.19040e0,  3.54982e-1, -5.12896e-3,
+                                    2.55087e-5 };
 
-            mSpecificHeatPoly3 = {   2.173720e+5,
-                                    -1.728826e+4,
-                                     4.101784e+2,
-                                    -1.035062,
-                                     3.722819e-3,
-                                    -6.981773e-6,
-                                     5.452852e-9 };
+            mSpecificHeatPoly3 = {   2.516291e5, -1.885135e4, 4.378403e2,
+                                    -1.279849,  4.873041e-3, -9.720354e-6,
+                                     8.049353e-9};
+
+
+            // based on data from Touloukian
+            mSpecificHeatPoly5 = { 2.093920e-8, -3.584665e-5, 7.431956e-2,
+                                   2.147682e2 };
 
             // very low temperatue condition
             create_beam_poly( 0.0,
@@ -74,7 +85,7 @@ namespace belfem
                               nist::dcpdT_janaf( mSpecificHeatPoly1, mSwitchCT0 ),
                               mSpecificHeatPoly0 );
 
-            // glue condition
+            // glue conditions
             create_beam_poly( mSwitchCT1,
                               nist::cp_janaf( mSpecificHeatPoly1, mSwitchCT1 ),
                               nist::dcpdT_janaf( mSpecificHeatPoly1, mSwitchCT1 ),
@@ -83,12 +94,41 @@ namespace belfem
                               nist::dcpdT_janaf( mSpecificHeatPoly3, mSwitchCT2 ),
                               mSpecificHeatPoly2 );
 
-            // linear function for high temperatures
-            mSpecificHeatPoly4.set_size( 2 );
-            mSpecificHeatPoly4( 0 )
-                = nist::dcpdT_janaf( mSpecificHeatPoly3, mSwitchCT3 ) ;
-            mSpecificHeatPoly4( 1 ) = nist::cp_janaf( mSpecificHeatPoly3, mSwitchCT3 )
-                                            -mSpecificHeatPoly4( 0 ) * mSwitchCT3 ;
+            create_beam_poly( mSwitchCT3,
+                              nist::cp_janaf( mSpecificHeatPoly3, mSwitchCT3 ),
+                              nist::dcpdT_janaf( mSpecificHeatPoly3, mSwitchCT3 ),
+                              mSwitchCT4,
+                              polyval( mSpecificHeatPoly5, mSwitchCT4 ),
+                              dpolyval( mSpecificHeatPoly5, mSwitchCT4 ),
+                              mSpecificHeatPoly4 );
+
+
+        }
+
+//--------------------------------------------------------------------------
+
+        void
+        Silver::create_specific_heat_spline()
+        {
+            uint tN = 701 ;
+            real tDeltaT = 2.0 ;
+
+            // populate data
+            Vector< real > tT( tN );
+            Vector< real > tC( tN );
+
+            tT( 0 ) = 0.0 ;
+            tC( 0 ) = 0.0 ;
+
+            for( uint k=1; k<tN; ++k )
+            {
+                tT( k ) = tT(k-1) + tDeltaT ;
+                tC( k ) = this->c_poly( tT( k ) );
+            }
+
+            SpMatrix tA;
+            spline::create_helpmatrix( tN, tDeltaT, tA  );
+            mCpSpline = new Spline( tT, tC, tA, 0, 0, 0 );
 
         }
 
@@ -138,10 +178,10 @@ namespace belfem
 
             create_beam_poly( mSwitchRT4,
                               polyval( mResistivityPoly1, mSwitchRT4 ),
-                              polyval( mResistivityPoly1, mSwitchRT4 ),
+                              dpolyval( mResistivityPoly1, mSwitchRT4 ),
                               mSwitchRT2,
                               polyval( mResistivityPoly3, mSwitchRT2 ),
-                              polyval( mResistivityPoly3, mSwitchRT2 ),
+                              dpolyval( mResistivityPoly3, mSwitchRT2 ),
                               mResistivityPoly2 );
 
             // - - - - - - - - - - - - - - - - - - - -
@@ -162,10 +202,10 @@ namespace belfem
 
             create_beam_poly( mSwitchRT3,
                               polyval( mResistivityPoly3, mSwitchRT3 ),
-                              polyval( mResistivityPoly3, mSwitchRT3 ),
+                              dpolyval( mResistivityPoly3, mSwitchRT3 ),
                               mSwitchRT4,
                               polyval( mResistivityPoly5, mSwitchRT4 ),
-                              polyval( mResistivityPoly5, mSwitchRT4 ),
+                              dpolyval( mResistivityPoly5, mSwitchRT4 ),
                               mResistivityPoly4 );
 
             // backscale
@@ -177,6 +217,41 @@ namespace belfem
             mResistivityPoly5 /= tScale ;
         }
 
+//--------------------------------------------------------------------------
+
+        void
+        Silver::create_resistivity_spline()
+        {
+            uint tN = 701 ;
+            real tDeltaT = 2.0 ;
+
+            // populate data
+            Vector< real > tT( tN );
+
+            tT( 0 ) = 0.0 ;
+            for( uint k=1; k<tN; ++k )
+            {
+                tT( k ) = tT(k-1) + tDeltaT ;
+            }
+
+            SpMatrix tA;
+            spline::create_helpmatrix( tN, tDeltaT, tA  );
+            Vector< real > tR( tN );
+
+            tR( 0 ) = 0.0 ;
+
+            for( uint k=1; k<tN; ++k )
+            {
+                tR( k ) = nist::rho0( mPrho, mRRR, tT( k ) );
+            }
+
+            if( mRhoSpline != nullptr )
+            {
+                delete mRhoSpline ;
+            }
+
+            mRhoSpline = new Spline( tT, tR, tA, 0, 0, 0 );
+        }
 
 //----------------------------------------------------------------------------
 
@@ -228,7 +303,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Silver::c( const real aT ) const
+        Silver::c_poly( const real aT ) const
         {
             if( aT < mSwitchCT0 )
             {
@@ -246,9 +321,13 @@ namespace belfem
             {
                 return nist::cp_janaf( mSpecificHeatPoly3, aT );
             }
-            else
+            else if ( aT < mSwitchCT4 )
             {
                 return polyval( mSpecificHeatPoly4, aT );
+            }
+            else
+            {
+                return polyval( mSpecificHeatPoly5, aT );
             }
         }
 
@@ -323,7 +402,22 @@ namespace belfem
         void
         Silver::create_conductivity_polys()
         {
+            // let 1/lambda = w0 + w1
+            // w0 =
 
+            // poly for w1, T< 50
+            mThermalConductivityPoly1 = { -7.5168e-9, 1.0500e-6, -1.9953e-6, 0 } ;
+            mThermalConductivityPoly3 = { 9.028e-7, 1.999e-3};
+
+            // create connecting poly
+            create_beam_poly(
+                    mSwitchLT0,
+                    polyval( mThermalConductivityPoly1, mSwitchLT0 ),
+                    dpolyval( mThermalConductivityPoly1, mSwitchLT0 ),
+                    mSwitchLT1,
+                    polyval( mThermalConductivityPoly3, mSwitchLT1 ),
+                    dpolyval( mThermalConductivityPoly3, mSwitchLT1 ),
+                    mThermalConductivityPoly2 );
         }
 
 //----------------------------------------------------------------------------
@@ -333,11 +427,38 @@ namespace belfem
         Silver::rho_el ( const real aJ, const real aT, const real aB ) const
         {
             // resistivity for zero magnetic field
-            real tRho0 = this->rho_el0_poly( aT );
+            real tRho0 = this->rho_el0_spline( aT );
 
-            return tRho0 * ( 1.0 + nist::kohler( mKohlerA, mKohlerB, mKohlerXmin, mRhoRef / tRho0 * std::abs( aB ) ) );
+            return tRho0 * ( 1.0 + nist::kohler( mKohlerA, mKohlerB,
+                                                 mKohlerXmin, mRhoRef / tRho0 * std::abs( aB ) ) );
         }
 
+//----------------------------------------------------------------------------
 
+        real
+        Silver::lambda( const real aT ) const
+        {
+
+            real tW0 = 0.7323 / ( mRRR * aT );
+            real tW1 = aT < mSwitchLT0 ?
+                    polyval( mThermalConductivityPoly1, aT ) :
+                       ( aT < mSwitchLT1 ?
+                         polyval( mThermalConductivityPoly2, aT ) :
+                         polyval( mThermalConductivityPoly3, aT ) ) ;
+
+            return 1.0 / ( tW0 + tW1 );
+        }
+
+//----------------------------------------------------------------------------
+
+        real
+        Silver::lambda( const real aT, const real aB ) const
+        {
+
+            return this->lambda( aT )  * ( 1.0 + nist::kohler( mKohlerA, mKohlerB, mKohlerXmin,
+                                                               mRhoRef / this->rho_el0_spline( aT )  * std::abs( aB ) ) );
+        }
+
+//----------------------------------------------------------------------------
     }
 }

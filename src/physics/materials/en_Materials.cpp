@@ -138,7 +138,7 @@ namespace belfem
         }
         else if ( tString == "silver" || tString == "ag" || tString == "argentum" )
         {
-            return MaterialType::Hastelloy ;
+            return MaterialType::Silver ;
         }
         else
         {

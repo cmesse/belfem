@@ -45,8 +45,11 @@ int main( int    argc,
 
     Vector< real > tT = {
             4.0,
+            7.5,
             10.0,
+            15.0,
             20.0,
+            25.0,
             30.0,
             40.0,
             50.0,
@@ -95,127 +98,269 @@ int main( int    argc,
         }
     }
 
-    if( tMatierial->has_thermal() )
+    // compute case
+    uint tCase = tMatierial->has_thermal_expansion() ? 1 : 0 ;
+    tCase += tMatierial->has_mechanical() ? 2 : 0 ;
+    tCase += tMatierial->has_electric_resistivity() ? 4 : 0 ;
+    tCase += tMatierial->has_thermal() ? 8 : 0 ;
+
+
+    switch( tCase )
     {
-        if( ! tMatierial->has_mechanical() )
+        case(  1 ) :
         {
-            if( ! tMatierial->has_electric_resistivity() )
-            {
-                printf( "      T          c    lambda\n");
-                printf( "      K    J/(kg*K)   W/(m*K)\n");
+            // alpha
+            printf( "      T    alpha\n" );
+            printf( "      K    1e-6/K\n" );
 
-
-                // loop over all entries
-                for ( uint k = 0; k < n; ++k )
-                {
-                    printf( " %6.0f %10.3f %10.3f\n",
-                            tT( k ),
-                            tMatierial->c( tT( k )),
-                            tMatierial->lambda( tT( k ))
-                    );
-                }
-            }
-            else
+            // loop over all entries
+            for ( uint k = 0; k < n; ++k )
             {
-                printf( "      T          c    lambda     ho_b0\n");
-                printf( "      K    J/(kg*K)   W/(m*K)    10-9 A/m²\n");
-                // loop over all entries
-                for ( uint k = 0; k < n; ++k )
-                {
-                    printf( " %6.0f %10.3f %10.3f %10.3f\n",
-                            tT( k ),
-                            tMatierial->c( tT( k )),
-                            tMatierial->lambda( tT( k )),
-                            tMatierial->rho_el( 0.0, tT( k ), 0.0 )*1e9
-                    );
-                }
+                printf( " %6.0f %10.3f\n",
+                        tT( k ),
+                        tMatierial->alpha( tT( k ))  * 1.e6 );
             }
+            break ;
         }
-        else if( ! tMatierial->has_thermal_expansion() )
+        case(  2 ) :
         {
-            if( ! tMatierial->has_electric_resistivity() )
+            printf( "      T    E        nu\n" );
+            printf( "      K    GPa      -\n" );
+
+            // loop over all entries
+            for ( uint k = 0; k < n; ++k )
             {
-                if( ! tMatierial->has_electric_resistivity() )
-                {
-                    printf( "      T          c    lambda      E        nu\n" );
-                    printf( "      K    J/(kg*K)   W/(m*K)     GPa      -\n" );
 
-                    // loop over all entries
-                    for ( uint k = 0; k < n; ++k )
-                    {
-
-                        printf( " %6.0f %10.3f %10.3f %10.3f %8.4f\n",
-                                tT( k ),
-                                tMatierial->c( tT( k )),
-                                tMatierial->lambda( tT( k )),
-                                1e-9 * tMatierial->E( tT( k )),
-                                tMatierial->nu( tT( k ))
-                        );
-                    }
-                }
-                else
-                {
-                    printf( "      T          c    lambda      E        nu     rho_e0\n" );
-                    printf( "      K    J/(kg*K)   W/(m*K)     GPa      -      10-9 A/m²\n" );
-                                                               printf( "T          c" );
-                    // loop over all entries
-                    for ( uint k = 0; k < n; ++k )
-                    {
-
-                        printf( " %6.0f %10.3f %10.3f %10.3f %8.4f %10.3f\n",
-                                tT( k ),
-                                tMatierial->c( tT( k )),
-                                tMatierial->lambda( tT( k )),
-                                1e-9 * tMatierial->E( tT( k )),
-                                tMatierial->nu( tT( k )),
-                                1e9 * tMatierial->rho_el( 0.0, tT( k ), 0.0 ) );
-                    }
-                }
+                printf( " %6.0f %10.3f %8.4f\n",
+                        tT( k ),
+                        1e-9 * tMatierial->E( tT( k )),
+                        tMatierial->nu( tT( k ))
+                );
             }
+            break ;
         }
-        else
+        case(  3 ) :
         {
-            if( ! tMatierial->has_electric_resistivity() )
+            //  E&nu, alpha
+            printf( "      T    E        nu    alpha\n" );
+            printf( "      K    GPa      -     1e-6/K\n" );
+
+            // loop over all entries
+            for ( uint k = 0; k < n; ++k )
             {
-                printf( "      T          c    lambda      E        nu        alpha\n" );
-                printf( "      K    J/(kg*K)   W/(m*K)     GPa      -         10-6\n" );
-
-                // loop over all entries
-                for ( uint k = 0; k < n; ++k )
-                {
-
-                    printf( " %6.0f %10.3f %10.3f %10.3f %8.4f %10.3f\n",
-                            tT( k ),
-                            tMatierial->c( tT( k )),
-                            tMatierial->lambda( tT( k )),
-                            1.e-9 * tMatierial->E( tT( k )),
-                            tMatierial->nu( tT( k )),
-                            tMatierial->alpha( tT( k )) * 1.e6
-                    );
-                }
+                printf( " %6.0f %10.3f %8.4f %10.3f\n",
+                        tT( k ),
+                        1e-9 * tMatierial->E( tT( k )),
+                        tMatierial->nu( tT( k ) ),
+                        tMatierial->alpha( tT( k ))  * 1.e6  );
             }
-            else
+            break ;
+        }
+        case(  4 ) :
+        {
+            // rho_el
+            printf( "      T    rho_e0\n" );
+            printf( "      K    10-9 A/m²\n" );
+
+            // loop over all entries
+            for ( uint k = 0; k < n; ++k )
             {
-                printf( "      T          c    lambda      E        nu        alpha     rho_e0\n" );
-                printf( "      K    J/(kg*K)   W/(m*K)     GPa      -         10-6      10-9 A/m²\n" );
 
-                // loop over all entries
-                for ( uint k = 0; k < n; ++k )
-                {
-
-                    printf( " %6.0f %10.3f %10.3f %10.3f %8.4f %10.3f %10.3f\n",
-                            tT( k ),
-                            tMatierial->c( tT( k )),
-                            tMatierial->lambda( tT( k )),
-                            1.e-9 * tMatierial->E( tT( k )),
-                            tMatierial->nu( tT( k )),
-                            tMatierial->alpha( tT( k )) * 1.e6,
-                            1e9 * tMatierial->rho_el( 0.0, tT( k ), 0.0 ) );
-                }
+                printf( " %6.0f %10.3f\n",
+                        tT( k ),
+                        1e9 * tMatierial->rho_el( 0.0, tT( k ), 0.0 ) );
             }
+            break ;
+        }
+        case(  5 ) :
+        {
+            // rho_el, alpha
+            printf( "      T    rho_e0       alpha\n" );
+            printf( "      K    1e-9 A/m²     1e-6/K\n" );
+
+            // loop over all entries
+            for ( uint k = 0; k < n; ++k )
+            {
+                printf( " %6.0f %10.3f %10.3f\n",
+                        tT( k ),
+                        1e9 * tMatierial->rho_el( 0.0, tT( k ), 0.0 ),
+                        1e6 * tMatierial->alpha( tT( k ) ) );
+            }
+            break ;
+        }
+        case(  6 ) :
+        {
+            // rho_el, E&nu
+            // cp&lambda, rho_el, E^nu
+            printf( "      T          rho_e0       E        nu\n" );
+            printf( "      K       10-9 A/m²     GPa        - \n" );
+            // loop over all entries
+            for ( uint k = 0; k < n; ++k )
+            {
+
+                printf( " %6.0f %10.3f %8.4f %10.3f\n",
+                        tT( k ),
+                        1e9 * tMatierial->rho_el( 0.0, tT( k ), 0.0 ),
+                        1e-9 * tMatierial->E( tT( k )),
+                        tMatierial->nu( tT( k ))  );
+            }
+            break ;
+        }
+        case(  7 ) :
+        {
+            // rho_el, E&nu, alpha
+            printf( "      T          rho_e0       E        nu       alpha\n" );
+            printf( "      K       10-9 A/m²     GPa        -         1e-6/K\n" );
+
+            // loop over all entries
+            for ( uint k = 0; k < n; ++k )
+            {
+                printf( " %6.0f %10.3f %8.4f %10.3f %10.3f\n",
+                        tT( k ),
+                        1e9 * tMatierial->rho_el( 0.0, tT( k ), 0.0 ),
+                        1e-9 * tMatierial->E( tT( k )),
+                        tMatierial->nu( tT( k )),
+                        1e6 * tMatierial->alpha( tT( k ) ) );
+            }
+            break ;
+        }
+        case(  8 ) :
+        {
+            // cp&lambda
+            printf( "      T          c    lambda\n");
+            printf( "      K    J/(kg*K)   W/(m*K)\n");
+
+            // loop over all entries
+            for ( uint k = 0; k < n; ++k )
+            {
+                printf( " %6.0f %10.3f %10.3f\n",
+                        tT( k ),
+                        tMatierial->c( tT( k )),
+                        tMatierial->lambda( tT( k ))
+                );
+            }
+            break ;
+        }
+        case(  9 ) :
+        {
+            // cp&lambda, alpha
+            printf( "      T          c    lambda      alpha\n" );
+            printf( "      K    J/(kg*K)   W/(m*K)     1e-6/K\n" );
+
+            // loop over all entries
+            for ( uint k = 0; k < n; ++k )
+            {
+
+                printf( " %6.0f %10.3f %10.3f %10.3f\n",
+                        tT( k ),
+                        tMatierial->c( tT( k )),
+                        tMatierial->lambda( tT( k )),
+                        tMatierial->alpha( tT( k )) * 1.e6
+                );
+            }
+            break ;
+        }
+        case( 10 ) :
+        {
+            // cp&lambda, E&nu,
+            printf( "      T          c    lambda      E        nu\n" );
+            printf( "      K    J/(kg*K)   W/(m*K)     GPa      -\n" );
+
+            // loop over all entries
+            for ( uint k = 0; k < n; ++k )
+            {
+
+                printf( " %6.0f %10.3f %10.3f %10.3f %8.4f\n",
+                        tT( k ),
+                        tMatierial->c( tT( k )),
+                        tMatierial->lambda( tT( k )),
+                        1e-9 * tMatierial->E( tT( k )),
+                        tMatierial->nu( tT( k ))
+                );
+            }
+            break ;
+        }
+        case( 11 ) :
+        {
+            // cp&lambda, E&nu, alpha
+            printf( "      T          c    lambda      E        nu        alpha\n" );
+            printf( "      K    J/(kg*K)   W/(m*K)     GPa      -         1e-6/K\n" );
+
+            // loop over all entries
+            for ( uint k = 0; k < n; ++k )
+            {
+
+                printf( " %6.0f %10.3f %10.3f %10.3f %8.4f %10.3f\n",
+                        tT( k ),
+                        tMatierial->c( tT( k )),
+                        tMatierial->lambda( tT( k )),
+                        1.e-9 * tMatierial->E( tT( k )),
+                        tMatierial->nu( tT( k )),
+                        tMatierial->alpha( tT( k )) * 1.e6
+                );
+            }
+            break ;
+        }
+        case( 12 ) :
+        {
+            // cp&lambda, rho_el
+            printf( "      T          c    lambda    rho_b0\n");
+            printf( "      K    J/(kg*K)   W/(m*K)    1e-9 A/m²\n");
+            // loop over all entries
+            for ( uint k = 0; k < n; ++k )
+            {
+                printf( " %6.0f %10.3f %10.3f %10.3f\n",
+                        tT( k ),
+                        tMatierial->c( tT( k )),
+                        tMatierial->lambda( tT( k )),
+                        tMatierial->rho_el( 0.0, tT( k ), 0.0 )*1e9
+                );
+            }
+            break ;
+        }
+        case( 13 ) :
+        {
+            // cp&lambda, rho_el, alpha
+            break ;
+        }
+        case( 14 ) :
+        {
+            // cp&lambda, rho_el, E^nu
+            printf( "      T          c    lambda       rho_e0       E        nu\n" );
+            printf( "      K    J/(kg*K)   W/(m*K)   1e-9 A/m²     GPa        - \n" );
+            // loop over all entries
+            for ( uint k = 0; k < n; ++k )
+            {
+                printf( " %6.0f %10.3f %10.3f %10.3f %8.4f %10.3f\n",
+                        tT( k ),
+                        tMatierial->c( tT( k )),
+                        tMatierial->lambda( tT( k )),
+                        1e9 * tMatierial->rho_el( 0.0, tT( k ), 0.0 ),
+                        1e-9 * tMatierial->E( tT( k )),
+                        tMatierial->nu( tT( k ))  );
+            }
+            break ;
+        }
+        case( 15 ) :
+        {
+            // cp&lambda, rho_el, E^nu, alpha
+            printf( "      T          c    lambda      rho_e0       E        nu        alpha\n" );
+            printf( "      K    J/(kg*K)   W/(m*K)  1e-9 A/m²     GPa        -         1e-6/K\n" );
+            // loop over all entries
+            for ( uint k = 0; k < n; ++k )
+            {
+                printf( " %6.0f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f\n",
+                        tT( k ),
+                        tMatierial->c( tT( k )),
+                        tMatierial->lambda( tT( k )),
+                        1e9 * tMatierial->rho_el( 0.0, tT( k ), 0.0 ),
+                        1e-9 * tMatierial->E( tT( k )),
+                        tMatierial->nu( tT( k )),
+                        1e6*tMatierial->alpha( tT(k)));
+            }
+            break ;
         }
     }
-
 
     delete tMatierial ;
 

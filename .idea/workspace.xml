@@ -57,30 +57,15 @@
   <component name="ChangeListManager">
     <list default="true" id="120f1831-a9f1-4c21-bf0a-19444f852628" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/core/cl_Logger.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/cl_Logger.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofMgr_DofData.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofMgr_DofData.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Element.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Element.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Group.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Group.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Group.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Group.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Kernel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Kernel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Kernel.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Kernel.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_KernelParameters.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_KernelParameters.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_KernelParameters.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_KernelParameters.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_SideSet.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_SideSet.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_SideSet.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_SideSet.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_MaxwellFactory.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_MaxwellFactory.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_MaxwellFactory.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_MaxwellFactory.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/postproc/fn_Mesh_compute_surface_normals.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/postproc/fn_Mesh_compute_surface_normals.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/postproc/fn_Mesh_compute_surface_normals.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/postproc/fn_Mesh_compute_surface_normals.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/lbl/test_input.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/lbl/test_input.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Facet.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Facet.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Facet.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Facet.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh_Partitioner.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh_Partitioner.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh_TapeRoller.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh_TapeRoller.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh_TapeRoller.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh_TapeRoller.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_MaterialFactory.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_MaterialFactory.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_Copper.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_Copper.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_Copper.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_Copper.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_Silver.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_Silver.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_Silver.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_Silver.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/en_Materials.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/en_Materials.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/main.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/main.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/nist_functions.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/nist_functions.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -117,23 +102,24 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
-    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;cmake.loaded.for.project&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/christian/codes/belfem&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;CPPToolchains&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "cmake.loaded.for.project": "true",
+    "last_opened_file_path": "/home/christian/codes/belfem",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "CPPToolchains"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/src/fem/maxwell/old" />
@@ -143,10 +129,15 @@
       <recent name="$PROJECT_DIR$/src/fem/kernel" />
     </key>
   </component>
-  <component name="RunManager" selected="CMake Application.test_input">
+  <component name="RunManager" selected="CMake Application.material">
     <configuration default="true" type="GradleAppRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
         <option name="com.jetbrains.cidr.cpp.gradle.execution.GradleNativeBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
       </method>
     </configuration>
     <configuration name="banner" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="banner" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="banner">
@@ -269,7 +260,7 @@
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="material" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="material" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="material">
+    <configuration name="material" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="silver" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="material" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="material">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -564,7 +555,8 @@
       <workItem from="1658255206592" duration="2000" />
       <workItem from="1658255220034" duration="24216000" />
       <workItem from="1658428446726" duration="3000" />
-      <workItem from="1658428566684" duration="28831000" />
+      <workItem from="1658428566684" duration="29610000" />
+      <workItem from="1658527109937" duration="12284000" />
     </task>
     <servers />
   </component>

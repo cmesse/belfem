@@ -9,9 +9,7 @@
 #include "fn_dpolyval.hpp"
 #include "fn_create_beam_poly.hpp"
 #include "fn_linspace.hpp"
-#include "cl_Matrix.hpp"
-#include "fn_gesv.hpp"
-#include "fn_create_fifth_order_beam_poly.hpp"
+#include "cl_SpMatrix.hpp"
 #include "nist_functions.hpp"
 
 namespace belfem
@@ -26,13 +24,17 @@ namespace belfem
             // set maximum temperature
             mTmax = 1357.15;
             mKohlerXmin = nist::extend_kohler( mKohlerA, mKohlerKmin, 8.0, mKohlerB ) ;
-            
-            this->set_rrr( mRRR );
 
-            this->create_specific_heat_polys();
             this->create_density_poly();
             this->create_mech_polys();
             this->create_expansion_polys();
+            this->create_specific_heat_polys();
+            this->create_specific_heat_spline();
+
+            this->set_rrr( mRRR );
+
+
+
 
             mHasThermal = true;
             mHasMechanical = true;
@@ -42,17 +44,29 @@ namespace belfem
 
 //----------------------------------------------------------------------------
 
+        Copper::~Copper()
+        {
+            delete mCpSpline ;
+            delete mRhoSpline ;
+
+        }
+//----------------------------------------------------------------------------
+
         void
         Copper::set_rrr( const real aRRR )
         {
             mRRR = aRRR ;
-            this->create_resistivity_polys() ;
-            mRhoRef = nist::rho0( mPrho, aRRR, mTref );
+
+            //this->create_resistivity_polys() ;
+            this->create_resistivity_spline() ;
+            mRhoRef = this->rho_el0_spline( mTref );
+
             this->create_conductivity_polys() ;
         }
 
 
 //----------------------------------------------------------------------------
+
         void
         Copper::create_specific_heat_polys()
         {
@@ -144,6 +158,32 @@ namespace belfem
             mSpecificHeatPoly9( 1 ) = polyval( mSpecificHeatPoly8, mSwitchCT8 )
                     -  mSpecificHeatPoly9( 0 ) * mSwitchCT8;
 
+        }
+//----------------------------------------------------------------------------
+
+        void
+        Copper::create_specific_heat_spline()
+        {
+            uint tN = 701 ;
+            real tDeltaT = 2.0 ;
+
+            SpMatrix tA;
+            spline::create_helpmatrix( tN, tDeltaT, tA );
+
+            // populate data
+            Vector< real > tT( tN );
+            Vector< real > tC( tN );
+
+            tT( 0 ) = 0.0 ;
+            tC( 0 ) = 0.0 ;
+
+            for( uint k=1; k<tN; ++k )
+            {
+                tT( k ) = tT(k-1) + tDeltaT ;
+                tC( k ) = this->c_poly( tT( k ) );
+            }
+
+            mCpSpline = new Spline( tT, tC, tA, 0, 0, 0 );
         }
 
 //----------------------------------------------------------------------------
@@ -318,7 +358,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Copper::c( const real aT ) const
+        Copper::c_poly( const real aT ) const
         {
             if( aT < mSwitchCT0 )
             {
@@ -414,8 +454,8 @@ namespace belfem
         real
         Copper::lambda( const real aT, const real aB ) const
         {
-            return this->lambda( aT ) * nist::rho0( mPrho, mRRR, aT ) /
-                this->rho_el( 0, aT, aB );
+            return this->lambda( aT )  * ( 1.0 + nist::kohler( mKohlerA, mKohlerB, mKohlerXmin,
+                                                               mRhoRef / this->rho_el0_spline( aT )  * std::abs( aB ) ) );
         }
 
 //----------------------------------------------------------------------------
@@ -425,7 +465,7 @@ namespace belfem
         Copper::rho_el ( const real aJ, const real aT, const real aB ) const
         {
             // resistivity for zero magnetic field
-            real tRho0 = this->rho_el0_poly( aT );
+            real tRho0 = this->rho_el0_spline( aT );
 
             return tRho0 * ( 1.0 + nist::kohler( mKohlerA, mKohlerB, mKohlerXmin, mRhoRef / tRho0 * std::abs( aB ) ) );
         }
@@ -651,6 +691,42 @@ namespace belfem
             mResistivityPoly5 /= tScale ;
             mResistivityPoly6 /= tScale ;
             mResistivityPoly7 /= tScale ;
+        }
+
+//----------------------------------------------------------------------------
+
+        void
+        Copper::create_resistivity_spline()
+        {
+            uint tN = 701 ;
+            real tDeltaT = 2.0 ;
+
+            // populate data
+            Vector< real > tT( tN );
+
+            tT( 0 ) = 0.0 ;
+            for( uint k=1; k<tN; ++k )
+            {
+                tT( k ) = tT(k-1) + tDeltaT ;
+            }
+
+            SpMatrix tA;
+            spline::create_helpmatrix( tN, tDeltaT, tA  );
+            Vector< real > tR( tN );
+
+            tR( 0 ) = 0.0 ;
+
+            for( uint k=1; k<tN; ++k )
+            {
+                tR( k ) = nist::rho0( mPrho, mRRR, tT( k ) );
+            }
+
+            if( mRhoSpline != nullptr )
+            {
+                delete mRhoSpline ;
+            }
+
+            mRhoSpline = new Spline( tT, tR, tA, 0, 0, 0 );
         }
 
 //----------------------------------------------------------------------------

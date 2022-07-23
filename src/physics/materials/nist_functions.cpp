@@ -16,12 +16,12 @@ namespace belfem
         real
         cp_janaf( const Vector< real > & aC, const real aT )
         {
-            return ( aC( 0 ) + aC( 1 ) * aT ) / aT
+            return ( aC( 0 ) + aC( 1 ) * aT ) / ( aT * aT )
                          + aC( 2 )
                          + aT * ( aC( 3 )
                          + aT * ( aC( 4 )
                          + aT * ( aC( 5 )
-                         + aT *   aC( 7 ) ) ) ) ;
+                         + aT *   aC( 6 ) ) ) ) ;
 
         }
 
