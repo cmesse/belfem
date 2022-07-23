@@ -613,179 +613,196 @@ namespace belfem
         Material *
         MaxwellFactory::create_maxwell_material( const input::Section * aInput )
         {
-            // create new material
-            MaxwellMaterial * aMaterial = new MaxwellMaterial( aInput->label() );
-
-            // check if resistance exists
-            if ( aInput->key_exists( "resistance" ) )
+            if( aInput->key_exists( "intrinsic" ) )
             {
-                // check type of resistance law
-                const string tType = string_to_lower( aInput->get_string( "resistance" ));
+                // create a material factory
+                MaterialFactory tFactory ;
 
-                // sanity checks
-                if ( tType == "powerlaw-ej" || tType == "powerlaw-ejb" || tType == "powerlaw-ejt" ||
-                     tType == "powerlaw-ejbt" )
+                // return the new material from the database
+                Material * aMaterial = tFactory.create_material( aInput->label() );
+
+                if( aInput->key_exists( "rrr" ) )
                 {
-
-                    BELFEM_ERROR(
-                            ( aInput->key_exists( "ec" ) && !aInput->key_exists( "rho_c" ))
-                            || ( !aInput->key_exists( "ec" ) && aInput->key_exists( "rho_c" )),
-                            "must prescribe either ec or rho_c, not both" );
-
-                    BELFEM_ERROR(
-                            ( aInput->key_exists( "n" ) && !aInput->key_exists( "n0" ))
-                            || ( !aInput->key_exists( "n" ) && aInput->key_exists( "n0" )),
-                            "variable must be called either n or n0, not both" );
-
-                    BELFEM_ERROR(
-                            ( aInput->key_exists( "jc" ) && !aInput->key_exists( "jc0" ))
-                            || ( !aInput->key_exists( "jc" ) && aInput->key_exists( "jc0" )),
-                            "variable must be called either jc or jc0, not both" );
-
+                    aMaterial->set_rrr( aInput->get_real( "rrr" ) );
                 }
+                return aMaterial ;
+            }
+            else
+            {
+                // create new material
+                MaxwellMaterial * aMaterial = new MaxwellMaterial( aInput->label());
 
-                if ( tType == "constant" )
+                // check if resistance exists
+                if ( aInput->key_exists( "resistance" ) )
                 {
+                    // check type of resistance law
+                    const string tType = string_to_lower( aInput->get_string( "resistance" ));
 
-                    if ( aInput->key_exists( "rho_c" ))
+                    // sanity checks
+                    if ( tType == "powerlaw-ej" || tType == "powerlaw-ejb" || tType == "powerlaw-ejt" ||
+                         tType == "powerlaw-ejbt" )
                     {
-                        aMaterial->set_rho_el_const( aInput->get_value( "rho_c", "Ohm*m" ).first );
+
+                        BELFEM_ERROR(
+                                ( aInput->key_exists( "ec" ) && !aInput->key_exists( "rho_c" ))
+                                || ( !aInput->key_exists( "ec" ) && aInput->key_exists( "rho_c" )),
+                                "must prescribe either ec or rho_c, not both" );
+
+                        BELFEM_ERROR(
+                                ( aInput->key_exists( "n" ) && !aInput->key_exists( "n0" ))
+                                || ( !aInput->key_exists( "n" ) && aInput->key_exists( "n0" )),
+                                "variable must be called either n or n0, not both" );
+
+                        BELFEM_ERROR(
+                                ( aInput->key_exists( "jc" ) && !aInput->key_exists( "jc0" ))
+                                || ( !aInput->key_exists( "jc" ) && aInput->key_exists( "jc0" )),
+                                "variable must be called either jc or jc0, not both" );
+
                     }
-                    if ( aInput->key_exists( "rho" ))
+
+                    if ( tType == "constant" )
                     {
-                        aMaterial->set_rho_el_const( aInput->get_value( "rho", "Ohm*m" ).first );
+
+                        if ( aInput->key_exists( "rho_c" ))
+                        {
+                            aMaterial->set_rho_el_const( aInput->get_value( "rho_c", "Ohm*m" ).first );
+                        }
+                        if ( aInput->key_exists( "rho" ))
+                        {
+                            aMaterial->set_rho_el_const( aInput->get_value( "rho", "Ohm*m" ).first );
+                        }
+                        else
+                        {
+                            real tEc = aInput->get_value( "ec", "V/m" ).first;
+
+                            real tJc = aInput->key_exists( "jc" ) ?
+                                       aInput->get_value( "jc", "A/m^2" ).first :
+                                       aInput->get_value( "jc0", "A/m^2" ).first;
+
+                            aMaterial->set_rho_el_const( tEc / tJc );
+                        }
+                    }
+                    else if ( tType == "powerlaw-ej" )
+                    {
+                        real tJc = aInput->key_exists( "jc0" ) ?
+                                   aInput->get_value( "jc0", "A/m^2" ).first :
+                                   aInput->get_value( "jc", "A/m^2" ).first;
+
+                        real tN = aInput->key_exists( "n0" ) ?
+                                  aInput->get_value( "n0", "-" ).first :
+                                  aInput->get_value( "n", "-" ).first;
+
+                        real tEc = aInput->key_exists( "rho_c" ) ?
+                                   aInput->get_value( "rho_c", "Ohm*m" ).first * tJc :
+                                   aInput->get_value( "ec", "V/m" ).first;
+
+                        aMaterial->set_rho_el_ej( tEc, tJc, tN );
+
+                    }
+                    else if ( tType == "powerlaw-ejt" )
+                    {
+
+                        real tJc = aInput->key_exists( "jc0" ) ?
+                                   aInput->get_value( "jc0", "A/m^2" ).first :
+                                   aInput->get_value( "jc", "A/m^2" ).first;
+
+                        real tN0 = aInput->key_exists( "n0" ) ?
+                                   aInput->get_value( "n0", "-" ).first :
+                                   aInput->get_value( "n", "-" ).first;
+
+                        real tEc = aInput->key_exists( "rho_c" ) ?
+                                   aInput->get_value( "rho_c", "Ohm*m" ).first * tJc :
+                                   aInput->get_value( "ec", "V/m" ).first;
+
+
+                        real tT0 = aInput->get_value( "T0", "K" ).first;
+                        real tTc = aInput->get_value( "Tc", "K" ).first;
+
+                        aMaterial->set_rho_el_ejt( tEc, tJc, tN0, tT0, tTc );
+                    }
+                    else if ( tType == "powerlaw-ejb" )
+                    {
+                        real tJc = aInput->key_exists( "jc0" ) ?
+                                   aInput->get_value( "jc0", "A/m^2" ).first :
+                                   aInput->get_value( "jc", "A/m^2" ).first;
+
+                        real tEc = aInput->key_exists( "rho_c" ) ?
+                                   aInput->get_value( "rho_c", "Ohm*m" ).first * tJc :
+                                   aInput->get_value( "ec", "V/m" ).first;
+
+                        real tN0 = aInput->key_exists( "n0" ) ?
+                                   aInput->get_value( "n0", "-" ).first :
+                                   aInput->get_value( "n", "-" ).first;
+
+                        real tN1 = aInput->get_value( "n1", "-" ).first;
+
+                        real tB0 = aInput->get_value( "b0", "T" ).first;
+
+                        aMaterial->set_rho_el_ejb( tEc, tJc, tN0, tN1, tB0 );
+                    }
+                    else if ( tType == "powerlaw-ejbt" )
+                    {
+                        real tJc = aInput->key_exists( "jc0" ) ?
+                                   aInput->get_value( "jc0", "A/m^2" ).first :
+                                   aInput->get_value( "jc", "A/m^2" ).first;
+
+                        real tEc = aInput->key_exists( "rho_c" ) ?
+                                   aInput->get_value( "rho_c", "Ohm*m" ).first * tJc :
+                                   aInput->get_value( "ec", "V/m" ).first;
+
+                        real tN0 = aInput->key_exists( "n0" ) ?
+                                   aInput->get_value( "n0", "-" ).first :
+                                   aInput->get_value( "n", "-" ).first;
+
+                        real tN1 = aInput->get_value( "n1", "-" ).first;
+
+                        real tB0 = aInput->get_value( "b0", "T" ).first;
+
+                        real tT0 = aInput->get_value( "T0", "K" ).first;
+                        real tTc = aInput->get_value( "Tc", "K" ).first;
+
+                        aMaterial->set_rho_el_ejbt( tEc, tJc, tN0, tN1, tB0, tT0, tTc );
                     }
                     else
                     {
-                        real tEc = aInput->get_value( "ec", "V/m" ).first;
-
-                        real tJc = aInput->key_exists( "jc" ) ?
-                                   aInput->get_value( "jc", "A/m^2" ).first :
-                                   aInput->get_value( "jc0", "A/m^2" ).first;
-
-                        aMaterial->set_rho_el_const( tEc / tJc );
+                        BELFEM_ERROR( false, "unknown resistance law: %s", tType.c_str());
                     }
                 }
-                else if ( tType == "powerlaw-ej" )
+
+                if ( aInput->key_exists( "permeability" ))
                 {
-                    real tJc = aInput->key_exists( "jc0" ) ?
-                               aInput->get_value( "jc0", "A/m^2" ).first :
-                               aInput->get_value( "jc", "A/m^2" ).first;
+                    // check type of permeability law
+                    const string & tType = aInput->get_string( "permeability" );
 
-                    real tN = aInput->key_exists( "n0" ) ?
-                              aInput->get_value( "n0", "-" ).first :
-                              aInput->get_value( "n", "-" ).first;
-
-                    real tEc = aInput->key_exists( "rho_c" ) ?
-                               aInput->get_value( "rho_c", "Ohm*m" ).first * tJc :
-                               aInput->get_value( "ec", "V/m" ).first;
-
-                    aMaterial->set_rho_el_ej( tEc, tJc, tN );
-
-                }
-                else if ( tType == "powerlaw-ejt" )
-                {
-
-                    real tJc = aInput->key_exists( "jc0" ) ?
-                               aInput->get_value( "jc0", "A/m^2" ).first :
-                               aInput->get_value( "jc", "A/m^2" ).first;
-
-                    real tN0 = aInput->key_exists( "n0" ) ?
-                               aInput->get_value( "n0", "-" ).first :
-                               aInput->get_value( "n", "-" ).first;
-
-                    real tEc = aInput->key_exists( "rho_c" ) ?
-                               aInput->get_value( "rho_c", "Ohm*m" ).first * tJc :
-                               aInput->get_value( "ec", "V/m" ).first;
-
-
-                    real tT0 = aInput->get_value( "T0", "K" ).first;
-                    real tTc = aInput->get_value( "Tc", "K" ).first;
-
-                    aMaterial->set_rho_el_ejt( tEc, tJc, tN0, tT0, tTc );
-                }
-                else if ( tType == "powerlaw-ejb" )
-                {
-                    real tJc = aInput->key_exists( "jc0" ) ?
-                               aInput->get_value( "jc0", "A/m^2" ).first :
-                               aInput->get_value( "jc", "A/m^2" ).first;
-
-                    real tEc = aInput->key_exists( "rho_c" ) ?
-                               aInput->get_value( "rho_c", "Ohm*m" ).first * tJc :
-                               aInput->get_value( "ec", "V/m" ).first;
-
-                    real tN0 = aInput->key_exists( "n0" ) ?
-                               aInput->get_value( "n0", "-" ).first :
-                               aInput->get_value( "n", "-" ).first;
-
-                    real tN1 = aInput->get_value( "n1", "-" ).first;
-
-                    real tB0 = aInput->get_value( "b0", "T" ).first;
-
-                    aMaterial->set_rho_el_ejb( tEc, tJc, tN0, tN1, tB0 );
-                }
-                else if ( tType == "powerlaw-ejbt" )
-                {
-                    real tJc = aInput->key_exists( "jc0" ) ?
-                               aInput->get_value( "jc0", "A/m^2" ).first :
-                               aInput->get_value( "jc", "A/m^2" ).first;
-
-                    real tEc = aInput->key_exists( "rho_c" ) ?
-                               aInput->get_value( "rho_c", "Ohm*m" ).first * tJc :
-                               aInput->get_value( "ec", "V/m" ).first;
-
-                    real tN0 = aInput->key_exists( "n0" ) ?
-                               aInput->get_value( "n0", "-" ).first :
-                               aInput->get_value( "n", "-" ).first;
-
-                    real tN1 = aInput->get_value( "n1", "-" ).first;
-
-                    real tB0 = aInput->get_value( "b0", "T" ).first;
-
-                    real tT0 = aInput->get_value( "T0", "K" ).first;
-                    real tTc = aInput->get_value( "Tc", "K" ).first;
-
-                    aMaterial->set_rho_el_ejbt( tEc, tJc, tN0, tN1, tB0, tT0, tTc );
-                }
-                else
-                {
-                    BELFEM_ERROR( false, "unknown resistance law: %s", tType.c_str());
-                }
-            }
-
-            if ( aInput->key_exists( "permeability" ))
-            {
-                // check type of permeability law
-                const string & tType = aInput->get_string( "permeability" );
-
-                if ( tType == "constant" )
-                {
-                    if ( aInput->key_exists( "mu_r" ))
+                    if ( tType == "constant" )
                     {
-                        aMaterial->set_mu_r( aInput->get_value( "mu_r", "-" ).first );
+                        if ( aInput->key_exists( "mu_r" ))
+                        {
+                            aMaterial->set_mu_r( aInput->get_value( "mu_r", "-" ).first );
+                        }
+                    }
+                    else if ( tType == "textfile" )
+                    {
+                        const string & tPath = aInput->get_string( "path" );
+                        const string tUnitB = aInput->key_exists( "unitb" ) ? aInput->get_string( "unitb" )
+                                                                            : "T";
+                        const string tUnitH = aInput->key_exists( "unith" ) ? aInput->get_string( "unith" )
+                                                                            : "A/m";
+
+                        const value tMaxB = aInput->get_value( "maxb", "T" );
+
+                        real tM = BELFEM_QUIET_NAN;
+                        aMaterial->set_nu_s( this->read_bhfile( tPath, tUnitB, tUnitH, tMaxB, tM ));
+                        aMaterial->set_m0( tM );
+
+                    }
+                    else
+                    {
+                        BELFEM_ERROR( false, "unknown permeability law: %s", tType.c_str());
                     }
                 }
-                else if ( tType == "textfile" )
-                {
-                    const string & tPath = aInput->get_string( "path" );
-                    const string tUnitB = aInput->key_exists( "unitb" ) ? aInput->get_string( "unitb" )
-                                                                        : "T";
-                    const string tUnitH = aInput->key_exists( "unith" ) ? aInput->get_string( "unith" )
-                                                                        : "A/m";
-
-                    const value tMaxB = aInput->get_value( "maxb", "T" );
-
-                    real tM = BELFEM_QUIET_NAN;
-                    aMaterial->set_nu_s( this->read_bhfile( tPath, tUnitB, tUnitH, tMaxB, tM ));
-                    aMaterial->set_m0( tM );
-
-                }
-                else
-                {
-                    BELFEM_ERROR( false, "unknown permeability law: %s", tType.c_str());
-                }
+                return aMaterial;
             }
-            return aMaterial ;
         }
 
 

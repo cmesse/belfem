@@ -24,6 +24,7 @@
 namespace belfem
 {
 //----------------------------------------------------------------------------
+
     Material *
     MaterialFactory::create_material( const MaterialType aMaterial )
     {
@@ -93,6 +94,14 @@ namespace belfem
                 return nullptr;
             }
         }
+    }
+
+//----------------------------------------------------------------------------
+
+    Material *
+    MaterialFactory::create_material( const string & aLabel )
+    {
+        return this->create_material( string_to_material_type( aLabel ) );
     }
 
 //----------------------------------------------------------------------------

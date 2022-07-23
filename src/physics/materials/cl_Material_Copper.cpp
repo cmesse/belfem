@@ -183,7 +183,7 @@ namespace belfem
                 tC( k ) = this->c_poly( tT( k ) );
             }
 
-            mCpSpline = new Spline( tT, tC, tA, 0, 0, 0 );
+            mCpSpline = new Spline( tT, tC, tA );
         }
 
 //----------------------------------------------------------------------------
@@ -726,7 +726,7 @@ namespace belfem
                 delete mRhoSpline ;
             }
 
-            mRhoSpline = new Spline( tT, tR, tA, 0, 0, 0 );
+            mRhoSpline = new Spline( tT, tR, tA );
         }
 
 //----------------------------------------------------------------------------

@@ -206,7 +206,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-
     void  Spline::save(
             const string            & aLabel,
             const string            & aPath,
