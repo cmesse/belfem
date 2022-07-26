@@ -265,7 +265,7 @@ namespace belfem
                     aGroup->work_J().set_size( mNumberOfDimensions, mNumberOfDimensions );
                     aGroup->work_invJ().set_size( mNumberOfDimensions, mNumberOfDimensions );
 
-                    aGroup->work_B().set_size( mNumberOfDimensions, mNumberOfNodesPerElement );
+                    aGroup->work_C().set_size( mNumberOfDimensions, mNumberOfNodesPerElement );
 
 
                     // data for nxB or nxN in 2D
@@ -306,6 +306,9 @@ namespace belfem
                     aGroup->work_K().set_size( mNumberOfDofsPerElement,
                                                mNumberOfDofsPerElement, 0.0 );
 
+                    // work vector for B-Matrix
+                    aGroup->work_B().set_size( 1, mNumberOfDofsPerEdge );
+
                     // data for nxB or nxN in 2D
                     aGroup->work_sigma().set_size( mNumberOfNodesPerElement, 0.0 );
 
@@ -316,6 +319,21 @@ namespace belfem
                     uint tN = mesh::interpolation_order_numeric( aGroup->element_type() ) + 1 ;
 
                     aGroup->work_M().set_size( tN, tN, 0.0 );
+
+
+                    // data for edge dofs
+                    aGroup->work_phi().set_size( this->number_of_ghost_sidesets() * mNumberOfDofsPerEdge, 0.0 ) ;
+
+                    // todo: add face dofs for 3D
+                    if( mNumberOfDofsPerFace > 0 && mMesh->number_of_dimensions() == 3 )
+                    {
+                        aGroup->work_psi().set_size( this->number_of_ghost_sidesets() * mNumberOfDofsPerFace, 0.0 );
+                    }
+
+                    // data for temperatures
+                    aGroup->work_tau().set_size( this->number_of_ghost_sidesets(), 0.0 );
+
+                    aGroup->work_nedelec().set_size( mNumberOfDofsPerElement );
 
                     break ;
                 }
@@ -2630,6 +2648,74 @@ namespace belfem
             comm_barrier() ;
 
         }
+
+//------------------------------------------------------------------------------
+
+        // specifically for thin shells
+        const Vector< real > &
+        IWG_Maxwell::collect_q0_hphi_thinshell( Element * aElement )
+        {
+            // grab the output vector
+            Vector< real > & aQ0 = mGroup->work_nedelec() ;
+
+            BELFEM_ASSERT( mGroup->domain_type() == DomainType::ThinShell,
+                "function IWG_Maxwell::collect_thin_shell_hphi0 can only be applied to a thin shell" );
+
+            // grab field data from mesh
+            const Vector< real > & tPhi  = mMesh->field_data( "phi0" );
+            const Vector< real > & tHe   = mMesh->field_data("edge_h0" );
+            const Vector< real > & tHf   = mNumberOfDofsPerFace > 0 ? mMesh->field_data("face_h0" ) : tHe ;
+            const Vector< real > & tLm   = mMesh->field_data( "lambda_m" );
+            const Vector< real > & tLs   = mMesh->field_data( "lambda_s" );
+
+            bool tMasterFlip = false ;
+
+            // loop over all dofs
+            for( uint k=0; k<mNumberOfDofsPerElement; ++k )
+            {
+                // grab dof
+                Dof * tDof = aElement->dof( k );
+
+                switch( tDof->mesh_vertex()->entity_type() )
+                {
+                    case( EntityType::NODE ) :
+                    {
+                        aQ0( k ) = tPhi( tDof->mesh_vertex()->index() );
+                        break ;
+                    }
+                    case( EntityType::EDGE ) :
+                    {
+                        aQ0( k ) = tHe( tDof->mesh_vertex()->index() );
+                        break ;
+                    }
+                    case( EntityType::FACE ) :
+                    {
+                        aQ0( k ) = tHf( tDof->mesh_vertex()->index() );
+                        break ;
+                    }
+                    case( EntityType::FACET ) :
+                    {
+                        if( tMasterFlip )
+                        {
+                            aQ0( k ) = tLs( tDof->mesh_vertex()->index() );
+                        }
+                        else
+                        {
+                            aQ0( k ) = tLm( tDof->mesh_vertex()->index() );
+                            tMasterFlip = true ;
+                        }
+                        break ;
+                    }
+                    default :
+                    {
+                        BELFEM_ERROR( false, "Invalid dof type" );
+                    }
+                }
+            }
+
+            return aQ0 ;
+        }
+
 //------------------------------------------------------------------------------
     }
 }

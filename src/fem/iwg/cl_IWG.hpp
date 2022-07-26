@@ -740,6 +740,14 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            /**
+             * return the ghost sideset IDs
+             */
+            uint
+            number_of_ghost_sidesets() const ;
+
+//------------------------------------------------------------------------------
+
             DomainType
             block_type( const id_t aID ) const ;
 
@@ -1458,6 +1466,14 @@ namespace belfem
         IWG::ghost_sideset_ids() const
         {
             return mGhostSideSetIDs ;
+        }
+
+//---------------------------------------------------------------------------------
+
+        inline uint
+        IWG::number_of_ghost_sidesets() const
+        {
+            return mGhostSideSetIDs.length();
         }
 
 //---------------------------------------------------------------------------------

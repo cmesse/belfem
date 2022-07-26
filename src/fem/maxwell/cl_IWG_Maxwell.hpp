@@ -61,10 +61,6 @@ namespace belfem
             //! list with dofs per entity
             maxwell::FieldList mFields ;
 
-            //! flag telling if this IWG has sheet dofs
-            //! determined during initialization
-            bool mHaveShellDofs = false ;
-
             //! the edge shape function
             EdgeFunction * mEdgeFunction = nullptr ;
 
@@ -359,6 +355,12 @@ namespace belfem
             compute_jacobian_and_rhs_cut( Element        * aElement,
                                           Matrix< real > & aJacobian,
                                           Vector< real > & aRHS );
+
+//------------------------------------------------------------------------------
+
+            // specifically for thin shells
+            const Vector< real > &
+            collect_q0_hphi_thinshell( Element * aElement );
 
 //------------------------------------------------------------------------------
         private:

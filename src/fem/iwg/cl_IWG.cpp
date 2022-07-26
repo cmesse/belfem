@@ -303,7 +303,7 @@ namespace belfem
 
             // allocate memory
             this->create_sideset_dof_tables( aSideSetIDs.length(),
-                                             mGhostSideSetIDs.length() );
+                                             this->number_of_ghost_sidesets()  );
         }
 
 //------------------------------------------------------------------------------

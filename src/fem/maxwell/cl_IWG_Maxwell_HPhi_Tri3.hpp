@@ -124,6 +124,7 @@ namespace belfem
             void
             compute_layer_stiffness( Element * aElement,
                                      const uint aLayer,
+                                     const Vector < real > & aH,
                                      Matrix< real > & aK );
 
 //------------------------------------------------------------------------------

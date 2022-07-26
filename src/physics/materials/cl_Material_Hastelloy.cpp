@@ -31,6 +31,7 @@ namespace belfem
             mHasThermal = true;
             mHasMechanical = true;
             mHasExpansion = true;
+            mHasResistivity = true ;
         }
 
 //----------------------------------------------------------------------------

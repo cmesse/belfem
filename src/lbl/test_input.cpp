@@ -167,7 +167,6 @@ int main( int    argc,
    real tOmegaN = tNonlinear.newtonOmega ;
 
 
-    /*
     while( tTime < tMaxTime )
    {
        // increment timestep
@@ -283,7 +282,7 @@ int main( int    argc,
        tFormulation->save( tBackupFile );
 
        comm_barrier() ;
-   } */
+   }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // tidy up

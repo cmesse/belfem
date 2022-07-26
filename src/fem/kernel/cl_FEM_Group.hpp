@@ -247,7 +247,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            const IntegrationData *
+            virtual const IntegrationData *
             thinshell_integration() const ;
 
 //------------------------------------------------------------------------------

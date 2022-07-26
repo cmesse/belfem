@@ -13,6 +13,7 @@
 #include "cl_Arguments.hpp"
 #include "en_Materials.hpp"
 #include "cl_MaterialFactory.hpp"
+#include "fn_linspace.hpp"
 
 using namespace belfem;
 
@@ -53,7 +54,7 @@ int main( int    argc,
 
         std::cout << "Material: " << tMatierial->label() << std::endl;
 
-        Vector< real > tT = {
+       Vector< real > tT = {
                 4.0,
                 7.5,
                 10.0,
@@ -95,9 +96,11 @@ int main( int    argc,
                 2800.0,
                 3000.0 };
 
+
+        // Vector< real > tT = linspace( 4.0, 300.0, 297 );
+              
         // scan material list
         uint n = tT.length();
-
         for ( uint k = 0; k < tT.length(); ++k )
         {
             if ( tT( k ) > tMatierial->T_max())

@@ -427,13 +427,34 @@ namespace belfem
             tK.fill( 0.0 );
             aRHS.fill( 0.0 );
 
+            // data for magnetic scalar pontential
+            Vector< real > & tPhi = mGroup->work_phi() ;
+
+            tPhi.print("phi");
+
+            // data for magnetic field
+            Vector< real > & tH = mGroup->work_phi() ;
+
             this->print_dofs( aElement );
+            this->collect_edge_data( aElement, "edge_h", tH );
+
+            // check sign
+            tH *= tSign ;
+
+            tH.print("edge_h");
+
+
+            // data for temperatures
+            //Vector< real > & tT = mGroup->work_tau() ;
+            //this->collect_edge_data( aElement, "cell_T", tT );
+
             // std::cout << "check " << aRHS.length() << " " << tM.n_cols() << " " << tK.n_cols() << std::endl ;
 
 
             // compute the normal
             const Vector< real > & tn = this->normal_straight_2d( aElement );
             const real tElementLength = mGroup->work_det_J() + mGroup->work_det_J();
+
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // lambda-condition for master element, air side
@@ -443,7 +464,6 @@ namespace belfem
             aElement->master()->get_node_coors( tX );
             tJ = tNodeFunction->dNdXi( 0 ) * tX ;
             tB = inv( tJ ) * tNodeFunction->dNdXi( 0 );
-
 
             crossmat( tn, mGroup->work_B(), tnxB );
 
@@ -492,10 +512,6 @@ namespace belfem
             tM( i, j ) = tSign ;
             tM( j, i ) = tSign ;
 
-            // scale mass matrix with element length
-            // ( thus simplifying an integral over constant)
-            tM *= tElementLength ;
-
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // contribution for mass matrix
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -517,23 +533,42 @@ namespace belfem
                 // get thickness of thin shell
                 real t = mGroup->thin_shell_thickness( l );
 
-                tM(i,i) += tMlayer(0,0) * t ;
-                tM(i+1,i) += tMlayer(1,0) * t ;
-                tM(i,i+1) += tMlayer(0,1) * t ;
+                tM(i,i)     += tMlayer(0,0) * t ;
+                tM(i+1,i)   += tMlayer(1,0) * t ;
+                tM(i,i+1)   += tMlayer(0,1) * t ;
                 tM(i+1,i+1) += tMlayer(1,1) * t ;
+
+                this->compute_layer_stiffness( aElement, l, tH, tKlayer );
+                tK(i,i)     += tKlayer(0,0) ;
+                tK(i+1,i)   += tKlayer(1,0) ;
+                tK(i,i+1)   += tKlayer(0,1) ;
+                tK(i+1,i+1) += tKlayer(1,1) ;
 
                 ++i ;
 
             }
 
+
+            // scale mass matrix with element length
+            // ( thus simplifying an integral over constant)
+            tM *= tElementLength ;
+            tK *= tElementLength ;
+
             // not doing  the laplace flux thing for now (Alves doesn't do it either)
 
-            // now we need the edges
-            //tM.print("M");
-            //std::cout << " l " << tElementLength << " " << mNumberOfLayersPerShell << std::endl ;
+            // now we compute the stiffness the same way
 
 
-            this->compute_layer_stiffness( aElement, 0, tKlayer );
+            // compute the right hand side
+
+            // compute the right hand side
+            aRHS = tM *  this->collect_q0_hphi_thinshell( aElement ) ;
+
+            // finalize the Jacobian
+            aJacobian += mDeltaTime * mGroup->work_K() ;
+
+            aRHS.print("RHS");
+            aJacobian.print("Jacobian");
 
             //mGroup->master_integration( )
             exit( 0 );
@@ -545,10 +580,23 @@ namespace belfem
         IWG_Maxwell_HPhi_Tri3::compute_layer_stiffness(
                 Element * aElement,
                 const uint aLayer,
+                const Vector < real > & aH,
                 Matrix< real > & aK )
         {
             // reset matrix
             aK.fill( 0.0 );
+
+            // grab material
+            const Material * tMaterial = mGroup->thin_shell_material( aLayer );
+
+            // grab layer thickness
+            const real tThickness = mGroup->thin_shell_thickness( aLayer );
+
+            // for the curl-Operator
+            Matrix< real > & tC = mGroup->work_C();
+
+            // integration data
+            const IntegrationData * tInteg = mGroup->thinshell_integration();
 
             // grab ghost element
             mesh::Facet * tFacet = mMesh->ghost_facet( aElement->id(), aLayer );
@@ -556,7 +604,51 @@ namespace belfem
             std::cout << "edge " << tFacet->edge( 0 )->id() << std::endl ;
 
             std::cout << "nodes" << tFacet->edge( 0 )->node( 0 ) ->id() << " " <<tFacet->edge( 0 )->node( 1 )->id() << std::endl ;
-            aK.print( "K_layer" );
+
+            std::cout << "mat " << tMaterial->label() << std::endl ;
+            std::cout << "thick " << tThickness << std::endl ;
+
+
+
+            // get the ingeration weights
+            const Vector< real > & tW = tInteg->weights() ;
+            uint tNumIntpoints = tW.length() ;
+
+            // geometry Jacobian
+            real tJ = 0.5 * tThickness ;
+
+            // magnetic field
+            real tB ;
+
+            // todo: compute temperature
+            real tT = 4.0 ;
+
+            // current density is constant for linear element
+            real tJz = (  aH( aLayer+1 ) - aH(aLayer ) )  / tThickness ;
+
+            // curl operator is constant for linear element
+            tC = tInteg->dNdXi( 0 ) ;
+            tC /= tJ ;
+
+            for( uint k=0; k<tNumIntpoints; ++k )
+            {
+                // get shape function
+
+                const Matrix< real > & tN = tInteg->N( k );
+
+
+                // magnetic field
+                tB = constant::mu0 * ( tN( 0, 0) * aH( aLayer )
+                        + tN( 0, 1 ) * aH( aLayer + 1 ) );
+
+                aK += ( tW( k ) * tMaterial->rho_el( tJz, tT, tB ) ) * trans( tC ) * tC ;
+
+
+                std::cout << k << " B=" << tB << " J=" << tJz << std::endl ;
+
+
+            }
+            aK *= tJ ;
         }
 
 //------------------------------------------------------------------------------

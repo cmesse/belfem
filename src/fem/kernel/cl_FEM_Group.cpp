@@ -265,7 +265,7 @@ namespace belfem
             BELFEM_ERROR( false,
                            "Function not implemented for this group type" );
 
-            // but we must expor
+            // this will never happen
             return nullptr ;
 
         }
