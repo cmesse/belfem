@@ -12,7 +12,7 @@ namespace belfem
 
         Dof::Dof( const id_t aID, const uint & aType, mesh::Node * aNode ) :
             Vertex(),
-            mMeshVertex( aNode ),
+            mMeshBasis( aNode ),
             mTypeID( aType ),
             mIndexOnField( aNode->index() )
         {
@@ -24,7 +24,7 @@ namespace belfem
 
         Dof::Dof( const id_t aID, const uint & aType, mesh::Edge * aEdge, const index_t aDofIndexOnField ) :
                 Vertex(),
-                mMeshVertex( aEdge ),
+                mMeshBasis( aEdge ),
                 mTypeID( aType ),
                 mIndexOnField( aDofIndexOnField )
         {
@@ -36,7 +36,7 @@ namespace belfem
 
         Dof::Dof( const id_t aID, const uint & aType, mesh::Face * aFace, const index_t aDofIndexOnField ) :
                 Vertex(),
-                mMeshVertex( aFace ),
+                mMeshBasis( aFace ),
                 mTypeID( aType ),
                 mIndexOnField( aDofIndexOnField )
         {
@@ -48,7 +48,7 @@ namespace belfem
 
         Dof::Dof( const id_t aID, const uint & aType, mesh::Facet * aFacet ) :
         Vertex(),
-        mMeshVertex( aFacet ),
+        mMeshBasis( aFacet ),
         mTypeID( aType ),
         mIndexOnField( aFacet->index() )
         {

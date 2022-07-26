@@ -21,7 +21,7 @@ namespace belfem
         class Dof : public graph::Vertex
         {
             // pointer to node or edge of this flag
-            mesh::Vertex * mMeshVertex;
+            mesh::Basis * mMeshBasis ;
 
             // type of the current dof, needed for vectors
             // temperature: always zero
@@ -67,12 +67,12 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             bool
-            mesh_vertex_is_flagged();
+            mesh_basis_is_flagged();
 
 //------------------------------------------------------------------------------
 
-            mesh::Vertex *
-            mesh_vertex();
+            mesh::Basis *
+            mesh_basis();
 
 //------------------------------------------------------------------------------
 
@@ -89,6 +89,14 @@ namespace belfem
              */
             mesh::Edge *
             edge();
+
+//------------------------------------------------------------------------------
+
+            /**
+             * expose the element that is linked to this dof
+             */
+            mesh::Element *
+            element();
 
 //------------------------------------------------------------------------------
 
@@ -137,6 +145,14 @@ namespace belfem
              */
             bool
             is_face() const;
+
+//------------------------------------------------------------------------------
+
+            /**
+             * returns true if this dof is linked to a face
+             */
+            bool
+            is_cell() const;
 
 //------------------------------------------------------------------------------
 
@@ -226,17 +242,17 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline bool
-        Dof::mesh_vertex_is_flagged()
+        Dof::mesh_basis_is_flagged()
         {
-            return mMeshVertex->is_flagged() ;
+            return mMeshBasis->is_flagged() ;
         }
 
 //------------------------------------------------------------------------------
 
-        inline mesh::Vertex *
-        Dof::mesh_vertex()
+        inline mesh::Basis *
+        Dof::mesh_basis()
         {
-            return mMeshVertex ;
+            return mMeshBasis ;
         }
 
 //------------------------------------------------------------------------------
@@ -244,11 +260,10 @@ namespace belfem
         Dof::node()
         {
             BELFEM_ASSERT( this->is_node(),
-                          "Tried to access DOF %lu as node, but it is linked to edge %lu ",
-                          ( long unsigned int ) mMyIndex,
-                          ( long unsigned int ) mMeshVertex->id() );
+                          "Tried to access DOF %lu as node, but it is not a node ",
+                          ( long unsigned int ) mMyIndex );
 
-            return reinterpret_cast< mesh::Node * >( mMeshVertex ) ;
+            return reinterpret_cast< mesh::Node * >( mMeshBasis ) ;
         }
 
 //------------------------------------------------------------------------------
@@ -257,11 +272,22 @@ namespace belfem
         Dof::edge()
         {
             BELFEM_ASSERT( this->is_edge(),
-                          "Tried to access DOF %lu as edge, bot it is linked to node %lu ",
-                          ( long unsigned int ) mMyIndex,
-                          ( long unsigned int ) mMeshVertex->id() );
+                          "Tried to access DOF %lu as edge, bot it is not an edge ",
+                          ( long unsigned int ) mMyIndex );
 
-            return reinterpret_cast< mesh::Edge * >( mMeshVertex ) ;
+            return reinterpret_cast< mesh::Edge * >( mMeshBasis ) ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline mesh::Element *
+        Dof::element()
+        {
+            BELFEM_ASSERT( this->is_cell(),
+                           "Tried to access DOF %lu as element, but it is not an element ",
+                           ( long unsigned int ) mMyIndex );
+
+            return reinterpret_cast< mesh::Element * >( mMeshBasis );
         }
 
 //------------------------------------------------------------------------------
@@ -295,7 +321,7 @@ namespace belfem
         inline bool
         Dof::is_node() const
         {
-            return mMeshVertex->entity_type() == EntityType::NODE ;
+            return mMeshBasis->entity_type() == EntityType::NODE ;
         }
 
 //------------------------------------------------------------------------------
@@ -303,7 +329,7 @@ namespace belfem
         inline EntityType
         Dof::entity_type() const
         {
-            return mMeshVertex->entity_type() ;
+            return mMeshBasis->entity_type() ;
         }
 
 
@@ -312,7 +338,7 @@ namespace belfem
         inline bool
         Dof::is_edge() const
         {
-            return mMeshVertex->entity_type() == EntityType::EDGE ;
+            return mMeshBasis->entity_type() == EntityType::EDGE ;
         }
 
 //------------------------------------------------------------------------------
@@ -320,7 +346,15 @@ namespace belfem
         inline bool
         Dof::is_face() const
         {
-            return mMeshVertex->entity_type() == EntityType::FACE ;
+            return mMeshBasis->entity_type() == EntityType::FACE ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline bool
+        Dof::is_cell() const
+        {
+            return mMeshBasis->entity_type() == EntityType::CELL ;
         }
 
 //------------------------------------------------------------------------------
@@ -328,9 +362,8 @@ namespace belfem
         inline bool
         Dof::is_lambda() const
         {
-            return mMeshVertex->entity_type() == EntityType::FACET ;
+            return mMeshBasis->entity_type() == EntityType::FACET ;
         }
-
 
 //------------------------------------------------------------------------------
 

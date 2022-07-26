@@ -23,23 +23,11 @@ namespace belfem
         /**
          * \brief Lagrange Element baseclass
          */
-        class Element
+        class Element : public Basis
         {
 //------------------------------------------------------------------------------
         protected:
 //------------------------------------------------------------------------------
-
-            // id of element
-            id_t mID;
-
-            // index in memory
-            index_t mIndex = gNoIndex ;
-
-            // proc owner of element
-            proc_t mOwner = 0;
-
-            // multi purpose flag
-            bool mFlag = false;
 
             // flag telling if this element is curved
             bool mCurvedFlag = true ;
@@ -72,16 +60,6 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
-            set_id( const id_t aID );
-
-//------------------------------------------------------------------------------
-
-            void
-            set_index( const index_t aIndex );
-
-//------------------------------------------------------------------------------
-
-            void
             set_geometry_tag( const uint aTag );
 
 //------------------------------------------------------------------------------
@@ -92,22 +70,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
-            set_owner( const proc_t aOwner );
-
-//------------------------------------------------------------------------------
-
-            void
             set_block_id( const id_t aID );
-
-//------------------------------------------------------------------------------
-
-            id_t
-            id() const;
-
-//------------------------------------------------------------------------------
-
-            index_t
-            index() const;
 
 //------------------------------------------------------------------------------
 
@@ -123,26 +86,6 @@ namespace belfem
 
             uint
             physical_tag() const;
-
-//------------------------------------------------------------------------------
-
-            proc_t
-            owner() const;
-
-//------------------------------------------------------------------------------
-
-            void
-            flag();
-
-//------------------------------------------------------------------------------
-
-            void
-            unflag();
-
-//------------------------------------------------------------------------------
-
-            bool
-            is_flagged() const;
 
 //------------------------------------------------------------------------------
 
@@ -165,8 +108,8 @@ namespace belfem
             number_of_nodes() const
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function number_of_nodes() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function number_of_nodes() from Element %lu",
+                             ( long unsigned int ) this->id() );
 
                 return 0;
             }
@@ -177,8 +120,8 @@ namespace belfem
             number_of_corner_nodes() const
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function number_of_corner_nodes() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function number_of_corner_nodes() from Element %lu",
+                             ( long unsigned int ) this->id() );
 
                 return 0;
             }
@@ -189,8 +132,8 @@ namespace belfem
             number_of_facets() const
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function number_of_facets() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function number_of_facets() from Element %lu",
+                             ( long unsigned int ) this->id() );
 
                 return 0;
             }
@@ -201,8 +144,8 @@ namespace belfem
             number_of_faces() const
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function number_of_faces() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function number_of_faces() from Element %lu",
+                             ( long unsigned int ) this->id() );
 
                 return 0;
             }
@@ -213,8 +156,8 @@ namespace belfem
             number_of_edges() const
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function number_of_edges() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function number_of_edges() from Element %lu",
+                             ( long unsigned int ) this->id() );
 
                 return 0;
             }
@@ -225,8 +168,8 @@ namespace belfem
             has_edges() const
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function has_edges() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function has_edges() from Element %lu",
+                             ( long unsigned int ) this->id() );
 
                 return false ;
             }
@@ -237,8 +180,8 @@ namespace belfem
             has_faces() const
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function has_faces() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function has_faces() from Element %lu",
+                             ( long unsigned int ) this->id() );
 
                 return false ;
             }
@@ -249,8 +192,8 @@ namespace belfem
             type() const
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function type() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function type() from Element %lu",
+                             ( long unsigned int ) this->id() );
                 return ElementType::UNDEFINED;
             }
 
@@ -260,8 +203,8 @@ namespace belfem
             node( const uint & aIndex )
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function node() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function node() from Element %lu",
+                             ( long unsigned int ) this->id() );
 
                 return nullptr;
             }
@@ -272,8 +215,8 @@ namespace belfem
             node( const uint & aIndex ) const
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function const node() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function const node() from Element %lu",
+                             ( long unsigned int ) this->id() );
 
                 return nullptr;
             }
@@ -284,8 +227,8 @@ namespace belfem
             edge( const uint & aIndex )
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function edge() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function edge() from Element %lu",
+                             ( long unsigned int ) this->id() );
 
                 return nullptr;
             }
@@ -296,8 +239,8 @@ namespace belfem
             edge( const uint & aIndex ) const
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function const edge() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function const edge() from Element %lu",
+                             ( long unsigned int ) this->id() );
 
                 return nullptr;
             }
@@ -308,8 +251,8 @@ namespace belfem
             face( const uint & aIndex )
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function face() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function face() from Element %lu",
+                             ( long unsigned int ) this->id() );
 
                 return nullptr;
             }
@@ -320,8 +263,8 @@ namespace belfem
             face( const uint & aIndex ) const
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function const face() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function const face() from Element %lu",
+                             ( long unsigned int ) this->id() );
 
                 return nullptr;
             }
@@ -333,8 +276,8 @@ namespace belfem
             insert_node( Node * aNode, const uint & aIndex )
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function insert_node() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function insert_node() from Element %lu",
+                             ( long unsigned int ) this->id() );
             }
 
 //------------------------------------------------------------------------------
@@ -343,8 +286,8 @@ namespace belfem
             insert_edge( Edge * aEdge, const uint & aIndex )
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function insert_edge() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function insert_edge() from Element %lu",
+                             ( long unsigned int ) this->id() );
             }
 
 //------------------------------------------------------------------------------
@@ -353,8 +296,8 @@ namespace belfem
             insert_face( Face * aFace, const uint & aIndex )
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function insert_face() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function insert_face() from Element %lu",
+                             ( long unsigned int ) this->id() );
             }
 
 //------------------------------------------------------------------------------
@@ -363,8 +306,8 @@ namespace belfem
             unflag_nodes()
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function unflag_nodes() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function unflag_nodes() from Element %lu",
+                             ( long unsigned int ) this->id() );
             }
 
 //------------------------------------------------------------------------------
@@ -373,8 +316,8 @@ namespace belfem
             flag_nodes()
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function flag_nodes() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function flag_nodes() from Element %lu",
+                             ( long unsigned int ) this->id() );
             }
 
 //------------------------------------------------------------------------------
@@ -386,8 +329,8 @@ namespace belfem
             flag_corner_nodes()
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function flag_corner_nodes() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function flag_corner_nodes() from Element %lu",
+                             ( long unsigned int ) this->id() );
             }
 
 //------------------------------------------------------------------------------
@@ -399,8 +342,8 @@ namespace belfem
             unflag_corner_nodes()
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function unflag_corner_nodes() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function unflag_corner_nodes() from Element %lu",
+                             ( long unsigned int ) this->id() );
             }
 
 //------------------------------------------------------------------------------
@@ -409,8 +352,8 @@ namespace belfem
             unflag_edges()
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function unflag_edges() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function unflag_edges() from Element %lu",
+                             ( long unsigned int ) this->id() );
             }
 
 //------------------------------------------------------------------------------
@@ -419,8 +362,8 @@ namespace belfem
             flag_edges()
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function flag_edges() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function flag_edges() from Element %lu",
+                             ( long unsigned int ) this->id() );
             }
 
 //------------------------------------------------------------------------------
@@ -429,8 +372,8 @@ namespace belfem
             unflag_faces()
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function unflag_faces() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function unflag_faces() from Element %lu",
+                             ( long unsigned int ) this->id() );
             }
 
 //------------------------------------------------------------------------------
@@ -439,8 +382,8 @@ namespace belfem
             flag_faces()
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function flag_faces() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function flag_faces() from Element %lu",
+                             ( long unsigned int ) this->id() );
             }
 
 //------------------------------------------------------------------------------
@@ -449,8 +392,8 @@ namespace belfem
             get_nodes_of_facet( const uint aFacetIndex, Cell<Node *> & aNodes )
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function get_nodes_of_facet() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function get_nodes_of_facet() from Element %lu",
+                             ( long unsigned int ) this->id() );
             }
 
 //------------------------------------------------------------------------------
@@ -459,8 +402,8 @@ namespace belfem
             get_edges_of_facet( const uint aFacetIndex, Cell< Edge * > & aEdges )
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function get_edges_of_facet() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function get_edges_of_facet() from Element %lu",
+                             ( long unsigned int ) this->id() );
             }
 
 
@@ -470,8 +413,8 @@ namespace belfem
             get_nodes_of_edge( const uint aEdgeIndex, Cell<Node *> & aNodes )
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function get_nodes_of_edge() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function get_nodes_of_edge() from Element %lu",
+                             ( long unsigned int ) this->id() );
             }
 
 //------------------------------------------------------------------------------
@@ -480,8 +423,8 @@ namespace belfem
             node_of_edge(  const uint aNodeIndex, const uint aEdgeIndex )
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function get_node_of_edge() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function get_node_of_edge() from Element %lu",
+                             ( long unsigned int ) this->id() );
                 return nullptr ;
             }
 
@@ -491,8 +434,8 @@ namespace belfem
             allocate_edge_container()
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function allocate_edge_container() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function allocate_edge_container() from Element %lu",
+                             ( long unsigned int ) this->id() );
             }
 
 //------------------------------------------------------------------------------
@@ -501,8 +444,8 @@ namespace belfem
             allocate_face_container()
             {
                 BELFEM_ERROR( false,
-                             "invalid call of base class function allocate_face_container() from Element %u",
-                             ( unsigned int ) mID );
+                             "invalid call of base class function allocate_face_container() from Element %lu",
+                             ( long unsigned int ) this->id() );
             }
 
 //------------------------------------------------------------------------------
@@ -537,23 +480,15 @@ namespace belfem
             number_of_elements() const;
 
 //------------------------------------------------------------------------------
+
+            /**
+             * returns a cell, needed for DOF handling
+             */
+            EntityType
+            entity_type() const ;
+
+//------------------------------------------------------------------------------
         };
-
-//------------------------------------------------------------------------------
-
-        inline void
-        Element::set_id( const id_t aID )
-        {
-            mID = aID;
-        }
-
-//------------------------------------------------------------------------------
-
-        inline void
-        Element::set_index( const index_t aIndex )
-        {
-            mIndex = aIndex;
-        }
 
 //------------------------------------------------------------------------------
 
@@ -581,30 +516,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        inline void
-        Element::set_owner( const proc_t aOwner )
-        {
-            mOwner = aOwner;
-        }
-
-//------------------------------------------------------------------------------
-
-        inline id_t
-        Element::id() const
-        {
-            return mID;
-        }
-
-//------------------------------------------------------------------------------
-
-        inline index_t
-        Element::index() const
-        {
-            return mIndex;
-        }
-
-//------------------------------------------------------------------------------
-
         inline id_t
         Element::block_id() const
         {
@@ -625,38 +536,6 @@ namespace belfem
         Element::physical_tag() const
         {
             return mPhysicalTag;
-        }
-
-//------------------------------------------------------------------------------
-
-        inline proc_t
-        Element::owner() const
-        {
-            return mOwner;
-        }
-
-//------------------------------------------------------------------------------
-
-        inline void
-        Element::flag()
-        {
-            mFlag = true;
-        }
-
-//------------------------------------------------------------------------------
-
-        inline void
-        Element::unflag()
-        {
-            mFlag = false;
-        }
-
-//------------------------------------------------------------------------------
-
-        inline bool
-        Element::is_flagged() const
-        {
-            return mFlag;
         }
 
 //------------------------------------------------------------------------------
@@ -698,6 +577,14 @@ namespace belfem
         Element::number_of_elements() const
         {
             return mNumberOfElements ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline EntityType
+        Element::entity_type() const
+        {
+            return EntityType::CELL ;
         }
 
 //------------------------------------------------------------------------------

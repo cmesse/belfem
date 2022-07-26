@@ -340,7 +340,7 @@ int main( int    argc,
 
     for( Dof * tDof : tField->dofs() )
     {
-        std::cout << tDof->index() << " " << tDof->id() << " " << tDof->is_node() << " " << tDof->mesh_vertex()->id() << " " << tDof->dof_index_on_field() << std::endl ;
+        std::cout << tDof->index() << " " << tDof->id() << " " << tDof->is_node() << " " << tDof->mesh_basis()->id() << " " << tDof->dof_index_on_field() << std::endl ;
     }
 
     tField->solve();

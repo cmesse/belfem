@@ -351,8 +351,8 @@ namespace belfem
         LagrangeElement< N, C, E, T, F >::allocate_edge_container()
         {
             // make sure that container is empty
-            BELFEM_ASSERT( ! mHaveEdges, "Edge container for element %u has already been allocated",
-                          ( unsigned int ) this->id() );
+            BELFEM_ASSERT( ! mHaveEdges, "Edge container for element %lu has already been allocated",
+                          ( long unsigned int ) this->id() );
 
             // create the contiainer
             mEdges = new Edge * [ E ];
@@ -373,8 +373,8 @@ namespace belfem
         LagrangeElement< N, C, E, T, F >::allocate_face_container()
         {
             // make sure that container is empty
-            BELFEM_ASSERT( ! mHaveFaces, "Face container for element %u has already been allocated",
-                          ( unsigned int ) this->id() );
+            BELFEM_ASSERT( ! mHaveFaces, "Face container for element %lu has already been allocated",
+                          ( long unsigned int ) this->id() );
 
             // create the contiainer
             mFaces = new Face * [ F ];
@@ -418,13 +418,13 @@ namespace belfem
         ElementType
         LagrangeElement< N, C, E, T, F >::type() const
         {
-            BELFEM_ERROR( false, "type() function not implemented for LagrangeElement< %u, %u, %u, %u, %u  > with id %u",
+            BELFEM_ERROR( false, "type() function not implemented for LagrangeElement< %u, %u, %u, %u, %u  > with id %lu",
                          ( unsigned int ) N,
                          ( unsigned int ) C,
                          ( unsigned int ) E,
                          ( unsigned int ) T,
                          ( unsigned int ) F,
-                         ( unsigned int ) mID );
+                         ( long unsigned int ) this->id() );
 
             return ElementType::UNDEFINED;
         }
@@ -526,10 +526,10 @@ namespace belfem
         {
             // make sure that index is valid
             BELFEM_ASSERT(aIndex < N,
-                         "Tried to write node into index %u of %u node element %u",
+                         "Tried to write node into index %u of %u node element %lu",
                          ( unsigned int ) aIndex,
                          ( unsigned int ) N,
-                         ( unsigned int ) mID);
+                         ( long unsigned int ) this->id() );
 
             // write node into index
             mNodes[ aIndex ] = aNode;
@@ -543,10 +543,10 @@ namespace belfem
         {
             // make sure that index is valid
             BELFEM_ASSERT(aIndex < N,
-                    "Tried acces node %u of %u node element %u",
-                    (unsigned int) aIndex,
-                    (unsigned int) N,
-                    (unsigned int) mID);
+                    "Tried acces node %u of %u node element %lu",
+                    ( unsigned int ) aIndex,
+                    ( unsigned int ) N,
+                    ( long unsigned int ) this->id() );
 
             // return the node
             return mNodes[ aIndex ];
@@ -560,10 +560,10 @@ namespace belfem
         {
             // make sure that index is valid
             BELFEM_ASSERT(aIndex < N,
-                         "Tried acces node %u of %u node element %u",
-                         (unsigned int) aIndex,
-                         (unsigned int) N,
-                         (unsigned int) mID);
+                         "Tried acces node %u of %u node element %lu",
+                         ( unsigned int ) aIndex,
+                         ( unsigned int ) N,
+                         ( long unsigned int ) this->id() );
 
             // return the node
             return mNodes[ aIndex ];
@@ -596,10 +596,10 @@ namespace belfem
         {
             // make sure that index is valid
             BELFEM_ASSERT(aIndex < E,
-                         "Tried to write edge into index %u of %u element %u",
+                         "Tried to write edge into index %u of %u element %lu",
                          ( unsigned int ) aIndex,
                          ( unsigned int ) E,
-                         ( unsigned int ) mID);
+                         ( long unsigned int ) this->id() );
 
             // write node into index
             mEdges[ aIndex ] = aEdge;
@@ -612,11 +612,11 @@ namespace belfem
         LagrangeElement< N, C, E, T, F >::insert_face( Face * aFace, const uint & aIndex )
         {
             // make sure that index is valid
-            BELFEM_ASSERT(aIndex < F,
-                         "Tried to write face into index %u of %u element %u",
+            BELFEM_ASSERT( aIndex < F,
+                         "Tried to write face into index %u of %u element %lu",
                          ( unsigned int ) aIndex,
                          ( unsigned int ) F,
-                         ( unsigned int ) mID);
+                         ( long unsigned int ) this->id() );
 
             // write node into index
             mFaces[ aIndex ] = aFace;
@@ -629,15 +629,15 @@ namespace belfem
         LagrangeElement< N, C, E, T, F >::edge( const uint & aIndex )
         {
 
-            BELFEM_ASSERT( mHaveEdges, "Edges for element %u have not been allocated",
-                          ( unsigned int ) mID );
+            BELFEM_ASSERT( mHaveEdges, "Edges for element %lu have not been allocated",
+                          ( long unsigned int ) this->id() );
 
             // make sure that index is valid
-            BELFEM_ASSERT(aIndex < E,
-                         "Tried to access edge %u of %u node element %u",
-                         (unsigned int) aIndex,
-                         (unsigned int) E,
-                         (unsigned int) mID);
+            BELFEM_ASSERT( aIndex < E,
+                         "Tried to access edge %u of %u node element %lu",
+                         ( unsigned int ) aIndex,
+                         ( unsigned int ) E,
+                         ( long unsigned int ) this->id() );
 
             // return the node
             return mEdges[ aIndex ];
@@ -650,15 +650,15 @@ namespace belfem
         LagrangeElement< N, C, E, T, F >::edge( const uint & aIndex ) const
         {
 
-            BELFEM_ASSERT( mHaveEdges, "Edges for element %u have not been allocated",
-                          ( unsigned int ) mID );
+            BELFEM_ASSERT( mHaveEdges, "Edges for element %lu have not been allocated",
+                          ( long unsigned int ) this->id() );
 
             // make sure that index is valid
             BELFEM_ASSERT(aIndex < E,
-                         "Tried to access edge %u of %u node element %u",
-                         (unsigned int) aIndex,
-                         (unsigned int) E,
-                         (unsigned int) mID);
+                         "Tried to access edge %u of %u node element %lu",
+                         ( unsigned int ) aIndex,
+                         ( unsigned int ) E,
+                         ( long unsigned int ) this->id() );
 
             // return the node
             return mEdges[ aIndex ];
@@ -671,15 +671,15 @@ namespace belfem
         LagrangeElement< N, C, E, T, F >::face( const uint & aIndex )
         {
 
-            BELFEM_ASSERT( mHaveFaces, "Faces for element %u have not been allocated",
-                          ( unsigned int ) mID );
+            BELFEM_ASSERT( mHaveFaces, "Faces for element %lu have not been allocated",
+                          ( long unsigned int ) this->id() );
 
             // make sure that index is valid
             BELFEM_ASSERT(aIndex < F,
-                         "Tried to access face %u of %u node element %u",
-                         (unsigned int) aIndex,
-                         (unsigned int) F,
-                         (unsigned int) mID);
+                         "Tried to access face %u of %u node element %lu",
+                         ( unsigned int ) aIndex,
+                         ( unsigned int ) F,
+                         ( long unsigned int ) this->id() );
 
             // return the node
             return mFaces[ aIndex ];
@@ -692,15 +692,15 @@ namespace belfem
         LagrangeElement< N, C, E, T, F >::face( const uint & aIndex ) const
         {
 
-            BELFEM_ASSERT( mHaveFaces, "Edges for element %u have not been allocated",
-                          ( unsigned int ) mID );
+            BELFEM_ASSERT( mHaveFaces, "Edges for element %lu have not been allocated",
+                          ( long unsigned int ) this->id() );
 
             // make sure that index is valid
             BELFEM_ASSERT(aIndex < F,
-                         "Tried to access face %u of %u node element %u",
-                         (unsigned int) aIndex,
-                         (unsigned int) F,
-                         (unsigned int) mID);
+                         "Tried to access face %u of %u node element %lu",
+                         ( unsigned int ) aIndex,
+                         ( unsigned int ) F,
+                         ( long unsigned int ) this->id() );
 
             // return the node
             return mFaces[ aIndex ];
@@ -821,8 +821,8 @@ namespace belfem
         LagrangeElement< N, C, E, T, F >::get_nodes_of_facet( const uint aFacetIndex, Cell< Node * > & aNodes )
         {
             BELFEM_ERROR( false,
-                    "Function get_nodes_of_facet() not implemented for element %u",
-                          ( unsigned int ) mID );
+                    "Function get_nodes_of_facet() not implemented for element %lu",
+                          ( long unsigned int ) this->id() );
         }
 
 //------------------------------------------------------------------------------
@@ -832,8 +832,8 @@ namespace belfem
         LagrangeElement< N, C, E, T, F >::get_edges_of_facet( const uint aFacetIndex, Cell< Edge * > & aEdges )
         {
             BELFEM_ERROR( false,
-                         "invalid call of base class function get_edges_of_facet() from Element %u",
-                         ( unsigned int ) mID );
+                         "invalid call of base class function get_edges_of_facet() from element %lu",
+                         ( long unsigned int ) this->id() );
         }
 
 
@@ -854,9 +854,9 @@ namespace belfem
         LagrangeElement< N, C, E, T, F >::throw_facet_error( const uint aFacetIndex )
         {
             BELFEM_ERROR( aFacetIndex<T,
-                    "invalid facet index %u for element %u ( must be < %u )",
+                    "invalid facet index %u for element %lu ( must be < %u )",
                          ( unsigned int ) aFacetIndex,
-                         ( unsigned int ) mID,
+                         ( long unsigned int ) this->id(),
                          ( unsigned int ) T );
         }
 
@@ -867,9 +867,9 @@ namespace belfem
         LagrangeElement< N, C, E, T, F >::throw_edge_error( const uint aEdgeIndex )
         {
             BELFEM_ERROR( aEdgeIndex<E,
-                         "invalid edge index %u for element %u ( must be < %u )",
+                         "invalid edge index %u for element %lu ( must be < %u )",
                          ( unsigned int ) aEdgeIndex,
-                         ( unsigned int ) mID,
+                         ( long unsigned int ) this->id(),
                          ( unsigned int ) E );
         }
 

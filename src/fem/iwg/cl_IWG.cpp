@@ -2213,7 +2213,7 @@ namespace belfem
                          ( unsigned int ) tDof->id(),
                          ( unsigned int ) tDof->index(),
                          tType.c_str(),
-                         ( unsigned int ) tDof->mesh_vertex()->id(),
+                         ( unsigned int ) tDof->mesh_basis()->id(),
                          tDof->dof_index_on_field()
                 );
             }

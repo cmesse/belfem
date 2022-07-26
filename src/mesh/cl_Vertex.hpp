@@ -7,7 +7,7 @@
 
 #include "typedefs.hpp"
 #include "assert.hpp"
-#include "cl_Graph_Vertex.hpp"
+#include "cl_Mesh_Basis.hpp"
 #include "Mesh_Enums.hpp"
 
 namespace belfem
@@ -20,7 +20,7 @@ namespace belfem
         class Facet;
         class Edge ;
 
-        class Vertex : public graph::Vertex
+        class Vertex : public Basis
         {
         protected:
             //! pointer to nodes

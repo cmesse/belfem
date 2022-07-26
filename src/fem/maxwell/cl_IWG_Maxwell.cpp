@@ -2676,32 +2676,32 @@ namespace belfem
                 // grab dof
                 Dof * tDof = aElement->dof( k );
 
-                switch( tDof->mesh_vertex()->entity_type() )
+                switch( tDof->mesh_basis()->entity_type() )
                 {
                     case( EntityType::NODE ) :
                     {
-                        aQ0( k ) = tPhi( tDof->mesh_vertex()->index() );
+                        aQ0( k ) = tPhi( tDof->mesh_basis()->index() );
                         break ;
                     }
                     case( EntityType::EDGE ) :
                     {
-                        aQ0( k ) = tHe( tDof->mesh_vertex()->index() );
+                        aQ0( k ) = tHe( tDof->mesh_basis()->index() );
                         break ;
                     }
                     case( EntityType::FACE ) :
                     {
-                        aQ0( k ) = tHf( tDof->mesh_vertex()->index() );
+                        aQ0( k ) = tHf( tDof->mesh_basis()->index() );
                         break ;
                     }
                     case( EntityType::FACET ) :
                     {
                         if( tMasterFlip )
                         {
-                            aQ0( k ) = tLs( tDof->mesh_vertex()->index() );
+                            aQ0( k ) = tLs( tDof->mesh_basis()->index() );
                         }
                         else
                         {
-                            aQ0( k ) = tLm( tDof->mesh_vertex()->index() );
+                            aQ0( k ) = tLm( tDof->mesh_basis()->index() );
                             tMasterFlip = true ;
                         }
                         break ;

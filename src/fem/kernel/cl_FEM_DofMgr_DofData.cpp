@@ -2214,7 +2214,7 @@ namespace belfem
                                           ( long unsigned int ) tDof->dof_index_on_field(),
                                           ( long unsigned int ) tDof->id(),
                                           to_string( tDof->entity_type()).c_str(),
-                                          ( long unsigned int ) tDof->mesh_vertex()->id(),
+                                          ( long unsigned int ) tDof->mesh_basis()->id(),
                                           to_string( tField->entity_type()).c_str(),
                                           tLabels( k ).c_str(),
                                           ( long unsigned int ) tValues.length() );

@@ -10,9 +10,9 @@ namespace belfem
     {
 //------------------------------------------------------------------------------
 
-        Element::Element( const id_t aID ) :
-                mID( aID )
+        Element::Element( const id_t aID )
         {
+            this->set_id( aID );
             mElements = nullptr ;
         }
 

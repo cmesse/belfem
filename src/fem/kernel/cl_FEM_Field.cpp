@@ -334,7 +334,7 @@ namespace belfem
             for ( Dof * tDOF : mDOFs )
             {
                 // test if parent node is flagged
-                if ( tDOF->mesh_vertex_is_flagged() )
+                if ( tDOF->mesh_basis_is_flagged() )
                 {
                     // flag this dof
                     tDOF->flag();
@@ -3299,11 +3299,11 @@ namespace belfem
                 Dof * tDOF = reinterpret_cast< Dof * >( tV );
 
                 // get parent vertex
-                mesh::Vertex * tVertex = tDOF->mesh_vertex();
+                mesh::Basis * tBasis = tDOF->mesh_basis();
 
                 // get number of nodes and edges that are connected to this node
-                uint tNumberOfNodes = tVertex->number_of_nodes();
-                uint tNumberOfEdges = tVertex->number_of_edges();
+                uint tNumberOfNodes = tBasis->number_of_nodes();
+                uint tNumberOfEdges = tBasis->number_of_edges();
 
                 // allocate temporary cell with dofs
                 BELFEM_ASSERT( aAdjacency.size() >= mNumberOfDOFsPerNode * ( tNumberOfNodes + 1 ) +
@@ -3354,7 +3354,7 @@ namespace belfem
                     for ( uint i = 0; i < mNumberOfDOFsPerNode; ++i )
                     {
                         // calculate ID of candidate
-                        id_t tID = this->calculate_dof_id( tVertex->node( k ), i );
+                        id_t tID = this->calculate_dof_id( tBasis->node( k ), i );
 
                         // test if dof exists
                         if ( mDofMap.key_exists( tID ) )
@@ -3377,7 +3377,7 @@ namespace belfem
                     for ( uint i = 0; i < mNumberOfDOFsPerEdge; ++i )
                     {
                         // calculate ID of candidate
-                        id_t tID = this->calculate_dof_id( tVertex->edge( k ), i );
+                        id_t tID = this->calculate_dof_id( tBasis->edge( k ), i );
 
                         // test if dof exists
                         if ( mDofMap.key_exists( tID ) )

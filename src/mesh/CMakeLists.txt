@@ -6,6 +6,7 @@ set( SOURCES
         geometrytools.cpp
         fn_Mesh_ratio.cpp
         fn_entity_type.cpp
+        cl_Mesh_Basis.cpp
         cl_Vertex.cpp
         cl_Node.cpp
         cl_Edge.cpp

@@ -58,16 +58,20 @@
     <list default="true" id="120f1831-a9f1-4c21-bf0a-19444f852628" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Group.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Group.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Group.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Group.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Dof.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Dof.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Dof.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Dof.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofMgr_DofData.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofMgr_DofData.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Field.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Field.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri3.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri3.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri3.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri3.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/lbl/test_input.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/lbl/test_input.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_Hastelloy.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_Hastelloy.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/main.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/main.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/old/cl_IWG_Maxwell_Old.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/old/cl_IWG_Maxwell_Old.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/lbl/test_e2ha.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/lbl/test_e2ha.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/math/graph/cl_Graph_Vertex.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/math/graph/cl_Graph_Vertex.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Element.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Element.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Element.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Element.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_LagrangeElement.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_LagrangeElement.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Vertex.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Vertex.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Vertex.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Vertex.hpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -104,24 +108,24 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
-    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;cmake.loaded.for.project&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/christian/codes/belfem&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;CPPToolchains&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "cmake.loaded.for.project": "true",
+    "last_opened_file_path": "/home/christian/codes/belmat",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "CPPToolchains"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/src/fem/maxwell/old" />
@@ -135,6 +139,11 @@
     <configuration default="true" type="GradleAppRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
         <option name="com.jetbrains.cidr.cpp.gradle.execution.GradleNativeBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
       </method>
     </configuration>
     <configuration name="banner" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="banner" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="banner">
@@ -555,7 +564,7 @@
       <workItem from="1658428566684" duration="29610000" />
       <workItem from="1658527109937" duration="13582000" />
       <workItem from="1658557408070" duration="235000" />
-      <workItem from="1658802333250" duration="9042000" />
+      <workItem from="1658802333250" duration="14370000" />
     </task>
     <servers />
   </component>
@@ -598,11 +607,6 @@
           <url>file://$PROJECT_DIR$/src/mesh/cl_Face.cpp</url>
           <line>34</line>
           <option name="timeStamp" value="41" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/src/physics/materials/nist_functions.hpp</url>
-          <line>52</line>
-          <option name="timeStamp" value="48" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/src/fem/kernel/cl_FEM_SideSet.hpp</url>

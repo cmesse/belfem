@@ -38,7 +38,7 @@ namespace belfem
             // counter for connected nodes
             uint mVertexCounter = 0;
 
-            // container for nodes
+            // container for other vertices
             Vertex ** mVertices;
 
 //------------------------------------------------------------------------------
