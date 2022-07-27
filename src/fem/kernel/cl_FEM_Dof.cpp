@@ -46,6 +46,18 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        Dof::Dof( const id_t aID, const uint & aType, mesh::Element * aElement, const index_t aDofIndexOnField ) :
+                Vertex(),
+                mMeshBasis( aElement ),
+                mTypeID( aType ),
+                mIndexOnField( aDofIndexOnField )
+        {
+            this->set_id( aID );
+            this->set_owner( aElement->owner() );
+        }
+
+//------------------------------------------------------------------------------
+
         Dof::Dof( const id_t aID, const uint & aType, mesh::Facet * aFacet ) :
         Vertex(),
         mMeshBasis( aFacet ),

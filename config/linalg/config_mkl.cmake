@@ -64,15 +64,15 @@ if( USE_MKL )
             endif()
         else() # assume openmp
             if( USE_MKL_64BIT_API )
-                set( BELFEM_MATRIX_LIBS " ${BELFEM_MATRIX_LIBS} ${BELFEM_MKL_LIBDIR}/libmkl_blacs_openmp_ilp64.a ")
+                set( BELFEM_MATRIX_LIBS " ${BELFEM_MATRIX_LIBS} ${BELFEM_MKL_LIBDIR}/libmkl_blacs_openmpi_ilp64.a ")
             else()
-                set( BELFEM_MATRIX_LIBS " ${BELFEM_MATRIX_LIBS} ${BELFEM_MKL_LIBDIR}/libmkl_blacs_openmp_lp64.a ")
+                set( BELFEM_MATRIX_LIBS " ${BELFEM_MATRIX_LIBS} ${BELFEM_MKL_LIBDIR}/libmkl_blacs_openmpi_lp64.a ")
             endif()
         endif()
     endif()
 
     # group for gnu compiler
-    if( BELFEM_COMPILER STREQUAL "GCC")
+    if( ${COMPILER_ID} EQUAL 1 )
         set(BELFEM_MATRIX_LIBS "-Wl,--start-group ${BELFEM_MATRIX_LIBS} -Wl,--end-group" )
     endif()
 
@@ -84,20 +84,20 @@ if( USE_MKL )
     endif()
 
     if( USE_OPENMP )
-        if( BELFEM_COMPILER STREQUAL "GCC" )
+        if( ${COMPILER_ID} EQUAL 1 )
             set( BELFEM_MATRIX_LIBS "${BELFEM_MATRIX_LIBS} -lgomp" )
         else()
             set( BELFEM_MATRIX_LIBS "${BELFEM_MATRIX_LIBS} -liomp5" )
         endif()
     endif()
-
+    #message( "MKL FLAGS: ${BELFEM_MATRIX_LIBS}")
     set(BELFEM_MATRIX_LIBS "${BELFEM_MATRIX_LIBS} -lpthread -lm -ldl" )
 else()
     list( APPEND BELFEM_DEFS "BELFEM_NETLIB" )
 
     set( BELFEM_MATRIX_LIBS " -llapack -lfspblas -lcblas -lblas")
 
-    if( BELFEM_COMPILER STREQUAL "GCC")
+    if( ${COMPILER_ID} EQUAL 1 )
         set(BELFEM_MATRIX_LIBS "-Wl,--start-group ${BELFEM_MATRIX_LIBS} -Wl,--end-group" )
     endif()
 
@@ -106,7 +106,7 @@ else()
     endif()
 
     if( USE_OPENMP )
-        if( BELFEM_COMPILER STREQUAL "GCC" )
+        if( ${COMPILER_ID} EQUAL 1 )
             set( APPEND BELFEM_MATRIX_LIBS "${BELFEM_MATRIX_LIBS} -lgomp" )
         else()
             set( APPEND BELFEM_MATRIX_LIBS "${BELFEM_MATRIX_LIBS} -liomp5" )

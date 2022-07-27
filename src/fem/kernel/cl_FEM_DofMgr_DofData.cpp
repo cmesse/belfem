@@ -91,6 +91,10 @@ namespace belfem
                 Vector< id_t >    tFaceDofEntityIDs;
                 Vector< index_t > tFaceDofTypes;
 
+                Vector< id_t >    tCellDofIDs ;
+                Vector< id_t >    tCellDofEntityIDs;
+                Vector< index_t > tCellDofTypes;
+
                 Vector< id_t >    tLambdaDofIDs ;
                 Vector< id_t >    tLambdaDofEntityIDs;
                 Vector< index_t > tLambdaDofTypes;
@@ -132,13 +136,6 @@ namespace belfem
                                                    tEdgeDofTypes,
                                                    tEdgeProcs );
 
-                    std::cout << "#EdgeDof Table" << std::endl ;
-                    for( index_t k=0; k<tEdgeProcs.size() ; ++k )
-                    {
-                        std::cout << tEdgeProcs(k).test( 0 ) << " " << tEdgeProcs(k).test( 1 )
-                         << " " << tEdgeProcs(k).test( 2 ) << " " << tEdgeProcs(k).test( 3 ) << std::endl ;
-
-                    }
 
                     tEdgeDofIDs.set_size( tNumEdgeDofs );
 
@@ -171,6 +168,27 @@ namespace belfem
                         tFaceDofIDs( k ) = this->face_dof_id(
                                 tFaceDofEntityIDs( k ),
                                 tFaceDofTypes( k ) );
+                    }
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    // Identify Cell-Based DOFs
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+                    Cell< Bitset< BELFEM_MAX_NUMPROCS > > tCellProcs;
+                    index_t tNumCellDofs =
+                            this->count_cell_dofs( aIWG,
+                                                   tCellDofEntityIDs,
+                                                   tCellDofTypes,
+                                                   tCellProcs );
+
+                    tCellDofIDs.set_size( tNumCellDofs );
+
+                    // make list with FACE IDs
+                    for ( index_t k = 0; k < tNumCellDofs; ++k )
+                    {
+                        tCellDofIDs( k ) = this->cell_dof_id(
+                                tCellDofEntityIDs( k ),
+                                tCellDofTypes( k ) );
                     }
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -298,6 +316,38 @@ namespace belfem
                     send( mKernel->comm_table(), tAllDofTypes );
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    // Send Cell-Based DOFs
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    for( index_t p=0; p<tNumberOfProcs; ++p )
+                    {
+                        // get the proc ID
+                        proc_t tProc = mKernel->comm_table( p );
+
+                        // only do something if this is not the master proc
+                        if ( tProc != mMyRank )
+                        {
+
+                            // collect dof entities
+                            this->count_dofs_for_proc( tProc,
+                                                       tCellDofIDs,
+                                                       tCellDofEntityIDs,
+                                                       tCellDofTypes,
+                                                       tCellProcs,
+                                                       tAllDofIDs( p ),
+                                                       tAllEntityIDs( p ),
+                                                       tAllDofTypes( p ) );
+                        }
+                    }
+
+                    // wait for other procs
+                    comm_barrier();
+
+                    // send data to other procs
+                    send( mKernel->comm_table(), tAllDofIDs );
+                    send( mKernel->comm_table(), tAllEntityIDs );
+                    send( mKernel->comm_table(), tAllDofTypes );
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - -
                     // Send LambdaDOFs
                     // - - - - - - - - - - - - - - - - - - - - - - - - - -
                     for( index_t p=0; p<tNumberOfProcs; ++p )
@@ -359,6 +409,14 @@ namespace belfem
                     // wait for other procs
                     comm_barrier();
 
+                    // receive cell info from master
+                    receive( mKernel->master(), tCellDofIDs );
+                    receive( mKernel->master(), tCellDofEntityIDs );
+                    receive( mKernel->master(), tCellDofTypes );
+
+                    // wait for other procs
+                    comm_barrier();
+
                     receive( mKernel->master(), tLambdaDofIDs );
                     receive( mKernel->master(), tLambdaDofEntityIDs );
                     receive( mKernel->master(), tLambdaDofTypes );
@@ -372,11 +430,17 @@ namespace belfem
                 index_t tNumNodeDofs = tNodeDofIDs.length() ;
                 index_t tNumEdgeDofs = tEdgeDofIDs.length() ;
                 index_t tNumFaceDofs = tFaceDofIDs.length() ;
+                index_t tNumCellDofs = tCellDofIDs.length() ;
 
                 index_t tNumLambdaDofs = tLambdaDofIDs.length() ;
 
                 // total number of dofs
-                index_t tNumDofs = tNumNodeDofs + tNumEdgeDofs + tNumFaceDofs + tNumLambdaDofs ;
+                index_t tNumDofs =
+                          tNumNodeDofs
+                        + tNumEdgeDofs
+                        + tNumFaceDofs
+                        + tNumCellDofs
+                        + tNumLambdaDofs ;
 
                 BELFEM_ASSERT( tNumDofs > 0 || ! mKernel->is_master(), "No dofs exist. What now?" );
 
@@ -477,7 +541,43 @@ namespace belfem
                     mDOFs( tCount++ ) = tDof ;
                 }
 
-                // would add #celldof here
+                // create cell dofs
+                // reset counters
+                tID = 0 ;
+                i = 0 ;
+                tMult = aIWG->cell_multiplicity() ;
+
+                // create the cell dofs
+                for( index_t k=0; k<tNumCellDofs; ++k )
+                {
+                    mesh::Element * tCell = mMesh->element( tCellDofEntityIDs( k ) );
+
+                    // check if this is a new face
+                    if( tID != tCell->id() )
+                    {
+                        // remember new id
+                        tID = tCell->id() ;
+
+                        // reset counter
+                        i = 0 ;
+                    }
+
+                    // compute new index
+                    index_t tIndexOnField =  tCell->index() * tMult + i++;
+
+                    // create a new dof
+                    Dof * tDof = new Dof( tCellDofIDs( k ),
+                                          tCellDofTypes( k ),
+                                          tCell,
+                                          tIndexOnField );
+
+                    // set the dof index. This will be overwritten during Jacobi initialization
+                    tDof->set_index( tCount );
+
+                    // add the dof to the container
+                    mDOFs( tCount++ ) = tDof ;
+                }
+
 
                 // create the lambda DOFs
                 for( index_t k=0; k<tNumLambdaDofs; ++k )
@@ -1157,7 +1257,6 @@ namespace belfem
                 }
 
                 // also flag ghost sidesets (if they exist)
-                aIWG->ghost_sideset_ids().print("Ghost");
                 for( id_t tID : aIWG->ghost_sideset_ids() )
                 {
 
@@ -1790,6 +1889,258 @@ namespace belfem
 
                                         // set the proc bitset
                                         tBitset.set( tElement->owner() );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // return the number of DOFs
+                return aDofCount ;
+            }
+
+//------------------------------------------------------------------------
+
+            index_t
+            DofData::count_cell_dofs( IWG  * aIWG,
+                                      Vector< id_t >    & aEntityIDs,
+                                      Vector< index_t > & aDofTypes,
+                                      Cell< Bitset<BELFEM_MAX_NUMPROCS> > & aProcFlags )
+            {
+                /* depending on which function this is, "entity" refers to
+                                  a node, an face, face or element
+
+                                  this routine performs xxx steps:
+
+                                  step 1 : flag all mesh entities that sit on the selected blocks
+
+                                  step 2:  count the selected entities and create a lookup table
+
+                                  step 3:  create the dof table: in order to find out which dofs exist, we create an
+                                           array of bitsets and flip the bitsets for each mesh entity
+
+                                  step 4:  count how many dofs have to be created
+
+                                  step 5:  polpulate the containers for the entity ids and dof types
+
+                                  step 6:  determine which dofs are visible on which proc */
+
+                // unflag all entities on the mesh
+                mMesh->unflag_all_elements() ;
+
+                // we remember the ID of reach entity
+                Vector< id_t > tEntityIDs ;
+
+                // first, we need to figure out if entities dofs exist at all
+                // if so, relevant entities are flagged
+                bool tHaveEntityDofs = false ;
+
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                // Step 1: flag all mesh entities the dofs are based on
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+                for( id_t tID : aIWG->selected_blocks() )
+                {
+                    if ( aIWG->number_of_dofs_per_cell( tID ) > 0 )
+                    {
+                        tHaveEntityDofs = true ;
+                        mMesh->block( tID )->flag_elements();
+                    }
+                }
+
+                // exit the routine if no entity dofs exist
+                if( ! tHaveEntityDofs )
+                {
+                    return 0 ;
+                }
+
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                // Step 2: count the selected entities and create tables
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+                // initialize counter
+                index_t tEntityCount = 0 ;
+
+                // the entity maps connects the ids to the counter
+                Map< id_t, index_t > tEntityMap ;
+
+                // get element list
+                Cell< mesh::Element * > & tElements
+                        = mMesh->elements() ;
+
+                // now we count the number of flagged entities
+                for( mesh::Element * tElement : tElements )
+                {
+                    if( tElement->is_flagged() )
+                    {
+                        // write counter into map and increment it
+                        tEntityMap[ tElement->id() ] = tEntityCount++ ;
+                    }
+                }
+
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                // Step 3: flip entity-wise bitsets for used dofs
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+                // the bitset array
+                Cell< Bitset<BELFEM_MAX_DOFTYPES> > tDofFlags( tEntityCount, Bitset<BELFEM_MAX_DOFTYPES>() );
+
+                index_t tMultiplicity = aIWG->cell_multiplicity();
+
+                // we loop over all blocks and get the block-wise dofs
+                for( id_t tBlockID: aIWG->selected_blocks() )
+                {
+                    // grab block pointer on mesh
+                    mesh::Block * tBlock = mMesh->block( tBlockID );
+
+                    // ask IWG about selected dofs
+                    const Vector< index_t > & tSelectedDofs = aIWG->dofs_per_cell( tBlockID );
+
+                    // check if any dofs are selected
+                    if( tSelectedDofs.length() > 0 )
+                    {
+                        // now we loop over all elements on the block and the selected number ofaces
+                        for( mesh::Element * tElement : tBlock->elements() )
+                        {
+                            // get the temporary index of this entity
+                            index_t tIndex = tEntityMap( tElement->id() );
+
+                            // grab the corresponding bitset
+                            Bitset< BELFEM_MAX_DOFTYPES > & tBitset = tDofFlags( tIndex );
+
+                            // flip the bits that represent the selected dofs
+                            for( index_t s : tSelectedDofs )
+                            {
+                                for( index_t i=0; i<tMultiplicity; ++i )
+                                {
+                                    tBitset.set( s + i );
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                // Step 4: count how many dofs have to be created
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+                index_t aDofCount = 0 ;
+
+                // we loop over all dof bitsets
+                for( index_t k=0; k<tEntityCount; ++k )
+                {
+                    // grab the current bitset
+                    Bitset< BELFEM_MAX_DOFTYPES > & tBitset = tDofFlags( k );
+
+                    // count the dofs
+                    aDofCount += tBitset.count() ;
+                }
+
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                // Step 5: populate the containers for the entity ids,
+                //         the dof types and the used procs
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+                // allocate memory
+                aEntityIDs.set_size( aDofCount );
+                aDofTypes.set_size( aDofCount );
+
+                // this is a temporary map which is needed to assign procs and dofs
+                Map< luint, index_t > tDofMap ;
+
+                // reset counters
+                aDofCount = 0 ;
+
+                index_t tIndex ;
+                index_t tBitCountA ;
+                index_t tBitCountB ;
+
+                // loop over all flagged entities
+                for( mesh::Element * tElement : tElements )
+                {
+                    // check if face is flagged
+                    if( tElement->is_flagged() )
+                    {
+                        // get index in array
+                        tIndex = tEntityMap( tElement->id() );
+
+                        // get the corresponding bitset
+                        Bitset< BELFEM_MAX_DOFTYPES > & tBitset = tDofFlags( tIndex );
+
+                        tBitCountA = 0 ;
+                        tBitCountB = tBitset.count() ;
+
+                        // loop over all bits
+                        for( uint d=0; d<BELFEM_MAX_DOFTYPES; ++d )
+                        {
+                            if( tBitset.test( d ) )
+                            {
+                                // remember ID
+                                aEntityIDs( aDofCount ) = tElement->id() ;
+
+                                // remember dof type
+                                aDofTypes( aDofCount )  = d ;
+
+                                // create a unique id and map it
+                                tDofMap[ tElement->id() * BELFEM_MAX_DOFTYPES + d ] = aDofCount++ ;
+
+                                // cancel loop if we are done
+                                if( ++tBitCountA == tBitCountB )
+                                {
+                                    break ;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                // Step 6: determine which dofs are visible on which proc
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+                // allocate memory
+                aProcFlags.set_size( aDofCount, Bitset< BELFEM_MAX_NUMPROCS >() );
+
+                // loop over all blocks
+                // define which dof is used by which proc
+                for( id_t tBlockID : aIWG->selected_blocks() )
+                {
+                    // grab block on mesh
+                    mesh::Block * tBlock = mMesh->block( tBlockID );
+
+                    // grab the DOFs for this entity
+                    const Vector< index_t > & tSelectedDofs = aIWG->dofs_per_cell( tBlockID );
+
+                    if ( tSelectedDofs.length() > 0 )
+                    {
+                        // loop over all elements on this block
+                        for( mesh::Element * tElement : tBlock->elements() )
+                        {
+                            // loop over all selected dofs
+                            for( index_t s : tSelectedDofs )
+                            {
+                                for( index_t i=0; i<tMultiplicity; ++i )
+                                {
+                                    // compute the unique dof ID
+                                    luint tID = tElement->id() * BELFEM_MAX_DOFTYPES + s + i ;
+
+                                    // grab the corresponding bitset
+                                    Bitset< BELFEM_MAX_NUMPROCS > & tBitset = aProcFlags( tDofMap( tID ) );
+
+                                    // set the proc bitset
+                                    tBitset.set( tElement->owner() );
+
+                                    // also make element visible of neighbor procs
+                                    for( uint e=0; e<tElement->number_of_elements(); ++e )
+                                    {
+                                        // get neighbor
+                                        mesh::Element * tNeighbor = tElement->element( e );
+
+                                        if( tNeighbor->owner() != tElement->owner() && tNeighbor->is_flagged() )
+                                        {
+                                            tBitset.set( tNeighbor->owner() );
+                                        }
                                     }
                                 }
                             }

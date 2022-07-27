@@ -65,7 +65,6 @@ namespace belfem
             // partition the mesh if in parallel mode
             if ( mNumberOfProcs > 1 && mMyRank == mMesh->master() )
             {
-
                 // check if we have defined specific blocks for the partitioning
                 if( mParams->selected_blocks().length() == 0 )
                 {

@@ -195,9 +195,11 @@ int main( int    argc,
        }
 
        Timer tTimer;
+       Timer tTimer1 ;
 
        index_t tCountP = 0 ;
        index_t tCountN = 0 ;
+
 
        while ( tEpsilon > tNonlinear.newtonEpsilon || tIter < tNonlinear.minIter )
        {
@@ -205,6 +207,7 @@ int main( int    argc,
            {
                tFormulation->set_algorithm( SolverAlgorithm::Picard );
                tFormulation->set_omega( tOmegaP );
+
                if( tCountP++ > 0 )
                {
                    if ( tEpsilon < tEpsilon0 )
@@ -276,7 +279,7 @@ int main( int    argc,
 
        // save mesh
        tMesh->save( tOutFile );
-       tMesh->save( "test.exo");
+       //tMesh->save( "test.exo");
 
        // save backup
        tFormulation->save( tBackupFile );

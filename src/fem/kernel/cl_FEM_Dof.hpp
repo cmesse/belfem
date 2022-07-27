@@ -56,6 +56,11 @@ namespace belfem
 
             Dof( const id_t aID, const uint & aType, mesh::Face * aFace, const index_t aDofIndexOnField );
 
+
+//------------------------------------------------------------------------------
+
+            Dof( const id_t aID, const uint & aType, mesh::Element * aElement, const index_t aDofIndexOnField );
+
 //------------------------------------------------------------------------------
 
             Dof( const id_t aID, const uint & aType, mesh::Facet * aFacet );

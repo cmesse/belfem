@@ -243,6 +243,14 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
                 index_t
+                count_cell_dofs( IWG  * aIWG,
+                                 Vector< id_t > & aEntityIDs,
+                                 Vector< index_t > & aDofTypes,
+                                 Cell< Bitset<BELFEM_MAX_NUMPROCS> > & aProcFlags );
+
+//-----------------------------------------------------------------------------
+
+                index_t
                 count_lambda_dofs( IWG  * aIWG,
                                  Vector< id_t > & aEntityIDs,
                                  Vector< index_t > & aDofTypes,

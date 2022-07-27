@@ -88,7 +88,7 @@ namespace belfem
             {
                 this->create_current_projector();
             }
-            if( mHaveJ )
+            if( mHaveB )
             {
                 this->create_magfield_projector() ;
             }
@@ -1711,7 +1711,6 @@ namespace belfem
                 // get the element type
                 ElementType tType = this->element_type( tBlocks( 0 ) );
 
-                // create the iwg
                 IWG_Maxwell * tIWG = new IWG_Maxwell_L2_Current( tType, mAlphaJ );
 
                 // set the blocks of the IWG

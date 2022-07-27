@@ -1547,6 +1547,12 @@ namespace belfem
             // assume that all elements are part of the mesh
             this->unflag_all_elements() ;
 
+            // flag all blocks
+            for( mesh::Block * tBlock : mBlocks )
+            {
+                tBlock->flag_elements() ;
+            }
+
             // create a partitioner
             mesh::Partitioner( this, aNumberOfPartitions, aSetProcOwners );
 
@@ -1569,10 +1575,21 @@ namespace belfem
             // assume that all elements are part of the mesh
             this->unflag_all_elements() ;
 
-            // flag elements on selected blocks
-            for( id_t tID : aSelectedBlocks )
+            if( aSelectedBlocks.length() > 0 )
             {
-                this->block( tID )->flag_elements() ;
+                // flag elements on selected blocks
+                for( id_t tID : aSelectedBlocks )
+                {
+                    this->block( tID )->flag_elements() ;
+                }
+            }
+            else
+            {
+                // flag all blocks
+                for( mesh::Block * tBlock : mBlocks )
+                {
+                    tBlock->flag_elements() ;
+                }
             }
 
             // create a partitioner

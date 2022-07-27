@@ -122,6 +122,8 @@ namespace belfem
                 }
             }
 
+            BELFEM_ERROR( mNumberOfElements > 0, "No elements were selected for partitioning");
+
             if( mNumberOfElements > 0 )
             {
                 mElementPointers = ( metis_t * ) malloc(( mNumberOfElements + 1 ) * sizeof( metis_t ));
