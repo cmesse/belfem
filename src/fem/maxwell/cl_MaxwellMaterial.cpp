@@ -2,8 +2,8 @@
 // Created by christian on 9/21/21.
 //
 #include "stringtools.hpp"
+#include "cl_MaterialFactory.hpp"
 #include "cl_MaxwellMaterial.hpp"
-
 
 namespace belfem
 {
@@ -48,6 +48,10 @@ namespace belfem
         if( mRhoSpline != nullptr )
         {
             delete mRhoSpline ;
+        }
+        if( mThermalMaterial != nullptr )
+        {
+            delete mThermalMaterial ;
         }
     }
 
@@ -259,6 +263,31 @@ namespace belfem
 
         // secant magnetic resistance
         mNuS   = BELFEM_QUIET_NAN ;
+    }
+
+//----------------------------------------------------------------------------
+
+    void
+    MaxwellMaterial::set_thermal_material( const MaterialType aType )
+    {
+        MaterialFactory tFactory ;
+        if( mThermalMaterial != nullptr )
+        {
+            delete mThermalMaterial;
+        }
+        mThermalMaterial = tFactory.create_material( aType );
+    }
+//----------------------------------------------------------------------------
+
+    void
+    MaxwellMaterial::set_thermal_material( const string aLabel )
+    {
+        MaterialFactory tFactory ;
+        if( mThermalMaterial != nullptr )
+        {
+            delete mThermalMaterial;
+        }
+        mThermalMaterial = tFactory.create_material( aLabel );
     }
 
 //----------------------------------------------------------------------------

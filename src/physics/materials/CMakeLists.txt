@@ -17,6 +17,8 @@ set( SOURCES
         cl_Material_Inconel750X.cpp
         cl_Material_Hastelloy.cpp
         cl_Material_Silver.cpp
+        cl_Material_YBCO.cpp
+        cl_Material_Pb40Sn60.cpp
 	    cl_MaterialFactory.cpp
 	    nist_functions.cpp
         )

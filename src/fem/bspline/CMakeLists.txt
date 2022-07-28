@@ -21,6 +21,7 @@ include_directories( ${BELFEM_SOURCE_DIR}/numerics/integration )
 include_directories( ${BELFEM_SOURCE_DIR}/fem/interpolation )
 include_directories( ${BELFEM_SOURCE_DIR}/mesh )
 include_directories( ${BELFEM_SOURCE_DIR}/physics )
+include_directories( ${BELFEM_SOURCE_DIR}/physics/materials )
 if ( USE_GASMODELS )
     include_directories( ${BELFEM_SOURCE_DIR}/physics/gastables )
     include_directories( ${BELFEM_SOURCE_DIR}/physics/gasmodels )
@@ -34,6 +35,7 @@ set ( LIBLIST
         interpolation
         mesh
         bspline
+        materials
         )
 
 if ( USE_GASMODELS )
@@ -60,3 +62,7 @@ if( USE_EXAMPLES AND USE_GASMODELS )
     set( MAIN stagnation.cpp)
     include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
 endif()
+
+set( EXECNAME makematdb )
+set( MAIN makematdb.cpp)
+include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )

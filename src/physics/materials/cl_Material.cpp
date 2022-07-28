@@ -65,6 +65,14 @@ namespace belfem
                       mLabel.c_str() );
     }
 
+//----------------------------------------------------------------------------
+
+    void
+    Material::use_splines( const bool aSwitch )
+    {
+        BELFEM_ERROR( false, "use_splines is not implemented for material %s",
+                      mLabel.c_str() );
+    }
 
 //----------------------------------------------------------------------------
 

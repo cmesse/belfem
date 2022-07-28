@@ -193,9 +193,10 @@ namespace belfem
             real tF  = polyval( aPoly1, aTswitch );
             real tdF = dpolyval( aPoly1, aTswitch );
 
+            // this extends the resistivity into a parabola
             aPoly0.set_size( 3, 0 );
-            aPoly0( 0 ) = tF - tdF * aTswitch * 0.5 ;
-            aPoly0( 2 ) = tdF /( 2.0 * aTswitch );
+            aPoly0( 0 ) = tdF /( 2.0 * aTswitch );
+            aPoly0( 2 ) = tF - tdF * aTswitch * 0.5 ;
         }
 
 //-----------------------------------------------------------------------

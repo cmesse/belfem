@@ -67,6 +67,14 @@ namespace belfem
             {
                 return "Silver" ;
             }
+            case( MaterialType::YBCO ) :
+            {
+                return "YBCO" ;
+            }
+            case( MaterialType::Pb40Sn60 ) :
+            {
+                return "Pb40Sn60" ;
+            }
             default:
             {
                 return "undefined" ;
@@ -139,6 +147,15 @@ namespace belfem
         else if ( tString == "silver" || tString == "ag" || tString == "argentum" )
         {
             return MaterialType::Silver ;
+        }
+        else if ( tString == "ybco" || tString == "yb123" )
+        {
+            return MaterialType::YBCO ;
+        }
+        else if (   tString == "pbsn" || "pb40sn60" || tString == "pb40-sn60" || tString == "pb40/sn60"
+                 || tString == "snpb" || "sn60pb40" || tString == "sn60-pb40" || tString == "sn60/pb40" )
+        {
+            return MaterialType::Pb40Sn60 ;
         }
         else
         {

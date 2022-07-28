@@ -15,7 +15,6 @@ namespace belfem
 
     class MaxwellMaterial : public IsotropicMaterial
     {
-
         // spline for the permeability
         Spline * mNuSpline = nullptr ;
 
@@ -69,6 +68,9 @@ namespace belfem
 
         // constant for magnetizatoin offset in BH curve
         real mM0 = BELFEM_QUIET_NAN ;
+
+        // help material for thermal data
+        Material * mThermalMaterial = nullptr ;
 
         real
         ( MaxwellMaterial::*mFunMur )
@@ -172,6 +174,48 @@ namespace belfem
          */
          real
          jc() const;
+
+//----------------------------------------------------------------------------
+
+        /**
+          * Density in kg/m^3
+          */
+        real
+        rho( const real aT=BELFEM_TREF ) const;
+
+//----------------------------------------------------------------------------
+
+        /**
+         * specific heat capacity in J/(kg*K)
+         */
+        real
+        c( const real aT = BELFEM_TREF ) const;
+
+//----------------------------------------------------------------------------
+
+        /**
+         * thermal conductivity in W/(m*K)
+         */
+        real
+        lambda( const real aT = BELFEM_TREF ) const;
+
+//----------------------------------------------------------------------------
+
+        /**
+         * thermal conductivity in W/(m*K)
+         */
+        real
+        lambda( const real aT, const real aB ) const;
+
+//----------------------------------------------------------------------------
+
+        void
+        set_thermal_material( const MaterialType aType );
+
+//----------------------------------------------------------------------------
+
+        void
+        set_thermal_material( const string aLabel );
 
 //----------------------------------------------------------------------------
     private:
@@ -363,6 +407,50 @@ namespace belfem
 
             return mJc ;
 
+        }
+
+//----------------------------------------------------------------------------
+
+        inline real
+        MaxwellMaterial::rho( const real aT ) const
+        {
+            BELFEM_ASSERT( mThermalMaterial != nullptr,
+                "thermal material not set for %s", mLabel.c_str() );
+
+            return mThermalMaterial->rho( aT );
+        }
+
+//---------------------------------------------------------------------------
+
+        inline real
+        MaxwellMaterial::c( const real aT ) const
+        {
+            BELFEM_ASSERT( mThermalMaterial != nullptr,
+                           "thermal material not set for %s", mLabel.c_str() );
+
+            return mThermalMaterial->c( aT );
+        }
+
+//----------------------------------------------------------------------------
+
+        inline real
+        MaxwellMaterial::lambda( const real aT ) const
+        {
+            BELFEM_ASSERT( mThermalMaterial != nullptr,
+                           "thermal material not set for %s", mLabel.c_str() );
+
+            return mThermalMaterial->lambda( aT );
+        }
+
+//----------------------------------------------------------------------------
+
+        inline real
+        MaxwellMaterial::lambda( const real aT, const real aB ) const
+        {
+            BELFEM_ASSERT( mThermalMaterial != nullptr,
+                           "thermal material not set for %s", mLabel.c_str() );
+
+            return mThermalMaterial->lambda( aT, aB );
         }
 
 //----------------------------------------------------------------------------

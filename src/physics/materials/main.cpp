@@ -375,6 +375,8 @@ int main( int    argc,
             }
         }
     }
+    printf( "density @ %3.2f K : %10.3f kg/m²\n", BELFEM_TREF, tMatierial->rho( BELFEM_TREF ) );
+
     delete tMatierial ;
 
     return gComm.finalize();

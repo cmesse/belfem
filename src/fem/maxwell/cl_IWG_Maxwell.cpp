@@ -307,7 +307,10 @@ namespace belfem
                                                mNumberOfDofsPerElement, 0.0 );
 
                     // work vector for B-Matrix
-                    aGroup->work_B().set_size( 1, mNumberOfDofsPerEdge );
+                    aGroup->work_B().set_size( 1, 2 * mNumberOfNodesPerElement );
+                    aGroup->work_C().set_size( 1, mNumberOfDofsPerEdge + 1 );
+                    aGroup->work_L().set_size( 1, mNumberOfNodesPerElement * 2, 0.0 );
+                    aGroup->work_D().set_size( mNumberOfNodesPerElement * 2, mNumberOfNodesPerElement * 2, 0.0 );
 
                     // data for nxB or nxN in 2D
                     aGroup->work_sigma().set_size( mNumberOfNodesPerElement, 0.0 );

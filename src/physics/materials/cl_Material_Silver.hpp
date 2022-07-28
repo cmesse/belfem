@@ -87,6 +87,11 @@ namespace belfem
                                            -0.557109 };
 
 
+            real
+            ( Silver::*mCpFunction )( const real aT ) const ;
+
+            real
+            ( Silver::*mRho0Function )( const real aT ) const ;
 
 //----------------------------------------------------------------------------
         public:
@@ -154,9 +159,19 @@ namespace belfem
             rho_el ( const real aJ, const real aT, const real aB ) const ;
 
 //----------------------------------------------------------------------------
+
+            void
+            use_splines( const bool aSwitch );
+
+//----------------------------------------------------------------------------
         private:
 //----------------------------------------------------------------------------
 
+
+            void
+            create_density_poly();
+
+//----------------------------------------------------------------------------
             void
             create_mech_polys();
 
@@ -188,6 +203,16 @@ namespace belfem
 //----------------------------------------------------------------------------
 
             real
+            rho_el0( const real aT ) const ;
+
+//----------------------------------------------------------------------------
+
+            real
+            rho_el0_nist( const real aT ) const ;
+
+//----------------------------------------------------------------------------
+
+            real
             rho_el0_poly( const real aT ) const ;
 
 //----------------------------------------------------------------------------
@@ -197,11 +222,13 @@ namespace belfem
 
 //----------------------------------------------------------------------------
 
-            /**
-             * specific heat capacity in J/(kg*K)
-             */
             real
-            c_poly( const real aT = BELFEM_TREF ) const;
+            c_poly( const real aT ) const;
+
+//----------------------------------------------------------------------------
+
+            real
+            c_spline( const real aT ) const;
 
 //--------------------------------------------------------------------------
         };
@@ -210,6 +237,14 @@ namespace belfem
 
         inline real
         Silver::c( const real aT ) const
+        {
+            return ( this->*mCpFunction )( aT );
+        }
+
+//----------------------------------------------------------------------------
+
+        inline real
+        Silver::c_spline( const real aT ) const
         {
             return mCpSpline->eval( aT );
         }
@@ -220,6 +255,15 @@ namespace belfem
         Silver::rho_el0_spline( const real aT ) const
         {
             return mRhoSpline->eval( aT );
+        }
+
+//----------------------------------------------------------------------------
+
+
+        inline real
+        Silver::rho_el0( const real aT ) const
+        {
+            return ( this->*mRho0Function )( aT );
         }
 
 //----------------------------------------------------------------------------

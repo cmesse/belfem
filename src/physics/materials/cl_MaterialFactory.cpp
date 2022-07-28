@@ -16,6 +16,8 @@
 #include "cl_Material_Inconel750X.hpp"
 #include "cl_Material_Hastelloy.hpp"
 #include "cl_Material_Silver.hpp"
+#include "cl_Material_YBCO.hpp"
+#include "cl_Material_Pb40Sn60.hpp"
 #ifdef BELFEM_GASMODELS
 #include "cl_Material_Air.hpp"
 #endif
@@ -87,6 +89,14 @@ namespace belfem
             case( MaterialType::Silver ) :
             {
                 return new material::Silver ;
+            }
+            case( MaterialType::YBCO ) :
+            {
+                return new material::YBCO ;
+            }
+            case( MaterialType::Pb40Sn60 ) :
+            {
+                return new material::Pb40Sn60 ;
             }
             default :
             {

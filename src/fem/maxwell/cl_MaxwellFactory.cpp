@@ -630,7 +630,7 @@ namespace belfem
             else
             {
                 // create new material
-                MaxwellMaterial * aMaterial = new MaxwellMaterial( aInput->label());
+                MaxwellMaterial * aMaterial = new MaxwellMaterial( aInput->label() );
 
                 // check if resistance exists
                 if ( aInput->key_exists( "resistance" ) )
@@ -800,6 +800,10 @@ namespace belfem
                     {
                         BELFEM_ERROR( false, "unknown permeability law: %s", tType.c_str());
                     }
+                }
+                if ( aInput->key_exists( "thermal" ) )
+                {
+                    aMaterial->set_thermal_material( aInput->get_string( "thermal" ) );
                 }
                 return aMaterial;
             }

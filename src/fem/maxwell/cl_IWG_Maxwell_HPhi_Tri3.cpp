@@ -408,7 +408,7 @@ namespace belfem
             Matrix< real > & tX = mGroup->work_X() ;
 
             // gradient operator for master and slave
-            Matrix< real > &tB = mGroup->work_B() ;
+            Matrix< real > & tB = mGroup->work_B() ;
 
             // container for expression cross( n, B )
             Vector< real > & tnxB = mGroup->work_sigma() ;
@@ -450,6 +450,8 @@ namespace belfem
 
             // std::cout << "check " << aRHS.length() << " " << tM.n_cols() << " " << tK.n_cols() << std::endl ;
 
+            // mGroup->master_integration( aElement->facet()->master_index() );
+            // mGroup->slave_integration( aElement->facet()->slave_index() );
 
             // compute the normal
             const Vector< real > & tn = this->normal_straight_2d( aElement );
@@ -464,9 +466,10 @@ namespace belfem
             aElement->master()->get_node_coors( tX );
             tJ = tNodeFunction->dNdXi( 0 ) * tX ;
             tB = inv( tJ ) * tNodeFunction->dNdXi( 0 );
-
-            crossmat( tn, mGroup->work_B(), tnxB );
-
+            tn.print("n");
+            crossmat( tn, tB, tnxB );
+            tB.print("Bm");
+            tnxB.print("nxBm");
             // number of nodes
             const uint n = tX.n_rows() ;
 
@@ -490,12 +493,19 @@ namespace belfem
             aElement->slave()->get_node_coors( tX );
             tJ = tNodeFunction->dNdXi( 0 ) * tX ;
             tB = inv( tJ ) * tNodeFunction->dNdXi( 0 );
+            tB.print("Bs");
+            crossmat( tn, tB, tnxB );
+            tnxB.print("nxBs");
             for( uint k=0; k<n; ++k)
             {
                 tM( i, j ) = tnxB( k ) ;
                 tM( j, i ) = tnxB( k ) ;
                 ++i ;
             }
+
+
+            // scale to help with conditioning
+            tM *= constant::mu0 ;
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // lambda-condition for master element, sheet side
@@ -515,11 +525,12 @@ namespace belfem
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // contribution for mass matrix
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
             tMlayer( 0, 0 ) = 2.0 ;
             tMlayer( 1, 0 ) = 1.0 ;
             tMlayer( 0, 1 ) = 1.0 ;
             tMlayer( 1, 1 ) = 2.0 ;
-            tMlayer *= tElementLength * constant::nu0 / 6.0 ;
+            tMlayer *= constant::mu0 / 6.0 ;
 
             // need thicknesses here
             i = 2 * mNumberOfNodesPerElement ;
@@ -554,24 +565,15 @@ namespace belfem
             tM *= tElementLength ;
             tK *= tElementLength ;
 
-            // not doing  the laplace flux thing for now (Alves doesn't do it either)
-
-            // now we compute the stiffness the same way
-
-
-            // compute the right hand side
+            tM.print("M");
+            tK.print("K");
+            //exit( 0 );
 
             // compute the right hand side
             aRHS = tM *  this->collect_q0_hphi_thinshell( aElement ) ;
 
             // finalize the Jacobian
             aJacobian += mDeltaTime * mGroup->work_K() ;
-
-            aRHS.print("RHS");
-            aJacobian.print("Jacobian");
-
-            //mGroup->master_integration( )
-            exit( 0 );
         }
 
 //------------------------------------------------------------------------------
@@ -641,11 +643,12 @@ namespace belfem
                 tB = constant::mu0 * ( tN( 0, 0) * aH( aLayer )
                         + tN( 0, 1 ) * aH( aLayer + 1 ) );
 
-                aK += ( tW( k ) * tMaterial->rho_el( tJz, tT, tB ) ) * trans( tC ) * tC ;
+                real tRho = tMaterial->rho_el( tJz, tT, tB ) + 1e-12 ;
+
+                aK += ( tW( k ) * tRho ) * trans( tC ) * tC ;
 
 
-                std::cout << k << " B=" << tB << " J=" << tJz << std::endl ;
-
+                std::cout << k << " B=" << tB << " J=" << tJz << " rho " << tRho << std::endl ;
 
             }
             aK *= tJ ;

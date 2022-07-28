@@ -25,6 +25,8 @@ namespace belfem
             mTmax = 1357.15;
             mKohlerXmin = nist::extend_kohler( mKohlerA, mKohlerKmin, 8.0, mKohlerB ) ;
 
+            this->use_splines( true );
+
             this->create_density_poly();
             this->create_mech_polys();
             this->create_expansion_polys();
@@ -32,9 +34,6 @@ namespace belfem
             this->create_specific_heat_spline();
 
             this->set_rrr( mRRR );
-
-
-
 
             mHasThermal = true;
             mHasMechanical = true;
@@ -48,7 +47,6 @@ namespace belfem
         {
             delete mCpSpline ;
             delete mRhoSpline ;
-
         }
 //----------------------------------------------------------------------------
 
@@ -57,9 +55,9 @@ namespace belfem
         {
             mRRR = aRRR ;
 
-            //this->create_resistivity_polys() ;
+            this->create_resistivity_polys() ;
             this->create_resistivity_spline() ;
-            mRhoRef = this->rho_el0_spline( mTref );
+            mRhoRef = this->rho_el0_nist( mTref );
 
             this->create_conductivity_polys() ;
         }
@@ -405,7 +403,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Copper::lambda( const real aT ) const
+        Copper::lambda_poly( const real aT ) const
         {
             if( aT < mSwitchLambdaT0 )
             {
@@ -455,7 +453,7 @@ namespace belfem
         Copper::lambda( const real aT, const real aB ) const
         {
             return this->lambda( aT )  * ( 1.0 + nist::kohler( mKohlerA, mKohlerB, mKohlerXmin,
-                                                               mRhoRef / this->rho_el0_spline( aT )  * std::abs( aB ) ) );
+                                                               mRhoRef / this->rho_el0( aT )  * std::abs( aB ) ) );
         }
 
 //----------------------------------------------------------------------------
@@ -465,8 +463,7 @@ namespace belfem
         Copper::rho_el ( const real aJ, const real aT, const real aB ) const
         {
             // resistivity for zero magnetic field
-            real tRho0 = this->rho_el0_spline( aT );
-
+            real tRho0 = this->rho_el0( aT );
             return tRho0 * ( 1.0 + nist::kohler( mKohlerA, mKohlerB, mKohlerXmin, mRhoRef / tRho0 * std::abs( aB ) ) );
         }
 
@@ -714,11 +711,9 @@ namespace belfem
             spline::create_helpmatrix( tN, tDeltaT, tA  );
             Vector< real > tR( tN );
 
-            tR( 0 ) = 0.0 ;
-
-            for( uint k=1; k<tN; ++k )
+            for( uint k=0; k<tN; ++k )
             {
-                tR( k ) = nist::rho0( mPrho, mRRR, tT( k ) );
+                tR( k ) = this->rho_el0_nist( tT( k ) );
             }
 
             if( mRhoSpline != nullptr )
@@ -803,6 +798,57 @@ namespace belfem
             }
            return aT ;
         }
+
+
+//----------------------------------------------------------------------------
+
+        real
+        Copper::lambda0_nist( const real aT ) const
+        {
+            if( aT < BELFEM_EPSILON )
+            {
+                return nist::lambda0( mPlambda, mBeta, BELFEM_EPSILON );
+            }
+            else
+            {
+                return nist::lambda0( mPlambda, mBeta, aT );
+            }
+        }
+
+//----------------------------------------------------------------------------
+
+        real
+        Copper::rho_el0_nist( const real aT ) const
+        {
+            if( aT < mSwitchRT0 )
+            {
+                return polyval( mResistivityPoly0, aT );
+            }
+            else
+            {
+                return nist::rho0( mPrho, mRRR, aT );
+            }
+        }
+
+//----------------------------------------------------------------------------
+
+        void
+        Copper::use_splines( const bool aSwitch )
+        {
+            if( aSwitch )
+            {
+                mCpFunction   = & Copper::c_spline ;
+                mRho0Function = & Copper::rho_el0_spline ;
+                mLambda0Function = & Copper::lambda_poly ;
+            }
+            else
+            {
+                mCpFunction = & Copper::c_poly ;
+                mRho0Function = & Copper::rho_el0_nist ;
+                mLambda0Function = & Copper::lambda0_nist ;
+            }
+        }
+
 
 //----------------------------------------------------------------------------
     } /* end namespace material */

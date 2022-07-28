@@ -121,6 +121,15 @@ namespace belfem
             const Vector< real > mQ = { 2.7015e-04, - 1.8831e-03, 1.2689e-02, 1.6394e-03};
             // value where dpolylva( mA, aY ) = 0
 
+            real
+            ( Copper::*mCpFunction )( const real aT ) const ;
+
+            real
+            ( Copper::*mLambda0Function )( const real aT ) const ;
+
+            real
+            ( Copper::*mRho0Function )( const real aT ) const ;
+
 //----------------------------------------------------------------------------
         public:
 //----------------------------------------------------------------------------
@@ -136,7 +145,7 @@ namespace belfem
             /**
              * specific heat capacity in J/(kg*K)
              */
-            inline real
+            real
             c( const real aT = BELFEM_TREF ) const;
 
 //----------------------------------------------------------------------------
@@ -154,7 +163,6 @@ namespace belfem
              */
             real
             lambda( const real aT, const real aB ) const;
-
 
 //----------------------------------------------------------------------------
 
@@ -187,6 +195,11 @@ namespace belfem
             rho_el ( const real aJ=0, const real aT=0, const real aB=0 ) const ;
 
 //----------------------------------------------------------------------------
+
+            void
+            use_splines( const bool aSwitch ) ;
+
+//----------------------------------------------------------------------------
         private:
 //----------------------------------------------------------------------------
 
@@ -195,11 +208,13 @@ namespace belfem
 
 //----------------------------------------------------------------------------
 
-            /**
-             * thermal conductivity in W/(m*K)
-             */
             real
             c_poly( const real aT ) const;
+
+//----------------------------------------------------------------------------
+
+            real
+            c_spline( const real aT ) const;
 
 //----------------------------------------------------------------------------
 
@@ -235,6 +250,24 @@ namespace belfem
 
             void
             create_resistivity_spline();
+
+//----------------------------------------------------------------------------
+
+            /**
+             * resistivity for zero field
+             */
+            real
+            rho_el0( const real aT ) const;
+
+//----------------------------------------------------------------------------
+
+            real
+            lambda0_nist( const real aT ) const;
+
+//----------------------------------------------------------------------------
+
+            real
+            lambda_poly( const real aT ) const ;
 
 //----------------------------------------------------------------------------
 
@@ -278,12 +311,37 @@ namespace belfem
             return mRhoSpline->eval( aT );
         }
 
+
+//----------------------------------------------------------------------------
+
+        inline real
+        Copper::c_spline( const real aT ) const
+        {
+            return mCpSpline->eval( aT );
+        }
+
 //----------------------------------------------------------------------------
 
         inline real
         Copper::c( const real aT ) const
         {
-            return mCpSpline->eval( aT );
+            return ( this->*mCpFunction )( aT ) ;
+        }
+
+//----------------------------------------------------------------------------
+
+        inline real
+        Copper::rho_el0( const real aT ) const
+        {
+            return ( this->*mRho0Function )( aT );
+        }
+
+//----------------------------------------------------------------------------
+
+        inline real
+        Copper::lambda( const real aT ) const
+        {
+            return ( this->*mLambda0Function )( aT );
         }
 
 //----------------------------------------------------------------------------

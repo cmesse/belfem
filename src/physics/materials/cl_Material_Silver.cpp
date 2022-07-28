@@ -23,7 +23,10 @@ namespace belfem
 
             mKohlerXmin = nist::extend_kohler( mKohlerA, mKohlerKmin, 4.0, mKohlerB ) ;
 
+            mDensityPoly = { 0 };
+            this->use_splines( true );
 
+            this->create_density_poly();
             this->create_conductivity_polys() ;
             this->create_specific_heat_polys();
             this->create_specific_heat_spline() ;
@@ -51,9 +54,18 @@ namespace belfem
         Silver::set_rrr( const real aRRR )
         {
             mRRR = aRRR ;
-            // this->create_resistivity_polys() ;
+            this->create_resistivity_polys() ;
             this->create_resistivity_spline();
-            mRhoRef = this->rho_el0_spline( mTref );
+            mRhoRef = this->rho_el0_nist( mTref );
+        }
+
+//----------------------------------------------------------------------------
+
+        void
+        Silver::create_density_poly()
+        {
+            // doi:10.1088/1742-6596/1677/1/012161
+            mDensityPoly = {  -6.939999845777782e-05,  -0.604610761361504, 10687.00566698209 };
         }
 
 //----------------------------------------------------------------------------
@@ -238,11 +250,9 @@ namespace belfem
             spline::create_helpmatrix( tN, tDeltaT, tA  );
             Vector< real > tR( tN );
 
-            tR( 0 ) = 0.0 ;
-
-            for( uint k=1; k<tN; ++k )
+            for( uint k=0; k<tN; ++k )
             {
-                tR( k ) = nist::rho0( mPrho, mRRR, tT( k ) );
+                tR( k ) = this->rho_el0_nist( tT( k ) );
             }
 
             if( mRhoSpline != nullptr )
@@ -402,8 +412,6 @@ namespace belfem
         void
         Silver::create_conductivity_polys()
         {
-            // let 1/lambda = w0 + w1
-            // w0 =
 
             // poly for w1, T< 50
             mThermalConductivityPoly1 = { -7.5168e-9, 1.0500e-6, -1.9953e-6, 0 } ;
@@ -427,7 +435,7 @@ namespace belfem
         Silver::rho_el ( const real aJ, const real aT, const real aB ) const
         {
             // resistivity for zero magnetic field
-            real tRho0 = this->rho_el0_spline( aT );
+            real tRho0 = this->rho_el0( aT );
 
             return tRho0 * ( 1.0 + nist::kohler( mKohlerA, mKohlerB,
                                                  mKohlerXmin, mRhoRef / tRho0 * std::abs( aB ) ) );
@@ -457,6 +465,37 @@ namespace belfem
 
             return this->lambda( aT )  * ( 1.0 + nist::kohler( mKohlerA, mKohlerB, mKohlerXmin,
                                                                mRhoRef / this->rho_el0_spline( aT )  * std::abs( aB ) ) );
+        }
+
+//----------------------------------------------------------------------------
+
+        real
+        Silver::rho_el0_nist( const real aT ) const
+        {
+            if( aT < mSwitchRT0 )
+            {
+                return polyval( mResistivityPoly0, aT );
+            }
+            else
+            {
+                return nist::rho0( mPrho, mRRR, aT );
+            }
+        }
+//----------------------------------------------------------------------------
+
+        void
+        Silver::use_splines( const bool aSwitch )
+        {
+            if( aSwitch )
+            {
+                mCpFunction   = & Silver::c_spline ;
+                mRho0Function = & Silver::rho_el0_spline ;
+            }
+            else
+            {
+                mCpFunction = & Silver::c_poly ;
+                mRho0Function = & Silver::rho_el0_nist ;
+            }
         }
 
 //----------------------------------------------------------------------------

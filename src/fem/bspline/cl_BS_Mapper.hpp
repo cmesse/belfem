@@ -30,6 +30,9 @@ namespace belfem
             // number of elements per dimension
             const Vector< index_t > mNumberOfElementsPerDimension ;
 
+            // for database output: minimal point
+            const Vector< real > mOffset ;
+
             // number of nodes per dimension
             Vector< index_t> mNumberOfNodesPerDimension ;
 
@@ -95,8 +98,8 @@ namespace belfem
             Mapper( const uint aNumberOfDimensions,
                     const uint aOrder,
                     const Vector< index_t > & aNumberOfElementsPerDimension,
-                    const Vector< real >   & aMinPoint,
-                    const Vector< real >   & aMaxPoint
+                    const Vector< real >    & aMinPoint,
+                    const Vector< real >    & aMaxPoint
                     );
 
 //------------------------------------------------------------------------------
@@ -136,6 +139,13 @@ namespace belfem
 
             void
             compute_node_values();
+
+//------------------------------------------------------------------------------
+
+            void
+            write_field_to_database( const string & aLabel,
+                                     const string & aDatabase,
+                                     const uint     aDimensions=0 );
 
 //------------------------------------------------------------------------------
         private:
@@ -205,8 +215,6 @@ namespace belfem
 
             void
             create_jacobian();
-
-
 
 //------------------------------------------------------------------------------
 

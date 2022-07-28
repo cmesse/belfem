@@ -11,6 +11,8 @@
 #include "fn_trans.hpp"
 #include "fn_inv.hpp"
 #include "cl_Solver.hpp"
+#include "filetools.hpp"
+#include "cl_HDF5.hpp"
 
 namespace belfem
 {
@@ -25,7 +27,8 @@ namespace belfem
                         const Vector< real > & aMaxPoint ) :
                 mNumberOfDimensions( aNumberOfDimensions ),
                 mOrder( aOrder ),
-                mNumberOfElementsPerDimension( aNumberOfElementsPerDimension )
+                mNumberOfElementsPerDimension( aNumberOfElementsPerDimension ),
+                mOffset( aMinPoint )
         {
             BELFEM_ERROR( comm_size() == 1, "The Mapper can not be run in parallel mode" );
 
@@ -819,7 +822,7 @@ namespace belfem
             }
 
             // create a solver
-            Solver tSolver ;
+            Solver tSolver( SolverType::UMFPACK );
 
             // solve system
             tSolver.solve( *mJacobian, mDOFs, mRHS ) ;
@@ -863,5 +866,81 @@ namespace belfem
             }
         }
 
+//------------------------------------------------------------------------------
+
+        void
+        Mapper::write_field_to_database(
+                const string & aLabel,
+                const string & aDatabase,
+                const uint     aDimensions )
+        {
+
+            // check if file exists
+            FileMode tMode = file_exists( aDatabase ) ? FileMode::OPEN_RDWR : FileMode::NEW ;
+
+            // open database
+            HDF5 tFile( aDatabase, tMode );
+
+            // create a new group
+            tFile.create_group( aLabel );
+
+            // write the dimension
+            uint tDimension = aDimensions == 0 ? mNumberOfDimensions : aDimensions ;
+            tFile.save_data( "dimension", tDimension );
+
+            // write the number of points
+            Vector<  uint > tNumPoints( tDimension );
+            for( uint k=0; k<tDimension; ++k )
+            {
+                tNumPoints( k ) = mNumberOfNodesPerDimension( k );
+            }
+            tFile.save_data( "numpoints", tNumPoints );
+
+            // write the offset
+            Vector< double > tOffset( tDimension );
+            for( uint k=0; k<tDimension; ++k )
+            {
+                tOffset( k ) = mOffset( k );
+            }
+            tFile.save_data( "offset", tOffset );
+
+            // write the interpolation order
+            tFile.save_data("order", mOrder );
+
+            // write the stepsize
+            Vector< double > tStep( tDimension );
+            tStep( 0 ) = mAxisX( mOrder ) - mAxisX( 0 );
+
+            index_t tMemory = mNumberOfNodesPerDimension( 0 );
+
+            if( tDimension > 1 )
+            {
+                tStep( 1 ) = mAxisY( mOrder ) - mAxisY( 0 );
+                tMemory *= mNumberOfNodesPerDimension( 1 );
+                if( tDimension > 2 )
+                {
+                    tStep( 2 ) = mAxisZ( mOrder ) - mAxisZ( 0 );
+                    tMemory *= mNumberOfNodesPerDimension( 2 );
+                }
+            }
+            tFile.save_data("step", tStep );
+
+            // write the dataset
+            Vector< real > & tData = mMesh->field_data( aLabel );
+            Vector< double > tValues( tMemory );
+            for( index_t k=0; k<tMemory; ++k )
+            {
+                tValues( k ) = tData( k );
+            }
+            tFile.save_data("values", tValues );
+
+            // close the group
+            tFile.close_active_group() ;
+
+            // close the file
+            tFile.close() ;
+        }
+
+//------------------------------------------------------------------------------
     }
 }
