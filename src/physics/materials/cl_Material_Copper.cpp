@@ -481,6 +481,7 @@ namespace belfem
                                  8627.15, 8568.91, 8498.98, 8431.39, 8361.46, 8291.51 };
 
             polyfit( tT, tR, 2, mDensityPoly );
+            IsotropicMaterial::create_density_poly( polyval( mDensityPoly, BELFEM_TREF ) );
         }
 
 //----------------------------------------------------------------------------

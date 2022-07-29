@@ -287,9 +287,6 @@ namespace belfem
             SpMatrix & aA )
     {
 
-
-
-
         BELFEM_ASSERT( aX.length() > 3, "Need at least four datapoints for this spline" );
 
         size_t tN = aX.length() - 1;
@@ -542,6 +539,64 @@ namespace belfem
             mDeltaX = tRData( 2 );
             mInvDeltaX = 1.0 / mDeltaX ;
         }
+    }
+
+//------------------------------------------------------------------------------
+
+    void
+    Spline::save_to_database( const string & aDatabase, const string & aLabel )
+    {
+        // check if file exists
+        FileMode tMode = file_exists( aDatabase ) ?
+                FileMode::OPEN_RDWR : FileMode::NEW ;
+
+        // open database
+        HDF5 tFile( aDatabase, tMode );
+
+        // create a new group
+        tFile.create_group( aLabel );
+
+        // write the dimension
+        uint tDimension = 1 ;
+        tFile.save_data( "dimension", tDimension );
+
+        // write the number of points
+        Vector<  uint > tNumPoints( tDimension );
+        tNumPoints( 0 ) = mNumberOfPoints ;
+        tFile.save_data( "numpoints", tNumPoints );
+
+        // write the offset
+        Vector< double > tOffset( tDimension );
+        tOffset( 0 ) = mXmin ;
+        tFile.save_data( "offset", tOffset );
+
+        // write the spline order, zero is a special indicator
+        uint tOrder = 0 ;
+        tFile.save_data( "order", tOrder );
+
+        // write the stepsize
+        Vector< double > tStep( tDimension );
+        tStep( 0 ) = mDeltaX ;
+        tFile.save_data("step", tStep );
+
+        // flatten the matrix
+        index_t tM = mData.n_cols();
+        index_t tN = 4 ;
+        Vector< double > tCoeffs( tN * tM );
+        index_t tCount = 0 ;
+        for( index_t j=0; j<tM; ++j )
+        {
+            for( index_t i=0; i<tN; ++i )
+            {
+                tCoeffs( tCount++ ) = mData( i, j );
+            }
+        }
+
+        // save the data
+        tFile.save_data( "coeffs", tCoeffs );
+
+        tFile.close_active_group();
+        tFile.close();
     }
 
 //------------------------------------------------------------------------------

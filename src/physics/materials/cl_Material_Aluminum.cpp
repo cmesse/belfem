@@ -40,7 +40,7 @@ namespace belfem
             // Touloukian from 100 K to melting point
             mThermalExpansionPoly = { -6.99557e-12, 2.08484e-8, 1.14374e-5, 0.0 };
 
-            mDensityPoly.set_size( 1, 2700.0 );
+            this->create_density_poly( 2700.0 );
 
             // assumption for oxidized surface
             mEpsilonPoly.set_size( 1, 0.4 );

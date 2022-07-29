@@ -39,7 +39,7 @@ int main( int    argc,
                             125, 150, 175, 200, 225, 250, 275, 300 };
 
 
-    Material * tMaterial = tFactory.create_material( "copper" );
+    Material * tMaterial = tFactory.create_material( "silver" );
     tMaterial->use_splines( true );
 
     string tFile = "materials.hdf5" ;
@@ -50,17 +50,16 @@ int main( int    argc,
 
         tMaterial->set_rrr( tRRR( r ));
 
-        string tRhoLabel = sprint( "CopperRho_RRR%u", tRRR( r ));
-        string tKLabel = sprint( "CopperK_RRR%u", tRRR( r ));
+        string tRhoLabel = sprint( "SilverRho_RRR%u", tRRR( r ));
+        string tKLabel = sprint( "SilverK_RRR%u", tRRR( r ));
 
         Mapper tMapper( 2, 2,
-                        { 500, 100 },
+                        { 251, 100 },
                         { 0.0, 0.0 },
                         { 500.0, 50.0 } );
 
 
         const Matrix< real > & tGrid = tMapper.integration_grid();
-        Vector< real > & tCp = tMapper.create_field( "CopperCp" );
         Vector< real > & tK = tMapper.create_field( tKLabel );
         Vector< real > & tRho = tMapper.create_field( tRhoLabel );
 
@@ -79,7 +78,6 @@ int main( int    argc,
             // magnetic field
             real tB = tGrid( 1, k );
 
-            tCp( k ) = tMaterial->c( tT );
             tK( k ) = tMaterial->lambda( tT, tB );
             tRho( k ) = tMaterial->rho_el( 0, tT, tB );
         }
@@ -87,11 +85,6 @@ int main( int    argc,
         tMapper.compute_node_values();
 
         // tMapper.mesh()->save( "data.exo");
-
-        if( r == 0 )
-        {
-            tMapper.write_field_to_database( "CopperCp", tFile, 1 );
-        }
         tMapper.write_field_to_database( tRhoLabel, tFile );
         tMapper.write_field_to_database( tKLabel, tFile );
 

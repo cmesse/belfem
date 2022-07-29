@@ -19,10 +19,11 @@ namespace belfem
             // set maximum temperature
             mTmax = 3000.0;
 
-            mDensityPoly.set_size( 1, 5890 );
+
             this->create_specific_heat_polys();
             this->create_conductivity_polys();
             this->create_mech_polys() ;
+            this->create_density_poly( 5890 );
 
             mHasMechanical = true;
             mHasThermal = true;

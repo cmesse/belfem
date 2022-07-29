@@ -17,6 +17,9 @@ namespace belfem
         class Rohacell51 : public IsotropicMaterial
         {
 
+            // polynomial for specific heat
+            Vector< real > mSpecificHeatPoly;
+
             Vector <real> mThermalConductivityPoly0;
             Vector <real> mThermalConductivityPoly1;
             Vector <real> mThermalConductivityPoly2;
@@ -36,6 +39,11 @@ namespace belfem
 
 //----------------------------------------------------------------------------
 
+            real
+            c( const real aT ) const ;
+
+//----------------------------------------------------------------------------
+
             /**
              * thermal conductivity in W/(m*K)
              */
@@ -45,6 +53,17 @@ namespace belfem
 //----------------------------------------------------------------------------
         };
 //----------------------------------------------------------------------------
+
+//----------------------------------------------------------------------------
+
+
+
+        inline real
+        Rohacell51::c( const real aT ) const
+        {
+            return polyval( mSpecificHeatPoly, aT );
+        }
+
     } /* end namespace material */
 }  /* end namespace belfem */
 #endif //BELFEM_CL_ROHACELL51_HPP

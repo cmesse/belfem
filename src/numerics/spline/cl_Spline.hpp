@@ -166,6 +166,11 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
+        save_to_database( const string & aDatabase, const string & aLabel );
+
+//------------------------------------------------------------------------------
+
+        void
         update_data(
                 SpMatrix             & aHelpMatrix,
                 const Vector< real > & aValues,

@@ -52,7 +52,15 @@ int main( int    argc,
     {
         print_banner();
 
-        std::cout << "Material: " << tMatierial->label() << std::endl;
+        if( tMatierial->number().length() > 0 )
+        {
+            std::cout << "Material: " << tMatierial->label() << " " << tMatierial->number() << std::endl;
+        }
+        else
+        {
+            std::cout << "Material: " << tMatierial->label() << std::endl;
+        }
+
 
        Vector< real > tT = {
                 4.0,

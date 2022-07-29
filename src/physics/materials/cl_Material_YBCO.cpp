@@ -18,11 +18,10 @@ namespace belfem
                 IsotropicMaterial( MaterialType::YBCO )
         {
             mTmax = 1273.15 ;
-            mDensityPoly.set_size( 1, 6300.0 );
 
             this->create_conductivity_polys() ;
             this->create_specific_heat_polys();
-
+            mDensityPoly.set_size( 1, 6300.0 );
             mHasThermal = true ;
         }
 
@@ -31,6 +30,7 @@ namespace belfem
         void
         YBCO::create_specific_heat_polys()
         {
+            // based on data from 10.1109/TASC.2014.2341180
             mSpecificHeatPoly0 = {  6.905665e-07,
                                    -2.340218e-04,
                                     2.733142e-02,
@@ -65,6 +65,8 @@ namespace belfem
         void
         YBCO::create_conductivity_polys()
         {
+            // based on data from 10.1109/TASC.2014.2341180
+
             // from 60 - 100
             mThermalConductivityPoly2 = {  -2.475512e-5, 7.031881e-3,  -6.925542e-1, 2.883919e1 } ;
 

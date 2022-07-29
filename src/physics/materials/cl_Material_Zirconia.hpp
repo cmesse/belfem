@@ -18,6 +18,8 @@ namespace belfem
 
         class Zirconia : public IsotropicMaterial
         {
+            Vector< real > mThermalConductivityPoly ;
+
             const real mSwitchCT0 = 100.0;
 
             Vector< real > mSpecificHeatPoly0;
@@ -78,7 +80,6 @@ namespace belfem
             create_mech_polys();
 
 //----------------------------------------------------------------------------
-
         };
     }
 }

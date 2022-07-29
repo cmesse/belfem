@@ -9,6 +9,7 @@
 #include "cl_Vector.hpp"
 
 #include "cl_IsotropicMaterial.hpp"
+#include "fn_polyval.hpp"
 
 namespace belfem
 {
@@ -37,6 +38,9 @@ namespace belfem
             const real mSwitchCpT1 = 800;
             const real mSwitchCpT2 = 1200;
 
+            // thermal conductivity data
+            Vector <real> mThermalConductivityPoly ;
+
 //----------------------------------------------------------------------------
         public:
 //----------------------------------------------------------------------------
@@ -54,7 +58,22 @@ namespace belfem
 
 //----------------------------------------------------------------------------
 
+            real
+            lambda( const real aT = BELFEM_TREF ) const ;
+
+//----------------------------------------------------------------------------
+
         };
+//----------------------------------------------------------------------------
+
+
+
+        inline real
+        AltraMat80::lambda( const real aT ) const
+        {
+            return polyval( mThermalConductivityPoly, aT );
+        }
+
 //----------------------------------------------------------------------------
     } /* end namespace material */
 }  /* end namespace belfem */

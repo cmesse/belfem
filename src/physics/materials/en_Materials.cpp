@@ -59,7 +59,7 @@ namespace belfem
             {
                 return "Inconel750X" ;
             }
-            case( MaterialType::Hastelloy ) :
+            case( MaterialType::HastelloyC276 ) :
             {
                 return "Hastelloy-C276" ;
             }
@@ -75,6 +75,14 @@ namespace belfem
             {
                 return "Pb40Sn60" ;
             }
+            case( MaterialType::SAE301 ) :
+            {
+                return "SAE-301" ;
+            }
+            case( MaterialType::SAE314 ) :
+            {
+                return "SAE-314" ;
+            }
             default:
             {
                 return "undefined" ;
@@ -87,7 +95,6 @@ namespace belfem
     {
         // make string lower case
         const string tString = string_to_lower( aString );
-
         if( tString == "unity" )
         {
             return MaterialType::Unity ;
@@ -96,66 +103,74 @@ namespace belfem
         {
             return MaterialType::Air ;
         }
-        else if ( tString == "simple" )
+        if ( tString == "simple" )
         {
             return MaterialType::Simple ;
         }
-        else if ( tString == "aluminum" )
+        if ( tString == "aluminum" )
         {
             return MaterialType::Aluminum ;
         }
-        else if ( tString == "copper" )
+        if ( tString == "copper" )
         {
             return MaterialType::Copper ;
         }
-        else if ( tString == "inconel718" || tString == "inconel-718"  )
+        if ( tString == "inconel718" || tString == "inconel-718" || tString == "2.4668" )
         {
             return MaterialType::Inconel718 ;
         }
-        else if ( tString == "altramat80" || tString == "altramat"  )
+        if ( tString == "altramat80" || tString == "altramat"  )
         {
             return MaterialType::Altramat80 ;
         }
-        else if ( tString == "ti-6al-4v" || tString == "ti6al4v"  || tString == "ti/6al/4v" )
+        if ( tString == "ti-6al-4v" || tString == "ti6al4v"  || tString == "ti/6al/4v"  || tString == "3.7165" )
         {
             return MaterialType::TI6AL4V ;
         }
-        else if ( tString == "rohacell51" || tString == "rohacell" )
+        if ( tString == "rohacell51" || tString == "rohacell" )
         {
             return MaterialType::Rohacell51 ;
         }
-        else if ( tString == "ccsic" || tString == "c/c-sic"  )
+        if ( tString == "ccsic" || tString == "c/c-sic"  )
         {
             return MaterialType::CCSIC ;
         }
-        else if ( tString == "cucrzr" || tString == "cucr1zr"  )
+        if ( tString == "cucrzr" || tString == "cucr1zr"  )
         {
             return MaterialType::CuCrZr ;
         }
-        else if ( tString == "zirconia" || tString == "zro2"  )
+        if ( tString == "zirconia" || tString == "zro2"  )
         {
             return MaterialType::Zirconia ;
         }
-        else if ( tString == "inconel750x" || tString == "inconel-750x"  )
+        if ( tString == "inconel750x" || tString == "inconel-750x"  || tString == "2.4669" )
         {
             return MaterialType::Inconel750X ;
         }
-        else if ( tString == "hastelloy" || tString == "hastelloyc276" || tString == "hastelloy-c276" || tString == "hastelloy c-276" )
+        if ( tString == "hastelloy" || tString == "hastelloyc276" || tString == "hastelloy-c276" || tString == "hastelloy c-276" )
         {
-            return MaterialType::Hastelloy ;
+            return MaterialType::HastelloyC276 ;
         }
-        else if ( tString == "silver" || tString == "ag" || tString == "argentum" )
+        if ( tString == "silver" || tString == "ag" || tString == "argentum" )
         {
             return MaterialType::Silver ;
         }
-        else if ( tString == "ybco" || tString == "yb123" )
+        if ( tString == "ybco" || tString == "yb123" )
         {
             return MaterialType::YBCO ;
         }
-        else if (   tString == "pbsn" || "pb40sn60" || tString == "pb40-sn60" || tString == "pb40/sn60"
-                 || tString == "snpb" || "sn60pb40" || tString == "sn60-pb40" || tString == "sn60/pb40" )
+        if (   tString == "pbsn" || tString == "pb40sn60" || tString == "pb40-sn60" || tString == "pb40/sn60"
+                 || tString == "snpb" || tString == "sn60pb40" || tString == "sn60-pb40" || tString == "sn60/pb40" )
         {
             return MaterialType::Pb40Sn60 ;
+        }
+        if (   tString == "sae301" || tString == "sae-301" || tString == "aisi301" || tString ==  "aisi-301" || tString ==  "1.4310")
+        {
+            return MaterialType::SAE301 ;
+        }
+        if (   tString == "sae314" || tString == "sae-314" || tString == "aisi314" || tString == "aisi-314" || tString ==  "1.4841")
+        {
+            return MaterialType::SAE314 ;
         }
         else
         {

@@ -6,6 +6,8 @@
 #include "cl_IsotropicMaterial.hpp"
 #include "fn_polyval.hpp"
 #include "fn_dpolyval.hpp"
+#include "fn_linspace.hpp"
+#include "fn_polyfit.hpp"
 
 namespace belfem
 {
@@ -14,7 +16,6 @@ namespace belfem
     IsotropicMaterial::IsotropicMaterial( const MaterialType aType ) :
             Material( aType )
     {
-
     }
 
 //----------------------------------------------------------------------------
@@ -33,8 +34,9 @@ namespace belfem
     real
     IsotropicMaterial::nu( const real aT ) const
     {
-        return 0.5 * this->E( aT ) / this->G( aT ) - 1.0;
+        return 0.5 * ( this->E( aT ) / this->G( aT ) )  - 1.0;
     }
+
 //----------------------------------------------------------------------------
 
     real
@@ -213,10 +215,9 @@ namespace belfem
     real
     IsotropicMaterial::lambda( const real aT ) const
     {
-        BELFEM_ASSERT( mThermalConductivityPoly.length() > 0,
-                      "Polynomial for thermal conductivity is not set for %s",
+        BELFEM_ASSERT( "thermal conductivity is not implemented for %s",
                       mLabel.c_str());
-        return polyval( mThermalConductivityPoly, aT );
+        return BELFEM_QUIET_NAN ;
     }
 
 //----------------------------------------------------------------------------
@@ -264,11 +265,9 @@ namespace belfem
     real
     IsotropicMaterial::c( const real aT ) const
     {
-        BELFEM_ASSERT( mSpecificHeatPoly.length() > 0,
-                      "Polynomial for specific heat capacity is not set for %s",
-                      mLabel.c_str());
-
-        return polyval( mSpecificHeatPoly, aT );
+        BELFEM_ASSERT( "specific heat capacity is not implemented for %s",
+                       mLabel.c_str());
+        return BELFEM_QUIET_NAN ;;
     }
 
 //----------------------------------------------------------------------------
@@ -368,7 +367,7 @@ namespace belfem
     bool
     IsotropicMaterial::has_thermal() const
     {
-        return mHasThermal || mSpecificHeatPoly.length() > 0 ;
+        return mHasThermal ;
     }
 
 //----------------------------------------------------------------------------
@@ -392,6 +391,54 @@ namespace belfem
     IsotropicMaterial::has_thermal_expansion() const
     {
         return mHasExpansion || mThermalExpansionPoly.length() > 0 ;
+    }
+
+//----------------------------------------------------------------------------
+
+    void
+    IsotropicMaterial::create_density_poly( const real aRhoRef, const real aTref )
+    {
+        BELFEM_ASSERT( mThermalExpansionPoly.length() > 1,
+                       "Thermal expansion poly must be set and deg > 1 before computing density poly for %s",
+                       this->label().c_str() );
+
+        BELFEM_ASSERT( mTmax < BELFEM_REAL_MAX,
+                       "maximum temperature must be set before computing density poly for %s",
+                       this->label().c_str() );
+
+        if( mThermalExpansionPoly.length() == 2 )
+        {
+            mDensityPoly.set_size( 1, aRhoRef );
+            return;
+        }
+
+        // get interpolation degree
+        uint tDegree = mThermalExpansionPoly.length() - 2 ;
+
+        uint tN = 101 ;
+
+        // temperature
+        Vector< real > tT = linspace( 0.0, mTmax, tN );
+        Vector< real > tRho( tN );
+
+        // reference value
+        real tRef = polyval( mThermalExpansionPoly, aTref );
+        for ( uint k=0; k<tN; ++k )
+        {
+            // compute the length
+            real tL = std::exp(  polyval( mThermalExpansionPoly, tT( k ) ) - tRef );
+
+            // scale density
+            tRho( k ) = aRhoRef / ( tL * tL * tL );
+        }
+
+        // compute density polynomial
+        polyfit( tT, tRho, tDegree, mDensityPoly );
+
+        mRhoRef = polyval( mDensityPoly, BELFEM_TREF );
+
+        // make sure that switch is flipped
+        mHasExpansion = true ;
     }
 
 //----------------------------------------------------------------------------

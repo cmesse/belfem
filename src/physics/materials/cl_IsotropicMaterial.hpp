@@ -29,11 +29,14 @@ namespace belfem
         // polynomial for density
         Vector< real > mDensityPoly;
 
+        // density at reference temperature
+        real mRhoRef = BELFEM_QUIET_NAN ;
+
         // polynomial for specific heat
-        Vector< real > mSpecificHeatPoly;
+        // Vector< real > mSpecificHeatPoly;
 
         // polynomial for thermal conductivity
-        Vector< real > mThermalConductivityPoly;
+        // Vector< real > mThermalConductivityPoly;
 
         // polynomial for thermal expansion
         Vector< real > mThermalExpansionPoly;
@@ -119,6 +122,14 @@ namespace belfem
           */
         virtual real
         rho( const real aT=BELFEM_TREF ) const;
+
+//--------------------------------------------------------------------------
+
+        /**
+         * reference density
+         */
+         real
+         rho0() const ;
 
 //----------------------------------------------------------------------------
 //   THERMAL PROPERTIES
@@ -233,6 +244,10 @@ namespace belfem
         virtual real
         int_alpha_dT( const real aT ) const;
 
+//----------------------------------------------------------------------------
+
+        void
+        create_density_poly( const real aRhoRef, const real aTref = BELFEM_TREF );
 
 //----------------------------------------------------------------------------
     };
@@ -242,6 +257,14 @@ namespace belfem
     IsotropicMaterial::is_isotropic() const
     {
         return true ;
+    }
+
+//----------------------------------------------------------------------------
+
+    inline real
+    IsotropicMaterial::rho0() const
+    {
+        return mRhoRef ;
     }
 
 //----------------------------------------------------------------------------

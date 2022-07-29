@@ -24,8 +24,8 @@ namespace belfem
         {
             // set maximum temperature
             mTmax = 1941.0;
+            mNumber = "3.7165";
 
-            this->create_density_poly();
             this->create_mech_polys();
             this->create_specific_heat_polys();
             this->create_conductivity_polys();
@@ -37,6 +37,9 @@ namespace belfem
                                       -1.33020127385256E-16, 1.96525261089848E-13,
                                       -1.44541515205732E-10, 5.59126298885355E-08,
                                       -2.03662130605073E-06, 0.00000000000000E+00 };
+
+
+            this->create_density_poly();
 
             mHasMechanical = true;
             mHasThermal = true;
@@ -64,8 +67,10 @@ namespace belfem
                                  4283.12, 4267.15, 4252.33, 4240.94, 4226.12,
                                  4205.58, 4198.77 };
 
-            polyfit( tT, tR, 1, mDensityPoly );
 
+            polyfit( tT, tR, 1, mDensityPoly );
+            IsotropicMaterial::create_density_poly(
+                    polyval( mDensityPoly, BELFEM_TREF ) );
         }
 
 //----------------------------------------------------------------------------

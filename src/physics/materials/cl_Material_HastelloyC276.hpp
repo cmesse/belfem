@@ -2,8 +2,8 @@
 // Created by Christian Messe on 18.04.22.
 //
 
-#ifndef BELFEM_CL_MATERIAL_HASTELLOY_HPP
-#define BELFEM_CL_MATERIAL_HASTELLOY_HPP
+#ifndef BELFEM_CL_MATERIAL_HastelloyC276C276_HPP
+#define BELFEM_CL_MATERIAL_HastelloyC276C276_HPP
 
 
 #include "typedefs.hpp"
@@ -16,7 +16,7 @@ namespace belfem
     namespace material
     {
 //----------------------------------------------------------------------------
-        class Hastelloy : public IsotropicMaterial
+        class HastelloyC276 : public IsotropicMaterial
         {
 
             const real mSwitchCT1 = 20.0;
@@ -56,11 +56,11 @@ namespace belfem
         public:
 //----------------------------------------------------------------------------
 
-            Hastelloy();
+            HastelloyC276();
 
 //----------------------------------------------------------------------------
 
-            ~Hastelloy() = default;
+            ~HastelloyC276() = default;
 
 //----------------------------------------------------------------------------
 
@@ -146,7 +146,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         inline real
-        Hastelloy::E( const real aT ) const
+        HastelloyC276::E( const real aT ) const
         {
             return 205e9 ;
         }
@@ -154,7 +154,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         inline real
-        Hastelloy::G( const real aT ) const
+        HastelloyC276::G( const real aT ) const
         {
             return 79e9 ;
         }
@@ -163,4 +163,4 @@ namespace belfem
     } /* end namespace material */
 }  /* end namespace belfem */
 
-#endif //BELFEM_CL_MATERIAL_HASTELLOY_HPP
+#endif //BELFEM_CL_MATERIAL_HastelloyC276C276_HPP

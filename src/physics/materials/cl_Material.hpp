@@ -21,7 +21,9 @@ namespace belfem
 //----------------------------------------------------------------------------
         const MaterialType mType ;
 
-        string mLabel = "Undefined";
+        string mLabel = "Undefined" ;
+
+        string mNumber ;
 
         // maximum temperture
         real mTmax = BELFEM_REAL_MAX ;
@@ -46,6 +48,12 @@ namespace belfem
 
         const string &
         label() const;
+
+//----------------------------------------------------------------------------
+
+        const string &
+        number() const;
+
 
 //----------------------------------------------------------------------------
 

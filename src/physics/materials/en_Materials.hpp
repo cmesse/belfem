@@ -12,25 +12,30 @@ namespace belfem
 {
     enum class MaterialType
     {
-        Unity       =  0, // all material properties are 1
-        Simple      =  1, // a simple material for testing, based on aluminum
-        Maxwell     =  2, // special type that follows the power law, can use spline as temperature function
-        Air         =  3, // wrapper around an air object
-        Aluminum    =  4,
-        Copper      =  5,
-        Inconel718  =  6,
-        TI6AL4V     =  7,
-        CCSIC       =  8,
-        Altramat80  =  9,
-        Rohacell51  = 10,
-        CuCrZr      = 11,
-        Zirconia    = 12,
-        Inconel750X = 13,
-        Hastelloy   = 14,
-        Silver      = 15,
-        YBCO        = 16,
-        Pb40Sn60    = 17,
-        UNDEFINED   = 18
+        Unity          =  0, // all material properties are 1
+        Simple         =  1, // a simple material for testing, based on aluminum
+        Maxwell        =  2, // special type that follows the power law, can use spline as temperature function
+        Air            =  3, // wrapper around an air object
+        Aluminum       =  4,
+        Copper         =  5,
+        Inconel718     =  6,
+        TI6AL4V        =  7,
+        CCSIC          =  8,
+        Altramat80     =  9,
+        Rohacell51     = 10,
+        CuCrZr         = 11,
+        Zirconia       = 12,
+        Inconel750X    = 13,
+        HastelloyC276  = 14,
+        Silver         = 15,
+        YBCO           = 16,
+        Pb40Sn60       = 17,
+        SAE301         = 18,
+        SAE314         = 19,
+        SAE316         = 20,
+        SAE347         = 21,
+        SAE1010        = 22,
+        UNDEFINED      = 23
     };
 
     enum class ResistivityLaw

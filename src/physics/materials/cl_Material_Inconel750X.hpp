@@ -9,6 +9,7 @@
 #include "cl_Vector.hpp"
 
 #include "cl_IsotropicMaterial.hpp"
+#include "fn_polyval.hpp"
 
 namespace belfem
 {
@@ -18,6 +19,12 @@ namespace belfem
 
         class Inconel750X : public IsotropicMaterial
         {
+            // polynomial for specific heat
+            Vector< real > mSpecificHeatPoly;
+
+            // polynomial for thermal conductivity
+            Vector< real > mThermalConductivityPoly;
+
 //----------------------------------------------------------------------------
         public:
 //----------------------------------------------------------------------------
@@ -29,7 +36,34 @@ namespace belfem
             ~Inconel750X() = default ;
 
 //----------------------------------------------------------------------------
+
+            real
+            lambda( const real aT ) const;
+
+//----------------------------------------------------------------------------
+
+            real
+            c( const real aT ) const;
+
+//----------------------------------------------------------------------------
         };
+//----------------------------------------------------------------------------
+
+
+        inline real
+        Inconel750X::lambda( const real aT ) const
+        {
+            return polyval( mThermalConductivityPoly, aT );
+        }
+
+//----------------------------------------------------------------------------
+
+        inline real
+        Inconel750X::c( const real aT ) const
+        {
+            return polyval( mSpecificHeatPoly, aT );
+        }
+
 //----------------------------------------------------------------------------
     }
 }

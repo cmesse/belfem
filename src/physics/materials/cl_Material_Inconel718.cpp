@@ -20,18 +20,20 @@ namespace belfem
         {
             // set maximum temperature
             mTmax = 1530.0;
+            mNumber = "2.4668";
 
             this->create_conductivity_polys();
             this->create_specific_heat_polys();
             this->create_mech_polys();
-
-            mDensityPoly.set_size( 1, 8220.0 );
 
             // cryogenic data from 10.1016/S0011-2275(68)80003-7
             // high temperature data from 10.1016/S0011-2275(68)80003-7
             mThermalExpansionPoly = { 5.15032437E-15, -1.59237484E-11,
                                       2.06191841E-08, 3.95094352E-06,
                                       0.00000000E+00 };
+
+            this->create_density_poly( 8192.0 );
+
             mHasThermal = true;
             mHasMechanical = true;
             mHasExpansion = true;

@@ -66,3 +66,7 @@ endif()
 set( EXECNAME makematdb )
 set( MAIN makematdb.cpp)
 include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
+
+set( EXECNAME makematsp )
+set( MAIN makematsp.cpp)
+include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )

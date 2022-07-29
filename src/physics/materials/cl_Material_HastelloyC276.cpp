@@ -2,7 +2,7 @@
 // Created by Christian Messe on 18.04.22.
 //
 
-#include "cl_Material_Hastelloy.hpp"
+#include "cl_Material_HastelloyC276.hpp"
 
 #include "fn_polyfit.hpp"
 #include "fn_polyval.hpp"
@@ -15,29 +15,30 @@ namespace belfem
     {
 //----------------------------------------------------------------------------
 
-        Hastelloy::Hastelloy() :
-                IsotropicMaterial( MaterialType::Hastelloy )
+        HastelloyC276::HastelloyC276() :
+                IsotropicMaterial( MaterialType::HastelloyC276 )
         {
             // set maximum temperature
             mTmax = 1594;
+            mNumber = "2.4819";
 
             this->create_resistivity_polys() ;
             this->create_specific_heat_polys();
             this->create_conductivity_polys();
-            // this->create_density_poly();
             // this->create_mech_polys();
             this->create_expansion_poly();
+            this->create_density_poly( 8890.0, 295.372 );
 
             mHasThermal = true;
-            mHasMechanical = true;
+            mHasMechanical = false ;
             mHasExpansion = true;
-            mHasResistivity = true ;
+            mHasResistivity = false ;
         }
 
 //----------------------------------------------------------------------------
 
         void
-        Hastelloy::create_resistivity_polys()
+        HastelloyC276::create_resistivity_polys()
         {
             // from DOI: 10.1063/1.2899058
             Vector< real > tT1 = { 3.996, 4.098, 4.611, 5.020, 5.584, 6.045,
@@ -94,7 +95,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         void
-        Hastelloy::create_specific_heat_polys()
+        HastelloyC276::create_specific_heat_polys()
         {
             // from DOI: 10.1063/1.2899058
 
@@ -160,7 +161,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Hastelloy::rho_el( const real aJ, const real aT, const real aB ) const
+        HastelloyC276::rho_el( const real aJ, const real aT, const real aB ) const
         {
             if ( aT < mSwitchRhoT0 )
             {
@@ -179,7 +180,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Hastelloy::c( const real aT ) const
+        HastelloyC276::c( const real aT ) const
         {
             if ( aT < mSwitchCT1 )
             {
@@ -210,7 +211,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         void
-        Hastelloy::create_conductivity_polys()
+        HastelloyC276::create_conductivity_polys()
         {
             Vector< real > tT1 = { 14.725, 15.365, 16.389, 17.798, 18.822,
                                    19.462, 20.871, 21.639, 23.175, 24.2,
@@ -249,35 +250,20 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         void
-        Hastelloy::create_expansion_poly()
+        HastelloyC276::create_expansion_poly()
         {
             // from DOI: 10.1063/1.2899058
-            Vector< real > tT = { 9.892, 19.675, 29.631, 40.094, 49.379, 60.005, 69.768,
-             79.548, 89.663, 99.608, 109.216, 119.667, 129.609, 139.548,
-             149.489, 159.609, 169.045, 178.985, 189.439, 198.71, 209.663,
-             219.426, 230.039, 239.632, 249.566, 259.684, 270.000 } ;
-
-            // actually deltaL/deltaT in %
-            Vector< real > tL
-            = { -0.3105, -0.3061, -0.3070, -0.3074, -0.3113, -0.3070, -0.2817,
-                 -0.2738, -0.2648, -0.2534, -0.2420, -0.2310, -0.2166, -0.1994,
-                 -0.1834, -0.1792, -0.1648, -0.1482, -0.1393, -0.1298, -0.1135,
-                 -0.0883, -0.0702, -0.0441, -0.0215, -0.0143, 0.0000 };
-
-            // scale to percent
-            tL *= 0.01 ;
-
-            // convert to length
-            tL += 1.0 ;
-            polyfit( tT, tL, 2, mThermalExpansionPoly );
-
+            mThermalExpansionPoly = {  2.316147e-08,
+                                       4.595386e-06,
+                                       0.000000e+00 };
+            mHasExpansion = true ;
         }
 
 
 //----------------------------------------------------------------------------
 
         real
-        Hastelloy::lambda( const real aT ) const
+        HastelloyC276::lambda( const real aT ) const
         {
             if ( aT < mSwitchLambdaT0 )
             {
@@ -296,7 +282,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Hastelloy::mu( const real aT,   const real aTref ) const
+        HastelloyC276::mu( const real aT,   const real aTref ) const
         {
             return   polyval( mIntAlphaPoly, aT )
                    - polyval( mIntAlphaPoly, aTref ) - 1.0 ;
