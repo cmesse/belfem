@@ -59,32 +59,9 @@
   <component name="ChangeListManager">
     <list default="true" id="120f1831-a9f1-4c21-bf0a-19444f852628" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/bspline/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/bspline/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/bspline/makematdb.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/bspline/makematdb.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/numerics/spline/cl_Spline.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/numerics/spline/cl_Spline.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/numerics/spline/cl_Spline.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/numerics/spline/cl_Spline.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_IsotropicMaterial.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_IsotropicMaterial.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_IsotropicMaterial.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_IsotropicMaterial.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_MaterialFactory.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_MaterialFactory.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_AltraMat80.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_AltraMat80.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_Aluminum.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_Aluminum.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_Aluminum.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_Aluminum.hpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_Copper.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_Copper.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_Hastelloy.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_HastelloyC276.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_Hastelloy.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_HastelloyC276.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_Inconel718.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_Inconel718.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_Inconel750X.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_Inconel750X.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_Inconel750X.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_Inconel750X.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_Rohacell51.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_Rohacell51.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_Ti6Al4V.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_Ti6Al4V.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_YBCO.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_YBCO.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_Zirconia.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_Zirconia.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_Zirconia.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_Zirconia.hpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/physics/materials/en_Materials.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/en_Materials.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/en_Materials.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/en_Materials.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/main.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/main.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -594,7 +571,7 @@
       <workItem from="1658956838728" duration="21104000" />
       <workItem from="1658982009266" duration="11101000" />
       <workItem from="1658996667648" duration="4383000" />
-      <workItem from="1659040463535" duration="28398000" />
+      <workItem from="1659040463535" duration="29092000" />
     </task>
     <servers />
   </component>

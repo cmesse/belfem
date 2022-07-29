@@ -15,6 +15,7 @@ namespace belfem
     namespace material
     {
 //----------------------------------------------------------------------------
+
         class Aluminum : public IsotropicMaterial
         {
 

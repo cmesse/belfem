@@ -107,11 +107,11 @@ namespace belfem
         {
             return MaterialType::Simple ;
         }
-        if ( tString == "aluminum" )
+        if ( tString == "aluminum" || tString == "al" )
         {
             return MaterialType::Aluminum ;
         }
-        if ( tString == "copper" )
+        if ( tString == "copper" || tString == "cu"  )
         {
             return MaterialType::Copper ;
         }
@@ -164,11 +164,13 @@ namespace belfem
         {
             return MaterialType::Pb40Sn60 ;
         }
-        if (   tString == "sae301" || tString == "sae-301" || tString == "aisi301" || tString ==  "aisi-301" || tString ==  "1.4310")
+        if (   tString == "sae301" || tString == "sae-301" || tString == "aisi301" || tString ==  "aisi-301"
+            || tString == "301" || tString ==  "1.4310")
         {
             return MaterialType::SAE301 ;
         }
-        if (   tString == "sae314" || tString == "sae-314" || tString == "aisi314" || tString == "aisi-314" || tString ==  "1.4841")
+        if (   tString == "sae314" || tString == "sae-314" || tString == "aisi314" || tString == "aisi-314"
+                || tString == "314" || tString ==  "1.4841")
         {
             return MaterialType::SAE314 ;
         }

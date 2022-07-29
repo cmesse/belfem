@@ -27,9 +27,9 @@ namespace belfem
 
             this->use_splines( true );
 
-            this->create_density_poly();
             this->create_mech_polys();
             this->create_expansion_polys();
+            this->create_density_poly();
             this->create_specific_heat_polys();
             this->create_specific_heat_spline();
 
