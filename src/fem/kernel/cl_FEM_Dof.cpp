@@ -10,7 +10,7 @@ namespace belfem
     {
 //------------------------------------------------------------------------------
 
-        Dof::Dof( const id_t aID, const uint & aType, mesh::Node * aNode ) :
+        Dof::Dof( const id_t aID, const uint aType, mesh::Node * aNode ) :
             Vertex(),
             mMeshBasis( aNode ),
             mTypeID( aType ),
@@ -22,7 +22,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        Dof::Dof( const id_t aID, const uint & aType, mesh::Edge * aEdge, const index_t aDofIndexOnField ) :
+        Dof::Dof( const id_t aID, const uint aType, mesh::Edge * aEdge, const index_t aDofIndexOnField ) :
                 Vertex(),
                 mMeshBasis( aEdge ),
                 mTypeID( aType ),
@@ -34,7 +34,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        Dof::Dof( const id_t aID, const uint & aType, mesh::Face * aFace, const index_t aDofIndexOnField ) :
+        Dof::Dof( const id_t aID, const uint aType, mesh::Face * aFace, const index_t aDofIndexOnField ) :
                 Vertex(),
                 mMeshBasis( aFace ),
                 mTypeID( aType ),
@@ -46,7 +46,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        Dof::Dof( const id_t aID, const uint & aType, mesh::Element * aElement, const index_t aDofIndexOnField ) :
+        Dof::Dof( const id_t aID, const uint aType, mesh::Element * aElement, const index_t aDofIndexOnField ) :
                 Vertex(),
                 mMeshBasis( aElement ),
                 mTypeID( aType ),
@@ -58,7 +58,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        Dof::Dof( const id_t aID, const uint & aType, mesh::Facet * aFacet ) :
+        Dof::Dof( const id_t aID, const uint aType, mesh::Facet * aFacet ) :
         Vertex(),
         mMeshBasis( aFacet ),
         mTypeID( aType ),

@@ -39,7 +39,7 @@ int main( int    argc,
                             125, 150, 175, 200, 225, 250, 275, 300 };
 
 
-    Material * tMaterial = tFactory.create_material( "silver" );
+    Material * tMaterial = tFactory.create_material( "copper" );
     tMaterial->use_splines( true );
 
     string tFile = "materials.hdf5" ;
@@ -50,10 +50,10 @@ int main( int    argc,
 
         tMaterial->set_rrr( tRRR( r ));
 
-        string tRhoLabel = sprint( "SilverRho_RRR%u", tRRR( r ));
-        string tKLabel = sprint( "SilverK_RRR%u", tRRR( r ));
+        string tRhoLabel = sprint( "copperRho_RRR%u", tRRR( r ));
+        string tKLabel = sprint( "copperK_RRR%u", tRRR( r ));
 
-        Mapper tMapper( 2, 2,
+        Mapper tMapper( 2, 3,
                         { 251, 100 },
                         { 0.0, 0.0 },
                         { 500.0, 50.0 } );

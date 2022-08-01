@@ -78,7 +78,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             real &
-            value( const index_t & aIndex );
+            value( const index_t aIndex );
 
 //------------------------------------------------------------------------------
 
@@ -95,7 +95,7 @@ namespace belfem
              * reset a field based on a sideset or block id
              */
              void
-             fill( const id_t aID, const real & aValue );
+             fill( const id_t aID, const real aValue );
 
 //------------------------------------------------------------------------------
 
@@ -103,7 +103,7 @@ namespace belfem
              * reset a field based on a sideset or block ids
              */
             void
-            fill( const Vector< id_t > & aIDs, const real & aValue );
+            fill( const Vector< id_t > & aIDs, const real aValue );
 
 //------------------------------------------------------------------------------
 
@@ -122,7 +122,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline real &
-        Field::value( const index_t & aIndex )
+        Field::value( const index_t aIndex )
         {
             return mData( aIndex );
         }

@@ -107,7 +107,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     // constructor that creates empty container
-    Spline::Spline( const index_t & aN, const real & aXmin, const real & aXmax )
+    Spline::Spline( const index_t & aN, const real aXmin, const real aXmax )
     {
         BELFEM_ASSERT( aN > 0, "aN must be positive" );
         BELFEM_ASSERT( aXmax > aXmin, "aXmax must be bigger than aXmin" );
@@ -435,7 +435,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     void
-    Spline::create_entropy( const real & aXref, const real & aSref )
+    Spline::create_entropy( const real aXref, const real & aSref )
     {
         // create temporary matrix
         Matrix< real > tTemp( mData );

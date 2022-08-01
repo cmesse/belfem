@@ -138,10 +138,10 @@ namespace belfem
 
             // pointer to material functions
             void
-            ( Group:: * mLinearElasticity )( Matrix< real > & aC, const real & aT  ) const;
+            ( Group:: * mLinearElasticity )( Matrix< real > & aC, const real aT  ) const;
 
             void
-            ( Group:: * mThermalConductivity )( Matrix< real > & aLambda, const real & aT  ) const;
+            ( Group:: * mThermalConductivity )( Matrix< real > & aLambda, const real aT  ) const;
 
             // empty sidesets and blocks have the id zero.
             // the fake ID helps to acces the underlying objects on the mesh
@@ -272,7 +272,7 @@ namespace belfem
              * return the shape function at given point
              */
             const Matrix< real > &
-            N( const uint & aIndex ) const;
+            N( const uint aIndex ) const;
 
 //------------------------------------------------------------------------------
 
@@ -280,7 +280,7 @@ namespace belfem
              * return the shape function at given point for 3D vector field
              */
             const Matrix< real > &
-            Nvector( const uint & aIndex ) const;
+            Nvector( const uint aIndex ) const;
 
 //------------------------------------------------------------------------------
 
@@ -288,7 +288,7 @@ namespace belfem
              * return the shape function at given point, bit as vector
              */
             const Vector< real > &
-            n( const uint & aIndex ) const;
+            n( const uint aIndex ) const;
 
 //------------------------------------------------------------------------------
 
@@ -296,7 +296,7 @@ namespace belfem
              * return the first derivative of shape function at given point
              */
             const Matrix< real > &
-            dNdXi( const uint & aIndex ) const;
+            dNdXi( const uint aIndex ) const;
 
 //------------------------------------------------------------------------------
 
@@ -304,7 +304,7 @@ namespace belfem
              * return the second derivative of shape function at given point
              */
             const Matrix< real > &
-            d2NdXi2( const uint & aIndex ) const;
+            d2NdXi2( const uint aIndex ) const;
 
 //------------------------------------------------------------------------------
 
@@ -312,7 +312,7 @@ namespace belfem
              * return the geometry function at given point
              */
             const Matrix< real > &
-            G( const uint & aIndex ) const;
+            G( const uint aIndex ) const;
 
 //------------------------------------------------------------------------------
 
@@ -320,7 +320,7 @@ namespace belfem
              * return the first derivative of geometry function at given point
              */
             const Matrix< real > &
-            dGdXi( const uint & aIndex ) const;
+            dGdXi( const uint aIndex ) const;
 
 //------------------------------------------------------------------------------
 
@@ -328,7 +328,7 @@ namespace belfem
              * return the second derivative of geometry function at given point
              */
             const Matrix< real > &
-            d2GdXi2( const uint & aIndex ) const;
+            d2GdXi2( const uint aIndex ) const;
 
 //------------------------------------------------------------------------------
 
@@ -806,7 +806,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline const Vector< real > &
-        Group::n( const uint & aIndex ) const
+        Group::n( const uint aIndex ) const
         {
             return mIntegrationData->phi( aIndex );
         }
@@ -822,7 +822,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline const Matrix< real > &
-        Group::N( const uint & aIndex ) const
+        Group::N( const uint aIndex ) const
         {
             return mIntegrationData->N( aIndex );
         }
@@ -830,7 +830,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline const Matrix< real > &
-        Group::Nvector( const uint & aIndex ) const
+        Group::Nvector( const uint aIndex ) const
         {
             return mIntegrationData->Nvector( aIndex );
         }
@@ -838,7 +838,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline const Matrix< real > &
-        Group::dNdXi( const uint & aIndex ) const
+        Group::dNdXi( const uint aIndex ) const
         {
             return mIntegrationData->dNdXi( aIndex );
         }
@@ -846,7 +846,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline const Matrix< real > &
-        Group::d2NdXi2( const uint & aIndex ) const
+        Group::d2NdXi2( const uint aIndex ) const
         {
             return mIntegrationData->d2NdXi2( aIndex );
         }
@@ -854,7 +854,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline const Matrix< real > &
-        Group::G( const uint & aIndex ) const
+        Group::G( const uint aIndex ) const
         {
             return mGeometryIntegrationData->N( aIndex );
         }
@@ -862,7 +862,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline const Matrix< real > &
-        Group::dGdXi( const uint & aIndex ) const
+        Group::dGdXi( const uint aIndex ) const
         {
             return mGeometryIntegrationData->dNdXi( aIndex );
         }
@@ -870,7 +870,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline const Matrix< real > &
-        Group::d2GdXi2( const uint & aIndex ) const
+        Group::d2GdXi2( const uint aIndex ) const
         {
             return mGeometryIntegrationData->d2NdXi2( aIndex );
         }
@@ -1192,7 +1192,7 @@ namespace belfem
 
         inline void
         Group::linear_elasticity_PlaneStress(
-                Matrix< real > & aC, const real & aT ) const
+                Matrix< real > & aC, const real aT ) const
         {
             mMaterial->C_ps( aC, aT );
         }
@@ -1201,7 +1201,7 @@ namespace belfem
 
         inline void
         Group::linear_elasticity_3d(
-                Matrix< real > & aC, const real & aT ) const
+                Matrix< real > & aC, const real aT ) const
         {
             mMaterial->C( aC, aT );
         }
@@ -1210,7 +1210,7 @@ namespace belfem
 
         inline void
         Group::thermal_conductivity_2d(
-                Matrix< real > & aLambda, const real & aT ) const
+                Matrix< real > & aLambda, const real aT ) const
         {
             mMaterial->lambda_p( aLambda, aT );
         }
@@ -1219,7 +1219,7 @@ namespace belfem
 
         inline void
         Group::thermal_conductivity_3d(
-                Matrix< real > & aLambda, const real & aT ) const
+                Matrix< real > & aLambda, const real aT ) const
         {
             mMaterial->lambda( aLambda, aT );
         }

@@ -31,11 +31,10 @@ namespace belfem
         YBCO           = 16,
         Pb40Sn60       = 17,
         SAE301         = 18,
-        SAE314         = 19,
-        SAE316         = 20,
-        SAE347         = 21,
-        SAE1010        = 22,
-        UNDEFINED      = 23
+        SAE316         = 19,
+        SAE347         = 20,
+        SAE1010        = 21,
+        UNDEFINED      = 22
     };
 
     enum class ResistivityLaw

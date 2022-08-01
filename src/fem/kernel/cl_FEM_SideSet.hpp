@@ -90,12 +90,12 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
-            impose_dirichlet( const real & aValue, const uint aDofType=0 );
+            impose_dirichlet( const real aValue, const uint aDofType=0 );
 
 //------------------------------------------------------------------------------
 
             void
-            impose_neumann( const real & aValue, const uint aDofType=0 );
+            impose_neumann( const real aValue, const uint aDofType=0 );
 
 //------------------------------------------------------------------------------
 

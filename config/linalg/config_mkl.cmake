@@ -97,7 +97,7 @@ else()
 
     set( BELFEM_MATRIX_LIBS " -llapack -lfspblas -lcblas -lblas")
 
-    if( ${COMPILER_ID} EQUAL 1 )
+    if( ${COMPILER_ID} EQUAL 1 AND NOT APPLE )
         set(BELFEM_MATRIX_LIBS "-Wl,--start-group ${BELFEM_MATRIX_LIBS} -Wl,--end-group" )
     endif()
 

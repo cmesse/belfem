@@ -358,7 +358,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     index_t
-    OneDMapper::find_interval( const Vector< real > & aSourceNodes, const real & aX )
+    OneDMapper::find_interval( const Vector< real > & aSourceNodes, const real aX )
     {
         index_t i = 0 ;
         index_t k = aSourceNodes.length() - 1 ;

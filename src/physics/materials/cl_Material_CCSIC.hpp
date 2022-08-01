@@ -109,7 +109,7 @@ namespace belfem
               * thermal conductivity in 3D
               */
             void
-            lambda( Matrix <real> & aLambda, const real aT = BELFEM_TREF ) const;
+            lambda3d( Matrix <real> & aLambda, const real aT = BELFEM_TREF ) const;
 
 //----------------------------------------------------------------------------
 

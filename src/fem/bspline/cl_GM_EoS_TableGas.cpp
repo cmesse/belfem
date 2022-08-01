@@ -37,7 +37,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_TableGas::pi( const real & aT, const real & aP )
+        EoS_TableGas::pi( const real aT, const real aP )
         {
             mStatevals.update_Tp( aT, aP );
 
@@ -53,7 +53,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_TableGas::dpidp( const real & aT, const real & aP )
+        EoS_TableGas::dpidp( const real aT, const real aP )
         {
             return std::min( std::max( aP, mPmin ), mPmax ) * mdpscale ;
         }
@@ -61,7 +61,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         const real &
-        EoS_TableGas::M( const real & aT, const real & aP )
+        EoS_TableGas::M( const real aT, const real aP )
         {
             mStatevals.update_Tp( aT, aP );
 
@@ -83,7 +83,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_TableGas::dMdT( const real & aT, const real & aP )
+        EoS_TableGas::dMdT( const real aT, const real aP )
         {
             mStatevals.update_Tp( aT, aP );
 
@@ -109,7 +109,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_TableGas::dMdp( const real & aT, const real & aP )
+        EoS_TableGas::dMdp( const real aT, const real aP )
         {
             mStatevals.update_Tp( aT, aP );
 
@@ -137,7 +137,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_TableGas::p( const real & aT, const real & aV )
+        EoS_TableGas::p( const real aT, const real aV )
         {
             // relaxation factor
             const real tOmega0 = 0.9;
@@ -192,7 +192,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_TableGas::v( const real & aT, const real & aP )
+        EoS_TableGas::v( const real aT, const real aP )
         {
             return mParent.R( aT, aP ) * aT / aP;
         }
@@ -200,7 +200,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_TableGas::T( const real & aP, const real & aV )
+        EoS_TableGas::T( const real aP, const real aV )
         {
             // relaxation factor
             const real tOmega = 0.9;
@@ -247,7 +247,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_TableGas::dpdT( const real & aT, const real & aV )
+        EoS_TableGas::dpdT( const real aT, const real aV )
         {
             real tP = this->p( aT, aV );
 
@@ -257,7 +257,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_TableGas::d2pdT2( const real & aT, const real & aV )
+        EoS_TableGas::d2pdT2( const real aT, const real aV )
         {
             real tP = this->p( aT, aV );
             real tM = this->M( aT, tP );
@@ -276,7 +276,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_TableGas::dpdv( const real & aT, const real & aV )
+        EoS_TableGas::dpdv( const real aT, const real aV )
         {
             return -1.0 / ( this->kappa( aT, this->p( aT, aV )) * aV );
         }
@@ -284,7 +284,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_TableGas::d2pdv2( const real & aT, const real & aV )
+        EoS_TableGas::d2pdv2( const real aT, const real aV )
         {
             BELFEM_ERROR( false, "d2pdv2 is not implemented for TableGas" );
             return BELFEM_QUIET_NAN;
@@ -293,7 +293,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_TableGas::dvdT( const real & aT, const real & aV )
+        EoS_TableGas::dvdT( const real aT, const real aV )
         {
 
             return this->alpha( aT, this->p( aT, aV )) * aV;
@@ -304,7 +304,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_TableGas::alpha( const real & aT, const real & aP )
+        EoS_TableGas::alpha( const real aT, const real aP )
         {
             mStatevals.update_Tp( aT, aP );
 
@@ -329,7 +329,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_TableGas::beta( const real & aT, const real & aP )
+        EoS_TableGas::beta( const real aT, const real aP )
         {
             mStatevals.update_Tp( aT, aP );
             if ( !mStatevals.test( BELFEM_STATEVAL_BETA ))
@@ -343,7 +343,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_TableGas::kappa( const real & aT, const real & aP )
+        EoS_TableGas::kappa( const real aT, const real aP )
         {
             mStatevals.update_Tp( aT, aP );
 
@@ -377,7 +377,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_TableGas::v( const uint & aIndex, const real & aT, const real & aP )
+        EoS_TableGas::v( const uint aIndex, const real aT, const real aP )
         {
             BELFEM_ERROR( false, "illegal function call in TableGas EoS");
             return BELFEM_QUIET_NAN;
@@ -386,7 +386,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_TableGas::hdep( const uint & aIndex, const real & aT, const real & aP )
+        EoS_TableGas::hdep( const uint aIndex, const real aT, const real aP )
         {
             BELFEM_ERROR( false, "illegal function call in TableGas EoS");
             return BELFEM_QUIET_NAN;
@@ -395,7 +395,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_TableGas::cpdep( const uint & aIndex, const real & aT, const real & aP )
+        EoS_TableGas::cpdep( const uint aIndex, const real aT, const real aP )
         {
             BELFEM_ERROR( false, "illegal function call in TableGas EoS");
             return BELFEM_QUIET_NAN;

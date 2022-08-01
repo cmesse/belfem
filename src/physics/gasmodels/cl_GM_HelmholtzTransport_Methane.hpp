@@ -87,12 +87,12 @@ namespace belfem
 //----------------------------------------------------------------------------
 
             real
-            mu( const real & aT, const real & aP );
+            mu( const real aT, const real aP );
 
 //----------------------------------------------------------------------------
 
             real
-            lambda( const real & aT, const real & aP );
+            lambda( const real aT, const real aP );
 
 //----------------------------------------------------------------------------
         private:
@@ -137,7 +137,7 @@ namespace belfem
              * @return
              */
             real
-            lambda_cr( const real & aT, const real & aP );
+            lambda_cr( const real aT, const real aP );
 
 //----------------------------------------------------------------------------
 
@@ -170,22 +170,22 @@ namespace belfem
 //----------------------------------------------------------------------------
 
             void
-            update_Tp( const real & aT, const real & aP );
+            update_Tp( const real aT, const real aP );
 
 //----------------------------------------------------------------------------
 
             bool
-            test( const index_t & aIndex ) const ;
+            test( const index_t aIndex ) const ;
 
 //----------------------------------------------------------------------------
 
             void
-            set( const index_t & aIndex, const real aValue ) ;
+            set( const index_t aIndex, const real aValue ) ;
 
 //----------------------------------------------------------------------------
 
             const real &
-            get( const index_t & aIndex ) const ;
+            get( const index_t aIndex ) const ;
 
 //----------------------------------------------------------------------------
         } ;
@@ -193,7 +193,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         inline void
-        HelmholtzTransport_Methane::update_Tp( const real & aT, const real & aP )
+        HelmholtzTransport_Methane::update_Tp( const real aT, const real aP )
         {
             BELFEM_ASSERT( aT   > 0, "Invalid temprerature" );
             BELFEM_ASSERT( aP > 0, "Invalid pressure" );
@@ -221,7 +221,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         inline bool
-        HelmholtzTransport_Methane::test( const index_t & aIndex ) const
+        HelmholtzTransport_Methane::test( const index_t aIndex ) const
         {
             BELFEM_ASSERT( aIndex < BELFEM_HELMHOLTZ_NUMVALS ,
                           "Invalid Helmholtz state index: %u", ( unsigned int ) aIndex );
@@ -232,7 +232,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         inline void
-        HelmholtzTransport_Methane::set( const index_t & aIndex, const real aValue )
+        HelmholtzTransport_Methane::set( const index_t aIndex, const real aValue )
         {
             BELFEM_ASSERT( aIndex < BELFEM_HELMHOLTZ_NUMVALS ,
                           "Invalid Helmholtz state index", ( unsigned int ) aIndex );
@@ -247,7 +247,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         inline const real &
-        HelmholtzTransport_Methane::get( const index_t & aIndex ) const
+        HelmholtzTransport_Methane::get( const index_t aIndex ) const
         {
             BELFEM_ASSERT( aIndex < BELFEM_METHANE_NUMVALS ,
                           "Invalid Helmholtz state index: %u", ( unsigned int ) aIndex );

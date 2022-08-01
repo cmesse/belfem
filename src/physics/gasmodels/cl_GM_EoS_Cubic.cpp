@@ -107,7 +107,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_Cubic::p( const real & aT, const real & aV )
+        EoS_Cubic::p( const real aT, const real aV )
         {
             return mR * aT / ( aV - mB( 0 ) ) - this->a( aT ) /
                     ( ( aV - mB( 1 ) ) * ( aV - mB( 2 ) ) );
@@ -116,7 +116,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_Cubic::v( const real & aT, const real & aP )
+        EoS_Cubic::v( const real aT, const real aP )
         {
             // coefficient vectors
             // f = a*Z^3 + b*Z^2 + c*Z + d
@@ -206,7 +206,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_Cubic::T( const real & aP, const real & aV )
+        EoS_Cubic::T( const real aP, const real aV )
         {
             return BELFEM_QUIET_NAN;
         }
@@ -214,7 +214,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_Cubic::dpdT( const real & aT, const real & aV )
+        EoS_Cubic::dpdT( const real aT, const real aV )
         {
             return  mR / ( aV - mB( 0 ) ) - this->dadT( aT )  /
                     ( ( aV - mB( 1 ) ) * ( aV - mB( 2 ) ) );
@@ -223,7 +223,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_Cubic::d2pdT2( const real & aT, const real & aV )
+        EoS_Cubic::d2pdT2( const real aT, const real aV )
         {
             return -this->d2adT2( aT )  /
                    ( ( aV - mB( 1 ) ) * ( aV - mB( 2 ) ) );
@@ -232,7 +232,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_Cubic::dpdv( const real & aT, const real & aV )
+        EoS_Cubic::dpdv( const real aT, const real aV )
         {
             return -mR*aT/std::pow( ( aV - mB( 0 ) ), 2 )
                    + this->a( aT ) * ( 2.0 * aV  - ( mB( 1 ) + mB( 2 ) ) ) /
@@ -242,7 +242,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_Cubic::d2pdv2( const real & aT, const real & aV )
+        EoS_Cubic::d2pdv2( const real aT, const real aV )
         {
             return 2.0 * ( mR*aT/std::pow( ( aV - mB( 0 ) ), 3 )
                            - this->a( aT ) / mB( 3 )
@@ -253,7 +253,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_Cubic::alpha( const real & aT, const real & aP )
+        EoS_Cubic::alpha( const real aT, const real aP )
         {
             mStatevals.update_Tp( aT, aP );
 
@@ -269,7 +269,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Cubic::beta( const real & aT, const real & aP )
+        EoS_Cubic::beta( const real aT, const real aP )
         {
             mStatevals.update_Tp( aT, aP );
 
@@ -286,7 +286,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Cubic::kappa( const real & aT, const real & aP )
+        EoS_Cubic::kappa( const real aT, const real aP )
         {
             mStatevals.update_Tp( aT, aP );
 
@@ -307,7 +307,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Cubic::hdep( const real & aT, const real & aP )
+        EoS_Cubic::hdep( const real aT, const real aP )
         {
             real tV = mParent.v( aT, aP );
 
@@ -318,7 +318,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Cubic::cpdep( const real & aT, const real & aP )
+        EoS_Cubic::cpdep( const real aT, const real aP )
         {
             // get specific volume from parent
             real tV =  mParent.v( aT, aP );
@@ -332,7 +332,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Cubic::sdep( const real & aT, const real & aP )
+        EoS_Cubic::sdep( const real aT, const real aP )
         {
             // get specific volume from parent
             real tV = mParent.v( aT, aP );
@@ -345,7 +345,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Cubic::dhdepdp( const real & aT, const real & aP )
+        EoS_Cubic::dhdepdp( const real aT, const real aP )
         {
             // get specific volume from parent
             real tV = mParent.v( aT, aP );
@@ -362,7 +362,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Cubic::dsdepdT( const real & aT, const real & aP )
+        EoS_Cubic::dsdepdT( const real aT, const real aP )
         {
             real tV = mParent.v( aT, aP );
             real tdVdT = this->alpha( aT, aP ) * tV;
@@ -375,7 +375,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Cubic::dsdepdp( const real & aT, const real & aP )
+        EoS_Cubic::dsdepdp( const real aT, const real aP )
         {
             real tV = mParent.v( aT, aP );
 
@@ -409,7 +409,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Cubic::hdep0( const real & aT )
+        EoS_Cubic::hdep0( const real aT )
         {
             return mDepartureSpline.eval( aT );
         }
@@ -417,7 +417,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Cubic::cpdep0( const real & aT )
+        EoS_Cubic::cpdep0( const real aT )
         {
             return mDepartureSpline.deval( aT );
         }
@@ -425,7 +425,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Cubic::sdep0( const real & aT )
+        EoS_Cubic::sdep0( const real aT )
         {
             return mDepartureSpline.entropy( aT );
         }
@@ -434,7 +434,7 @@ namespace belfem
 
         // temperature derivative of entropy departure
         real
-        EoS_Cubic::dsdepdT0( const real & aT )
+        EoS_Cubic::dsdepdT0( const real aT )
         {
             return mDepartureSpline.dentropy( aT );
         }
@@ -642,7 +642,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         void
-        EoS_Cubic::eval_a( const real & aT, const int aDeriv )
+        EoS_Cubic::eval_a( const real aT, const int aDeriv )
         {
 
             uint tNumberOfComponents = mParent.number_of_components();
@@ -753,7 +753,7 @@ namespace belfem
         }
 
         real
-        EoS_Cubic::a( const real & aT )
+        EoS_Cubic::a( const real aT )
         {
             this->eval_a( aT, 0 );
 
@@ -764,7 +764,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_Cubic::dadT( const real & aT )
+        EoS_Cubic::dadT( const real aT )
         {
 
             this->eval_a( aT, 1 );
@@ -776,7 +776,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_Cubic::d2adT2( const real & aT )
+        EoS_Cubic::d2adT2( const real aT )
         {
             this->eval_a( aT, 2 );
 
@@ -829,9 +829,9 @@ namespace belfem
 
         void
         EoS_Cubic::component_wise_parameters(
-                const uint & aIndex,
-                const real & aT,
-                const real & aP,
+                const uint aIndex,
+                const real aT,
+                const real aP,
                 real & aV,
                 real & aHDEP,
                 real & aCPDEP )
@@ -901,8 +901,8 @@ namespace belfem
 
         void
         EoS_Cubic::update_component_parameters(
-                const real & aT,
-                const real & aP )
+                const real aT,
+                const real aP )
         {
             if( aT != mComponentT || aP != mComponentP )
             {
@@ -930,7 +930,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_Cubic::v( const uint & aIndex, const real & aT, const real & aP )
+        EoS_Cubic::v( const uint aIndex, const real aT, const real aP )
         {
             this->update_component_parameters( aT, aP );
             return mComponentV( aIndex );
@@ -939,7 +939,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Cubic::hdep( const uint & aIndex, const real & aT, const real & aP )
+        EoS_Cubic::hdep( const uint aIndex, const real aT, const real aP )
         {
             this->update_component_parameters( aT, aP );
 
@@ -956,7 +956,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Cubic::cpdep( const uint & aIndex, const real & aT, const real & aP )
+        EoS_Cubic::cpdep( const uint aIndex, const real aT, const real aP )
         {
             this->update_component_parameters( aT, aP );
 
@@ -972,7 +972,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_Cubic::chi( const real & aV )
+        EoS_Cubic::chi( const real aV )
         {
             if ( mDepartureV != aV )
             {
@@ -985,7 +985,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Cubic::dchidT( const real & aT, const real & aP, const real & aV  )
+        EoS_Cubic::dchidT( const real aT, const real aP, const real aV  )
         {
             return -this->alpha( aT, aP ) * aV / ( ( aV - mB( 1 ) ) * ( aV - mB( 2 ) ) );
         }
@@ -993,7 +993,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Cubic::dchidp( const real & aT, const real & aP, const real & aV  )
+        EoS_Cubic::dchidp( const real aT, const real aP, const real aV  )
         {
 
             real tdVdP =  - mParent.kappa( aT, aP ) * aV ;

@@ -59,9 +59,113 @@
   <component name="ChangeListManager">
     <list default="true" id="120f1831-a9f1-4c21-bf0a-19444f852628" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_Aluminum.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_Aluminum.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_Copper.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_Copper.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/compiler/finalize_compiler.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/config/compiler/finalize_compiler.cmake" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/linalg/config_mkl.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/config/linalg/config_mkl.cmake" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/containers/cl_DNA.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/containers/cl_DNA.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/bspline/cl_BS_Element.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/bspline/cl_BS_Element.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/bspline/cl_BS_Element.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/bspline/cl_BS_Element.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/bspline/cl_BS_LookupTable.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/bspline/cl_BS_LookupTable.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/bspline/cl_BS_LookupTable.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/bspline/cl_BS_LookupTable.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/bspline/cl_BS_TMatrix.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/bspline/cl_BS_TMatrix.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/bspline/cl_BS_TMatrix.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/bspline/cl_BS_TMatrix.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/bspline/cl_GM_EoS_TableGas.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/bspline/cl_GM_EoS_TableGas.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/bspline/cl_GM_EoS_TableGas.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/bspline/cl_GM_EoS_TableGas.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/bspline/cl_TableGas.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/bspline/cl_TableGas.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/bspline/cl_TableGas.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/bspline/cl_TableGas.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/bspline/makematdb.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/bspline/makematdb.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/bspline/makematsp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/bspline/makematsp.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Bearing.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Bearing.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Bearing.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Bearing.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Dof.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Dof.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Dof.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Dof.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Element.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Element.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Element.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Element.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Field.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Field.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Field.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Field.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Group.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Group.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Kernel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Kernel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Kernel.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Kernel.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_KernelParameters.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_KernelParameters.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_SideSet.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_SideSet.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_SideSet.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_SideSet.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/postproc/cl_OneDMapper.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/postproc/cl_OneDMapper.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/postproc/cl_OneDMapper.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/postproc/cl_OneDMapper.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/linalg/armadillo/cl_AR_Matrix.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/linalg/armadillo/cl_AR_Matrix.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/linalg/blaze/cl_BZ_Matrix.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/linalg/blaze/cl_BZ_Matrix.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/math/graph/cl_Graph_Vertex.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/math/graph/cl_Graph_Vertex.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/math/tensor/cl_Tensor.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/math/tensor/cl_Tensor.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/math/tools/fn_find_interval.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/math/tools/fn_find_interval.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Element.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Element.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Facet.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Facet.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_LagrangeElement.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_LagrangeElement.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh_Basis.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh_Basis.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh_Field.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh_Field.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh_Field.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh_Field.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh_Partitioner.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh_Partitioner.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Node.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Node.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Node.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Node.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/numerics/bezier/cl_Bezier.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/numerics/bezier/cl_Bezier.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/numerics/bezier/cl_Bezier.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/numerics/bezier/cl_Bezier.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/numerics/spline/cl_Spline.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/numerics/spline/cl_Spline.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/numerics/spline/cl_Spline.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/numerics/spline/cl_Spline.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_EoS.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_EoS.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_EoS.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_EoS.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_EoS_AlphaFunction.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_EoS_AlphaFunction.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_EoS_AlphaFunction.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_EoS_AlphaFunction.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_EoS_Cubic.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_EoS_Cubic.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_EoS_Cubic.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_EoS_Cubic.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_EoS_Idgas.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_EoS_Idgas.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_EoS_Idgas.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_EoS_Idgas.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_EoS_Oxygen.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_EoS_Oxygen.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_Helmholtz.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_Helmholtz.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_Helmholtz.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_Helmholtz.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_HelmholtzTransport.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_HelmholtzTransport.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_HelmholtzTransport.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_HelmholtzTransport.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_HelmholtzTransport_Methane.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_HelmholtzTransport_Methane.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_HelmholtzTransport_Methane.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_HelmholtzTransport_Methane.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_Statevals.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gasmodels/cl_GM_Statevals.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gasmodels/cl_Gas.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gasmodels/cl_Gas.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gasmodels/cl_Gas.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gasmodels/cl_Gas.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gastables/cl_GT_GasData.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gastables/cl_GT_GasData.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gastables/cl_GT_GasData.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gastables/cl_GT_GasData.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gastables/cl_GT_HeatPoly.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gastables/cl_GT_HeatPoly.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gastables/cl_GT_HeatPoly.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gastables/cl_GT_HeatPoly.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gastables/cl_GT_HeatPolyCustom.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gastables/cl_GT_HeatPolyCustom.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gastables/cl_GT_HeatPolyCustom.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gastables/cl_GT_HeatPolyCustom.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gastables/cl_GT_HeatPolyEmpty.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gastables/cl_GT_HeatPolyEmpty.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gastables/cl_GT_HeatPolyGlue.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gastables/cl_GT_HeatPolyGlue.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gastables/cl_GT_HeatPolyGlue.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gastables/cl_GT_HeatPolyGlue.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gastables/cl_GT_RefGas.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gastables/cl_GT_RefGas.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gastables/cl_GT_RefGas.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gastables/cl_GT_RefGas.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gastables/cl_GT_TransportPoly.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gastables/cl_GT_TransportPoly.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gastables/cl_GT_TransportPoly.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gastables/cl_GT_TransportPoly.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gastables/cl_GT_TransportPolyCustom.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gastables/cl_GT_TransportPolyCustom.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gastables/cl_GT_TransportPolyCustom.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gastables/cl_GT_TransportPolyCustom.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gastables/cl_GT_TransportPolyEmpty.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gastables/cl_GT_TransportPolyEmpty.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gastables/cl_GT_TransportPolyEmpty.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gastables/cl_GT_TransportPolyEmpty.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gastables/cl_GT_TransportPolyGlue.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gastables/cl_GT_TransportPolyGlue.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/gastables/cl_GT_TransportPolyGlue.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/gastables/cl_GT_TransportPolyGlue.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_IsotropicMaterial.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_IsotropicMaterial.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_IsotropicMaterial.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_IsotropicMaterial.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_MaterialFactory.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_MaterialFactory.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_Air.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_Air.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_CCSIC.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_CCSIC.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_CCSIC.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_CCSIC.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_HastelloyC276.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_HastelloyC276.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_SAE301.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_SAE301.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_SAE301.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_SAE301.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_SAE314.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_SAE316.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_SAE314.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_SAE316.hpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/physics/materials/en_Materials.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/en_Materials.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/physics/materials/en_Materials.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/en_Materials.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sparse/cl_SpMatrix.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/sparse/cl_SpMatrix.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sparse/cl_SpMatrix.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/sparse/cl_SpMatrix.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/spline/cl_Spline.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/test/spline/cl_Spline.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -98,24 +202,15 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
-    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;cmake.loaded.for.project&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/christian/codes/belmat&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;CPPToolchains&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "cmake.loaded.for.project": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/src/fem/maxwell/old" />
@@ -131,9 +226,9 @@
         <option name="com.jetbrains.cidr.cpp.gradle.execution.GradleNativeBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
-        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
       </method>
     </configuration>
     <configuration name="banner" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="banner" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="banner">
@@ -266,7 +361,7 @@
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="material" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="sae-301" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="material" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="material">
+    <configuration name="material" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="sae-316" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="material" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="material">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -374,51 +469,51 @@
       </method>
     </configuration>
     <list>
-      <item itemvalue="CMake Application.test_brandt" />
       <item itemvalue="CMake Application.banner" />
       <item itemvalue="CMake Application.doc" />
-      <item itemvalue="CMake Application.reset" />
+      <item itemvalue="CMake Application.example_udfiber.cpp" />
+      <item itemvalue="CMake Application.interpolation" />
+      <item itemvalue="CMake Application.libbelfem_bezier.a" />
+      <item itemvalue="CMake Application.libbelfem_bspline.a" />
       <item itemvalue="CMake Application.libbelfem_comm.a" />
       <item itemvalue="CMake Application.libbelfem_containers.a" />
       <item itemvalue="CMake Application.libbelfem_core.a" />
-      <item itemvalue="CMake Application.libbelfem_bspline.a" />
-      <item itemvalue="CMake Application.makematdb" />
-      <item itemvalue="CMake Application.makematsp" />
       <item itemvalue="CMake Application.libbelfem_edgeinterpolation.a" />
-      <item itemvalue="CMake Application.interpolation" />
+      <item itemvalue="CMake Application.libbelfem_graph.a" />
+      <item itemvalue="CMake Application.libbelfem_integration.a" />
       <item itemvalue="CMake Application.libbelfem_interpolation.a" />
+      <item itemvalue="CMake Application.libbelfem_io.a" />
       <item itemvalue="CMake Application.libbelfem_iwg.a" />
       <item itemvalue="CMake Application.libbelfem_kernel.a" />
+      <item itemvalue="CMake Application.libbelfem_materials.a" />
+      <item itemvalue="CMake Application.libbelfem_maxwell.a" />
+      <item itemvalue="CMake Application.libbelfem_mesh.a" />
+      <item itemvalue="CMake Application.libbelfem_ode.a" />
+      <item itemvalue="CMake Application.libbelfem_postproc.a" />
+      <item itemvalue="CMake Application.libbelfem_sparse.a" />
+      <item itemvalue="CMake Application.libbelfem_spline.a" />
+      <item itemvalue="CMake Application.makematdb" />
+      <item itemvalue="CMake Application.makematsp" />
+      <item itemvalue="CMake Application.mappertest" />
+      <item itemvalue="CMake Application.material" />
+      <item itemvalue="CMake Application.meshtest" />
+      <item itemvalue="CMake Application.normaltest" />
+      <item itemvalue="CMake Application.ode" />
+      <item itemvalue="CMake Application.pentatest" />
       <item itemvalue="CMake Application.petsctest" />
+      <item itemvalue="CMake Application.petsctst" />
+      <item itemvalue="CMake Application.reset" />
+      <item itemvalue="CMake Application.solvertest" />
       <item itemvalue="CMake Application.stationaryheat" />
       <item itemvalue="CMake Application.tensiletest" />
-      <item itemvalue="CMake Application.transientheat" />
-      <item itemvalue="CMake Application.libbelfem_maxwell.a" />
-      <item itemvalue="CMake Application.libbelfem_postproc.a" />
-      <item itemvalue="CMake Application.mappertest" />
-      <item itemvalue="CMake Application.normaltest" />
-      <item itemvalue="CMake Application.pentatest" />
-      <item itemvalue="CMake Application.libbelfem_io.a" />
-      <item itemvalue="CMake Application.petsctst" />
+      <item itemvalue="CMake Application.test_brandt" />
       <item itemvalue="CMake Application.test_curved" />
       <item itemvalue="CMake Application.test_cut" />
       <item itemvalue="CMake Application.test_input" />
-      <item itemvalue="CMake Application.test_tape" />
       <item itemvalue="CMake Application.test_l2" />
-      <item itemvalue="CMake Application.libbelfem_graph.a" />
-      <item itemvalue="CMake Application.example_udfiber.cpp" />
-      <item itemvalue="CMake Application.libbelfem_mesh.a" />
-      <item itemvalue="CMake Application.meshtest" />
-      <item itemvalue="CMake Application.libbelfem_bezier.a" />
-      <item itemvalue="CMake Application.libbelfem_integration.a" />
-      <item itemvalue="CMake Application.libbelfem_ode.a" />
-      <item itemvalue="CMake Application.ode" />
-      <item itemvalue="CMake Application.libbelfem_spline.a" />
-      <item itemvalue="CMake Application.libbelfem_materials.a" />
-      <item itemvalue="CMake Application.material" />
-      <item itemvalue="CMake Application.libbelfem_sparse.a" />
-      <item itemvalue="CMake Application.solvertest" />
       <item itemvalue="CMake Application.test_maxwell" />
+      <item itemvalue="CMake Application.test_tape" />
+      <item itemvalue="CMake Application.transientheat" />
       <item itemvalue="CTest Application.All CTest" />
     </list>
   </component>
@@ -572,6 +667,8 @@
       <workItem from="1658982009266" duration="11101000" />
       <workItem from="1658996667648" duration="4383000" />
       <workItem from="1659040463535" duration="29092000" />
+      <workItem from="1659145042882" duration="3000" />
+      <workItem from="1659311253701" duration="19776000" />
     </task>
     <servers />
   </component>

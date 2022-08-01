@@ -149,7 +149,7 @@ namespace belfem
              * get the precomputed shape function from parent block
              */
             const Matrix< real > &
-            N( const uint & aPointIndex ) const;
+            N( const uint aPointIndex ) const;
 
 //------------------------------------------------------------------------------
 
@@ -157,28 +157,28 @@ namespace belfem
              * get the precomputed shape function from parent block ( Geometry )
              */
             const Matrix< real > &
-            G( const uint & aPointIndex ) const;
+            G( const uint aPointIndex ) const;
 
 //------------------------------------------------------------------------------
 
             // compute the transposed geometry Jacobian
             // rule: J * dNdX = dNdXi
             Matrix< real > &
-            J( const uint & aPointIndex );
+            J( const uint aPointIndex );
 
 //------------------------------------------------------------------------------
 
             // compute the K-Matrix for the geometry transformation
             // rule: L * d2NdX2 = d2NdXi2 - K * dNdXi
             Matrix< real > &
-            K( const uint & aPointIndex );
+            K( const uint aPointIndex );
 
 //------------------------------------------------------------------------------
 
             // compute the L-Matrix for the geometry transformation
             Matrix< real > &
             // rule: L * d2NdX2 = d2NdXi2 - K * dNdXi
-            L( const uint & aPointIndex );
+            L( const uint aPointIndex );
 
 //------------------------------------------------------------------------------
 
@@ -232,7 +232,7 @@ namespace belfem
              * expose container for edge directions
              */
             bool
-            edge_direction( const index_t & aIndex ) const;
+            edge_direction( const index_t aIndex ) const;
 
 //------------------------------------------------------------------------------
 
@@ -546,7 +546,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline bool
-        Element::edge_direction( const index_t & aIndex ) const
+        Element::edge_direction( const index_t aIndex ) const
         {
             return mEdgeDirections.test( aIndex ) ;
         }

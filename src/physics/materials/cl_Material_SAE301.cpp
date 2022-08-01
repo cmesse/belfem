@@ -24,7 +24,7 @@ namespace belfem
         {
             mNumber = "1.4310";
 
-            mTmax = 1693.15;
+            mTmax = 1173.15 ;
             this->create_expansion_poly() ;
             this->create_density_poly();
             this->create_mech_polys() ;
@@ -209,10 +209,10 @@ namespace belfem
         {
             // from 10.1520/STP45025S
             Vector< real > tT = {
-                    116.483,
-                    144.261,
-                    199.817,
-                    293.150,
+                    //116.483,
+                    //144.261,
+                    //199.817,
+                    //293.150,
                     366.483,
                     477.594,
                     588.706,
@@ -224,10 +224,10 @@ namespace belfem
                     1255.372 };
 
             Vector< real > tLambda = {
-                    11.077,
-                    11.769,
-                    12.981,
-                    14.884,
+                    //11.077,
+                    //11.769,
+                    //12.981,
+                    //14.884,
                     16.269,
                     18.000,
                     19.557,
@@ -238,10 +238,10 @@ namespace belfem
                     26.480,
                     27.692 };
 
-            polyfit( tT, tLambda, 2, mThermalConductivityPoly6 );
+            polyfit( tT, tLambda, 1, mThermalConductivityPoly6 );
 
-            // lambda at 200 K
-            real tLambdaRef = polyval( mThermalConductivityPoly6, 200.0 );
+            // lambda at 200 K ( if all values are used and interpolation is quadratic
+            real tLambdaRef = 12.946968 ;
 
             // T < 20 K
             mThermalConductivityPoly0
@@ -261,10 +261,10 @@ namespace belfem
 
             // 100 < T < 150
             mThermalConductivityPoly4
-                    = {   8.98306626e-8,
-                          - 4.68392476e-5,
-                          1.05185318e-2,
-                          5.66961918e-2 };
+                    = { -1.27655318e-5,
+                        6.24092009e-3,
+                        2.34353290e-1
+                            };
             mThermalConductivityPoly4*= tLambdaRef ;
 
 
@@ -286,6 +286,7 @@ namespace belfem
                     polyval( mThermalConductivityPoly4, mSwitchLT3 ),
                     dpolyval( mThermalConductivityPoly4, mSwitchLT3 ),
                     mThermalConductivityPoly3 );
+
 
             create_beam_poly(
                     mSwitchLT4,

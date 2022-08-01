@@ -331,7 +331,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        SideSet::impose_dirichlet( const real & aValue, const uint aDofType )
+        SideSet::impose_dirichlet( const real aValue, const uint aDofType )
         {
             // set value
             mBcValues( aDofType ) = aValue ;
@@ -351,7 +351,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        SideSet::impose_neumann( const real & aValue, const uint aDofType )
+        SideSet::impose_neumann( const real aValue, const uint aDofType )
         {
             // set value
             mBcValues( aDofType ) = aValue ;

@@ -11,8 +11,8 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     Bezier::Bezier(
-            const real & aX0, const real & aY0, const real & adYdx0,
-            const real & aX1, const real & aY1, const real & adYdx1,
+            const real aX0, const real aY0, const real adYdx0,
+            const real aX1, const real aY1, const real adYdx1,
             const BezierType aType )
     {
         // allocate memory
@@ -45,7 +45,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Bezier::x_by_xi( const real & aXi )
+    Bezier::x_by_xi( const real aXi )
     {
         // compute the shape function
         this->compute_N( aXi );
@@ -57,7 +57,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Bezier::y_by_xi( const real & aXi )
+    Bezier::y_by_xi( const real aXi )
     {
         // compute the shape function
         this->compute_N( aXi );
@@ -69,7 +69,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Bezier::xi_by_x( const real & aX )
+    Bezier::xi_by_x( const real aX )
     {
         real tXi0 = -1.0;
         real tF0 = this->x_by_xi( tXi0 ) - aX ;
@@ -110,7 +110,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Bezier::xi_by_y( const real & aY )
+    Bezier::xi_by_y( const real aY )
     {
         real tXi0 = -1.0;
         real tF0 = this->y_by_xi( tXi0 ) - aY ;
@@ -150,7 +150,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Bezier::x( const real & aY )
+    Bezier::x( const real aY )
     {
         return this->x_by_xi( this->xi_by_y( aY ) );
     }
@@ -158,7 +158,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Bezier::y( const real & aX )
+    Bezier::y( const real aX )
     {
         return this->y_by_xi( this->xi_by_x( aX ) );
     }
@@ -166,7 +166,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     void
-    Bezier::point( const real & aXi, real & aX, real & aY )
+    Bezier::point( const real aXi, real & aX, real & aY )
     {
         this->compute_N( aXi );
 
@@ -177,7 +177,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     void
-    Bezier::dpoint( const real & aXi, real & adXdXi, real & adYdXi )
+    Bezier::dpoint( const real aXi, real & adXdXi, real & adYdXi )
     {
         this->compute_dNdXi( aXi );
 
@@ -188,7 +188,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     void
-    Bezier::ddpoint( const real & aXi, real & ad2XdXi2, real & ad2YdXi2 )
+    Bezier::ddpoint( const real aXi, real & ad2XdXi2, real & ad2YdXi2 )
     {
         this->compute_d2NdXi2( aXi );
 
@@ -199,7 +199,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Bezier::dydx( const real & aX )
+    Bezier::dydx( const real aX )
     {
         real tdXdXi ;
         real tdYdXi ;
@@ -211,7 +211,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Bezier::dxdy( const real & aY )
+    Bezier::dxdy( const real aY )
     {
         real tdXdXi ;
         real tdYdXi ;
@@ -223,7 +223,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Bezier::d2ydx2( const real & aX )
+    Bezier::d2ydx2( const real aX )
     {
         real tXi = this->xi_by_x( aX );
         real tdXdXi ;
@@ -240,7 +240,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Bezier::d2xdy2( const real & aY )
+    Bezier::d2xdy2( const real aY )
     {
         real tXi = this->xi_by_y( aY );
         real tdXdXi ;
@@ -258,8 +258,8 @@ namespace belfem
 
     void
     Bezier::compute_basis_xwise(
-            const real & aX0, const real & aY0,const real & adYdx0,
-            const real & aX1, const real & aY1, const real & adYdx1 )
+            const real aX0, const real aY0,const real adYdx0,
+            const real aX1, const real aY1, const real adYdx1 )
     {
         real tDX = ( aX1 - aX0 ) / 3. ;
 
@@ -278,8 +278,8 @@ namespace belfem
 
     void
     Bezier::compute_basis_ywise(
-            const real & aX0, const real & aY0,const real & adYdx0,
-            const real & aX1, const real & aY1, const real & adYdx1 )
+            const real aX0, const real aY0,const real adYdx0,
+            const real aX1, const real aY1, const real adYdx1 )
     {
         real tDY = ( aY1 - aY0 ) / 3. ;
 
@@ -297,7 +297,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     void
-    Bezier::compute_N( const real & aXi )
+    Bezier::compute_N( const real aXi )
     {
         mWork( 0 ) = std::pow(1 - aXi, 3);
         mWork( 1 ) = 3. * ((aXi * (aXi - 1.) - 1.) * aXi + 1.);
@@ -310,7 +310,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     void
-    Bezier::compute_dNdXi( const real & aXi )
+    Bezier::compute_dNdXi( const real aXi )
     {
         mWork( 0 ) = - (1. - aXi) * (1. - aXi);
         mWork( 1 ) =  ((3. * aXi - 2.) * aXi - 1.);
@@ -323,7 +323,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     void
-    Bezier::compute_d2NdXi2( const real & aXi )
+    Bezier::compute_d2NdXi2( const real aXi )
     {
         mWork( 0 ) =  1. - aXi;
         mWork( 1 ) =  3. * aXi - 1.;

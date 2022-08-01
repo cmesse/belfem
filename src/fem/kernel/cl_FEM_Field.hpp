@@ -454,7 +454,7 @@ namespace belfem
              * initialize the value of all dofs to a specific uniform number
              */
              void
-             set_all_dofs( const real & aValue );
+             set_all_dofs( const real aValue );
 
 //------------------------------------------------------------------------------
 

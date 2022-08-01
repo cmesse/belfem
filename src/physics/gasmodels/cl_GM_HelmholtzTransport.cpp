@@ -24,7 +24,7 @@ namespace belfem
 
 
         real
-        HelmholtzTransport::mu( const real & aT, const real & aP )
+        HelmholtzTransport::mu( const real aT, const real aP )
         {
             BELFEM_ERROR( false, "mu function is not implemented for this gas" );
             return BELFEM_QUIET_NAN;
@@ -33,7 +33,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        HelmholtzTransport::lambda( const real & aT, const real & aP )
+        HelmholtzTransport::lambda( const real aT, const real aP )
         {
             BELFEM_ERROR( false, "lambda function is not implemented for this gas" );
             return BELFEM_QUIET_NAN;

@@ -41,12 +41,12 @@ namespace belfem
 //----------------------------------------------------------------------------
 
             virtual real
-            mu( const real & aT, const real & aP );
+            mu( const real aT, const real aP );
 
 //----------------------------------------------------------------------------
 
             virtual real
-            lambda( const real & aT, const real & aP );
+            lambda( const real aT, const real aP );
 
 //----------------------------------------------------------------------------
         };

@@ -36,13 +36,13 @@ int main( int    argc,
     MaterialFactory tFactory ;
 
 
-    string tMatLabel = "Silver" ;
+    string tMatLabel = "silver" ;
 
     const string tDatabase = "materials.hdf5" ;
 
     bool tComputeCp = true ;
-    bool tComputeK = true ;
-    bool tComputeRho = true ;
+    bool tComputeK = false ;
+    bool tComputeRho = false ;
 
     string tCpLabel = sprint( "%sCp", tMatLabel.c_str() ) ;
     string tKLabel = sprint( "%sK", tMatLabel.c_str() ) ;
@@ -102,7 +102,7 @@ int main( int    argc,
     HDF5 tFile( tDatabase, FileMode::OPEN_RDWR );
     tFile.save_data( tDensityLabel, tMaterial->rho() );
     tFile.close() ;
-    ./ma
+
     delete tMaterial ;
 
     return gComm.finalize();

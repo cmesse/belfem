@@ -78,7 +78,7 @@ namespace belfem
              * update temperature and pressure
              */
             inline void
-            update_Tp( const real & aT, const real & aP );
+            update_Tp( const real aT, const real aP );
 
 //----------------------------------------------------------------------------
 
@@ -86,7 +86,7 @@ namespace belfem
              * update temperature and inverse density
              */
             inline void
-            update_Tv( const real & aT, const real & aV );
+            update_Tv( const real aT, const real aV );
 
 //----------------------------------------------------------------------------
 
@@ -94,7 +94,7 @@ namespace belfem
              * update pressure and inverse density
              */
             inline void
-            update_pv( const real & aP, const real & aV );
+            update_pv( const real aP, const real aV );
 
 //----------------------------------------------------------------------------
 
@@ -110,7 +110,7 @@ namespace belfem
              * test if a value is up do date
              */
             inline bool
-            test( const index_t & aIndex ) const;
+            test( const index_t aIndex ) const;
 
 //----------------------------------------------------------------------------
 
@@ -118,28 +118,28 @@ namespace belfem
              * get a value of the state
              */
             inline const real &
-            get( const index_t & aIndex ) const;
+            get( const index_t aIndex ) const;
 
 //----------------------------------------------------------------------------
 
             /**
              * set a value of the state
              */
-            inline void set( const index_t aIndex, const real & aValue );
+            inline void set( const index_t aIndex, const real aValue );
 
 //------------------------------------------------------------------------------
         };
 //------------------------------------------------------------------------------
 
         bool
-        Statevals::test( const index_t & aIndex ) const
+        Statevals::test( const index_t aIndex ) const
         {
             return mStatebits.test( aIndex );
         }
 
 //------------------------------------------------------------------------------
         void
-        Statevals::update_Tp( const real & aT, const real & aP )
+        Statevals::update_Tp( const real aT, const real aP )
         {
             BELFEM_ASSERT( aT > 0, "Invalid Temprerature" );
             BELFEM_ASSERT( aP > 0, "Invalid Pressure" );
@@ -159,7 +159,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         void
-        Statevals::update_Tv( const real & aT, const real & aV )
+        Statevals::update_Tv( const real aT, const real aV )
         {
             if(       aT != mStatevals[ BELFEM_STATEVAL_T ]
                    || aV != mStatevals[ BELFEM_STATEVAL_V ] )
@@ -177,7 +177,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         void
-        Statevals::update_pv( const real & aP, const real & aV )
+        Statevals::update_pv( const real aP, const real aV )
         {
             if(       aP != mStatevals[ BELFEM_STATEVAL_P ]
                    || aV != mStatevals[ BELFEM_STATEVAL_V ] )
@@ -203,7 +203,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         const real &
-        Statevals::get( const index_t & aIndex ) const
+        Statevals::get( const index_t aIndex ) const
         {
             BELFEM_ASSERT( aIndex < BELFEM_NSTATEVALS ,
                           "Invalid State index: %u", ( unsigned int ) aIndex );
@@ -214,7 +214,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         void
-        Statevals::set( const index_t aIndex, const real & aValue )
+        Statevals::set( const index_t aIndex, const real aValue )
         {
             BELFEM_ASSERT( aIndex < BELFEM_NSTATEVALS ,
                     "Invalid State index: %u", ( unsigned int ) aIndex );

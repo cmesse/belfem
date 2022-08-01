@@ -58,7 +58,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         // constructor that creates empty container
-        Spline( const index_t & aN, const real & aXmin, const real & aXmax );
+        Spline( const index_t & aN, const real aXmin, const real aXmax );
 
 //------------------------------------------------------------------------------
 
@@ -96,21 +96,21 @@ namespace belfem
          * interpolate the function
          */
         inline real
-        eval( const real & aX ) const;
+        eval( const real aX ) const;
 
 //------------------------------------------------------------------------------
         /**
          * interpolate first derivative
          */
         inline real
-        deval( const real & aX ) const;
+        deval( const real aX ) const;
 
 //------------------------------------------------------------------------------
         /**
          * interpolate second derivative
          */
         inline real
-        ddeval( const real & aX ) const;
+        ddeval( const real aX ) const;
 
 //------------------------------------------------------------------------------
 
@@ -118,7 +118,7 @@ namespace belfem
          * interpolate entropy
          */
         inline real
-        entropy( const real & aX ) const;
+        entropy( const real aX ) const;
 
 //------------------------------------------------------------------------------
 
@@ -126,7 +126,7 @@ namespace belfem
          * interpolate entropy derivative
          */
         inline real
-        dentropy( const real & aX ) const;
+        dentropy( const real aX ) const;
 
 //------------------------------------------------------------------------------
 
@@ -190,7 +190,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline index_t
-        find_col( const real & aX ) const;
+        find_col( const real aX ) const;
 
 //------------------------------------------------------------------------------
     private:
@@ -241,7 +241,7 @@ namespace belfem
          * special case for heat polynomials
          */
          void
-         create_entropy( const real & aXref, const real & aSref );
+         create_entropy( const real aXref, const real & aSref );
 
 //------------------------------------------------------------------------------
 
@@ -305,7 +305,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     index_t
-    Spline::find_col( const belfem::real & aX ) const
+    Spline::find_col( const belfem::real aX ) const
     {
         // make sure that x is correct
         BELFEM_ASSERT(
@@ -320,7 +320,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Spline::eval( const real & aX ) const
+    Spline::eval( const real aX ) const
     {
         index_t tCol = find_col( aX );
 
@@ -333,7 +333,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Spline::deval( const real & aX ) const
+    Spline::deval( const real aX ) const
     {
         auto tCol = find_col( aX );
 
@@ -345,7 +345,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Spline::ddeval( const real & aX ) const
+    Spline::ddeval( const real aX ) const
     {
         auto tCol = find_col( aX );
 
@@ -355,7 +355,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Spline::entropy( const real & aX ) const
+    Spline::entropy( const real aX ) const
     {
         auto tCol = find_col( aX );
         return      ( 1.5 * mData( 0, tCol )   * aX
@@ -367,7 +367,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Spline::dentropy( const real & aX ) const
+    Spline::dentropy( const real aX ) const
     {
         auto tCol = find_col( aX );
         return   3.0 * mData( 0, tCol ) * aX

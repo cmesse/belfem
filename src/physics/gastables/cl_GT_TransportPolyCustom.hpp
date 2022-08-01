@@ -35,17 +35,17 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             real
-            rawpoly( const real & aT ) const;
+            rawpoly( const real aT ) const;
 
 //------------------------------------------------------------------------------
 
             real
-            drawpoly( const real & aT ) const;
+            drawpoly( const real aT ) const;
 
 //------------------------------------------------------------------------------
 
             real
-            ddrawpoly( const real & aT ) const;
+            ddrawpoly( const real aT ) const;
 
 //------------------------------------------------------------------------------
         };

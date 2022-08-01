@@ -165,7 +165,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        LookupTable::compute_value( const index_t & aFieldIndex, const real & aX )
+        LookupTable::compute_value( const index_t & aFieldIndex, const real aX )
         {
             BELFEM_ASSERT( mNumberOfDimensions == 1, "Table must be of dimension 1" );
 
@@ -200,8 +200,8 @@ namespace belfem
         real
         LookupTable::compute_value(
                 const index_t & aFieldIndex,
-                const real & aX,
-                const real & aY )
+                const real aX,
+                const real aY )
         {
             BELFEM_ASSERT( mNumberOfDimensions == 2, "Table must be of dimension 2" );
 
@@ -238,8 +238,8 @@ namespace belfem
         real
         LookupTable::compute_value(
                 const index_t & aFieldIndex,
-                const real & aX,
-                const real & aY,
+                const real aX,
+                const real aY,
                 const real & aZ )
         {
             BELFEM_ASSERT( mNumberOfDimensions == 3, "Table must be of dimension 3" );
@@ -278,8 +278,8 @@ namespace belfem
 
         real
         LookupTable::compute_derivative(
-                const index_t  & aFieldIndex,
-                const real     & aX )
+                const index_t  aFieldIndex,
+                const real     aX )
         {
             BELFEM_ASSERT( mNumberOfDimensions == 1, "Table must be of dimension 1" );
 
@@ -311,9 +311,9 @@ namespace belfem
 
         Vector< real >
         LookupTable::compute_derivative(
-                const index_t & aFieldIndex,
-                const real & aX,
-                const real & aY )
+                const index_t aFieldIndex,
+                const real aX,
+                const real aY )
         {
             BELFEM_ASSERT( mNumberOfDimensions == 2, "Table must be of dimension 2" );
 
@@ -352,10 +352,10 @@ namespace belfem
 
         Vector< real >
         LookupTable::compute_derivative(
-                const index_t & aFieldIndex,
-                const real & aX,
-                const real & aY,
-                const real & aZ )
+                const index_t aFieldIndex,
+                const real aX,
+                const real aY,
+                const real aZ )
         {
             BELFEM_ASSERT( mNumberOfDimensions == 3, "Table must be of dimension 3" );
 
@@ -397,8 +397,8 @@ namespace belfem
 
         real
         LookupTable::compute_second_derivative(
-                const index_t  & aFieldIndex,
-                const real     & aX )
+                const index_t    aFieldIndex,
+                const real       aX )
         {
             BELFEM_ASSERT( mNumberOfDimensions == 1, "Table must be of dimension 1" );
 
@@ -431,9 +431,9 @@ namespace belfem
 
         Vector< real >
         LookupTable::compute_second_derivative(
-                const index_t & aFieldIndex,
-                const real & aX,
-                const real & aY )
+                const index_t aFieldIndex,
+                const real aX,
+                const real aY )
         {
             BELFEM_ASSERT( mNumberOfDimensions == 2, "Table must be of dimension 2" );
 
@@ -473,10 +473,10 @@ namespace belfem
 
         Vector< real >
         LookupTable::compute_second_derivative(
-                const index_t & aFieldIndex,
-                const real & aX,
-                const real & aY,
-                const real & aZ )
+                const index_t aFieldIndex,
+                const real aX,
+                const real aY,
+                const real aZ )
         {
             BELFEM_ASSERT( mNumberOfDimensions == 3, "Table must be of dimension 3" );
 

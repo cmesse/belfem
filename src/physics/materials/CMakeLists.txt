@@ -20,7 +20,7 @@ set( SOURCES
         cl_Material_YBCO.cpp
         cl_Material_Pb40Sn60.cpp
         cl_Material_SAE301.cpp
-        cl_Material_SAE314.cpp
+        cl_Material_SAE316.cpp
 	    cl_MaterialFactory.cpp
 	    nist_functions.cpp
         )

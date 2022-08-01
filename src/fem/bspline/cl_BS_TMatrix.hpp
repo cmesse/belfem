@@ -106,7 +106,7 @@ namespace belfem
             real
             shape_function_1d(
                     const uint & aK,
-                    const real & aXi ) ;
+                    const real aXi ) ;
 
 //------------------------------------------------------------------------------
 

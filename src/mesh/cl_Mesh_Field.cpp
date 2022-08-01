@@ -104,7 +104,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        Field::fill( const id_t aID, const real & aValue )
+        Field::fill( const id_t aID, const real aValue )
         {
             // unflag all elements on mesh
             mParent.unflag_all_elements() ;
@@ -144,7 +144,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        Field::fill( const Vector< id_t > & aIDs, const real & aValue )
+        Field::fill( const Vector< id_t > & aIDs, const real aValue )
         {
             // unflag all elements on mesh
             mParent.unflag_all_elements() ;

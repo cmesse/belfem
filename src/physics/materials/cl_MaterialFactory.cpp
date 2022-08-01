@@ -19,7 +19,7 @@
 #include "cl_Material_YBCO.hpp"
 #include "cl_Material_Pb40Sn60.hpp"
 #include "cl_Material_SAE301.hpp"
-#include "cl_Material_SAE314.hpp"
+#include "cl_Material_SAE316.hpp"
 
 #ifdef BELFEM_GASMODELS
 #include "cl_Material_Air.hpp"
@@ -105,9 +105,9 @@ namespace belfem
             {
                 return new material::SAE301 ;
             }
-            case( MaterialType::SAE314 ) :
+            case( MaterialType::SAE316 ) :
             {
-                return new material::SAE314 ;
+                return new material::SAE316 ;
             }
             default :
             {

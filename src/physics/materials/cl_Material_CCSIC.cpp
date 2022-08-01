@@ -185,7 +185,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         void
-        CCSIC::lambda( Matrix <real> & aLambda, const real aT ) const
+        CCSIC::lambda3d( Matrix <real> & aLambda, const real aT ) const
         {
             real tLambda1 = polyval( mLambda1, aT );
 

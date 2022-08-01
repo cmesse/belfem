@@ -130,7 +130,7 @@ namespace belfem
              * get id of individual proc
              */
              proc_t
-             comm_table( const index_t & aIndex ) const;
+             comm_table( const index_t aIndex ) const;
 
 //------------------------------------------------------------------------------
 
@@ -138,7 +138,7 @@ namespace belfem
              * expose a field
              */
              Field *
-             field( const uint & aIndex );
+             field( const uint aIndex );
 
 //------------------------------------------------------------------------------
 
@@ -146,7 +146,7 @@ namespace belfem
              * expose a field
              */
             DofManager *
-            dofmgr( const uint & aIndex );
+            dofmgr( const uint aIndex );
 
 //------------------------------------------------------------------------------
 

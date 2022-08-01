@@ -73,12 +73,12 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             virtual Face *
-            face( const uint aIndex );
+            face( const uint aIndex=0 );
 
 //------------------------------------------------------------------------------
 
             virtual const Face *
-            face( const uint aIndex ) const ;
+            face( const uint aIndex=0 ) const ;
 
 //------------------------------------------------------------------------------
         };

@@ -48,7 +48,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        Node::set_coords( const real & aX, const real & aY )
+        Node::set_coords( const real aX, const real aY )
         {
             mCoords( 0 ) = aX;
             mCoords( 1 ) = aY;
@@ -57,7 +57,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        Node::set_coords( const real & aX, const real & aY, const real & aZ )
+        Node::set_coords( const real aX, const real aY, const real & aZ )
         {
             mCoords( 0 ) = aX;
             mCoords( 1 ) = aY;

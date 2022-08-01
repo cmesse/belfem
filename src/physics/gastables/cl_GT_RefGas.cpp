@@ -51,7 +51,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        RefGas::add_component( const string & aLabel, const real & aValue )
+        RefGas::add_component( const string & aLabel, const real aValue )
         {
             mData.mElements.push( aLabel );
             mData.mComposition[ aLabel ] = aValue;
@@ -706,7 +706,7 @@ namespace belfem
 //-------------------------------------------------------------------------------
 
         HeatPoly *
-        RefGas::find_heat_poly( const real & aT )
+        RefGas::find_heat_poly( const real aT )
         {
             for( HeatPoly * aPoly : mHeatPolys )
             {
@@ -727,7 +727,7 @@ namespace belfem
 //-------------------------------------------------------------------------------
 
         TransportPoly *
-        RefGas::find_viscosity_poly( const real & aT )
+        RefGas::find_viscosity_poly( const real aT )
         {
 
             for( TransportPoly * aPoly : mViscosityPolys )
@@ -749,7 +749,7 @@ namespace belfem
 //-------------------------------------------------------------------------------
 
         TransportPoly *
-        RefGas::find_conductivity_poly( const real & aT )
+        RefGas::find_conductivity_poly( const real aT )
         {
             for( TransportPoly * aPoly : mConductivityPolys )
             {
@@ -840,7 +840,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::zero( const real & aT )
+        RefGas::zero( const real aT )
         {
             return 0.0;
         }
@@ -863,7 +863,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::Cp( const real & aT )
+        RefGas::Cp( const real aT )
         {
             return ( this->*mFunctionCp ) ( aT );
         }
@@ -871,7 +871,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::H( const real & aT )
+        RefGas::H( const real aT )
         {
             return ( this->*mFunctionH ) ( aT );
         }
@@ -879,7 +879,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::S( const real & aT )
+        RefGas::S( const real aT )
         {
             return ( this->*mFunctionS ) ( aT );
         }
@@ -887,7 +887,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::dSdT( const real & aT )
+        RefGas::dSdT( const real aT )
         {
             return ( this->*mFunctiondSdT ) ( aT );
         }
@@ -895,7 +895,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::dCpdT( const real & aT )
+        RefGas::dCpdT( const real aT )
         {
             return ( this->*mFunctiondCpdT ) ( aT );
         }
@@ -903,7 +903,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::d2CpdT2( const real & aT )
+        RefGas::d2CpdT2( const real aT )
         {
             return ( this->*mFunctiond2CpdT2 ) ( aT );
         }
@@ -911,7 +911,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::mu( const real & aT )
+        RefGas::mu( const real aT )
         {
             return ( this->*mFunctionMu ) ( aT );
         }
@@ -919,7 +919,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::dmudT( const real & aT )
+        RefGas::dmudT( const real aT )
         {
             return ( this->*mFunctiondMudT ) ( aT );
         }
@@ -928,7 +928,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::d2mudT2( const real & aT )
+        RefGas::d2mudT2( const real aT )
         {
             return ( this->*mFunctiond2MudT2 ) ( aT );
         }
@@ -936,7 +936,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::lambda( const real & aT )
+        RefGas::lambda( const real aT )
         {
             return ( this->*mFunctionLambda ) ( aT );
         }
@@ -944,7 +944,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::dlambdadT( const real & aT )
+        RefGas::dlambdadT( const real aT )
         {
             return ( this->*mFunctiondLambdadT ) ( aT );
         }
@@ -952,7 +952,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::d2lambdadT2( const real & aT )
+        RefGas::d2lambdadT2( const real aT )
         {
             return ( this->*mFunctiond2LambdadT2 ) ( aT );
         }
@@ -960,7 +960,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::poly_Cp( const real & aT )
+        RefGas::poly_Cp( const real aT )
         {
            return this->find_heat_poly( aT )->Cp( aT );
         }
@@ -968,7 +968,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::poly_H( const real & aT )
+        RefGas::poly_H( const real aT )
         {
             return this->find_heat_poly( aT )->H( aT );
         }
@@ -976,7 +976,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::poly_S( const real & aT )
+        RefGas::poly_S( const real aT )
         {
             return this->find_heat_poly( aT )->S( aT );
         }
@@ -984,7 +984,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::poly_dSdT( const real & aT )
+        RefGas::poly_dSdT( const real aT )
         {
             return this->find_heat_poly( aT )->dSdT( aT );
         }
@@ -992,14 +992,14 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::poly_dCpdT( const real & aT )
+        RefGas::poly_dCpdT( const real aT )
         {
             return this->find_heat_poly( aT )->dCpdT( aT );
         }
 //------------------------------------------------------------------------------
 
         real
-        RefGas::poly_d2CpdT2( const real & aT )
+        RefGas::poly_d2CpdT2( const real aT )
         {
             return this->find_heat_poly( aT )->d2CpdT2( aT );
         }
@@ -1007,7 +1007,7 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
         real
-        RefGas::poly_Mu( const real & aT )
+        RefGas::poly_Mu( const real aT )
         {
             return this->find_viscosity_poly( aT )->eval( aT );
         }
@@ -1015,7 +1015,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::poly_dMudT( const real & aT )
+        RefGas::poly_dMudT( const real aT )
         {
             return this->find_viscosity_poly( aT )->deval( aT );
         }
@@ -1023,7 +1023,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::poly_d2MudT2( const real & aT )
+        RefGas::poly_d2MudT2( const real aT )
         {
             return this->find_viscosity_poly( aT )->ddeval( aT );
         }
@@ -1031,7 +1031,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::poly_Lambda( const real & aT )
+        RefGas::poly_Lambda( const real aT )
         {
             return this->find_conductivity_poly( aT )->eval( aT );
         }
@@ -1039,7 +1039,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::poly_dLambdadT( const real & aT )
+        RefGas::poly_dLambdadT( const real aT )
         {
             return this->find_conductivity_poly( aT )->deval( aT );
         }
@@ -1047,7 +1047,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::poly_d2LambdadT2( const real & aT )
+        RefGas::poly_d2LambdadT2( const real aT )
         {
             return this->find_conductivity_poly( aT )->ddeval( aT );
         }
@@ -1055,7 +1055,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::spline_Cp( const real & aT )
+        RefGas::spline_Cp( const real aT )
         {
             return mHeatSpline.deval( aT );
         }
@@ -1063,7 +1063,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::spline_dCpdT( const real & aT )
+        RefGas::spline_dCpdT( const real aT )
         {
             return mHeatSpline.ddeval( aT );
         }
@@ -1071,7 +1071,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::spline_H( const real & aT )
+        RefGas::spline_H( const real aT )
         {
             return mHeatSpline.eval( aT );
         }
@@ -1079,7 +1079,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::spline_S( const real & aT )
+        RefGas::spline_S( const real aT )
         {
             return mHeatSpline.entropy( aT );
         }
@@ -1087,7 +1087,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::spline_dSdT( const real & aT )
+        RefGas::spline_dSdT( const real aT )
         {
             return mHeatSpline.dentropy( aT );
         }
@@ -1095,7 +1095,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::spline_Mu( const real & aT )
+        RefGas::spline_Mu( const real aT )
         {
             return mViscositySpline.eval( aT );
         }
@@ -1103,7 +1103,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::spline_dMudT( const real & aT )
+        RefGas::spline_dMudT( const real aT )
         {
             return mViscositySpline.deval( aT );
         }
@@ -1111,7 +1111,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::spline_d2MudT2( const real & aT )
+        RefGas::spline_d2MudT2( const real aT )
         {
             return mViscositySpline.ddeval( aT );
         }
@@ -1119,7 +1119,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::spline_Lambda( const real & aT )
+        RefGas::spline_Lambda( const real aT )
         {
             return mConductivitySpline.eval( aT );
         }
@@ -1127,7 +1127,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::spline_dLambdadT( const real & aT )
+        RefGas::spline_dLambdadT( const real aT )
         {
             return mConductivitySpline.deval( aT );
         }
@@ -1135,7 +1135,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::spline_d2LambdadT2( const real & aT )
+        RefGas::spline_d2LambdadT2( const real aT )
         {
             return mConductivitySpline.ddeval( aT );
         }
@@ -1210,7 +1210,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::cp( const real & aT )
+        RefGas::cp( const real aT )
         {
             return this->Cp( aT ) / mData.M();
         }
@@ -1218,7 +1218,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::h( const real & aT )
+        RefGas::h( const real aT )
         {
             return this->H( aT ) / mData.M();
         }
@@ -1226,7 +1226,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::s( const real & aT )
+        RefGas::s( const real aT )
         {
             return this->S( aT ) / mData.M();
         }
@@ -1234,7 +1234,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::dcpdT( const real & aT )
+        RefGas::dcpdT( const real aT )
         {
             return this->dCpdT( aT ) / mData.M();
         }
@@ -1242,7 +1242,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        RefGas::d2cpdT2( const real & aT )
+        RefGas::d2cpdT2( const real aT )
         {
             return this->d2CpdT2( aT ) / mData.M();
         }

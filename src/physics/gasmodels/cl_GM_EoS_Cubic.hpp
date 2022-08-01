@@ -98,13 +98,13 @@ namespace belfem
 //----------------------------------------------------------------------------
 
             real
-            p( const real & aT, const real & aV );
+            p( const real aT, const real aV );
 
             real
-            v( const real & aT, const real & aP );
+            v( const real aT, const real aP );
 
             real
-            T( const real & aP, const real & aV );
+            T( const real aP, const real aV );
 
 //----------------------------------------------------------------------------
 // State Derivatives
@@ -114,7 +114,7 @@ namespace belfem
              * \f$ \frac{\partial p}{\partial T } = \frac{R}{ v - b} - \frac{a \,\frac{\partial \alpha}{\partial T }}{ \left( v-b \, r_1\right) \, \left( v-b \, r_2\right)} \f$
              */
             real
-            dpdT( const real & aT, const real & aV );
+            dpdT( const real aT, const real aV );
 
 //----------------------------------------------------------------------------
 
@@ -124,7 +124,7 @@ namespace belfem
 \f$
               */
             real
-            d2pdT2( const real & aT, const real & aV );
+            d2pdT2( const real aT, const real aV );
 
 //----------------------------------------------------------------------------
 
@@ -134,7 +134,7 @@ namespace belfem
  \f$
               */
             real
-            dpdv( const real & aT, const real & aV );
+            dpdv( const real aT, const real aV );
 
 //----------------------------------------------------------------------------
             /**
@@ -143,7 +143,7 @@ namespace belfem
  \f$
               */
             real
-            d2pdv2( const real & aT, const real & aV );
+            d2pdv2( const real aT, const real aV );
 
 //------------------------------------------------------------------------------
 // Thermodynamic Coefficients
@@ -159,7 +159,7 @@ namespace belfem
              *
              */
             real
-            alpha( const real & aT, const real & aP );
+            alpha( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
@@ -173,7 +173,7 @@ namespace belfem
              *
              */
             real
-            beta( const real & aT, const real & aP );
+            beta( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
@@ -187,7 +187,7 @@ namespace belfem
              *
              */
             real
-            kappa( const real & aT, const real & aP );
+            kappa( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 // Departure Functions
@@ -198,56 +198,56 @@ namespace belfem
             * \f$  h - h^{\circ} = p\, v - R\,T + \frac{T \, \frac{\partial a}{\partial T} - a}{b \, \left( r_2 - r_1\right)} \, \ln \left[ \frac{v - b \, r_1}{v - b \, r_2}\right]  \f$
             */
             real
-            hdep( const real & aT, const real & aP );
+            hdep( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             real
-            cpdep( const real & aT, const real & aP );
+            cpdep( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             real
-            sdep( const real & aT, const real & aP );
+            sdep( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             // pressure derivative of enthalpy departure
             real
-            dhdepdp( const real & aT, const real & aP );
+            dhdepdp( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             // temperature derivative of entropy departure
             real
-            dsdepdT( const real & aT, const real & aP );
+            dsdepdT( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             // pressure derivative of entropy departure
             real
-            dsdepdp( const real & aT, const real & aP );
+            dsdepdp( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             real
-            hdep0( const real & aT );
+            hdep0( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            cpdep0( const real & aT );
+            cpdep0( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            sdep0( const real & aT );
+            sdep0( const real aT );
 
 //------------------------------------------------------------------------------
 
             // temperature derivative of entropy departure
             real
-            dsdepdT0( const real & aT );
+            dsdepdT0( const real aT );
 
 //------------------------------------------------------------------------------
 
@@ -259,17 +259,17 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             real
-            v( const uint & aIndex, const real & aT, const real & aP );
+            v( const uint aIndex, const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             real
-            hdep( const uint & aIndex, const real & aT, const real & aP );
+            hdep( const uint aIndex, const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             real
-            cpdep( const uint & aIndex, const real & aT, const real & aP );
+            cpdep( const uint aIndex, const real aT, const real aP );
 
 //------------------------------------------------------------------------------
         private:
@@ -306,7 +306,7 @@ namespace belfem
              * @param aDeriv   derivative 0, 1 or 2
              */
             void
-            eval_a( const real & aT, const int aDeriv );
+            eval_a( const real aT, const int aDeriv );
 
 //------------------------------------------------------------------------------
 
@@ -314,7 +314,7 @@ namespace belfem
              * the "a" function for cubic gas
              */
             real
-            a( const real & aT );
+            a( const real aT );
 
 //------------------------------------------------------------------------------
 
@@ -322,7 +322,7 @@ namespace belfem
              * first derivative of the "a" function for cubic gas
              */
             real
-            dadT( const real & aT );
+            dadT( const real aT );
 
 //------------------------------------------------------------------------------
 
@@ -330,7 +330,7 @@ namespace belfem
              * second derivative of the "a" function for cubic gas
              */
             real
-            d2adT2( const real & aT );
+            d2adT2( const real aT );
 
 //------------------------------------------------------------------------------
 
@@ -339,14 +339,14 @@ namespace belfem
              * \f$ \ln \left( \frac{v - b \, r_2}{v - b \, r_1}\right) \f$
              */
              real
-             chi( const real & aV );
+             chi( const real aV );
 
 
              real
-             dchidT( const real & aT, const real & aP, const real & aV );
+             dchidT( const real aT, const real aP, const real aV );
 
              real
-             dchidp( const real & aT, const real & aP, const real & aV );
+             dchidp( const real aT, const real aP, const real aV );
 
 //------------------------------------------------------------------------------
 // component wise density etc
@@ -354,9 +354,9 @@ namespace belfem
 
             void
             component_wise_parameters(
-                    const uint & aIndex,
-                    const real & aT,
-                    const real & aP,
+                    const uint aIndex,
+                    const real aT,
+                    const real aP,
                     real & aV,
                     real & aHDEP,
                     real & aCPDEP );
@@ -365,8 +365,8 @@ namespace belfem
 
             void
             update_component_parameters(
-                    const real & aT,
-                    const real & aP );
+                    const real aT,
+                    const real aP );
 
         };
 

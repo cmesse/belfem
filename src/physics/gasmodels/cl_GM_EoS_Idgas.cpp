@@ -29,7 +29,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_Idgas::p( const real & aT, const real & aV )
+        EoS_Idgas::p( const real aT, const real aV )
         {
             return mR * aT / aV;
         }
@@ -37,7 +37,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_Idgas::v( const real & aT, const real & aP )
+        EoS_Idgas::v( const real aT, const real aP )
         {
             return mR * aT / aP;
         }
@@ -45,7 +45,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_Idgas::T( const real & aP, const real & aV )
+        EoS_Idgas::T( const real aP, const real aV )
         {
             return aP * aV / mR;
         }
@@ -53,7 +53,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_Idgas::dpdT( const real & aT, const real & aV )
+        EoS_Idgas::dpdT( const real aT, const real aV )
         {
             return mR / aV;
         }
@@ -61,7 +61,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_Idgas::d2pdT2( const real & aT, const real & aV )
+        EoS_Idgas::d2pdT2( const real aT, const real aV )
         {
             return 0.0;
         }
@@ -69,7 +69,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_Idgas::dpdv( const real & aT, const real & aV )
+        EoS_Idgas::dpdv( const real aT, const real aV )
         {
             return -(aT*mR)/std::pow( aV, 2 );
         }
@@ -77,7 +77,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_Idgas::d2pdv2( const real & aT, const real & aV )
+        EoS_Idgas::d2pdv2( const real aT, const real aV )
         {
             return 2.0*aT*mR/std::pow( aV, 3 );
         }
@@ -85,7 +85,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        EoS_Idgas::alpha( const real & aT, const real & aP )
+        EoS_Idgas::alpha( const real aT, const real aP )
         {
             mStatevals.update_Tp( aT, aP );
 
@@ -101,7 +101,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Idgas::beta( const real & aT, const real & aP )
+        EoS_Idgas::beta( const real aT, const real aP )
         {
             mStatevals.update_Tp( aT, aP );
 
@@ -118,7 +118,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Idgas::kappa( const real & aT, const real & aP )
+        EoS_Idgas::kappa( const real aT, const real aP )
         {
             mStatevals.update_Tp( aT, aP );
 
@@ -138,7 +138,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Idgas::hdep( const real & aT, const real & aP )
+        EoS_Idgas::hdep( const real aT, const real aP )
         {
             return 0.0;
         }
@@ -146,7 +146,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Idgas::cpdep( const real & aT, const real & aP )
+        EoS_Idgas::cpdep( const real aT, const real aP )
         {
             return 0.0;
         }
@@ -154,7 +154,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Idgas::sdep( const real & aT, const real & aP )
+        EoS_Idgas::sdep( const real aT, const real aP )
         {
             return 0.0;
         }
@@ -162,7 +162,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Idgas::dsdepdT( const real & aT, const real & aP )
+        EoS_Idgas::dsdepdT( const real aT, const real aP )
         {
             return 0.0;
         }
@@ -170,7 +170,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Idgas::hdep0( const real & aT )
+        EoS_Idgas::hdep0( const real aT )
         {
             return 0.0;
         }
@@ -178,7 +178,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Idgas::cpdep0( const real & aT )
+        EoS_Idgas::cpdep0( const real aT )
         {
             return 0.0;
         }
@@ -186,16 +186,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Idgas::dhdepdp( const real & aT, const real & aP )
-        {
-            return 0.0;
-        }
-
-
-//------------------------------------------------------------------------------
-
-        real
-        EoS_Idgas::sdep0( const real & aT )
+        EoS_Idgas::dhdepdp( const real aT, const real aP )
         {
             return 0.0;
         }
@@ -204,7 +195,16 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Idgas::dsdepdT0( const real & aT )
+        EoS_Idgas::sdep0( const real aT )
+        {
+            return 0.0;
+        }
+
+
+//------------------------------------------------------------------------------
+
+        real
+        EoS_Idgas::dsdepdT0( const real aT )
         {
             return 0.0;
         }
@@ -212,7 +212,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Idgas::dsdepdp( const real & aT, const real & aP )
+        EoS_Idgas::dsdepdp( const real aT, const real aP )
         {
             return 0.0;
         }
@@ -231,14 +231,14 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Idgas::v( const uint & aIndex, const real & aT, const real & aP )
+        EoS_Idgas::v( const uint aIndex, const real aT, const real aP )
         {
             return mParent.data( aIndex )->R() * aT / aP ;
         }
 
 //------------------------------------------------------------------------------
         real
-        EoS_Idgas::hdep( const uint & aIndex, const real & aT, const real & aP )
+        EoS_Idgas::hdep( const uint aIndex, const real aT, const real aP )
         {
             return 0.0;
         }
@@ -246,7 +246,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS_Idgas::cpdep( const uint & aIndex, const real & aT, const real & aP )
+        EoS_Idgas::cpdep( const uint aIndex, const real aT, const real aP )
         {
             return 0.0;
         }

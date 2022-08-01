@@ -82,66 +82,66 @@ namespace belfem
 
         // Molar weight
         const real &
-        M( const real & aT, const real & aP );
+        M( const real aT, const real aP );
 
         // specific gas constant
         const real &
-        R( const real & aT, const real & aP );
+        R( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 // Caloric Properties
 //------------------------------------------------------------------------------
 
         real
-        cp( const real & aT, const real & aP );
+        cp( const real aT, const real aP );
 
         real
-        cv( const real & aT, const real & aP );
+        cv( const real aT, const real aP );
 
         real
-        gamma( const real & aT, const real & aP );
+        gamma( const real aT, const real aP );
 
         real
-        c( const real & aT, const real & aP );
+        c( const real aT, const real aP );
 
         real
-        h( const real & aT, const real & aP );
+        h( const real aT, const real aP );
 
         real
-        s( const real & aT, const real & aP );
+        s( const real aT, const real aP );
 
         real
-        dsdT( const real & aT, const real & aP );
+        dsdT( const real aT, const real aP );
 
         real
-        dsdp( const real & aT, const real & aP );
+        dsdp( const real aT, const real aP );
 
         real
-        dcpdT( const real & aT, const real & aP );
+        dcpdT( const real aT, const real aP );
 
         // enthalpy derivative to pressure ( needed for total temperature )
         real
-        dhdp( const real & aT, const real & aP );
+        dhdp( const real aT, const real aP );
 
         real
-        hd( const real & aT, const real & aP );
+        hd( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 // Transport Properties
 //------------------------------------------------------------------------------
 
         real
-        mu( const real & aT, const real & aP );
+        mu( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
         real
-        lambda( const real & aT, const real & aP );
+        lambda( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
         real
-        Pr( const real & aT, const real & aP );
+        Pr( const real aT, const real aP );
 
 
 
@@ -151,7 +151,7 @@ namespace belfem
 
         // special parameter for table
         real
-        pi( const real & aT, const real & aP );
+        pi( const real aT, const real aP );
 
         void
         create_table( const string aPath );

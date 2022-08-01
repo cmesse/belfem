@@ -32,7 +32,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
-            set_basis( Basis * aBasis, const uint & aIndex );
+            set_basis( Basis * aBasis, const uint aIndex );
 
 //------------------------------------------------------------------------------
 

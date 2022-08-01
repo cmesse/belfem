@@ -4,7 +4,7 @@
 include( ${BELFEM_CONFIG_DIR}/globals.cmake )
 
 # add compiler flags
-set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${BELFEM_CXXFLAGS} " )
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${BELFEM_CXXFLAGS}" )
 
 # add includes
 foreach( ITEM ${BELFEM_INCLUDES} )

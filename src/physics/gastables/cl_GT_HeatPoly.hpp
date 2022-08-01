@@ -51,32 +51,32 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             virtual real
-            Cp( const real & aT ) const;
+            Cp( const real aT ) const;
 
 //------------------------------------------------------------------------------
 
             virtual real
-            H( const real & aT ) const;
+            H( const real aT ) const;
 
 //------------------------------------------------------------------------------
 
             virtual real
-            S( const real & aT ) const;
+            S( const real aT ) const;
 
 //------------------------------------------------------------------------------
 
             virtual real
-            dSdT( const real & aT ) const;
+            dSdT( const real aT ) const;
 
 //------------------------------------------------------------------------------
 
             virtual real
-            dCpdT( const real & aT ) const;
+            dCpdT( const real aT ) const;
 
 //------------------------------------------------------------------------------
 
             virtual real
-            d2CpdT2( const real & aT ) const;
+            d2CpdT2( const real aT ) const;
 
 //------------------------------------------------------------------------------
 
@@ -91,12 +91,12 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
-            set_T_min( const real & aTmin );
+            set_T_min( const real aTmin );
 
 //------------------------------------------------------------------------------
 
             void
-            set_T_max( const real & aTmax );
+            set_T_max( const real aTmax );
 
 //------------------------------------------------------------------------------
 

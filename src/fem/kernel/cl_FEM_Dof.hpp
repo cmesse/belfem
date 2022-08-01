@@ -46,24 +46,24 @@ namespace belfem
         public:
 //------------------------------------------------------------------------------
 
-            Dof( const id_t aID, const uint & aType, mesh::Node * aNode );
+            Dof( const id_t aID, const uint aType, mesh::Node * aNode );
 
 //------------------------------------------------------------------------------
 
-            Dof( const id_t aID, const uint & aType, mesh::Edge * aEdge, const index_t aDofIndexOnField );
+            Dof( const id_t aID, const uint aType, mesh::Edge * aEdge, const index_t aDofIndexOnField );
 
 //------------------------------------------------------------------------------
 
-            Dof( const id_t aID, const uint & aType, mesh::Face * aFace, const index_t aDofIndexOnField );
+            Dof( const id_t aID, const uint aType, mesh::Face * aFace, const index_t aDofIndexOnField );
 
 
 //------------------------------------------------------------------------------
 
-            Dof( const id_t aID, const uint & aType, mesh::Element * aElement, const index_t aDofIndexOnField );
+            Dof( const id_t aID, const uint aType, mesh::Element * aElement, const index_t aDofIndexOnField );
 
 //------------------------------------------------------------------------------
 
-            Dof( const id_t aID, const uint & aType, mesh::Facet * aFacet );
+            Dof( const id_t aID, const uint aType, mesh::Facet * aFacet );
 
 //------------------------------------------------------------------------------
 
@@ -109,7 +109,7 @@ namespace belfem
              * impose a Diriclet boundary condition on this node
              */
             void
-            fix( const real & aDirichletValue );
+            fix( const real aDirichletValue );
 
 //------------------------------------------------------------------------------
 
@@ -186,7 +186,7 @@ namespace belfem
              * access a dof
              */
             Dof *
-            dof( const uint & aIndex );
+            dof( const uint aIndex );
 
 //------------------------------------------------------------------------------
 
@@ -210,11 +210,11 @@ namespace belfem
              * set proc local index
              */
              void
-             set_my_index( const index_t & aIndex );
+             set_my_index( const index_t aIndex );
 //------------------------------------------------------------------------------
 
             void
-            set_field_index( const uint & aIndex );
+            set_field_index( const uint aIndex );
 
 //------------------------------------------------------------------------------
 
@@ -298,7 +298,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline void
-        Dof::fix( const real & aDirichletValue )
+        Dof::fix( const real aDirichletValue )
         {
             mFixedFlag = true;
             mDirichletValue = aDirichletValue;
@@ -381,7 +381,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline Dof *
-        Dof::dof( const uint & aIndex )
+        Dof::dof( const uint aIndex )
         {
             BELFEM_ASSERT( aIndex < mVertexCounter,
                           "Index %u for DOF %lu out of bounds. ( must be less than %u )",
@@ -403,7 +403,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline void
-        Dof::set_my_index( const index_t & aIndex )
+        Dof::set_my_index( const index_t aIndex )
         {
             mMyIndex = aIndex ;
         }
@@ -419,7 +419,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline void
-        Dof::set_field_index( const index_t & aIndex )
+        Dof::set_field_index( const index_t aIndex )
         {
             mFieldIndex = aIndex ;
         }

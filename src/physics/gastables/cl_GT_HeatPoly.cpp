@@ -28,7 +28,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        HeatPoly::Cp( const real & aT ) const
+        HeatPoly::Cp( const real aT ) const
         {
             return    (  (     mCoefficients( 0 )/aT
                       +        mCoefficients( 1 ) )/aT
@@ -42,7 +42,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        HeatPoly::H( const real & aT ) const
+        HeatPoly::H( const real aT ) const
         {
 
             return   ( mEnthalpyConstant
@@ -59,7 +59,7 @@ namespace belfem
 
 
         real
-        HeatPoly::S( const real & aT ) const
+        HeatPoly::S( const real aT ) const
         {
             return   (        mEntropyConstant
                      -      ( mCoefficients( 0 ) * 0.5 / aT
@@ -74,7 +74,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        HeatPoly::dSdT( const real & aT ) const
+        HeatPoly::dSdT( const real aT ) const
         {
             return          ( mCoefficients( 0 )
                      + aT * ( mCoefficients( 1 )
@@ -88,7 +88,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        HeatPoly::dCpdT( const real & aT ) const
+        HeatPoly::dCpdT( const real aT ) const
         {
             return  ((- 2.0 *  mCoefficients( 0 ) / aT
                       -        mCoefficients( 1 ) ) / ( aT*aT )
@@ -101,7 +101,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        HeatPoly::d2CpdT2( const real & aT ) const
+        HeatPoly::d2CpdT2( const real aT ) const
         {
             return 2.0 * ( (
                               3.0 *mCoefficients( 0 )
@@ -114,7 +114,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        HeatPoly::set_T_min( const real & aTmin )
+        HeatPoly::set_T_min( const real aTmin )
         {
             mTmin = aTmin;
         }
@@ -122,7 +122,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        HeatPoly::set_T_max( const real & aTmax )
+        HeatPoly::set_T_max( const real aTmax )
         {
             mTmax = aTmax;
         }

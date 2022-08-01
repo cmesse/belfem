@@ -105,7 +105,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         index_t
-        find_interval( const Vector< real > & aSourceNodes, const real & aX );
+        find_interval( const Vector< real > & aSourceNodes, const real aX );
 
 //------------------------------------------------------------------------------
 

@@ -73,7 +73,7 @@ namespace belfem
              * pressure in Pa
              */
             virtual real
-            p( const real & aT, const real & aV ) = 0;
+            p( const real aT, const real aV ) = 0;
 
 //------------------------------------------------------------------------------
 
@@ -81,7 +81,7 @@ namespace belfem
              * specific volume in m^3/kg
              */
             virtual real
-            v( const real & aT, const real & aP ) = 0;
+            v( const real aT, const real aP ) = 0;
 
 //------------------------------------------------------------------------------
 
@@ -89,34 +89,34 @@ namespace belfem
              * temperature in K
              */
             virtual real
-            T( const real & aP, const real & aV ) = 0;
+            T( const real aP, const real aV ) = 0;
 
 //------------------------------------------------------------------------------
 // State Derivatives
 //------------------------------------------------------------------------------
 
             virtual real
-            dpdT( const real & aT, const real & aV ) = 0;
+            dpdT( const real aT, const real aV ) = 0;
 
 //------------------------------------------------------------------------------
 
             virtual real
-            d2pdT2( const real & aT, const real & aV );
+            d2pdT2( const real aT, const real aV );
 
 //------------------------------------------------------------------------------
 
             virtual real
-            dpdv( const real & aT, const real & aV ) = 0;
+            dpdv( const real aT, const real aV ) = 0;
 
 //------------------------------------------------------------------------------
 
             virtual real
-            d2pdv2( const real & aT, const real & aV );
+            d2pdv2( const real aT, const real aV );
 
 //------------------------------------------------------------------------------
 
             virtual real
-            dvdT( const real & aT, const real & aV );
+            dvdT( const real aT, const real aV );
 
 //------------------------------------------------------------------------------
 // Thermodynamic Coefficients
@@ -128,7 +128,7 @@ namespace belfem
              * \f$ \alpha = \frac{1}{v} \left( \frac{\partial v}{\partial T}\right)_p \f$
              */
             virtual real
-            alpha( const real & aT, const real & aP );
+            alpha( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
@@ -139,7 +139,7 @@ namespace belfem
              * \f$ \beta = \frac{1}{p} \left( \frac{\partial p}{\partial T}\right)_v \f$
              */
             virtual real
-            beta( const real & aT, const real & aP );
+            beta( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
@@ -149,44 +149,44 @@ namespace belfem
              * \f$ \kappa = -\frac{1}{v} \left( \frac{\partial v}{\partial p}\right)_T \f$
              */
             virtual real
-            kappa( const real & aT, const real & aP );
+            kappa( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 // Caloric Functions ( only for special fluid models )
 //------------------------------------------------------------------------------
 
             virtual real
-            h( const real & aT, const real & aP );
+            h( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             virtual real
-            hvap( const real & aT, const real & aP );
+            hvap( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             virtual real
-            cv( const real & aT, const real & aP );
+            cv( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             virtual real
-            cp( const real & aT, const real & aP );
+            cp( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             virtual real
-            s( const real & aT, const real & aP );
+            s( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             virtual real
-            dsdT( const real & aT, const real & aP );
+            dsdT( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             virtual real
-            dsdp( const real & aT, const real & aP );
+            dsdp( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
@@ -197,62 +197,62 @@ namespace belfem
              * @return
              */
             virtual real
-            w( const real & aT, const real & aP );
+            w( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 // Departure Functions
 //------------------------------------------------------------------------------
 
             virtual real
-            hdep( const real & aT, const real & aP );
+            hdep( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             virtual real
-            cpdep( const real & aT, const real & aP );
+            cpdep( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             virtual real
-            sdep( const real & aT, const real & aP );
+            sdep( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             virtual real
-            dhdepdp( const real & aT, const real & aP );
-
-//------------------------------------------------------------------------------
-
-            // temperature derivative of entropy departure
-            virtual real
-            dsdepdT( const real & aT, const real & aP );
+            dhdepdp( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             // temperature derivative of entropy departure
             virtual real
-            dsdepdp( const real & aT, const real & aP );
-
-//------------------------------------------------------------------------------
-
-            virtual real
-            hdep0( const real & aT );
-
-//------------------------------------------------------------------------------
-
-            virtual real
-            cpdep0( const real & aT );
-
-//------------------------------------------------------------------------------
-
-            virtual real
-            sdep0( const real & aT );
+            dsdepdT( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             // temperature derivative of entropy departure
             virtual real
-            dsdepdT0( const real & aT );
+            dsdepdp( const real aT, const real aP );
+
+//------------------------------------------------------------------------------
+
+            virtual real
+            hdep0( const real aT );
+
+//------------------------------------------------------------------------------
+
+            virtual real
+            cpdep0( const real aT );
+
+//------------------------------------------------------------------------------
+
+            virtual real
+            sdep0( const real aT );
+
+//------------------------------------------------------------------------------
+
+            // temperature derivative of entropy departure
+            virtual real
+            dsdepdT0( const real aT );
 
 //------------------------------------------------------------------------------
 
@@ -264,23 +264,23 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             virtual real
-            v( const uint & aIndex, const real & aT, const real & aP ) ;
+            v( const uint aIndex, const real aT, const real aP ) ;
 
             virtual real
-            hdep( const uint & aIndex, const real & aT, const real & aP ) ;
+            hdep( const uint aIndex, const real aT, const real aP ) ;
 
             virtual real
-            cpdep( const uint & aIndex, const real & aT, const real & aP ) ;
+            cpdep( const uint aIndex, const real aT, const real aP ) ;
 
 //------------------------------------------------------------------------------
 
             // special function for tablegas
             virtual real
-            pi( const real & aT, const real & aP );
+            pi( const real aT, const real aP );
 
             // special function for tablegas
             virtual real
-            dpidp( const real & aT, const real & aP );
+            dpidp( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 // vaporization curve
@@ -291,7 +291,7 @@ namespace belfem
              * @return    vapor pressure in Pa
              */
             virtual real
-            p_vap( const real & aT );
+            p_vap( const real aT );
 
 //----------------------------------------------------------------------------
 
@@ -300,7 +300,7 @@ namespace belfem
              * @return    vapor temperature in K
              */
             virtual real
-            T_vap( const real & aP );
+            T_vap( const real aP );
 
 //------------------------------------------------------------------------------
 

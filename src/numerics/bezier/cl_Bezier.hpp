@@ -34,8 +34,8 @@ namespace belfem
     public:
 //------------------------------------------------------------------------------
 
-        Bezier( const real & aX0, const real & aY0, const real & adYdx0,
-                const real & aX1, const real & aY1, const real & adYdx1,
+        Bezier( const real aX0, const real aY0, const real adYdx0,
+                const real aX1, const real aY1, const real adYdx1,
                 const BezierType aType = BezierType::Horizontal );
 
 //------------------------------------------------------------------------------
@@ -67,7 +67,7 @@ namespace belfem
          * @return aX
          */
         real
-        x_by_xi( const real & aXi );
+        x_by_xi( const real aXi );
 
 //------------------------------------------------------------------------------
 
@@ -78,7 +78,7 @@ namespace belfem
          * @return aY
          */
         real
-        y_by_xi( const real & aXi );
+        y_by_xi( const real aXi );
 
 //------------------------------------------------------------------------------
 
@@ -88,7 +88,7 @@ namespace belfem
          * @return aXi
          */
         real
-        xi_by_x( const real & aX );
+        xi_by_x( const real aX );
 
 //------------------------------------------------------------------------------
 
@@ -98,7 +98,7 @@ namespace belfem
           * @return aXi
           */
         real
-        xi_by_y( const real & aY );
+        xi_by_y( const real aY );
 
 //------------------------------------------------------------------------------
 
@@ -108,7 +108,7 @@ namespace belfem
          * @return
          */
         real
-        x( const real & aY );
+        x( const real aY );
 
 //------------------------------------------------------------------------------
 
@@ -118,7 +118,7 @@ namespace belfem
          * @return
          */
         real
-        y( const real & aX );
+        y( const real aX );
 
 //------------------------------------------------------------------------------
 
@@ -129,7 +129,7 @@ namespace belfem
          * @param aY
          */
         void
-        point( const real & aXi, real & aX, real & aY );
+        point( const real aXi, real & aX, real & aY );
 
 //------------------------------------------------------------------------------
 
@@ -140,7 +140,7 @@ namespace belfem
          * @param aY
          */
         void
-        dpoint( const real & aXi, real & adXdXi, real & adYdXi );
+        dpoint( const real aXi, real & adXdXi, real & adYdXi );
 
 //------------------------------------------------------------------------------
 
@@ -151,7 +151,7 @@ namespace belfem
          * @param aY
          */
         void
-        ddpoint( const real & aXi, real & ad2XdXi2, real & ad2YdXi2 );
+        ddpoint( const real aXi, real & ad2XdXi2, real & ad2YdXi2 );
 
 //------------------------------------------------------------------------------
 
@@ -161,7 +161,7 @@ namespace belfem
          * @return aY
          */
         real
-        dydx( const real & aX );
+        dydx( const real aX );
 
 //------------------------------------------------------------------------------
 
@@ -171,7 +171,7 @@ namespace belfem
          * @return aX
          */
         real
-        dxdy( const real & aY );
+        dxdy( const real aY );
 
 //------------------------------------------------------------------------------
 
@@ -181,7 +181,7 @@ namespace belfem
          * @return aY
          */
         real
-        d2ydx2( const real & aX );
+        d2ydx2( const real aX );
 
 //------------------------------------------------------------------------------
 
@@ -191,7 +191,7 @@ namespace belfem
          * @return aY
          */
         real
-        d2xdy2( const real & aY );
+        d2xdy2( const real aY );
 
 //------------------------------------------------------------------------------
 
@@ -217,15 +217,15 @@ namespace belfem
 
         void
         compute_basis_xwise(
-                const real & aX0, const real & aY0,const real & adYdx0,
-                const real & aX1, const real & aY1, const real & adYdx1 );
+                const real aX0, const real aY0,const real adYdx0,
+                const real aX1, const real aY1, const real adYdx1 );
 
 //------------------------------------------------------------------------------
 
         void
         compute_basis_ywise(
-                const real & aX0, const real & aY0,const real & adYdx0,
-                const real & aX1, const real & aY1, const real & adYdx1 );
+                const real aX0, const real aY0,const real adYdx0,
+                const real aX1, const real aY1, const real adYdx1 );
 //------------------------------------------------------------------------------
     private:
 //------------------------------------------------------------------------------
@@ -234,19 +234,19 @@ namespace belfem
 
         // the Bezier type has a simple shape function
         void
-        compute_N( const real & aXi );
+        compute_N( const real aXi );
 
 //------------------------------------------------------------------------------
 
         // first derivative of the shape function
         void
-        compute_dNdXi( const real & aXi );
+        compute_dNdXi( const real aXi );
 
 //------------------------------------------------------------------------------
 
         // second derivative of the shape functionon
         void
-        compute_d2NdXi2( const real & aXi );
+        compute_d2NdXi2( const real aXi );
 
 //------------------------------------------------------------------------------
 

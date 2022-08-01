@@ -89,43 +89,43 @@ namespace belfem
             RefGasMode mMode;
 
             real
-            ( RefGas:: * mFunctionCp )          ( const real & aT );
+            ( RefGas:: * mFunctionCp )          ( const real aT );
 
             real
-            ( RefGas:: * mFunctiondCpdT )       ( const real & aT );
+            ( RefGas:: * mFunctiondCpdT )       ( const real aT );
 
             real
-            ( RefGas:: * mFunctiond2CpdT2 )     ( const real & aT );
+            ( RefGas:: * mFunctiond2CpdT2 )     ( const real aT );
 
             real
-            ( RefGas:: * mFunctionH )           ( const real & aT );
+            ( RefGas:: * mFunctionH )           ( const real aT );
 
             real
-            ( RefGas:: * mFunctionS )           ( const real & aT );
+            ( RefGas:: * mFunctionS )           ( const real aT );
 
             real
-            ( RefGas:: * mFunctiondSdT )        ( const real & aT );
+            ( RefGas:: * mFunctiondSdT )        ( const real aT );
 
             real
-            ( RefGas:: * mFunctionMu )          ( const real & aT );
+            ( RefGas:: * mFunctionMu )          ( const real aT );
 
             real
-            ( RefGas:: * mFunctiondMudT )       ( const real & aT );
+            ( RefGas:: * mFunctiondMudT )       ( const real aT );
 
             real
-            ( RefGas:: * mFunctiond2MudT2 )     ( const real & aT );
+            ( RefGas:: * mFunctiond2MudT2 )     ( const real aT );
 
             real
-            ( RefGas:: * mFunctionLambda )      ( const real & aT );
+            ( RefGas:: * mFunctionLambda )      ( const real aT );
 
             real
-            ( RefGas:: * mFunctiondLambdadT )   ( const real & aT );
+            ( RefGas:: * mFunctiondLambdadT )   ( const real aT );
 
             real
-            ( RefGas:: * mFunctiond2LambdadT2 ) ( const real & aT );
+            ( RefGas:: * mFunctiond2LambdadT2 ) ( const real aT );
 
             real
-            ( RefGas:: * mFunctionZero) ( const real & aT );
+            ( RefGas:: * mFunctionZero) ( const real aT );
 
             friend InputThermo;
             friend InputTransport;
@@ -177,42 +177,42 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             real
-            Cp( const real & aT );
+            Cp( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            H( const real & aT );
+            H( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            S( const real & aT );
+            S( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            dSdT( const real & aT );
+            dSdT( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            dCpdT( const real & aT );
+            dCpdT( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            d2CpdT2( const real & aT );
+            d2CpdT2( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            cp( const real & aT );
+            cp( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            h( const real & aT );
+            h( const real aT );
 
 //------------------------------------------------------------------------------
 
@@ -227,47 +227,47 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             real
-            s( const real & aT );
+            s( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            dcpdT( const real & aT );
+            dcpdT( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            d2cpdT2( const real & aT );
+            d2cpdT2( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            mu( const real & aT );
+            mu( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            dmudT( const real & aT );
+            dmudT( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            d2mudT2( const real & aT );
+            d2mudT2( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            lambda( const real & aT );
+            lambda( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            dlambdadT( const real & aT );
+            dlambdadT( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            d2lambdadT2( const real & aT );
+            d2lambdadT2( const real aT );
 
 //------------------------------------------------------------------------------
 
@@ -385,7 +385,7 @@ namespace belfem
              * to be called by InputThermo
              */
             void
-            add_component( const string & aLabel, const real & aValue );
+            add_component( const string & aLabel, const real aValue );
 
 //------------------------------------------------------------------------------
 
@@ -480,17 +480,17 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             HeatPoly *
-            find_heat_poly( const real & aT );
+            find_heat_poly( const real aT );
 
 //------------------------------------------------------------------------------
 
             TransportPoly *
-            find_viscosity_poly( const real & aT );
+            find_viscosity_poly( const real aT );
 
 //------------------------------------------------------------------------------
 
             TransportPoly *
-            find_conductivity_poly( const real & aT );
+            find_conductivity_poly( const real aT );
 
 //------------------------------------------------------------------------------
 
@@ -523,122 +523,122 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             real
-            zero( const real & aT );
+            zero( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            poly_Cp( const real & aT );
+            poly_Cp( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            poly_dCpdT( const real & aT );
+            poly_dCpdT( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            poly_d2CpdT2( const real & aT );
+            poly_d2CpdT2( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            poly_H( const real & aT );
+            poly_H( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            poly_S( const real & aT );
+            poly_S( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            poly_dSdT( const real & aT );
+            poly_dSdT( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            poly_Mu( const real & aT );
+            poly_Mu( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            poly_dMudT( const real & aT );
+            poly_dMudT( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            poly_d2MudT2( const real & aT );
+            poly_d2MudT2( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            poly_Lambda( const real & aT );
+            poly_Lambda( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            poly_dLambdadT( const real & aT );
+            poly_dLambdadT( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            poly_d2LambdadT2( const real & aT );
+            poly_d2LambdadT2( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            spline_Cp( const real & aT );
+            spline_Cp( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            spline_dCpdT( const real & aT );
+            spline_dCpdT( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            spline_H( const real & aT );
+            spline_H( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            spline_S( const real & aT );
+            spline_S( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            spline_dSdT( const real & aT );
+            spline_dSdT( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            spline_Mu( const real & aT );
+            spline_Mu( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            spline_dMudT( const real & aT );
+            spline_dMudT( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            spline_d2MudT2( const real & aT );
+            spline_d2MudT2( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            spline_Lambda( const real & aT );
+            spline_Lambda( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            spline_dLambdadT( const real & aT );
+            spline_dLambdadT( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            spline_d2LambdadT2( const real & aT );
+            spline_d2LambdadT2( const real aT );
 
 //------------------------------------------------------------------------------
 

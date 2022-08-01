@@ -41,107 +41,107 @@ namespace belfem
 //----------------------------------------------------------------------------
 
             real
-            p( const real & aT, const real & aV );
+            p( const real aT, const real aV );
 
             real
-            v( const real & aT, const real & aP );
+            v( const real aT, const real aP );
 
             real
-            T( const real & aP, const real & aV );
+            T( const real aP, const real aV );
 
 //----------------------------------------------------------------------------
 // State Derivatives
 //----------------------------------------------------------------------------
 
             real
-            dpdT( const real & aT, const real & aV );
+            dpdT( const real aT, const real aV );
 
 //----------------------------------------------------------------------------
 
             real
-            d2pdT2( const real & aT, const real & aV );
+            d2pdT2( const real aT, const real aV );
 
 //----------------------------------------------------------------------------
 
             real
-            dpdv( const real & aT, const real & aV );
+            dpdv( const real aT, const real aV );
 
 //----------------------------------------------------------------------------
 
             real
-            d2pdv2( const real & aT, const real & aV );
+            d2pdv2( const real aT, const real aV );
 
 //------------------------------------------------------------------------------
 // Thermodynamic Coefficients
 //------------------------------------------------------------------------------
 
             real
-            alpha( const real & aT, const real & aP );
+            alpha( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             real
-            beta( const real & aT, const real & aP );
+            beta( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             real
-            kappa( const real & aT, const real & aP );
+            kappa( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 // Departure Functions
 //------------------------------------------------------------------------------
 
             real
-            hdep( const real & aT, const real & aP );
+            hdep( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             real
-            cpdep( const real & aT, const real & aP );
+            cpdep( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             real
-            sdep( const real & aT, const real & aP );
+            sdep( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             real
-            dhdepdp( const real & aT, const real & aP );
+            dhdepdp( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             // temperature derivative of entropy departure
             real
-            dsdepdT( const real & aT, const real & aP );
+            dsdepdT( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             // pressure derivative of entropy departure
             real
-            dsdepdp( const real & aT, const real & aP );
+            dsdepdp( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             real
-            hdep0( const real & aT );
+            hdep0( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            cpdep0( const real & aT );
+            cpdep0( const real aT );
 
 //------------------------------------------------------------------------------
 
             real
-            sdep0( const real & aT );
+            sdep0( const real aT );
 
 //------------------------------------------------------------------------------
 
             // temperature derivative of entropy departure
             real
-            dsdepdT0( const real & aT );
+            dsdepdT0( const real aT );
 
 //------------------------------------------------------------------------------
 
@@ -153,17 +153,17 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             real
-            v( const uint & aIndex, const real & aT, const real & aP );
+            v( const uint aIndex, const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             real
-            hdep( const uint & aIndex, const real & aT, const real & aP );
+            hdep( const uint aIndex, const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             real
-            cpdep( const uint & aIndex, const real & aT, const real & aP );
+            cpdep( const uint aIndex, const real aT, const real aP );
 
 //------------------------------------------------------------------------------
         };

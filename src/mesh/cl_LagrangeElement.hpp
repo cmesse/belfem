@@ -108,7 +108,7 @@ namespace belfem
              * insert a node to a position in the member array
              */
             void
-            insert_node( Node * aNode, const uint & aIndex );
+            insert_node( Node * aNode, const uint aIndex );
 
 //------------------------------------------------------------------------------
 
@@ -116,10 +116,10 @@ namespace belfem
              * return the node pointer
              */
             Node *
-            node( const uint & aIndex );
+            node( const uint aIndex );
 
             const Node *
-            node( const uint & aIndex ) const;
+            node( const uint aIndex ) const;
 
 //------------------------------------------------------------------------------
 
@@ -127,7 +127,7 @@ namespace belfem
              * insert an edge to a position in the member array
              */
             void
-            insert_edge( Edge * aEdge, const uint & aIndex );
+            insert_edge( Edge * aEdge, const uint aIndex );
 
 //------------------------------------------------------------------------------
 
@@ -135,7 +135,7 @@ namespace belfem
              * insert a face to a position in the member array
              */
             void
-            insert_face( Face * aFace, const uint & aIndex );
+            insert_face( Face * aFace, const uint aIndex );
 
 //------------------------------------------------------------------------------
 
@@ -159,13 +159,13 @@ namespace belfem
              * return the edge pointer
              */
             Edge *
-            edge( const uint & aIndex );
+            edge( const uint aIndex );
 
             /**
              * return the edge pointer (const version)
              */
             const Edge *
-            edge( const uint & aIndex ) const;
+            edge( const uint aIndex ) const;
 
 //------------------------------------------------------------------------------
 
@@ -173,13 +173,13 @@ namespace belfem
              * return the face pointer
              */
             Face *
-            face( const uint & aIndex );
+            face( const uint aIndex );
 
             /**
              * return the face pointer (const version)
              */
             const Face *
-            face( const uint & aIndex ) const;
+            face( const uint aIndex ) const;
 
 //------------------------------------------------------------------------------
 
@@ -522,7 +522,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::insert_node( Node * aNode, const uint & aIndex )
+        LagrangeElement< N, C, E, T, F >::insert_node( Node * aNode, const uint aIndex )
         {
             // make sure that index is valid
             BELFEM_ASSERT(aIndex < N,
@@ -539,7 +539,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         Node *
-        LagrangeElement< N, C, E, T, F >::node( const uint & aIndex )
+        LagrangeElement< N, C, E, T, F >::node( const uint aIndex )
         {
             // make sure that index is valid
             BELFEM_ASSERT(aIndex < N,
@@ -556,7 +556,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         const Node *
-        LagrangeElement< N, C, E, T, F >::node( const uint & aIndex ) const
+        LagrangeElement< N, C, E, T, F >::node( const uint aIndex ) const
         {
             // make sure that index is valid
             BELFEM_ASSERT(aIndex < N,
@@ -592,7 +592,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::insert_edge( Edge * aEdge, const uint & aIndex )
+        LagrangeElement< N, C, E, T, F >::insert_edge( Edge * aEdge, const uint aIndex )
         {
             // make sure that index is valid
             BELFEM_ASSERT(aIndex < E,
@@ -609,7 +609,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::insert_face( Face * aFace, const uint & aIndex )
+        LagrangeElement< N, C, E, T, F >::insert_face( Face * aFace, const uint aIndex )
         {
             // make sure that index is valid
             BELFEM_ASSERT( aIndex < F,
@@ -626,7 +626,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         Edge *
-        LagrangeElement< N, C, E, T, F >::edge( const uint & aIndex )
+        LagrangeElement< N, C, E, T, F >::edge( const uint aIndex )
         {
 
             BELFEM_ASSERT( mHaveEdges, "Edges for element %lu have not been allocated",
@@ -647,7 +647,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         const Edge *
-        LagrangeElement< N, C, E, T, F >::edge( const uint & aIndex ) const
+        LagrangeElement< N, C, E, T, F >::edge( const uint aIndex ) const
         {
 
             BELFEM_ASSERT( mHaveEdges, "Edges for element %lu have not been allocated",
@@ -668,7 +668,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         Face *
-        LagrangeElement< N, C, E, T, F >::face( const uint & aIndex )
+        LagrangeElement< N, C, E, T, F >::face( const uint aIndex )
         {
 
             BELFEM_ASSERT( mHaveFaces, "Faces for element %lu have not been allocated",
@@ -689,7 +689,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         const Face *
-        LagrangeElement< N, C, E, T, F >::face( const uint & aIndex ) const
+        LagrangeElement< N, C, E, T, F >::face( const uint aIndex ) const
         {
 
             BELFEM_ASSERT( mHaveFaces, "Edges for element %lu have not been allocated",

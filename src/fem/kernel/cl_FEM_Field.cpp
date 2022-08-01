@@ -2677,7 +2677,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        Field::set_all_dofs( const real & aValue )
+        Field::set_all_dofs( const real aValue )
         {
             for( Dof * tDof : mDOFs )
             {

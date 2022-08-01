@@ -29,7 +29,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        TransportPolyCustom::rawpoly( const real & aT ) const
+        TransportPolyCustom::rawpoly( const real aT ) const
         {
             real aValue = 0.0;
             for( uint k=0; k<mNumberOfCoeffs; ++k )
@@ -49,7 +49,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        TransportPolyCustom::drawpoly( const real & aT ) const
+        TransportPolyCustom::drawpoly( const real aT ) const
         {
             real aValue = 0.0;
             for( uint k=0; k<mNumberOfCoeffs; ++k )
@@ -74,7 +74,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        TransportPolyCustom::ddrawpoly( const real & aT ) const
+        TransportPolyCustom::ddrawpoly( const real aT ) const
         {
             real aValue = 0;
             for ( uint k = 0; k < mNumberOfCoeffs; ++k )

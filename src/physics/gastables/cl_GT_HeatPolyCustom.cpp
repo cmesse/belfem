@@ -35,7 +35,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        HeatPolyCustom::Cp( const real & aT ) const
+        HeatPolyCustom::Cp( const real aT ) const
         {
             real aCp = 0;
             for( uint k=0; k<mNumberOfCoeffs; ++k )
@@ -55,7 +55,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        HeatPolyCustom::H( const real & aT ) const
+        HeatPolyCustom::H( const real aT ) const
         {
             real aH = mEnthalpyConstant;
             for( uint k=0; k<mNumberOfCoeffs; ++k )
@@ -77,7 +77,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        HeatPolyCustom::S( const real & aT ) const
+        HeatPolyCustom::S( const real aT ) const
         {
             real aS = mEntropyConstant;
             for( uint k=0; k<mNumberOfCoeffs; ++k )
@@ -98,7 +98,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        HeatPolyCustom::dSdT( const real & aT ) const
+        HeatPolyCustom::dSdT( const real aT ) const
         {
             real adSdT = 0.0;
             for( uint k=0; k<mNumberOfCoeffs; ++k )
@@ -119,7 +119,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        HeatPolyCustom::dCpdT( const real & aT ) const
+        HeatPolyCustom::dCpdT( const real aT ) const
         {
             real aCp = 0.0;
             for( uint k=0; k<mNumberOfCoeffs; ++k )
@@ -144,7 +144,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        HeatPolyCustom::d2CpdT2( const real & aT ) const
+        HeatPolyCustom::d2CpdT2( const real aT ) const
         {
             real aCp = 0;
             for( uint k=0; k<mNumberOfCoeffs; ++k )

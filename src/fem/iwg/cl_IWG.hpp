@@ -406,7 +406,7 @@ namespace belfem
              * return the names of a specific field
              */
             const string &
-            field( const index_t & aIndex ) const ;
+            field( const index_t aIndex ) const ;
 
 //------------------------------------------------------------------------------
 
@@ -628,7 +628,7 @@ namespace belfem
               * set the penalty parameter
               */
             void
-            set_psi( const real & aPsi );
+            set_psi( const real aPsi );
 
 //------------------------------------------------------------------------------
 
@@ -1163,7 +1163,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline const string &
-        IWG::field( const index_t & aIndex ) const
+        IWG::field( const index_t aIndex ) const
         {
             return mAllFields( aIndex );
         }

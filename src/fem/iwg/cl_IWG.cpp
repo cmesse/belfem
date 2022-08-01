@@ -1248,7 +1248,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        IWG::set_psi( const real & aPsi )
+        IWG::set_psi( const real aPsi )
         {
             if( mField->parent()->master() == mField->rank() )
             {

@@ -527,7 +527,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     void
-    SpMatrix::fill( const real & aValue )
+    SpMatrix::fill( const real aValue )
     {
         std::fill_n( mValues, mNumNonZeros, aValue );
     }

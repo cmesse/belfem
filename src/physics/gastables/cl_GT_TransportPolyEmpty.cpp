@@ -20,7 +20,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        TransportPolyEmpty::rawpoly( const real & aT ) const
+        TransportPolyEmpty::rawpoly( const real aT ) const
         {
             BELFEM_ERROR( false, "rawpoly() not supported for custom transport polynomial" );
             return 0;
@@ -29,7 +29,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        TransportPolyEmpty::drawpoly( const real & aT ) const
+        TransportPolyEmpty::drawpoly( const real aT ) const
         {
             BELFEM_ERROR( false, "drawpoly() not supported for custom transport polynomial" );
             return 0;
@@ -38,7 +38,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        TransportPolyEmpty::ddrawpoly( const real & aT ) const
+        TransportPolyEmpty::ddrawpoly( const real aT ) const
         {
             BELFEM_ERROR( false, "drawpoly() not supported for custom transport polynomial" );
             return 0;

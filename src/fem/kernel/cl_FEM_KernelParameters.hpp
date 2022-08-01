@@ -216,12 +216,12 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             const uint &
-            block_integration_order( const index_t & aIndex ) const;
+            block_integration_order( const index_t aIndex ) const;
 
 //------------------------------------------------------------------------------
 
             const uint &
-            sideset_integration_order( const index_t & aIndex ) const;
+            sideset_integration_order( const index_t aIndex ) const;
 
 //------------------------------------------------------------------------------
 
@@ -327,7 +327,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline const uint &
-        KernelParameters::block_integration_order( const index_t & aIndex ) const
+        KernelParameters::block_integration_order( const index_t aIndex ) const
         {
 
             return aIndex < mBlockIntegrationOrders.length() ? mBlockIntegrationOrders( aIndex ) : mZero ;
@@ -336,7 +336,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline const uint &
-        KernelParameters::sideset_integration_order( const index_t & aIndex ) const
+        KernelParameters::sideset_integration_order( const index_t aIndex ) const
         {
             return aIndex < mSideSetIntegrationOrders.length() ? mSideSetIntegrationOrders( aIndex ) : mZero ;
         }

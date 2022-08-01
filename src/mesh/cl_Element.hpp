@@ -200,7 +200,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             virtual Node *
-            node( const uint & aIndex )
+            node( const uint aIndex )
             {
                 BELFEM_ERROR( false,
                              "invalid call of base class function node() from Element %lu",
@@ -212,7 +212,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             virtual const Node *
-            node( const uint & aIndex ) const
+            node( const uint aIndex ) const
             {
                 BELFEM_ERROR( false,
                              "invalid call of base class function const node() from Element %lu",
@@ -224,7 +224,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             virtual Edge *
-            edge( const uint & aIndex )
+            edge( const uint aIndex )
             {
                 BELFEM_ERROR( false,
                              "invalid call of base class function edge() from Element %lu",
@@ -236,7 +236,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             virtual const Edge *
-            edge( const uint & aIndex ) const
+            edge( const uint aIndex ) const
             {
                 BELFEM_ERROR( false,
                              "invalid call of base class function const edge() from Element %lu",
@@ -248,7 +248,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             virtual Face *
-            face( const uint & aIndex )
+            face( const uint aIndex )
             {
                 BELFEM_ERROR( false,
                              "invalid call of base class function face() from Element %lu",
@@ -260,7 +260,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             virtual const Face *
-            face( const uint & aIndex ) const
+            face( const uint aIndex ) const
             {
                 BELFEM_ERROR( false,
                              "invalid call of base class function const face() from Element %lu",
@@ -273,7 +273,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             virtual void
-            insert_node( Node * aNode, const uint & aIndex )
+            insert_node( Node * aNode, const uint aIndex )
             {
                 BELFEM_ERROR( false,
                              "invalid call of base class function insert_node() from Element %lu",
@@ -283,7 +283,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             virtual void
-            insert_edge( Edge * aEdge, const uint & aIndex )
+            insert_edge( Edge * aEdge, const uint aIndex )
             {
                 BELFEM_ERROR( false,
                              "invalid call of base class function insert_edge() from Element %lu",
@@ -293,7 +293,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             virtual void
-            insert_face( Face * aFace, const uint & aIndex )
+            insert_face( Face * aFace, const uint aIndex )
             {
                 BELFEM_ERROR( false,
                              "invalid call of base class function insert_face() from Element %lu",
@@ -472,7 +472,7 @@ namespace belfem
 
             // get the connected element
             Element *
-            element( const uint & aIndex );
+            element( const uint aIndex );
 
 //------------------------------------------------------------------------------
 
@@ -566,7 +566,7 @@ namespace belfem
 
         // get the connected element
         inline Element *
-        Element::element( const uint & aIndex )
+        Element::element( const uint aIndex )
         {
             return mElements[ aIndex ];
         }

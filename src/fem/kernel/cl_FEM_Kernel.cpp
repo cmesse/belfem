@@ -241,7 +241,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         proc_t
-        Kernel::comm_table( const index_t & aIndex ) const
+        Kernel::comm_table( const index_t aIndex ) const
         {
             return mCommTable( aIndex );
         }
@@ -2207,7 +2207,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         Field *
-        Kernel::field( const uint & aIndex )
+        Kernel::field( const uint aIndex )
         {
             return mFields( aIndex );
         }
@@ -2215,7 +2215,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         DofManager *
-        Kernel::dofmgr( const uint & aIndex )
+        Kernel::dofmgr( const uint aIndex )
         {
             return mDofManagers( aIndex );
         }

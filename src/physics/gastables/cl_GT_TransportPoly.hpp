@@ -57,32 +57,32 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             virtual real
-            rawpoly( const real & aT ) const;
+            rawpoly( const real aT ) const;
 
 //------------------------------------------------------------------------------
 
             virtual real
-            drawpoly( const real & aT ) const;
+            drawpoly( const real aT ) const;
 
 //------------------------------------------------------------------------------
 
             virtual real
-            ddrawpoly( const real & aT ) const;
+            ddrawpoly( const real aT ) const;
 
 //------------------------------------------------------------------------------
 
             virtual real
-            eval( const real & aT ) const;
+            eval( const real aT ) const;
 
 //------------------------------------------------------------------------------
 
             virtual real
-            deval( const real & aT ) const;
+            deval( const real aT ) const;
 
 //------------------------------------------------------------------------------
 
             virtual real
-            ddeval( const real & aT ) const;
+            ddeval( const real aT ) const;
 
 //------------------------------------------------------------------------------
 
@@ -102,12 +102,12 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
-            set_T_min( const real & aTmin );
+            set_T_min( const real aTmin );
 
 //------------------------------------------------------------------------------
 
             void
-            set_T_max( const real & aTmax );
+            set_T_max( const real aTmax );
 
 //------------------------------------------------------------------------------
         };

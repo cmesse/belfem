@@ -112,72 +112,72 @@ namespace belfem
             real
             compute_value(
                     const index_t & aFieldIndex,
-                    const real & aX );
+                    const real aX );
 
 //------------------------------------------------------------------------------
 
             real
             compute_value(
                     const index_t & aFieldIndex,
-                    const real & aX,
-                    const real & aY );
+                    const real aX,
+                    const real aY );
 
 //------------------------------------------------------------------------------
 
             real
             compute_value(
                     const index_t & aFieldIndex,
-                    const real & aX,
-                    const real & aY,
+                    const real aX,
+                    const real aY,
                     const real & aZ );
 
 //------------------------------------------------------------------------------
 
             real
             compute_derivative(
-                    const index_t & aFieldIndex,
-                    const real & aX );
+                    const index_t aFieldIndex,
+                    const real aX );
 
 //------------------------------------------------------------------------------
 
             Vector< real >
             compute_derivative(
-                    const index_t & aFieldIndex,
-                    const real & aX,
-                    const real & aY );
+                    const index_t aFieldIndex,
+                    const real aX,
+                    const real aY );
 
 //------------------------------------------------------------------------------
 
             Vector< real >
             compute_derivative(
-                    const index_t & aFieldIndex,
-                    const real & aX,
-                    const real & aY,
-                    const real & aZ );
+                    const index_t aFieldIndex,
+                    const real aX,
+                    const real aY,
+                    const real aZ );
 
 //------------------------------------------------------------------------------
 
             real
             compute_second_derivative(
-                    const index_t & aFieldIndex,
-                    const real & aX );
+                    const index_t aFieldIndex,
+                    const real aX );
 
 //------------------------------------------------------------------------------
 
             Vector< real >
             compute_second_derivative(
-                    const index_t & aFieldIndex,
-                    const real & aX,
-                    const real & aY );
+                    const index_t aFieldIndex,
+                    const real aX,
+                    const real aY );
 
 //------------------------------------------------------------------------------
 
             Vector< real >
             compute_second_derivative(
-                    const index_t & aFieldIndex,
-                    const real & aX,
-                    const real & aY,
-                    const real & aZ );
+                    const index_t aFieldIndex,
+                    const real aX,
+                    const real aY,
+                    const real aZ );
 
 //------------------------------------------------------------------------------
 
@@ -239,19 +239,19 @@ namespace belfem
 
             // element finder for 1D problem
             inline void
-            select_element( const real & aX );
+            select_element( const real aX );
 
 //------------------------------------------------------------------------------
 
             // element finder for 2D problem
             inline void
-            select_element( const real & aX, const real & aY );
+            select_element( const real aX, const real aY );
 
 //------------------------------------------------------------------------------
 
             // element finder for 3D problem
             inline void
-            select_element( const real & aX, const real & aY, const real & aZ );
+            select_element( const real aX, const real aY, const real & aZ );
 
 //------------------------------------------------------------------------------
 
@@ -261,7 +261,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             inline void
-            compute_xi( const uint & aI, const real & aX );
+            compute_xi( const uint & aI, const real aX );
 
 //------------------------------------------------------------------------------
         };
@@ -339,7 +339,7 @@ namespace belfem
 
         // element finder for 1D problem
         void
-        LookupTable::select_element( const real & aX )
+        LookupTable::select_element( const real aX )
         {
             mElement = this->get_element( std::floor( ( aX - mPmin( 0 ) ) / mElementLength( 0 ) ) );
         }
@@ -348,7 +348,7 @@ namespace belfem
 
         // element finder for 2D problem
         void
-        LookupTable::select_element( const real & aX, const real & aY )
+        LookupTable::select_element( const real aX, const real aY )
         {
             mElement = this->get_element(
                     std::floor( ( aX - mPmin( 0 ) ) / mElementLength( 0 ) ),
@@ -359,7 +359,7 @@ namespace belfem
 
         // element finder for 3D problem
         void
-        LookupTable::select_element( const real & aX, const real & aY, const real & aZ )
+        LookupTable::select_element( const real aX, const real aY, const real & aZ )
         {
             mElement = this->get_element(
                     std::floor( ( aX - mPmin( 0 ) ) / mElementLength( 0 ) ),
@@ -370,7 +370,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        LookupTable::compute_xi( const uint & aI, const real & aX )
+        LookupTable::compute_xi( const uint & aI, const real aX )
         {
             mXi( aI ) = 2.0 * ( aX - mElement->node( 0 )->x( aI )) /
                         mElementLength( aI ) - 1.0;

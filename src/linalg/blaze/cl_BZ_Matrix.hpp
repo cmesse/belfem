@@ -50,7 +50,7 @@ namespace belfem
           */
         Matrix( const size_t aNumRows,
                    const size_t aNumCols,
-                   const real & aValue ) :
+                   const real aValue ) :
             mMatrix( aNumRows, aNumCols, aValue )
         {}
 

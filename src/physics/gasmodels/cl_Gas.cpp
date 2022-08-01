@@ -691,7 +691,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     const real &
-    Gas::R( const real & aT, const real & aP )
+    Gas::R( const real aT, const real aP )
     {
         return mR;
     }
@@ -700,7 +700,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     const real &
-    Gas::M( const real & aT, const real & aP )
+    Gas::M( const real aT, const real aP )
     {
         return mM;
     }
@@ -902,7 +902,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::idgas_cp( const real & aT, const real & aP )
+    Gas::idgas_cp( const real aT, const real aP )
     {
         return mHeatSpline.deval( aT );
     }
@@ -910,7 +910,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::idgas_dcpdT( const real & aT, const real & aP )
+    Gas::idgas_dcpdT( const real aT, const real aP )
     {
         return mHeatSpline.ddeval( aT );
     }
@@ -918,7 +918,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::idgas_cv( const real & aT, const real & aP )
+    Gas::idgas_cv( const real aT, const real aP )
     {
         return this->cp( aT, aP ) - this->R( aT, aP );
     }
@@ -926,7 +926,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::idgas_gamma( const real & aT, const real & aP )
+    Gas::idgas_gamma( const real aT, const real aP )
     {
         real tCp = this->cp( aT, aP );
         return tCp / ( tCp - this->R( aT, aP ) );
@@ -935,7 +935,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::idgas_c( const real & aT, const real & aP )
+    Gas::idgas_c( const real aT, const real aP )
     {
         return std::sqrt( this->idgas_gamma( aT, aP ) * this->R( aT, aP ) * aT );
     }
@@ -943,7 +943,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::idgas_h( const real & aT, const real & aP )
+    Gas::idgas_h( const real aT, const real aP )
     {
         return mHeatSpline.eval( aT );
     }
@@ -951,7 +951,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::idgas_s( const real & aT, const real & aP )
+    Gas::idgas_s( const real aT, const real aP )
     {
         /*return mHeatSpline.entropy( aT )
             + this->R( aT, aP ) * std::log( gastables::gPref / aP ); */
@@ -963,7 +963,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::idgas_dsdT( const real & aT, const real & aP )
+    Gas::idgas_dsdT( const real aT, const real aP )
     {
         return mHeatSpline.dentropy( aT );
     }
@@ -971,7 +971,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::idgas_dsdp( const real & aT, const real & aP )
+    Gas::idgas_dsdp( const real aT, const real aP )
     {
         return -this->R( aT, aP ) / aP;
     }
@@ -979,7 +979,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::idgas_mu( const real & aT, const real & aP )
+    Gas::idgas_mu( const real aT, const real aP )
     {
         return mViscositySpline.eval( aT );
     }
@@ -987,7 +987,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::idgas_lambda( const real & aT, const real & aP )
+    Gas::idgas_lambda( const real aT, const real aP )
     {
         return mConductivitySpline.eval( aT );
     }
@@ -995,7 +995,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::realgas_cp( const real & aT, const real & aP )
+    Gas::realgas_cp( const real aT, const real aP )
     {
         return mHeatSpline.deval( aT )
                + mEoS->cpdep( aT, aP )
@@ -1005,7 +1005,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::realgas_dcpdT( const real & aT, const real & aP )
+    Gas::realgas_dcpdT( const real aT, const real aP )
     {
         real tCPDEP2 = mEoS->cpdep( aT+1.0, aP )  - mEoS->cpdep0( aT+1.0 );
         real tCPDEP1 = mEoS->cpdep( aT-1.0, aP )  - mEoS->cpdep0( aT-1.0 );
@@ -1016,7 +1016,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::realgas_cv( const real & aT, const real & aP )
+    Gas::realgas_cv( const real aT, const real aP )
     {
         // ( 2.11 )
         return this->cp( aT, aP ) - aP * this->v( aT, aP ) * aT
@@ -1026,7 +1026,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::realgas_gamma( const real & aT, const real & aP )
+    Gas::realgas_gamma( const real aT, const real aP )
     {
         // ( 2.20 )
         return this->cp( aT, aP ) * this->beta( aT, aP ) /
@@ -1036,7 +1036,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::realgas_c( const real & aT, const real & aP )
+    Gas::realgas_c( const real aT, const real aP )
     {
         // ( 2. 151 )
         return std::sqrt( aP * this->v( aT, aP ) * this->beta( aT, aP ) /
@@ -1046,7 +1046,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::realgas_h( const real & aT, const real & aP )
+    Gas::realgas_h( const real aT, const real aP )
     {
         return mHeatSpline.eval( aT )
                + mEoS->hdep( aT, aP )
@@ -1056,7 +1056,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::realgas_s( const real & aT, const real & aP )
+    Gas::realgas_s( const real aT, const real aP )
     {
         return mHeatSpline.entropy( aT )
                + mR * ( std::log( gastables::gPref / aP ) )
@@ -1068,7 +1068,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::realgas_dsdT( const real & aT, const real & aP )
+    Gas::realgas_dsdT( const real aT, const real aP )
     {
         return mHeatSpline.dentropy( aT )
                + mEoS->dsdepdT( aT, aP )
@@ -1078,7 +1078,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::realgas_dsdp( const real & aT, const real & aP )
+    Gas::realgas_dsdp( const real aT, const real aP )
     {
         return -mR / aP + mEoS->dsdepdp( aT, aP );
     }
@@ -1086,7 +1086,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::realgas_mu( const real & aT, const real & aP )
+    Gas::realgas_mu( const real aT, const real aP )
     {
         real aMu = mViscositySpline.eval( aT );
 
@@ -1101,7 +1101,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::realgas_lambda( const real & aT, const real & aP )
+    Gas::realgas_lambda( const real aT, const real aP )
     {
 
         real aLambda = mConductivitySpline.eval( aT )
@@ -1116,7 +1116,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::helmholtz_cp( const real & aT, const real & aP )
+    Gas::helmholtz_cp( const real aT, const real aP )
     {
         return mEoS->cp( aT, aP );
     }
@@ -1124,7 +1124,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::helmholtz_dcpdT( const real & aT, const real & aP )
+    Gas::helmholtz_dcpdT( const real aT, const real aP )
     {
         real tT1 = aT * 0.9999 ;
         real tT2 = aT * 1.0001 ;
@@ -1135,7 +1135,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::helmholtz_cv( const real & aT, const real & aP )
+    Gas::helmholtz_cv( const real aT, const real aP )
     {
         return mEoS->cv( aT, aP );
     }
@@ -1143,7 +1143,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::helmholtz_gamma( const real & aT, const real & aP )
+    Gas::helmholtz_gamma( const real aT, const real aP )
     {
         return this->cp( aT, aP ) * this->beta( aT, aP ) /
            ( this->cv( aT, aP ) * this->alpha( aT, aP ) );
@@ -1152,7 +1152,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::helmholtz_c( const real & aT, const real & aP )
+    Gas::helmholtz_c( const real aT, const real aP )
     {
         return mEoS->w( aT, aP );
     }
@@ -1160,7 +1160,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::helmholtz_h( const real & aT, const real & aP )
+    Gas::helmholtz_h( const real aT, const real aP )
     {
         return mEoS->h( aT, aP );
     }
@@ -1168,7 +1168,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::helmholtz_s( const real & aT, const real & aP )
+    Gas::helmholtz_s( const real aT, const real aP )
     {
         return mEoS->s( aT, aP );
     }
@@ -1176,7 +1176,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::helmholtz_dsdT( const real & aT, const real & aP )
+    Gas::helmholtz_dsdT( const real aT, const real aP )
     {
         return mEoS->dsdT( aT, aP );
     }
@@ -1184,7 +1184,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::helmholtz_dsdp( const real & aT, const real & aP )
+    Gas::helmholtz_dsdp( const real aT, const real aP )
     {
         return mEoS->dsdp( aT, aP ) ;
     }
@@ -1192,21 +1192,21 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::helmholtz_mu( const real & aT, const real & aP )
+    Gas::helmholtz_mu( const real aT, const real aP )
     {
         return mTransport->mu( aT, aP );
     }
 //------------------------------------------------------------------------------
 
     real
-    Gas::helmholtz_lambda( const real & aT, const real & aP )
+    Gas::helmholtz_lambda( const real aT, const real aP )
     {
         return mTransport->lambda( aT, aP );
     }
 
 //------------------------------------------------------------------------------
     void
-    Gas::evaluate_viscosity_interaction( const real & aT )
+    Gas::evaluate_viscosity_interaction( const real aT )
     {
         // - - - - - - - - - - - - - - - - - - - -
         // Step 1: Update Viscosity of components
@@ -1285,7 +1285,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     void
-    Gas::evaluate_conductivity_interaction( const real & aT )
+    Gas::evaluate_conductivity_interaction( const real aT )
     {
         if ( aT != mWorkTemperature )
         {
@@ -1354,7 +1354,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::cea_mu( const real & aT )
+    Gas::cea_mu( const real aT )
     {
 
         this->evaluate_viscosity_interaction( aT );
@@ -1385,7 +1385,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::cea_lambda( const real & aT )
+    Gas::cea_lambda( const real aT )
     {
 
         this->evaluate_conductivity_interaction( aT );
@@ -1419,7 +1419,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::p( const real & aT, const real & aV )
+    Gas::p( const real aT, const real aV )
     {
         mStatevals.update_Tv( aT, aV );
 
@@ -1437,7 +1437,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::v( const real & aT, const real & aP )
+    Gas::v( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -1453,7 +1453,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::rho( const real & aT, const real & aP )
+    Gas::rho( const real aT, const real aP )
     {
         return 1.0 / this->v( aT, aP );
     }
@@ -1461,7 +1461,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::T( const real & aP, const real & aV )
+    Gas::T( const real aP, const real aV )
     {
         mStatevals.update_pv( aP, aV );
 
@@ -1477,7 +1477,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::cp( const real & aT, const real & aP )
+    Gas::cp( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -1494,7 +1494,7 @@ namespace belfem
 
     // dissociation enthalpy ( only for tablegas at this time )
     real
-    Gas::hd( const real & aT, const real & aP )
+    Gas::hd( const real aT, const real aP )
     {
         return 0.0 ;
     }
@@ -1502,7 +1502,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::dcpdT( const real & aT, const real & aP )
+    Gas::dcpdT( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -1518,7 +1518,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::cv( const real & aT, const real & aP )
+    Gas::cv( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -1534,7 +1534,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::gamma( const real & aT, const real & aP )
+    Gas::gamma( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -1550,7 +1550,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::c( const real & aT, const real & aP )
+    Gas::c( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -1566,7 +1566,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::u( const real & aT, const real & aP )
+    Gas::u( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -1583,7 +1583,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::h( const real & aT, const real & aP )
+    Gas::h( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -1599,7 +1599,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::s( const real & aT, const real & aP )
+    Gas::s( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -1615,7 +1615,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::dsdT( const real & aT, const real & aP )
+    Gas::dsdT( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -1631,7 +1631,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::dsdp( const real & aT, const real & aP )
+    Gas::dsdp( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -1647,7 +1647,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::mu( const real & aT, const real & aP )
+    Gas::mu( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -1663,7 +1663,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::lambda( const real & aT, const real & aP )
+    Gas::lambda( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -1679,7 +1679,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::Pr( const real & aT, const real & aP )
+    Gas::Pr( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -1724,7 +1724,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     void
-    Gas::Hf( const real & aT, Vector<real> & aHf )
+    Gas::Hf( const real aT, Vector<real> & aHf )
     {
         // reset vector
         aHf.fill( 0.0 );
@@ -1749,7 +1749,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     void
-    Gas::Gibbs( const real & aT, Vector<real> & aGibbs )
+    Gas::Gibbs( const real aT, Vector<real> & aGibbs )
     {
         // write species entropies into vector
         uint tCount = 0;
@@ -1791,7 +1791,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     void
-    Gas::dGibbsdT( const real & aT, Vector< real > & aGibbs )
+    Gas::dGibbsdT( const real aT, Vector< real > & aGibbs )
     {
 
         // calculate entropy term for species
@@ -1830,7 +1830,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     void
-    Gas::compute_equilibrium( const real & aT, const real & aP, Vector< real > & aX )
+    Gas::compute_equilibrium( const real aT, const real aP, Vector< real > & aX )
     {
         if( mNumberOfComponents > 1 )
         {
@@ -2020,7 +2020,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     void
-    Gas::remix_to_equilibrium( const real & aT, const real & aP,
+    Gas::remix_to_equilibrium( const real aT, const real aP,
                                bool aRemixHeat,
                                bool aRemixTransport )
     {
@@ -2034,7 +2034,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::mu_dep( const real & aMu, const real & aT, const real & aP )
+    Gas::mu_dep( const real & aMu, const real aT, const real aP )
     {
         // cutoff value
         real tMuMax = 10.0 * aMu;
@@ -2093,7 +2093,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
     real
-    Gas::lambda_dep( const real & aT, const real & aP )
+    Gas::lambda_dep( const real aT, const real aP )
     {
         real tX = mVcrit / mEoS->v( aT, aP );
 
@@ -2112,7 +2112,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::T_from_h( const real & aH, const real & aP )
+    Gas::T_from_h( const real & aH, const real aP )
     {
         // reference temperature
         real tTref ;
@@ -2199,7 +2199,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::isen_T( const real & aT0, const real & aP0, const real & aP1 )
+    Gas::isen_T( const real aT0, const real aP0, const real aP1 )
     {
         // guess value for new temperature
         real aT1 = aT0 * std::pow( aP1 / aP0, this->R( aT0, aP0 ) / this->cp( aT0, aP0 ));
@@ -2239,7 +2239,7 @@ namespace belfem
 // -----------------------------------------------------------------------------
 
     real
-    Gas::isen_p( const real & aT0, const real & aP0, const real & aT1 )
+    Gas::isen_p( const real aT0, const real aP0, const real aT1 )
     {
         // guess value for new pressure
         real aP1 = aP0 * std::pow( aT1 / aT0, this->idgas_cp( aT0, aP0 ) / this->R( aT0, aP0 ) );
@@ -2269,7 +2269,7 @@ namespace belfem
 // -----------------------------------------------------------------------------
 
     void
-    Gas::total( const real & aT, const real & aP, const real & aU,
+    Gas::total( const real aT, const real aP, const real & aU,
                 real & aTt, real & aPt )
     {
         // maximum temperature
@@ -2377,8 +2377,8 @@ namespace belfem
     void
     Gas::expand(
             const real & aA1,
-            const real & aT1,
-            const real & aP1,
+            const real aT1,
+            const real aP1,
             const real & aU1,
             const real & aA2,
                   real & aT2,
@@ -2649,7 +2649,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::prandtl_meyer_angle( const real & aT, const real & aP, const real & aU )
+    Gas::prandtl_meyer_angle( const real aT, const real aP, const real & aU )
     {
 
         real k = this->gamma( aT, aP );
@@ -2665,8 +2665,8 @@ namespace belfem
 //------------------------------------------------------------------------------
     real
     Gas::prandtl_meyer(
-                    const real & aT1,
-                    const real & aP1,
+                    const real aT1,
+                    const real aP1,
                     const real & aU1,
                     const real & aAlpha,
                           real & aT2,
@@ -2853,7 +2853,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     void
-    Gas::shock(  const real & aT1, const real & aP1, const real & aU1,
+    Gas::shock(  const real aT1, const real aP1, const real & aU1,
                        real & aT2,       real & aP2,       real & aU2 )
     {
         // relaxation factor
@@ -3003,7 +3003,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     void
-    Gas::shock( const real & aT1, const real & aP1, const real & aU1, const real & aAlpha,
+    Gas::shock( const real aT1, const real aP1, const real & aU1, const real & aAlpha,
            real & aT2, real & aP2, real & aU2, real & aBeta )
     {
         // - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -3096,14 +3096,14 @@ namespace belfem
 
 //------------------------------------------------------------------------------
     real
-    Gas::v( const uint & aIndex, const real & aT, const real & aP )
+    Gas::v( const uint aIndex, const real aT, const real aP )
     {
         return mEoS->v( aIndex, aT, aP );
     }
 //------------------------------------------------------------------------------
 
     real
-    Gas::h( const uint & aIndex, const real & aT, const real & aP )
+    Gas::h( const uint aIndex, const real aT, const real aP )
     {
         return mComponents( aIndex )->h( aT )
                / mComponents( aIndex )->data()->M()
@@ -3113,7 +3113,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    Gas::cp( const uint & aIndex, const real & aT, const real & aP )
+    Gas::cp( const uint aIndex, const real aT, const real aP )
     {
         return mComponents( aIndex )->heat_spline()->deval( aT )
             / mComponents( aIndex )->data()->M()
@@ -3121,7 +3121,7 @@ namespace belfem
     }
 
     real
-    Gas::dcpdT( const uint & aIndex, const real & aT, const real & aP )
+    Gas::dcpdT( const uint aIndex, const real aT, const real aP )
     {
         // ideal gas contribution
         real tdCpdT0 = mComponents( aIndex )->heat_spline()->ddeval( aT )
@@ -3242,8 +3242,8 @@ namespace belfem
 
     // special subroutine needed for shock
     real
-    Gas::shock_beta_simple( const real & aT1,
-                const real & aP1,
+    Gas::shock_beta_simple( const real aT1,
+                const real aP1,
                 const real & aU1,
                 const real & aAlpha,
                 real & aT2,
@@ -3277,8 +3277,8 @@ namespace belfem
 
     // special subroutine needed for shock
     real
-    Gas::shock_beta( const real & aT1,
-                     const real & aP1,
+    Gas::shock_beta( const real aT1,
+                     const real aP1,
                      const real & aU1,
                      const real & aAlpha,
                      real & aT2,
@@ -3313,7 +3313,7 @@ namespace belfem
 
     // enthalpy derivative to pressure ( needed for total temperature )
     real
-    Gas::dhdp( const real & aT, const real & aP )
+    Gas::dhdp( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 

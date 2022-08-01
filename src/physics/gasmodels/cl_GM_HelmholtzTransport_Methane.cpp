@@ -27,7 +27,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        HelmholtzTransport_Methane::mu( const real & aT, const real & aP )
+        HelmholtzTransport_Methane::mu( const real aT, const real aP )
         {
             this->update_Tp( aT, aP );
 
@@ -41,7 +41,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        HelmholtzTransport_Methane::lambda( const real & aT, const real & aP )
+        HelmholtzTransport_Methane::lambda( const real aT, const real aP )
         {
             this->update_Tp( aT, aP );
 
@@ -183,7 +183,7 @@ namespace belfem
         {
             if ( ! this->test( BELFEM_METHANE_MU0 ) )
             {
-                const real & aT = this->get( BELFEM_METHANE_T );
+                const real aT = this->get( BELFEM_METHANE_T );
 
                 this->set( BELFEM_METHANE_MU0, mConstEta0 * std::sqrt( aT ) / this->omega() );
             }
@@ -249,7 +249,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        HelmholtzTransport_Methane::lambda_cr( const real & aT, const real & aP  )
+        HelmholtzTransport_Methane::lambda_cr( const real aT, const real aP  )
         {
             const real & tTau   = this->get( BELFEM_METHANE_TAU );
             const real & tDelta = this->get( BELFEM_METHANE_DELTA );

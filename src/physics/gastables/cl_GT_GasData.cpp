@@ -45,7 +45,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        GasData::set_t_crit( const real & aTcrit )
+        GasData::set_t_crit( const real aTcrit )
         {
             mTcrit = aTcrit;
         }
@@ -53,7 +53,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        GasData::set_p_crit( const real & aPcrit )
+        GasData::set_p_crit( const real aPcrit )
         {
             mPcrit = aPcrit;
         }

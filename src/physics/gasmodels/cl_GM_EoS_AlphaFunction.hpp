@@ -62,7 +62,7 @@ namespace belfem
             /**
              * a special constructor that initializes coefficients
              */
-            AlphaFunction( const real & aTcrit, const Vector< real > & aCoeffs );
+            AlphaFunction( const real aTcrit, const Vector< real > & aCoeffs );
 
 //----------------------------------------------------------------------------
 
@@ -70,7 +70,7 @@ namespace belfem
              * a special constructor that initializes coefficients
              */
             AlphaFunction(
-                    const real & aTcrit,
+                    const real aTcrit,
                     const real & aC1,
                     const real & aC2,
                     const real & aC3 );
@@ -83,24 +83,24 @@ namespace belfem
 
 
             virtual real
-            alpha( const real & aT );
+            alpha( const real aT );
 
 //----------------------------------------------------------------------------
 
             virtual real
-            dalphadT( const real & aT );
+            dalphadT( const real aT );
 
 //----------------------------------------------------------------------------
 
             virtual real
-            d2alphadT2( const real & aT );
+            d2alphadT2( const real aT );
 
 //----------------------------------------------------------------------------
         protected:
 //----------------------------------------------------------------------------
 
             virtual void
-            eval( const real & aT, const int aDeriv );
+            eval( const real aT, const int aDeriv );
 
 
 //----------------------------------------------------------------------------
@@ -126,17 +126,17 @@ namespace belfem
 
 //----------------------------------------------------------------------------
             real
-            alpha( const real & aT );
+            alpha( const real aT );
 
 //----------------------------------------------------------------------------
 
             real
-            dalphadT( const real & aT );
+            dalphadT( const real aT );
 
 //----------------------------------------------------------------------------
 
             real
-            d2alphadT2( const real & aT );
+            d2alphadT2( const real aT );
         };
 
 //----------------------------------------------------------------------------
@@ -153,7 +153,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
             AlphaFunction_Classic(
-                    const real & aTcrit,
+                    const real aTcrit,
                     const real & aC1,
                     const real & aC2 );
 
@@ -162,7 +162,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
             void
-            eval( const real & aT, const int aDeriv );
+            eval( const real aT, const int aDeriv );
 
 //----------------------------------------------------------------------------
         };
@@ -184,7 +184,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
             AlphaFunction_MC(
-                    const real & aTcrit,
+                    const real aTcrit,
                     const real & aC1,
                     const real & aC2,
                     const real & aC3 );
@@ -194,7 +194,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
             void
-            eval( const real & aT, const int aDeriv );
+            eval( const real aT, const int aDeriv );
 
         };
 
@@ -219,7 +219,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
             AlphaFunction_CCR(
-                    const real & aTcrit,
+                    const real aTcrit,
                     const real & aC1,
                     const real & aC2,
                     const real & aC3 );
@@ -229,7 +229,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
             void
-            eval( const real & aT, const int aDeriv );
+            eval( const real aT, const int aDeriv );
 
         };
 //----------------------------------------------------------------------------
@@ -268,7 +268,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
             void
-            eval( const real & aT, const int aDeriv );
+            eval( const real aT, const int aDeriv );
 
 //----------------------------------------------------------------------------
         };

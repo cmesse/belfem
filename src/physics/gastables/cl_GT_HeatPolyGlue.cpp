@@ -31,7 +31,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        HeatPolyGlue::Cp( const real & aT ) const
+        HeatPolyGlue::Cp( const real aT ) const
         {
         	return  ( ( ( (
                              mCoefficients( 0 )   * aT
@@ -45,7 +45,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        HeatPolyGlue::H( const real & aT ) const
+        HeatPolyGlue::H( const real aT ) const
         {
 			return  ( ( ( ( ( (
                              mCoefficients( 0 )*0.2  ) * aT
@@ -59,7 +59,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        HeatPolyGlue::S( const real & aT ) const
+        HeatPolyGlue::S( const real aT ) const
         {
         	return  ( ( ( ( ( (
                                mCoefficients( 0 )*0.25  ) * aT
@@ -74,7 +74,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        HeatPolyGlue::dSdT( const real & aT ) const
+        HeatPolyGlue::dSdT( const real aT ) const
         {
             return (((   mCoefficients( 0 )   * aT
                        + mCoefficients( 1 ) ) * aT
@@ -85,7 +85,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        HeatPolyGlue::dCpdT( const real & aT ) const
+        HeatPolyGlue::dCpdT( const real aT ) const
         {
 			return ( ( ( (
                           mCoefficients( 0 )* 4.0 ) * aT
@@ -98,7 +98,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        HeatPolyGlue::d2CpdT2( const real & aT ) const
+        HeatPolyGlue::d2CpdT2( const real aT ) const
         {
 			return ( ( (
                          mCoefficients( 0 )* 12.0 ) * aT

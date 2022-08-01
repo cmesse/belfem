@@ -79,9 +79,9 @@ namespace belfem
             {
                 return "SAE-301" ;
             }
-            case( MaterialType::SAE314 ) :
+            case( MaterialType::SAE316 ) :
             {
-                return "SAE-314" ;
+                return "SAE-316" ;
             }
             default:
             {
@@ -169,10 +169,10 @@ namespace belfem
         {
             return MaterialType::SAE301 ;
         }
-        if (   tString == "sae314" || tString == "sae-314" || tString == "aisi314" || tString == "aisi-314"
-                || tString == "314" || tString ==  "1.4841")
+        if (   tString == "sae316" || tString == "sae-316" || tString == "aisi316" || tString == "aisi-316"
+                || tString == "314" || tString ==  "1.4401")
         {
-            return MaterialType::SAE314 ;
+            return MaterialType::SAE316 ;
         }
         else
         {

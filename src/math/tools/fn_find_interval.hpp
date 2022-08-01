@@ -13,7 +13,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     inline void
-    find_interval( const Vector< real > & aData, const real & aValue, index_t & aIndex, real & aXi )
+    find_interval( const Vector< real > & aData, const real aValue, index_t & aIndex, real & aXi )
     {
         index_t i = 0;
         index_t k = aData.length() - 1;

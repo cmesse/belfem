@@ -123,7 +123,7 @@ namespace belfem
          * write a specific value into all entries of the value container
          */
          void
-         fill( const real & aValue );
+         fill( const real aValue );
 
 //------------------------------------------------------------------------------
 

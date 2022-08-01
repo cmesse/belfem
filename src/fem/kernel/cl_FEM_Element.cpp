@@ -1300,7 +1300,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         const Matrix< real > &
-        Element::N( const uint & aPointIndex ) const
+        Element::N( const uint aPointIndex ) const
         {
             return mParent->N( aPointIndex );
         }
@@ -1308,7 +1308,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         const Matrix< real > &
-        Element::G( const uint & aPointIndex ) const
+        Element::G( const uint aPointIndex ) const
         {
             return mParent->G( aPointIndex );
         }
@@ -1316,7 +1316,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         Matrix< real > &
-        Element::J( const uint & aPointIndex )
+        Element::J( const uint aPointIndex )
         {
             // remember index
             mParent->work_index() = aPointIndex;
@@ -1335,7 +1335,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         Matrix< real > &
-        Element::K( const uint & aPointIndex )
+        Element::K( const uint aPointIndex )
         {
             BELFEM_ASSERT( mParent->work_index() == aPointIndex,
              "J-Matrix has not been computed for this integration point ( is %u but expect %u )",
@@ -1354,7 +1354,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         Matrix< real > &
-        Element::L( const uint & aPointIndex )
+        Element::L( const uint aPointIndex )
         {
             BELFEM_ASSERT( mParent->work_index() == aPointIndex,
                           "J-Matrix has not been computed for this integration point ( is %u but expect %u )",

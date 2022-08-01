@@ -113,7 +113,7 @@ namespace belfem
          * @return
          */
         real
-        get_value( const index_t & aIndex ) const
+        get_value( const index_t aIndex ) const
         {
             // make sure that vector has the right length
             BELFEM_ASSERT( aIndex < N, " requested index out of bounds ( is %u, but must be < %u )",

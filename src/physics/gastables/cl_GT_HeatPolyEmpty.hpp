@@ -33,7 +33,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             real
-            Cp( const real & aT ) const
+            Cp( const real aT ) const
             {
                 return 0.0;
             }
@@ -41,7 +41,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             real
-            H( const real & aT ) const
+            H( const real aT ) const
             {
                 return 0.0;
             }
@@ -49,7 +49,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             real
-            S( const real & aT ) const
+            S( const real aT ) const
             {
                 return 0.0;
             }
@@ -57,7 +57,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             real
-            dCpdT( const real & aT ) const
+            dCpdT( const real aT ) const
             {
                 return 0.0;
             }
@@ -65,7 +65,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             real
-            d2CpdT2( const real & aT ) const
+            d2CpdT2( const real aT ) const
             {
                 return 0.0;
             }

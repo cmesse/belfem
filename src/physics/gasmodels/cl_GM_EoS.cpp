@@ -32,7 +32,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::alpha( const real & aT, const real & aP )
+        EoS::alpha( const real aT, const real aP )
         {
             BELFEM_ERROR( false, "EoS::alpha not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -41,7 +41,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::beta( const real & aT, const real & aP )
+        EoS::beta( const real aT, const real aP )
         {
             BELFEM_ERROR( false, "EoS::beta not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -50,7 +50,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::kappa( const real & aT, const real & aP )
+        EoS::kappa( const real aT, const real aP )
         {
             BELFEM_ERROR( false, "EoS::kappa not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -59,7 +59,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::dvdT( const real & aT, const real & aP )
+        EoS::dvdT( const real aT, const real aP )
         {
             return - this->dpdT( aT, aP ) / this->dpdv( aT, aP );
         }
@@ -67,7 +67,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::h( const real & aT, const real & aP )
+        EoS::h( const real aT, const real aP )
         {
             BELFEM_ERROR( false, "EoS::h not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -76,7 +76,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::hvap( const real & aT, const real & aP )
+        EoS::hvap( const real aT, const real aP )
         {
             BELFEM_ERROR( false, "EoS::hvap not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -85,7 +85,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::cv( const real & aT, const real & aP )
+        EoS::cv( const real aT, const real aP )
         {
             BELFEM_ERROR( false, "EoS::cv not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -94,7 +94,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::cp( const real & aT, const real & aP )
+        EoS::cp( const real aT, const real aP )
         {
             BELFEM_ERROR( false, "EoS::cp not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -103,7 +103,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::w( const real & aT, const real & aP )
+        EoS::w( const real aT, const real aP )
         {
             BELFEM_ERROR( false, "EoS::w not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -112,7 +112,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::s( const real & aT, const real & aP )
+        EoS::s( const real aT, const real aP )
         {
             BELFEM_ERROR( false, "EoS::s not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -121,7 +121,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::dsdT( const real & aT, const real & aP )
+        EoS::dsdT( const real aT, const real aP )
         {
             BELFEM_ERROR( false, "EoS::dsdT not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -130,7 +130,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::dsdp( const real & aT, const real & aP )
+        EoS::dsdp( const real aT, const real aP )
         {
             BELFEM_ERROR( false, "EoS::dsdp not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -140,7 +140,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::pi( const real & aT, const real & aP )
+        EoS::pi( const real aT, const real aP )
         {
             BELFEM_ERROR( false, "EoS::pi not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -149,7 +149,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::dpidp( const real & aT, const real & aP )
+        EoS::dpidp( const real aT, const real aP )
         {
             BELFEM_ERROR( false, "EoS::dpidp not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -158,7 +158,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::d2pdT2( const real & aT, const real & aV )
+        EoS::d2pdT2( const real aT, const real aV )
         {
             BELFEM_ERROR( false, "EoS::d2pdT2 not implemented for this EoS");
             return BELFEM_QUIET_NAN ;
@@ -168,7 +168,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::d2pdv2( const real & aT, const real & aV )
+        EoS::d2pdv2( const real aT, const real aV )
         {
             BELFEM_ERROR( false, "EoS::d2pdv2 not implemented for this EoS");
             return BELFEM_QUIET_NAN ;
@@ -179,7 +179,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::hdep( const real & aT, const real & aP )
+        EoS::hdep( const real aT, const real aP )
         {
             BELFEM_ERROR( false, "EoS::hdep not implemented for this EoS");
             return BELFEM_QUIET_NAN ;
@@ -188,7 +188,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::cpdep( const real & aT, const real & aP )
+        EoS::cpdep( const real aT, const real aP )
         {
             BELFEM_ERROR( false, "EoS::cpdep not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -197,7 +197,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::sdep( const real & aT, const real & aP )
+        EoS::sdep( const real aT, const real aP )
         {
             BELFEM_ERROR( false, "EoS::sdep not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -206,7 +206,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::dhdepdp( const real & aT, const real & aP )
+        EoS::dhdepdp( const real aT, const real aP )
         {
             BELFEM_ERROR( false, "EoS::dhdepdp not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -216,7 +216,7 @@ namespace belfem
 
         // temperature derivative of entropy departure
         real
-        EoS::dsdepdT( const real & aT, const real & aP )
+        EoS::dsdepdT( const real aT, const real aP )
         {
             BELFEM_ERROR( false, "EoS::dsdepdT not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -226,7 +226,7 @@ namespace belfem
 
         // temperature derivative of entropy departure
         real
-        EoS::dsdepdp( const real & aT, const real & aP )
+        EoS::dsdepdp( const real aT, const real aP )
         {
             BELFEM_ERROR( false, "EoS::dsdepdp not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -235,7 +235,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::hdep0( const real & aT )
+        EoS::hdep0( const real aT )
         {
             BELFEM_ERROR( false, "EoS::hdep0 not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -244,7 +244,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::cpdep0( const real & aT )
+        EoS::cpdep0( const real aT )
         {
             BELFEM_ERROR( false, "EoS::cpdep0 not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -253,7 +253,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::sdep0( const real & aT )
+        EoS::sdep0( const real aT )
         {
             BELFEM_ERROR( false, "EoS::sdep0 not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -263,7 +263,7 @@ namespace belfem
 
         // temperature derivative of entropy departure
         real
-        EoS::dsdepdT0( const real & aT )
+        EoS::dsdepdT0( const real aT )
         {
             BELFEM_ERROR( false, "EoS::dsdepdT0 not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -274,21 +274,21 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::v( const uint & aIndex, const real & aT, const real & aP )
+        EoS::v( const uint aIndex, const real aT, const real aP )
         {
             BELFEM_ERROR( false, "component-wise EoS::v not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
         }
 
         real
-        EoS::hdep( const uint & aIndex, const real & aT, const real & aP )
+        EoS::hdep( const uint aIndex, const real aT, const real aP )
         {
             BELFEM_ERROR( false, "component-wise EoS::hdep not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
         }
 
         real
-        EoS::cpdep( const uint & aIndex, const real & aT, const real & aP )
+        EoS::cpdep( const uint aIndex, const real aT, const real aP )
         {
             BELFEM_ERROR( false, "component-wise EoS::cpdep not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -297,7 +297,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        EoS::p_vap( const real & aT )
+        EoS::p_vap( const real aT )
         {
             BELFEM_ERROR( false, "p_vap not implemented for this EoS" );
             return BELFEM_QUIET_NAN;
@@ -305,7 +305,7 @@ namespace belfem
 
 
         real
-        EoS::T_vap( const real & aP )
+        EoS::T_vap( const real aP )
         {
             BELFEM_ERROR( false, "T_vap not implemented for this EoS" );
             return BELFEM_QUIET_NAN;

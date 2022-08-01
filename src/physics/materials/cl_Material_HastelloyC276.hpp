@@ -42,15 +42,12 @@ namespace belfem
 
             const real mSwitchRhoT0 = 25.0 ;
             const real mSwitchRhoT1 = 60.0 ;
-            const real mSwitchRhoT2 = 400.0 ;
 
             Vector <real> mElectricResistivityPoly0;
             Vector <real> mElectricResistivityPoly1;
             Vector <real> mElectricResistivityPoly2;
 
             Vector< real > mIntAlphaPoly ;
-
-            real mDensity = 8890. ;
 
 //----------------------------------------------------------------------------
         public:

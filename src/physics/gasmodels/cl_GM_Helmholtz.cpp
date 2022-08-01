@@ -126,7 +126,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Helmholtz::phi( const real & aT, const real & aV )
+        Helmholtz::phi( const real aT, const real aV )
         {
             this->update_Tv( aT, aV );
 
@@ -136,7 +136,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Helmholtz::p( const real & aT, const real & aV )
+        Helmholtz::p( const real aT, const real aV )
         {
             this->update_Tv( aT, aV );
 
@@ -146,7 +146,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Helmholtz::dpdv( const real & aT, const real & aV )
+        Helmholtz::dpdv( const real aT, const real aV )
         {
             this->update_Tv( aT, aV );
 
@@ -164,7 +164,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Helmholtz::dpdT( const real & aT, const real & aV )
+        Helmholtz::dpdT( const real aT, const real aV )
         {
             this->update_Tv( aT, aV );
 
@@ -181,7 +181,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Helmholtz::dvdT( const real & aT, const real & aV )
+        Helmholtz::dvdT( const real aT, const real aV )
         {
             this->update_Tv( aT, aV );
 
@@ -195,7 +195,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Helmholtz::alpha( const real & aT, const real & aP )
+        Helmholtz::alpha( const real aT, const real aP )
         {
             this->update_Tp( aT, aP );
             return aP * this->beta( aT, aP ) * this->kappa( aT, aP );
@@ -204,7 +204,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Helmholtz::beta( const real & aT, const real & aP )
+        Helmholtz::beta( const real aT, const real aP )
         {
             this->update_Tp( aT, aP );
             const real & tV = mHelmholtzVals[ BELFEM_HELMHOLTZ_V ];
@@ -215,7 +215,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Helmholtz::kappa( const real & aT, const real & aP )
+        Helmholtz::kappa( const real aT, const real aP )
         {
             this->update_Tp( aT, aP );
             const real & tV = mHelmholtzVals[ BELFEM_HELMHOLTZ_V ];
@@ -225,7 +225,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Helmholtz::v( const real & aT, const real & aP )
+        Helmholtz::v( const real aT, const real aP )
         {
             real aV ;
 
@@ -279,7 +279,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Helmholtz::T( const real & aP, const real & aV )
+        Helmholtz::T( const real aP, const real aV )
         {
             real aT ;
 
@@ -329,7 +329,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Helmholtz::u( const real & aT, const real & aP )
+        Helmholtz::u( const real aT, const real aP )
         {
             this->update_Tp( aT, aP );
 
@@ -339,7 +339,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Helmholtz::h( const real & aT, const real & aP )
+        Helmholtz::h( const real aT, const real aP )
         {
             this->update_Tp( aT, aP );
 
@@ -350,7 +350,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Helmholtz::s( const real & aT, const real & aP )
+        Helmholtz::s( const real aT, const real aP )
         {
             this->update_Tp( aT, aP );
 
@@ -362,7 +362,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Helmholtz::cv( const real & aT, const real & aP )
+        Helmholtz::cv( const real aT, const real aP )
         {
             this->update_Tp( aT, aP );
             return - mTau * mTau * ( this->phi0_tt() + this->phir_tt() ) * mR ;
@@ -371,7 +371,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Helmholtz::cp( const real & aT, const real & aP )
+        Helmholtz::cp( const real aT, const real aP )
         {
             this->update_Tp( aT, aP );
 
@@ -383,7 +383,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Helmholtz::w( const real & aT, const real & aP )
+        Helmholtz::w( const real aT, const real aP )
         {
             this->update_Tp( aT, aP );
 
@@ -396,7 +396,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Helmholtz::dsdT( const real & aT, const real & aP )
+        Helmholtz::dsdT( const real aT, const real aP )
         {
             return this->cp( aT, aP ) / aT ;
         }
@@ -404,7 +404,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Helmholtz::dsdp( const real & aT, const real & aP )
+        Helmholtz::dsdp( const real aT, const real aP )
         {
             this->update_Tp( aT, aP );
 
@@ -635,7 +635,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Helmholtz::p_vap( const real & aT )
+        Helmholtz::p_vap( const real aT )
         {
             return std::exp( this->pi_vap( aT ) ) * mPcrit ;
         }
@@ -643,7 +643,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Helmholtz::T_vap( const real & aP )
+        Helmholtz::T_vap( const real aP )
         {
             // compute initial guess
             real aT = polyval( mTvap, std::log( aP / mPcrit ) );
@@ -666,7 +666,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Helmholtz::hvap( const real & aT, const real & aP )
+        Helmholtz::hvap( const real aT, const real aP )
         {
             if( aT < mTcrit )
             {
@@ -684,7 +684,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Helmholtz::dpvap_dT( const real & aT, const real aPvap, const real aPiVap )
+        Helmholtz::dpvap_dT( const real aT, const real aPvap, const real aPiVap )
         {
             // real tG = aPvap / mPcrit ;
             real tdG = - ( aPiVap + this->psi_vap( aT ) )/ aT;
@@ -695,7 +695,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         bool
-        Helmholtz::is_liquid( const real & aT, const real & aP )
+        Helmholtz::is_liquid( const real aT, const real aP )
         {
             if( aT < mTtriple )
             {

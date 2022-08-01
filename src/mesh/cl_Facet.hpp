@@ -126,10 +126,10 @@ namespace belfem
             edge( const uint aIndex ) const ;
 
             Face *
-            face();
+            face( const uint aIndex=0 );
 
             const Face *
-            face() const ;
+            face( const uint aIndex=0 ) const ;
 
 //------------------------------------------------------------------------------
 
@@ -318,17 +318,17 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline Face *
-        Facet::face()
+        Facet::face( const uint aIndex )
         {
-            return mElement->face( 0 );
+            return mElement->face( aIndex );
         }
 
 //------------------------------------------------------------------------------
 
         inline const Face *
-        Facet::face() const
+        Facet::face( const uint aIndex ) const
         {
-            return mElement->face( 0 );
+            return mElement->face( aIndex );
         }
 
 //------------------------------------------------------------------------------

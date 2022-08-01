@@ -104,7 +104,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        Bearing::impose_dirichlet( const real & aValue, const uint aDofType )
+        Bearing::impose_dirichlet( const real aValue, const uint aDofType )
         {
             // need this if statement, since empty bearing contains no dofs
             if ( mDOFs.size() > aDofType )

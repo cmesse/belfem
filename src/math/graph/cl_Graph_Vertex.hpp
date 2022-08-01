@@ -139,7 +139,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             virtual inline Vertex *
-            vertex( const uint & aIndex )
+            vertex( const uint aIndex )
             {
                 BELFEM_ASSERT( aIndex < mVertexCounter,
                             "Vertex Index %d out of bounds, which must be less than %d",
@@ -152,7 +152,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             virtual inline auto
-            vertex( const uint & aIndex ) const
+            vertex( const uint aIndex ) const
                 -> decltype( this )
             {
                 BELFEM_ASSERT( aIndex < mVertexCounter,

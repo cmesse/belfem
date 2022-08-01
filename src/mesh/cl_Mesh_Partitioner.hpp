@@ -19,6 +19,13 @@
 #endif
 
 #include <metis.h>
+
+// bugfix to avoid error with BLAZE
+#ifdef BELFEM_BLAZE
+#undef abs
+#undef iabs
+#endif
+
 #endif
 
 #include "cl_Mesh.hpp"

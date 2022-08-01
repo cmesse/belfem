@@ -50,7 +50,7 @@ namespace belfem
              * @param aP pressure in Pa for density computation
              */
              void
-             set_reference_pressure( const real & aP );
+             set_reference_pressure( const real aP );
 
 //----------------------------------------------------------------------------
 

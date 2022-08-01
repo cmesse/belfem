@@ -28,7 +28,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        TransportPolyGlue::rawpoly( const real & aT ) const
+        TransportPolyGlue::rawpoly( const real aT ) const
         {
             return    ( (   mCoefficients( 0 )   * aT
                           + mCoefficients( 1 ) ) * aT
@@ -39,7 +39,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        TransportPolyGlue::drawpoly( const real & aT ) const
+        TransportPolyGlue::drawpoly( const real aT ) const
         {
             return   (   3.0*mCoefficients( 0 )   * aT
                        + 2.0*mCoefficients( 1 ) ) * aT
@@ -49,7 +49,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        TransportPolyGlue::ddrawpoly( const real & aT ) const
+        TransportPolyGlue::ddrawpoly( const real aT ) const
         {
             return      6.0*mCoefficients( 1 )  * aT
                     +   2.0*mCoefficients( 2 ) ;

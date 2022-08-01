@@ -55,7 +55,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        TransportPoly::eval( const real & aT ) const
+        TransportPoly::eval( const real aT ) const
         {
             return std::exp( this->rawpoly( aT ) ) * mScale;
         }
@@ -63,7 +63,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        TransportPoly::deval( const real & aT ) const
+        TransportPoly::deval( const real aT ) const
         {
             return this->eval( aT ) * this->drawpoly( aT );
         }
@@ -71,7 +71,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        TransportPoly::ddeval( const real & aT ) const
+        TransportPoly::ddeval( const real aT ) const
         {
             return this->eval( aT ) * (
                     std::pow( this->drawpoly( aT ) , 2 )
@@ -81,7 +81,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        TransportPoly::set_T_min( const real & aTmin )
+        TransportPoly::set_T_min( const real aTmin )
         {
             mTmin = aTmin;
         }
@@ -89,7 +89,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        TransportPoly::set_T_max( const real & aTmax )
+        TransportPoly::set_T_max( const real aTmax )
         {
             mTmax = aTmax;
         }

@@ -19,7 +19,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        Element::set_basis(  Basis * aBasis, const uint & aIndex )
+        Element::set_basis(  Basis * aBasis, const uint aIndex )
         {
             mBasis( aIndex ) = aBasis;
         }

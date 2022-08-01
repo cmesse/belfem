@@ -164,7 +164,7 @@ namespace belfem
              * @return    vapor pressure in Pa
              */
             virtual real
-            p_vap( const real & aT );
+            p_vap( const real aT );
 
 //----------------------------------------------------------------------------
 
@@ -173,7 +173,7 @@ namespace belfem
              * @return    vapor temperature in K
              */
             virtual real
-            T_vap( const real & aP );
+            T_vap( const real aP );
 
 //----------------------------------------------------------------------------
 
@@ -184,7 +184,7 @@ namespace belfem
              * @return
              */
             real
-            hvap( const real & aT, const real & aP ) ;
+            hvap( const real aT, const real aP ) ;
 
 //----------------------------------------------------------------------------
 
@@ -196,7 +196,7 @@ namespace belfem
            * @return
            */
            real
-           phi( const real & aT, const real & aV );
+           phi( const real aT, const real aV );
 
 //----------------------------------------------------------------------------
 
@@ -207,69 +207,69 @@ namespace belfem
              * @return
              */
            real
-           p( const real & aT, const real & aV );
+           p( const real aT, const real aV );
 
 //----------------------------------------------------------------------------
 
            real
-           v( const real & aT, const real & aP );
+           v( const real aT, const real aP );
 
 //----------------------------------------------------------------------------
 
            real
-           T( const real & aP, const real & aV );
+           T( const real aP, const real aV );
 
 //----------------------------------------------------------------------------
 
            real
-           dpdv( const real & aT, const real & aV );
+           dpdv( const real aT, const real aV );
 
 //----------------------------------------------------------------------------
 
            real
-           dpdT( const real & aT, const real & aV );
+           dpdT( const real aT, const real aV );
 
 //----------------------------------------------------------------------------
 
            real
-           dvdT( const real & aT, const real & aV );
+           dvdT( const real aT, const real aV );
 
 //----------------------------------------------------------------------------
 // Caloric Functions
 //----------------------------------------------------------------------------
 
            real
-           u( const real & aT, const real & aP );
+           u( const real aT, const real aP );
 
            real
-           h( const real & aT, const real & aP );
+           h( const real aT, const real aP );
 
            real
-           s( const real & aT, const real & aP );
+           s( const real aT, const real aP );
 
            real
-           cv( const real & aT, const real & aP );
+           cv( const real aT, const real aP );
 
            real
-           cp( const real & aT, const real & aP );
+           cp( const real aT, const real aP );
 
            real
-           w( const real & aT, const real & aP );
+           w( const real aT, const real aP );
 
            real
-           dsdT( const real & aT, const real & aP );
+           dsdT( const real aT, const real aP );
 
            real
-           dsdp( const real & aT, const real & aP );
+           dsdp( const real aT, const real aP );
 
            real
-           alpha( const real & aT, const real & aP );
+           alpha( const real aT, const real aP );
 
            real
-           beta( const real & aT, const real & aP );
+           beta( const real aT, const real aP );
 
            real
-           kappa( const real & aT, const real & aP );
+           kappa( const real aT, const real aP );
 
 //----------------------------------------------------------------------------
 
@@ -297,12 +297,12 @@ namespace belfem
              * reset all state variales
              */
             void
-            update_Tv( const real & aT, const real & aV ) ;
+            update_Tv( const real aT, const real aV ) ;
 
 //----------------------------------------------------------------------------
 
             void
-            update_Tp( const real & aT, const real & aP ) ;
+            update_Tp( const real aT, const real aP ) ;
 
 //----------------------------------------------------------------------------
 
@@ -358,7 +358,7 @@ namespace belfem
              * test if a value is up to date
              */
            bool
-           test( const index_t & aIndex ) const ;
+           test( const index_t aIndex ) const ;
 
 //----------------------------------------------------------------------------
 
@@ -366,7 +366,7 @@ namespace belfem
              * get a value from the memory
              */
             const real &
-            get( const index_t & aIndex ) const ;
+            get( const index_t aIndex ) const ;
 
 //----------------------------------------------------------------------------
 
@@ -374,7 +374,7 @@ namespace belfem
              * write a value into the memory
              */
             void
-            set( const index_t & aIndex, const real aValue ) ;
+            set( const index_t aIndex, const real aValue ) ;
 
 //----------------------------------------------------------------------------
         protected:
@@ -417,25 +417,25 @@ namespace belfem
 
             // help function for vapor pressure
             virtual real
-            pi_vap( const real & aT ) ;
+            pi_vap( const real aT ) ;
 
 //----------------------------------------------------------------------------
 
             // help function for vapor pressure
             virtual real
-            psi_vap( const real & aT ) ;
+            psi_vap( const real aT ) ;
 
 //----------------------------------------------------------------------------
 
             // derivative for vapor pressure
             virtual real
-            dpvap_dT( const real & aT, const real aPvap, const real aPiVap );
+            dpvap_dT( const real aT, const real aPvap, const real aPiVap );
 
 //----------------------------------------------------------------------------
 
             // check of this state is liquid or gaseous
             bool
-            is_liquid( const real & aT, const real & aP ) ;
+            is_liquid( const real aT, const real aP ) ;
 
 //----------------------------------------------------------------------------
 
@@ -522,7 +522,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         inline bool
-        Helmholtz::test( const index_t & aIndex ) const
+        Helmholtz::test( const index_t aIndex ) const
         {
             BELFEM_ASSERT( aIndex < BELFEM_HELMHOLTZ_NUMVALS ,
                           "Invalid Helmholtz state index: %u", ( unsigned int ) aIndex );
@@ -533,7 +533,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         inline const real &
-        Helmholtz::get( const index_t & aIndex ) const
+        Helmholtz::get( const index_t aIndex ) const
         {
             BELFEM_ASSERT( aIndex < BELFEM_HELMHOLTZ_NUMVALS ,
                           "Invalid Helmholtz state index: %u", ( unsigned int ) aIndex );
@@ -544,7 +544,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         inline void
-        Helmholtz::set( const index_t & aIndex, const real aValue )
+        Helmholtz::set( const index_t aIndex, const real aValue )
         {
             BELFEM_ASSERT( aIndex < BELFEM_HELMHOLTZ_NUMVALS ,
                           "Invalid Helmholtz state index", ( unsigned int ) aIndex );
@@ -559,7 +559,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         inline void
-        Helmholtz::update_Tv( const real & aT, const real & aV )
+        Helmholtz::update_Tv( const real aT, const real aV )
         {
             BELFEM_ASSERT( aT   > 0, "Invalid Temprerature" );
             BELFEM_ASSERT( aV > 0, "Invalid specific volume" );
@@ -583,7 +583,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         inline void
-        Helmholtz::update_Tp( const real & aT, const real & aP )
+        Helmholtz::update_Tp( const real aT, const real aP )
         {
             BELFEM_ASSERT( aT   > 0, "Invalid temprerature" );
             BELFEM_ASSERT( aP > 0, "Invalid pressure" );
@@ -612,7 +612,7 @@ namespace belfem
 
         // help function for vapor pressure
         inline real
-        Helmholtz::pi_vap( const real & aT )
+        Helmholtz::pi_vap( const real aT )
         {
             real tTheta = std::abs( 1.0 - aT / mTcrit ) ;
 
@@ -627,7 +627,7 @@ namespace belfem
 
         // help function for vapor pressure
         inline real
-        Helmholtz::psi_vap( const real & aT )
+        Helmholtz::psi_vap( const real aT )
         {
             real tTheta = std::abs( 1.0 - aT / mTcrit ) ;
 

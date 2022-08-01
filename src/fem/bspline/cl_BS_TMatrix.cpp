@@ -575,7 +575,7 @@ namespace belfem
         real
         TMatrix::shape_function_1d(
                             const uint & aK,
-                           const real & aXi )
+                           const real aXi )
         {
             // max number of entries in lookup table
             uint tSteps = 2 * ( mBsplineOrder + 1 );

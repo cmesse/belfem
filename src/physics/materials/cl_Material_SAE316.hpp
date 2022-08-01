@@ -2,8 +2,8 @@
 // Created by christian on 7/28/22.
 //
 
-#ifndef BELFEM_CL_MATERIAL_SS314_HPP
-#define BELFEM_CL_MATERIAL_SS314_HPP
+#ifndef BELFEM_CL_MATERIAL_SS316_HPP
+#define BELFEM_CL_MATERIAL_SS316_HPP
 
 #include "typedefs.hpp"
 #include "cl_Vector.hpp"
@@ -14,25 +14,27 @@ namespace belfem
 {
     namespace material
     {
-        class SAE314 : public IsotropicMaterial
+        class SAE316 : public IsotropicMaterial
         {
             const real mSwitchCT0 = 10.0;
             const real mSwitchCT1 = 40.0;
             const real mSwitchCT2 = 60.0;
-            const real mSwitchCT3 = 221.34;
+            const real mSwitchCT3 = 200.0;
+                  real mSwitchCT4 = BELFEM_QUIET_NAN ;
 
             Vector< real > mSpecificHeatPoly0;
             Vector< real > mSpecificHeatPoly1;
             Vector< real > mSpecificHeatPoly2;
             Vector< real > mSpecificHeatPoly3;
             Vector< real > mSpecificHeatPoly4;
+            Vector< real > mSpecificHeatPoly5;
 
             const real mSwitchLT0 = 20.0;
             const real mSwitchLT1 = 40.0;
             const real mSwitchLT2 = 80.0;
             const real mSwitchLT3 = 100.0;
             const real mSwitchLT4 = 150.0;
-            const real mSwitchLT5 = 250.0;
+                  real mSwitchLT5 = BELFEM_QUIET_NAN ;
 
             Vector< real > mThermalConductivityPoly0;
             Vector< real > mThermalConductivityPoly1;
@@ -42,15 +44,42 @@ namespace belfem
             Vector< real > mThermalConductivityPoly5;
             Vector< real > mThermalConductivityPoly6;
 
+            const real mSwitchM1 = 50 ;
+            const real mSwitchM2 = 250 ;
+
+            Vector< real > mYoungPoly1 ;
+            Vector< real > mYoungPoly2 ;
+            Vector< real > mYoungPoly3 ;
+
+            Vector< real > mShearPoly1 ;
+            Vector< real > mShearPoly2 ;
+            Vector< real > mShearPoly3 ;
+
 //----------------------------------------------------------------------------
         public:
 //----------------------------------------------------------------------------
 
-            SAE314();
+            SAE316();
 
 //----------------------------------------------------------------------------
 
-            ~SAE314() = default;
+            ~SAE316() = default;
+
+//----------------------------------------------------------------------------
+
+            /**
+             * Young's Modulus in Pa
+             */
+            real
+            E( const real aT = BELFEM_TREF ) const;
+
+//----------------------------------------------------------------------------
+
+            /**
+             * Shear 's Modulus in Pa
+             */
+            real
+            G( const real aT = BELFEM_TREF ) const;
 
 //----------------------------------------------------------------------------
 
@@ -95,4 +124,4 @@ namespace belfem
 //----------------------------------------------------------------------------
     }
 }
-#endif //BELFEM_CL_MATERIAL_SS314_HPP
+#endif //BELFEM_CL_MATERIAL_SS316_HPP

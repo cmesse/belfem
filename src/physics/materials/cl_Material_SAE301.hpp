@@ -34,7 +34,7 @@ namespace belfem
             const real mSwitchLT2 = 80.0;
             const real mSwitchLT3 = 100.0;
             const real mSwitchLT4 = 150.0;
-            const real mSwitchLT5 = 250.0;
+            const real mSwitchLT5 = 400.0 ;
 
             Vector< real > mThermalConductivityPoly0;
             Vector< real > mThermalConductivityPoly1;

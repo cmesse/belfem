@@ -72,7 +72,7 @@ namespace belfem
                 const index_t aSizeJ,
                 const index_t aSizeK,
                 const index_t aSizeL,
-                const real & aValue ) :
+                const real aValue ) :
                 Tensor( aSizeI, aSizeJ, aSizeK, aSizeL )
         {
             this->fill( aValue );

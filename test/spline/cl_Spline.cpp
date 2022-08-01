@@ -36,7 +36,7 @@ const Vector< real > gA = {
 
 // specific heat formula NASA RP-1311 Eq. ( 4.9 )
 real
-cp0( const real & aT )
+cp0( const real aT )
 {
     return    (  (     gA( 0 )/aT
               +        gA( 1 ) )/aT
@@ -78,7 +78,7 @@ s0( const real aT )
 
 // derivative of cp
 real
-dcp0dT( const real & aT )
+dcp0dT( const real aT )
 {
     return ( - ( 2.0 * gA( 0 ) + gA( 1 ) * aT ) / std::pow( aT, 3 )
              + gA( 3 ) + aT * ( 2.0 * gA( 4 ) + aT * ( 3.0 * gA( 5 )
@@ -87,7 +87,7 @@ dcp0dT( const real & aT )
 
 // entropy derivative
 real
-ds0dT( const real & aT )
+ds0dT( const real aT )
 {
     return ( ( gA( 0 ) + aT * ( gA( 1 ) + aT * gA( 2 ) ) ) / std::pow( aT, 3 )
              + gA( 3 ) + aT * ( gA( 4 ) + aT * ( gA( 5 ) + aT * gA( 6 ) ) ) ) * R;

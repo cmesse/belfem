@@ -75,10 +75,10 @@ namespace belfem
             set_coords( const Vector< real > & aCoords );
 
             void
-            set_coords( const real & aX, const real & aY );
+            set_coords( const real aX, const real aY );
 
             void
-            set_coords( const real & aX, const real & aY, const real & aZ  );
+            set_coords( const real aX, const real aY, const real & aZ  );
 
 //------------------------------------------------------------------------------
         };

@@ -103,7 +103,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    TableGas::pi( const real & aT, const real & aP )
+    TableGas::pi( const real aT, const real aP )
     {
         return mEoS->pi( aT, aP );
     }
@@ -113,7 +113,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     const real &
-    TableGas::M( const real & aT, const real & aP )
+    TableGas::M( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -135,7 +135,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     const real &
-    TableGas::R( const real & aT, const real & aP )
+    TableGas::R( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -159,7 +159,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    TableGas::cp( const real & aT, const real & aP )
+    TableGas::cp( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -181,7 +181,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    TableGas::cv( const real & aT, const real & aP )
+    TableGas::cv( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -199,7 +199,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    TableGas::gamma( const real & aT, const real & aP )
+    TableGas::gamma( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -219,7 +219,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    TableGas::c( const real & aT, const real & aP )
+    TableGas::c( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -240,7 +240,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    TableGas::h( const real & aT, const real & aP )
+    TableGas::h( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -259,7 +259,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    TableGas::s( const real & aT, const real & aP )
+    TableGas::s( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -279,7 +279,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    TableGas::dsdT( const real & aT, const real & aP )
+    TableGas::dsdT( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -305,7 +305,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    TableGas::dsdp( const real & aT, const real & aP )
+    TableGas::dsdp( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -331,7 +331,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    TableGas::dcpdT( const real & aT, const real & aP )
+    TableGas::dcpdT( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -355,7 +355,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    TableGas::mu( const real & aT, const real & aP )
+    TableGas::mu( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -374,7 +374,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    TableGas::lambda( const real & aT, const real & aP )
+    TableGas::lambda( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -393,7 +393,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     real
-    TableGas::Pr( const real & aT, const real & aP )
+    TableGas::Pr( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -411,7 +411,7 @@ namespace belfem
 
     // enthalpy derivative to pressure ( needed for total temperature )
     real
-    TableGas::dhdp( const real & aT, const real & aP )
+    TableGas::dhdp( const real aT, const real aP )
     {
         mStatevals.update_Tp( aT, aP );
 
@@ -434,7 +434,7 @@ namespace belfem
 
     // dissociation enthalpy
     real
-    TableGas::hd( const real & aT, const real & aP )
+    TableGas::hd( const real aT, const real aP )
     {
         return mTable->compute_value( mIndexHd, aT,
                                       this->pi( aT, aP ) );

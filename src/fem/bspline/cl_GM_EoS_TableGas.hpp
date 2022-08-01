@@ -61,59 +61,59 @@ namespace belfem
 //----------------------------------------------------------------------------
 
             real
-            pi( const real & aT, const real & aP );
+            pi( const real aT, const real aP );
 
             real
             dpidp(const real &aT, const real &aP);
 
             const real &
-            M( const real & aT, const real & aP );
+            M( const real aT, const real aP );
 
             real
-            dMdT( const real & aT, const real & aP );
+            dMdT( const real aT, const real aP );
 
             real
-            dMdp( const real & aT, const real & aP );
+            dMdp( const real aT, const real aP );
 
 //----------------------------------------------------------------------------
 // Thermodynamic State
 //----------------------------------------------------------------------------
 
             real
-            p( const real & aT, const real & aV );
+            p( const real aT, const real aV );
 
             real
-            v( const real & aT, const real & aP );
+            v( const real aT, const real aP );
 
             real
-            T( const real & aP, const real & aV );
+            T( const real aP, const real aV );
 
 //------------------------------------------------------------------------------
 // State Derivatives
 //------------------------------------------------------------------------------
 
             real
-            dpdT( const real & aT, const real & aV );
+            dpdT( const real aT, const real aV );
 
 //------------------------------------------------------------------------------
 
             real
-            d2pdT2( const real & aT, const real & aV );
+            d2pdT2( const real aT, const real aV );
 
 //------------------------------------------------------------------------------
 
             real
-            dpdv( const real & aT, const real & aV );
+            dpdv( const real aT, const real aV );
 
 //------------------------------------------------------------------------------
 
             real
-            d2pdv2( const real & aT, const real & aV );
+            d2pdv2( const real aT, const real aV );
 
 //------------------------------------------------------------------------------
 
             real
-            dvdT( const real & aT, const real & aV );
+            dvdT( const real aT, const real aV );
 
 //------------------------------------------------------------------------------
 // Thermodynamic Coefficients
@@ -125,7 +125,7 @@ namespace belfem
              * \f$ \alpha = \frac{1}{v} \left( \frac{\partial v}{\partial T}\right)_p \f$
              */
             real
-            alpha( const real & aT, const real & aP );
+            alpha( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
@@ -136,7 +136,7 @@ namespace belfem
              * \f$ \beta = \frac{1}{p} \left( \frac{\partial p}{\partial T}\right)_v \f$
              */
             virtual real
-            beta( const real & aT, const real & aP );
+            beta( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
@@ -146,22 +146,22 @@ namespace belfem
              * \f$ \kappa = -\frac{1}{v} \left( \frac{\partial v}{\partial p}\right)_T \f$
              */
             virtual real
-            kappa( const real & aT, const real & aP );
+            kappa( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 // Departure Functions ( all zero for this class )
 //------------------------------------------------------------------------------
 
-            inline real hdep( const real & aT, const real & aP ) { return 0.0; };
-            inline real cpdep( const real & aT, const real & aP ) { return 0.0; };
-            inline real sdep( const real & aT, const real & aP )  { return 0.0; };
-            inline real dhdepdp( const real & aT, const real & aP ) { return 0.0; };
-            inline real dsdepdT( const real & aT, const real & aP ) { return 0.0; };
-            inline real dsdepdp( const real & aT, const real & aP )  { return 0.0; };
-            inline real hdep0( const real & aT ) { return 0.0; };
-            inline real cpdep0( const real & aT ) { return 0.0; };
-            inline real sdep0( const real & aT ) { return 0.0; };
-            inline real dsdepdT0( const real & aT ) { return 0.0; };
+            inline real hdep( const real aT, const real aP ) { return 0.0; };
+            inline real cpdep( const real aT, const real aP ) { return 0.0; };
+            inline real sdep( const real aT, const real aP )  { return 0.0; };
+            inline real dhdepdp( const real aT, const real aP ) { return 0.0; };
+            inline real dsdepdT( const real aT, const real aP ) { return 0.0; };
+            inline real dsdepdp( const real aT, const real aP )  { return 0.0; };
+            inline real hdep0( const real aT ) { return 0.0; };
+            inline real cpdep0( const real aT ) { return 0.0; };
+            inline real sdep0( const real aT ) { return 0.0; };
+            inline real dsdepdT0( const real aT ) { return 0.0; };
 
 //------------------------------------------------------------------------------
 // Forbidden funcitons
@@ -175,17 +175,17 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             real
-            v( const uint & aIndex, const real & aT, const real & aP );
+            v( const uint aIndex, const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             real
-            hdep( const uint & aIndex, const real & aT, const real & aP );
+            hdep( const uint aIndex, const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
             real
-            cpdep( const uint & aIndex, const real & aT, const real & aP );
+            cpdep( const uint aIndex, const real aT, const real aP );
 
 //------------------------------------------------------------------------------
         };

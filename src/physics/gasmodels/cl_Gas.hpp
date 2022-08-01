@@ -153,62 +153,62 @@ namespace belfem
         //! pointer to cp function
         real
         ( Gas::*mFunctionCp )
-                ( const real & aT, const real & aP );
+                ( const real aT, const real aP );
 
         //! pointer to dcpdT function
         real
         ( Gas::*mFunctiondCpdT )
-                ( const real & aT, const real & aP );
+                ( const real aT, const real aP );
 
         //! pointer to cv function
         real
         ( Gas::*mFunctionCv )
-                ( const real & aT, const real & aP );
+                ( const real aT, const real aP );
 
         //! pointer to gamma function
         real
         ( Gas::*mFunctionGamma )
-                ( const real & aT, const real & aP );
+                ( const real aT, const real aP );
 
         //! pointer to c function
         real
         ( Gas::*mFunctionC )
-                ( const real & aT, const real & aP );
+                ( const real aT, const real aP );
 
         //! pointer to h function
         real
         ( Gas::*mFunctionH )
-                ( const real & aT, const real & aP );
+                ( const real aT, const real aP );
 
         //! pointer to dhdp function
         real
         ( Gas::*mFunctionDHDP )
-                ( const real & aT, const real & aP );
+                ( const real aT, const real aP );
 
         //! pointer to s function
         real
         ( Gas::*mFunctionS )
-                ( const real & aT, const real & aP );
+                ( const real aT, const real aP );
 
         //! pointer to dsdT function
         real
         ( Gas::*mFunctionDSDT )
-                ( const real & aT, const real & aP );
+                ( const real aT, const real aP );
 
         //! pointer to dsdp function
         real
         ( Gas::*mFunctionDSDP )
-                ( const real & aT, const real & aP );
+                ( const real aT, const real aP );
 
         //! pointer to Mu function
         real
         ( Gas::*mFunctionMU )
-                ( const real & aT, const real & aP );
+                ( const real aT, const real aP );
 
         //! pointer to Lambda function
         real
         ( Gas::*mFunctionLAMBDA )
-                ( const real & aT, const real & aP );
+                ( const real aT, const real aP );
 
         //! reference enthalpy, needed for real gas s
         real mSref = 0.0;
@@ -284,12 +284,12 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         virtual const real &
-        M( const real & aT, const real & aP );
+        M( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
         virtual const real &
-        R( const real & aT, const real & aP );
+        R( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
@@ -403,60 +403,60 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         real
-        p( const real & aT, const real & aV );
+        p( const real aT, const real aV );
 
 //------------------------------------------------------------------------------
 
         real
-        v( const real & aT, const real & aP );
+        v( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
         real
-        rho( const real & aT, const real & aP );
+        rho( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
         real
-        T( const real & aP, const real & aV );
+        T( const real aP, const real aV );
 
 //------------------------------------------------------------------------------
 // Caloric Properties
 //------------------------------------------------------------------------------
 
         virtual real
-        cp( const real & aT, const real & aP );
+        cp( const real aT, const real aP );
 
         virtual real
-        cv( const real & aT, const real & aP );
+        cv( const real aT, const real aP );
 
         virtual real
-        gamma( const real & aT, const real & aP );
+        gamma( const real aT, const real aP );
 
         virtual real
-        c( const real & aT, const real & aP );
+        c( const real aT, const real aP );
 
         virtual real
-        u( const real & aT, const real & aP );
+        u( const real aT, const real aP );
 
         virtual real
-        h( const real & aT, const real & aP );
+        h( const real aT, const real aP );
 
         virtual real
-        s( const real & aT, const real & aP );
+        s( const real aT, const real aP );
 
         virtual real
-        dsdT( const real & aT, const real & aP );
+        dsdT( const real aT, const real aP );
 
         virtual real
-        dsdp( const real & aT, const real & aP );
+        dsdp( const real aT, const real aP );
 
         virtual real
-        dcpdT( const real & aT, const real & aP );
+        dcpdT( const real aT, const real aP );
 
         // dissociation enthalpy ( only for tablegas at this time )
         virtual real
-        hd( const real & aT, const real & aP );
+        hd( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 // Transport Properties
@@ -466,19 +466,19 @@ namespace belfem
          * dynamic viscisity in Pa*s
          */
         real
-        mu( const real & aT, const real & aP );
+        mu( const real aT, const real aP );
 
         /**
           * thermal conductivity in W/(m*K)
           */
         real
-        lambda( const real & aT, const real & aP );
+        lambda( const real aT, const real aP );
 
         /**
          * Prandtl Number
          */
         real
-        Pr( const real & aT, const real & aP );
+        Pr( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 // Thermodynamic Coefficients
@@ -490,7 +490,7 @@ namespace belfem
           * \f$ \alpha = \frac{1}{v} \left( \frac{\partial v}{\partial T}\right)_p \f$
           */
         real
-        alpha( const real & aT, const real & aP );
+        alpha( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
          /**
@@ -499,7 +499,7 @@ namespace belfem
           * \f$ \beta = \frac{1}{p} \left( \frac{\partial p}{\partial T}\right)_v \f$
           */
         real
-        beta( const real & aT, const real & aP );
+        beta( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
@@ -509,7 +509,7 @@ namespace belfem
           * \f$ \kappa = -\frac{1}{v} \left( \frac{\partial v}{\partial p}\right)_T \f$
           */
         real
-        kappa( const real & aT, const real & aP );
+        kappa( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 // CHEMISTRY
@@ -519,46 +519,46 @@ namespace belfem
          * return the molar Gibbs potential at reference pressure
          */
          void
-         Gibbs( const real & aT, Vector< real > & aGibbs );
+         Gibbs( const real aT, Vector< real > & aGibbs );
 
          /**
          * return the molar formation enthalpy for each component
          */
          void
-         Hf( const real & aT, Vector< real > & aHf );
+         Hf( const real aT, Vector< real > & aHf );
 
          /**
           * return the temperature derivative of  gibs potentia at reference pressure
           */
          void
-         dGibbsdT( const real & aT, Vector< real > & aGibbs );
+         dGibbsdT( const real aT, Vector< real > & aGibbs );
 
          /**
           * remix to equilibrium
           */
          void
          remix_to_equilibrium(
-                 const real & aT,
-                 const real & aP,
+                 const real aT,
+                 const real aP,
                  const bool aRemixHeat=true,
                  const bool aRemixTransport=true );
 
          void
-         compute_equilibrium( const real & aT, const real & aP, Vector< real > & aX );
+         compute_equilibrium( const real aT, const real aP, Vector< real > & aX );
 
 //------------------------------------------------------------------------------
 // State relevant methods
 // -----------------------------------------------------------------------------
 
         real
-        T_from_h( const real & aH, const real & aP );
+        T_from_h( const real & aH, const real aP );
 
 // -----------------------------------------------------------------------------
         /**
          * get an isotropic temperature
          */
          real
-         isen_T( const real & aT0, const real & aP0, const real & aP1 );
+         isen_T( const real aT0, const real aP0, const real aP1 );
 
 // -----------------------------------------------------------------------------
 
@@ -566,7 +566,7 @@ namespace belfem
            * get an isotropic pressure
            */
          real
-         isen_p( const real & aT0, const real & aP0, const real & aT1 );
+         isen_p( const real aT0, const real aP0, const real aT1 );
 
 // -----------------------------------------------------------------------------
 
@@ -574,7 +574,7 @@ namespace belfem
          * calculate the total state
          */
          void
-         total( const real & aT, const real & aP, const real & aU,
+         total( const real aT, const real aP, const real & aU,
                       real & aTt, real & aPt );
 
 // -----------------------------------------------------------------------------
@@ -584,8 +584,8 @@ namespace belfem
          */
          void
          expand( const real & aA1,
-                 const real & aT1,
-                 const real & aP1,
+                 const real aT1,
+                 const real aP1,
                  const real & aU1,
                  const real & aA2,
                        real & aT2,
@@ -596,8 +596,8 @@ namespace belfem
 
         real
         prandtl_meyer_angle(
-                const real & aT,
-                const real & aP,
+                const real aT,
+                const real aP,
                 const real & aU );
 
 // -----------------------------------------------------------------------------
@@ -610,8 +610,8 @@ namespace belfem
          * @return
          */
          real
-         prandtl_meyer(  const real & aT1,
-                         const real & aP1,
+         prandtl_meyer(  const real aT1,
+                         const real aP1,
                          const real & aU1,
                          const real & aAlpha,
                                real & aT2,
@@ -625,7 +625,7 @@ namespace belfem
          *
          */
          void
-         shock(  const real & aT1, const real & aP1, const real & aU1,
+         shock(  const real aT1, const real aP1, const real & aU1,
                        real & aT2,       real & aP2,       real & aU2 );
 
 // -----------------------------------------------------------------------------
@@ -634,7 +634,7 @@ namespace belfem
          * oblique shock
          */
          void
-         shock( const real & aT1, const real & aP1, const real & aU1, const real & aAlpha,
+         shock( const real aT1, const real aP1, const real & aU1, const real & aAlpha,
                 real & aT2, real & aP2, real & aU2, real & aBeta );
 
 //------------------------------------------------------------------------------
@@ -642,17 +642,17 @@ namespace belfem
 //------------------------------------------------------------------------------
 
          real
-         v( const uint & aIndex, const real & aT, const real & aP );
+         v( const uint aIndex, const real aT, const real aP );
 
          // specific enthalpy of gas, normalized to 298.15 K
          real
-         h( const uint & aIndex, const real & aT, const real & aP );
+         h( const uint aIndex, const real aT, const real aP );
 
          real
-         cp( const uint & aIndex, const real & aT, const real & aP );
+         cp( const uint aIndex, const real aT, const real aP );
 
          real
-         dcpdT( const uint & aIndex, const real & aT, const real & aP );
+         dcpdT( const uint aIndex, const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 // Print composition
@@ -702,7 +702,7 @@ namespace belfem
 
          // enthalpy derivative to pressure ( needed for total temperature )
          virtual real
-         dhdp( const real & aT, const real & aP );
+         dhdp( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
     private:
@@ -774,139 +774,139 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        evaluate_viscosity_interaction( const real & aT );
+        evaluate_viscosity_interaction( const real aT );
 
 //------------------------------------------------------------------------------
 
         void
-        evaluate_conductivity_interaction( const real & aT );
+        evaluate_conductivity_interaction( const real aT );
 
 //------------------------------------------------------------------------------
 
         real
-        idgas_cp( const real & aT, const real & aP );
+        idgas_cp( const real aT, const real aP );
 
         real
-        idgas_dcpdT( const real & aT, const real & aP );
+        idgas_dcpdT( const real aT, const real aP );
 
         real
-        idgas_cv( const real & aT, const real & aP );
+        idgas_cv( const real aT, const real aP );
 
         real
-        idgas_gamma( const real & aT, const real & aP );
+        idgas_gamma( const real aT, const real aP );
 
         real
-        idgas_c( const real & aT, const real & aP );
+        idgas_c( const real aT, const real aP );
 
         real
-        idgas_h( const real & aT, const real & aP );
+        idgas_h( const real aT, const real aP );
 
         real
-        idgas_s( const real & aT, const real & aP );
+        idgas_s( const real aT, const real aP );
 
         real
-        idgas_dsdT( const real & aT, const real & aP );
+        idgas_dsdT( const real aT, const real aP );
 
         real
-        idgas_dsdp( const real & aT, const real & aP );
+        idgas_dsdp( const real aT, const real aP );
 
         real
-        idgas_mu( const real & aT, const real & aP );
+        idgas_mu( const real aT, const real aP );
 
         real
-        idgas_lambda( const real & aT, const real & aP );
+        idgas_lambda( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
         real
-        realgas_cp( const real & aT, const real & aP );
+        realgas_cp( const real aT, const real aP );
 
         real
-        realgas_dcpdT( const real & aT, const real & aP );
+        realgas_dcpdT( const real aT, const real aP );
 
         real
-        realgas_cv( const real & aT, const real & aP );
+        realgas_cv( const real aT, const real aP );
 
         real
-        realgas_gamma( const real & aT, const real & aP );
+        realgas_gamma( const real aT, const real aP );
 
         real
-        realgas_c( const real & aT, const real & aP );
+        realgas_c( const real aT, const real aP );
 
         real
-        realgas_h( const real & aT, const real & aP );
+        realgas_h( const real aT, const real aP );
 
         real
-        realgas_s( const real & aT, const real & aP );
+        realgas_s( const real aT, const real aP );
 
         real
-        realgas_dsdT( const real & aT, const real & aP );
+        realgas_dsdT( const real aT, const real aP );
 
         real
-        realgas_dsdp( const real & aT, const real & aP );
+        realgas_dsdp( const real aT, const real aP );
 
         real
-        realgas_mu( const real & aT, const real & aP );
+        realgas_mu( const real aT, const real aP );
 
         real
-        realgas_lambda( const real & aT, const real & aP );
+        realgas_lambda( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
          real
-         helmholtz_cp( const real & aT, const real & aP );
+         helmholtz_cp( const real aT, const real aP );
 
          real
-         helmholtz_dcpdT( const real & aT, const real & aP );
+         helmholtz_dcpdT( const real aT, const real aP );
 
          real
-         helmholtz_cv( const real & aT, const real & aP );
+         helmholtz_cv( const real aT, const real aP );
 
          real
-         helmholtz_gamma( const real & aT, const real & aP );
+         helmholtz_gamma( const real aT, const real aP );
 
          real
-         helmholtz_c( const real & aT, const real & aP );
+         helmholtz_c( const real aT, const real aP );
 
          real
-         helmholtz_h( const real & aT, const real & aP );
+         helmholtz_h( const real aT, const real aP );
 
          real
-         helmholtz_s( const real & aT, const real & aP );
+         helmholtz_s( const real aT, const real aP );
 
          real
-         helmholtz_dsdT( const real & aT, const real & aP );
+         helmholtz_dsdT( const real aT, const real aP );
 
          real
-         helmholtz_dsdp( const real & aT, const real & aP );
+         helmholtz_dsdp( const real aT, const real aP );
 
          real
-         helmholtz_mu( const real & aT, const real & aP );
+         helmholtz_mu( const real aT, const real aP );
 
          real
-         helmholtz_lambda( const real & aT, const real & aP );
+         helmholtz_lambda( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
         // from cea, Eq. 5.3
         real
-        cea_mu( const real & aT );
+        cea_mu( const real aT );
 
 //------------------------------------------------------------------------------
 
         // from cea, Eq. 5.4
         real
-        cea_lambda( const real & aT );
+        cea_lambda( const real aT );
 
 //------------------------------------------------------------------------------
 
         real
-        lambda_dep( const real & aT, const real & aP );
+        lambda_dep( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
         real
-        mu_dep( const real & aMu, const real & aT, const real & aP  );
+        mu_dep( const real & aMu, const real aT, const real aP  );
 
 //------------------------------------------------------------------------------
 
@@ -937,8 +937,8 @@ namespace belfem
 
         // special subroutine needed for shock
         real
-        shock_beta_simple( const real & aT1,
-                    const real & aP1,
+        shock_beta_simple( const real aT1,
+                    const real aP1,
                     const real & aU1,
                     const real & aAlpha,
                           real & aT2,
@@ -950,8 +950,8 @@ namespace belfem
 
          // special subroutine needed for shock
          real
-         shock_beta( const real & aT1,
-                     const real & aP1,
+         shock_beta( const real aT1,
+                     const real aP1,
                      const real & aU1,
                      const real & aAlpha,
                      real & aT2,
@@ -963,19 +963,19 @@ namespace belfem
 
          // just return zero for idgas
         real
-        dhdp_idgas( const real & aT, const real & aP );
+        dhdp_idgas( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
         // workaround if eos does that via departure function
         real
-        dhdp_eos_departure( const real & aT, const real & aP );
+        dhdp_eos_departure( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
         // workaround if eos dies not support it
         real
-        dhdp_differential_quotient( const real & aT, const real & aP );
+        dhdp_differential_quotient( const real aT, const real aP );
 
 //------------------------------------------------------------------------------
 
@@ -1104,7 +1104,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     inline real
-    Gas::alpha( const real & aT, const real & aP )
+    Gas::alpha( const real aT, const real aP )
     {
         return mEoS->alpha( aT, aP );
     }
@@ -1112,7 +1112,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     inline real
-    Gas::beta( const real & aT, const real & aP )
+    Gas::beta( const real aT, const real aP )
     {
         return mEoS->beta( aT, aP );
     }
@@ -1120,7 +1120,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     inline real
-    Gas::kappa( const real & aT, const real & aP )
+    Gas::kappa( const real aT, const real aP )
     {
         return mEoS->kappa( aT, aP );
     }
@@ -1168,7 +1168,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     inline real
-    Gas::dhdp_idgas( const real & aT, const real & aP )
+    Gas::dhdp_idgas( const real aT, const real aP )
     {
         return 0 ;
     }
@@ -1177,7 +1177,7 @@ namespace belfem
 
     // workaround if eos does that via departure function
     inline real
-    Gas::dhdp_eos_departure( const real & aT, const real & aP )
+    Gas::dhdp_eos_departure( const real aT, const real aP )
     {
         return mEoS->dhdepdp( aT, aP );
     }
@@ -1186,7 +1186,7 @@ namespace belfem
 
     // workaround if eos dies not support it
     inline real
-    Gas::dhdp_differential_quotient( const real & aT, const real & aP )
+    Gas::dhdp_differential_quotient( const real aT, const real aP )
     {
         return ( mEoS->h( aT, 1.01 * aP ) - mEoS->h( aT, 0.99 * aP ) ) /
                 ( 0.02 * aP ) ;

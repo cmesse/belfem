@@ -23,7 +23,7 @@ namespace belfem
         }
 //----------------------------------------------------------------------------
 
-        AlphaFunction::AlphaFunction( const real & aTcrit,
+        AlphaFunction::AlphaFunction( const real aTcrit,
                                       const Vector< real > & aCoeffs ) :
                 mTcrit( aTcrit ),
                 mInvTcrit( 1.0/aTcrit ),
@@ -38,7 +38,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         AlphaFunction::AlphaFunction(
-                const real & aTcrit,
+                const real aTcrit,
                 const real & aC1,
                 const real & aC2,
                 const real & aC3 ) :
@@ -55,7 +55,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        AlphaFunction::alpha( const real & aT )
+        AlphaFunction::alpha( const real aT )
         {
             BELFEM_ASSERT( aT > 0, "Temperature must be positive for alpha function" );
             this->eval( aT, 0 );
@@ -65,7 +65,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        AlphaFunction::dalphadT( const real & aT )
+        AlphaFunction::dalphadT( const real aT )
         {
             BELFEM_ASSERT( aT > 0, "Temperature must be positive for alpha function" );
             this->eval( aT, 1 );
@@ -75,7 +75,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        AlphaFunction::d2alphadT2( const real & aT )
+        AlphaFunction::d2alphadT2( const real aT )
         {
             BELFEM_ASSERT( aT > 0, "Temperature must be positive for alpha function" );
             this->eval( aT, 2 );
@@ -85,7 +85,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         void
-        AlphaFunction::eval( const real & aT, const int aDeriv )
+        AlphaFunction::eval( const real aT, const int aDeriv )
         {
            BELFEM_ERROR( false, "this function must not be called");
         }
@@ -158,7 +158,7 @@ namespace belfem
 
 //----------------------------------------------------------------------------
         real
-        AlphaFunction_Empty::alpha( const real & aT )
+        AlphaFunction_Empty::alpha( const real aT )
         {
             return 0.0;
         }
@@ -166,7 +166,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        AlphaFunction_Empty::dalphadT( const real & aT )
+        AlphaFunction_Empty::dalphadT( const real aT )
         {
             return 0.0;
         }
@@ -174,7 +174,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        AlphaFunction_Empty::d2alphadT2( const real & aT )
+        AlphaFunction_Empty::d2alphadT2( const real aT )
         {
             return 0.0;
         }
@@ -182,7 +182,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         AlphaFunction_Classic::AlphaFunction_Classic(
-                const real & aTcrit,
+                const real aTcrit,
                 const real & aC1,
                 const real & aC2 ) :
                 AlphaFunction( aTcrit,
@@ -195,7 +195,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         void
-        AlphaFunction_Classic::eval( const real & aT, const int aDeriv )
+        AlphaFunction_Classic::eval( const real aT, const int aDeriv )
         {
             // calculate function itself
             if ( mT[ 0 ] != aT )
@@ -238,7 +238,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         AlphaFunction_MC::AlphaFunction_MC(
-                const real & aTcrit,
+                const real aTcrit,
                 const real & aC1,
                 const real & aC2,
                 const real & aC3):
@@ -253,7 +253,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         void
-        AlphaFunction_MC::eval( const real & aT, const int aDeriv )
+        AlphaFunction_MC::eval( const real aT, const int aDeriv )
         {
 
             if( mT[ 0 ] != aT )
@@ -343,7 +343,7 @@ namespace belfem
 
 
         AlphaFunction_CCR::AlphaFunction_CCR(
-                const real & aTcrit,
+                const real aTcrit,
                 const real & aC1,
                 const real & aC2,
                 const real & aC3):
@@ -357,7 +357,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         void
-        AlphaFunction_CCR::eval( const real & aT, const int aDeriv )
+        AlphaFunction_CCR::eval( const real aT, const int aDeriv )
         {
 
             if( mT[ 0 ] != aT )
@@ -448,7 +448,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         AlphaFunction_PM::AlphaFunction_PM(
-                const real & aTcrit,
+                const real aTcrit,
                 const Vector< real > & aCoeffs ) :
                 AlphaFunction( aTcrit, aCoeffs)
         {
@@ -456,7 +456,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         void
-        AlphaFunction_PM::eval( const real & aT, const int aDeriv )
+        AlphaFunction_PM::eval( const real aT, const int aDeriv )
         {
             // calculate function itself
             if( mT[ 0 ] != aT )

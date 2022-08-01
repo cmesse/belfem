@@ -59,12 +59,12 @@ namespace belfem
 //----------------------------------------------------------------------------
 
             real
-            pi_vap( const real & aT );
+            pi_vap( const real aT );
 
 //----------------------------------------------------------------------------
 
             real
-            psi_vap( const real & aT );
+            psi_vap( const real aT );
 
 //----------------------------------------------------------------------------
         private:
@@ -142,7 +142,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         inline real
-        EoS_Oxygen::pi_vap( const real & aT )
+        EoS_Oxygen::pi_vap( const real aT )
         {
             real tTheta =  1.0 - aT / mTcrit ;
 
@@ -154,7 +154,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         inline real
-        EoS_Oxygen::psi_vap( const real & aT )
+        EoS_Oxygen::psi_vap( const real aT )
         {
             real tTheta =  1.0 - aT / mTcrit ;
 
