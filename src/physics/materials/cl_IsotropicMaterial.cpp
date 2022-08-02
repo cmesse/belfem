@@ -240,7 +240,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
     void
-    IsotropicMaterial::lambda3d( Matrix< real > & aLambda, const real aT ) const
+    IsotropicMaterial::lambda_3d( Matrix< real > & aLambda, const real aT ) const
     {
         BELFEM_ASSERT( aLambda.n_cols() == 3 && aLambda.n_rows() == 3,
                       "Conductivity matrix must be allocated as 3x3" );

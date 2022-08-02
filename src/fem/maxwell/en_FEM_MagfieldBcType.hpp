@@ -14,7 +14,8 @@ namespace belfem
             Wave      = 0,
             Farfied   = 1,
             Symmetry  = 2,
-            UNDEFINED = 3
+            Bearing   = 3,
+            UNDEFINED = 4
         };
     }
 }

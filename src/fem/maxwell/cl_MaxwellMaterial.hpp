@@ -263,7 +263,7 @@ namespace belfem
         inline real
         MaxwellMaterial::rho_el( const real aJ, const real aT, const real aB ) const
         {
-            return ( this->*mFunRho )( aJ, aT, aB );
+            return ( this->*mFunRho )( std::abs( aJ ), aT, std::abs( aB ) );
         }
 
 //----------------------------------------------------------------------------
@@ -271,14 +271,14 @@ namespace belfem
         inline real
         MaxwellMaterial::mu_r( const real aH, const real aT ) const
         {
-            return ( this->*mFunMur )( aH, aT );
+            return ( this->*mFunMur )( std::abs( aH ), aT );
         }
 //----------------------------------------------------------------------------
 
         inline real
         MaxwellMaterial::nu_s ( const real aB, const real aT ) const
         {
-            return ( this->*mFunNus )( aB, aT );
+            return ( this->*mFunNus )( std::abs( aB ), aT );
         }
 
 //----------------------------------------------------------------------------

@@ -545,13 +545,9 @@ namespace belfem
                         // get material entry
                         const input::Section * tInput = tMaterials->section( k );
 
-                        // we check if the material is intrinsic, if not, we assume that it is a maxwell material
-                        MaterialType tMaterialType = string_to_material_type( tInput->label(), true );
 
                         // create the material
-                        Material * tMaterial = tMaterialType == MaterialType::UNDEFINED ?
-                                this->create_maxwell_material( tInput ) :
-                                tFactory.create_material( tMaterialType );
+                        Material * tMaterial = this->create_maxwell_material( tInput ) ;
 
                         // add material to list
                         mMaterials.push( tMaterial );
@@ -625,6 +621,7 @@ namespace belfem
                 {
                     aMaterial->set_rrr( aInput->get_real( "rrr" ) );
                 }
+
                 return aMaterial ;
             }
             else
@@ -1037,11 +1034,13 @@ namespace belfem
                 real tPhase     = 0.0 ;
                 real tPenalty   = tBC->key_exists("penalty") ? tBC->get_real( "penalty" ) : 1.0 ;
 
-                const string tScalingType = string_to_lower( tBC->get_string("type") );
+                const string tScalingType = tBC->key_exists("type") ?  string_to_lower( tBC->get_string("type") ) :
+                        "none" ;
 
                 BoundaryConditionScaling tType = BoundaryConditionScaling::UNDEFINED ;
                 MagfieldBcType tMagfieldBcType = MagfieldBcType::UNDEFINED ;
 
+                id_t tBearingID = gNoID ;
 
                 // catch special case
                 if( tScalingType == "none"  )
@@ -1055,6 +1054,11 @@ namespace belfem
                 else if( tScalingType == "symmetry"  )
                 {
                     tMagfieldBcType = MagfieldBcType::Symmetry ;
+                }
+                else if ( tScalingType == "bearing" || tScalingType == "anchor" || tScalingType == "fixedpoint" )
+                {
+                    tMagfieldBcType = MagfieldBcType::Bearing ;
+                    tBearingID = tBC->get_int( "node" ) ;
                 }
                 else
                 {
@@ -1140,7 +1144,16 @@ namespace belfem
                 }
                 else if ( tBcType == "magfield" )
                 {
-                    if ( tMagfieldBcType == MagfieldBcType::Wave )
+                    if( tMagfieldBcType == MagfieldBcType::Bearing )
+                    {
+                        MaxwellBoundaryConditionMagfield * tMagfield = new MaxwellBoundaryConditionMagfield(
+                                BoundaryConditionImposing::Dirichlet,
+                                tWords( 1 ) );
+                        tMagfield->set_bearing( tBearingID );
+                        tMagfieldBCs.push( tMagfield );
+                        mMagfieldBcMap[ tWords( 1 ) ] = tMagfield;
+                    }
+                    else if ( tMagfieldBcType == MagfieldBcType::Wave )
                     {
                         // get string
                         string tString = tBC->get_string( "amplitude" );
@@ -1542,6 +1555,8 @@ namespace belfem
             // write the domain types into mMagneticField
             this->set_domain_types();
 
+            mMagneticField->fix_node_dofs_on_ghost_sidesets() ;
+
             comm_barrier() ;
         }
 
@@ -1725,7 +1740,6 @@ namespace belfem
 
                 // fix group types of IWG
                 tIWG->update_group_types();
-
             }
         }
 
@@ -2058,6 +2072,8 @@ namespace belfem
 
             // no BLR for L2, otherwise crash!
             tProjector->solver()->set_mumps_blr( BlockLowRanking::Off, 0.0 );
+
+            tProjector->fix_node_dofs_on_ghost_sidesets() ;
 
             // add projector to list
             mMagneticField->postprocessors().push( tProjector );

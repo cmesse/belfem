@@ -85,6 +85,9 @@ namespace belfem
             void
             link_sidesets(  DofManager * aDofManager, const Vector< id_t > & aIDs );
 
+            void
+            link_bearing(  DofManager * aDofManager, const id_t aBearingID );
+
 //-----------------------------------------------------------------------------
         };
 

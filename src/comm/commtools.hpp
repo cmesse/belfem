@@ -110,7 +110,7 @@ namespace belfem
             // get the data type
             comm_data_t tDataType = get_comm_datatype(( T ) 0 );
 
-            // we don;t use MPI_Bcast, it is not reliable
+            // we don't use MPI_Bcast, it is not reliable
             MPI_Bcast(
                     &aMessage,
                     1,

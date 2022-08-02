@@ -13,6 +13,7 @@
 #include "cl_MaxwellFactory.hpp"
 #include "cl_Profiler.hpp"
 #include "fn_FEM_compute_normb.hpp"
+#include "fn_FEM_compute_element_current_thinshell.hpp"
 
 #ifdef BELFEM_GCC
 #pragma GCC diagnostic push
@@ -166,8 +167,7 @@ int main( int    argc,
    real tOmegaP = tNonlinear.picardOmega ;
    real tOmegaN = tNonlinear.newtonOmega ;
 
-
-    while( tTime < tMaxTime )
+   while( tTime < tMaxTime )
    {
        // increment timestep
        tTime += tDeltaTime;
@@ -190,7 +190,7 @@ int main( int    argc,
        {
            std::cout << std::endl << "  --------------------------------------------------------------------------"
                      << std::endl;
-           std::cout << "   time : " << tTime << " s " << std::endl;
+           std::cout << "   time : " << tTime*1000.0 << " ms " << std::endl;
            std::cout << "  --------------------------------------------------------------------------" << std::endl;
        }
 
@@ -277,8 +277,15 @@ int main( int    argc,
        // postprocess
        tMagfield->postprocess() ;
 
+       // todo: move into postprocess routine
+       fem::compute_element_current_thinshell_tri3( tMagfield );
+
        // save mesh
+       real tOldTime = tTime ;
+       tTime *= 1000.0 ;
        tMesh->save( tOutFile );
+       tTime = tOldTime ;
+
        //tMesh->save( "test.exo");
 
        // save backup

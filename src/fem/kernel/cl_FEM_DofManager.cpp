@@ -899,6 +899,29 @@ namespace belfem
             }
         }
 
+
+//------------------------------------------------------------------------------
+
+        void
+        DofManager::fix_node_dofs_on_ghost_sidesets()
+        {
+            mMesh->unflag_everything() ;
+
+            for( id_t tID : mIWG->ghost_sideset_ids() )
+            {
+                mMesh->sideset( tID )->flag_all_nodes() ;
+            }
+
+            // loop over all dofs
+            for( Dof * tDof : mDofData->dofs() )
+            {
+                if( tDof->mesh_basis()->is_flagged() )
+                {
+                    tDof->fix( 0.0 );
+                }
+            }
+        }
+
 //-----------------------------------------------------------------------------
     }
 }

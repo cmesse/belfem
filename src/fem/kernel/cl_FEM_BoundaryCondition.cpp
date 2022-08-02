@@ -79,7 +79,16 @@ namespace belfem
             {
                 this->link_blocks( aDofManager, mBlockIDs );
             }
-
+            if( mBearingID != gNoID )
+            {
+                if( comm_rank() == 0 )
+                {
+                    mBearingID = aDofManager->mesh()->vertex( mBearingID )->node( 0 )->id() ;
+                }
+                comm_barrier() ;
+                broadcast( 0, mBearingID );
+                this->link_bearing( aDofManager, mBearingID );
+            }
             this->collect_nodes();
         }
 
@@ -99,6 +108,13 @@ namespace belfem
         {
             mPenalty = aValue ;
         }
+//-----------------------------------------------------------------------------
+
+        void
+        BoundaryCondition::set_bearing( const id_t aVertexID )
+        {
+            mBearingID = aVertexID ;
+        }
 
 //-----------------------------------------------------------------------------
 
@@ -106,6 +122,18 @@ namespace belfem
         BoundaryCondition::set_blocks( const Vector< id_t > & aBlockIDs )
         {
             mBlockIDs = aBlockIDs ;
+        }
+
+//-----------------------------------------------------------------------------
+
+        void
+        BoundaryCondition::link_bearing(  DofManager * aDofManager, const id_t aBearingID )
+        {
+            if( aDofManager->mesh()->node_exists( aBearingID ) )
+            {
+                mNodes.set_size( 1, nullptr );
+                mNodes( 0 ) = aDofManager->mesh()->node( aBearingID );
+            }
         }
 
 //-----------------------------------------------------------------------------

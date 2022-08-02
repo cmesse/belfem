@@ -217,6 +217,91 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
         void
+        MaxwellBoundaryConditionMagfield::link_bearing(  DofManager * aDofManager, const id_t aBearingID )
+        {
+            BoundaryCondition::link_bearing( aDofManager, aBearingID );
+
+            // check if this is a h-phi formulation
+            mIsHPhi = is_maxwell_hphi( aDofManager->iwg()->type() ) ;
+
+            if( mNodes.size() == 0 )
+            {
+                return;
+            }
+
+            if( mIsHPhi )
+            {
+                mDofFields = { "phi" };
+
+                // get the type id of phi
+                uint tPhi = aDofManager->iwg()->doftype( "phi" );
+
+                if( mImposing == BoundaryConditionImposing::Dirichlet )
+                {
+                    mFixedDofs.set_size( 1, nullptr );
+
+                    // grab dof
+                    Dof * tDof = aDofManager->dof( aDofManager->calculate_dof_id( mNodes( 0 ), tPhi ) );
+                    tDof->fix( 0.0 );
+
+                    // save dof in container
+                    mFixedDofs( 0 ) = tDof ;
+                }
+
+            }
+            else  // this is a n a-formulation
+            {
+                if( mImposing == BoundaryConditionImposing::Dirichlet )
+                {
+                    if ( aDofManager->mesh()->number_of_dimensions() == 2 )
+                    {
+                        mDofFields = { "az" };
+
+                        uint tAz = aDofManager->iwg()->doftype( "az" );
+
+                        mFixedDofs.set_size( 1, nullptr );
+
+                        // get dof
+                        Dof * tDof = aDofManager->dof( aDofManager->calculate_dof_id( mNodes( 0 ), tAz ));
+                        tDof->fix( 0.0 );
+
+                        mFixedDofs( 0 ) = tDof;
+
+
+                    }
+                    else if ( aDofManager->mesh()->number_of_dimensions() == 3 )
+                    {
+                        mDofFields = { "ax", "ay", "az" };
+
+                        mFixedDofs.set_size( 3 , nullptr );
+
+                        uint tAx = aDofManager->iwg()->doftype( "ax" );
+                        uint tAy = aDofManager->iwg()->doftype( "ay" );
+                        uint tAz = aDofManager->iwg()->doftype( "az" );
+
+                        // fix ax
+                        Dof * tDofX = aDofManager->dof( aDofManager->calculate_dof_id( mNodes( 0 ), tAx ));
+                        tDofX->fix( 0.0 );
+                        mFixedDofs( 0 ) = tDofX;
+
+                        // fix Ay
+                        Dof * tDofY = aDofManager->dof( aDofManager->calculate_dof_id( mNodes( 0 ), tAy ));
+                        tDofY->fix( 0.0 );
+                        mFixedDofs( 1 ) = tDofY;
+
+
+                        Dof * tDofZ = aDofManager->dof( aDofManager->calculate_dof_id( mNodes( 0 ), tAz ));
+                        tDofZ->fix( 0.0 );
+                        mFixedDofs( 2 ) = tDofZ;
+                    }
+                }
+            }
+        }
+
+
+//-----------------------------------------------------------------------------
+
+        void
         MaxwellBoundaryConditionMagfield::link_sidesets(
                 DofManager * aDofManager, const Vector< id_t > & aIDs )
         {
@@ -279,7 +364,6 @@ namespace belfem
                     mNodeIndices( tCount++ ) = tNode->index() ;
                 }
             }
-
 
             if( mIsHPhi )
             {

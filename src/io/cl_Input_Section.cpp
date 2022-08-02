@@ -72,7 +72,7 @@ namespace belfem
                         mSections[ tLabel ] = tSection ;
                     }
                 }
-                else if ( mBuffer( k ).find( ":" ) < mBuffer( k ).length() && tSectionCount == 0 )
+                else if ( mBuffer( k ).find( ";" ) < mBuffer( k ).length() && tSectionCount == 0 )
                 {
                     this->create_key( mBuffer( k ) );
                 }
@@ -86,9 +86,23 @@ namespace belfem
         Section::create_key( const string & aLine )
         {
             size_t tPos = aLine.find(":") ;
-            string tKey = string_to_lower( clean_string( aLine.substr( 0, tPos ) ) );
-            string tString =  aLine.substr( tPos+1 ) ;
-            tString = clean_string( tString.substr( 0, tString.find(";") ) );
+
+            string tKey ;
+            string tString ;
+
+            // catch special case if there is no value assigned to the key
+            if( tPos > aLine.length() )
+            {
+                tPos = aLine.find(";") ;
+                tKey = string_to_lower( clean_string( aLine.substr( 0, tPos ) ) );
+                tString = "true" ;
+            }
+            else
+            {
+                tKey = string_to_lower( clean_string( aLine.substr( 0, tPos )));
+                tString = aLine.substr( tPos + 1 );
+                tString = clean_string( tString.substr( 0, tString.find( ";" )));
+            }
 
             mKeys[ tKey ] = tString ;
 

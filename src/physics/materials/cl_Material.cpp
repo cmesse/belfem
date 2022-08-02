@@ -147,7 +147,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
     void
-    Material::lambda3d( Matrix< real > & aLambda, const real aT ) const
+    Material::lambda_3d( Matrix< real > & aLambda, const real aT ) const
     {
         BELFEM_ERROR( false, "lambda is implemented for material %s",
                      mLabel.c_str() );

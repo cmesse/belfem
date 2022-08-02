@@ -679,10 +679,6 @@ namespace belfem
                                                    mSideSetDofs( tIndex )->Node.length() ;
                     uint tNumberOfDofsPerFacet =  mSideSetDofs( tIndex )->Lambda.length() ;
 
-                    std::cout << "#numdofs " << tNumberOfDofsPerEdge << " " << tNumberOfDofsPerFace << " " << tNumberOfVolumeDofs << " " << tNumberOfDofsPerFacet << std::endl ;
-
-                    std::cout << "#numlayers " <<  aSideSet->number_of_ghost_sidesets() << std::endl ;
-
                     if ( tNumberOfDofsPerEdge == 0 && tNumberOfDofsPerFace == 0 )
                     {
                         return tNumberOfVolumeDofs + tNumberOfDofsPerFacet ;
@@ -1030,15 +1026,23 @@ namespace belfem
                     "Field '%s' is not an edge field", aEdgeFieldLabel.c_str() );
 
             // grab ghost element
-            mesh::Element * tElement = mMesh->ghost_facet( aElement->id(), aLayer )->element();
+            mesh::Element * tElementA = mMesh->ghost_facet( aElement->id(), aLayer )->element();
 
             // get ref to field on mesh
             Vector< real > & tField = mMesh->field_data( aEdgeFieldLabel );
 
             // loop over all edges
+            uint tCount = 0 ;
             for( uint e=0; e< mNumberOfEdgesPerElement; ++e )
             {
-                aData( e ) = tField( tElement->edge( e )->index() );
+                aData( tCount++ ) = tField( tElementA->edge( e )->index() );
+            }
+
+            mesh::Element * tElementB = mMesh->ghost_facet( aElement->id(), aLayer+1 )->element();
+
+            for( uint e=0; e< mNumberOfEdgesPerElement; ++e )
+            {
+                aData( tCount++ ) = tField( tElementB->edge( e )->index() );
             }
         }
 
@@ -1053,6 +1057,8 @@ namespace belfem
                 const uint       aLayer,
                 Vector< real > & aData )
         {
+            BELFEM_ERROR( false, "this function needs to be fixed, see other edge_data_from_layer" );
+
             BELFEM_ASSERT( mNumberOfRhsDofsPerEdge == 2,
                            "this function can be used for quadratic interpolation only ( two dofs per edge )" );
 
@@ -1907,28 +1913,19 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        const Matrix< real > &
-        IWG::node_coords_from_master( Element * aElement )
+        void
+        IWG::collect_node_coords( Element * aElement, Matrix< real > & aX )
         {
-            BELFEM_ASSERT( mGroup->type() == GroupType::SIDESET,
-                          "IWG must be linked to sideset when requesting the master node coordinates of an element" );
-
-            // grab container
-            Matrix< real > & aX = mGroup->work_Xi();
-
             // get master element
-            mesh::Element * tMaster = aElement->element()->element( 0 );
-
+            mesh::Element * tElement = aElement->element() ;
 
             for( uint i=0; i<=mNumberOfSpatialDimensions; ++i )
             {
-                for( uint k=0; k<tMaster->number_of_nodes(); ++k )
+                for( uint k=0; k<tElement->number_of_nodes(); ++k )
                 {
-                    aX( k, i ) = tMaster->node( k )->x( i );
+                    aX( k, i ) = tElement->node( k )->x( i );
                 }
             }
-
-            return aX ;
         }
 
 //------------------------------------------------------------------------------

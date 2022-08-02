@@ -97,6 +97,9 @@ namespace belfem
             // penalty factor. makes only sense for a weak BC
             real mPenalty = 1.0 ;
 
+            // id of bearing
+            id_t mBearingID = gNoID ;
+
 //-----------------------------------------------------------------------------
         private:
 //-----------------------------------------------------------------------------
@@ -190,6 +193,14 @@ namespace belfem
              */
             void
             set_penalty( const real aValue );
+
+//-----------------------------------------------------------------------------
+
+            /**
+             * set the id of the bearing
+             */
+            void
+            set_bearing( const id_t aVertexID );
 
 //-----------------------------------------------------------------------------
 
@@ -289,6 +300,11 @@ namespace belfem
              */
             void
             check_if_linked_to_dof_manager();
+
+//-----------------------------------------------------------------------------
+
+            virtual void
+            link_bearing(  DofManager * aDofManager, const id_t aBearingID );
 
 //-----------------------------------------------------------------------------
 

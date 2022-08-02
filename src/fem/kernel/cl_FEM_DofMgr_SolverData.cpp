@@ -1544,6 +1544,7 @@ namespace belfem
                                         // solve the system
                                         mSolver->solve( *mJacobian, mLhsVector, mRhsVector ) ;
 
+
                                         real tA = 1. - tIWG->omega() ;
                                         real tB = tIWG->omega() ;
 

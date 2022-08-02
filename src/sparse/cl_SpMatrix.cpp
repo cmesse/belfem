@@ -759,7 +759,7 @@ namespace belfem
 
                 for ( int c = 0; c < n; ++c )
                 {
-                    std::cout << " (" << r << ", " << mColumns[ tCount ] << ")  : " << mValues[ tCount ] << " [ " << tCount << " ]" << std::endl;
+                    std::cout << tCount << " : (" << r << ", " << mColumns[ tCount ] << ")  : " << mValues[ tCount ] << std::endl;
                     ++tCount;
                 }
             }
@@ -773,7 +773,7 @@ namespace belfem
 
                 for ( int c = 0; c < n; ++c )
                 {
-                    std::cout << " (" << r << ", " << mRows[ tCount ] << ")  : " << mValues[ tCount ] << " [ " << tCount << " ]" << std::endl;
+                    std::cout <<  tCount << " : (" << r << ", " << mRows[ tCount ] << ")  : " << mValues[ tCount ] << std::endl;
                     ++tCount;
                 }
             }

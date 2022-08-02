@@ -20,6 +20,7 @@ namespace belfem
     namespace bspline
     {
 //------------------------------------------------------------------------------
+
         class LookupTable
         {
             // mesh containing interpolation data
@@ -31,8 +32,6 @@ namespace belfem
             const ElementType mElementType;
 
             const uint mNumberOfNodesPerElement ;
-
-            const uint mNumberOfFields ;
 
             // elements of first block
             Cell< mesh::Element * > & mElements;

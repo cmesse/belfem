@@ -698,29 +698,30 @@ namespace belfem
             void
             linear_elasticity_PlaneStress(
                     Matrix< real > & aC,
-                    const         real   & aT ) const;
+                    const         real   aT ) const;
 
 //------------------------------------------------------------------------------
 
             void
             linear_elasticity_3d(
                     Matrix< real > & aC,
-                    const         real   & aT ) const;
+                    const         real   aT ) const;
 
 //------------------------------------------------------------------------------
 
             void
             thermal_conductivity_2d(
                     Matrix< real > & aLambda,
-                    const         real   & aT ) const;
+                    const         real   aT ) const;
 
 //------------------------------------------------------------------------------
 
             void
             thermal_conductivity_3d(
                     Matrix< real > & aLambda,
-                    const         real   & aT ) const;
+                    const         real   aT ) const;
 
+//------------------------------------------------------------------------------
         };
 
 //------------------------------------------------------------------------------
@@ -1221,7 +1222,7 @@ namespace belfem
         Group::thermal_conductivity_3d(
                 Matrix< real > & aLambda, const real aT ) const
         {
-            mMaterial->lambda( aLambda, aT );
+            mMaterial->lambda_3d( aLambda, aT );
         }
 
 //------------------------------------------------------------------------------

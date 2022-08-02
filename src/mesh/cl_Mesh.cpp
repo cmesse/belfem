@@ -1459,6 +1459,20 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     void
+    Mesh::unflag_everything()
+    {
+        this->unflag_all_nodes() ;
+        this->unflag_all_edges() ;
+        this->unflag_all_faces() ;
+        this->unflag_all_facets() ;
+        this->unflag_all_connectors() ;
+        this->unflag_all_vertices() ;
+    }
+
+
+//------------------------------------------------------------------------------
+
+    void
     Mesh::unflag_all_nodes()
     {
         for( mesh::Node * tNode : mNodes )

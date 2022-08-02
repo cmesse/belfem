@@ -202,13 +202,13 @@ namespace belfem
                 case(  DomainType::SuperConductor ) :
                 {
                     // allocate container for node data, used for temperature
-                    mGroup->work_tau().set_size( mNumberOfNodesPerElement );
+                    aGroup->work_tau().set_size( mNumberOfNodesPerElement );
 
                     // allocate container for edge data
-                    mGroup->work_nedelec().set_size( mNumberOfRhsEdgeDofsPerElement );
+                    aGroup->work_nedelec().set_size( mNumberOfRhsEdgeDofsPerElement );
 
                     // allocate container for all dofs
-                    mGroup->work_phi().set_size( mNumberOfDofsPerElement );
+                    aGroup->work_phi().set_size( mNumberOfDofsPerElement );
 
                     // stiffness matrix
                     aGroup->work_K().set_size( mNumberOfDofsPerElement,
@@ -221,12 +221,12 @@ namespace belfem
                 case( DomainType::Coil ) :
                 {
                     // allocate container for all dofs, phi or a field
-                    mGroup->work_phi().set_size( mNumberOfNodesPerElement );
+                    aGroup->work_phi().set_size( mNumberOfNodesPerElement );
 
                     // for A-Vector
-                    if( mGroup->parent()->mesh()->number_of_dimensions() == 3 )
+                    if( aGroup->parent()->mesh()->number_of_dimensions() == 3 )
                     {
-                        mGroup->work_Phi().set_size(  mNumberOfNodesPerElement, 3 );
+                        aGroup->work_Phi().set_size(  mNumberOfNodesPerElement, 3 );
                     }
 
                     // stiffness matrix
@@ -300,7 +300,8 @@ namespace belfem
                     mNumberOfNodesPerElement = mesh::number_of_nodes( aGroup->slave_type() );
 
                     // container for node coordinates
-                    mGroup->work_X().set_size( mNumberOfNodesPerElement, mNumberOfDimensions );
+                    aGroup->work_X().set_size( mNumberOfNodesPerElement, mNumberOfDimensions );
+                    aGroup->work_Xi().set_size( mNumberOfNodesPerElement, mNumberOfDimensions );
 
                     // stiffness matrix
                     aGroup->work_K().set_size( mNumberOfDofsPerElement,
@@ -309,11 +310,14 @@ namespace belfem
                     // work vector for B-Matrix
                     aGroup->work_B().set_size( 1, 2 * mNumberOfNodesPerElement );
                     aGroup->work_C().set_size( 1, mNumberOfDofsPerEdge + 1 );
-                    aGroup->work_L().set_size( 1, mNumberOfNodesPerElement * 2, 0.0 );
-                    aGroup->work_D().set_size( mNumberOfNodesPerElement * 2, mNumberOfNodesPerElement * 2, 0.0 );
 
                     // data for nxB or nxN in 2D
-                    aGroup->work_sigma().set_size( mNumberOfNodesPerElement, 0.0 );
+                    aGroup->work_Sigma().set_size( 1,mNumberOfDofsPerElement, 0.0 );
+
+                    // transformation matrix n*B or n*N in 2D
+                    aGroup->work_Tau().set_size( 1,mNumberOfDofsPerElement, 0.0 );
+
+                    aGroup->work_sigma().set_size( mNumberOfNodesPerElement );
 
                     // the geometry jacobian for the master and slave elements
                     aGroup->work_J().set_size( mNumberOfDimensions, mNumberOfDimensions );
@@ -322,15 +326,15 @@ namespace belfem
                     uint tN = mesh::interpolation_order_numeric( aGroup->element_type() ) + 1 ;
 
                     aGroup->work_M().set_size( tN, tN, 0.0 );
-
+                    aGroup->work_L().set_size( tN, tN, 0.0 );
 
                     // data for edge dofs
-                    aGroup->work_phi().set_size( this->number_of_ghost_sidesets() * mNumberOfDofsPerEdge, 0.0 ) ;
+                    aGroup->work_phi().set_size( 2 * mEdgeDofMultiplicity * mNumberOfDofsPerEdge, 0.0 ) ;
 
                     // todo: add face dofs for 3D
                     if( mNumberOfDofsPerFace > 0 && mMesh->number_of_dimensions() == 3 )
                     {
-                        aGroup->work_psi().set_size( this->number_of_ghost_sidesets() * mNumberOfDofsPerFace, 0.0 );
+                        aGroup->work_psi().set_size( 2  * mFaceDofMultiplicity * mNumberOfDofsPerFace, 0.0 );
                     }
 
                     // data for temperatures

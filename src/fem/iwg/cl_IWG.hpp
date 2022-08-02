@@ -1060,8 +1060,8 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            const Matrix< real > &
-            node_coords_from_master( Element * aElement );
+            void
+            collect_node_coords( Element * aElement, Matrix< real > & aX );
 
 //------------------------------------------------------------------------------
         private:

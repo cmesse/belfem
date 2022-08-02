@@ -1048,10 +1048,6 @@ namespace belfem
                 {
                     for( uint d: aThinShellEdgeDofTypes )
                     {
-                        std::cout << "#check " << tLayer->edge( k )->id() << " "
-                        << d << " " << aDofManager->calculate_dof_id(
-                                tLayer->edge( k ), d ) << std::endl ;
-
                         mDOFs[ tCount++ ] = aDofManager->dof(
                                 aDofManager->calculate_dof_id(
                                         tLayer->edge( k ), d ) );
@@ -1070,8 +1066,6 @@ namespace belfem
 
             // link lambda dofs
             this->link_lambda_dofs( aDofManager, aLambdaDofTypes, tCount );
-
-            aDofManager->iwg()->print_dofs( this ) ;
 
             BELFEM_ASSERT( mNumberOfDofs == tCount, "number of dofs for element %lu does not match (is %u, expect %u)",
                 ( long unsigned int ) this->id(), tCount, mNumberOfDofs );
@@ -1136,8 +1130,6 @@ namespace belfem
                 }
 
             }
-
-            aDofManager->iwg()->print_dofs( this ) ;
 
             BELFEM_ASSERT( mNumberOfDofs == tCount, "number of dofs for element %lu does not match (is %u, expect %u)",
                            ( long unsigned int ) this->id(), tCount, mNumberOfDofs );

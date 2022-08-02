@@ -386,14 +386,20 @@ namespace belfem
         }
 
 //------------------------------------------------------------------------------
-
+#if BELFEM_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#endif
         void
         IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_thinshell(
                 Element        * aElement,
                 Matrix< real > & aJacobian,
                 Vector< real > & aRHS )
         {
-            const IntegrationData * tNodeFunction = this->interface_data( aElement );
+
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            // containers and symbols
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
             // mass matrix
             Matrix< real > & tM = aJacobian ;
@@ -401,129 +407,228 @@ namespace belfem
             // stiffness matrix
             Matrix< real > & tK = mGroup->work_K() ;
 
-            // geometry jacobian for master and slave
-            Matrix< real > & tJ =  mGroup->work_J() ;
-
-            // node coordinates for master and slave
-            Matrix< real > & tX = mGroup->work_X() ;
-
-            // gradient operator for master and slave
-            Matrix< real > & tB = mGroup->work_B() ;
-
-            // container for expression cross( n, B )
-            Vector< real > & tnxB = mGroup->work_sigma() ;
-
-            // sub mass matrix
-            Matrix< real > & tMlayer = mGroup->work_M() ;
-
-            // sub stiffness matrix
-            Matrix< real > & tKlayer = mGroup->work_M() ;
-
             // the sign of the edge
             const real tSign = aElement->edge_direction( 0 ) ? 1.0 : -1.0 ;
 
-            // reset values
+            // container for geometry jacobian for master and slave
+            Matrix< real > & tJ =  mGroup->work_J() ;
+
+            // container for gradient operator
+            Matrix< real > & tB = mGroup->work_B() ;
+
+            // container for transformation matrix
+
+            // the T-matrix projects phi to hn
+            Matrix< real > & tT = mGroup->work_Tau() ;
+
+            // shape function for phi
+            Matrix< real > & tN = mGroup->work_Sigma() ;
+
+            // coordinates for master
+            Matrix< real > & tXm = mGroup->work_X() ;
+
+            // coordinates for slave
+            Matrix< real > & tXs = mGroup->work_Xi() ;
+
+            // expression cross( n, B )
+            Vector< real > tnxB = mGroup->work_sigma() ;
+
+            // mass matrix for individual layer
+            Matrix< real > & tMlayer = mGroup->work_M() ;
+
+            // stiffness matrix for individual layer
+            Matrix< real > & tKlayer = mGroup->work_L() ;
+
+            // data for magnetic field (H-data)
+            Vector< real > & tH = mGroup->work_phi() ;
+
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            // reset matrices
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             tM.fill( 0.0 );
             tK.fill( 0.0 );
             aRHS.fill( 0.0 );
 
-            // data for magnetic scalar pontential
-            Vector< real > & tPhi = mGroup->work_phi() ;
+            const IntegrationData * tNodeFunction = this->interface_data( aElement );
 
-            tPhi.print("phi");
-
-            // data for magnetic field
-            Vector< real > & tH = mGroup->work_phi() ;
-
-            this->print_dofs( aElement );
-            this->collect_edge_data( aElement, "edge_h", tH );
-
-            // check sign
-            tH *= tSign ;
-
-            tH.print("edge_h");
-
-
-            // data for temperatures
-            //Vector< real > & tT = mGroup->work_tau() ;
-            //this->collect_edge_data( aElement, "cell_T", tT );
-
-            // std::cout << "check " << aRHS.length() << " " << tM.n_cols() << " " << tK.n_cols() << std::endl ;
-
-            // mGroup->master_integration( aElement->facet()->master_index() );
-            // mGroup->slave_integration( aElement->facet()->slave_index() );
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            // geometry considerations and integration data
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
             // compute the normal
             const Vector< real > & tn = this->normal_straight_2d( aElement );
+
+
+            // compute the element length
             const real tElementLength = mGroup->work_det_J() + mGroup->work_det_J();
 
+            // collect coordinates from master
+            this->collect_node_coords( aElement->master(), tXm );
+
+            // collect coordinates from slave
+            this->collect_node_coords( aElement->slave(), tXs );
+
+            // get integration data from master
+            const IntegrationData * tIntMaster =
+                    mGroup->master_integration( aElement->facet()->master_index() );
+
+            // get integration data from slave
+            const IntegrationData * tIntSlave =
+                    mGroup->slave_integration( aElement->facet()->slave_index() );
+
+            // integration weights on master
+            const Vector< real > & tWm = tIntMaster->weights() ;
+
+            // integration weights on slave
+            const Vector< real > & tWs = tIntSlave->weights() ;
+
+            BELFEM_ASSERT( tWm.length() == mNumberOfIntegrationPoints, "number of integraiton points on master does not match" );
+            BELFEM_ASSERT( tWs.length() == mNumberOfIntegrationPoints, "number of integraiton points on slave does not match" );
+
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            // Laplace condition, slave on master
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+            // reset T-matrix
+            tT.fill( 0.0 );
+
+            // compute jacobian ( it is constant in first order, so we can set k=0
+            tJ = tIntSlave->dNdXi( 0 ) * tXs ;
+
+            // gradient operator
+            tB = inv( tJ ) * tIntSlave->dNdXi( 0 ) ;
+
+            // offset in matrix
+            uint tOff = mNumberOfNodesPerElement ;
+
+            // populate transformation matrix
+            for( uint i=0; i<mNumberOfNodesPerElement; ++i )
+            {
+                tT( 0, tOff++ ) =
+                          tn( 0 ) * tB( 0, i )
+                        + tn( 1 ) * tB( 1, i );
+            }
+
+            // loop over all integration points
+            // since T is constant, we can directly integrate over n
+
+            // reset N-matrix
+            tN.fill( 0.0 );
+
+            for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+            {
+                // grab shape function
+                const Vector< real > & tPhi = tIntMaster->phi( k );
+
+                // populate N-vector
+                for ( uint i = 0; i < mNumberOfNodesPerElement; ++i )
+                {
+                    tN( 0, i ) += tWm( k ) * tPhi( i );
+                }
+            }
+
+
+            // contribution to stiffness from laplace slave onto master
+            // tM += trans( tN ) * tT ;
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // lambda-condition for master element, air side
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
             // compute the B-Matrix ( is constant for linear elements )
-            aElement->master()->get_node_coors( tX );
-            tJ = tNodeFunction->dNdXi( 0 ) * tX ;
-            tB = inv( tJ ) * tNodeFunction->dNdXi( 0 );
-            tn.print("n");
             crossmat( tn, tB, tnxB );
-            tB.print("Bm");
-            tnxB.print("nxBm");
-            // number of nodes
-            const uint n = tX.n_rows() ;
-
             // get the column
-            uint i = 0 ;
-            uint j = aRHS.length() - 2 ;
+            uint p = 0 ;
+            uint q = aRHS.length() - 2 ;
 
-            for( uint k=0; k<n; ++k)
+            for( uint k=0; k<mNumberOfNodesPerElement; ++k)
             {
-                tM( i, j ) = tnxB( k ) ;
-                tM( j, i ) = tnxB( k ) ;
-                ++i ;
+                tM( p, q ) = tnxB( k ) ;
+                tM( q, p ) = tnxB( k ) ;
+                ++p ;
             }
+
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            // Laplace condition, master on slave
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+            // reset T-matrix
+            tT.fill( 0.0 );
+
+            // compute jacobian ( it is constant in first order, so we can set k=0
+            tJ = tIntMaster->dNdXi( 0 ) * tXm ;
+
+            // gradient operator
+            tB = inv( tJ ) * tIntMaster->dNdXi( 0 ) ;
+
+            // populate transformation matrix
+            for( uint i=0; i<mNumberOfNodesPerElement; ++i )
+            {
+                tT( 0, i ) =
+                        tn( 0 ) * tB( 0, i )
+                        + tn( 1 ) * tB( 1, i );
+            }
+
+            // loop over all integration points
+            // since T is constant, we can directly integrate over n
+
+            // reset N-matrix
+            tN.fill( 0.0 );
+
+            for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+            {
+                // grab shape function
+                const Vector< real > & tPhi = tIntSlave->phi( k );
+                tOff = mNumberOfNodesPerElement ;
+
+                // populate N-vector
+                for ( uint i = 0; i < mNumberOfNodesPerElement; ++i )
+                {
+                    tN( 0, tOff++ ) += tWs( k ) * tPhi( i );
+                }
+            }
+
+            // apparently transposed value of other matrix
+            // tM += trans( tN ) * tT ;
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // lambda-condition for slave element, air side
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
             // next column
-            j++;
-            aElement->slave()->get_node_coors( tX );
-            tJ = tNodeFunction->dNdXi( 0 ) * tX ;
-            tB = inv( tJ ) * tNodeFunction->dNdXi( 0 );
-            tB.print("Bs");
+            p = mNumberOfNodesPerElement ;
+            q = aRHS.length() - 1 ;
+
             crossmat( tn, tB, tnxB );
-            tnxB.print("nxBs");
-            for( uint k=0; k<n; ++k)
+
+            for( uint k=0; k<mNumberOfNodesPerElement; ++k)
             {
-                tM( i, j ) = tnxB( k ) ;
-                tM( j, i ) = tnxB( k ) ;
-                ++i ;
+                tM( p, q ) = tnxB( k ) ;
+                tM( q, p ) = tnxB( k ) ;
+                ++p ;
             }
-
-
-            // scale to help with conditioning
-            tM *= constant::mu0 ;
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // lambda-condition for master element, sheet side
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            j--;
-            tM( i, j ) = tSign ;
-            tM( j, i ) = tSign ;
+            q--;
+            tM( p, q ) = tSign ;
+            tM( q, p ) = tSign ;
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // lambda-condition for slave element, sheet side
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            i = j-1 ;
-            j++;
-            tM( i, j ) = tSign ;
-            tM( j, i ) = tSign ;
+            p = q-1 ;
+            q++;
+            tM( p, q ) = tSign ;
+            tM( q, p ) = tSign ;
+
+
+            // scale for better conditioning
+            tM *= constant::mu0 ;
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            // contribution for mass matrix
+            // contribution for mass and stiffness matrix
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
             tMlayer( 0, 0 ) = 2.0 ;
@@ -533,49 +638,52 @@ namespace belfem
             tMlayer *= constant::mu0 / 6.0 ;
 
             // need thicknesses here
-            i = 2 * mNumberOfNodesPerElement ;
+            p = 2 * mNumberOfNodesPerElement ;
 
             uint tNumLayers = mGroup->number_of_thin_shell_layers() ;
+
+            // this->print_dofs( aElement );
+
 
             // loop over all layers
             for( uint l=0; l<tNumLayers; ++l )
             {
 
+                this->collect_edge_data_from_layer( aElement, "edge_h", l, tH );
+
                 // get thickness of thin shell
                 real t = mGroup->thin_shell_thickness( l );
 
-                tM(i,i)     += tMlayer(0,0) * t ;
-                tM(i+1,i)   += tMlayer(1,0) * t ;
-                tM(i,i+1)   += tMlayer(0,1) * t ;
-                tM(i+1,i+1) += tMlayer(1,1) * t ;
+                tM(p,p)     += tMlayer(0,0) * t ;
+                tM(p+1,p)   += tMlayer(1,0) * t ;
+                tM(p,p+1)   += tMlayer(0,1) * t ;
+                tM(p+1,p+1) += tMlayer(1,1) * t ;
 
                 this->compute_layer_stiffness( aElement, l, tH, tKlayer );
-                tK(i,i)     += tKlayer(0,0) ;
-                tK(i+1,i)   += tKlayer(1,0) ;
-                tK(i,i+1)   += tKlayer(0,1) ;
-                tK(i+1,i+1) += tKlayer(1,1) ;
+                tK(p,p)     += tKlayer(0,0) ;
+                tK(p+1,p)   += tKlayer(1,0) ;
+                tK(p,p+1)   += tKlayer(0,1) ;
+                tK(p+1,p+1) += tKlayer(1,1) ;
 
-                ++i ;
+                ++p ;
 
             }
-
 
             // scale mass matrix with element length
             // ( thus simplifying an integral over constant)
             tM *= tElementLength ;
             tK *= tElementLength ;
 
-            tM.print("M");
-            tK.print("K");
-            //exit( 0 );
-
             // compute the right hand side
             aRHS = tM *  this->collect_q0_hphi_thinshell( aElement ) ;
 
             // finalize the Jacobian
             aJacobian += mDeltaTime * mGroup->work_K() ;
-        }
 
+        }
+#if BELFEM_GCC
+#pragma GCC diagnostic pop
+#endif
 //------------------------------------------------------------------------------
 
         void
@@ -600,18 +708,6 @@ namespace belfem
             // integration data
             const IntegrationData * tInteg = mGroup->thinshell_integration();
 
-            // grab ghost element
-            mesh::Facet * tFacet = mMesh->ghost_facet( aElement->id(), aLayer );
-
-            std::cout << "edge " << tFacet->edge( 0 )->id() << std::endl ;
-
-            std::cout << "nodes" << tFacet->edge( 0 )->node( 0 ) ->id() << " " <<tFacet->edge( 0 )->node( 1 )->id() << std::endl ;
-
-            std::cout << "mat " << tMaterial->label() << std::endl ;
-            std::cout << "thick " << tThickness << std::endl ;
-
-
-
             // get the ingeration weights
             const Vector< real > & tW = tInteg->weights() ;
             uint tNumIntpoints = tW.length() ;
@@ -626,7 +722,7 @@ namespace belfem
             real tT = 4.0 ;
 
             // current density is constant for linear element
-            real tJz = (  aH( aLayer+1 ) - aH(aLayer ) )  / tThickness ;
+            real tJz = (  aH( 1 ) - aH(0 ) )  / tThickness ;
 
             // curl operator is constant for linear element
             tC = tInteg->dNdXi( 0 ) ;
@@ -640,15 +736,15 @@ namespace belfem
 
 
                 // magnetic field
-                tB = constant::mu0 * ( tN( 0, 0) * aH( aLayer )
-                        + tN( 0, 1 ) * aH( aLayer + 1 ) );
+                tB = constant::mu0 * ( tN( 0, 0) * aH( 0 )
+                        + tN( 0, 1 ) * aH( 1) );
 
-                real tRho = tMaterial->rho_el( tJz, tT, tB ) + 1e-12 ;
+                //real tRho = std::min( tMaterial->rho_el( tJz, tT, tB ) + 1e-12 , 1e-3 );
+                real tRho = tMaterial->rho_el( tJz, tT, tB ) ;
 
                 aK += ( tW( k ) * tRho ) * trans( tC ) * tC ;
 
-
-                std::cout << k << " B=" << tB << " J=" << tJz << " rho " << tRho << std::endl ;
+                // std::cout << k << " " << tMaterial->label() << " B=" << tB << " J=" << tJz << " rho " << tRho << std::endl ;
 
             }
             aK *= tJ ;

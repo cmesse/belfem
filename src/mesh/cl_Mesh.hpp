@@ -386,6 +386,11 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
+        unflag_everything();
+
+//------------------------------------------------------------------------------
+
+        void
         unflag_all_nodes();
 
 //------------------------------------------------------------------------------
@@ -465,13 +470,22 @@ namespace belfem
          */
         bool
         sideset_exists( const id_t aID ) const ;
+
 //------------------------------------------------------------------------------
+
+        /**
+         * check if node exists
+         */
+        bool
+        node_exists( const id_t aID ) const ;
+
+//------------------------------------------------------------------------------
+
         /**
          * check if cut exists
          */
         bool
         cut_exists( const id_t aID ) const ;
-
 
 //------------------------------------------------------------------------------
 
@@ -1230,6 +1244,14 @@ namespace belfem
     Mesh::sideset_exists( const id_t aID ) const
     {
         return mSideSetMap.key_exists( aID );
+    }
+
+//------------------------------------------------------------------------------
+
+    inline bool
+    Mesh::node_exists( const id_t aID ) const
+    {
+        return mNodeMap.key_exists( aID );
     }
 
 //------------------------------------------------------------------------------
