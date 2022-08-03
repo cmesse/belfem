@@ -3,9 +3,11 @@ if( DEFINED ENV{TPLS} )
     # library directory
     if( IS_DIRECTORY $ENV{TPLS}/lib64 )
         list( APPEND BELFEM_RPATH $ENV{TPLS}/lib64 )
+        set( TPLSLIBDIR $ENV{TPLS}/lib64 )
         link_directories($ENV{TPLS}/lib64)
     elseif( IS_DIRECTORY $ENV{TPLS}/lib )
         list( APPEND BELFEM_RPATH $ENV{TPLS}/lib )
+        set( TPLSLIBDIR $ENV{TPLS}/lib )
         link_directories($ENV{TPLS}/lib)
     else()
         message( FATAL_ERROR "Could not find TPLS library directory" )
@@ -34,6 +36,4 @@ else()
     else()
         message( FATAL_ERROR "TPLS environment variable is not set" )
     endif()
-
-
 endif()

@@ -59,37 +59,33 @@
   <component name="ChangeListManager">
     <list default="true" id="120f1831-a9f1-4c21-bf0a-19444f852628" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/comm/commtools.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/comm/commtools.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/compiler/detect_icc.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/config/compiler/detect_icc.cmake" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/linalg/config_mkl.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/config/linalg/config_mkl.cmake" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/linalg/config_mumps.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/config/linalg/config_mumps.cmake" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/system/find_tplibs.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/config/system/find_tplibs.cmake" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/core/banner.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/banner.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/fem/bspline/cl_BS_LookupTable.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/bspline/cl_BS_LookupTable.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/bspline/cl_BS_LookupTable.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/bspline/cl_BS_LookupTable.hpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_BoundaryCondition.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_BoundaryCondition.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_BoundaryCondition.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_BoundaryCondition.hpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofManager.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofManager.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofMgr_SolverData.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofMgr_SolverData.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Element.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Element.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Group.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Group.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_FEM_MaxwellBoundaryConditionMagfield.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_FEM_MaxwellBoundaryConditionMagfield.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_FEM_MaxwellBoundaryConditionMagfield.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_FEM_MaxwellBoundaryConditionMagfield.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri3.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri3.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Kernel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Kernel.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_MaxwellFactory.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_MaxwellFactory.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_MaxwellMaterial.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_MaxwellMaterial.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/en_FEM_MagfieldBcType.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/en_FEM_MagfieldBcType.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/io/cl_Input_Section.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/io/cl_Input_Section.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_MaxwellFactory.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_MaxwellFactory.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/fn_FEM_compute_element_current_thinshell.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/fn_FEM_compute_element_current_thinshell.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/lbl/test_input.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/lbl/test_input.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/math/graph/fn_Graph_sort.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/math/graph/fn_Graph_sort.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/math/tensor/cl_Tensor.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/math/tensor/cl_Tensor.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/Mesh_Enums.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/Mesh_Enums.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Element.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Element.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Element.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Element.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_LagrangeElement.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_LagrangeElement.hpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_IsotropicMaterial.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_IsotropicMaterial.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_IsotropicMaterial.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_IsotropicMaterial.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_CCSIC.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_CCSIC.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/physics/materials/cl_Material_CCSIC.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/physics/materials/cl_Material_CCSIC.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sparse/cl_SpMatrix.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/sparse/cl_SpMatrix.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh_Scissors.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh_Scissors.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh_TapeRoller.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh_TapeRoller.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh_TapeRoller.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh_TapeRoller.hpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -149,11 +145,6 @@
     <configuration default="true" type="GradleAppRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
         <option name="com.jetbrains.cidr.cpp.gradle.execution.GradleNativeBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
-      </method>
-    </configuration>
-    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
-      <method v="2">
-        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
     <configuration name="banner" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="banner" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="banner">
@@ -596,7 +587,10 @@
       <workItem from="1659311253701" duration="19776000" />
       <workItem from="1659385091179" duration="3000" />
       <workItem from="1659385162423" duration="29293000" />
-      <workItem from="1659415682321" duration="2633000" />
+      <workItem from="1659415682321" duration="7479000" />
+      <workItem from="1659483880835" duration="26212000" />
+      <workItem from="1659510364672" duration="1281000" />
+      <workItem from="1659511734535" duration="824000" />
     </task>
     <servers />
   </component>

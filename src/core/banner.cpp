@@ -117,41 +117,44 @@ namespace belfem
         // banner is only printed by first proc
         if( gComm.rank() == 0 )
         {
-            std::fprintf( stdout, ".______    _______  __       _______  _______ .___  ___.\n");
-            std::fprintf( stdout, "|   _  \\  |   ____||  |     |   ____||   ____||   \\/   |\n");
-            std::fprintf( stdout, "|  |_)  | |  |__   |  |     |  |__   |  |__   |  \\  /  |\n");
-            std::fprintf( stdout, "|   _  <  |   __|  |  |     |   __|  |   __|  |  |\\/|  |\n");
-            std::fprintf( stdout, "|  |_)  | |  |____ |  `----.|  |     |  |____ |  |  |  |\n");
-            std::fprintf( stdout, "|______/  |_______||_______||__|     |_______||__|  |__|\n\n");
+            std::fprintf( stdout, "    .______    _______  __       _______  _______ .___  ___.\n");
+            std::fprintf( stdout, "    |   _  \\  |   ____||  |     |   ____||   ____||   \\/   |\n");
+            std::fprintf( stdout, "    |  |_)  | |  |__   |  |     |  |__   |  |__   |  \\  /  |\n");
+            std::fprintf( stdout, "    |   _  <  |   __|  |  |     |   __|  |   __|  |  |\\/|  |\n");
+            std::fprintf( stdout, "    |  |_)  | |  |____ |  `----.|  |     |  |____ |  |  |  |\n");
+            std::fprintf( stdout, "    |______/  |_______||_______||__|     |_______||__|  |__|\n\n");
 
+            std::fprintf( stdout, "    The Berkeley Lab Finite Element Framework\n\n");
 
-
-            std::fprintf( stdout, "     The Berkeley Lab Finite Element Framework\n");
-            std::fprintf( stdout, "\n\n");
-            std::fprintf( stdout, "     BSD 3-Clause License \n\n");
-            std::fprintf( stdout, "     Copyright (c) 2022 Christian Messe  - cmesse@lbl.gov\n");
-            std::fprintf( stdout, "     All rights reserved.\n\n");
-
-            if( aExecName != "" )
+            if( aExecName.length() > 0 )
             {
-                std::fprintf( stdout, "\n");
-                std::fprintf( stdout, aExecName.c_str() );
-                std::fprintf( stdout, "\n");
+                std::fprintf( stdout, "\n    %s\n\n",aExecName.c_str() );
             }
+            else
+            {
+                std::fprintf( stdout, "\n\n");
+            }
+
+            std::fprintf( stdout, "    Copyright (c) 2022 The Regents of the University of California,\n");
+            std::fprintf( stdout, "    through Lawrence Berkeley National Laboratory (subject to receipt,\n");
+            std::fprintf( stdout, "    of any required approvals from the U.S. Dept. of Energy).\n");
+            std::fprintf( stdout, "    All rights reserved.\n\n");
+            std::fprintf( stdout, "    Developed by Christian Messe  - cmesse@lbl.gov\n\n");
+
 // Parallel flags
 #ifdef  BELFEM_MPI
-            std::fprintf( stdout, "     using MPI\n" );
+            std::fprintf( stdout, "    using MPI\n\n" );
 #endif
 #ifdef  BELFEM_OPENMP
-            std::fprintf( stdout, "     using OpenMP\n" );
+            std::fprintf( stdout, "    using OpenMP\n\n" );
 #endif
 
 #if !defined(NDEBUG) || defined(DEBUG)
-            std::fprintf( stdout, "     DEBUG flags are on.\n\n");
+            std::fprintf( stdout, "    DEBUG flags are on.\n\n");
 #endif
 
             // Who?
-            std::fprintf( stdout, "     User/Host     : %s at %s ( %s %s / %s )\n",
+            std::fprintf( stdout, "    User/Host     : %s at %s ( %s %s / %s )\n",
                           exec( "whoami").c_str(),
                           exec( "uname -n").c_str(),
                           exec( "uname -s").c_str(),
@@ -160,65 +163,65 @@ namespace belfem
 
             std::string tCpuInfo = cpu_info();
 
-            std::fprintf( stdout, "     CPU Info      : %s \n", tCpuInfo.c_str() );
-            std::fprintf( stdout, "     Procs Used    : %i \n", ( int ) gComm.size() );
+            std::fprintf( stdout, "    CPU Info      : %s \n", clean_string( tCpuInfo.c_str() ).c_str() );
+            std::fprintf( stdout, "    Procs Used    : %i \n", ( int ) gComm.size() );
 
             // insert blank line
             std::fprintf( stdout, "\n");
 
             // When built?
-            std::fprintf( stdout, "     Build Date    : %s at %s\n", __DATE__ , __TIME__ );
+            std::fprintf( stdout, "    Build Date    : %s at %s\n", __DATE__ , __TIME__ );
 
 
             // What Compiler
 #ifdef BELFEM_GCC
-            std::fprintf( stdout, "     Compiler      : GNU Compiler Collection\n");
+            std::fprintf( stdout, "    Compiler      : GNU Compiler Collection\n");
 #elif BELFEM_CLANG
-            std::fprintf( stdout, "     Compiler      : Apple Clang\n");
+            std::fprintf( stdout, "    Compiler      : Apple Clang\n");
 #elif BELFEM_INTEL
-            std::fprintf( stdout, "     Compiler      : Intel oneAPI\n");
+            std::fprintf( stdout, "    Compiler      : Intel oneAPI\n");
 #elif BELFEM_PGI
-            std::fprintf( stdout, "     Compiler      : NVidia PGI \n");
+            std::fprintf( stdout, "    Compiler      : NVidia PGI \n");
 #endif
 
-            // What LAPACK Lib
+// What LAPACK Lib
 #ifdef BELFEM_NETLIB
-            std::fprintf( stdout, "     BLAS & LAPACK : Netlib\n");
+            std::fprintf( stdout, "    BLAS & LAPACK : Netlib\n");
 #elif BELFEM_ACCELLERATE
-            std::fprintf( stdout, "     BLAS & LAPACK : Apple Accellerate Framework\n");
+            std::fprintf( stdout, "    BLAS & LAPACK : Apple Accellerate Framework\n");
 #elif BELFEM_MKL
-            std::fprintf( stdout, "     BLAS & LAPACK : Intel Math Kernel Library (MKL)\n");
+            std::fprintf( stdout, "    BLAS & LAPACK : Intel Math Kernel Library (MKL)\n");
 #endif
 
 
             // What Matrix lib?
 #ifdef BELFEM_ARMADILLO
-            std::fprintf( stdout, "     Matrix Lib    : Armadillo\n");
+            std::fprintf( stdout, "    Matrix Lib    : Armadillo\n");
 #elif  BELFEM_BLAZE
-            std::fprintf( stdout, "     Matrix Lib    : Blaze\n");
+            std::fprintf( stdout, "    Matrix Lib    : Blaze\n");
 #endif
             // What Solver libs
 #ifdef BELFEM_SUITESPARSE
-            std::fprintf( stdout, "     Solver Lib    : Suite Sparse\n");
+            std::fprintf( stdout, "    Solver Lib    : Suite Sparse\n");
 #endif
 #ifdef BELFEM_MUMPS
-            std::fprintf( stdout, "     Solver Lib    : MUMPS\n");
+            std::fprintf( stdout, "    Solver Lib    : MUMPS\n");
 #endif
 #ifdef BELFEM_PARDISO
-            std::fprintf( stdout, "     Solver Lib    : PARDISO\n");
+            std::fprintf( stdout, "    Solver Lib    : PARDISO\n");
 #endif
 #ifdef BELFEM_PETSC
-            std::fprintf( stdout, "     Solver Lib    : PETSc\n");
+            std::fprintf( stdout, "    Solver Lib    : PETSc\n");
 #endif
             // insert blank line
             std::fprintf( stdout, "\n");
 
             // What?
-            std::fprintf( stdout, "     Executable    : %s\n", gComm.exec_path().c_str() );
-            std::fprintf( stdout, "     Arguments     : %s\n", gComm.arguments().c_str()  );
+            std::fprintf( stdout, "    Executable    : %s\n", gComm.exec_path().c_str() );
+            std::fprintf( stdout, "    Arguments     : %s\n", gComm.arguments().c_str()  );
 
             // Where?
-            std::fprintf( stdout, "     Run Dir       : %s\n", gComm.workdir().c_str() );
+            std::fprintf( stdout, "    Run Dir       : %s\n", gComm.workdir().c_str() );
             std::fprintf( stdout, "\n");
 
         }

@@ -909,7 +909,10 @@ namespace belfem
 
             for( id_t tID : mIWG->ghost_sideset_ids() )
             {
-                mMesh->sideset( tID )->flag_all_nodes() ;
+                if( mMesh->sideset_exists( tID ) )
+                {
+                    mMesh->sideset( tID )->flag_all_nodes() ;
+                }
             }
 
             // loop over all dofs

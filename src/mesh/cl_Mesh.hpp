@@ -92,6 +92,10 @@ namespace belfem
         Matrix< id_t > mNodeCutTable ;
         Map< id_t, mesh::Node * > mNodeCutMap ;
 
+        // contains a list of cloned facets vs originals (for tapes)
+        Matrix< id_t > mTapeFacetTable ;
+        Map< id_t, mesh::Facet * > mTapeFacetMap ;
+
         // maximum element order
         uint mMaxElementOrder = 0 ;
 
@@ -454,6 +458,14 @@ namespace belfem
          */
         mesh::Node *
         duplicate_node( const id_t aID );
+//------------------------------------------------------------------------------
+
+        /**
+         * returns the original facet the ghost was cloned from
+         */
+
+        mesh::Facet *
+        original_facet( const id_t aID ) ;
 
 //------------------------------------------------------------------------------
 
@@ -765,6 +777,14 @@ namespace belfem
          */
         Matrix< id_t > &
         node_cut_table() ;
+
+//------------------------------------------------------------------------------
+
+        /**
+         * expose the facet table for the thin shells
+         */
+        Matrix< id_t > &
+        tape_facet_table() ;
 
 //------------------------------------------------------------------------------
 
@@ -1408,10 +1428,28 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+    inline Matrix< id_t > &
+    Mesh::tape_facet_table()
+    {
+        return mTapeFacetTable ;
+    }
+
+//------------------------------------------------------------------------------
+
     inline mesh::Node *
     Mesh::duplicate_node( const id_t aID )
     {
-        return mNodeCutMap.key_exists( aID ) ? mNodeCutMap( aID ) : mNodeMap( aID );
+        return mNodeCutMap.key_exists( aID )
+            ? mNodeCutMap( aID ) : mNodeMap( aID );
+    }
+
+//------------------------------------------------------------------------------
+
+    inline mesh::Facet *
+    Mesh::original_facet( const id_t aID )
+    {
+        return mTapeFacetMap.key_exists( aID )
+            ? mTapeFacetMap( aID ) : mFacetMap( aID );
     }
 
 //------------------------------------------------------------------------------

@@ -188,6 +188,9 @@ namespace belfem
             // list of selected ghost sideset IDs
             Vector< id_t > mGhostSideSetIDs;
 
+            // list of selected ghost block IDs
+            Vector< id_t > mGhostBlockIDs;
+
             // lookup table for block indices
             Map< id_t, index_t > mBlockIndices ;
 
@@ -307,6 +310,9 @@ namespace belfem
 
             const Vector< id_t > &
             ghost_sidesets() const ;
+
+            const Vector< id_t > &
+            ghost_blocks() const ;
 
 //------------------------------------------------------------------------------
 
@@ -733,6 +739,14 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             /**
+             * @param aGhostBlockIDs : ids as created by tape roller
+             */
+            void
+            set_ghost_blocks( const Vector< id_t >    & aGhostBlockIDs );
+
+//------------------------------------------------------------------------------
+
+            /**
              * return the ghost sideset IDs
              */
             const Vector< id_t > &
@@ -1109,6 +1123,14 @@ namespace belfem
         IWG::ghost_sidesets() const
         {
             return mGhostSideSetIDs ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline const Vector< id_t > &
+        IWG::ghost_blocks() const
+        {
+            return mGhostBlockIDs ;
         }
 
 //------------------------------------------------------------------------------

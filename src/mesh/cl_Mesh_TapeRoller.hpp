@@ -51,6 +51,7 @@ namespace belfem
             Map< id_t, index_t > mElementMap ;
 
             Vector< id_t > mGhostSideSetIDs ;
+            Vector< id_t > mGhostBlockIDs ;
 
             // backup container for orientation flipping
             Cell< mesh::Node * > mOrientationBackup ;
@@ -110,6 +111,12 @@ namespace belfem
 
             void
             shift_nodes( const Vector< real > & aLayerThicknesses );
+
+//------------------------------------------------------------------------------
+
+            //! list with created ghost blocks
+            const Vector< id_t > &
+            ghost_block_ids() const ;
 
 //------------------------------------------------------------------------------
         private:
@@ -186,6 +193,14 @@ namespace belfem
         TapeRoller::ghost_sideset_ids() const
         {
             return mGhostSideSetIDs ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline const Vector< id_t > &
+        TapeRoller::ghost_block_ids() const
+        {
+            return mGhostBlockIDs ;
         }
 
 //------------------------------------------------------------------------------

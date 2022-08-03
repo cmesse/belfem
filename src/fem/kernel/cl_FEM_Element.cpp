@@ -1461,17 +1461,27 @@ namespace belfem
         void
         Element::compute_edge_directions()
         {
+
             // number of edges of this element
             uint tNumEdges = mElement->number_of_edges() ;
 
+            if( tNumEdges == 0 )
+            {
+                return;
+            }
+
+            BELFEM_ASSERT( mElement->has_edges(), "edges not allocated for this element %lu",
+                           ( long unsigned int ) mElement->id() );
+
             Cell< mesh::Node * > tNodes ;
 
+            // if this is a facet on a tape,
+            // make sure that we take the original facet
+            //mesh::Element * tElement = ( mFacet == nullptr ) ? mElement :
+             //       mParent->parent()->mesh()->original_facet( mElement->id() )->element() ;
 
             for( uint e=0; e<tNumEdges; ++e )
             {
-                BELFEM_ASSERT( mElement->has_edges(), "edges not allocated for this element %lu",
-                               ( long unsigned int ) mElement->id() );
-
                 // grab node IDs
                 id_t tA = mElement->edge( e )->node( 0 )->id();
                 id_t tB = mElement->edge( e )->node( 1 )->id();
@@ -1505,9 +1515,8 @@ namespace belfem
                         tSuccess = true ;
                     }
 
-
-                    BELFEM_ERROR( tSuccess, "Error when trying to compute edge direction of element %lu",
-                                 ( long unsigned int ) this->id() );
+                    BELFEM_ERROR( tSuccess, "Error when trying to compute edge direction of element %lu of type %s",
+                                 ( long unsigned int ) this->id(), to_string( mElement->type() ).c_str() );
                 }
 
             }

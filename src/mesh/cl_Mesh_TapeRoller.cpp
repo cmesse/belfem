@@ -89,10 +89,7 @@ namespace belfem
 
 
 
-                mMesh->unflag_all_nodes();
-                mMesh->unflag_all_edges();
-                mMesh->unflag_all_faces();
-                mMesh->unflag_all_elements();
+                mMesh->unflag_everything();
 
                 // determine max ids for mesh entities
                 this->get_max_ids();
@@ -194,10 +191,13 @@ namespace belfem
             // get element type
             ElementType tType = mGhostLayers( 0 )->Elements( 0 )->type() ;
 
+            mGhostBlockIDs.set_size( mNumberOfBlocks );
+
             for( uint b=0; b<mNumberOfBlocks; ++b )
             {
                 // create a new block
                 Block * tBock = new mesh::Block( ++mMaxBlockID, tNumElements );
+                mGhostBlockIDs( b ) = tBock->id() ;
 
                 // populate the block
                 switch( tType )
@@ -889,6 +889,15 @@ namespace belfem
             // create the element factory
             ElementFactory tFactory;
 
+            // get the table
+            Matrix< id_t > & tTable = mMesh->tape_facet_table() ;
+
+            // allocate memory
+            tTable.set_size( 2, tCount * mNumberOfGhostLayers );
+
+            // offset for table
+            index_t tOffset = 0 ;
+
             // next, we clone the elements
             for ( uint l = 0; l < mNumberOfGhostLayers; ++l )
             {
@@ -933,6 +942,11 @@ namespace belfem
                         }
 
                         tLayerElements( tCount++ ) = tClone;
+
+                        // remember ids
+                        tTable( 0, tOffset )   = tClone->id() ;
+                        tTable( 1, tOffset++ ) = tElement->id() ;
+
                     } // end loop over all facets
                 } // end loop over all sidesets
             } // end loop over all layers

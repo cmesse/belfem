@@ -291,8 +291,6 @@ namespace belfem
             // also set ghost sidesets if selected
             for( id_t tID : mGhostSideSetIDs )
             {
-                std::cout << "ghost set " << tID << " " << tCount << std::endl ;
-
                 mSideSetIndices[ tID ] = tCount++ ;
             }
 
@@ -1909,6 +1907,14 @@ namespace belfem
         {
             mGhostSideSetMaster = aMasterSideSet,
             mGhostSideSetIDs    = aGhostSideSet ;
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        IWG::set_ghost_blocks( const Vector< id_t >    & aGhostBlockIDs )
+        {
+            mGhostBlockIDs = aGhostBlockIDs ;
         }
 
 //------------------------------------------------------------------------------

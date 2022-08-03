@@ -553,7 +553,8 @@ namespace belfem
                         mMaterials.push( tMaterial );
 
                         // add material to label map
-                        mMaterialLabelMap[ tMaterial->label() ] = tMaterial ;
+                        string tLower = string_to_lower( tMaterial->label() ) ;
+                        mMaterialLabelMap[ tMaterial->label()  ] = tMaterial ;
 
                         if( tMaterial->type() == MaterialType::Maxwell )
                         {
@@ -828,7 +829,7 @@ namespace belfem
                         const string & tKey = tSection->key( l );
                         mTapeThicknesses( l ) = tSection->get_value( tKey, "m" ).first;
 
-                        mTapeMaterialLabels.push( tKey );
+                        mTapeMaterialLabels.push( tKey  );
                     }
                 }
             }
@@ -1407,35 +1408,48 @@ namespace belfem
                     }
                 }
 
-                std::cout << "rewrite #tapeMaterials!" << std::endl ;
 
-                // get sideset ids
-                /*const Vector< id_t > & tGhostSidesetIDs
-                    = mKernel->mesh()->ghost_sideset_ids() ;
+                /*
+                 * the lines below set the physical tag for the elements so that the
+                 * material can be identified in ParaView. We only do this for the
+                 * main proc
+                 */
 
-                index_t tCount = 0 ;
-
-                for( id_t tID : tGhostSidesetIDs )
+                if( comm_rank() > 0 )
                 {
+                    return;
+                }
+                // get the block IDs
+                const Vector< id_t > & tBlockIDs = aDofManager->iwg()->ghost_blocks() ;
 
-                    // grab material
-                    Material * tMaterial = mTapeMaterials( tCount++ ) ;
+                uint tNumBlocks = tBlockIDs.length() ;
 
-                    // link material with sideset
-                    aDofManager->sideset( tID )->set_material( tMaterial );
+                // create a material map
+                Map< string, uint > tMap ;
 
-                    // check if material has been used already
-                    // (each material must exist only once in the kernel)
-                    if( ! tMaterial->is_flagged() )
+                uint tCount = 0 ;
+                for( const string & tLabel : mTapeMaterialLabels )
+                {
+                    if( ! tMap.key_exists( tLabel ) )
                     {
-                        // mark material as used
-                        tMaterial->flag();
-
-                        // add material to kernel
-                        aDofManager->parent()->add_material( tMaterial );
+                        tMap[ tLabel ] = ++tCount ;
                     }
-                }   */
+                }
 
+                for( uint b=0; b<tNumBlocks; ++b )
+                {
+                    // grab block on mesh
+                    mesh::Block * tBlock = mMesh->block( tBlockIDs( b ));
+
+                    // get the material number
+                    uint tNumber = tMap[ mTapeMaterialLabels( b ) ];
+
+                    // set the physical tag of the elements
+                    for ( mesh::Element * tElement: tBlock->elements())
+                    {
+                        tElement->set_physical_tag( tNumber );
+                    }
+                }
 
             }
         }
@@ -1474,6 +1488,7 @@ namespace belfem
 
             tMaxwell->set_sidesets( mSideSetIDs, mSideSetTypes );
 
+
             // the following lines are needed to tell the IWG from which sideset the dofs for the ghosts
             // are copied
             mGhostMaster = 0 ;
@@ -1489,8 +1504,8 @@ namespace belfem
             if( mGhostMaster > 0 )
             {
                 tMaxwell->set_ghost_sidesets( mGhostMaster, mGhostSideSets );
+                tMaxwell->set_ghost_blocks( mGhostBlocks );
             }
-
 
             for ( BoundaryCondition * tBC: mBoundaryConditions )
             {
@@ -2782,7 +2797,7 @@ namespace belfem
                     {
                         mesh::TapeRoller tTapeRoller( mMesh,
                                                       mTapeMaterialLabels.size(),
-                                                      mMesh->max_element_order());
+                                                      mMesh->max_element_order() );
 
                         for ( DomainGroup * tTape: mTapes )
                         {
@@ -2814,9 +2829,11 @@ namespace belfem
 
                         // remember ids of new sidesets
                         mGhostSideSets = tTapeRoller.ghost_sideset_ids();
+                        mGhostBlocks   = tTapeRoller.ghost_block_ids() ;
 
                         comm_barrier() ;
                         send_same( mCommTable, mGhostSideSets );
+                        send_same( mCommTable, mGhostBlocks );
 
                     }
                     else
@@ -2825,6 +2842,7 @@ namespace belfem
                         receive( 0, mMaxBlockID );
                         comm_barrier() ;
                         receive( 0, mGhostSideSets );
+                        receive( 0, mGhostBlocks );
                     }
                 }
 
@@ -2879,6 +2897,7 @@ namespace belfem
 
                     // refresh cut map
                     tScissors.collect_cut_data();
+
 
                     tCutIDs   = trans( tScissors.cut_data().row( 0 ) );
                     tSideSetIDs = trans( tScissors.cut_data().row( 1 ) );

@@ -95,6 +95,9 @@ namespace belfem
             // written by taperoller
             Vector< id_t > mGhostSideSets ;
 
+            // written by taperoller
+            Vector< id_t > mGhostBlocks ;
+
             // this one is needed to tell the IWG where the DOFs are picket from
             id_t mGhostMaster = 0 ;
 
@@ -167,9 +170,8 @@ namespace belfem
             Cell< string > mTapeMaterialLabels ;
             Vector< real > mTapeThicknesses ;
 
-            //! container with tape materials. Todo: add to sidesets
+            //! container with tape materials.
             Cell< Material * > mTapeMaterials ;
-
 
             //! maximim block id of original mesh
             id_t mMaxBlockID = gNoID ;

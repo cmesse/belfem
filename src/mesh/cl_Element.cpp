@@ -76,5 +76,15 @@ namespace belfem
         }
 
 //------------------------------------------------------------------------------
+
+        void
+        Element::print() const
+        {
+            BELFEM_ERROR( false,
+                          "invalid call of base class function print() from element %lu",
+                          ( long unsigned int ) this->id() );
+        }
+
+//------------------------------------------------------------------------------
     }
 }

@@ -35,6 +35,11 @@ int main( int    argc,
     // create communicator
     gComm = Communicator( &argc, &argv );
 
+    if( comm_rank() == 0 )
+    {
+        print_banner( "- input file test program -" );
+    }
+
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // initialize job
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -265,9 +270,26 @@ int main( int    argc,
 
                std::cout << "    iteration:  " << tIter << tAlgLabel << " omega " << tFormulation->omega()
                          << " log10(epsilon): " << std::round( std::log10( tEpsilon ) * 100 ) * 0.01 << std::endl;
+
+
            }
 
-           BELFEM_ERROR( tIter < tNonlinear.maxIter, "too many iterations" );
+           if( tIter > tNonlinear.maxIter )
+           {
+               if ( tKernel->is_master() )
+               {
+                   std::cout << "    WARNING: too many iterations. Exiting this time step" << std::endl ;
+               }
+               break ;
+           }
+           else if (  std::abs( std::log10( tEpsilon ) - std::log10( tEpsilon0 ) ) < 1e-4 )
+           {
+               if ( tKernel->is_master() )
+               {
+                   std::cout << "    WARNING: desired convergence could not be reached" << std::endl ;
+               }
+               break ;
+           }
        }
        if ( tKernel->is_master() )
        {

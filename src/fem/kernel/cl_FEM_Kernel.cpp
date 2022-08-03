@@ -579,6 +579,7 @@ namespace belfem
             // get connectors
             this->receive_facets( true );
 
+            mSubMesh->set_facets_are_linked_flag() ;
 
             this->receive_vertices();
 
@@ -700,6 +701,7 @@ namespace belfem
                     ++tCount ;
                 }
             }
+
 
             // send data
             send( aTarget, tIDs );
@@ -1210,7 +1212,7 @@ namespace belfem
 
                     for ( mesh::Element * tElement : tElements )
                     {
-                        if ( tElement->is_flagged())
+                        if ( tElement->is_flagged() )
                         {
                             tIDs( tElementCount ) = tElement->id();
                             tGeometryTags( tElementCount ) = tElement->geometry_tag();
@@ -1650,10 +1652,11 @@ namespace belfem
 
                 Vector< index_t > tIndices( tCount );
 
-
                 // collect facets
                 Cell< mesh::Facet * > tFacets( tCount, nullptr );
                 tCount = 0;
+                index_t tNodeCount = 0 ;
+
                 for( mesh::Facet * tFacet : tSideSets( s )->facets() )
                 {
                     if( tFacet->element()->is_flagged() )
@@ -1665,6 +1668,7 @@ namespace belfem
                         tAllIndices( tFacetCount++ ) = tFacet->index() ;
                         tFacets( tCount++ ) = tFacet;
                         tFacet->element()->unflag();
+                        tNodeCount += tFacet->element()->number_of_nodes() ;
                     }
                 }
 
@@ -1753,6 +1757,19 @@ namespace belfem
                         }
                         send( aTarget, tFacetIndices );
 
+                        // collect node ids
+                        tIDs.set_size( tNodeCount );
+
+                        tNodeCount = 0 ;
+                        for ( index_t k = 0; k < tCount; ++k )
+                        {
+                            mesh::Element * tElement = tFacets( k )->element() ;
+                            for( uint i=0; i<tElement->number_of_nodes(); ++i )
+                            {
+                                tIDs( tNodeCount++ ) = tElement->node( i )->id() ;
+                            }
+                        }
+                        send( aTarget, tIDs );
 
                     }
                 }
@@ -1832,6 +1849,9 @@ namespace belfem
                     // faces on facets
                     Vector< id_t > tFaceIDs ;
 
+                    // node ids
+                    Vector< id_t > tNodeIDs ;
+
                     receive( mMasterRank, tMasteIDs );
 
                     receive( mMasterRank, tSlaveIDs );
@@ -1846,6 +1866,7 @@ namespace belfem
 
                         receive( mMasterRank, tSlaveIndices );
 
+                        receive( mMasterRank, tNodeIDs );
                     }
 
                     // create a new sideset
@@ -1882,6 +1903,8 @@ namespace belfem
                     }
                     else
                     {
+                        index_t tNodeCount = 0 ;
+
                         for ( index_t f = 0; f < tNumFacets; ++f )
                         {
                             // facet master
@@ -1892,15 +1915,16 @@ namespace belfem
                                     tFactory.create_lagrange_element( mesh::element_type_of_facet(
                                             tMaster->type(), tMasterIndices( f )), tIDs( f ));
 
-                            // get nodes
-                            Cell< mesh::Node * > tNodes;
-                            tMaster->get_nodes_of_facet( tMasterIndices( f ), tNodes );
+                            // note: this is nice but fails if we introduce thin shells
+                            //       therefore, we have to communicate the node coordinates
+                            // Cell< mesh::Node * > tNodes;
+                            // tMaster->get_nodes_of_facet( tMasterIndices( f ), tNodes );
 
                             // link nodes
-                            uint tNumNodes = tNodes.size();
-                            for ( uint k = 0; k < tNumNodes; ++k )
+                            //uint tNumNodes = tNodes.size();
+                            for ( uint k = 0; k < tElement->number_of_nodes(); ++k )
                             {
-                                tElement->insert_node( tNodes( k ), k );
+                                tElement->insert_node( mNodeMap( tNodeIDs( tNodeCount++ ) ), k );
                             }
 
                             // create a facet
@@ -1909,8 +1933,8 @@ namespace belfem
                             // claim ownership
                             tFacet->set_owner( mMyRank );
 
-                            // link facet to master
-                            tFacet->set_master( tMaster, tMasterIndices( f ));
+                            // link facet to master, but do not relink nodes
+                            tFacet->set_master( tMaster, tMasterIndices( f ), false );
 
                             // save facet in map
                             mFacetMap[ tFacet->id() ] = tFacet;
@@ -1948,7 +1972,6 @@ namespace belfem
             {
                 tSets( s ) = tSideSets( s );
             }
-
 
 
 

@@ -275,6 +275,14 @@ namespace belfem
             allocate_face_container();
 
 //------------------------------------------------------------------------------
+
+            /**
+             * display some debug information
+             */
+             void
+             print() const ;
+
+//------------------------------------------------------------------------------
         private:
 //------------------------------------------------------------------------------
 
@@ -872,6 +880,24 @@ namespace belfem
                          ( long unsigned int ) this->id(),
                          ( unsigned int ) E );
         }
+
+//------------------------------------------------------------------------------
+
+        template< uint N, uint C, uint E, uint T, uint F >
+        void
+        LagrangeElement< N, C, E, T, F >::print() const
+        {
+            std::cout << "Element " << this->id() << " of type " <<
+                to_string( this->type() ) << std::endl << std::endl
+
+                    << "    Nodes : " << std::endl ;
+
+            for( uint k=0; k<N; ++k )
+            {
+                std::cout << "     " << k << " " << mNodes[ k ]->id() << std::endl ;
+            }
+        }
+
 
 //------------------------------------------------------------------------------
     }

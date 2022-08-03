@@ -16,7 +16,7 @@ namespace belfem
             mMesh( new Mesh( aPath, comm_rank(), false ) ),
             mNumberOfDimensions( mMesh->number_of_dimensions() ),
             mElementType( mMesh->block( 1 )->element_type() ),
-            mNumberOfNodesPerElement( mesh::number_of_nodes( mElementType ) )
+            mNumberOfNodesPerElement( mesh::number_of_nodes( mElementType ) ),
             mElements( mMesh->block( 1 )->elements() )
         {
             this->create_interpolation_function() ;

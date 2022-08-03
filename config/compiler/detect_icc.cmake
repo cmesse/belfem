@@ -76,26 +76,26 @@ if( USE_MPI )
     list( APPEND BELFEM_DEFS "BELFEM_MPI" )
 
     # check of mpicc exists
-    execute_process( COMMAND bash "-c" "which mpiicc" OUTPUT_VARIABLE BELFEM_MPICC )
+    execute_process( COMMAND bash "-c" "which mpicc" OUTPUT_VARIABLE BELFEM_MPICC )
     string( STRIP "${BELFEM_MPICC}" BELFEM_MPICC )
 
     if( NOT EXISTS ${BELFEM_MPICC} )
-        message( FATAL_ERROR "Could not find mpiicc executable" )
+        message( FATAL_ERROR "Could not find mpicc executable" )
     endif()
 
     # get the mpicc version number
-    execute_process( COMMAND bash "-c" "mpiicc -dumpversion" OUTPUT_VARIABLE BELFEM_MPICC_VERSION )
+    execute_process( COMMAND bash "-c" "mpicc -dumpversion" OUTPUT_VARIABLE BELFEM_MPICC_VERSION )
 
     # tidy up string
     string( STRIP "${BELFEM_MPICC_VERSION}" BELFEM_MPICC_VERSION )
 
     # make sure that version number is the same
     if( NOT BELFEM_CC_VERSION VERSION_EQUAL BELFEM_MPICC_VERSION )
-        message( FATAL_ERROR "The version numbers of the icc and mpiicc do not match" )
+        message( FATAL_ERROR "The version numbers of the icc and mpicc do not match" )
     endif()
 
     # check of mpic++ exists
-    execute_process( COMMAND bash "-c" "which mpiicpc" OUTPUT_VARIABLE BELFEM_MPICXX )
+    execute_process( COMMAND bash "-c" "which mpicxx" OUTPUT_VARIABLE BELFEM_MPICXX )
     string( STRIP "${BELFEM_MPICXX}" BELFEM_MPICXX )
 
     if( NOT EXISTS ${BELFEM_MPICXX} )
@@ -103,26 +103,26 @@ if( USE_MPI )
     endif()
 
     # get the mpicxx version number
-    execute_process( COMMAND bash "-c" "mpiicpc -dumpversion" OUTPUT_VARIABLE BELFEM_MPICXX_VERSION )
+    execute_process( COMMAND bash "-c" "mpicxx -dumpversion" OUTPUT_VARIABLE BELFEM_MPICXX_VERSION )
 
     # tidy up string
     string( STRIP "${BELFEM_MPICXX_VERSION}" BELFEM_MPICXX_VERSION )
 
     # make sure that version number is the same
     if( NOT BELFEM_CXX_VERSION VERSION_EQUAL BELFEM_MPICXX_VERSION )
-        message( FATAL_ERROR "The version numbers of icpc and mpiicpc do not match" )
+        message( FATAL_ERROR "The version numbers of icpc and mpicxx do not match" )
     endif()
 
     # check of mpifortran exists
-    execute_process( COMMAND bash "-c" "which mpiifort" OUTPUT_VARIABLE BELFEM_MPIFORT )
+    execute_process( COMMAND bash "-c" "which mpifort" OUTPUT_VARIABLE BELFEM_MPIFORT )
     string( STRIP "${BELFEM_MPIFORT}" BELFEM_MPIFORT )
 
     if( NOT EXISTS ${BELFEM_MPIFORT} )
-        message( FATAL_ERROR "Could not find mpiifort executable" )
+        message( FATAL_ERROR "Could not find mpifort executable" )
     endif()
 
     # get the mpiifortversion number
-    execute_process( COMMAND bash "-c" "mpiifort --version |  head -1 | cut -d' ' -f 3" OUTPUT_VARIABLE BELFEM_MPIFORT_VERSION )
+    execute_process( COMMAND bash "-c" "mpifort --version |  head -1 | cut -d' ' -f 3" OUTPUT_VARIABLE BELFEM_MPIFORT_VERSION )
 
     # tidy up string
     string( STRIP "${BELFEM_MPIFORT_VERSION}" BELFEM_MPIFORT_VERSION )
@@ -133,9 +133,9 @@ if( USE_MPI )
     endif()
 
     # now set the compiler variables
-    set( CMAKE_C_COMPILER  mpiicc )
-    set( CMAKE_CXX_COMPILER mpiicpc )
-    set( CMAKE_Fortran_COMPILER mpiifort )
+    set( CMAKE_C_COMPILER  mpicc )
+    set( CMAKE_CXX_COMPILER mpicxx )
+    set( CMAKE_Fortran_COMPILER mpifort )
 
 else()
     # now set the compiler variables

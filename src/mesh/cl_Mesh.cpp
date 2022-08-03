@@ -1771,8 +1771,21 @@ namespace belfem
 
         for( index_t k=0; k<tNumNodes; ++k )
         {
-            mNodeCutMap[ mNodeCutTable( 0, k ) ] = mNodeMap( mNodeCutTable( 1, k ) );
+            mNodeCutMap[ mNodeCutTable( 0, k ) ]
+                = mNodeMap( mNodeCutTable( 1, k ) );
         }
+
+        // map for ghost facets
+        mTapeFacetMap.clear() ;
+        index_t tNumFacets = mTapeFacetTable.n_cols() ;
+        {
+            for ( index_t f=0; f<tNumFacets; ++f )
+            {
+                mTapeFacetMap[ mTapeFacetTable( 0, f ) ]
+                    = mFacetMap[ mTapeFacetTable( 1, f ) ];
+            }
+        }
+        mTapeFacetTable.set_size( 0, 0 );
 
     }
 
@@ -2146,7 +2159,7 @@ namespace belfem
         {
             if ( comm_rank() == aMasterProc  )
             {
-                send( aTarget, mGhostSideSetIDs );
+                send( aTarget, mGhostSideSetIDs ) ;
 
                 if( mGhostSideSetIDs.length() > 0 )
                 {
@@ -2165,6 +2178,7 @@ namespace belfem
                     // create data that need to be sent
                     Vector< id_t > tFacetIDs( tCount );
 
+
                     // reset the counter
                     tCount = 0 ;
 
@@ -2176,8 +2190,25 @@ namespace belfem
                         }
                     }
 
+                    uint tNumLayers = this->number_of_thin_shell_layers();
+
+                    Matrix< id_t > tTapeFacetTable( 2, tNumLayers * tCount );
+
+                    tCount = 0 ;
+                    for( uint l=0; l<tNumLayers; ++l )
+                    {
+                        for ( id_t tID: tFacetIDs )
+                        {
+                            tTapeFacetTable( 0, tCount )
+                                = this->ghost_facet( tID, l )->id() ;
+                            tTapeFacetTable( 1, tCount++ ) = tID ;
+                        }
+                    }
+
                     // send data
                     send( aTarget, tFacetIDs );
+                    send( aTarget, tTapeFacetTable );
+
                 }
             }
             else
@@ -2190,7 +2221,7 @@ namespace belfem
                 if( mGhostSideSetIDs.length() > 0 )
                 {
                     receive( aMasterProc, mGhostFacetIDs );
-
+                    receive( aMasterProc, mTapeFacetTable );
 
                     index_t tCount = 0;
                     for ( id_t tID: mGhostFacetIDs )

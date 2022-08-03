@@ -10,8 +10,9 @@ namespace belfem
         void
         sort( Cell< Vertex * > & aGraph )
         {
-            belfem::sort( aGraph, graph::opVertexIndex );
+            std::sort( aGraph.vector_data().begin(),
+                       aGraph.vector_data().begin(),
+                       graph::opVertexIndex );
         }
-
     }
 }

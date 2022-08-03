@@ -39,13 +39,14 @@ namespace belfem
             }
 
             // collect blocks with ghost blocks
-            uint tNumGhostBlocks = tNumGhostSideSets - 1 ;
-            uint tNumBlocks = tMesh->number_of_blocks() ;
+            const Vector< id_t > & tBlockIDs = aMagfield->iwg()->ghost_blocks() ;
+
+            uint tNumGhostBlocks = tBlockIDs.length() ;
+
             Cell< mesh::Block * > tBlocks( tNumGhostBlocks, nullptr );
-            uint tOff = tNumBlocks - tNumGhostBlocks ;
             for( uint b=0; b<tNumGhostBlocks; ++b )
             {
-                tBlocks( b ) = tMesh->blocks()( tOff++ );
+                tBlocks( b ) = tMesh->block( tBlockIDs( b ) );
             }
 
             // collect ghost sidesets
@@ -63,7 +64,6 @@ namespace belfem
 
             // get number of elements
             index_t tNumElems = tBlocks( 0 )->number_of_elements() ;
-
 
             // loop over all layers
             for( uint l=0; l<tNumGhostBlocks; ++l )

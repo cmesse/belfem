@@ -4,6 +4,9 @@
 
 #ifndef BELFEM_MESH_ENUMS_HPP
 #define BELFEM_MESH_ENUMS_HPP
+
+#include <string>
+
 //------------------------------------------------------------------------------
 namespace belfem
 {
@@ -112,6 +115,127 @@ namespace belfem
         UNDEFINED
     };
 
+//------------------------------------------------------------------------------
+
+    inline std::string
+    to_string( const ElementType aElementType )
+    {
+        switch( aElementType )
+        {
+            case( ElementType::EMPTY ) :
+            {
+                return "empty" ;
+            }
+            case( ElementType::LINE2 ) :
+            {
+                return "line2" ;
+            }
+            case( ElementType::TRI3 ) :
+            {
+                return "tri3" ;
+            }
+            case( ElementType::QUAD4 ) :
+            {
+                return "quad4" ;
+            }
+            case( ElementType::TET4 ) :
+            {
+                return "tet4" ;
+            }
+            case( ElementType::HEX8 ) :
+            {
+                return "hex8" ;
+            }
+            case( ElementType::PENTA6 ) :
+            {
+                return "penta6" ;
+            }
+            case( ElementType::LINE3 ) :
+            {
+                return "line3" ;
+            }
+            case( ElementType::TRI6 ) :
+            {
+                return "tri6" ;
+            }
+            case( ElementType::QUAD9 ) :
+            {
+                return "quad9" ;
+            }
+            case( ElementType::TET10 ) :
+            {
+                return "tet10" ;
+            }
+            case( ElementType::HEX27 ) :
+            {
+                return "hex27" ;
+            }
+            case( ElementType::PENTA18 ) :
+            {
+                return "penta18" ;
+            }
+            case( ElementType::VERTEX ) :
+            {
+                return "vertex" ;
+            }
+            case( ElementType::QUAD8 ) :
+            {
+                return "quad8" ;
+            }
+            case( ElementType::HEX20 ) :
+            {
+                return "hex20" ;
+            }
+            case( ElementType::PENTA15 ) :
+            {
+                return "penta15" ;
+            }
+            case( ElementType::TRI10 ) :
+            {
+                return "tri10" ;
+            }
+            case( ElementType::TRI15 ) :
+            {
+                return "tri15" ;
+            }
+            case( ElementType::TRI21 ) :
+            {
+                return "tri21" ;
+            }
+            case( ElementType::LINE4 ) :
+            {
+                return "line4" ;
+            }
+            case( ElementType::LINE5 ) :
+            {
+                return "line5" ;
+            }
+            case( ElementType::LINE6 ) :
+            {
+                return "line6" ;
+            }
+            case( ElementType::TET20 ) :
+            {
+                return "tet20" ;
+            }
+            case( ElementType::TET35 ) :
+            {
+                return "tet35" ;
+            }
+            case( ElementType::QUAD16 ) :
+            {
+                return "quad16" ;
+            }
+            case( ElementType:: HEX64 ) :
+            {
+                return "hex64" ;
+            }
+            default :
+            {
+                return "unknown" ;
+            }
+        }
+    }
 //------------------------------------------------------------------------------
 }
 #endif //BELFEM_MESH_ENUMS_HPP

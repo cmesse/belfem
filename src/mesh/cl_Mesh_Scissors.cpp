@@ -10,6 +10,8 @@
 #include "cl_Matrix.hpp"
 #include "cl_Element_Factory.hpp"
 #include "fn_unique.hpp"
+#include "fn_sum.hpp"
+
 namespace belfem
 {
     namespace mesh
@@ -448,51 +450,68 @@ namespace belfem
                 mNodes( tCount++ ) = tNode ;
             }
 
-            // grab the duplicate table
-            Matrix< id_t > & tNodeTable = mMesh->node_cut_table();
-
-            // allocate memory
-            tNodeTable.set_size( 2, mNumberOfNodes );
-
-            // dry run to count the nodes and identify duplicates
-
-            // create a new counter
-            index_t tDuplicateCount = 0 ;
-
-
-
-            // crate the node duplicates
-            for(  mesh::Node * tNode : tOldNodes )
+            if( ! aTapeMode )
             {
-                if( tNode->is_flagged() )
+                Matrix< id_t > & tNodeTable = mMesh->node_cut_table();
+                tNodeTable.set_size( 2, mNumberOfNodes );
+
+                // create a new counter
+                index_t tDuplicateCount = 0;
+
+                // crate the node duplicates
+                for ( mesh::Node * tNode: tOldNodes )
                 {
-                    mesh::Node * tDuplicate = new Node(
-                            mMaxNodeID++,
-                            tNode->x(),
-                            tNode->y(),
-                            tNode->z() );
-
-                    tNodeMap[ tNode->id() ] = tDuplicate ;
-
-                    // if tapes exist, this node might already have been duplicated
-                    // we use this trick to correct the cut
-                    if( ! aTapeMode && mNodeMapTapes.key_exists( tNode->id() ) )
+                    if ( tNode->is_flagged())
                     {
-                        mNodeMapCuts[ mNodeMapTapes( tNode->id() )->id() ] = tDuplicate ;
+                        mesh::Node * tDuplicate = new Node(
+                                mMaxNodeID++,
+                                tNode->x(),
+                                tNode->y(),
+                                tNode->z());
+
+                        tNodeMap[ tNode->id() ] = tDuplicate;
+
+                        // if tapes exist, this node might already have been duplicated
+                        // we use this trick to correct the cut
+                        if ( mNodeMapTapes.key_exists( tNode->id()))
+                        {
+                            mNodeMapCuts[ mNodeMapTapes( tNode->id())->id() ] = tDuplicate;
+                        }
+
+                        // remember relation between original and duplicate
+                        tNodeTable( 0, tDuplicateCount ) = tNode->id();
+                        tNodeTable( 1, tDuplicateCount ) = tDuplicate->id();
+                        ++tDuplicateCount;
+
+                        // add new node to memory
+                        mNodes( tCount++ ) = tDuplicate;
                     }
+                }
 
-                    // remember relation between original and duplicate
-                    tNodeTable( 0, tDuplicateCount ) = tNode->id() ;
-                    tNodeTable( 1, tDuplicateCount ) = tDuplicate->id() ;
-                    ++tDuplicateCount ;
+                BELFEM_ASSERT( tDuplicateCount == mNumberOfNodes, "Internal Error in Cut routine: number of nodes does not match" );
 
-                    // add new node to memory
-                    mNodes( tCount++ ) = tDuplicate ;
+
+            }
+            else
+            {
+                // crate the node duplicates
+                for ( mesh::Node * tNode: tOldNodes )
+                {
+                    if ( tNode->is_flagged())
+                    {
+                        mesh::Node * tDuplicate = new Node(
+                                mMaxNodeID++,
+                                tNode->x(),
+                                tNode->y(),
+                                tNode->z() );
+
+                        tNodeMap[ tNode->id() ] = tDuplicate;
+
+                        // add new node to memory
+                        mNodes( tCount++ ) = tDuplicate;
+                    }
                 }
             }
-
-            BELFEM_ASSERT( tDuplicateCount == mNumberOfNodes, "Internal Error in Cut routine: number of nodes does not match" );
-
         }
 
 //------------------------------------------------------------------------------
@@ -656,50 +675,144 @@ namespace belfem
             Map< id_t, mesh::Node * > & tNodeMap = aTapeMode ? mNodeMapTapes : mNodeMapCuts ;
 
             index_t tNumSideSets = mData.n_cols() ;
-            for( index_t k=0 ; k<tNumSideSets; ++k )
+
+
+            uint tDimension = mMesh->number_of_dimensions() ;
+            for( index_t s=0 ; s<tNumSideSets; ++s )
             {
+                // unflag all nodes on the mesh
                 mMesh->unflag_all_nodes() ;
+
+                // unflag all elements on the mesh
                 mMesh->unflag_all_elements() ;
 
-                // get sideset
-                SideSet * tSideSet =  mMesh->sideset( mData( 1, k ) );
+                uint tNumBlocks   = mMesh->number_of_blocks() ;
 
-                // flag nodes and elements connected to nodes
-                Cell< Node * > & tNodes = tSideSet->nodes() ;
-                for( Node * tNode : tNodes )
-                {
-                    tNode->flag();
-                    uint tNumElems = tNode->number_of_elements();
-                    for( uint e=0; e<tNumElems; ++e )
-                    {
-                        tNode->element( e )->flag() ;
-                    }
-                }
+                id_t tPlus  = mData( 2, s );
+                id_t tMinus = mData( 3, s );
 
+
+                // get the sideset
+                SideSet * tSideSet =  mMesh->sideset( mData( 1, s ) );
+
+                // find out which blocks the plus block touches
                 if( ! aTapeMode )
                 {
+                    Cell< Node * > & tNodes = tSideSet->nodes() ;
+
                     for( Node * tNode : tNodes )
                     {
-                        if( mNodeMapTapes.key_exists( tNode->id() ) )
+                        tNode->flag();
+                        uint tNumElems = tNode->number_of_elements();
+                        for ( uint e = 0; e < tNumElems; ++e )
                         {
-                            Node * tNewNode = mNodeMapTapes( tNode->id() );
-                            tNewNode->flag();
-                            uint tNumElems = tNewNode->number_of_elements();
-                            for ( uint e = 0; e < tNumElems; ++e )
-                            {
-                                tNewNode->element( e )->flag();
-                            }
+                            tNode->element( e )->flag();
                         }
                     }
                 }
+                else
+                {
+                    // get elements on plus block
+                    Cell< Element * > & tPlusElements
+                        = mMesh->block( tPlus )->elements() ;
 
-                // get plus block
-                Block * tBlock = mMesh->block( mData( 2, k ) );
+                    // flag all corner nodes
+                    for( Element * tElement : tPlusElements )
+                    {
+                        tElement->flag_corner_nodes() ;
+                    }
 
-                Cell< Element * > & tElements = tBlock->elements();
+                    Vector< index_t > tBlockCount( mMesh->number_of_blocks(), 0 );
 
-                // get number of nodes of Element
-                uint tNumNodes = number_of_nodes( tBlock->element_type() );
+                    // loop over all blocks
+                    for( uint b=0; b<tNumBlocks; ++b )
+                    {
+                        // get block
+                        Block * tBlock = mMesh->blocks()( b );
+
+                        // check if this is neither the minus nor the plus block
+                        if( tBlock->id() != tMinus )
+                        {
+                            // get element container
+                            Cell< Element * > & tElements = tBlock->elements() ;
+
+                            uint tCount  ;
+
+                            // loop over all elements
+                            for( Element * tElement : tElements )
+                            {
+                                tCount = 0 ;
+
+                                // count flagged nodes
+                                for( uint k=0; k<tElement->number_of_corner_nodes(); ++k )
+                                {
+                                    if( tElement->node( k )->is_flagged() )
+                                    {
+                                        // increment counter
+                                        ++tCount ;
+                                    }
+                                }
+
+                                // check if element touches
+                                if( tCount >= tDimension )
+                                {
+                                    // set flag for this block
+                                    tBlockCount( b ) = 1 ;
+                                    break ;
+                                }
+                            }
+                        } // end if block is not minus
+                    } // end loop over all blocks
+
+                    // create id list with touching blocks
+
+                    Vector< id_t > tTouchBlocks( sum( tBlockCount ), 0 );
+                    uint tCount = 0 ;
+                    for( uint b=0; b<tNumBlocks; ++b )
+                    {
+                        if( tBlockCount( b ) == 1 )
+                        {
+                            tTouchBlocks( tCount++ ) = mMesh->blocks()(b)->id() ;
+                        }
+                    }
+                    tNumBlocks = tCount ;
+
+                    // unflag all nodes on the mesh
+                    mMesh->unflag_all_nodes() ;
+
+                    // flag all nodes on this sideset
+                    Cell< Node * > & tNodes = tSideSet->nodes() ;
+                    for( Node * tNode : tNodes )
+                    {
+                        tNode->flag();
+                    }
+
+                    // loop over all blocks of interest and flag the elements that are connected
+                    // to this sideset
+                    for( uint b=0; b<tNumBlocks; ++b )
+                    {
+                        Cell< Element * > & tElements = mMesh->block( tTouchBlocks( b ) )->elements() ;
+
+                        // loop over all elements
+                        for( Element * tElement : tElements )
+                        {
+                            for( uint k=0; k<tElement->number_of_nodes(); ++k )
+                            {
+                                if( tElement->node( k )->is_flagged() )
+                                {
+                                    // flag this element
+                                    tElement->flag() ;
+
+                                    // continue with next element
+                                    break ;
+                                }
+                            }
+                        }
+                    }
+                } // end tape mode
+
+                // get the element container
+                Cell< Element * > & tElements = aTapeMode ? mMesh->elements() : mMesh->block( tPlus )->elements() ;
 
                 // loop over all elements in plus block
                 for( Element * tElement : tElements )
@@ -708,7 +821,7 @@ namespace belfem
                     if( tElement->is_flagged() )
                     {
                         // loop over all nodes on element
-                        for( uint i=0; i<tNumNodes; ++i )
+                        for( uint i=0; i<tElement->number_of_nodes(); ++i )
                         {
                             // grab node
                             Node * tNode = tElement->node( i );
@@ -743,8 +856,8 @@ namespace belfem
                                 } // end node loop
                             } // end edge loop
                         } // end edges exist
-                    }
-                }
+                    } // end if element is flagged
+                } // end loop over all elements
             }
         }
 

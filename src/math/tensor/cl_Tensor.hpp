@@ -128,7 +128,7 @@ namespace belfem
          * fill all values
          */
         inline void
-        fill( const T & aValue )
+        fill( const T aValue )
         {
             // populate pointer array
             std::fill_n( mData, 81, aValue );
@@ -140,7 +140,7 @@ namespace belfem
          * fill tensor in an isotropic way
          */
         inline void
-        fill( const T & aKappa, const T & aGamma )
+        fill( const T aKappa, const T aGamma )
         {
             BELFEM_ASSERT( this->is_3333(), "Tensor must be 3x3x3x3" );
             tensor::fill_isotropic( mData, aKappa, aGamma / 3.0 );
@@ -152,7 +152,7 @@ namespace belfem
          * special funcition to create an isotropic elasticity tensor
          */
         inline void
-        fill_isotropic_elasticity( const T & aYoung, const T & aPoisson )
+        fill_isotropic_elasticity( const T aYoung, const T aPoisson )
         {
             BELFEM_ASSERT( this->is_3333(), "Tensor must be 3x3x3x3" );
 
@@ -167,15 +167,15 @@ namespace belfem
 
         inline void
         fill_orthotropic_elasticity(
-                const T & aYoung1,
-                const T & aYoung2,
-                const T & aYoung3,
-                const T & aPoisson23,
-                const T & aPoisson13,
-                const T & aPoisson12,
-                const T & aShear23,
-                const T & aShear13,
-                const T & aShear12
+                const T aYoung1,
+                const T aYoung2,
+                const T aYoung3,
+                const T aPoisson23,
+                const T aPoisson13,
+                const T aPoisson12,
+                const T aShear23,
+                const T aShear13,
+                const T aShear12
                 )
         {
             BELFEM_ASSERT( this->is_3333(), "Tensor must be 3x3x3x3" );
@@ -198,7 +198,7 @@ namespace belfem
         /**
          * memory size
          */
-        inline const index_t
+        inline index_t
         capacity() const
         {
             return mCapacity ;
@@ -254,10 +254,10 @@ namespace belfem
          */
         inline T &
         operator()(
-                const index_t & I,
-                const index_t & J,
-                const index_t & K,
-                const index_t & L )
+                const index_t I,
+                const index_t J,
+                const index_t K,
+                const index_t L )
         {
             BELFEM_ASSERT( I < mSizeI, "Index i out of bounds ( %u vs %u )",
                           ( unsigned int ) I,
@@ -285,10 +285,10 @@ namespace belfem
          */
         inline const T &
                 operator()(
-                        const index_t & I,
-                        const index_t & J,
-                        const index_t & K,
-                        const index_t & L ) const
+                        const index_t I,
+                        const index_t J,
+                        const index_t K,
+                        const index_t L ) const
         {
             BELFEM_ASSERT( I < mSizeI, "Index i out of bounds ( %u vs %u )",
                           ( unsigned int ) I,

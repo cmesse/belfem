@@ -25,7 +25,7 @@ if( USE_MKL )
         message(FATAL_ERROR "Unknown Operating System" )
     endif()
 
-    list ( APPEND BELFEM_RPATH "${BELFEM_MKL_LIBDIR}" )
+    #list ( APPEND BELFEM_RPATH "${BELFEM_MKL_LIBDIR}" )
     #set( BELFEM_MATRIX_LIBS "-lmkl_rt -lpthread -lm -ldl" )
 
     if( USE_PARDISO )
@@ -72,7 +72,7 @@ if( USE_MKL )
     endif()
 
     # group for gnu compiler
-    if( ${COMPILER_ID} EQUAL 1 )
+    if( NOT APPLE )
         set(BELFEM_MATRIX_LIBS "-Wl,--start-group ${BELFEM_MATRIX_LIBS} -Wl,--end-group" )
     endif()
 
@@ -97,10 +97,9 @@ else()
 
     set( BELFEM_MATRIX_LIBS " -llapack -lfspblas -lcblas -lblas")
 
-    if( ${COMPILER_ID} EQUAL 1 AND NOT APPLE )
+    if( NOT APPLE )
         set(BELFEM_MATRIX_LIBS "-Wl,--start-group ${BELFEM_MATRIX_LIBS} -Wl,--end-group" )
     endif()
-
     if( USE_MPI )
         set( BELFEM_MATRIX_LIBS "-lscalapack ${BELFEM_MATRIX_LIBS}")
     endif()
