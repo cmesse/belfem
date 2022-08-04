@@ -9,21 +9,18 @@
 
 namespace belfem
 {
-    namespace graph
+//------------------------------------------------------------------------------
+
+    // comparison object
+    struct
     {
-//------------------------------------------------------------------------------
-
-        // comparision object
-        struct
+        inline bool
+        operator()( const graph::Vertex * aA, const graph::Vertex * aB )
         {
-            inline bool
-            operator()( const Vertex * aA, const Vertex * aB )
-            {
-                return aA->number_of_vertices() < aB->number_of_vertices();
-            }
-        } opVertexDegree;
+            return aA->number_of_vertices() < aB->number_of_vertices();
+        }
+    } opVertexDegree;
 
 //------------------------------------------------------------------------------
-    }
 }
 #endif //BELFEM_OP_GRAPH_NODE_DEGREE_HPP

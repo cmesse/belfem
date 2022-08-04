@@ -137,8 +137,6 @@ int main( int    argc,
     // get the timestep
     uint & tTimeCount = tMesh->time_step() ;
 
-    tMesh->save( "test.exo");
-
     // check if we have to load a field from HDF5
 
 

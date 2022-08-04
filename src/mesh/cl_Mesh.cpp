@@ -870,6 +870,9 @@ namespace belfem
                 }
             }
 
+            // make sure that container is empty
+            tEdge->reset_edge_container() ;
+
             // allocate edge container
             tEdge->allocate_edge_container( tCount );
 
@@ -2003,6 +2006,7 @@ namespace belfem
             mNodes( tCount ) = tNode ;
             tNode->set_index( tCount++ ) ;
         }
+
         tNodes.clear() ; // tidy up memory
         for( mesh::Layer * tLayer : aLayers )
         {
@@ -2013,18 +2017,22 @@ namespace belfem
             }
         }
 
+
         // - - - - - - - - - - - - - - - - - - - - - -
         // step 2: reorganize edges
         // - - - - - - - - - - - - - - - - - - - - - -
 
+        // count new edges
+        tCount = 0 ;
+        for( mesh::Layer * tLayer : aLayers )
+        {
+            tCount += tLayer->Edges.size() ;
+        }
+
+        // backup edges
         if( mEdges.size() > 0 )
         {
-            tCount = mEdges.size() ;
-            for( mesh::Layer * tLayer : aLayers )
-            {
-                tCount += tLayer->Edges.size() ;
-            }
-            // backup edges
+            tCount += mEdges.size() ;
             Cell< mesh::Edge * > tEdges ;
             tEdges.vector_data() = std::move(mEdges.vector_data() );
             mEdges.set_size( tCount, nullptr );
@@ -2036,49 +2044,66 @@ namespace belfem
                 mEdges( tCount ) = tEdge ;
                 tEdge->set_index( tCount++ ) ;
             }
-            tEdges.clear() ; // tidy up memory
-            for( mesh::Layer * tLayer : aLayers )
+        }
+        else
+        {
+            mEdges.set_size( tCount, nullptr );
+            tCount = 0 ;
+        }
+
+        // add new edges to container
+        for( mesh::Layer * tLayer : aLayers )
+        {
+            for ( mesh::Edge * tEdge: tLayer->Edges )
             {
-                for ( mesh::Edge * tEdge: tLayer->Edges )
-                {
-                    mEdges( tCount ) = tEdge;
-                    tEdge->set_index( tCount++ );
-                }
+                mEdges( tCount ) = tEdge;
+                tEdge->set_index( tCount++ );
             }
-        } // end edges exist
+        }
 
         // - - - - - - - - - - - - - - - - - - - - - -
         // step 3: reorganize faces
         // - - - - - - - - - - - - - - - - - - - - - -
-        if( mFaces.size() > 0 && this->number_of_dimensions() == 3 )
+        if( this->number_of_dimensions() == 3 )
         {
-            tCount = mFaces.size() ;
+            // count new faces
+            tCount = 0 ;
             for( mesh::Layer * tLayer : aLayers )
             {
                 tCount += tLayer->Faces.size() ;
             }
 
-            Cell< mesh::Face * > tFaces ;
-            tFaces.vector_data() = std::move( mFaces.vector_data() );
-            mFaces.set_size( tCount, nullptr );
-
-            // repopulate faces
-            tCount = 0 ;
-            for( mesh::Face * tFace : tFaces )
+            if( tCount > 0 )
             {
-                mFaces( tCount ) = tFace ;
-                tFace->set_index( tCount++ ) ;
-            }
-            tFaces.clear() ; // tidy up memory
-            for( mesh::Layer * tLayer : aLayers )
-            {
-                for ( mesh::Face * tFace: tLayer->Faces )
+                if ( mFaces.size() > 0 )
                 {
-                    mFaces( tCount ) = tFace;
-                    tFace->set_index( tCount++ );
+                    tCount += mFaces.size();
+                    Cell< mesh::Face * > tFaces;
+                    tFaces.vector_data() = std::move( mFaces.vector_data());
+                    mFaces.set_size( tCount, nullptr );
+                    // repopulate faces
+                    tCount = 0;
+                    for ( mesh::Face * tFace: tFaces )
+                    {
+                        mFaces( tCount ) = tFace;
+                        tFace->set_index( tCount++ );
+                    }
                 }
-            }
-        } // end faces exist and mesh is 3D
+                else
+                {
+                    mFaces.set_size( tCount, nullptr );
+                    tCount = 0;
+                }
+                for ( mesh::Layer * tLayer: aLayers )
+                {
+                    for ( mesh::Face * tFace: tLayer->Faces )
+                    {
+                        mFaces( tCount ) = tFace;
+                        tFace->set_index( tCount++ );
+                    }
+                }
+            } // else new faces  exist
+        } // end if 3D
 
         // remember IDs
         mGhostSideSetIDs = aGhostSideSetIDs ;

@@ -16,7 +16,6 @@
 
 #include "cl_FEM_Kernel.hpp"
 #include "cl_FEM_KernelParameters.hpp"
-#include "fn_FEM_mises_PlaneStress.hpp"
 #include "cl_IWG_TransientHeatConduction.hpp"
 #include "fn_norm.hpp"
 #include "fn_Mesh_compute_surface_normals.hpp"

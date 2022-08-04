@@ -47,7 +47,6 @@ namespace belfem
 
             // map that links old node ids to position in layer
             Map< id_t, index_t > mNodeMap ;
-            Map< id_t, index_t > mEdgeMap ;
             Map< id_t, index_t > mElementMap ;
 
             Vector< id_t > mGhostSideSetIDs ;

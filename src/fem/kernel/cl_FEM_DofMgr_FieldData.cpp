@@ -1005,12 +1005,16 @@ namespace belfem
                                 tMultiplicity = mParent->iwg()->lambda_multiplicity() ;
                                 break ;
                             }
+                            case( EntityType::CELL ) :
+                            {
+                                tMultiplicity = mParent->iwg()->cell_multiplicity() ;
+                                break ;
+                            }
                             default :
                             {
                                 BELFEM_ERROR( false, "invalid entity type" );
                             }
                         }
-                        mParent->iwg()->edge_multiplicity() ;
 
 
                         // loop over all procs

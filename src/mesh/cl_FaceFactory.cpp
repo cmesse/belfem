@@ -6,7 +6,7 @@
 #include "assert.hpp"
 #include "commtools.hpp"
 
-#include "op_Node_Index.hpp"
+#include "op_Graph_Vertex_Index.hpp"
 
 #include "cl_Node.hpp"
 #include "cl_Element.hpp"
@@ -14,6 +14,7 @@
 #include "meshtools.hpp"
 #include "fn_unique.hpp"
 #include "cl_Face.hpp"
+#include "op_Graph_Vertex_ID.hpp"
 
 namespace belfem
 {
@@ -302,7 +303,7 @@ namespace belfem
                     aTriNodes( 2 ) = aElement->node( 2 ) ;
 
                     // sort the nodes
-                    sort( aTriNodes,opNodeIndex );
+                    sort( aTriNodes,opVertexIndex );
 
                     // return the ID
                     return (   aTriNodes( 2 )->index() * mNumberOfNodes
@@ -317,7 +318,7 @@ namespace belfem
                     aQuadNodes( 2 ) = aElement->node( 2 ) ;
                     aQuadNodes( 3 ) = aElement->node( 3 ) ;
 
-                    sort( aQuadNodes,opNodeIndex );
+                    sort( aQuadNodes,opVertexIndex  );
 
                     return (  aQuadNodes( 2 )->index() * mNumberOfNodes
                             + aQuadNodes( 1 )->index() ) * mNumberOfNodes
@@ -347,7 +348,7 @@ namespace belfem
             aCornerNodes( 2 ) = aAllNodes( 2 );
 
             // sort the nodes
-            sort( aCornerNodes,opNodeIndex );
+            sort( aCornerNodes,opVertexIndex  );
 
             // return the ID
             return ( aCornerNodes( 2 )->index() * mNumberOfNodes
@@ -373,7 +374,7 @@ namespace belfem
             aCornerNodes( 3 ) = aAllNodes( 3 );
 
             // sort the nodes
-            sort( aCornerNodes, opNodeIndex );
+            sort( aCornerNodes,opVertexIndex  );
 
             // return the ID
             return (   aCornerNodes( 3 )->index()   * mNumberOfNodes
@@ -728,7 +729,7 @@ namespace belfem
                             tTriNodes( 0 ) = tFacet->element()->node( 0 );
                             tTriNodes( 1 ) = tFacet->element()->node( 1 );
                             tTriNodes( 2 ) = tFacet->element()->node( 2 );
-                            sort( tTriNodes, opNodeIndex );
+                            sort( tTriNodes, opVertexIndex  );
 
                             // compute key
                             tKey =  (   tTriNodes( 2 )->index() * mNumberOfNodes
@@ -742,7 +743,7 @@ namespace belfem
                             tQuadNodes( 1 ) = tFacet->element()->node( 1 );
                             tQuadNodes( 2 ) = tFacet->element()->node( 2 );
                             tQuadNodes( 3 ) = tFacet->element()->node( 3 );
-                            sort( tTriNodes, opNodeIndex );
+                            sort( tTriNodes, opVertexIndex  );
 
                             // compute key
                             tKey =  (   tTriNodes( 3 )->index() * mNumberOfNodes
@@ -793,6 +794,9 @@ namespace belfem
                     tFace->set_id( ++tMaxID );
                 }
             }
+
+            // resort the array
+            sort( tFaces, opVertexID );
         }
 
 //-----------------------------------------------------------------------

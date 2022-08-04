@@ -31,7 +31,7 @@ namespace belfem
             mFields.InterfaceScAir = { "lambda" };
             mFields.Cut = { "lambda" };
             mFields.ThinShell = { "lambda_m", "lambda_s" };
-
+            //mFields.ThinShell = { "lambda_m", "lambda_s", "lambda_t" };
             // non-dof fields
             mFields.MagneticFieldDensity     = { "bx", "by", "bz" };
             mFields.CurrentDensity = {  "jz" };
@@ -396,7 +396,6 @@ namespace belfem
                 Matrix< real > & aJacobian,
                 Vector< real > & aRHS )
         {
-
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // containers and symbols
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -419,10 +418,10 @@ namespace belfem
             // container for transformation matrix
 
             // the T-matrix projects phi to hn
-            Matrix< real > & tT = mGroup->work_Tau() ;
+            //Matrix< real > & tT = mGroup->work_Tau() ;
 
             // shape function for phi
-            Matrix< real > & tN = mGroup->work_Sigma() ;
+            //Matrix< real > & tN = mGroup->work_Sigma() ;
 
             // coordinates for master
             Matrix< real > & tXm = mGroup->work_X() ;
@@ -441,6 +440,10 @@ namespace belfem
 
             // data for magnetic field (H-data)
             Vector< real > & tH = mGroup->work_phi() ;
+
+            // additional indices
+            uint p ;
+            uint q ;
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // reset matrices
@@ -486,50 +489,27 @@ namespace belfem
             BELFEM_ASSERT( tWs.length() == mNumberOfIntegrationPoints, "number of integraiton points on slave does not match" );
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            // Laplace condition, slave on master
+            // lambda-condition perpendicular master
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-            // reset T-matrix
-            tT.fill( 0.0 );
-
             // compute jacobian ( it is constant in first order, so we can set k=0
-            tJ = tIntSlave->dNdXi( 0 ) * tXs ;
+            tJ = tIntMaster->dNdXi( 0 ) * tXm ;
 
             // gradient operator
-            tB = inv( tJ ) * tIntSlave->dNdXi( 0 ) ;
+            tB = inv( tJ ) * tIntMaster->dNdXi( 0 ) ;
 
-            // offset in matrix
-            uint tOff = mNumberOfNodesPerElement ;
+            /*p = aRHS.length() - 1 ;
+            q = 0 ;
 
-            // populate transformation matrix
+            // populate matrix
             for( uint i=0; i<mNumberOfNodesPerElement; ++i )
             {
-                tT( 0, tOff++ ) =
-                          tn( 0 ) * tB( 0, i )
-                        + tn( 1 ) * tB( 1, i );
-            }
-
-            // loop over all integration points
-            // since T is constant, we can directly integrate over n
-
-            // reset N-matrix
-            tN.fill( 0.0 );
-
-            for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
-            {
-                // grab shape function
-                const Vector< real > & tPhi = tIntMaster->phi( k );
-
-                // populate N-vector
-                for ( uint i = 0; i < mNumberOfNodesPerElement; ++i )
-                {
-                    tN( 0, i ) += tWm( k ) * tPhi( i );
-                }
-            }
-
-
-            // contribution to stiffness from laplace slave onto master
-            // tM += trans( tN ) * tT ;
+                tM( p, q ) =
+                         -tn( 0 ) * tB( 0, i )
+                         -tn( 1 ) * tB( 1, i );
+                tM( q, p ) = tM( p, q );
+                ++q ;
+            }*/
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // lambda-condition for master element, air side
@@ -537,9 +517,10 @@ namespace belfem
 
             // compute the B-Matrix ( is constant for linear elements )
             crossmat( tn, tB, tnxB );
+
             // get the column
-            uint p = 0 ;
-            uint q = aRHS.length() - 2 ;
+            p = 0 ;
+            q = aRHS.length() - 2 ;
 
             for( uint k=0; k<mNumberOfNodesPerElement; ++k)
             {
@@ -549,47 +530,27 @@ namespace belfem
             }
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            // Laplace condition, master on slave
+            // Lambda-condition perpendicular slave
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-            // reset T-matrix
-            tT.fill( 0.0 );
-
             // compute jacobian ( it is constant in first order, so we can set k=0
-            tJ = tIntMaster->dNdXi( 0 ) * tXm ;
+            tJ = tIntSlave->dNdXi( 0 ) * tXs ;
 
             // gradient operator
-            tB = inv( tJ ) * tIntMaster->dNdXi( 0 ) ;
+            tB = inv( tJ ) * tIntSlave->dNdXi( 0 ) ;
+
+            /*p = aRHS.length() - 1 ;
+            q = mNumberOfNodesPerElement ;
 
             // populate transformation matrix
             for( uint i=0; i<mNumberOfNodesPerElement; ++i )
             {
-                tT( 0, i ) =
-                        tn( 0 ) * tB( 0, i )
-                        + tn( 1 ) * tB( 1, i );
-            }
-
-            // loop over all integration points
-            // since T is constant, we can directly integrate over n
-
-            // reset N-matrix
-            tN.fill( 0.0 );
-
-            for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
-            {
-                // grab shape function
-                const Vector< real > & tPhi = tIntSlave->phi( k );
-                tOff = mNumberOfNodesPerElement ;
-
-                // populate N-vector
-                for ( uint i = 0; i < mNumberOfNodesPerElement; ++i )
-                {
-                    tN( 0, tOff++ ) += tWs( k ) * tPhi( i );
-                }
-            }
-
-            // apparently transposed value of other matrix
-            // tM += trans( tN ) * tT ;
+                tM( p, q ) =
+                         tn( 0 ) * tB( 0, i )
+                         +tn( 1 ) * tB( 1, i );
+                tM( q, p ) = tM( p, q );
+                ++q ;
+            }*/
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // lambda-condition for slave element, air side
@@ -625,7 +586,7 @@ namespace belfem
 
 
             // scale for better conditioning
-            tM *= constant::mu0 ;
+            // tM *= constant::mu0 * 0.01 ;
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // contribution for mass and stiffness matrix
@@ -674,12 +635,33 @@ namespace belfem
             tM *= tElementLength ;
             tK *= tElementLength ;
 
+            //this->print_dofs( aElement );
+
             // compute the right hand side
             aRHS = tM *  this->collect_q0_hphi_thinshell( aElement ) ;
 
             // finalize the Jacobian
             aJacobian += mDeltaTime * mGroup->work_K() ;
 
+            /*if( aElement->id() == 99 || aElement->id() == 257 || aElement->id() == 258 )
+            {
+                this->print_dofs( aElement );
+
+                std::cout << "S " << tSign << std::endl ;
+
+                for( uint l=0; l<=tNumLayers; ++l )
+                {
+                    id_t tIdd = aElement->dof( 6 + l )->id() ;
+
+                    id_t tIdx = aElement->dof( 6 + l )->dof_index_on_field() ;
+
+                    id_t tID = aElement->dof( 6 + l )->edge()->id();
+
+                    index_t tIndex = aElement->dof( 6 + l )->edge()->index() ;
+
+                    std::cout << "  " << l << " | " << tIdd << " " << tIdx << " | " << tID << " " << tIndex << " | " << mMesh->field_data( "edge_h")( tIndex ) << std::endl ;
+                }
+            } */
         }
 #if BELFEM_GCC
 #pragma GCC diagnostic pop

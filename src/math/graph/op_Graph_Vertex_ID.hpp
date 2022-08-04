@@ -1,15 +1,14 @@
 //
-// Created by Christian Messe on 05.11.19.
+// Created by christian on 8/3/22.
 //
 
-#ifndef BELFEM_OP_GRAPH_VERTEX_INDEX_HPP
-#define BELFEM_OP_GRAPH_VERTEX_INDEX_HPP
+#ifndef BELFEM_OP_GRAPH_VERTEX_ID_HPP
+#define BELFEM_OP_GRAPH_VERTEX_ID_HPP
 
 #include "cl_Graph_Vertex.hpp"
 
 namespace belfem
 {
-
 //------------------------------------------------------------------------------
 
     // comparison object
@@ -18,11 +17,12 @@ namespace belfem
         inline bool
         operator()( const graph::Vertex * aA, const graph::Vertex * aB )
         {
-            return aA->index() < aB->index();
+            return aA->id() < aB->id();
         }
-    } opVertexIndex;
+    } opVertexID;
 
 //------------------------------------------------------------------------------
 }
 
-#endif //BELFEM_OP_GRAPH_VERTEX_INDEX_HPP
+
+#endif //BELFEM_OP_GRAPH_VERTEX_ID_HPP

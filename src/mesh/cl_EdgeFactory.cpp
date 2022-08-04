@@ -9,6 +9,7 @@
 #include "cl_Timer.hpp"
 #include "cl_Logger.hpp"
 #include "meshtools.hpp"
+#include "op_Graph_Vertex_ID.hpp"
 
 namespace belfem
 {
@@ -313,7 +314,6 @@ namespace belfem
                 // get number of nodes from edge
                 uint tNumNodes = tNodes.size() ;
 
-
                 tEdge->allocate_node_container( tNumNodes );
 
                 // link edge to nodes
@@ -539,7 +539,7 @@ namespace belfem
                         if( mMap.key_exists( tKey ) )
                         {
                             mesh::Edge * tEdge = mMap[ tKey ];
-                            tEdge->set_id( tFacet->id());
+                            tEdge->set_id( tFacet->id() );
                             tEdge->flag();
                         }
                     }
@@ -599,6 +599,10 @@ namespace belfem
                     tEdge->set_id( ++tMaxID );
                 }
             }
+
+            // resort the array
+            sort( tEdges, opVertexID );
+
         }
 
 //------------------------------------------------------------------------------

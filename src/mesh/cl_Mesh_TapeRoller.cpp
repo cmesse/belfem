@@ -960,32 +960,32 @@ namespace belfem
             if( mMesh->edges_exist() )
             {
                 // flag edges that are to be cloned
-                mMesh->unflag_all_edges() ;
+                mMesh->unflag_all_edges();
                 for ( id_t tID: mSelectedSideSets )
                 {
                     // get the container with the facets
                     Cell< Facet * > & tFacets = mMesh->sideset( tID )->facets();
 
                     // loop over all facets
-                    for( Facet * tFacet : tFacets )
+                    for ( Facet * tFacet: tFacets )
                     {
-                        tFacet->element()->flag_edges() ;
+                        tFacet->element()->flag_edges();
                     }
                 }
 
                 // count number of edges
                 index_t tCount = 0;
 
-                // reset the map
-                mEdgeMap.clear() ;
+
 
                 // count cloned edges and create edge map
-                Cell< Edge * > & tEdges = mMesh->edges() ;
-                for( Edge * tEdge : tEdges )
+                Cell< Edge * > & tEdges = mMesh->edges();
+
+                for ( Edge * tEdge: tEdges )
                 {
-                    if( tEdge->is_flagged() )
+                    if ( tEdge->is_flagged())
                     {
-                        mEdgeMap[ tEdge->id() ] = tCount++ ;
+                        ++tCount ;
                     }
                 }
 
@@ -1003,14 +1003,19 @@ namespace belfem
                     // reset the counter
                     tCount = 0 ;
 
+                    // reset the map
+                    Map< index_t, Edge * > tEdgeMap ;
+
                     // clone edges
                     for( Edge * tEdge : tEdges )
                     {
-                        if ( tEdge->is_flagged())
+                        if ( tEdge->is_flagged() )
                         {
                             // crate a new edge
                             Edge * tClone = new Edge();
+
                             tClone->set_id( ++mMaxEdgeId );
+
                             tClone->allocate_node_container( tEdge->number_of_nodes());
 
                             // link nodes
@@ -1019,10 +1024,11 @@ namespace belfem
                                 tClone->insert_node( tLayerNodes( mNodeMap( tEdge->node( k )->id())), k );
                             }
 
+                            tEdgeMap[ tEdge->id() ] = tClone ;
+
                             // add clone to list
                             tLayerEdges( tCount++ ) = tClone;
                         } // end loop over all edges
-
                     }
 
                     index_t e = 0 ;
@@ -1038,7 +1044,7 @@ namespace belfem
                         // link element clone with new edges
                         for ( uint k = 0; k < tElement->number_of_edges(); ++k )
                         {
-                            Edge * tEdge = tLayerEdges( mEdgeMap( tElement->edge( k )->id()));
+                            Edge * tEdge = tEdgeMap( tElement->edge( k )->id());
 
                             tClone->insert_edge( tEdge, k );
                         }

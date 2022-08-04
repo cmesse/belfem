@@ -12,7 +12,7 @@ namespace belfem
         {
             std::sort( aGraph.vector_data().begin(),
                        aGraph.vector_data().begin(),
-                       graph::opVertexIndex );
+                       opVertexIndex );
         }
     }
 }
