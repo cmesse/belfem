@@ -65,15 +65,6 @@ namespace belfem
             // get number of elements
             index_t tNumElems = tBlocks( 0 )->number_of_elements() ;
 
-            /*index_t tCount = 0 ;
-            mesh::SideSet * tS = tSideSets( 2 );
-            for( mesh::Facet * tFacet : tS->facets() )
-            {
-                std::cout << tCount++ << " " << tFacet->id() << " " << tFacet->edge( 0 )->id() << " " << tFacet->edge( 0 )->index() << std::endl ;
-            }
-            std::cout << tNumElems << std::endl ;*/
-
-
 
             // loop over all layers
             for( uint l=0; l<tNumGhostBlocks; ++l )
@@ -97,27 +88,16 @@ namespace belfem
 
                 real tT = std::sqrt( tDX *tDX + tDY * tDY ) ;
 
-
-
                 //index_t i = tTop->facet_by_index( 0 )->edge( 0 )->index() ;
                 //index_t j = tBottom->facet_by_index( 0 )->edge( 0 )->index() ;
                 for( index_t e=0; e<tNumElems; ++e )
                 {
+                    real tH1 = tH( tTop->facet_by_index( e )->edge(0)->index()  );
+                    real tH0 = tH( tBottom->facet_by_index( e )->edge(0)->index()  );
 
-                    // compute sign
-                    real tSign = tElements( e )->node( 0 )->id()
-                            < tElements( e )->node( 1 )->id() ? 1.0 : -1.0 ;
 
-                    real tH1 = tH( tBottom->facet_by_index( e )->edge(0)->index()  );
-                    real tH0 = tH( tTop->facet_by_index( e )->edge(0)->index()  );
-
-                    //real tH0 = tH( i++ );
-                    //real tH1 = tH( j++  );
-
-                    tJ( tElements( e )->index() ) = ( tH1 - tH0 ) / tT * tSign ;
-
+                    tJ( tElements( e )->index() ) = ( tH1 - tH0 ) / tT  ;
                 }
-
             }
             comm_barrier() ;
         }

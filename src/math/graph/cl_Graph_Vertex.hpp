@@ -5,6 +5,8 @@
 #ifndef BELFEM_CL_GRAPH_NODE_HPP
 #define BELFEM_CL_GRAPH_NODE_HPP
 
+#include <bitset>
+
 #include "typedefs.hpp"
 #include "assert.hpp"
 
@@ -28,7 +30,7 @@ namespace belfem
             // level of this node
             uint mLevel = 0;
 
-            // tells if node is flagged or not
+            // tells if vertex is flagged or not
             bool mFlag = false;
 
 //------------------------------------------------------------------------------

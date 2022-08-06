@@ -238,18 +238,24 @@ namespace belfem
 
                 if( mImposing == BoundaryConditionImposing::Dirichlet )
                 {
-                    mFixedDofs.set_size( 1, nullptr );
+                    // compute dof ID
+                    id_t tID = aDofManager->calculate_dof_id( mNodes( 0 ), tPhi );
 
-                    // grab dof
-                    Dof * tDof = aDofManager->dof( aDofManager->calculate_dof_id( mNodes( 0 ), tPhi ) );
-                    tDof->fix( 0.0 );
+                    // only do something if dof exists on this proc
+                    if( aDofManager->dof_exists( tID ) )
+                    {
+                        mFixedDofs.set_size( 1, nullptr );
 
-                    // save dof in container
-                    mFixedDofs( 0 ) = tDof ;
+                        Dof * tDof = aDofManager->dof(  tID );
+                        tDof->fix( 0.0 );
+
+                        // save dof in container
+                        mFixedDofs( 0 ) = tDof ;
+                    }
                 }
 
             }
-            else  // this is a n a-formulation
+            else  // this is an a-formulation
             {
                 if( mImposing == BoundaryConditionImposing::Dirichlet )
                 {
@@ -259,15 +265,21 @@ namespace belfem
 
                         uint tAz = aDofManager->iwg()->doftype( "az" );
 
-                        mFixedDofs.set_size( 1, nullptr );
 
-                        // get dof
-                        Dof * tDof = aDofManager->dof( aDofManager->calculate_dof_id( mNodes( 0 ), tAz ));
-                        tDof->fix( 0.0 );
+                        // compute dof ID
+                        id_t tID =  aDofManager->calculate_dof_id( mNodes( 0 ), tAz ) ;
 
-                        mFixedDofs( 0 ) = tDof;
+                        // only do something if dof exists on this proc
+                        if( aDofManager->dof_exists( tID ) )
+                        {
+                            mFixedDofs.set_size( 1, nullptr );
 
+                            Dof * tDof = aDofManager->dof(  tID );
+                            tDof->fix( 0.0 );
 
+                            // save dof in container
+                            mFixedDofs( 0 ) = tDof ;
+                        }
                     }
                     else if ( aDofManager->mesh()->number_of_dimensions() == 3 )
                     {
@@ -279,20 +291,52 @@ namespace belfem
                         uint tAy = aDofManager->iwg()->doftype( "ay" );
                         uint tAz = aDofManager->iwg()->doftype( "az" );
 
-                        // fix ax
-                        Dof * tDofX = aDofManager->dof( aDofManager->calculate_dof_id( mNodes( 0 ), tAx ));
-                        tDofX->fix( 0.0 );
-                        mFixedDofs( 0 ) = tDofX;
+                        // compute DoF IDs
+                        id_t tIDx = aDofManager->calculate_dof_id( mNodes( 0 ), tAx ) ;
+                        id_t tIDy = aDofManager->calculate_dof_id( mNodes( 0 ), tAy ) ;
+                        id_t tIDz = aDofManager->calculate_dof_id( mNodes( 0 ), tAz ) ;
 
-                        // fix Ay
-                        Dof * tDofY = aDofManager->dof( aDofManager->calculate_dof_id( mNodes( 0 ), tAy ));
-                        tDofY->fix( 0.0 );
-                        mFixedDofs( 1 ) = tDofY;
+                        uint tCount = 0 ;
 
+                        if( aDofManager->dof_exists( tIDx ) )
+                        {
+                            ++tCount ;
+                        }
+                        if( aDofManager->dof_exists( tIDy ) )
+                        {
+                            ++tCount ;
+                        }
+                        if( aDofManager->dof_exists( tIDx ) )
+                        {
+                            ++tCount ;
+                        }
 
-                        Dof * tDofZ = aDofManager->dof( aDofManager->calculate_dof_id( mNodes( 0 ), tAz ));
-                        tDofZ->fix( 0.0 );
-                        mFixedDofs( 2 ) = tDofZ;
+                        if( tCount > 0 )
+                        {
+                            mFixedDofs.set_size( tCount, nullptr );
+                            tCount = 0 ;
+                        }
+
+                        if( aDofManager->dof_exists( tIDx ) )
+                        {
+                            Dof * tDof = aDofManager->dof( tIDx );
+                            tDof->fix( 0.0 );
+                            mFixedDofs( tCount++ ) = tDof;
+                        }
+
+                        if( aDofManager->dof_exists( tIDy ) )
+                        {
+                            Dof * tDof = aDofManager->dof( tIDy );
+                            tDof->fix( 0.0 );
+                            mFixedDofs( tCount++ ) = tDof;
+                        }
+
+                        if( aDofManager->dof_exists( tIDz ) )
+                        {
+                            Dof * tDof = aDofManager->dof( tIDz );
+                            tDof->fix( 0.0 );
+                            mFixedDofs( tCount++ ) = tDof;
+                        }
                     }
                 }
             }

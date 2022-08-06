@@ -39,11 +39,14 @@ namespace belfem
                 // tell mesh how many partitions exist
                 aMesh->set_number_of_partitions( mNumberOfPartitions );
 
+                this->fix_cut_related_ownerships();
+
                 // set node owners
                 aMesh->set_node_owners();
 
                 // set vertex owners
                 aMesh->set_vertex_owners();
+
 
                 // fix a rare bug
                 this->fix_facet_related_ownerships();
@@ -430,6 +433,59 @@ namespace belfem
 
             mMesh->unflag_all_nodes() ;
             mMesh->unflag_all_edges() ;
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        Partitioner::fix_cut_related_ownerships()
+        {
+            Matrix< id_t > &  tNodeTable = mMesh->node_cut_table() ;
+
+            index_t tNumNodes = tNodeTable.n_cols() ;
+
+            index_t tCount = 1 ;
+
+            while( tCount > 0 )
+            {
+                // reset the counter
+                tCount = 0;
+
+                // check element owners of nodes connected to cuts
+                for ( index_t k = 0; k < tNumNodes; ++k )
+                {
+                    proc_t tOwner = gNoOwner;
+
+                    for( uint j=0; j<2; ++j )
+                    {
+                        Node * tN = mMesh->node( tNodeTable( j, k ));
+                        for ( uint e = 0; e < tN->number_of_elements(); ++e )
+                        {
+                            Element * tE = tN->element( e );
+
+                            if ( tE->owner() < tOwner )
+                            {
+                                tOwner = tE->owner();
+                            }
+                        }
+                    }
+
+                    for( uint j=0; j<2; ++j )
+                    {
+                        Node * tN = mMesh->node( tNodeTable( j, k ));
+                        for ( uint e = 0; e < tN->number_of_elements(); ++e )
+                        {
+                            Element * tE = tN->element( e );
+
+                            if ( tOwner < tE->owner() )
+                            {
+                                tE->set_owner( tOwner );
+                                ++tCount ;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
 //------------------------------------------------------------------------------

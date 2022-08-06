@@ -2748,39 +2748,13 @@ namespace belfem
 
                 // create scissors
                 mesh::Scissors tScissors( mMesh, tAirBlocks );
-
                 // add thin sheets
                 for( DomainGroup * tTape : mTapes )
                 {
                     tScissors.cut( tTape->groups(), tTape->minus(), tTape->plus(), true );
                 }
 
-                // perform cuts
-                /*for( DomainGroup * tGroup : mBlocks )
-                {
-                    if( tGroup->type() == DomainType::Coil ||
-                        tGroup->type() == DomainType::SuperConductor )
-                    {
-                        // check if a current bc is given for this entity
-                        if( mCurrentBcMap.key_exists( tGroup->label() ) )
-                        {
-                            // flag this group
-                            tGroup->flag() ;
 
-                            // make sure that cut exists
-                            BELFEM_ERROR(  mCutMap.key_exists( tGroup->label() ),
-                                          "a current bc was given for block %s but no cut was specified.",
-                                          tGroup->label().c_str() );
-
-                            // get cut
-                            DomainGroup * tCut = mCutMap[ tGroup->label() ] ;
-
-                            // perform cut
-                            tScissors.cut( tCut->groups(), tCut->minus(), tCut->plus() );
-
-                        }
-                    }
-                    }*/
 
                 for( DomainGroup * tCut : mCuts )
                 {
@@ -2824,6 +2798,12 @@ namespace belfem
                         // correct the node positions
                         tTapeRoller.shift_nodes( mTapeThicknesses );
 
+                        // compute the normals
+                        if( mMesh->number_of_dimensions() == 2 )
+                        {
+                            tTapeRoller.compute_edge_signs_2d() ;
+                        }
+
                         // set the labels of the blocks
                         this->set_layer_labels();
 
@@ -2847,37 +2827,33 @@ namespace belfem
                 }
 
                 // link cut BCs
-                for( uint s=0; s<2; ++s )
+                for( DomainGroup * tCut : mCuts )
                 {
-                    Cell< DomainGroup * > & tGroups = s == 0 ? mTapes : mBlocks ;
-
-                    for ( DomainGroup * tGroup: tGroups )
+                    // check if a current bc is given for this cut
+                    if ( mCurrentBcMap.key_exists( tCut->label()) )
                     {
-                        if ( tGroup->type() == DomainType::Coil ||
-                             tGroup->type() == DomainType::SuperConductor )
+                        // get bc
+                        MaxwellBoundaryConditionCurrent * tBC = mCurrentBcMap( tCut->label() );
+
+                        // check if an associated block exists
+                        if( mBlockMap.key_exists( tCut->label() ) )
                         {
-                            // check if a current bc is given for this entity
-                            if ( mCurrentBcMap.key_exists( tGroup->label()) )
-                            {
-                                // get cut
-                                DomainGroup * tCut = mCutMap( tGroup->label() );
-
-                                // get bc
-                                MaxwellBoundaryConditionCurrent * tBC = mCurrentBcMap( tGroup->label());
-
-                                tBC->set_blocks( tGroup->groups());
-
-                                Vector< id_t > tCutIDs;
-
-                                // grab IDs from scissors
-                                tScissors.get_cut_ids( tCut->groups(), tCutIDs );
-
-                                // link IDs to BC
-                                tBC->set_sidesets( tCutIDs );
-
-                                mSideSets.push( tCut );
-                            }
+                            // link with groups
+                            tBC->set_blocks( mBlockMap( tCut->label() )->groups() );
                         }
+
+                        // get the cut IDS
+                        Vector< id_t > tCutIDs ;
+
+                        // grab IDs from scissors
+                        tScissors.get_cut_ids( tCut->groups(), tCutIDs );
+
+
+                        // link IDs to BC
+                        tBC->set_sidesets( tCutIDs );
+
+                        // add bc to list
+                        mSideSets.push( tCut );
                     }
                 }
 
@@ -2898,9 +2874,9 @@ namespace belfem
                     // refresh cut map
                     tScissors.collect_cut_data();
 
-
                     tCutIDs   = trans( tScissors.cut_data().row( 0 ) );
                     tSideSetIDs = trans( tScissors.cut_data().row( 1 ) );
+
                     send_same( tCommTable, tCutIDs );
                     send_same( tCommTable, tSideSetIDs );
                 }

@@ -1054,6 +1054,71 @@ namespace belfem
             } // end edges exist
         }
 
+//------------------------------------------------------------------------------
+
+        void
+        TapeRoller::compute_edge_signs_2d()
+        {
+            // the normal vector
+            Vector< real > & tNx = mMesh->field_data( "SurfaceNormalsx" );
+            Vector< real > & tNy = mMesh->field_data( "SurfaceNormalsy" );
+
+
+            // finally, we set the tags also for the ghost elements
+            index_t tCount = 0 ;
+
+            // loop over all sidesets
+            for( id_t tID : mSelectedSideSets )
+            {
+                // grab the facets on the sideset
+                Cell< Facet * > & tFacets = mMesh->sideset( tID )->facets() ;
+
+                // loop over all facets on this sideset
+                for( Facet * tFacet : tFacets )
+                {
+                   // approximate normal of facet
+                   real tnx =     tNx( tFacet->node( 0 )->index() )
+                           + tNx( tFacet->node( 1 )->index() );
+
+                   real tny =   tNy( tFacet->node( 0 )->index() )
+                         + tNy( tFacet->node( 1 )->index() );
+
+                   real tnorm = std::sqrt( tnx * tnx + tny * tny );
+                   tnx /= tnorm ;
+                   tny /= tnorm ;
+
+                   // approximate direction vector of facet
+                   real tdx = tFacet->node( 1 )->x() - tFacet->node( 0 )->x() ;
+                   real tdy = tFacet->node( 1 )->y() - tFacet->node( 0 )->y() ;
+                   tnorm = std::sqrt( tdx*tdx + tdy*tdy );
+                   tdx /= tnorm ;
+                   tdy /= tnorm ;
+
+                   // compute expression d - ( n x z ) ;
+                   // note that ( n x z ) = [ ny ; -nx ; 0 ]
+
+                   tdx -= tny ;
+                   tdy += tnx ;
+                   tnorm = std::sqrt( tdx*tdx + tdy*tdy );
+
+                   // we store the information on the tags of the element
+                   uint tTag = tnorm > 1.0 ? 1 : 0 ;
+
+                   tFacet->element()->set_physical_tag( tTag );
+
+                   // also set the tag for the ghost layers
+                   for( uint l=0 ; l<mNumberOfGhostLayers; ++l )
+                   {
+                       mMesh->sideset( mGhostSideSetIDs( l ) )
+                       ->facet_by_index( tCount )->element()->set_physical_tag( tTag );
+                   }
+
+                   // increment the counter
+                   ++tCount ;
+                }
+            }
+        }
+
 //-----------------------------------------------------------------------------
 
         void

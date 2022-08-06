@@ -560,8 +560,10 @@ namespace belfem
             this->link_lambda_dofs( aDofManager, aLambdaDofTypes, tCount );
 
             BELFEM_ASSERT( tCount == mNumberOfDofs,
-                          "Something went wrong while linking element with DOFs" );
-        }
+                          "Something went wrong while linking element with DOFs on element %lu on sideset %lu",
+                           ( long unsigned int ) mElement->id(),
+                           ( long unsigned int ) mParent->id() );
+            }
 
 //------------------------------------------------------------------------------
 
@@ -1183,9 +1185,8 @@ namespace belfem
             {
                 for ( uint k = 0; k < aNumberOfNodesPerElement; ++k )
                 {
-                    mDOFs[ aCount++ ] = aDofManager->dof(
-                            aDofManager->calculate_dof_id(
-                                    aReferenceElement->node( k ), tDofType ) );
+                    mDOFs[ aCount++ ] = aDofManager->dof( aDofManager->calculate_dof_id(
+                            aReferenceElement->node( k ), tDofType ) );
                 }
             }
         }

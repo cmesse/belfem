@@ -1524,6 +1524,7 @@ namespace belfem
             Vector< id_t > tFaceIDs;
             Vector< id_t > tElementsWithEdges;
             Vector< id_t > tElementsWithFaces;
+            Matrix< uint > tTags ;
 
             // count size of facet table
             if( aConnectorSwitch )
@@ -1583,6 +1584,9 @@ namespace belfem
                     tFaceCount = 0 ;
                 }
             }
+
+            // set tags
+            tTags.set_size( 2, tFacetCount );
 
             tAllIndices.set_size( tFacetCount );
             tFacetCount = 0 ;
@@ -1666,9 +1670,16 @@ namespace belfem
 
                         // add this index to the communication vector
                         tAllIndices( tFacetCount++ ) = tFacet->index() ;
-                        tFacets( tCount++ ) = tFacet;
+                        tFacets( tCount ) = tFacet;
                         tFacet->element()->unflag();
                         tNodeCount += tFacet->element()->number_of_nodes() ;
+
+                        // copy the tags
+                        tTags( 0, tCount ) = tFacet->element()->geometry_tag() ;
+                        tTags( 1, tCount ) = tFacet->element()->physical_tag() ;
+
+                        // increment the counter
+                        ++tCount ;
                     }
                 }
 
@@ -1692,6 +1703,9 @@ namespace belfem
 
                     // communicate IDs
                     send( aTarget, tIDs );
+
+                    // communicate tags
+                    send( aTarget, tTags );
 
                     if( aConnectorSwitch )
                     {
@@ -1822,6 +1836,10 @@ namespace belfem
                     Vector< id_t > tIDs;
                     receive( mMasterRank, tIDs );
 
+                    // id for tags
+                    Matrix< uint > tTags ;
+                    receive( mMasterRank, tTags );
+
                     // Master IDs  or first node ID
                     Vector< id_t > tMasteIDs;
 
@@ -1885,6 +1903,10 @@ namespace belfem
                             tElement->insert_node( mNodeMap( tMasteIDs( f ) ), 0 );
                             tElement->insert_node( mNodeMap( tSlaveIDs( f ) ), 1 );
 
+                            // set the tags of the element
+                            tElement->set_geometry_tag( tTags( 0, f ) );
+                            tElement->set_physical_tag( tTags( 1, f ) );
+
                             // create a facet
                             mesh::Facet * tFacet = new mesh::Facet( tElement );
 
@@ -1926,6 +1948,11 @@ namespace belfem
                             {
                                 tElement->insert_node( mNodeMap( tNodeIDs( tNodeCount++ ) ), k );
                             }
+
+
+                            // set the tags of the element
+                            tElement->set_geometry_tag( tTags( 0, f ) );
+                            tElement->set_physical_tag( tTags( 1, f ) );
 
                             // create a facet
                             mesh::Facet * tFacet = new mesh::Facet( tElement );

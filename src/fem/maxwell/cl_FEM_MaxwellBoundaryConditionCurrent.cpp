@@ -109,8 +109,11 @@ namespace belfem
         {
             if( aDofManager->mesh()->number_of_dimensions() == 2 )
             {
-                // reset cross section
-                mCoilCrossSection = mesh::compute_volume( aDofManager->mesh(), mBlockIDs );
+                // reset cross section (only for h-a)
+                if( mBlockIDs.length() > 0 )
+                {
+                    mCoilCrossSection = mesh::compute_volume( aDofManager->mesh(), mBlockIDs );
+                }
 
                 comm_barrier();
             }
@@ -181,13 +184,17 @@ namespace belfem
         void
         MaxwellBoundaryConditionCurrent::compute_current_densities_2d( const real aCurrent )
         {
-            // compute the current density
-            real tJ = aCurrent / mCoilCrossSection;
-
-            // failsafe
-            if( std::abs( tJ ) < BELFEM_EPSILON )
+            real tJ = BELFEM_QUIET_NAN ;
+            if( mCoilCrossSection > 0.0 )
             {
-                tJ = BELFEM_EPSILON ;
+                // compute the current density
+                real tJ = aCurrent / mCoilCrossSection;
+
+                // failsafe
+                if ( std::abs( tJ ) < BELFEM_EPSILON )
+                {
+                    tJ = BELFEM_EPSILON;
+                }
             }
 
             // get field from mesh

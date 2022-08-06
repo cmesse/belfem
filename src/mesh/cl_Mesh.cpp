@@ -1788,8 +1788,6 @@ namespace belfem
                     = mFacetMap[ mTapeFacetTable( 1, f ) ];
             }
         }
-        mTapeFacetTable.set_size( 0, 0 );
-
     }
 
 //-----------------------------------------------------------------------------

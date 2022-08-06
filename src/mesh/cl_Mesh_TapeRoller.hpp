@@ -16,7 +16,6 @@ namespace belfem
 {
     namespace mesh
     {
-        // todo: fix ownership of new elements after creation!
         class TapeRoller
         {
             const proc_t mMyRank ;
@@ -116,6 +115,11 @@ namespace belfem
             //! list with created ghost blocks
             const Vector< id_t > &
             ghost_block_ids() const ;
+
+//------------------------------------------------------------------------------
+
+            void
+            compute_edge_signs_2d();
 
 //------------------------------------------------------------------------------
         private:

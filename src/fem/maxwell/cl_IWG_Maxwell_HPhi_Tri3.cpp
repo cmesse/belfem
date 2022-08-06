@@ -386,10 +386,7 @@ namespace belfem
         }
 
 //------------------------------------------------------------------------------
-#if BELFEM_GCC
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#endif
+
         void
         IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_thinshell(
                 Element        * aElement,
@@ -406,22 +403,14 @@ namespace belfem
             // stiffness matrix
             Matrix< real > & tK = mGroup->work_K() ;
 
-            // the sign of the edge
-            const real tSign = aElement->edge_direction( 0 ) ? 1.0 : -1.0 ;
+            // the sign of the edge, in this case, we use the physical tag
+            const real tSign = aElement->element()->physical_tag() == 1 ? 1.0 : -1.0 ;
 
             // container for geometry jacobian for master and slave
             Matrix< real > & tJ =  mGroup->work_J() ;
 
             // container for gradient operator
             Matrix< real > & tB = mGroup->work_B() ;
-
-            // container for transformation matrix
-
-            // the T-matrix projects phi to hn
-            //Matrix< real > & tT = mGroup->work_Tau() ;
-
-            // shape function for phi
-            //Matrix< real > & tN = mGroup->work_Sigma() ;
 
             // coordinates for master
             Matrix< real > & tXm = mGroup->work_X() ;
@@ -448,11 +437,10 @@ namespace belfem
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // reset matrices
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
             tM.fill( 0.0 );
             tK.fill( 0.0 );
             aRHS.fill( 0.0 );
-
-            const IntegrationData * tNodeFunction = this->interface_data( aElement );
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // geometry considerations and integration data
@@ -584,10 +572,6 @@ namespace belfem
             tM( p, q ) = tSign ;
             tM( q, p ) = tSign ;
 
-
-            // scale for better conditioning
-            // tM *= constant::mu0 * 0.01 ;
-
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // contribution for mass and stiffness matrix
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -602,9 +586,6 @@ namespace belfem
             p = 2 * mNumberOfNodesPerElement ;
 
             uint tNumLayers = mGroup->number_of_thin_shell_layers() ;
-
-            // this->print_dofs( aElement );
-
 
             // loop over all layers
             for( uint l=0; l<tNumLayers; ++l )
@@ -642,30 +623,8 @@ namespace belfem
 
             // finalize the Jacobian
             aJacobian += mDeltaTime * mGroup->work_K() ;
-
-            /*if( aElement->id() == 99 || aElement->id() == 257 || aElement->id() == 258 )
-            {
-                this->print_dofs( aElement );
-
-                std::cout << "S " << tSign << std::endl ;
-
-                for( uint l=0; l<=tNumLayers; ++l )
-                {
-                    id_t tIdd = aElement->dof( 6 + l )->id() ;
-
-                    id_t tIdx = aElement->dof( 6 + l )->dof_index_on_field() ;
-
-                    id_t tID = aElement->dof( 6 + l )->edge()->id();
-
-                    index_t tIndex = aElement->dof( 6 + l )->edge()->index() ;
-
-                    std::cout << "  " << l << " | " << tIdd << " " << tIdx << " | " << tID << " " << tIndex << " | " << mMesh->field_data( "edge_h")( tIndex ) << std::endl ;
-                }
-            } */
         }
-#if BELFEM_GCC
-#pragma GCC diagnostic pop
-#endif
+
 //------------------------------------------------------------------------------
 
         void

@@ -567,13 +567,6 @@ namespace belfem
                         aData( tCount++ ) = tElement->id();
                         aData( tCount++ ) = tNumDofsPerElement;
 
-                        /*if(  tElement->id() == 25 )
-                        {
-                            std::cout << "sideset " << tSideSet->id() << " " << ( uint ) tSideSet->domain_type() << std::endl ;
-                            mParent->iwg()->print_dofs( tElement );
-                            exit( 0 );
-                        }*/
-
                         BELFEM_ASSERT( tElement->number_of_dofs() == tNumDofsPerElement,
                                       "number of dofs do not match for element %lu on sideset %lu  is %u but expect %u",
                                       ( long unsigned int ) tElement->id(),

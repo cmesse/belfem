@@ -53,6 +53,9 @@ int main( int    argc,
     // get the mesh
     Mesh * tMesh = tFactory->mesh() ;
 
+    // flag telling if we compute the norm of b
+    bool tComputeNormB      = tFactory->compute_normb() ;
+
     /*tMesh->unflag_all_nodes();
     tMesh->block( 1 )->flag_nodes();
     for( mesh::Node * tNode : tMesh->nodes() )
@@ -299,6 +302,9 @@ int main( int    argc,
 
        // todo: move into postprocess routine
        fem::compute_element_current_thinshell_tri3( tMagfield );
+
+       compute_normb( tMagfield, false );
+
 
        // save mesh
        real tOldTime = tTime ;
