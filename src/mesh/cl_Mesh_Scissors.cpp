@@ -902,19 +902,8 @@ namespace belfem
                     // create a new element
                     Element * tElement = tFactory.create_lagrange_element( ElementType::LINE2, ++mMaxElementID );
 
-                    /*if( tElement->id() == 18138 )
-                    {
-                        std::cout << tNode->id() << std::endl ;;
-                        id_t tID =  tNodeMap( tNode->id() )->id()  ;
-                        id_t tID2 = mNodeMapTapes( tNode->id())->id() ;
 
-                        std::cout <<  tID << std::endl ;
-                        std::cout <<  tID2 << std::endl ;
-                        std::cout << tNodeMap( tID2 )->id() << std::endl ;
-                        exit( 0 );
-                    }*/
-
-                    /*if( tSwitch && mNodeMapTapes.key_exists( tNode->id())  )
+                    if( tSwitch && mNodeMapTapes.key_exists( tNode->id())  )
                     {
                         // insert negative side
                         tElement->insert_node( mNodeMapTapes( tNode->id() ), 0 );
@@ -927,9 +916,10 @@ namespace belfem
 
 
                     // insert positive side
-                    tElement->insert_node( tNodeMap( tNode->id() ), 1 ); */
+                    tElement->insert_node( tNodeMap( tNode->id() ), 1 );
 
 
+                    /*
                     // insert negative side
                     tElement->insert_node( tNode, 0 );
 
@@ -942,7 +932,7 @@ namespace belfem
                     {
                         // insert positive side
                         tElement->insert_node( tNodeMap( tNode->id() ), 1 );
-                    }
+                    }*/
 
 
 
