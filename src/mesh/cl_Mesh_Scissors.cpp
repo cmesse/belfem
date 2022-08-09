@@ -108,7 +108,8 @@ namespace belfem
                 // create the edges if they don't exist already
                 if ( !aMesh->edges_exist() )
                 {
-                    aMesh->create_edges();
+                    BELFEM_ERROR( false, "Edges for this mesh have not been created");
+                    // aMesh->create_edges();
                 }
                 this->compute_max_sideset_id();
 
@@ -282,28 +283,25 @@ namespace belfem
             // only do something on master
             if( mMyRank == mMesh->master() )
             {
+                mMesh->unflag_all_nodes() ;
+                mMesh->unflag_all_elements() ;
+
                 // first we create the new sheets
                 if( mTapes.size() > 0 )
                 {
                     this->check_compatibility( true );
 
                     this->collect_cut_data( true );
-                    this->count_nodes();
+                    this->count_nodes( true );
                     this->compute_max_node_id();
                     this->duplicate_nodes( true );
-
-                    this->count_facets();
+                    this->create_cut_table( true ) ;
+                    this->count_facets( true );
                     this->compute_max_element_id();
                     // this->duplicate_facets();
 
                     this->relink_elements( true );
-                    this->relink_original_facets( true );
-
-                    // this->create_connectors( true ); // < -- no connector elements for tapes!
-
-                    mMesh->unfinalize();
-
-                    mMesh->finalize();
+                    this->relink_facets();
                 }
 
                 // second, we create the cuts
@@ -312,23 +310,21 @@ namespace belfem
                     this->check_compatibility( false );
 
                     this->collect_cut_data( false );
-                    this->count_nodes();
+                    this->count_nodes( false );
                     this->compute_max_node_id();
                     this->duplicate_nodes( false );
+                    this->create_cut_table( false ) ;
 
-                    this->count_facets();
+                    this->count_facets( false );
                     this->compute_max_element_id();
-                    // this->duplicate_facets();
 
                     this->relink_elements( false );
-                    this->relink_original_facets( false );
-
-                    this->create_connectors( false );
-
-                    mMesh->unfinalize();
-
-                    mMesh->finalize();
+                    this->create_connectors();
                 }
+
+                mMesh->unfinalize();
+                mMesh->finalize() ;
+
             }
         }
 
@@ -348,7 +344,9 @@ namespace belfem
             }
 
             // flatten table
-            mData.set_size( 4, tCount );
+            Matrix< id_t > & tData = aTapeMode ? mTapeData : mCutData ;
+
+            tData.set_size( 4, tCount );
             tCount = 0 ;
 
             for( scissors::CutData * tCut : tCuts )
@@ -356,12 +354,12 @@ namespace belfem
                 index_t tNumSideSets = tCut->num_sidesets();
                 for( index_t k=0; k<tNumSideSets; ++k )
                 {
-                    const Vector< id_t > & tData = tCut->data( k );
+                    const Vector< id_t > & tCutData = tCut->data( k );
 
-                    mData( 0, tCount ) = tCut->id();
-                    mData( 1, tCount ) = tData( 0 );  // sideset
-                    mData( 2, tCount ) = tData( 1 );  // plus
-                    mData( 3, tCount ) = tData( 2 );  // minus
+                    tData( 0, tCount ) = tCut->id();
+                    tData( 1, tCount ) = tCutData( 0 );  // sideset
+                    tData( 2, tCount ) = tCutData( 1 );  // plus
+                    tData( 3, tCount ) = tCutData( 2 );  // minus
 
                     ++tCount ;
                 }
@@ -372,14 +370,49 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        Scissors::count_nodes()
+        Scissors::count_nodes( const bool aTapeMode )
         {
-            mMesh->unflag_all_nodes() ;
-            index_t tNumSideSets = mData.n_cols() ;
 
-            for( index_t k=0 ; k<tNumSideSets; ++k )
+            Matrix< id_t > & tData = aTapeMode ? mTapeData : mCutData ;
+            index_t tNumSideSets = tData.n_cols() ;
+
+            // fix facet links
+            if( ! aTapeMode )
             {
-                mMesh->sideset( mData( 1, k ) )->flag_all_nodes() ;
+                for( index_t s=0 ; s<tNumSideSets; ++s )
+                {
+                    Cell< Facet * > & tFacets = mMesh->sideset( tData( 1, s ) )->facets() ;
+
+                    uint tNumNodes = mesh::number_of_nodes( mMesh->sideset( tData( 1, s ) )->element_type() );
+
+                    for( Facet * tFacet : tFacets )
+                    {
+                        if( tFacet->master()->is_flagged() && tFacet->slave()->is_flagged() )
+                        {
+                            for ( uint k = 0; k < tNumNodes; ++k )
+                            {
+                                if ( tFacet->node( k )->is_flagged())
+                                {
+                                    tFacet->element()->insert_node( mDuplicateNodes( tFacet->node( k )->index()), k );
+                                }
+                            }
+                        }
+                    }
+                }
+
+            }
+
+            mMesh->unflag_all_nodes() ;
+
+            for( index_t s=0 ; s<tNumSideSets; ++s )
+            {
+                Cell< Facet * > & tFacets = mMesh->sideset( tData( 1, s ) )->facets() ;
+
+                for( Facet * tFacet : tFacets )
+                {
+
+                    tFacet->flag_nodes() ;
+                }
             }
 
             mNumberOfNodes = 0 ;
@@ -391,19 +424,22 @@ namespace belfem
                     ++mNumberOfNodes ;
                 }
             }
+
         }
 
 //------------------------------------------------------------------------------
 
         void
-        Scissors::count_facets()
+        Scissors::count_facets( const bool aTapeMode  )
         {
+            Matrix< id_t > & tData = aTapeMode ? mTapeData : mCutData ;
+
             mMesh->unflag_all_facets();
-            index_t tNumSideSets = mData.n_cols() ;
+            index_t tNumSideSets = tData.n_cols() ;
 
             for( index_t k=0 ; k<tNumSideSets; ++k )
             {
-                mMesh->sideset( mData( 1, k ) )->flag_all_facets() ;
+                mMesh->sideset( tData( 1, k ) )->flag_all_facets() ;
             }
 
             mNumberOfFacets = 0 ;
@@ -422,193 +458,82 @@ namespace belfem
         void
         Scissors::duplicate_nodes( const bool aTapeMode )
         {
-            Map< id_t, mesh::Node * > & tNodeMap = aTapeMode ? mNodeMapTapes : mNodeMapCuts ;
-
             index_t tNumNodes = mMesh->number_of_nodes() ;
 
-            // make backup copy of original node list
-            Cell< mesh::Node * > tOldNodes(
-                    tNumNodes,
-                    nullptr );
-
-            index_t tCount = 0 ;
-
-            // populate temporary container
-            for( mesh::Node * tNode : mNodes )
-            {
-                tOldNodes( tCount++ ) = tNode ;
-            }
+            // backup original nodes on mesh
+            Cell< mesh::Node * > tNodes ;
+            tNodes.vector_data() = std::move( mMesh->nodes().vector_data() );
 
             // resize array
             mNodes.clear() ;
             mNodes.set_size( tNumNodes + mNumberOfNodes, nullptr );
 
             // copy original nodes back
-            tCount = 0 ;
-            for( mesh::Node * tNode : tOldNodes )
+            index_t tAllCount = 0 ;
+            for( mesh::Node * tNode : tNodes )
             {
-                mNodes( tCount++ ) = tNode ;
+                tNode->set_index( gNoIndex );
+                mNodes( tAllCount++ ) = tNode ;
             }
 
-            if( ! aTapeMode )
-            {
-                Matrix< id_t > & tNodeTable = mMesh->node_cut_table();
-                tNodeTable.set_size( 2, mNumberOfNodes );
+            mOriginalNodes.set_size( mNumberOfNodes, nullptr );
+            mDuplicateNodes.set_size( mNumberOfNodes, nullptr );
 
-                // create a new counter
-                index_t tDuplicateCount = 0;
-
-                // crate the node duplicates
-                for ( mesh::Node * tNode: tOldNodes )
-                {
-                    if ( tNode->is_flagged())
-                    {
-                        mesh::Node * tDuplicate = new Node(
-                                mMaxNodeID++,
-                                tNode->x(),
-                                tNode->y(),
-                                tNode->z());
-
-                        tNodeMap[ tNode->id() ] = tDuplicate;
-
-                        // if tapes exist, this node might already have been duplicated
-                        // we use this trick to correct the cut
-                        if ( mNodeMapTapes.key_exists( tNode->id()))
-                        {
-                            mNodeMapCuts[ mNodeMapTapes( tNode->id())->id() ] = tDuplicate;
-                        }
-
-                        // remember relation between original and duplicate
-                        tNodeTable( 0, tDuplicateCount ) = tNode->id();
-                        tNodeTable( 1, tDuplicateCount ) = tDuplicate->id();
-                        ++tDuplicateCount;
-
-                        // add new node to memory
-                        mNodes( tCount++ ) = tDuplicate;
-                    }
-                }
-
-                BELFEM_ASSERT( tDuplicateCount == mNumberOfNodes, "Internal Error in Cut routine: number of nodes does not match" );
-
-
-            }
-            else
-            {
-                // crate the node duplicates
-                for ( mesh::Node * tNode: tOldNodes )
-                {
-                    if ( tNode->is_flagged())
-                    {
-                        mesh::Node * tDuplicate = new Node(
-                                mMaxNodeID++,
-                                tNode->x(),
-                                tNode->y(),
-                                tNode->z() );
-
-                        tNodeMap[ tNode->id() ] = tDuplicate;
-
-                        // add new node to memory
-                        mNodes( tCount++ ) = tDuplicate;
-                    }
-                }
-            }
-        }
-
-//------------------------------------------------------------------------------
-
-        void
-        Scissors::duplicate_facets( const bool aTapeMode )
-        {
-            Map< id_t, mesh::Node * > & tNodeMap = aTapeMode ? mNodeMapTapes : mNodeMapCuts ;
-
-            index_t tNumFacets = mMesh->number_of_facets() ;
-
-            // make backup copy of original node list
-            Cell< mesh::Facet * > tOldFacets(
-                    mMesh->number_of_facets(),
-                    nullptr );
-
+            // crate the node duplicates
             index_t tCount = 0 ;
-            for( mesh::Facet * tFacet : mFacets )
+
+            // crate the node duplicates
+            for ( mesh::Node * tNode: tNodes )
             {
-                tOldFacets( tCount++ ) = tFacet ;
-            }
-
-            mFacets.clear() ;
-            tCount = tNumFacets + mNumberOfFacets ;
-
-            mFacets.set_size( tCount, nullptr );
-
-            tCount = 0 ;
-            for( mesh::Facet * tFacet : tOldFacets )
-            {
-                mFacets( tCount++ ) = tFacet ;
-            }
-
-            // the factory for elements
-            ElementFactory tFactory ;
-
-            for( mesh::Facet * tFacet : tOldFacets )
-            {
-                if( tFacet->is_flagged() )
+                if ( tNode->is_flagged())
                 {
-                    BELFEM_ASSERT( tFacet->master() != nullptr, "Facet %lu does not have a master element",
-                                  ( long unsigned int ) tFacet->id() );
+                    // create duplicate
+                    mesh::Node * tDuplicate = new Node(
+                            mMaxNodeID++,
+                            tNode->x(),
+                            tNode->y(),
+                            tNode->z());
 
-                    BELFEM_ASSERT( tFacet->slave() != nullptr, "Facet %lu does not have a slave element",
-                                  ( long unsigned int ) tFacet->id() );
+                    // set index of original node
+                    tNode->set_index( tCount );
 
-                    // create duplicate element
-                    mesh::Element * tElement  = tFactory.create_lagrange_element(
-                            tFacet->element()->type() , mMaxElementID++ );
+                    // set index of duplicate ( needed for connector creation )
+                    tDuplicate->set_index( tCount + mNumberOfNodes );
 
-                    // link element with duplicated nodes
-                    uint tNumNodes = tFacet->element()->number_of_nodes() ;
+                    // store old and new nodes in special containers
+                    mOriginalNodes( tCount ) = tNode ;
+                    mDuplicateNodes( tCount++ ) = tDuplicate ;
 
-                    for( uint k=0; k<tNumNodes; ++k )
-                    {
-                        tElement->insert_node( tNodeMap( tFacet->element()->node( k )->id() ), k );
-                    }
-
-                    // create new facet
-                    mesh::Facet * tDuplicate = new mesh::Facet( tElement );
-
-                    tDuplicate->set_master( tFacet->master(), tFacet->master_index(), false );
-                    tDuplicate->set_slave( tFacet->slave(), tFacet->slave_index() );
-
-                    mFacetMap[ tFacet->id() ] = tDuplicate ;
-                    mFacets( tCount++ ) = tDuplicate ;
+                    // also add new node to mesh
+                    mNodes( tAllCount++ ) = tDuplicate;
                 }
             }
-
-            BELFEM_ERROR( false, "TODO: New facets must be stored in new sidesets. Otherwise: Memory leak");
         }
 
 //------------------------------------------------------------------------------
 
         void
-        Scissors::relink_original_facets( const bool aTapeMode )
+        Scissors::create_cut_table( const bool aTapeMode )
         {
-            Map< id_t, mesh::Node * > & tNodeMap = aTapeMode ? mNodeMapTapes : mNodeMapCuts ;
+            Matrix< id_t > & tTable = aTapeMode ?
+                    mMesh->node_tape_table() : mMesh->node_cut_table() ;
 
-            mMesh->unflag_all_facets() ;
-            mMesh->unflag_all_elements() ;
+            index_t tNumNodes = mOriginalNodes.size() ;
 
-            // now we flag all elements that are connected to nodes that are to be replaced
-            for( Element * tElement : mElements )
+            tTable.set_size( 2, tNumNodes );
+
+            for( index_t k=0; k<tNumNodes; ++k )
             {
-                uint tNumNodes = tElement->number_of_nodes() ;
-
-                for( uint k=0; k<tNumNodes; ++k )
-                {
-                    if( tElement->node( k )->is_flagged() )
-                    {
-                        tElement->flag() ;
-                        break ;
-                    }
-                }
+                tTable( 0 , k ) = mOriginalNodes( k )->id() ;
+                tTable( 1, k )  = mDuplicateNodes( k )->id() ;
             }
+        }
 
+//------------------------------------------------------------------------------
+
+        void
+        Scissors::relink_facets()
+        {
             // each facet has a master and a slave element
             // for interface elements, the master is always solid (superconductor, coil or iron)
             // and the slave is always air
@@ -636,7 +561,7 @@ namespace belfem
                             // check if node is to be replaced
                             if ( tNode->is_flagged() )
                             {
-                                tElement->insert_node( tNodeMap( tNode->id()), k );
+                                tElement->insert_node( mDuplicateNodes( tNode->index()), k );
                             }
                         } // end node loop
 
@@ -657,7 +582,7 @@ namespace belfem
                                     // check if node is to be replaced
                                     if ( tNode->is_flagged() )
                                     {
-                                        tEdge->insert_node( tNodeMap( tNode->id()), k );
+                                        tEdge->insert_node( mDuplicateNodes( tNode->index()), k );
                                     }
                                 } // end node loop
                             } // end edge loop
@@ -672,286 +597,169 @@ namespace belfem
         void
         Scissors::relink_elements( const bool aTapeMode )
         {
-            Map< id_t, mesh::Node * > & tNodeMap = aTapeMode ? mNodeMapTapes : mNodeMapCuts ;
+            Matrix< id_t > & tData = aTapeMode ? mTapeData : mCutData ;
 
-            index_t tNumSideSets = mData.n_cols() ;
+            // unflag all nodes on the mesh
+            mMesh->unflag_all_nodes() ;
 
+            // unflag all elements on the mesh
+            mMesh->unflag_all_elements() ;
 
-            uint tDimension = mMesh->number_of_dimensions() ;
-            for( index_t s=0 ; s<tNumSideSets; ++s )
+            // flag the nodes that are to be duplicated
+            for( Node * tNode : mOriginalNodes )
             {
-                // unflag all nodes on the mesh
-                mMesh->unflag_all_nodes() ;
+                tNode->flag() ;
+            }
 
-                // unflag all elements on the mesh
-                mMesh->unflag_all_elements() ;
+            uint tNumCuts = tData.n_cols() ;
 
-                uint tNumBlocks   = mMesh->number_of_blocks() ;
+            for( uint c=0; c<tNumCuts; ++c )
+            {
+                Block * tBlock = mMesh->block( tData( 2, c ) );
 
-                id_t tPlus  = mData( 2, s );
-                id_t tMinus = mData( 3, s );
+                // grab elements from block
+                Cell< Element * > & tElements = tBlock->elements() ;
 
+                uint tNumNodes = mesh::number_of_nodes( tBlock->element_type() );
 
-                // get the sideset
-                SideSet * tSideSet =  mMesh->sideset( mData( 1, s ) );
-
-                // find out which blocks the plus block touches
-                if( ! aTapeMode )
+                // loop over all elements on plus block
+                for( Element * tElement  : tElements )
                 {
-                    Cell< Node * > & tNodes = tSideSet->nodes() ;
-
-                    for( Node * tNode : tNodes )
+                    for( uint k=0; k<tNumNodes; ++k )
                     {
-                        tNode->flag();
-                        uint tNumElems = tNode->number_of_elements();
-                        for ( uint e = 0; e < tNumElems; ++e )
+                        if( tElement->node( k )->is_flagged() )
                         {
-                            tNode->element( e )->flag();
+                            // relink the node
+                            tElement->insert_node( mDuplicateNodes( tElement->node( k )->index() ), k );
+
+                            // make sure that the element is flagged
+                            tElement->flag() ;
                         }
                     }
                 }
-                else
-                {
-                    // get elements on plus block
-                    Cell< Element * > & tPlusElements
-                        = mMesh->block( tPlus )->elements() ;
+            } // end loop over all blocks
 
-                    // flag all corner nodes
-                    for( Element * tElement : tPlusElements )
-                    {
-                        tElement->flag_corner_nodes() ;
-                    }
-
-                    Vector< index_t > tBlockCount( mMesh->number_of_blocks(), 0 );
-
-                    // loop over all blocks
-                    for( uint b=0; b<tNumBlocks; ++b )
-                    {
-                        // get block
-                        Block * tBlock = mMesh->blocks()( b );
-
-                        // check if this is neither the minus nor the plus block
-                        if( tBlock->id() != tMinus )
-                        {
-                            // get element container
-                            Cell< Element * > & tElements = tBlock->elements() ;
-
-                            uint tCount  ;
-
-                            // loop over all elements
-                            for( Element * tElement : tElements )
-                            {
-                                tCount = 0 ;
-
-                                // count flagged nodes
-                                for( uint k=0; k<tElement->number_of_corner_nodes(); ++k )
-                                {
-                                    if( tElement->node( k )->is_flagged() )
-                                    {
-                                        // increment counter
-                                        ++tCount ;
-                                    }
-                                }
-
-                                // check if element touches
-                                if( tCount >= tDimension )
-                                {
-                                    // set flag for this block
-                                    tBlockCount( b ) = 1 ;
-                                    break ;
-                                }
-                            }
-                        } // end if block is not minus
-                    } // end loop over all blocks
-
-                    // create id list with touching blocks
-
-                    Vector< id_t > tTouchBlocks( sum( tBlockCount ), 0 );
-                    uint tCount = 0 ;
-                    for( uint b=0; b<tNumBlocks; ++b )
-                    {
-                        if( tBlockCount( b ) == 1 )
-                        {
-                            tTouchBlocks( tCount++ ) = mMesh->blocks()(b)->id() ;
-                        }
-                    }
-                    tNumBlocks = tCount ;
-
-                    // unflag all nodes on the mesh
-                    mMesh->unflag_all_nodes() ;
-
-                    // flag all nodes on this sideset
-                    Cell< Node * > & tNodes = tSideSet->nodes() ;
-                    for( Node * tNode : tNodes )
-                    {
-                        tNode->flag();
-                    }
-
-                    // loop over all blocks of interest and flag the elements that are connected
-                    // to this sideset
-                    for( uint b=0; b<tNumBlocks; ++b )
-                    {
-                        Cell< Element * > & tElements = mMesh->block( tTouchBlocks( b ) )->elements() ;
-
-                        // loop over all elements
-                        for( Element * tElement : tElements )
-                        {
-                            for( uint k=0; k<tElement->number_of_nodes(); ++k )
-                            {
-                                if( tElement->node( k )->is_flagged() )
-                                {
-                                    // flag this element
-                                    tElement->flag() ;
-
-                                    // continue with next element
-                                    break ;
-                                }
-                            }
-                        }
-                    }
-                } // end tape mode
-
-                // get the element container
-                Cell< Element * > & tElements = aTapeMode ? mMesh->elements() : mMesh->block( tPlus )->elements() ;
-
-                // loop over all elements in plus block
-                for( Element * tElement : tElements )
-                {
-                    // check if element has been selected
-                    if( tElement->is_flagged() )
-                    {
-                        // loop over all nodes on element
-                        for( uint i=0; i<tElement->number_of_nodes(); ++i )
-                        {
-                            // grab node
-                            Node * tNode = tElement->node( i );
-
-                            // check if node sits on sideset
-                            if( tNode->is_flagged() )
-                            {
-                                // replace node
-                                tElement->insert_node( tNodeMap( tNode->id() ), i );
-                            }
-                        }
-
-                        // relink edges of element
-                        if( tElement->has_edges() )
-                        {
-                            for( uint e=0; e<tElement->number_of_edges(); ++e )
-                            {
-                                // grab edge
-                                Edge * tEdge = tElement->edge( e );
-
-                                // loop over all nodes of this edge
-                                for( uint i=0; i<tEdge->number_of_nodes(); ++i )
-                                {
-                                    // grab node
-                                    Node * tNode = tEdge->node( i );
-
-                                    // check if node is to be replaced
-                                    if ( tNode->is_flagged() )
-                                    {
-                                        tEdge->insert_node( tNodeMap( tNode->id()), i );
-                                    }
-                                } // end node loop
-                            } // end edge loop
-                        } // end edges exist
-                    } // end if element is flagged
-                } // end loop over all elements
-            }
         }
 
 //------------------------------------------------------------------------------
-
+#ifdef BELFEM_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#endif
         void
-        Scissors::create_connectors( const bool aTapeMode )
+        Scissors::create_connectors()
         {
-            Map< id_t, mesh::Node * > & tNodeMap = aTapeMode ? mNodeMapTapes : mNodeMapCuts ;
-
+            // the factory that we use to create the new elements
             ElementFactory tFactory ;
 
-            index_t tNumSideSets = mData.n_cols() ;
+            index_t tNumSideSets = mCutData.n_cols() ;
 
             mConnectorSetIDs.set_size( tNumSideSets );
 
-            mSideSetToCutIDs.clear() ;
+            index_t tNodeCount = 0 ;
 
-            for( index_t k=0 ; k<tNumSideSets; ++k )
+            mMesh->unflag_all_nodes() ;
+
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            // Step 1: count how many connectors are created in total per sideset
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+            Vector< index_t > tNumConnectors( tNumSideSets, 0 );
+
+            for( index_t s=0 ; s<tNumSideSets; ++s )
             {
-                // get sideset
-                SideSet * tSideSet =  mMesh->sideset( mData( 1, k ) );
+                SideSet * tSideSet = mMesh->sideset( mCutData( 1, s )) ;
 
-                // number of nodes on this sideset
-                Cell< Node * > & tNodes = tSideSet->nodes();
+                uint tNumNodesPerFacet = number_of_nodes( tSideSet->element_type() ) ;
 
-                // create a new block
-                SideSet * tCut = new SideSet( mData( 0, k ), tNodes.size() );
+                // get facets
+                Cell< Facet * > & tFacets = tSideSet->facets() ;
 
-                Cell< Facet * > & tFacets = tCut->facets() ;
+                // loop over all facets
+                for( Facet * tFacet : tFacets )
+                {
+                    for( uint k=0; k<tNumNodesPerFacet; ++k )
+                    {
+                        Node * tNode = tFacet->node( k );
+                        if( ! tNode->is_flagged() )
+                        {
+                            tNode->flag() ;
+                            ++tNumConnectors( s );
+                        }
+                    }
+                }
+            }
 
+            // sanity check
+            BELFEM_ERROR( sum( tNumConnectors ) == mNumberOfNodes,
+                          "Something went wrong while creating connectors for cuts" ) ;
+
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            // Step 2: create the connectors
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            for( index_t s=0 ; s<tNumSideSets; ++s )
+            {
+                SideSet * tSideSet = mMesh->sideset( mCutData( 1, s ));
+
+                // get facets from sideset
+                Cell < Facet * > & tFacets = tSideSet->facets();
+
+                // create a new sideset
+                SideSet * tCut = new SideSet( mCutData( 0, s ), tNumConnectors( s ) );
+
+                // get the connectors for this sideset
+                Cell< Facet * > & tConnectors = tCut->facets() ;
+
+                uint tNumNodesPerFacet = number_of_nodes( tSideSet->element_type());
+
+                // initialize a counter
                 index_t tCount = 0 ;
 
-                // get id of master block
-                id_t tPlusID = mData( 2, k );
+                // id of plus block
+                id_t tPlus  = mCutData( 2, s );
 
-                // needed for a bugfix that the connectors sit correct on cuts that intersect tapes
-                bool tSwitch  = ! aTapeMode && mPlus.key_exists( tPlusID );
-
-                for( Node * tNode : tNodes )
+                // loop over all facets
+                for ( Facet * tFacet: tFacets )
                 {
-                    // create a new element
-                    Element * tElement = tFactory.create_lagrange_element( ElementType::LINE2, ++mMaxElementID );
-
-
-                    if( tSwitch && mNodeMapTapes.key_exists( tNode->id())  )
+                    for( uint k=0; k<tNumNodesPerFacet; ++k )
                     {
-                        // insert negative side
-                        tElement->insert_node( mNodeMapTapes( tNode->id() ), 0 );
+                        Node * tNode = tFacet->node( k );
+                        if( tNode->is_flagged() )
+                        {
+                            // create a new element
+                            Element * tElement = tFactory.create_lagrange_element( ElementType::LINE2, ++mMaxElementID );
+
+                            // link to negative side
+                            tElement->insert_node( tNode, 0 );
+
+                            // link to positive side
+                            tElement->insert_node( mDuplicateNodes( tNode->index() ), 1 );
+
+                            // we need this information for the dof linking (todo, can be done prettier)
+                            tElement->set_block_id( tPlus );
+
+                            // add new facet to  sideset
+                            tConnectors( tCount++ ) = new Facet( tElement );
+
+                            // unflag this node
+                            tNode->unflag() ;
+                        }
                     }
-                    else
-                    {
-                        // insert negative side
-                        tElement->insert_node( tNode, 0 );
-                    }
-
-
-                    // insert positive side
-                    tElement->insert_node( tNodeMap( tNode->id() ), 1 );
-
-
-                    /*
-                    // insert negative side
-                    tElement->insert_node( tNode, 0 );
-
-
-                    if( tSwitch && mNodeMapTapes.key_exists( tNode->id())  )
-                    {
-                        tElement->insert_node( mNodeMapTapes( tNode->id() ), 1 );
-                    }
-                    else
-                    {
-                        // insert positive side
-                        tElement->insert_node( tNodeMap( tNode->id() ), 1 );
-                    }*/
-
-
-
-                    tElement->set_block_id( tPlusID );
-
-                    // add facet to block
-                    tFacets( tCount++ ) = new Facet( tElement );
                 }
 
                 mSideSetToCutIDs[ tSideSet->id() ] = tCut->id() ;
 
                 // remember ID of new block
-                mConnectorSetIDs( k ) = tCut->id() ;
+                mConnectorSetIDs( s ) = tCut->id() ;
 
-                // add sideset to mesh
+                // add cut to mesh
                 mMesh->cuts().push( tCut );
+
             }
         }
-
+#ifdef BELFEM_GCC
+#pragma GCC diagnostic pop
+#endif
 //------------------------------------------------------------------------------
 
         void
@@ -1084,6 +892,5 @@ namespace belfem
             }
         }
 
-//------------------------------------------------------------------------------
     }
 }

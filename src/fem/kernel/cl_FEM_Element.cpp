@@ -955,7 +955,8 @@ namespace belfem
 
             const Vector< index_t > & tShellNodeDofTypes = aDofManager->iwg()->dofs_per_node_on_sideset( mParent->id() );
             const Vector< index_t > & tShellEdgeDofTypes = aDofManager->iwg()->dofs_per_edge_on_sideset( mParent->id() );
-            const Vector< index_t > & tShellFaceDofTypes = aDofManager->iwg()->dofs_per_face_on_sideset( mParent->id() );
+            const Vector< index_t > & tShellFaceDofTypes = aDofManager->mesh()->number_of_dimensions() == 2 ?
+                    tEmpty : aDofManager->iwg()->dofs_per_face_on_sideset( mParent->id() );
             const Vector< index_t > & tLambdaDofTypes    = aDofManager->iwg()->lambda_dofs( mParent->id() );
 
             if( tShellEdgeDofTypes.length() > 0 )
@@ -1500,8 +1501,8 @@ namespace belfem
                 else
                 {
                     // check if this is a cut
-                    tA = mParent->parent()->mesh()->duplicate_node( tA )->id() ;
-                    tB = mParent->parent()->mesh()->duplicate_node( tB )->id() ;
+                    tA = mParent->parent()->mesh()->cut_duplicate_node( tA )->id() ;
+                    tB = mParent->parent()->mesh()->cut_duplicate_node( tB )->id() ;
 
                     bool tSuccess = false ;
 

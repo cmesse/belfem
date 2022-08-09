@@ -7,7 +7,7 @@
 
 #include <vector>
 #include <initializer_list>
-#include <algorithm> // for unique
+#include <algorithm> // for unique and reverse
 
 #include "typedefs.hpp"
 

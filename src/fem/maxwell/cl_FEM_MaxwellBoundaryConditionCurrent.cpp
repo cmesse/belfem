@@ -133,6 +133,13 @@ namespace belfem
 
             mParent->mesh()->global_variable_data( mLabel ) = tI ;
 
+            // catch numerical error
+            if( std::abs( tI ) < 1e-6 )
+            {
+                mParent->mesh()->global_variable_data( mLabel ) = 0.0 ;
+                tI = 1e-6 ;
+            }
+
             switch( mParent->iwg()->type() )
             {
                 case( IwgType::MAXWELL_HA_TRI3 ) :

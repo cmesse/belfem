@@ -2773,15 +2773,16 @@ namespace belfem
 
                     // loop over all DOFs, note that on master,
                     // myindex and index are the same
-                    for ( Dof * tDOF : mDOFs )
+                    for ( Dof * tDof : mDOFs )
                     {
-                        if ( tDOF->is_fixed() )
+
+                        if ( tDof->is_fixed() )
                         {
-                            tDOF->set_index( mNumberOfFixedDofs++ );
+                            tDof->set_index( mNumberOfFixedDofs++ );
                         }
                         else
                         {
-                            tDOF->set_index( mNumberOfFreeDofs++ );
+                            tDof->set_index( mNumberOfFreeDofs++ );
                         }
                     }
 

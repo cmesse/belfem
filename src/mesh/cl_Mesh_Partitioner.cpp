@@ -39,23 +39,31 @@ namespace belfem
                 // tell mesh how many partitions exist
                 aMesh->set_number_of_partitions( mNumberOfPartitions );
 
-                this->fix_cut_related_ownerships();
+                // fix a rare bug
+                this->fix_facet_related_ownerships( );
+                this->fix_cut_related_ownerships(  );
+
 
                 // set node owners
                 aMesh->set_node_owners();
 
+                //this->fix_cut_related_ownerships();
+
+
                 // set vertex owners
                 aMesh->set_vertex_owners();
 
+                //this->fix_facet_related_ownerships();
 
-                // fix a rare bug
-                this->fix_facet_related_ownerships();
 
                 // fix ghost sidesets
                 this->fix_ghost_sideset_related_ownerships() ;
 
                 // set owners of domain cuts
                 aMesh->set_connector_owners();
+
+                aMesh->save("partition.exo");
+
             }
 
 #elif
@@ -298,51 +306,45 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        Partitioner::fix_facet_related_ownerships()
+        Partitioner::fix_facet_related_ownerships( )
         {
+            mMesh->unflag_all_nodes() ;
+
             Cell< Facet * > & tFacets = mMesh->facets() ;
 
-            // counter for changes
             index_t tCount = 1 ;
 
             while( tCount > 0 )
             {
-                // reset counter
-                tCount = 0;
-                for ( Facet * tFacet : tFacets )
+                tCount = 0 ;
+                for ( Facet * tFacet: tFacets )
                 {
-                    if ( tFacet->has_slave() )
+                    proc_t tOwner = tFacet->master()->owner() ;
+
+                    if( tFacet->has_slave() )
                     {
-                        // get the smaller ones
-                        proc_t tOwner = tFacet->master()->owner() < tFacet->slave()->owner() ?
-                                        tFacet->master()->owner() : tFacet->slave()->owner();
-
-                        // set owner of facet
-                        tFacet->set_owner( tOwner );
-
-                        if ( tFacet->master()->owner() != tOwner )
+                        if( tFacet->slave()->owner() < tOwner )
                         {
-                            tFacet->master()->set_owner( tOwner );
-                            ++tCount;
+                            tOwner = tFacet->slave()->owner() ;
                         }
-                        if ( tFacet->slave()->owner() != tOwner )
+                    }
+
+                    tFacet->set_owner( tOwner );
+
+                    if( tFacet->master()->is_flagged() && tFacet->master()->owner() > tOwner )
+                    {
+                       tFacet->master()->set_owner( tOwner );
+                       ++tCount ;
+                    }
+                    if( tFacet->has_slave() )
+                    {
+                        if( tFacet->slave()->is_flagged() &&  tFacet->slave()->owner() > tOwner )
                         {
                             tFacet->slave()->set_owner( tOwner );
-                            ++tCount;
+                            ++tCount ;
                         }
                     }
-                    else
-                    {
-                        // make sure that facet owmer is identical to master owner
-                        tFacet->set_owner( tFacet->master()->owner() );
-                    }
                 }
-            }
-
-            // also set ownership of facet elements
-            for ( Facet * tFacet : tFacets )
-            {
-                tFacet->element()->set_owner( tFacet->master()->owner() );
             }
         }
 
@@ -440,7 +442,7 @@ namespace belfem
         void
         Partitioner::fix_cut_related_ownerships()
         {
-            Matrix< id_t > &  tNodeTable = mMesh->node_cut_table() ;
+            /*Matrix< id_t > &  tNodeTable = mMesh->node_cut_table() ;
 
             index_t tNumNodes = tNodeTable.n_cols() ;
 
@@ -485,7 +487,7 @@ namespace belfem
                         }
                     }
                 }
-            }
+            } */
         }
 
 //------------------------------------------------------------------------------

@@ -342,25 +342,25 @@ namespace belfem
         void
         Kernel::send_submesh( const proc_t & aTarget )
         {
-            if( aTarget == mMyRank ) return;
+            if ( aTarget == mMyRank ) return;
 
             BELFEM_ASSERT( mMyRank == mMasterRank,
-                    "send_submesh() must only be called by maste proc only" );
+                           "send_submesh() must only be called by maste proc only" );
 
             // get ref to all elements on mesh
             Cell< mesh::Element * > & tElements = mMesh->elements();
-            Cell< mesh::Facet * >   & tFacets   = mMesh->facets() ;
+            Cell< mesh::Facet * > & tFacets = mMesh->facets();
 
             // unflag all nodes and elements on mesh
             mMesh->unflag_all_nodes();
             mMesh->unflag_all_elements();
-            mMesh->unflag_all_edges() ;
-            mMesh->unflag_all_faces() ;
-            mMesh->unflag_all_facets() ;
+            mMesh->unflag_all_edges();
+            mMesh->unflag_all_faces();
+            mMesh->unflag_all_facets();
             mMesh->unflag_all_vertices();
 
             // loop over all elements
-            for ( mesh::Element * tElement : tElements )
+            for ( mesh::Element * tElement: tElements )
             {
                 // flag element if it belongs to this proc
                 if ( tElement->owner() == aTarget )
@@ -369,24 +369,24 @@ namespace belfem
                 }
             }
 
-            for( mesh::Facet * tFacet : tFacets )
+            for ( mesh::Facet * tFacet: tFacets )
             {
-                if( tFacet->owner() == aTarget )
+                if ( tFacet->owner() == aTarget )
                 {
-                    tFacet->flag() ;
+                    tFacet->flag();
                 }
             }
 
             // now also flag all element neighbors in order to create the aura
-            for ( mesh::Element * tElement : tElements )
+            for ( mesh::Element * tElement: tElements )
             {
-                if( tElement->is_flagged() )
+                if ( tElement->is_flagged())
                 {
                     // get number of neighbors
                     index_t tNumNeighbors = tElement->number_of_elements();
 
                     // flag neighbors
-                    for( index_t e=0; e<tNumNeighbors; ++e )
+                    for ( index_t e = 0; e < tNumNeighbors; ++e )
                     {
                         tElement->element( e )->flag();
                     }
@@ -631,6 +631,17 @@ namespace belfem
                 }
             }
 
+            // also flag duplicates
+            for( mesh::Node * tNode : tNodes )
+            {
+                if( tNode->is_flagged() )
+                {
+                    mMesh->tape_duplicate_node( tNode->id() )->flag() ;
+                    mMesh->cut_duplicate_node( tNode->id() )->flag() ;
+                    mMesh->tape_duplicate_node(  mMesh->tape_duplicate_node( tNode->id() )->id() )->flag() ;
+                }
+            }
+
             // count nodes
             index_t tCount = 0;
             for( mesh::Node * tNode : tNodes )
@@ -669,39 +680,6 @@ namespace belfem
                 }
             }
 
-            // count nodes that are cut
-            tCount = 0 ;
-
-            // get the cut table
-            Matrix< id_t > & tNodeTable = mMesh->node_cut_table() ;
-
-            // number of nodes in table
-            index_t tNumNodes = tNodeTable.n_cols() ;
-
-            for( index_t k=0; k<tNumNodes; ++k )
-            {
-                // grab node
-                mesh::Node * tNode = mMesh->node( tNodeTable( 0, k ) );
-                if( tNode->is_flagged() )
-                {
-                    ++tCount ;
-                }
-            }
-
-            Matrix< id_t > tNodeSubTable( 2, tCount );
-            tCount = 0 ;
-            for( index_t k=0; k<tNumNodes; ++k )
-            {
-                // grab node
-                mesh::Node * tNode = mMesh->node( tNodeTable( 0, k ) );
-                if( tNode->is_flagged() )
-                {
-                    tNodeSubTable( 0, tCount ) = tNodeTable( 0, k );
-                    tNodeSubTable( 1, tCount ) = tNodeTable( 1, k );
-                    ++tCount ;
-                }
-            }
-
 
             // send data
             send( aTarget, tIDs );
@@ -710,7 +688,44 @@ namespace belfem
             send( aTarget, tY );
             send( aTarget, tZ );
 
-            send( aTarget, tNodeSubTable );
+            for( uint s=0; s<2; ++s )
+            {
+                // count nodes that are cut
+                tCount = 0;
+
+                // get the cut table
+                Matrix< id_t > & tNodeTable = s==0 ? mMesh->node_cut_table() : mMesh->node_tape_table() ;
+
+                // number of nodes in table
+                index_t tNumNodes = tNodeTable.n_cols();
+
+                for ( index_t k = 0; k < tNumNodes; ++k )
+                {
+                    // grab node
+                    mesh::Node * tNode = mMesh->node( tNodeTable( 0, k ));
+                    if ( tNode->is_flagged())
+                    {
+                        ++tCount;
+                    }
+                }
+
+                Matrix< id_t > tNodeSubTable( 2, tCount );
+                tCount = 0;
+                for ( index_t k = 0; k < tNumNodes; ++k )
+                {
+                    // grab node
+                    mesh::Node * tNode = mMesh->node( tNodeTable( 0, k ));
+                    if ( tNode->is_flagged())
+                    {
+                        tNodeSubTable( 0, tCount ) = tNodeTable( 0, k );
+                        tNodeSubTable( 1, tCount ) = tNodeTable( 1, k );
+                        ++tCount;
+                    }
+                }
+
+
+                send( aTarget, tNodeSubTable );
+            }
 
         }
 
@@ -1143,6 +1158,7 @@ namespace belfem
             receive( mMasterRank, tY );
             receive( mMasterRank, tZ );
             receive( mMasterRank, mSubMesh->node_cut_table() );
+            receive( mMasterRank, mSubMesh->node_tape_table() );
 
             index_t tNumberOfNodes = tIDs.length();
 

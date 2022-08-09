@@ -1366,6 +1366,8 @@ namespace belfem
 
             this->set_node_owners();
 
+            this->unflag_all_elements() ;
+
             this->set_connector_owners();
 
             this->set_vertex_owners();
@@ -1778,6 +1780,16 @@ namespace belfem
                 = mNodeMap( mNodeCutTable( 1, k ) );
         }
 
+        // map for tapes
+        mNodeTapeMap.clear();
+        tNumNodes = mNodeTapeTable.n_cols() ;
+
+        for( index_t k=0; k<tNumNodes; ++k )
+        {
+            mNodeTapeMap[ mNodeTapeTable( 0, k ) ]
+                    = mNodeMap( mNodeTapeTable( 1, k ) );
+        }
+
         // map for ghost facets
         mTapeFacetMap.clear() ;
         index_t tNumFacets = mTapeFacetTable.n_cols() ;
@@ -1863,29 +1875,54 @@ namespace belfem
         this->unflag_all_facets();
         this->unflag_all_connectors();
 
-        // loop over all nodes
-        for( mesh::Node * tNode : mNodes )
+        index_t tCount = 1 ;
+
+        Cell< mesh::Node * > tNodes ;
+
+        while( tCount > 0 )
         {
-            proc_t tOwner = mNumberOfPartitions;
+            tCount = 0;
 
-            // get number of elements
-            uint tN = tNode->number_of_elements();
-
-            // loop over all elements of this node
-            for( uint e=0; e<tN; ++e )
+            // loop over all nodes
+            for ( mesh::Node * tNode: mNodes )
             {
-                // we only care about elements, not connectors
-                if( tNode->element( e )->is_flagged() )
-                {
-                    tOwner = ( tNode->element( e )->owner() < tOwner ) ?
-                             tNode->element( e )->owner() : tOwner;
-                }
-            }
+                proc_t tOwner = mNumberOfPartitions;
 
-            tNode->set_owner( tOwner );
+                // grab nodes and duplicates
+                tNodes.set_size( 4, nullptr );
+                tNodes( 0 ) = tNode ;
+                tNodes( 1 ) = this->tape_duplicate_node( tNode->id() );
+                tNodes( 2 ) = this->cut_duplicate_node( tNode->id() );
+                tNodes( 3 ) = this->cut_duplicate_node( tNodes( 1 )->id() );
+                unique( tNodes );
+
+                for ( mesh::Node * tN: tNodes )
+                {
+                    // loop over all elements of this node
+                    for ( uint e = 0; e < tN->number_of_elements(); ++e )
+                    {
+                        // we only care about elements, not connectors
+                        if ( tN->element( e )->is_flagged())
+                        {
+                            tOwner = ( tN->element( e )->owner() < tOwner ) ?
+                                     tN->element( e )->owner() : tOwner;
+                        }
+                    }
+                }
+
+                for ( mesh::Node * tN: tNodes )
+                {
+                    if( tN->owner() > tOwner )
+                    {
+                        tN->set_owner( tOwner );
+                        ++tCount ;
+                    }
+                }
+
+            }
         }
 
-        this->unflag_all_elements();
+        // this->unflag_all_elements();
     }
 
 //------------------------------------------------------------------------------

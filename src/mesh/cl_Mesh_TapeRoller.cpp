@@ -453,6 +453,8 @@ namespace belfem
 
             Vector< real > tShift( tNumLayers, BELFEM_QUIET_NAN );
 
+            uint tNumThick = aLayerThicknesses.length();
+
             // create shifts
             switch( mElementOrder )
             {
@@ -469,11 +471,11 @@ namespace belfem
                 {
                     uint tCount = 0;
                     tShift( 0 ) = -0.5 * sum( aLayerThicknesses );
-                    for ( uint l = 1; l < tNumLayers; ++l )
+                    for ( uint l = 0; l < tNumThick; ++l )
                     {
                         real tX0 = tShift( tCount );
-                        tShift( ++tCount ) = tX0 + 0.5 * aLayerThicknesses( l - 1 );
-                        tShift( ++tCount ) = tX0 +       aLayerThicknesses( l - 1 );
+                        tShift( ++tCount ) = tX0 + 0.5 * aLayerThicknesses( l );
+                        tShift( ++tCount ) = tX0 +       aLayerThicknesses( l );
                     }
                     break;
                 }
@@ -535,6 +537,11 @@ namespace belfem
         {
             // unflag all elements on the mesh
             mMesh->unflag_all_elements();
+
+            BELFEM_ASSERT( mSelectedSideSets.size() == mMasterBlocks.size(),
+                           "Number of sidesets and master blocks does not match (%u vs %u)",
+                           ( unsigned int ) mSelectedSideSets.size(),
+                           ( unsigned int ) mMasterBlocks.size() );
 
             uint tNumSidesets = mSelectedSideSets.size();
 

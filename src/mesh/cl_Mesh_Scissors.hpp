@@ -104,6 +104,9 @@ namespace belfem
             Cell< Facet * >   & mFacets ;
             Cell< Element * > & mElements ;
 
+            Cell< Node * >      mOriginalNodes ;
+            Cell< Node * >      mDuplicateNodes ;
+
             const Vector< id_t > mAirBlockIDs ;
 
             index_t mMaxNodeID = 0 ;
@@ -117,17 +120,18 @@ namespace belfem
             Cell< scissors::CutData * > mTapes ;
 
             // flattened dataset
-            Matrix< id_t > mData ;
+            Matrix< id_t > mTapeData ;
+            Matrix< id_t > mCutData ;
 
             index_t mNumberOfNodes = 0 ;
             index_t mNumberOfFacets = 0 ;
 
             // map that links minus node ids with plus nodes
-            Map< id_t, mesh::Node * > mNodeMapTapes ;
-            Map< id_t, mesh::Node * > mNodeMapCuts ;
+            //Map< id_t, mesh::Node * > mNodeMapTapes ;
+            //Map< id_t, mesh::Node * > mNodeMapCuts ;
 
             // map that links minus facet ids with plus facets
-            Map< id_t, mesh::Facet * > mFacetMap ;
+            //Map< id_t, mesh::Facet * > mFacetMap ;
 
             // list of connector sidesets
             Vector< id_t > mConnectorSetIDs ;
@@ -213,12 +217,12 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
-            count_nodes();
+            count_nodes( const bool aTapeMode  );
 
 //------------------------------------------------------------------------------
 
             void
-            count_facets();
+            count_facets( const bool aTapeMode  );
 
 //------------------------------------------------------------------------------
 
@@ -228,12 +232,12 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
-            duplicate_facets( const bool aTapeMode );
+            create_cut_table( const bool aTapeMode  );
 
 //------------------------------------------------------------------------------
 
             void
-            relink_original_facets( const bool aTapeMode );
+            relink_facets();
 
 //------------------------------------------------------------------------------
 
@@ -243,7 +247,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
-            create_connectors( const bool aTapeMode );
+            create_connectors();
 
 //------------------------------------------------------------------------------
 
@@ -259,7 +263,7 @@ namespace belfem
         inline const Matrix< id_t > &
         Scissors::cut_data() const
         {
-            return mData ;
+            return mCutData ;
         }
 
 //------------------------------------------------------------------------------

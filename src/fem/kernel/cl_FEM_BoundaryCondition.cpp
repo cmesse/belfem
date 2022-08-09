@@ -5,6 +5,7 @@
 #include "cl_FEM_BoundaryCondition.hpp"
 #include "cl_FEM_DofManager.hpp"
 #include "cl_FEM_Dof.hpp"
+#include "cl_FEM_Kernel.hpp"
 
 namespace belfem
 {
@@ -81,12 +82,17 @@ namespace belfem
             }
             if( mBearingID != gNoID )
             {
-                if( comm_rank() == 0 )
+                comm_barrier() ;
+                if( comm_rank() == aDofManager->parent()->master() )
                 {
                     mBearingID = aDofManager->mesh()->vertex( mBearingID )->node( 0 )->id() ;
+                    send( aDofManager->parent()->comm_table(), mBearingID );
                 }
-                comm_barrier() ;
-                broadcast( 0, mBearingID );
+                else
+                {
+                    receive( aDofManager->parent()->master(), mBearingID );
+                }
+
                 this->link_bearing( aDofManager, mBearingID );
             }
             this->collect_nodes();

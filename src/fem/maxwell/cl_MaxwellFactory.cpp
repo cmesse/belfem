@@ -2773,19 +2773,25 @@ namespace belfem
                                                       mTapeMaterialLabels.size(),
                                                       mMesh->max_element_order() );
 
+
+
                         for ( DomainGroup * tTape: mTapes )
                         {
                             tTapeRoller.add_sidesets( tTape->groups());
                             tTapeRoller.add_master_blocks( tTape->master() );
                         }
 
+
+                        // change the element orientation so that the normals point into the right direction
+                        tTapeRoller.flip_element_orientation();
+
                         mMaxBlockID = tTapeRoller.run();
 
                         comm_barrier() ;
                         send( mCommTable, mMaxBlockID );
-
                         // change the element orientation so that the normals point into the right direction
-                        tTapeRoller.flip_element_orientation();
+                        //tTapeRoller.flip_element_orientation();
+
 
                         // grab the sidesets and compute the normals
                         Vector< id_t > tSideSets;
@@ -2793,7 +2799,8 @@ namespace belfem
                         mesh::compute_surface_normals( mMesh, tSideSets, GroupType::SIDESET, false );
 
                         // revert the element orientation, otherwise the logic is messed up
-                        tTapeRoller.revert_element_orientation();
+                        // ( todo: why, I now think that we must not reverse!)
+                        //tTapeRoller.revert_element_orientation();
 
                         // correct the node positions
                         tTapeRoller.shift_nodes( mTapeThicknesses );

@@ -389,8 +389,8 @@ namespace belfem
         EdgeFactory::grab_nodes( const luint & aKey, Cell< Node* > & aNodes )
         {
             // compute first and second node ids
-            id_t tNodeA = aKey % mNumberOfNodes ;
-            id_t tNodeB = ( aKey - tNodeA ) / mNumberOfNodes ;
+            index_t tNodeA = aKey % mNumberOfNodes ;
+            index_t tNodeB = ( aKey - tNodeA ) / mNumberOfNodes ;
 
             Cell< Node * > & tNodes = mMesh.nodes() ;
 

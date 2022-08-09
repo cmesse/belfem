@@ -161,8 +161,28 @@ int main( int    argc,
         tTimeCount = 0 ;
     }
 
-    //tMesh->save( "test.exo");
+    // begin delete me
+    /* real tDz = 0 ;
 
+    for( id_t b=1; b<9; ++b )
+    {
+        tDz += 0.005 ;
+        tMesh->unflag_all_nodes();
+        tMesh->block( b )->flag_nodes();
+        for ( mesh::Node * tNode: tMesh->nodes())
+        {
+            if ( tNode->is_flagged())
+            {
+                tNode->set_coords( tNode->x(), tNode->y(), tDz );
+            }
+        }
+    }
+
+    tMesh->save( "test.vtk");
+
+    //exit( 0 ); */
+
+    // end delete me
    const real tDeltaTime = tFormulation->timestep();
    real & tTime = tMesh->time_stamp() ;
 
@@ -216,21 +236,11 @@ int main( int    argc,
 
                if( tCountP++ > 0 )
                {
-                   if ( tEpsilon < tEpsilon0 )
-                   {
-
-                       tOmegaP *= tCountP + std::min( std::pow( tEpsilon0 / tEpsilon, 0.25 ), 1.05 );
-                       tOmegaP /= tCountP + 1 ;
-                       if ( tOmegaP > 0.99 )
+                       tOmegaP *= std::min( std::pow( tEpsilon0 / tEpsilon, 0.25 ), 1.05 );
+                       if ( tOmegaP > 1.0 )
                        {
-                           tOmegaP = 0.99;
+                           tOmegaP = 1.0 ;
                        }
-                   }
-                   else
-                   {
-                       tOmegaP *= tCountP;
-                       tOmegaP /= tCountP + 1 ;
-                   }
                }
                tCountN = 0 ;
            }
@@ -243,11 +253,11 @@ int main( int    argc,
                    if ( tEpsilon < tEpsilon0 )
                    {
 
-                       tOmegaN *= tCountN + std::min( std::pow( tEpsilon0 / tEpsilon, 0.25 ), 1.05 );
-                       tOmegaN /= tCountN + 1 ;
-                       if ( tOmegaN > 0.99 )
+                       tOmegaN *= std::min( std::pow( tEpsilon0 / tEpsilon, 0.25 ), 1.05 );
+
+                       if ( tOmegaN > 1.0 )
                        {
-                           tOmegaN = 0.99;
+                           tOmegaN = 1.0;
                        }
                    }
                    else
@@ -283,7 +293,8 @@ int main( int    argc,
                }
                break ;
            }
-           else if (  std::abs( std::log10( tEpsilon ) - std::log10( tEpsilon0 ) ) < 1e-4 )
+           else if ( (  std::abs( std::log10( tEpsilon ) - std::log10( tEpsilon0 ) ) < 1e-4 ) &&
+           ( tEpsilon > tNonlinear.newtonEpsilon ) )
            {
                if ( tKernel->is_master() )
                {
