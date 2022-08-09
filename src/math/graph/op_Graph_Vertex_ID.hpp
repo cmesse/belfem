@@ -12,7 +12,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     // comparison object
-    struct
+    inline struct
     {
         inline bool
         operator()( const graph::Vertex * aA, const graph::Vertex * aB )
