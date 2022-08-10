@@ -1875,9 +1875,17 @@ namespace belfem
         this->unflag_all_facets();
         this->unflag_all_connectors();
 
-        index_t tCount = 1 ;
+
 
         Cell< mesh::Node * > tNodes ;
+
+        // reset node owners
+        for ( mesh::Node * tNode: mNodes )
+        {
+            tNode->set_owner( mNumberOfPartitions );
+        }
+
+        index_t tCount = 1 ;
 
         while( tCount > 0 )
         {
@@ -1901,12 +1909,8 @@ namespace belfem
                     // loop over all elements of this node
                     for ( uint e = 0; e < tN->number_of_elements(); ++e )
                     {
-                        // we only care about elements, not connectors
-                        if ( tN->element( e )->is_flagged())
-                        {
-                            tOwner = ( tN->element( e )->owner() < tOwner ) ?
-                                     tN->element( e )->owner() : tOwner;
-                        }
+                        tOwner = ( tN->element( e )->owner() < tOwner ) ?
+                                 tN->element( e )->owner() : tOwner;
                     }
                 }
 

@@ -61,9 +61,6 @@ namespace belfem
 
                 // set owners of domain cuts
                 aMesh->set_connector_owners();
-
-                aMesh->save("partition.exo");
-
             }
 
 #elif

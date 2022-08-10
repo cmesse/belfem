@@ -187,8 +187,28 @@ int main( int    argc,
    real & tTime = tMesh->time_stamp() ;
 
    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   // hide fields we don't need
+   // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+   if( comm_rank() == 0 )
+   {
+       Cell< string > tHide = { "SurfaceNormalsx",
+                                "SurfaceNormalsy",
+                                "SurfaceNormalsz",
+                                "az",
+                                "jz" };
+
+       for ( const string & tLabel: tHide )
+       {
+           tMesh->field( tLabel )->set_write_to_file_flag( false );
+       }
+   }
+
+   // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    // begin timeloop
    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+
 
    real tOmegaP = tNonlinear.picardOmega ;
    real tOmegaN = tNonlinear.newtonOmega ;
@@ -221,7 +241,6 @@ int main( int    argc,
        }
 
        Timer tTimer;
-       Timer tTimer1 ;
 
        index_t tCountP = 0 ;
        index_t tCountN = 0 ;
