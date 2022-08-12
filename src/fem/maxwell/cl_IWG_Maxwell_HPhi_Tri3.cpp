@@ -31,7 +31,7 @@ namespace belfem
             mFields.InterfaceScAir = { "lambda" };
             mFields.Cut = { "lambda" };
             mFields.ThinShell = { "lambda_m", "lambda_s" };
-            //mFields.ThinShell = { "lambda_m", "lambda_s", "lambda_t" };
+
             // non-dof fields
             mFields.MagneticFieldDensity     = { "bx", "by", "bz" };
             mFields.CurrentDensity = {  "jz" };
@@ -406,6 +406,10 @@ namespace belfem
             // the sign of the edge, in this case, we use the physical tag
             const real tSign = aElement->element()->physical_tag() == 1 ? 1.0 : -1.0 ;
 
+            BELFEM_ASSERT( tSign == ( aElement->edge_direction( 0 ) ? 1.0 : -1.0 ) ,
+                           "Invalid Edge Direction for Element %lu",
+                           ( long unsigned int ) aElement->id() );
+
             // container for geometry jacobian for master and slave
             Matrix< real > & tJ =  mGroup->work_J() ;
 
@@ -413,10 +417,10 @@ namespace belfem
             Matrix< real > & tB = mGroup->work_B() ;
 
             // coordinates for master
-            Matrix< real > & tXm = mGroup->work_X() ;
+            Matrix< real > & tXm = mGroup->work_Xi() ;
 
             // coordinates for slave
-            Matrix< real > & tXs = mGroup->work_Xi() ;
+            Matrix< real > & tXs = mGroup->work_Eta() ;
 
             // expression cross( n, B )
             Vector< real > tnxB = mGroup->work_sigma() ;
@@ -460,18 +464,18 @@ namespace belfem
             this->collect_node_coords( aElement->slave(), tXs );
 
             // get integration data from master
-            const IntegrationData * tIntMaster =
+            const IntegrationData * tMaster =
                     mGroup->master_integration( aElement->facet()->master_index() );
 
             // get integration data from slave
-            const IntegrationData * tIntSlave =
+            const IntegrationData * tSlave =
                     mGroup->slave_integration( aElement->facet()->slave_index() );
 
             // integration weights on master
-            const Vector< real > & tWm = tIntMaster->weights() ;
+            const Vector< real > & tWm = tMaster->weights() ;
 
             // integration weights on slave
-            const Vector< real > & tWs = tIntSlave->weights() ;
+            const Vector< real > & tWs = tSlave->weights() ;
 
             BELFEM_ASSERT( tWm.length() == mNumberOfIntegrationPoints, "number of integraiton points on master does not match" );
             BELFEM_ASSERT( tWs.length() == mNumberOfIntegrationPoints, "number of integraiton points on slave does not match" );
@@ -481,23 +485,11 @@ namespace belfem
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
             // compute jacobian ( it is constant in first order, so we can set k=0
-            tJ = tIntMaster->dNdXi( 0 ) * tXm ;
+            tJ = tMaster->dNdXi( 0 ) * tXm ;
 
             // gradient operator
-            tB = inv( tJ ) * tIntMaster->dNdXi( 0 ) ;
+            tB = inv( tJ ) * tMaster->dNdXi( 0 ) ;
 
-            /*p = aRHS.length() - 1 ;
-            q = 0 ;
-
-            // populate matrix
-            for( uint i=0; i<mNumberOfNodesPerElement; ++i )
-            {
-                tM( p, q ) =
-                         -tn( 0 ) * tB( 0, i )
-                         -tn( 1 ) * tB( 1, i );
-                tM( q, p ) = tM( p, q );
-                ++q ;
-            }*/
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // lambda-condition for master element, air side
@@ -510,10 +502,10 @@ namespace belfem
             p = 0 ;
             q = aRHS.length() - 2 ;
 
-            for( uint k=0; k<mNumberOfNodesPerElement; ++k)
+            for( uint i=0; i<mNumberOfNodesPerElement; ++i )
             {
-                tM( p, q ) = tnxB( k ) ;
-                tM( q, p ) = tnxB( k ) ;
+                tM( p, q ) = tnxB( i ) ;
+                tM( q, p ) = tnxB( i ) ;
                 ++p ;
             }
 
@@ -522,23 +514,10 @@ namespace belfem
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
             // compute jacobian ( it is constant in first order, so we can set k=0
-            tJ = tIntSlave->dNdXi( 0 ) * tXs ;
+            tJ = tSlave->dNdXi( 0 ) * tXs ;
 
             // gradient operator
-            tB = inv( tJ ) * tIntSlave->dNdXi( 0 ) ;
-
-            /*p = aRHS.length() - 1 ;
-            q = mNumberOfNodesPerElement ;
-
-            // populate transformation matrix
-            for( uint i=0; i<mNumberOfNodesPerElement; ++i )
-            {
-                tM( p, q ) =
-                         tn( 0 ) * tB( 0, i )
-                         +tn( 1 ) * tB( 1, i );
-                tM( q, p ) = tM( p, q );
-                ++q ;
-            }*/
+            tB = inv( tJ ) * tSlave->dNdXi( 0 ) ;
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // lambda-condition for slave element, air side
@@ -550,10 +529,11 @@ namespace belfem
 
             crossmat( tn, tB, tnxB );
 
-            for( uint k=0; k<mNumberOfNodesPerElement; ++k)
+            // loop over all nodes
+            for( uint i=0; i<mNumberOfNodesPerElement; ++i )
             {
-                tM( p, q ) = tnxB( k ) ;
-                tM( q, p ) = tnxB( k ) ;
+                tM( p, q ) = tnxB( i ) ;
+                tM( q, p ) = tnxB( i ) ;
                 ++p ;
             }
 

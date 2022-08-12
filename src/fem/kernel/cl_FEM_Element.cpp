@@ -898,7 +898,7 @@ namespace belfem
                                       tNumberOfFacesOnMaster,
                                       tCount );
 
-                // link to face dofs on skave
+                // link to face dofs on slave
                 this->link_face_dofs( aDofManager,
                                       aSlaveFaceDofTypes,
                                       mSlave->element(),
@@ -961,12 +961,13 @@ namespace belfem
 
             if( tShellEdgeDofTypes.length() > 0 )
             {
-                this->compute_edge_directions() ;
+                this->compute_edge_directions_thinshell();
             }
             switch( aMode )
             {
                 case ( SideSetDofLinkMode::MasterAndSlave ) :
                 {
+
                     this->link_dofs_thin_shell_master_and_slave(
                             aDofManager,
                             aLayers,
@@ -1016,9 +1017,6 @@ namespace belfem
                     mSlave->element()->number_of_corner_nodes() :
                     mSlave->element()->number_of_nodes();
 
-            index_t tNumberOfEdges = mElement->number_of_edges() ;
-
-            index_t tNumberOfFaces = mElement->number_of_faces() ;
 
             uint tNumberOfLayers = aLayers.size() ;
 
@@ -1027,8 +1025,8 @@ namespace belfem
                       tNumberOfNodesOnMaster * aMasterNodeDofTypes.length()
                     + tNumberOfNodesOnSlave  * aSlaveNodeDofTypes.length()
                     + tNumberOfLayers * (
-                    + tNumberOfEdges * aDofManager->iwg()->edge_multiplicity() * aThinShellEdgeDofTypes.length()
-                    + tNumberOfFaces * aDofManager->iwg()->face_multiplicity() * aThinShellFaceDofTypes.length() )
+                    + mElement->number_of_edges() * aDofManager->iwg()->edge_multiplicity() * aThinShellEdgeDofTypes.length()
+                    + mElement->number_of_faces() * aDofManager->iwg()->face_multiplicity() * aThinShellFaceDofTypes.length() )
                     + aLambdaDofTypes.length() * aDofManager->iwg()->lambda_multiplicity() ;
 
             // allocate memory
@@ -1037,35 +1035,19 @@ namespace belfem
             // initialize the counter
             index_t tCount = 0 ;
 
-            // link node dofs on master
-            this->link_node_dofs( aDofManager, aMasterNodeDofTypes, mMaster->element(), tNumberOfNodesOnMaster, tCount );
-
-            // link node dofs on slave
-            this->link_node_dofs( aDofManager, aSlaveNodeDofTypes, mSlave->element(), tNumberOfNodesOnSlave, tCount );
-
-            // link dofs per layer
-            for( mesh::Facet * tLayer : aLayers )
+            if( aMasterNodeDofTypes.length() > 0 )
             {
-                // link edge dofs
-                for( uint k=0; k<tLayer->number_of_edges(); ++k )
-                {
-                    for( uint d: aThinShellEdgeDofTypes )
-                    {
-                        mDOFs[ tCount++ ] = aDofManager->dof(
-                                aDofManager->calculate_dof_id(
-                                        tLayer->edge( k ), d ) );
-                    }
-                }
+                // link node dofs on master
+                this->link_node_dofs( aDofManager, aMasterNodeDofTypes, mMaster->element(), tNumberOfNodesOnMaster,
+                                      tCount );
 
-                // link face dofs
-                for( uint d: aThinShellFaceDofTypes )
-                {
-                    mDOFs[ tCount++ ] = aDofManager->dof(
-                            aDofManager->calculate_dof_id(
-                                    tLayer->face(), d ) );
-                }
-
+                // link node dofs on slave
+                this->link_node_dofs( aDofManager, aSlaveNodeDofTypes, mSlave->element(), tNumberOfNodesOnSlave,
+                                      tCount );
             }
+
+            this->link_edge_dofs_thin_shell( aDofManager, aThinShellEdgeDofTypes, aLayers,  tCount );
+            this->link_face_dofs_thin_shell( aDofManager, aThinShellFaceDofTypes, aLayers,  tCount );
 
             // link lambda dofs
             this->link_lambda_dofs( aDofManager, aLambdaDofTypes, tCount );
@@ -1104,35 +1086,8 @@ namespace belfem
             // initialize the counter
             index_t tCount = 0 ;
 
-            // link dofs per layer
-            for( mesh::Facet * tLayer : aLayers )
-            {
-                // link the node dofs
-                this->link_node_dofs( aDofManager, aThinShellNodeDofTypes, tLayer->element(), tNumberOfNodes, tCount );
-
-                // link edge dofs
-                for( uint k=0; k<tLayer->number_of_edges(); ++k )
-                {
-                    for( uint d: aThinShellEdgeDofTypes )
-                    {
-                        std::cout << "check layer dof " << tLayer->edge( k )->id() << " " << d << " " << aDofManager->calculate_dof_id(
-                                tLayer->edge( k ), d ) << std::endl ;
-
-                        mDOFs[ tCount++ ] = aDofManager->dof(
-                                aDofManager->calculate_dof_id(
-                                        tLayer->edge( k ), d ) );
-                    }
-                }
-
-                // link face dofs
-                for( uint d: aThinShellFaceDofTypes )
-                {
-                    mDOFs[ tCount++ ] = aDofManager->dof(
-                            aDofManager->calculate_dof_id(
-                                    tLayer->face(), d ) );
-                }
-
-            }
+            this->link_edge_dofs_thin_shell( aDofManager, aThinShellEdgeDofTypes, aLayers,  tCount );
+            this->link_face_dofs_thin_shell( aDofManager, aThinShellFaceDofTypes, aLayers,  tCount );
 
             BELFEM_ASSERT( mNumberOfDofs == tCount, "number of dofs for element %lu does not match (is %u, expect %u)",
                            ( long unsigned int ) this->id(), tCount, mNumberOfDofs );
@@ -1264,6 +1219,87 @@ namespace belfem
                 {
                     mDOFs[ aCount++ ] = aDofManager->dof(
                             aDofManager->calculate_dof_id( aReferenceElement->face( k ), tOff + i ) );
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        Element::link_edge_dofs_thin_shell(
+                DofManager  * aDofManager,
+                const Vector< index_t > & aDofTypes,
+                Cell< mesh::Facet * > & aLayers ,
+                index_t & aCount )
+        {
+            if( aDofTypes.length() == 0 )
+            {
+                return;
+            }
+
+            // get offset for edge dofs
+            uint tOff = aDofTypes( 0 ) ;
+
+            uint tNumberOfEdges = mElement->number_of_edges() ;
+
+            int tNumberOfDofsPerEdge = aDofManager->iwg()->edge_multiplicity()  ;
+
+            for( mesh::Facet * tLayer : aLayers )
+            {
+                for ( uint k = 0; k < tNumberOfEdges; ++k )
+                {
+                    if ( mEdgeDirections.test( k ) )
+                    {
+                        for ( int i = 0; i < tNumberOfDofsPerEdge; ++i )
+                        {
+                            mDOFs[ aCount++ ] = aDofManager->dof(
+                                    aDofManager->calculate_dof_id( tLayer->edge( k ), tOff + i ));
+                        }
+                    }
+                    else
+                    {
+                        for ( int i = tNumberOfDofsPerEdge - 1; i >= 0; i-- )
+                        {
+                            mDOFs[ aCount++ ] = aDofManager->dof(
+                                    aDofManager->calculate_dof_id( tLayer->edge( k ), tOff + i ));
+                        }
+                    }
+                }
+            }
+
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        Element::link_face_dofs_thin_shell(
+                DofManager  * aDofManager,
+                const Vector< index_t > & aDofTypes,
+                Cell< mesh::Facet * > & aLayers ,
+                index_t & aCount )
+        {
+            if( aDofTypes.length() == 0 )
+            {
+                return;
+            }
+
+            // get offset for edge dofs
+            uint tOff = aDofTypes( 0 ) ;
+
+            uint tNumberOfFaces= mElement->number_of_faces() ;
+
+            int tNumberOfDofsPerFace= aDofManager->iwg()->face_multiplicity()  ;
+
+            for( mesh::Facet * tLayer : aLayers )
+            {
+
+                for ( uint k = 0; k < tNumberOfFaces; ++k )
+                {
+                    for ( int i = 0; i < tNumberOfDofsPerFace; ++i )
+                    {
+                        mDOFs[ aCount++ ] = aDofManager->dof(
+                                aDofManager->calculate_dof_id( tLayer->face( k ), tOff + i ));
+                    }
                 }
             }
         }
@@ -1521,6 +1557,27 @@ namespace belfem
                                  ( long unsigned int ) this->id(), to_string( mElement->type() ).c_str() );
                 }
 
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        Element::compute_edge_directions_thinshell()
+        {
+            BELFEM_ASSERT(
+                    mParent->parent()->mesh()->number_of_dimensions() == 2,
+                    "tape roller doesn't compute edge directions for thin shells in 3d yet!");
+
+            // this is actually done by the tape roller.
+            // the information is stored on the edge elements
+            if( mElement->physical_tag() == 1 )
+            {
+                mEdgeDirections.set( 0 );
+            }
+            else
+            {
+                mEdgeDirections.reset( 0 );
             }
         }
 

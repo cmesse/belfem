@@ -64,6 +64,11 @@ namespace belfem
             //! the edge shape function
             EdgeFunction * mEdgeFunction = nullptr ;
 
+
+            //! edge function for thin shell
+            EdgeFunction * mEdgeFunctionTS = nullptr ;
+
+
             //! map telling which subtype a domain boundary is
             Map< id_t, MagfieldBcType > mMagfieldTypeMap ;
 

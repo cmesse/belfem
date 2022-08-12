@@ -412,6 +412,24 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
+            link_edge_dofs_thin_shell(
+                    DofManager  * aDofManager,
+                    const Vector< index_t > & aDofTypes,
+                    Cell< mesh::Facet * > & aLayers ,
+                    index_t & aCount );
+
+//------------------------------------------------------------------------------
+
+            void
+            link_face_dofs_thin_shell(
+                    DofManager  * aDofManager,
+                    const Vector< index_t > & aDofTypes,
+                    Cell< mesh::Facet * > & aLayers ,
+                    index_t & aCount );
+
+//------------------------------------------------------------------------------
+
+            void
             link_lambda_dofs(   DofManager  * aDofManager,
                                 const Vector< index_t > & aDofTypes,
                                 index_t & aCount );
@@ -435,6 +453,11 @@ namespace belfem
 
             void
             compute_edge_directions();
+
+//------------------------------------------------------------------------------
+
+            void
+            compute_edge_directions_thinshell();
 
 //------------------------------------------------------------------------------
 

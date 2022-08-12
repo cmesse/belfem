@@ -19,9 +19,11 @@ namespace belfem
 
         Partitioner::Partitioner( Mesh * aMesh,
                 const uint aNumberOfPartitions,
-                bool aSetProcOwnerships ) :
+                bool aSetProcOwnerships,
+                bool aForceContiguousPartitions ) :
             mMesh( aMesh ),
-            mNumberOfPartitions( aNumberOfPartitions )
+            mNumberOfPartitions( aNumberOfPartitions ),
+            mForceContiguousPartitions( aForceContiguousPartitions )
         {
 #ifdef BELFEM_SUITESPARSE
 
@@ -41,7 +43,7 @@ namespace belfem
 
                 // fix a rare bug
                 this->fix_facet_related_ownerships( );
-                this->fix_cut_related_ownerships(  );
+                // this->fix_cut_related_ownerships(  );
 
 
                 // set node owners
@@ -187,7 +189,7 @@ namespace belfem
             metis_t tOptions[ METIS_NOPTIONS ];
             METIS_SetDefaultOptions( tOptions );
             tOptions[ METIS_OPTION_COMPRESS ]  = 0; // Do not try to compress the graph.
-            tOptions[ METIS_OPTION_CONTIG ]    = 1; // Forces contiguous partitions.
+            tOptions[ METIS_OPTION_CONTIG ]    = mForceContiguousPartitions ? 1 : 0 ; // Forces contiguous partitions.
             tOptions[ METIS_OPTION_NUMBERING ] = 0; // Use zero based numbering
             tOptions[ METIS_OPTION_OBJTYPE ] = METIS_OBJTYPE_VOL;
 
@@ -289,10 +291,6 @@ namespace belfem
                 {
                     // set the owner
                     tElement->set_owner( mPartition( tCount++ ) );
-                }
-                else
-                {
-                    tElement->set_owner( mNumberOfPartitions ) ;
                 }
             }
 

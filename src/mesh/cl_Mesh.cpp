@@ -1585,7 +1585,8 @@ namespace belfem
     void
     Mesh::partition( const uint & aNumberOfPartitions,
                      const Vector< id_t > & aSelectedBlocks,
-                     const bool aSetProcOwners )
+                     const bool aSetProcOwners,
+                     const bool aForceContinuousPartition )
     {
         if( comm_rank() == mMasterProc )
         {
@@ -1611,8 +1612,79 @@ namespace belfem
                 }
             }
 
+            // unflag elements connected to ghosts, since the kernel handles that
+            /*if( this->ghost_block_ids().length() > 0 )
+            {
+                for( id_t tID : mGhostSideSetIDs )
+                {
+                    Cell< mesh::Facet * > & tFacets = this->sideset( tID )->facets() ;
+
+                    for( mesh::Facet * tFacet : tFacets )
+                    {
+                        if( tFacet->has_master() )
+                        {
+                            tFacet->master()->unflag() ;
+                        }
+                        if( tFacet->has_slave() )
+                        {
+                            tFacet->slave()->unflag() ;
+                        }
+                    }
+                }
+            }*/
+
             // create a partitioner
-            mesh::Partitioner( this, aNumberOfPartitions, aSetProcOwners );
+            mesh::Partitioner( this, aNumberOfPartitions, aSetProcOwners, aForceContinuousPartition  );
+
+            // assume that all elements are part of the mesh
+            this->unflag_all_elements() ;
+        }
+    }
+
+//------------------------------------------------------------------------------
+
+    void
+    Mesh::partition( const uint & aNumberOfPartitions,
+                     const Vector< id_t > & aSelectedBlocks,
+                     const Vector< id_t > & aSelectedSideSets,
+                     const bool aSetProcOwners,
+                     const bool aForceContinuousPartition  )
+    {
+        if( comm_rank() == mMasterProc )
+        {
+            BELFEM_ERROR( aNumberOfPartitions > 1, "Must have more than one partition" );
+
+            // assume that all elements are part of the mesh
+            this->unflag_all_elements() ;
+
+            // flag elements on selected blocks
+            for( id_t tID : aSelectedBlocks )
+            {
+                this->block( tID )->flag_elements() ;
+            }
+
+            for( id_t tID : aSelectedSideSets )
+            {
+                // loop over all facets
+                Cell< mesh::Facet * > & tFacets = this->sideset( tID )->facets() ;
+                for( mesh::Facet * tFacet : tFacets )
+                {
+                    if( tFacet->has_master() )
+                    {
+                        tFacet->master()->flag() ;
+                    }
+                    if( tFacet->has_slave() )
+                    {
+                        tFacet->slave()->flag() ;
+                    }
+                }
+            }
+
+            // create a partitioner
+            mesh::Partitioner( this,
+                               aNumberOfPartitions,
+                               aSetProcOwners,
+                               aForceContinuousPartition );
 
             // assume that all elements are part of the mesh
             this->unflag_all_elements() ;
@@ -1867,15 +1939,8 @@ namespace belfem
     void
     Mesh::set_node_owners()
     {
-        // flag all elements
-        for( mesh::Element * tElement : mElements )
-        {
-            tElement->flag() ;
-        }
         this->unflag_all_facets();
         this->unflag_all_connectors();
-
-
 
         Cell< mesh::Node * > tNodes ;
 
@@ -1925,8 +1990,6 @@ namespace belfem
 
             }
         }
-
-        // this->unflag_all_elements();
     }
 
 //------------------------------------------------------------------------------
@@ -2210,6 +2273,14 @@ namespace belfem
         {
             mGhostFacetMap[ tElementID ] = tCount++ ;
         }
+    }
+
+//------------------------------------------------------------------------------
+
+    void
+    Mesh::set_ghost_blocks( const Vector< id_t >    & aGhostBlockIDs )
+    {
+        mGhostBlockIDs = aGhostBlockIDs ;
     }
 
 //------------------------------------------------------------------------------

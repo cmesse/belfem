@@ -8,6 +8,7 @@
 #include "fn_crossmat.hpp"
 #include "fn_inv.hpp"
 #include "fn_trans.hpp"
+#include "cl_EF_TRI6_TS.hpp"
 
 namespace belfem
 {
@@ -30,6 +31,7 @@ namespace belfem
 
             mFields.InterfaceScAir = { "lambda" };
             mFields.Cut = { "lambda" };
+            mFields.ThinShell = { "lambda_m", "lambda_s" };
 
 
             // non-dof fields
@@ -40,6 +42,12 @@ namespace belfem
             mEdgeDofMultiplicity = 2 ;
             mFaceDofMultiplicity = 2 ;
             mLambdaDofMultiplicity = 1 ;
+
+            mNumberOfRhsDofsPerEdge = 2 ;
+            mNumberOfRhsDofsPerFace = 2 ;
+
+            // create the TS function
+            mEdgeFunctionTS = new EF_TRI6_TS() ;
         }
 
 //------------------------------------------------------------------------------
@@ -56,6 +64,7 @@ namespace belfem
         {
             // link edge function with group
             mEdgeFunction->link( aGroup );
+            mEdgeFunctionTS->link( aGroup );
 
             switch( aGroup->domain_type() )
             {
@@ -131,6 +140,12 @@ namespace belfem
                 {
                     mFunJacobian =
                             & IWG_Maxwell_HPhi_Tri6::compute_jacobian_and_rhs_cut ;
+                    break ;
+                }
+                case( DomainType::ThinShell ) :
+                {
+                    mFunJacobian =
+                            & IWG_Maxwell_HPhi_Tri6::compute_jacobian_and_rhs_thinshell ;
                     break ;
                 }
                 default :
@@ -501,6 +516,219 @@ namespace belfem
             aRHS = aJacobian * ( tHx * tX.col( 0 )
                                + tHy * tX.col( 1 ) );
         }
+
+
+//------------------------------------------------------------------------------
+
+#ifdef BELFEM_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#endif
+
+        void
+        IWG_Maxwell_HPhi_Tri6::compute_jacobian_and_rhs_thinshell(
+                Element        * aElement,
+                Matrix< real > & aJacobian,
+                Vector< real > & aRHS )
+        {
+            this->print_dofs( aElement );
+            mEdgeFunctionTS->link( aElement );
+
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            // containers and symbols
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+            // mass matrix
+            Matrix< real > & tM = aJacobian ;
+
+            // stiffness matrix
+            Matrix< real > & tK = mGroup->work_K() ;
+
+            // the sign of the edge, in this case, we use the physical tag
+            const real tSign = aElement->element()->physical_tag() == 1 ? 1.0 : -1.0 ;
+
+            BELFEM_ASSERT( tSign == ( aElement->edge_direction( 0 ) ? 1.0 : -1.0 ) ,
+                           "Invalid Edge Direction for Element %lu",
+                           ( long unsigned int ) aElement->id() );
+
+            // container for geometry jacobian for master and slave
+            Matrix< real > & tJ =  mGroup->work_J() ;
+
+            // container for gradient operator
+            Matrix< real > & tB = mGroup->work_B() ;
+
+            // coordinates for master
+            Matrix< real > & tXm = mGroup->work_Xi() ;
+
+            // coordinates for slave
+            Matrix< real > & tXs = mGroup->work_Eta() ;
+
+            // expression cross( n, B )
+            Vector< real > tnxB = mGroup->work_sigma() ;
+
+            // additional indices
+            uint p ;
+            uint q ;
+            uint r ;
+            uint s ;
+
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            // reset matrices
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+            tM.fill( 0.0 );
+            tK.fill( 0.0 );
+            aRHS.fill( 0.0 );
+
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            // geometry considerations and integration data
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+            // collect coordinates from master
+            this->collect_node_coords( aElement->master(), tXm );
+
+            // collect coordinates from slave
+            this->collect_node_coords( aElement->slave(), tXs );
+
+            // get integration data from master
+            const IntegrationData * tMaster =
+                    mGroup->master_integration( aElement->facet()->master_index() );
+
+            // get integration data from slave
+            const IntegrationData * tSlave =
+                    mGroup->slave_integration( aElement->facet()->slave_index() );
+
+            // integration weights along edge
+            const Vector< real > & tW = mGroup->integration_weights() ;
+
+            // integration weights on master
+            const Vector< real > & tWm = tMaster->weights() ;
+
+            // integration weights on slave
+            const Vector< real > & tWs = tSlave->weights() ;
+
+            BELFEM_ASSERT( tWm.length() == mNumberOfIntegrationPoints,
+                           "number of integraiton points on master does not match" );
+            BELFEM_ASSERT( tWs.length() == mNumberOfIntegrationPoints,
+                           "number of integraiton points on slave does not match" );
+
+            real tE0 ;
+            real tE1 ;
+
+            //if ( aElement->element()->is_curved() )
+            if( true )
+            {
+                // needed for normal computation
+                aElement->get_node_coors( mGroup->work_X() );
+
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                // lambda-condition perpendicular master and slave
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+
+                real tdM ;
+
+                for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
+                {
+                    // reset indices
+                    p = 0;
+                    q = aRHS.length() - 2;
+                    r = mNumberOfNodesPerElement;
+                    s = q + 1;
+
+                    // we don't need the normal. But calling this function
+                    // writes the integration element into mGroup->work_det_J()
+                    const Vector< real > & tn = this->normal_curved_2d( aElement, k );
+
+                    // - - - - - - - - - - -
+                    // master side
+                    // - - - - - - - - - - -
+
+                    // gradient operator
+                    tB = inv( tMaster->dNdXi( k ) * tXm ) * tMaster->dNdXi( k );
+
+                    // compute the expression n x B
+                    crossmat( tn, tB, tnxB );
+
+                    // loop over all nodes
+                    for ( uint i = 0; i < mNumberOfNodesPerElement; ++i )
+                    {
+                        // compute integration increment
+                        tdM = tWm( k ) * tnxB( i ) * mGroup->work_det_J();
+
+                        // add increment to matrix
+                        tM( p, q ) += tdM;
+                        tM( q, p ) += tdM;
+
+                        // increment index
+                        ++p;
+                    }
+
+                    // - - - - - - - - - - -
+                    // slave side
+                    // - - - - - - - - - - -
+
+                    // gradient operator
+                    tB = inv( tSlave->dNdXi( k ) * tXs ) * tSlave->dNdXi( k );
+
+                    // compute the expression n x B
+                    crossmat( tn, tB, tnxB );
+
+                    // loop over all nodes
+                    for ( uint i = 0; i < mNumberOfNodesPerElement; ++i )
+                    {
+                        // compute integration increment
+                        tdM = tWs( k ) * tnxB( i ) * mGroup->work_det_J();
+
+                        // add increment to matrix
+                        tM( r, s ) += tdM;
+                        tM( s, r ) += tdM;
+
+                        // increment index
+                        ++r;
+                    }
+
+                    // evaluate the edge function at this point
+                    const Matrix< real > & tE = mEdgeFunctionTS->E( k );
+
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    // lambda-condition
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    p = r;
+                    r = q - 2;
+                    tE0 = tW( k ) * tSign * tE( 0, 0 ) * mEdgeFunctionTS->abs_det_J();
+                    tM( p, q ) += tE0;
+                    tM( q, p ) += tE0;
+                    tM( r, s ) += tE0;
+                    tM( s, r ) += tE0;
+
+                    ++p;
+                    ++r;
+                    tE1 = tW( k ) * tSign * tE( 0, 1 ) * mEdgeFunctionTS->abs_det_J();
+                    tM( p, q ) += tE1;
+                    tM( q, p ) += tE1;
+                    tM( r, s ) += tE1;
+                    tM( s, r ) += tE1;
+
+                }
+
+
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+                tM.print( "M");
+                exit( 0 );
+            }
+            else
+            {
+                BELFEM_ERROR( false, "function not implemented yet" );
+            }
+            exit( 0 );
+        }
+
+#ifdef BELFEM_GCC
+#pragma GCC diagnostic pop
+#endif
 
 //------------------------------------------------------------------------------
     }

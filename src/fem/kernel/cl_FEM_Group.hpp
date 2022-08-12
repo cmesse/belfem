@@ -110,6 +110,7 @@ namespace belfem
 
             Matrix< real > mWorkX;    // work matrix for special purpose node coordinates
             Matrix< real > mWorkXi;   // work matrix for special purpose node coordinates
+            Matrix< real > mWorkEta;   // work matrix for special purpose node coordinates
 
             Vector< real > mWorkphi;  // work vector for nodal field data
             Matrix< real > mWorkPhi;  // work matrix for nodal field data
@@ -147,8 +148,11 @@ namespace belfem
             // the fake ID helps to acces the underlying objects on the mesh
             id_t mMeshID ;
 
-            // flag telling if block has a right hand side
+            //! flag telling if block has a right hand side
             bool mHasRHS = true ;
+
+            //! flag telling if this group is used for the computation
+            bool mIsActive = true ;
 
 //------------------------------------------------------------------------------
         public:
@@ -480,6 +484,9 @@ namespace belfem
             Matrix< real > &
             work_Xi();
 
+            Matrix< real > &
+            work_Eta();
+
             Vector< real > &
             work_nedelec();
 
@@ -676,6 +683,23 @@ namespace belfem
              */
             virtual real
             thin_shell_thickness( const uint aLayerIndex ) const ;
+
+//------------------------------------------------------------------------------
+
+            /**
+             * function telling if values form this group are computed
+             * ( default : true )
+             */
+             bool
+             is_active() const ;
+
+//------------------------------------------------------------------------------
+
+            /**
+             * set the active flag of the group
+             */
+            void
+            activate( bool aFlag );
 
 //------------------------------------------------------------------------------
         protected:
@@ -1126,6 +1150,14 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        inline Matrix< real > &
+        Group::work_Eta()
+        {
+            return mWorkEta;
+        }
+
+//------------------------------------------------------------------------------
+
         inline Vector< real > &
         Group::work_nedelec()
         {
@@ -1264,6 +1296,22 @@ namespace belfem
         Group::domain_type() const
         {
             return mDomainType ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline bool
+        Group::is_active() const
+        {
+            return mIsActive ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline void
+        Group::activate( bool aFlag )
+        {
+            mIsActive = aFlag ;
         }
 
 //------------------------------------------------------------------------------

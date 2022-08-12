@@ -208,8 +208,6 @@ int main( int    argc,
    // begin timeloop
    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-
-
    real tOmegaP = tNonlinear.picardOmega ;
    real tOmegaN = tNonlinear.newtonOmega ;
 

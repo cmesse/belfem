@@ -93,6 +93,14 @@ namespace belfem
                 //! the solver interface
                 Solver * mSolver = nullptr ;
 
+                //! contains values for initialization
+
+                bool mUseResetValues = false ;
+                Vector< real > mRhsVector0 ;
+                Matrix< real > mRhsMatrix0 ;
+                Vector< real > mJacobianValues0 ;
+                Vector< real > mDirichletValues0 ;
+
 //------------------------------------------------------------------------------
             public:
 //------------------------------------------------------------------------------
@@ -276,6 +284,15 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+                void
+                remember_initialization_values( const bool aSaveRHS );
+
+//------------------------------------------------------------------------------
+
+                void
+                use_reset_values( const bool aFlag );
+
+//------------------------------------------------------------------------------
 #ifdef BELFEM_HDF5
                 void
                 save_system( HDF5 & aFile );
@@ -387,6 +404,14 @@ namespace belfem
             SolverData::my_number_of_fixed_dofs() const
             {
                 return mMyNumberOfFixedDofs ;
+            }
+
+//------------------------------------------------------------------------------
+
+            inline void
+            SolverData::use_reset_values( const bool aFlag )
+            {
+                mUseResetValues = aFlag ;
             }
 
 //------------------------------------------------------------------------------

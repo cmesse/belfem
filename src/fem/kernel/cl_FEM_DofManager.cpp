@@ -512,6 +512,12 @@ namespace belfem
             // loop over all blocks
             for ( Block * tBlock : mBlockData->blocks() )
             {
+                // jump to next block if this block is not used
+                if( ! tBlock->is_active() )
+                {
+                    continue ;
+                }
+
                 // get the number of dofs per element
                 uint tN = mDofData->num_dofs_per_element( tBlock->id() );
 
@@ -540,6 +546,12 @@ namespace belfem
 
             for ( SideSet * tSideSet : mSideSetData->sidesets() )
             {
+                // jump to next sideset if this block is not used
+                if( ! tSideSet->is_active() )
+                {
+                    continue ;
+                }
+
                 // link IWG to block
                 mIWG->link_to_group( tSideSet );
 
@@ -570,6 +582,11 @@ namespace belfem
             {
                 for( SideSet * tSideSet : mSideSetData->sidesets() )
                 {
+                    if( ! tSideSet->is_active() )
+                    {
+                        continue ;
+                    }
+
                     // check if this is an alpha BC
                     if ( tSideSet->bc_type( 0 ) == BoundaryConditionImposing::Alpha )
                     {
@@ -601,12 +618,16 @@ namespace belfem
                 }
             }
 
+            // unite matrix with values from other procs
             mSolverData->collect_jacobian();
+
+            // unite rhs with values from other procs
             mSolverData->collect_rhs_vector() ;
 
             // needed for computing the residual later on
-            // this field onluy exists in the master
+            // this field only exists on the master
             mSolverData->update_field_values() ;
+
 
             if ( mMyRank == mParent->master() )
             {
@@ -922,6 +943,46 @@ namespace belfem
                 {
                     tDof->fix( 0.0 );
                 }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        DofManager::precompute_air_matrix()
+        {
+            BELFEM_ASSERT(
+                    mIWG->mode() == IwgMode::Direct,
+                    "precompute_air_matrix() requires an IWG with direct solving mode");
+
+            // deactivate all sidesets
+            for( SideSet * tSideSet : mSideSetData->sidesets() )
+            {
+                tSideSet->activate( false );
+            }
+            // activate only air blocks
+            for( Block * tBlock : mBlockData->blocks() )
+            {
+                tBlock->activate( tBlock->domain_type() == DomainType::Air );
+            }
+            // unset the  switch
+            mSolverData->use_reset_values( false );
+
+            this->compute_jacobian();
+            mSolverData->remember_initialization_values( false );
+
+            // also sets the flag to true
+            mSolverData->use_reset_values( true );
+
+            // activate all sidesets
+            for( SideSet * tSideSet : mSideSetData->sidesets() )
+            {
+                tSideSet->activate( true );
+            }
+            // activate only non-air blocks
+            for( Block * tBlock : mBlockData->blocks() )
+            {
+                tBlock->activate( tBlock->domain_type() != DomainType::Air );
             }
         }
 

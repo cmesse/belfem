@@ -117,6 +117,9 @@ namespace belfem
         //! list of sidesets with Nedelec Elements
         Vector< id_t > mNedelecSideSets ;
 
+        //! id of ghost blocks
+        Vector< id_t > mGhostBlockIDs ;
+
         //! id of ghost sidesets
         Vector< id_t > mGhostSideSetIDs ;
 
@@ -589,6 +592,14 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
+         * returns the IDs of ghost blocks needed for thin shells
+         */
+        const Vector< id_t > &
+        ghost_block_ids() const ;
+
+//------------------------------------------------------------------------------
+
+        /**
          * partition the mesh and set element and node ownerships
          */
         void
@@ -602,7 +613,21 @@ namespace belfem
         void
         partition( const uint & aNumberOfPartitions,
                    const Vector< id_t > & aSelectedBlocks,
-                   const bool aSetProcOwners = true );
+                   const bool aSetProcOwners = true,
+                   const bool aForceContinuousPartition = true );
+
+//------------------------------------------------------------------------------
+
+        /**
+         * partition the mesh and set element and node ownerships, but also pass selected blocks
+         */
+        void
+        partition( const uint & aNumberOfPartitions,
+                   const Vector< id_t > & aSelectedBlocks,
+                   const Vector< id_t > & aSelectedSideSets,
+                   const bool aSetProcOwners = true,
+                   const bool aForceContinuousPartition = true );
+
 
 //------------------------------------------------------------------------------
 
@@ -845,6 +870,14 @@ namespace belfem
                  const Vector< id_t >    & aGhostSideSetIDs,
                  const Vector< id_t >    & aElementIDs,
                  Cell< mesh::Layer  * >  & aLayers );
+//------------------------------------------------------------------------------
+
+        /**
+         * sets the IDs of the ghost blocks. Done by tape roller.
+         * Not synchronized over procs
+         */
+         void
+         set_ghost_blocks( const Vector< id_t >    & aGhostBlockIDs );
 
 //------------------------------------------------------------------------------
 
@@ -1424,6 +1457,14 @@ namespace belfem
     Mesh::ghost_sideset_ids() const
     {
         return mGhostSideSetIDs ;
+    }
+
+//------------------------------------------------------------------------------
+
+    inline const Vector< id_t > &
+    Mesh::ghost_block_ids() const
+    {
+        return mGhostBlockIDs ;
     }
 
 //------------------------------------------------------------------------------

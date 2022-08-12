@@ -65,15 +65,67 @@ namespace belfem
             // partition the mesh if in parallel mode
             if ( mNumberOfProcs > 1 && mMyRank == mMesh->master() )
             {
-                // check if we have defined specific blocks for the partitioning
-                if( mParams->selected_blocks().length() == 0 )
+
+                if( mParams->selected_blocks().length() > 0 )
                 {
-                    mMesh->partition( mNumberOfProcs );
+                    mMesh->partition( mNumberOfProcs, mParams->selected_blocks() );
+
+                    mMesh->unflag_all_elements() ;
+                    mMesh->unflag_all_facets() ;
+                    if ( mMesh->ghost_block_ids().length() > 0 )
+                    {
+                        mMesh->partition( mNumberOfProcs, mMesh->ghost_block_ids(), true, false );
+
+                        // get Elements on first ghost block
+                        Cell< mesh::Element * > & tElements = mMesh->block(  mMesh->ghost_block_ids()( 0 ) )->elements() ;
+
+                        // loop over all thin shell sidesets
+                        for( id_t tID : mMesh->ghost_sideset_ids() )
+                        {
+                            // grab facets
+                            Cell< mesh::Facet * > & tFacets = mMesh->sideset( tID )->facets() ;
+
+                            index_t tCount = 0 ;
+                            for( mesh::Facet * tFacet : tFacets )
+                            {
+                                // get owner
+                                proc_t tOwner = tElements( tCount++ )->owner() ;
+
+                                tFacet->set_owner( tOwner );
+                                tFacet->master()->set_owner( tOwner );
+                                tFacet->slave()->set_owner( tOwner );
+                                tFacet->master()->flag() ;
+                                tFacet->slave()->flag() ;
+                                tFacet->flag() ;
+                            }
+                        }
+
+                        // now we need to fix the ownerships of the original factets
+                        // grab all facet on mesh
+                        Cell< mesh::Facet * > & tFacets = mMesh->facets() ;
+
+                        index_t tCount = 0 ;
+                        for( mesh::Facet * tFacet : tFacets )
+                        {
+                            if( ! tFacet->is_flagged() )
+                            {
+                                if( tFacet->has_master() )
+                                {
+                                    tFacet->set_owner( tFacet->master()->owner() );
+                                }
+                            }
+                        }
+
+                    }
+
+
                 }
                 else
                 {
-                    mMesh->partition( mNumberOfProcs, mParams->selected_blocks() );
+                    mMesh->partition( mNumberOfProcs );
                 }
+
+                mMesh->save( "partition.exo");
 
                 // this->fix_ownerships();
                 // allocate memory for node table

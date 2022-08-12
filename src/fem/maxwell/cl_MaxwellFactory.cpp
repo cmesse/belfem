@@ -78,6 +78,9 @@ namespace belfem
             // represent
             this->create_topology();
 
+            // Dirichlet bcs do not need elements. We remove those
+            this->blacklist_dirichlet_sidesets();
+
             this->create_kernel();
 
             // build the iwg and the dof manager for the magnetic fields
@@ -1310,6 +1313,7 @@ namespace belfem
 
             //mParameters->set_sideset_integration_orders( 5 );
             //mParameters->set_block_integration_orders( 5 );
+
             if( comm_rank() == 0 )
             {
                 // count selected blocks ( blocks for visualization are not included )
@@ -1461,9 +1465,6 @@ namespace belfem
         {
             // this is a hack, we will remove the old maxwell things
             IWG_Maxwell * tMaxwell = this->create_iwg( mFormulation );
-
-            // Dirichlet bcs do not need elements. We remove those
-            this->blacklist_dirichlet_sidesets();
 
             // the IDs for the cuts differ from the sidesets on the mesh,
             // we need to change this
@@ -1939,10 +1940,12 @@ namespace belfem
                 }
 
                 // add iwg to kernel
-                this->add_postprocessor_to_kernel( tIWG );
+                DofManager * tProjector = this->add_postprocessor_to_kernel( tIWG );
 
                 // fix group types of IWG
                 tIWG->update_group_types();
+
+                tProjector->precompute_air_matrix();
             }
 
             // crate ferro projector
@@ -2065,33 +2068,35 @@ namespace belfem
 
 // -----------------------------------------------------------------------------
 
-        void
+        DofManager *
         MaxwellFactory::add_postprocessor_to_kernel( IWG_Maxwell * aEquation )
         {
             // add equation to kernel
             mKernel->add_equation( aEquation );
 
             // create dof projector
-            DofManager * tProjector = mKernel->create_field( aEquation );
+            DofManager * aProjector = mKernel->create_field( aEquation );
 
             // link field with materials
-            this->link_materials( tProjector );
+            this->link_materials( aProjector );
 
             // make sure that data arrays on mesh exist
-            tProjector->create_fields( aEquation );
+            aProjector->create_fields( aEquation );
 
             // set the solver of this field based on the input
-            this->set_solver( tProjector,
+            this->set_solver( aProjector,
                               mInputFile.section("maxwell")
                                       ->section("solver")->section("linear") );
 
             // no BLR for L2, otherwise crash!
-            tProjector->solver()->set_mumps_blr( BlockLowRanking::Off, 0.0 );
+            aProjector->solver()->set_mumps_blr( BlockLowRanking::Off, 0.0 );
 
-            tProjector->fix_node_dofs_on_ghost_sidesets() ;
+            aProjector->fix_node_dofs_on_ghost_sidesets() ;
 
             // add projector to list
-            mMagneticField->postprocessors().push( tProjector );
+            mMagneticField->postprocessors().push( aProjector );
+
+            return aProjector ;
         }
 
 // -----------------------------------------------------------------------------
@@ -2127,6 +2132,7 @@ namespace belfem
             this->select_bcs_and_cuts() ;
 
             this->select_sidesets() ;
+
         }
 
 //------------------------------------------------------------------------------
@@ -2134,7 +2140,6 @@ namespace belfem
         void
         MaxwellFactory::create_domain_groups()
         {
-
             // get blocks
             const input::Section * tBlocks = mInputFile.section( "topology" )->section( "blocks" );
 
@@ -2831,6 +2836,7 @@ namespace belfem
                         receive( 0, mGhostSideSets );
                         receive( 0, mGhostBlocks );
                     }
+                    mMesh->set_ghost_blocks( mGhostBlocks );
                 }
 
                 // link cut BCs

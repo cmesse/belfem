@@ -2,7 +2,7 @@
 // Created by christian on 7/15/21.
 //
 
-
+#include <iterator>
 #include "commtools.hpp"
 #include "cl_Logger.hpp"
 #include "cl_FEM_DofMgr_SolverData.hpp"
@@ -961,11 +961,26 @@ namespace belfem
                 BELFEM_ASSERT( mJacobian != nullptr,
                               "Jacobian Matrix was not initialized");
 
-                mJacobian->fill( 0.0 );
-
-                if ( mDirichletMatrix != nullptr )
+                if( mUseResetValues && mParent->parent()->is_master() )
                 {
-                    mDirichletMatrix->fill( 0.0 );
+                    std::copy( mJacobianValues0.data(),
+                               mJacobianValues0.data()+mJacobian->number_of_nonzeros(),
+                               mJacobian->data() );
+                    if( mDirichletMatrix != nullptr )
+                    {
+                        std::copy( mDirichletValues0.data(),
+                                   mDirichletValues0.data()+mDirichletMatrix->number_of_nonzeros(),
+                                   mDirichletMatrix->data() );
+                    }
+                }
+                else
+                {
+                    mJacobian->fill( 0.0 );
+
+                    if ( mDirichletMatrix != nullptr )
+                    {
+                        mDirichletMatrix->fill( 0.0 );
+                    }
                 }
             }
 
@@ -974,7 +989,15 @@ namespace belfem
             void
             SolverData::reset_rhs_vector()
             {
-                mRhsVector.fill( 0.0 );
+                if( mUseResetValues && mParent->parent()->is_master() &&
+                    mRhsVector0.length() > 0 )
+                {
+                    mRhsVector = mRhsVector0 ;
+                }
+                else
+                {
+                    mRhsVector.fill( 0.0 );
+                }
             }
 
 //------------------------------------------------------------------------------
@@ -982,7 +1005,15 @@ namespace belfem
             void
             SolverData::reset_rhs_matrix()
             {
-                mRhsMatrix.fill( 0.0 );
+                if( mUseResetValues && mParent->parent()->is_master() &&
+                    mRhsMatrix0.n_cols() * mRhsMatrix0.n_rows() > 0 )
+                {
+                    mRhsMatrix = mRhsMatrix0 ;
+                }
+                else
+                {
+                    mRhsMatrix.fill( 0.0 );
+                }
             }
 
 //------------------------------------------------------------------------------
@@ -1690,6 +1721,36 @@ namespace belfem
                     receive( mKernel->master(), aResidual );
 
                     return  aResidual;
+                }
+            }
+
+//------------------------------------------------------------------------------
+
+            void
+            SolverData::remember_initialization_values( const bool aSaveRHS )
+            {
+                if( aSaveRHS )
+                {
+                    if ( mRhsVector.length() > 0 )
+                    {
+                        mRhsVector0 = mRhsVector;
+                    }
+                    if ( mRhsMatrix.n_cols() * mRhsMatrix.n_rows() > 0 )
+                    {
+                        mRhsMatrix0 = mRhsMatrix;
+                    }
+                }
+                mJacobianValues0.set_size( mJacobian->number_of_nonzeros() );
+                std::copy( mJacobian->data(),
+                           mJacobian->data() + mJacobian->number_of_nonzeros(),
+                           mJacobianValues0.data() );
+
+                if( mDirichletMatrix != nullptr )
+                {
+                    mDirichletValues0.set_size( mDirichletMatrix->number_of_nonzeros() );
+                    std::copy( mDirichletMatrix->data(),
+                               mDirichletMatrix->data() + mDirichletMatrix->number_of_nonzeros(),
+                               mDirichletValues0.data() );
                 }
             }
 

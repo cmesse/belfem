@@ -5,6 +5,7 @@ set( SOURCES
         cl_EF_TRI6.cpp
         cl_EF_TET4.cpp
         cl_EF_TET10.cpp
+        cl_EF_TRI6_TS.cpp
         cl_EdgeFunctionFactory.cpp
         )
 

@@ -53,13 +53,16 @@ namespace belfem
 
             Vector< metis_t > mPartition;
 
+            bool mForceContiguousPartitions = true ;
+
 //------------------------------------------------------------------------------
         public:
 //------------------------------------------------------------------------------
 
             Partitioner( Mesh * aMesh,
                     const uint aNumberOfPartitions,
-                    bool aSetProcOwnerships = true );
+                    bool aSetProcOwnerships = true,
+                    bool aForceContiguousPartitions = true);
 
 //------------------------------------------------------------------------------
 
@@ -104,6 +107,11 @@ namespace belfem
 
             void
             fix_ghost_sideset_related_ownerships() ;
+
+//------------------------------------------------------------------------------
+
+            void
+            fix_ghost_block_related_ownerships();
 
 //------------------------------------------------------------------------------
 

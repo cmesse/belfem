@@ -72,6 +72,10 @@ namespace belfem
             {
                 delete mEdgeFunction ;
             }
+            if( mEdgeFunctionTS != nullptr )
+            {
+                delete mEdgeFunctionTS ;
+            }
         }
 
 //------------------------------------------------------------------------------
@@ -168,6 +172,13 @@ namespace belfem
            }
            else if ( aGroup->type() == GroupType::SIDESET || aGroup->type() == GroupType::SHELL )
            {
+               // special function for second order thin shell
+               if( mEdgeFunctionTS != nullptr )
+               {
+                   aGroup->integration_points().print("Points");
+                   mEdgeFunctionTS->precompute( aGroup->integration_points() );
+               }
+
                // set integration function
                switch( mesh::geometry_type( aGroup->slave_type() ) )
                {
@@ -300,8 +311,11 @@ namespace belfem
                     mNumberOfNodesPerElement = mesh::number_of_nodes( aGroup->slave_type() );
 
                     // container for node coordinates
-                    aGroup->work_X().set_size( mNumberOfNodesPerElement, mNumberOfDimensions );
                     aGroup->work_Xi().set_size( mNumberOfNodesPerElement, mNumberOfDimensions );
+                    aGroup->work_Eta().set_size( mNumberOfNodesPerElement, mNumberOfDimensions );
+
+                    // data for node coordinates of surface element
+                    aGroup->work_X().set_size( mesh::number_of_nodes( aGroup->element_type() ), mNumberOfDimensions  );
 
                     // stiffness matrix
                     aGroup->work_K().set_size( mNumberOfDofsPerElement,
