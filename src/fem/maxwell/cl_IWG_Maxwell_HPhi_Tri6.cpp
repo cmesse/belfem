@@ -566,6 +566,13 @@ namespace belfem
             // expression cross( n, B )
             Vector< real > tnxB = mGroup->work_sigma() ;
 
+
+            // mass matrix for individual layer
+            Matrix< real > & tMlayer = mGroup->work_M() ;
+
+            // stiffness matrix for individual layer
+            Matrix< real > & tKlayer = mGroup->work_L() ;
+
             // additional indices
             uint p ;
             uint q ;
@@ -612,8 +619,20 @@ namespace belfem
             BELFEM_ASSERT( tWs.length() == mNumberOfIntegrationPoints,
                            "number of integraiton points on slave does not match" );
 
+            // edge conditions
             real tE0 ;
             real tE1 ;
+            real tRho0 ;
+            real tRho1 ;
+            real tRho2 ;
+
+            uint tNumLayers = mGroup->number_of_thin_shell_layers() ;
+
+            // todo: compute temperature
+            real tT = 4.0 ;
+
+            // data for magnetic field (H-data)
+            Vector< real > & tH = mGroup->work_phi() ;
 
             //if ( aElement->element()->is_curved() )
             if( true )
@@ -693,7 +712,7 @@ namespace belfem
 
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                    // lambda-condition
+                    // lambda-conditions
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     p = r;
                     r = q - 2;
@@ -711,6 +730,17 @@ namespace belfem
                     tM( r, s ) += tE1;
                     tM( s, r ) += tE1;
 
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    // contribution for mass and stiffness matrix
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+                    p = 2 * mNumberOfNodesPerElement ;
+
+                    for( uint l=0; l<tNumLayers; ++l )
+                    {
+                        this->collect_edge_data_from_layer( aElement, "edge_h", l, tH );
+                        tH.print("edge_h");
+                    }
                 }
 
 
@@ -729,6 +759,131 @@ namespace belfem
 #ifdef BELFEM_GCC
 #pragma GCC diagnostic pop
 #endif
+
+//------------------------------------------------------------------------------
+
+        void
+        IWG_Maxwell_HPhi_Tri6::compute_layer_mass(
+                const real aE0,
+                const real aE1,
+                const real aThickness,
+                Matrix< real > & aM )
+        {
+            mWork[ 0 ] =  constant::mu0 * aThickness / 30.0 ;
+            mWork[ 1 ] = aE0 * aE0 * mWork[ 0 ] ;
+            mWork[ 2 ] = aE0 * aE1 * mWork[ 0 ] ;
+            mWork[ 3 ] = aE1 * aE1 * mWork[ 0 ] ;
+            mWork[ 4 ] = mWork[ 1 ] + mWork[ 1 ] ; // 2* e0 * e0 * t/30
+            mWork[ 5 ] = mWork[ 2 ] + mWork[ 2 ] ; // 2* e0 * e1 * t/30
+            mWork[ 6 ] = mWork[ 3 ] + mWork[ 3 ] ; // 2* e1 * e1 * t/30
+            mWork[ 7 ] = mWork[ 4 ] + mWork[ 4 ] ; // 4* e0 * e0 * t/30
+            mWork[ 8 ] = mWork[ 5 ] + mWork[ 5 ] ; // 4* e0 * e1 * t/30
+            mWork[ 9 ] = mWork[ 6 ] + mWork[ 6 ] ; // 4* e1 * e1 * t/30
+
+            aM( 0, 0 ) =  mWork[ 7 ];
+            aM( 1, 0 ) =  mWork[ 8 ];
+            aM( 2, 0 ) =  mWork[ 4 ];
+            aM( 3, 0 ) =  mWork[ 5 ];
+            aM( 4, 0 ) = -mWork[ 1 ];
+            aM( 5, 0 ) = -mWork[ 2 ];
+            aM( 0, 1 ) =  mWork[ 8 ];
+            aM( 1, 1 ) =  mWork[ 9 ];
+            aM( 2, 1 ) =  mWork[ 5 ];
+            aM( 3, 1 ) =  mWork[ 6 ];
+            aM( 4, 1 ) = -mWork[ 2 ];
+            aM( 5, 1 ) = -mWork[ 3 ];
+            aM( 0, 2 ) =  mWork[ 4 ];
+            aM( 1, 2 ) =  mWork[ 5 ];
+            aM( 2, 2 ) =  mWork[ 1 ]*16.;
+            aM( 3, 2 ) =  mWork[ 2 ]*16.;
+            aM( 4, 2 ) =  mWork[ 4 ];
+            aM( 5, 2 ) =  mWork[ 5 ];
+            aM( 0, 3 ) =  mWork[ 5 ];
+            aM( 1, 3 ) =  mWork[ 6 ];
+            aM( 2, 3 ) =  mWork[ 2 ]*16.;
+            aM( 3, 3 ) =  mWork[ 3 ]*16.;
+            aM( 4, 3 ) =  mWork[ 5 ];
+            aM( 5, 3 ) =  mWork[ 6 ];
+            aM( 0, 4 ) = -mWork[ 1 ];
+            aM( 1, 4 ) = -mWork[ 2 ];
+            aM( 2, 4 ) =  mWork[ 4 ];
+            aM( 3, 4 ) =  mWork[ 5 ];
+            aM( 4, 4 ) =  mWork[ 7 ];
+            aM( 5, 4 ) =  mWork[ 8 ];
+            aM( 0, 5 ) = -mWork[ 2 ];
+            aM( 1, 5 ) = -mWork[ 3 ];
+            aM( 2, 5 ) =  mWork[ 5 ];
+            aM( 3, 5 ) =  mWork[ 6 ];
+            aM( 4, 5 ) =  mWork[ 8 ];
+            aM( 5, 5 ) =  mWork[ 9 ];
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        IWG_Maxwell_HPhi_Tri6::compute_layer_stiffness(
+                const real aE0,
+                const real aE1,
+                const real aThickness,
+                const real aRho0,
+                const real aRho1,
+                const real aRho2,
+                Matrix< real > & aK )
+        {
+            mWork[  0 ] =  1.0/( 30.0 *  aThickness );
+            mWork[  1 ] =  aE0 * aE0 * mWork[ 0 ] ;
+            mWork[  2 ] =  aE0 * aE1 * mWork[ 0 ] ;
+            mWork[  3 ] =  aE1 * aE1 * mWork[ 0 ] ;
+            mWork[  4 ] =  mWork[ 1 ] + mWork[ 1 ] ; //  2* e0 * e0 * /30t
+            mWork[  5 ] =  mWork[ 2 ] + mWork[ 2 ] ; //  2* e0 * e1 * /30t
+            mWork[  6 ] =  mWork[ 3 ] + mWork[ 3 ] ; //  2* e1 * e1 * /30t
+            mWork[  7 ] = -mWork[ 4 ] - mWork[ 4 ] ; // -4* e0 * e0 * /30t
+            mWork[  8 ] = -mWork[ 5 ] - mWork[ 5 ] ; // -4* e0 * e1 * /30t
+            mWork[  9 ] = -mWork[ 6 ] - mWork[ 6 ] ; // -4* e1 * e1 * /30t
+            mWork[ 10 ] =  37.* aRho0 + 36.* aRho1 -  3.*aRho2 ;
+            mWork[ 11 ] =  11.* aRho0 +  8.* aRho1 +     aRho2 ;
+            mWork[ 12 ] =   7.* aRho0 -  4.* aRho1 +  7.*aRho2 ;
+            mWork[ 13 ] =  48.* aRho0 + 64.* aRho1 + 48.*aRho2 ;
+            mWork[ 14 ] =       aRho0 +  8.* aRho1 + 11.*aRho2 ;
+            mWork[ 15 ] =  -3.* aRho0 + 36.* aRho1 + 37.*aRho2 ;
+
+            aK( 0, 0 ) =  mWork[ 1 ]*mWork[ 10 ];
+            aK( 1, 0 ) =  mWork[ 2 ]*mWork[ 10 ];
+            aK( 2, 0 ) =  mWork[ 7 ]*mWork[ 11 ];
+            aK( 3, 0 ) =  mWork[ 8 ]*mWork[ 11 ];
+            aK( 4, 0 ) =  mWork[ 1 ]*mWork[ 12 ];
+            aK( 5, 0 ) =  mWork[ 2 ]*mWork[ 12 ];
+            aK( 0, 1 ) =  mWork[ 2 ]*mWork[ 10 ];
+            aK( 1, 1 ) =  mWork[ 3 ]*mWork[ 10 ];
+            aK( 2, 1 ) =  mWork[ 8 ]*mWork[ 11 ];
+            aK( 3, 1 ) =  mWork[ 9 ]*mWork[ 11 ];
+            aK( 4, 1 ) =  mWork[ 2 ]*mWork[ 12 ];
+            aK( 5, 1 ) =  mWork[ 3 ]*mWork[ 12 ];
+            aK( 0, 2 ) =  mWork[ 7 ]*mWork[ 11 ];
+            aK( 1, 2 ) =  mWork[ 8 ]*mWork[ 11 ];
+            aK( 2, 2 ) =  mWork[ 1 ]*mWork[ 13 ];
+            aK( 3, 2 ) =  mWork[ 2 ]*mWork[ 13 ];
+            aK( 4, 2 ) =  mWork[ 7 ]*mWork[ 14 ];
+            aK( 5, 2 ) =  mWork[ 8 ]*mWork[ 14 ];
+            aK( 0, 3 ) =  mWork[ 8 ]*mWork[ 11 ];
+            aK( 1, 3 ) =  mWork[ 9 ]*mWork[ 11 ];
+            aK( 2, 3 ) =  mWork[ 2 ]*mWork[ 13 ];
+            aK( 3, 3 ) =  mWork[ 3 ]*mWork[ 13 ];
+            aK( 4, 3 ) =  mWork[ 8 ]*mWork[ 14 ];
+            aK( 5, 3 ) =  mWork[ 9 ]*mWork[ 14 ];
+            aK( 0, 4 ) =  mWork[ 1 ]*mWork[ 12 ];
+            aK( 1, 4 ) =  mWork[ 2 ]*mWork[ 12 ];
+            aK( 2, 4 ) =  mWork[ 7 ]*mWork[ 14 ];
+            aK( 3, 4 ) =  mWork[ 8 ]*mWork[ 14 ];
+            aK( 4, 4 ) =  mWork[ 1 ]*mWork[ 15 ];
+            aK( 5, 4 ) =  mWork[ 2 ]*mWork[ 15 ];
+            aK( 0, 5 ) =  mWork[ 2 ]*mWork[ 12 ];
+            aK( 1, 5 ) =  mWork[ 3 ]*mWork[ 12 ];
+            aK( 2, 5 ) =  mWork[ 8 ]*mWork[ 14 ];
+            aK( 3, 5 ) =  mWork[ 9 ]*mWork[ 14 ];
+            aK( 4, 5 ) =  mWork[ 2 ]*mWork[ 15 ];
+            aK( 5, 5 ) =  mWork[ 3 ]*mWork[ 15 ];
+        }
 
 //------------------------------------------------------------------------------
     }

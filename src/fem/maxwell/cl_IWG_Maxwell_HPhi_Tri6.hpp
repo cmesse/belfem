@@ -13,6 +13,9 @@ namespace belfem
     {
         class IWG_Maxwell_HPhi_Tri6 : public IWG_Maxwell
         {
+            // work vector for thin shell stiffnesses
+            real mWork[ 16 ];
+
             // link to function
             void
             ( IWG_Maxwell_HPhi_Tri6::*mFunJacobian )
@@ -120,6 +123,25 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            void
+            compute_layer_mass(
+                    const real aE0,
+                    const real aE1,
+                    const real aThickness,
+                    Matrix< real > & aM );
+//------------------------------------------------------------------------------
+
+            void
+            compute_layer_stiffness(
+                    const real aE0,
+                    const real aE1,
+                    const real aThickness,
+                    const real aRho0,
+                    const real aRho1,
+                    const real aRho2,
+                    Matrix< real > & aK );
+
+//------------------------------------------------------------------------------
         };
 
 //------------------------------------------------------------------------------

@@ -337,7 +337,8 @@ namespace belfem
                     aGroup->work_J().set_size( mNumberOfDimensions, mNumberOfDimensions );
 
                     // help matrix for mass
-                    uint tN = mesh::interpolation_order_numeric( aGroup->element_type() ) + 1 ;
+                    uint tOrder =  mesh::interpolation_order_numeric( aGroup->element_type() ) ;
+                    uint tN = tOrder == 2 ? 6 : 2 ;
 
                     aGroup->work_M().set_size( tN, tN, 0.0 );
                     aGroup->work_L().set_size( tN, tN, 0.0 );
