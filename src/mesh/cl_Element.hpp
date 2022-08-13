@@ -44,6 +44,9 @@ namespace belfem
             // Elements connected to this element
             Element ** mElements ;
 
+            // Facets connected to this element (used for ghost)
+            Facet ** mFacets ;
+
             // id of block this element is on
             id_t mBlockID = gNoID ;
 
@@ -461,7 +464,17 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
+            allocate_facet_container( const uint aSize );
+
+//------------------------------------------------------------------------------
+
+            void
             insert_element( Element * aElement );
+
+//------------------------------------------------------------------------------
+
+            void
+            insert_facet( Facet * aFacet, const uint aIndex );
 
 //------------------------------------------------------------------------------
 
@@ -473,6 +486,12 @@ namespace belfem
             // get the connected element
             Element *
             element( const uint aIndex );
+
+//------------------------------------------------------------------------------
+
+            // get the facet element
+            Facet *
+            facet( const uint aIndex );
 
 //------------------------------------------------------------------------------
 
@@ -574,6 +593,14 @@ namespace belfem
         Element::element( const uint aIndex )
         {
             return mElements[ aIndex ];
+        }
+
+//------------------------------------------------------------------------------
+
+        inline Facet *
+        Element::facet( const uint aIndex )
+        {
+            return mFacets[ aIndex ];
         }
 
 //------------------------------------------------------------------------------

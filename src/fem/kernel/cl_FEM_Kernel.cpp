@@ -77,55 +77,53 @@ namespace belfem
                         mMesh->partition( mNumberOfProcs, mMesh->ghost_block_ids(), true, false );
 
                         // get Elements on first ghost block
-                        Cell< mesh::Element * > & tElements = mMesh->block(  mMesh->ghost_block_ids()( 0 ) )->elements() ;
+                        Cell< mesh::Element * > & tElements = mMesh->block( mMesh->ghost_block_ids()( 0 ))->elements();
 
                         // loop over all thin shell sidesets
-                        for( id_t tID : mMesh->ghost_sideset_ids() )
+                        for ( id_t tID: mMesh->ghost_sideset_ids())
                         {
                             // grab facets
-                            Cell< mesh::Facet * > & tFacets = mMesh->sideset( tID )->facets() ;
+                            Cell< mesh::Facet * > & tFacets = mMesh->sideset( tID )->facets();
 
-                            index_t tCount = 0 ;
-                            for( mesh::Facet * tFacet : tFacets )
+                            index_t tCount = 0;
+                            for ( mesh::Facet * tFacet: tFacets )
                             {
                                 // get owner
-                                proc_t tOwner = tElements( tCount++ )->owner() ;
+                                proc_t tOwner = tElements( tCount++ )->owner();
 
                                 tFacet->set_owner( tOwner );
                                 tFacet->master()->set_owner( tOwner );
                                 tFacet->slave()->set_owner( tOwner );
-                                tFacet->master()->flag() ;
-                                tFacet->slave()->flag() ;
-                                tFacet->flag() ;
+                                tFacet->master()->flag();
+                                tFacet->slave()->flag();
+                                tFacet->flag();
                             }
                         }
 
-                        // now we need to fix the ownerships of the original factets
-                        // grab all facet on mesh
-                        Cell< mesh::Facet * > & tFacets = mMesh->facets() ;
+                        // now we need to fix the ownerships of the original facets
+                        // that describe the thin shell, but are not part of the ghost
+                        // block
 
-                        index_t tCount = 0 ;
-                        for( mesh::Facet * tFacet : tFacets )
+                        // grab all facet on mesh
+                        Cell< mesh::Facet * > & tFacets = mMesh->facets();
+
+                        // and now let's make sure that the ownerships are correct
+                        for ( mesh::Facet * tFacet: tFacets )
                         {
-                            if( ! tFacet->is_flagged() )
+                            if ( !tFacet->is_flagged() )
                             {
-                                if( tFacet->has_master() )
+                                if ( tFacet->has_master() )
                                 {
                                     tFacet->set_owner( tFacet->master()->owner() );
                                 }
                             }
                         }
-
                     }
-
-
                 }
                 else
                 {
                     mMesh->partition( mNumberOfProcs );
                 }
-
-                mMesh->save( "partition.exo");
 
                 // this->fix_ownerships();
                 // allocate memory for node table

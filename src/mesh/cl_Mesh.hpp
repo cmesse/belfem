@@ -867,17 +867,10 @@ namespace belfem
          */
          void
          create_ghost_sidesets(
+                 const Vector< id_t >    & aGhostBlockIDs,
                  const Vector< id_t >    & aGhostSideSetIDs,
                  const Vector< id_t >    & aElementIDs,
                  Cell< mesh::Layer  * >  & aLayers );
-//------------------------------------------------------------------------------
-
-        /**
-         * sets the IDs of the ghost blocks. Done by tape roller.
-         * Not synchronized over procs
-         */
-         void
-         set_ghost_blocks( const Vector< id_t >    & aGhostBlockIDs );
 
 //------------------------------------------------------------------------------
 
@@ -973,6 +966,24 @@ namespace belfem
          */
         void
         compute_max_element_order();
+
+//------------------------------------------------------------------------------
+
+        /**
+         * called by kernel for non-master procs
+         */
+        void
+        set_ghost_information(
+                const Vector< id_t > & aGhostBlocks,
+                const Vector< id_t > & aGhostSideSets );
+
+//------------------------------------------------------------------------------
+
+        /**
+         * connect ghost elements to facets
+         */
+         void
+         link_ghost_elements();
 
 //------------------------------------------------------------------------------
     };

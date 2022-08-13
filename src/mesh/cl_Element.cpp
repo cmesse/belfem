@@ -3,6 +3,7 @@
 //
 
 #include "cl_Element.hpp"
+#include "cl_Facet.hpp"
 
 namespace belfem
 {
@@ -14,6 +15,7 @@ namespace belfem
         {
             this->set_id( aID );
             mElements = nullptr ;
+            mFacets   = nullptr ;
         }
 
 //------------------------------------------------------------------------------
@@ -23,6 +25,10 @@ namespace belfem
             if( mElements != nullptr )
             {
                 free( mElements );
+            }
+            if( mFacets != nullptr )
+            {
+                free( mFacets );
             }
         }
 
@@ -57,9 +63,35 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
+        Element::allocate_facet_container( const uint aSize )
+        {
+            if( aSize != 0 )
+            {
+                // allocate container
+                mFacets = ( Facet ** ) malloc( aSize * sizeof( Facet ) );
+
+                for( uint f=0; f<aSize; ++f )
+                {
+                    mElements[ f ] = nullptr ;
+                }
+            }
+        }
+
+
+//------------------------------------------------------------------------------
+
+        void
         Element::insert_element( Element * aElement )
         {
             mElements[ mNumberOfElements++ ] = aElement;
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        Element::insert_facet( Facet * aFacet, const uint aIndex )
+        {
+            mFacets[ aIndex ] = aFacet ;
         }
 
 //------------------------------------------------------------------------------

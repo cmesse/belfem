@@ -1380,6 +1380,9 @@ namespace belfem
         this->compute_max_element_order();
 
         this->compute_facet_orientations();
+
+        this->link_ghost_elements() ;
+
     }
 
 //------------------------------------------------------------------------------
@@ -2073,6 +2076,7 @@ namespace belfem
 
     void
     Mesh::create_ghost_sidesets(
+            const Vector< id_t >    & aGhostBlockIDs,
             const Vector< id_t >    & aGhostSideSetIDs,
             const Vector< id_t >    & aElementIDs,
             Cell< mesh::Layer  * >  & aLayers )
@@ -2208,8 +2212,9 @@ namespace belfem
         } // end if 3D
 
         // remember IDs
+        mGhostBlockIDs   = aGhostBlockIDs ;
         mGhostSideSetIDs = aGhostSideSetIDs ;
-        mGhostFacetIDs = aElementIDs ;
+        mGhostFacetIDs   = aElementIDs ;
 
         // loop over all layers
         for( uint l=0; l<aGhostSideSetIDs.length(); ++l )
@@ -2273,14 +2278,8 @@ namespace belfem
         {
             mGhostFacetMap[ tElementID ] = tCount++ ;
         }
-    }
 
-//------------------------------------------------------------------------------
-
-    void
-    Mesh::set_ghost_blocks( const Vector< id_t >    & aGhostBlockIDs )
-    {
-        mGhostBlockIDs = aGhostBlockIDs ;
+        this->link_ghost_elements();
     }
 
 //------------------------------------------------------------------------------
@@ -2294,6 +2293,7 @@ namespace belfem
         {
             if ( comm_rank() == aMasterProc  )
             {
+                send( aTarget, mGhostBlockIDs );
                 send( aTarget, mGhostSideSetIDs ) ;
 
                 if( mGhostSideSetIDs.length() > 0 )
@@ -2343,11 +2343,11 @@ namespace belfem
                     // send data
                     send( aTarget, tFacetIDs );
                     send( aTarget, tTapeFacetTable );
-
                 }
             }
             else
             {
+                receive( aMasterProc, mGhostBlockIDs );
                 receive( aMasterProc, mGhostSideSetIDs );
 
                 // create the map
@@ -2366,6 +2366,75 @@ namespace belfem
                 }
             }
         }
+    }
+
+//------------------------------------------------------------------------------
+
+    void
+    Mesh::set_ghost_information(
+            const Vector< id_t > & aGhostBlocks,
+            const Vector< id_t > & aGhostSideSets )
+    {
+        mGhostBlockIDs   = aGhostBlocks ;
+        mGhostSideSetIDs = aGhostSideSets ;
+    }
+
+//------------------------------------------------------------------------------
+
+    void
+    Mesh::link_ghost_elements()
+    {
+        // check if ghosts exist
+        if( mGhostBlockIDs.length() > 0 )
+        {
+            // check if this proc has ghosts
+            if ( this->block_exists( mGhostBlockIDs( 0 ) ) )
+            {
+                // get order in thickness direction
+                uint tOrder = ( mGhostSideSetIDs.length() - 1 ) / mGhostBlockIDs.length() ;
+
+                uint tNumLayersPerElement = tOrder + 1 ;
+                uint tOff = 0 ;
+
+                // loop over all blocks
+                for( id_t tBlockID : mGhostBlockIDs )
+                {
+                    // get the elements on this block
+                    Cell< mesh::Element * > & tElements = this->block( tBlockID )->elements() ;
+
+                    // loop over all elements and allocate the vertex container
+                    for( mesh::Element * tElement : tElements )
+                    {
+                        tElement->allocate_facet_container( tNumLayersPerElement );
+                    }
+
+                    // loop over all sidesets
+                    for( uint l=0; l<tNumLayersPerElement; ++l )
+                    {
+                        // get  the sideset
+                        Cell< mesh::Facet * > & tFacets = this->sideset(
+                                mGhostSideSetIDs( tOff + l ) )->facets() ;
+
+                        BELFEM_ASSERT( tElements.size() == tFacets.size(),
+                                       "Length of ghost sideset and ghost block does not match");
+
+                        // initialize counter
+                        index_t tCount = 0 ;
+
+                        // loop over all elements and add the facets
+                        for( mesh::Element * tElement : tElements )
+                        {
+                            tElement->insert_facet( tFacets( tCount++ ) , l );
+                        }
+                    }
+
+                    // increment offset
+                    tOff += tOrder ;
+                }
+            }
+        }
+
+
     }
 
 //------------------------------------------------------------------------------

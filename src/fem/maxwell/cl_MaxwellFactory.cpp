@@ -2836,7 +2836,7 @@ namespace belfem
                         receive( 0, mGhostSideSets );
                         receive( 0, mGhostBlocks );
                     }
-                    mMesh->set_ghost_blocks( mGhostBlocks );
+
                 }
 
                 // link cut BCs

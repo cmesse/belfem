@@ -112,6 +112,7 @@ namespace belfem
 
                 // this command contains a finalize
                 mMesh->create_ghost_sidesets(
+                        mGhostBlockIDs,
                         mGhostSideSetIDs,
                         mElementIDs,
                         mGhostLayers );
