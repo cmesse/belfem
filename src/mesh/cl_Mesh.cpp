@@ -19,6 +19,7 @@
 #include "assert.hpp"
 #include "cl_EdgeFactory.hpp"
 #include "cl_FaceFactory.hpp"
+#include "fn_max.hpp"
 
 namespace belfem
 {
@@ -2432,9 +2433,153 @@ namespace belfem
                     tOff += tOrder ;
                 }
             }
+
+            this->fix_ghost_adjacency();
+        }
+    }
+
+//------------------------------------------------------------------------------
+
+    void
+    Mesh::fix_ghost_adjacency()
+    {
+        this->unflag_all_elements();
+        this->unflag_all_nodes();
+
+        // collect elements
+        index_t tNumElems = 0 ;
+        for( id_t tID : mGhostBlockIDs )
+        {
+            if( this->block_exists( tID ) )
+            {
+                tNumElems += this->block( tID )->number_of_elements() ;
+            }
         }
 
+        if( tNumElems == 0 )
+        {
+            return;
+        }
 
+        // collect all elements
+        Cell< mesh::Element * > tElements( tNumElems, nullptr );
+
+        index_t tCount = 0 ;
+        for( id_t tID : mGhostBlockIDs )
+        {
+            if( this->block_exists( tID ) )
+            {
+               for( mesh::Element * tElement : this->block( tID )->elements() )
+               {
+                   tElement->flag() ;
+                   tElement->flag_nodes();
+                   tElement->set_index( tCount );
+                   tElements( tCount++ ) = tElement ;
+               }
+            }
+        }
+
+        // count nodes
+        tCount = 0 ;
+        for( mesh::Node * tNode : mNodes )
+        {
+            if( tNode->is_flagged() )
+            {
+                tNode->set_index( tCount++ );
+            }
+        }
+
+        // count nodes per elements
+        Vector< uint > tNumElemsPerNode( tCount, 0 );
+
+        for( mesh::Element * tElement : tElements )
+        {
+            for( uint k=0; k<tElement->number_of_nodes(); ++k )
+            {
+                ++tNumElemsPerNode( tElement->node( k )->index() );
+            }
+        }
+
+        uint tMaxNumElems = max( tNumElemsPerNode );
+
+        // allocate node index container
+        Matrix< index_t > tElemsPerNode( tMaxNumElems, tCount , 0 );
+
+        tNumElemsPerNode.fill( 0 );
+        for( mesh::Element * tElement : tElements )
+        {
+            for( uint k=0; k<tElement->number_of_nodes(); ++k )
+            {
+                index_t tIndex = tElement->node( k )->index() ;
+
+                tElemsPerNode( tNumElemsPerNode( tIndex )++, tIndex ) = tElement->index();
+            }
+        }
+
+        for( mesh::Element * tElement : tElements )
+        {
+            // loop over all nodes and unflag connected elements
+            for( uint k=0; k<tElement->number_of_nodes(); ++k )
+            {
+                index_t tIndex = tElement->node( k )->index() ;
+
+                uint tN = tNumElemsPerNode( tIndex );
+                for( uint e=0; e<tN; ++e )
+                {
+                    tElements( tElemsPerNode( e, tIndex ) )->unflag() ;
+                }
+            }
+
+            // flag myself
+            tElement->flag() ;
+
+            // count connected elements
+            tCount = 0 ;
+            for( uint k=0; k<tElement->number_of_nodes(); ++k )
+            {
+                index_t tIndex = tElement->node( k )->index() ;
+
+                uint tN = tNumElemsPerNode( tIndex );
+                for( uint e=0; e<tN; ++e )
+                {
+                    mesh::Element * tNeighbor = tElements( tElemsPerNode( e, tIndex ) );
+                    if( ! tNeighbor->is_flagged() )
+                    {
+                        ++tCount ;
+                        tNeighbor->flag() ;
+                    }
+                }
+            }
+
+            // allocate element container
+            tElement->allocate_element_container( tCount );
+
+
+            // unflag myself
+            tElement->unflag() ;
+
+            for( uint k=0; k<tElement->number_of_nodes(); ++k )
+            {
+                index_t tIndex = tElement->node( k )->index() ;
+
+                uint tN = tNumElemsPerNode( tIndex );
+                for( uint e=0; e<tN; ++e )
+                {
+                    mesh::Element * tNeighbor = tElements( tElemsPerNode( e, tIndex ) );
+                    if( tNeighbor->is_flagged() )
+                    {
+                        tElement->insert_element( tNeighbor );
+                        tNeighbor->unflag();
+                    }
+                }
+            }
+        }
+
+        // tidy up
+        this->unflag_all_elements();
+        this->unflag_all_nodes();
+        this->update_node_indices();
+        this->update_element_indices();
     }
 
 //------------------------------------------------------------------------------

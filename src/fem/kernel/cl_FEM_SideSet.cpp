@@ -547,6 +547,8 @@ namespace belfem
             // get pointer to kernel
             Kernel * tKernel = this->parent()->parent() ;
 
+            mThinShellThickness = 0.0 ;
+
             for( uint k=0; k<mNumberOfThinShellLayers; ++k )
             {
                 // get material
@@ -562,6 +564,7 @@ namespace belfem
                     tMaterial->flag() ;
                 }
                 mThinShellMaterials( k ) = tMaterial ;
+                mThinShellThickness += aLayerThicknesses( k );
             }
             mThinShellThicknesses = aLayerThicknesses ;
         }

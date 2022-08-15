@@ -259,6 +259,19 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        /**
+         * dummy function, throws error unless sideset or shell
+         * @return
+         */
+        real
+        Group::thin_shell_thickness() const
+        {
+            BELFEM_ERROR( false, "thin_shell_thickness() can only be called for sidesets or shells");
+            return BELFEM_QUIET_NAN ;
+        }
+
+//------------------------------------------------------------------------------
+
         const IntegrationData *
         Group::thinshell_integration() const
         {

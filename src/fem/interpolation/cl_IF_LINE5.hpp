@@ -2,8 +2,8 @@
 // Created by Christian Messe on 26.07.20.
 //
 
-#ifndef BELFEM_CL_IF_TRUSS5_HPP
-#define BELFEM_CL_IF_TRUSS5_HPP
+#ifndef BELFEM_CL_IF_LINE5_HPP
+#define BELFEM_CL_IF_LINE5_HPP
 
 
 #include "cl_IF_InterpolationFunctionTemplate.hpp"
@@ -123,4 +123,4 @@ namespace belfem
     }
 }
 
-#endif //BELFEM_CL_IF_TRUSS5_HPP
+#endif //BELFEM_CL_IF_LINE5_HPP

@@ -322,6 +322,8 @@ namespace belfem
                                                mNumberOfDofsPerElement, 0.0 );
 
                     // work vector for B-Matrix
+                    aGroup->work_D().set_size( 1, 2*mNumberOfNodesPerElement );
+
                     aGroup->work_B().set_size( 1, 2 * mNumberOfNodesPerElement );
                     aGroup->work_C().set_size( 1, mNumberOfDofsPerEdge + 1 );
 
@@ -331,7 +333,8 @@ namespace belfem
                     // transformation matrix n*B or n*N in 2D
                     aGroup->work_Tau().set_size( 1,mNumberOfDofsPerElement, 0.0 );
 
-                    aGroup->work_sigma().set_size( mNumberOfNodesPerElement );
+                    aGroup->work_phi().set_size( mNumberOfNodesPerElement );
+                    aGroup->work_psi().set_size( mNumberOfNodesPerElement );
 
                     // the geometry jacobian for the master and slave elements
                     aGroup->work_J().set_size( mNumberOfDimensions, mNumberOfDimensions );
@@ -344,16 +347,16 @@ namespace belfem
                     aGroup->work_L().set_size( tN, tN, 0.0 );
 
                     // data for edge dofs
-                    aGroup->work_phi().set_size( 2 * mEdgeDofMultiplicity * mNumberOfDofsPerEdge, 0.0 ) ;
+                    aGroup->work_sigma().set_size( 2 * mEdgeDofMultiplicity * mNumberOfDofsPerEdge, 0.0 ) ;
 
                     // todo: add face dofs for 3D
                     if( mNumberOfDofsPerFace > 0 && mMesh->number_of_dimensions() == 3 )
                     {
-                        aGroup->work_psi().set_size( 2  * mFaceDofMultiplicity * mNumberOfDofsPerFace, 0.0 );
+                        aGroup->work_tau().set_size( 2  * mFaceDofMultiplicity * mNumberOfDofsPerFace, 0.0 );
                     }
 
                     // data for temperatures
-                    aGroup->work_tau().set_size( this->number_of_ghost_sidesets(), 0.0 );
+                    //aGroup->work_tau().set_size( this->number_of_ghost_sidesets(), 0.0 );
 
                     aGroup->work_nedelec().set_size( mNumberOfDofsPerElement );
 
@@ -2485,6 +2488,15 @@ namespace belfem
                     mField->block( tID )->set_domain_type( mBlockTypes( tID ) ) ;
                 }
             }
+
+            for( id_t tID : mMesh->ghost_block_ids() )
+            {
+                if( mField->block_exists( tID ) )
+                {
+                    mField->block( tID )->set_domain_type( DomainType::Ghost ) ;
+                }
+            }
+
 
             // loop over all sidesets
             for( id_t tID : mBlockIDs )

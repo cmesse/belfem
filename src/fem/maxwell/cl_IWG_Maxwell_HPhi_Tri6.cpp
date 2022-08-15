@@ -8,7 +8,7 @@
 #include "fn_crossmat.hpp"
 #include "fn_inv.hpp"
 #include "fn_trans.hpp"
-#include "cl_EF_TRI6_TS.hpp"
+#include "cl_EF_LINE3.hpp"
 
 namespace belfem
 {
@@ -47,7 +47,7 @@ namespace belfem
             mNumberOfRhsDofsPerFace = 2 ;
 
             // create the TS function
-            mEdgeFunctionTS = new EF_TRI6_TS() ;
+            mEdgeFunctionTS = new EF_LINE3() ;
         }
 
 //------------------------------------------------------------------------------
@@ -564,7 +564,7 @@ namespace belfem
             Matrix< real > & tXs = mGroup->work_Eta() ;
 
             // expression cross( n, B )
-            Vector< real > tnxB = mGroup->work_sigma() ;
+            Vector< real > tnxB = mGroup->work_gamma() ;
 
 
             // mass matrix for individual layer
@@ -616,6 +616,7 @@ namespace belfem
 
             BELFEM_ASSERT( tWm.length() == mNumberOfIntegrationPoints,
                            "number of integraiton points on master does not match" );
+
             BELFEM_ASSERT( tWs.length() == mNumberOfIntegrationPoints,
                            "number of integraiton points on slave does not match" );
 
@@ -632,7 +633,9 @@ namespace belfem
             real tT = 4.0 ;
 
             // data for magnetic field (H-data)
-            Vector< real > & tH = mGroup->work_phi() ;
+            Vector< real > & tH = mGroup->work_sigma() ;
+            Vector< real > & tPhi = mGroup->work_phi() ;
+            this->collect_node_data( aElement->master(), "phi", tPhi );
 
             //if ( aElement->element()->is_curved() )
             if( true )
@@ -649,6 +652,12 @@ namespace belfem
 
                 for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
                 {
+                    // evaluate the edge function
+                    const Matrix< real > & tE = mEdgeFunctionTS->E( k );
+                    tE0 = tE( 0, 0 );
+                    tE1 = tE( 0, 1 );
+                    real tDetJ = mEdgeFunctionTS->abs_det_J() ;
+
                     // reset indices
                     p = 0;
                     q = aRHS.length() - 2;
@@ -673,7 +682,7 @@ namespace belfem
                     for ( uint i = 0; i < mNumberOfNodesPerElement; ++i )
                     {
                         // compute integration increment
-                        tdM = tWm( k ) * tnxB( i ) * mGroup->work_det_J();
+                        tdM = tWm( k ) * tnxB( i ) * tDetJ ;
 
                         // add increment to matrix
                         tM( p, q ) += tdM;
@@ -697,7 +706,7 @@ namespace belfem
                     for ( uint i = 0; i < mNumberOfNodesPerElement; ++i )
                     {
                         // compute integration increment
-                        tdM = tWs( k ) * tnxB( i ) * mGroup->work_det_J();
+                        tdM = tWs( k ) * tnxB( i ) * tDetJ ;
 
                         // add increment to matrix
                         tM( r, s ) += tdM;
@@ -707,16 +716,13 @@ namespace belfem
                         ++r;
                     }
 
-                    // evaluate the edge function at this point
-                    const Matrix< real > & tE = mEdgeFunctionTS->E( k );
-
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     // lambda-conditions
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     p = r;
                     r = q - 2;
-                    tE0 = tW( k ) * tSign * tE( 0, 0 ) * mEdgeFunctionTS->abs_det_J();
+                    tE0 = tW( k ) * tSign * tE( 0, 0 ) * tDetJ ;
                     tM( p, q ) += tE0;
                     tM( q, p ) += tE0;
                     tM( r, s ) += tE0;
@@ -724,7 +730,7 @@ namespace belfem
 
                     ++p;
                     ++r;
-                    tE1 = tW( k ) * tSign * tE( 0, 1 ) * mEdgeFunctionTS->abs_det_J();
+                    tE1 = tW( k ) * tSign * tE( 0, 1 ) * tDetJ ;
                     tM( p, q ) += tE1;
                     tM( q, p ) += tE1;
                     tM( r, s ) += tE1;
@@ -733,6 +739,9 @@ namespace belfem
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     // contribution for mass and stiffness matrix
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+                    // compute perpendicular component of vector
+
 
                     p = 2 * mNumberOfNodesPerElement ;
 

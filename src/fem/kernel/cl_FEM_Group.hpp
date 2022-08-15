@@ -127,6 +127,9 @@ namespace belfem
             Vector< real > mWorktau; // special purpose vector, assign by iwg child
             Matrix< real > mWorkTau; // special purpose matrix, assign by iwg child
 
+            Vector< real > mWorkgamma; // special purpose vector, assign by iwg child
+            Matrix< real > mWorkGamma; // special purpose matrix, assign by iwg child
+
             Vector< real > mWorkNedelec; // special purpose vector for edge data
 
             // pointer to material ( owned by kernel )
@@ -461,6 +464,12 @@ namespace belfem
             work_Psi();
 
             Vector< real > &
+            work_gamma();
+
+            Matrix< real > &
+            work_Gamma();
+
+            Vector< real > &
             work_chi();
 
             Matrix< real > &
@@ -683,6 +692,15 @@ namespace belfem
              */
             virtual real
             thin_shell_thickness( const uint aLayerIndex ) const ;
+
+//------------------------------------------------------------------------------
+
+            /**
+             * dummy function, throws error unless sideset or shell
+             * @return
+             */
+            virtual real
+            thin_shell_thickness() const ;
 
 //------------------------------------------------------------------------------
 
@@ -1131,6 +1149,21 @@ namespace belfem
             return mWorkTau;
         }
 
+//------------------------------------------------------------------------------
+
+        inline Vector< real > &
+        Group::work_gamma()
+        {
+            return mWorkgamma;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline Matrix< real > &
+        Group::work_Gamma()
+        {
+            return mWorkGamma;
+        }
 
 //------------------------------------------------------------------------------
 

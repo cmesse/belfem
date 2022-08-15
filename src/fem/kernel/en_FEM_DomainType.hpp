@@ -29,7 +29,8 @@ namespace belfem
             Cut             = 14,  // Maxwell Specific
             Boundary        = 15,  // Maxwell Specific
             ThinShell       = 16,  // Maxwell Specific
-            UNDEFINED = 17
+            Ghost           = 17,  // Maxwell Specific
+            UNDEFINED = 18
         };
 
 //------------------------------------------------------------------------------

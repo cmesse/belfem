@@ -63,6 +63,7 @@ namespace belfem
 
             // thin shell thicknesses
             Vector< real > mThinShellThicknesses ;
+            real mThinShellThickness = BELFEM_QUIET_NAN ;
 
             uint mNumberOfThinShellLayers = 0 ;
             uint mNumberOfGhostSideSets = 0 ;
@@ -209,6 +210,11 @@ namespace belfem
             thin_shell_thickness( const uint aLayerIndex ) const ;
 
 //------------------------------------------------------------------------------
+
+            inline real
+            thin_shell_thickness() const ;
+
+//------------------------------------------------------------------------------
         protected:
 //------------------------------------------------------------------------------
 
@@ -335,6 +341,14 @@ namespace belfem
         SideSet::thin_shell_thickness( const uint aLayerIndex ) const
         {
             return mThinShellThicknesses( aLayerIndex );
+        }
+
+//------------------------------------------------------------------------------
+
+        inline real
+        SideSet::thin_shell_thickness() const
+        {
+            return mThinShellThickness ;
         }
 
 //------------------------------------------------------------------------------

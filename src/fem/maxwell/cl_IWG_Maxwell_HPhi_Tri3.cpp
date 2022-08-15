@@ -414,7 +414,8 @@ namespace belfem
             Matrix< real > & tJ =  mGroup->work_J() ;
 
             // container for gradient operator
-            Matrix< real > & tB = mGroup->work_B() ;
+            Matrix< real > & tBm = mGroup->work_B() ;
+            Matrix< real > & tBs = mGroup->work_D() ;
 
             // coordinates for master
             Matrix< real > & tXm = mGroup->work_Xi() ;
@@ -423,7 +424,10 @@ namespace belfem
             Matrix< real > & tXs = mGroup->work_Eta() ;
 
             // expression cross( n, B )
-            Vector< real > tnxB = mGroup->work_sigma() ;
+            Vector< real > tPhi = mGroup->work_phi() ;
+
+            // expression cross( n, B )
+            Vector< real > tnxB = mGroup->work_psi() ;
 
             // mass matrix for individual layer
             Matrix< real > & tMlayer = mGroup->work_M() ;
@@ -432,7 +436,7 @@ namespace belfem
             Matrix< real > & tKlayer = mGroup->work_L() ;
 
             // data for magnetic field (H-data)
-            Vector< real > & tH = mGroup->work_phi() ;
+            Vector< real > & tHt = mGroup->work_sigma() ;
 
             // additional indices
             uint p ;
@@ -481,14 +485,19 @@ namespace belfem
             BELFEM_ASSERT( tWs.length() == mNumberOfIntegrationPoints, "number of integraiton points on slave does not match" );
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            // lambda-condition perpendicular master
+            // gradient operator master
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
             // compute jacobian ( it is constant in first order, so we can set k=0
             tJ = tMaster->dNdXi( 0 ) * tXm ;
 
             // gradient operator
-            tB = inv( tJ ) * tMaster->dNdXi( 0 ) ;
+            tBm = inv( tJ ) * tMaster->dNdXi( 0 ) ;
+
+            // get phi field
+            this->collect_node_data( aElement->master(), "phi", tPhi );
+
+            real tHnm = dot( tn.vector_data(), tBm * tPhi );
 
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -496,7 +505,7 @@ namespace belfem
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
             // compute the B-Matrix ( is constant for linear elements )
-            crossmat( tn, tB, tnxB );
+            crossmat( tn, tBm, tnxB );
 
             // get the column
             p = 0 ;
@@ -510,14 +519,19 @@ namespace belfem
             }
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            // Lambda-condition perpendicular slave
+            // gradient operator slave
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
             // compute jacobian ( it is constant in first order, so we can set k=0
             tJ = tSlave->dNdXi( 0 ) * tXs ;
 
             // gradient operator
-            tB = inv( tJ ) * tSlave->dNdXi( 0 ) ;
+            tBs = inv( tJ ) * tSlave->dNdXi( 0 ) ;
+
+            // get phi field
+            this->collect_node_data( aElement->slave(), "phi", tPhi );
+
+            real tHns = dot( tn.vector_data(), tBs * tPhi );
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // lambda-condition for slave element, air side
@@ -527,7 +541,7 @@ namespace belfem
             p = mNumberOfNodesPerElement ;
             q = aRHS.length() - 1 ;
 
-            crossmat( tn, tB, tnxB );
+            crossmat( tn, tBs, tnxB );
 
             // loop over all nodes
             for( uint i=0; i<mNumberOfNodesPerElement; ++i )
@@ -552,6 +566,7 @@ namespace belfem
             tM( p, q ) = tSign ;
             tM( q, p ) = tSign ;
 
+
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // contribution for mass and stiffness matrix
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -567,21 +582,30 @@ namespace belfem
 
             uint tNumLayers = mGroup->number_of_thin_shell_layers() ;
 
+            real tL = mGroup->thin_shell_thickness();
+            real tY = 0 ;
+
             // loop over all layers
             for( uint l=0; l<tNumLayers; ++l )
             {
 
-                this->collect_edge_data_from_layer( aElement, "edge_h", l, tH );
+                this->collect_edge_data_from_layer( aElement, "edge_h", l, tHt );
 
                 // get thickness of thin shell
                 real t = mGroup->thin_shell_thickness( l );
+
+                // compute local coordinate for normal component of H
+                tY += 0.5 * t ;
+                real tEta = tY / tL ;
+                tY += 0.5 * t ;
+                real tHn = tHnm * ( 1.0 - tEta ) + tHns * tEta ;
 
                 tM(p,p)     += tMlayer(0,0) * t ;
                 tM(p+1,p)   += tMlayer(1,0) * t ;
                 tM(p,p+1)   += tMlayer(0,1) * t ;
                 tM(p+1,p+1) += tMlayer(1,1) * t ;
 
-                this->compute_layer_stiffness( aElement, l, tH, tKlayer );
+                this->compute_layer_stiffness( aElement, l, tHt, tHn,tKlayer );
                 tK(p,p)     += tKlayer(0,0) ;
                 tK(p+1,p)   += tKlayer(1,0) ;
                 tK(p,p+1)   += tKlayer(0,1) ;
@@ -596,10 +620,47 @@ namespace belfem
             tM *= tElementLength ;
             tK *= tElementLength ;
 
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            // additional BC
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+            /*const IntegrationData * tIntMaster = mGroup->master_integration( aElement->facet()->master_index() );
+            const IntegrationData * tIntSlave = mGroup->slave_integration( aElement->facet()->slave_index() );
+
+            const Vector< real > & tW = mGroup->integration_weights();
+
+            for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+            {
+                for( uint i=0; i<mNumberOfNodesPerElement; ++i )
+                {
+                    q = mNumberOfNodesPerElement ;
+                    for ( uint j = 0; j < mNumberOfNodesPerElement; ++j )
+                    {
+                        tM( i, q ) += tW( k ) * tIntMaster->N( k )( 0, i )
+                                      * ( tn( 0 ) * tBs( 0, j )
+                                          + tn( 1 ) * tBs( 1, j )) * 0.5 * tElementLength ;
+                        ++q ;
+                    }
+                    aRHS( i ) += tW( k ) * 0.5 * tElementLength * tIntMaster->N( k )( 0, i ) * tHns ;
+
+                }
+                p = mNumberOfNodesPerElement ;
+                for( uint i=0; i<mNumberOfNodesPerElement; ++i )
+                {
+                    for ( uint j = 0; j < mNumberOfNodesPerElement; ++j )
+                    {
+                        tM( p, j ) -= tW( k ) * tIntSlave->N( k )( 0, i )
+                                      * ( tn( 0 ) * tBm( 0, j )
+                                          + tn( 1 ) * tBm( 1, j )) * 0.5 * tElementLength ;
+                    }
+                    ++p ;
+                }
+            } */
+
             //this->print_dofs( aElement );
 
             // compute the right hand side
-            aRHS = tM *  this->collect_q0_hphi_thinshell( aElement ) ;
+            aRHS += tM *  this->collect_q0_hphi_thinshell( aElement ) ;
 
             // finalize the Jacobian
             aJacobian += mDeltaTime * mGroup->work_K() ;
@@ -611,7 +672,8 @@ namespace belfem
         IWG_Maxwell_HPhi_Tri3::compute_layer_stiffness(
                 Element * aElement,
                 const uint aLayer,
-                const Vector < real > & aH,
+                const Vector < real > & aHt,
+                const real aHn,
                 Matrix< real > & aK )
         {
             // reset matrix
@@ -643,11 +705,12 @@ namespace belfem
             real tT = 4.0 ;
 
             // current density is constant for linear element
-            real tJz = (  aH( 1 ) - aH(0 ) )  / tThickness ;
+            real tJz = (  aHt( 1 ) - aHt( 0 ) )  / tThickness ;
 
             // curl operator is constant for linear element
             tC = tInteg->dNdXi( 0 ) ;
             tC /= tJ ;
+            real tHt ;
 
             for( uint k=0; k<tNumIntpoints; ++k )
             {
@@ -657,8 +720,9 @@ namespace belfem
 
 
                 // magnetic field
-                tB = constant::mu0 * ( tN( 0, 0) * aH( 0 )
-                        + tN( 0, 1 ) * aH( 1) );
+                tHt = tN( 0, 0 ) * aHt( 0 ) + tN( 0, 1 ) * aHt( 1 );
+
+                tB = constant::mu0 * sqrt( tHt * tHt + aHn * aHn );
 
                 //real tRho = std::min( tMaterial->rho_el( tJz, tT, tB ) + 1e-12 , 1e-3 );
                 real tRho = tMaterial->rho_el( tJz, tT, tB ) ;

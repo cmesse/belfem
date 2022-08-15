@@ -208,11 +208,11 @@ int main( int    argc,
    // begin timeloop
    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-   real tOmegaP = tNonlinear.picardOmega ;
-   real tOmegaN = tNonlinear.newtonOmega ;
-
    while( tTime < tMaxTime )
    {
+       real tOmegaP = tNonlinear.picardOmega ;
+       real tOmegaN = tNonlinear.newtonOmega ;
+
        // increment timestep
        tTime += tDeltaTime;
 
@@ -253,16 +253,18 @@ int main( int    argc,
 
                if( tCountP++ > 0 )
                {
-                       tOmegaP *= std::min( std::pow( tEpsilon0 / tEpsilon, 0.25 ), 1.05 );
+                       tOmegaP *= std::max(std::min( std::pow( tEpsilon0 / tEpsilon, 0.25 ), 1.05 ), 0.5 );
                        if ( tOmegaP > 1.0 )
                        {
                            tOmegaP = 1.0 ;
                        }
                }
                tCountN = 0 ;
+               tOmegaN = std::min( tOmegaN, tOmegaP );
            }
            else
            {
+
                tFormulation->set_algorithm( SolverAlgorithm::NewtonRaphson );
                tFormulation->set_omega( tOmegaN );
                if( tCountN++ > 1 )
@@ -270,7 +272,7 @@ int main( int    argc,
                    if ( tEpsilon < tEpsilon0 )
                    {
 
-                       tOmegaN *= std::min( std::pow( tEpsilon0 / tEpsilon, 0.25 ), 1.05 );
+                       tOmegaN *= std::max(std::min( std::pow( tEpsilon0 / tEpsilon, 0.25 ), 1.05 ), 0.5 );
 
                        if ( tOmegaN > 1.0 )
                        {
