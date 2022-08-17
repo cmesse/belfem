@@ -24,12 +24,13 @@ namespace  belfem
     {
         std::string mExecutablePath;
         std::string mWorkDir;
-        std::string mArguments = "";
+        std::string mArgumentString = "";
 
         Cell<COMM_TYPE>   mComms;
 
         proc_t mMyRank = gNoOwner ;
         proc_t mSize = gNoOwner ;
+        Cell< string > mArguments ;
 
 //------------------------------------------------------------------------------
     public:
@@ -40,8 +41,7 @@ namespace  belfem
 //------------------------------------------------------------------------------
 
         Communicator(
-                int    *argc,
-                char ***argv );
+                int argc, char ** argv );
 
 //------------------------------------------------------------------------------
 
@@ -70,6 +70,10 @@ namespace  belfem
 //-----------------------------------------------------------------------------
 
         const std::string &
+        argument_string();
+//-----------------------------------------------------------------------------
+
+        Cell< std::string > &
         arguments();
 
 //-----------------------------------------------------------------------------

@@ -21,7 +21,7 @@ int main( int    argc,
           char * argv[] )
 {
     // create communicator
-    gComm = Communicator( &argc, &argv );
+    gComm = Communicator( argc, argv );
 
     Vector< real > tTargetNodes ;
     linspace( 0., 2 * constant::pi, 21 , tTargetNodes );

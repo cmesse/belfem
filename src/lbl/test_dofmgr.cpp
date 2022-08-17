@@ -39,7 +39,7 @@ int main( int    argc,
           char * argv[] )
 {
     // create communicator
-    gComm = Communicator( &argc, &argv );
+    gComm = Communicator( argc, argv );
 
     // open mesh
     //Mesh tMesh( "test.msh");

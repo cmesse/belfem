@@ -42,6 +42,7 @@ option( USE_TEST "Build Tests" OFF )
 option( USE_EXAMPLES "Build Examples" ON )
 option( USE_MAXWELL "Use Maxwell Modules" ON )
 option( USE_GASMODELS "Build Gas Library" OFF )
+option( USE_STRUMPACK "Link against STRUMPACK" OFF )
 
 # -------------------------------------------------------------------------
 # Global Parameters
@@ -74,6 +75,7 @@ include( ${BELFEM_CONFIG_DIR}/linalg/config_matrix.cmake )
 # solver interface
 include( ${BELFEM_CONFIG_DIR}/linalg/config_suitesparse.cmake )
 include( ${BELFEM_CONFIG_DIR}/linalg/config_mumps.cmake )
+include( ${BELFEM_CONFIG_DIR}/linalg/config_strumpack.cmake )
 include( ${BELFEM_CONFIG_DIR}/linalg/config_petsc.cmake )
 
 # input output

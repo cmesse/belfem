@@ -25,7 +25,7 @@ int main( int    argc,
           char * argv[] )
 {
     // create communicator
-    gComm = Communicator( &argc, &argv );
+    gComm = Communicator( argc, argv );
     Mesh tMesh = Mesh("coilcut.msh") ;
     tMesh.scale_mesh( 0.001 );
 

@@ -16,6 +16,7 @@ namespace belfem
     {
         UMFPACK,
         MUMPS,
+        STRUMPACK,
         PARDISO,
         PETSC,
         UNDEFINED

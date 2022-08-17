@@ -24,7 +24,7 @@ int main( int    argc,
           char * argv[] )
 {
     // create communicator
-    gComm = Communicator( &argc, &argv );
+    gComm = Communicator( argc, argv );
 
     // create Arguments
     Arguments tArguments( argc, argv );

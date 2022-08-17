@@ -158,7 +158,8 @@ namespace belfem
                 BELFEM_ASSERT( mSolver != nullptr, "no solver created" );
 
                 mJacobian =  new SpMatrix( tGraph,
-                                           mSolver->type() == SolverType::PETSC ?
+                                           ( mSolver->type() == SolverType::PETSC ) ||
+                                                 ( mSolver->type() == SolverType::STRUMPACK ) ?
                                            SpMatrixType::CSR : SpMatrixType::CSC,
                                            mNumberOfFreeDofs, mNumberOfFreeDofs );
 
@@ -1662,6 +1663,7 @@ namespace belfem
                              ( unsigned int ) tTimer.stop());
                 }
                 else if ( mSolver->type() == SolverType::MUMPS ||
+                          mSolver->type() == SolverType::STRUMPACK ||
                           mSolver->type() == SolverType::PETSC )
                 {
                     if ( tIWG->num_rhs_cols() == 1 )

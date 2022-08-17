@@ -9,6 +9,7 @@ set( SOURCES
         cl_SolverPETSC.cpp
         cl_Solver.cpp
         cl_SolverPetscDistributor.cpp
+        cl_SolverSTRUMPACK.cpp
         en_SolverEnums.cpp
         petsctools.cpp )
 

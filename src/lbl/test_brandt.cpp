@@ -26,7 +26,7 @@ int main( int    argc,
           char * argv[] )
           {
     // create communicator
-    gComm = Communicator( &argc, &argv );
+    gComm = Communicator( argc, argv );
 
     // get the mesh
     Mesh tMesh( "brick.msh" );

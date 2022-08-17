@@ -21,6 +21,10 @@ namespace belfem
             {
                 return "MUMPS" ;
             }
+            case( SolverType::STRUMPACK ) :
+            {
+                return "STRUMPACK" ;
+            }
             case( SolverType::PARDISO ) :
             {
                 return "PARDISO" ;
@@ -50,6 +54,10 @@ namespace belfem
         else if( tString == "mumps" )
         {
             return SolverType::MUMPS ;
+        }
+        else if( tString == "strumpack" )
+        {
+            return SolverType::STRUMPACK ;
         }
         else if ( tString == "pardiso" )
         {

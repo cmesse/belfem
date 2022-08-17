@@ -33,7 +33,7 @@ int main( int    argc,
           char * argv[] )
 {
     // create communicator
-    gComm = Communicator( &argc, &argv );
+    gComm = Communicator( argc, argv );
 
     // fiber data ( unit does not matter )
     real E1   = 235 ;

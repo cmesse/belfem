@@ -15,7 +15,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         PARDISO::PARDISO() :
-                Wrapper( "PARDISO " )
+                Wrapper( "PARDISO  " )
         {
             mParameters.set_size( 8, 0 );
             mInfo.set_size( 8, 0 );

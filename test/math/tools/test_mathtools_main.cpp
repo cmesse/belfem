@@ -15,7 +15,7 @@ main( int    argc,
       char * argv[] )
 {
     // create communicator
-    gComm = belfem::Communicator( &argc, &argv );
+    gComm = belfem::Communicator( argc, argv );
 
     // start test session
     testing::InitGoogleTest( &argc, argv );

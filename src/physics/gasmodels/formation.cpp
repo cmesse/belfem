@@ -33,7 +33,7 @@ int main( int    argc,
 {
 
     // create communicator
-    gComm = Communicator( &argc, &argv );
+    gComm = Communicator( argc, argv );
 
 
    Gas tAir( {

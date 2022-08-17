@@ -21,6 +21,7 @@ namespace belfem
                 mArguments.push( string( argv[ k ] ));
             }
 
+            /*
             // string for communicator
             string tArgString = "";
             for ( int k = 1; k < argc; ++k )
@@ -32,8 +33,8 @@ namespace belfem
                 }
             }
 
-            // write string into communicator
-            gComm.set_arguments( tArgString );
+            // write string into communicator (obsolete)
+            gComm.set_arguments( tArgString ); */
         }
     }
 

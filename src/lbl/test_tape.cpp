@@ -28,7 +28,7 @@ int main( int    argc,
           char * argv[] )
 {
     // create communicator
-    gComm = Communicator( &argc, &argv );
+    gComm = Communicator( argc, argv );
 
     // read the input file
     InputFile tInputFile( "input.txt" );

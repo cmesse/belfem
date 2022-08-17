@@ -207,6 +207,9 @@ namespace belfem
 #ifdef BELFEM_MUMPS
             std::fprintf( stdout, "    Solver Lib    : MUMPS\n");
 #endif
+#ifdef BELFEM_STRUMPACK
+            std::fprintf( stdout, "    Solver Lib    : STRUMPACK\n");
+#endif
 #ifdef BELFEM_PARDISO
             std::fprintf( stdout, "    Solver Lib    : PARDISO\n");
 #endif
@@ -218,7 +221,7 @@ namespace belfem
 
             // What?
             std::fprintf( stdout, "    Executable    : %s\n", gComm.exec_path().c_str() );
-            std::fprintf( stdout, "    Arguments     : %s\n", gComm.arguments().c_str()  );
+            std::fprintf( stdout, "    Arguments     : %s\n", gComm.argument_string().c_str()  );
 
             // Where?
             std::fprintf( stdout, "    Run Dir       : %s\n", gComm.workdir().c_str() );

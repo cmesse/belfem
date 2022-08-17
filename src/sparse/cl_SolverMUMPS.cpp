@@ -19,7 +19,7 @@ namespace belfem
 
         MUMPS::MUMPS( const proc_t aMasterRank ) :
 #ifdef BELFEM_MUMPS
-                Wrapper( "MUMPS   " ),
+                Wrapper( "MUMPS    " ),
                 mMasterRank( aMasterRank )
 #else
                 Wrapper( "MUMPS   " )

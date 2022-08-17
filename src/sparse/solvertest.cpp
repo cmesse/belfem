@@ -26,7 +26,7 @@ int main( int    argc,
           char * argv[] )
 {
     // create communicator
-    gComm = Communicator( &argc, &argv );
+    gComm = Communicator( argc, argv );
 
     /*uint tN = 4 ;
 
@@ -76,10 +76,10 @@ int main( int    argc,
 
     // tX *= 0.9 ;
 
-    Solver tSolver( SolverType::PETSC );
+    Solver tSolver( SolverType::STRUMPACK );
 
     //tSolver.set_petsc( Preconditioner::LU, KrylovMethod::PREONLY, 1e-8 );
-    tSolver.set_petsc( Preconditioner::GAMG, KrylovMethod::GMRES, 1e-8 );
+    //tSolver.set_petsc( Preconditioner::GAMG, KrylovMethod::GMRES, 1e-8 );
     tSolver.solve( tM, tX, tB );
 
     if( gComm.rank() == 0 )

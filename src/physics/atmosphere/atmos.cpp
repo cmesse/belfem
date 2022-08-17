@@ -24,7 +24,7 @@ int main( int    argc,
           char * argv[] )
 {
     // create communicator
-    gComm = Communicator( &argc, &argv );
+    gComm = Communicator( argc, argv );
 
     // create atmosphere
     Atmosphere Atmos(AtmosphereType::ISA1976 );

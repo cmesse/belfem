@@ -139,7 +139,7 @@ main( int    argc,
           char * argv[] )
 {
     // create communicator
-    gComm = Communicator( &argc, &argv );
+    gComm = Communicator( argc, argv );
 
     // create argument list
     gastables::Arguments tArgs(  argc, argv );

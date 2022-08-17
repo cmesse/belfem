@@ -52,7 +52,7 @@ int main( int    argc,
           char * argv[] )
 {
     // create communicator
-    gComm = Communicator( &argc, &argv );
+    gComm = Communicator( argc, argv );
 
     // create the state
     Vector< real > tY = { 0.0 };

@@ -15,7 +15,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         PETSC::PETSC() :
-                Wrapper( "PETSC   " )
+                Wrapper( "PETSC    " )
         {
 #ifdef BELFEM_PETSC
             // use world as default communicator

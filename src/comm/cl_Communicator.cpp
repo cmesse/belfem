@@ -18,13 +18,29 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     Communicator::Communicator(
-            int    *argc,
-            char ***argv )
+            int argc, char ** argv )
     {
+        for( int c=0; c<argc; ++c )
+        {
+            mArguments.push( std::string( argv[ c ] ) );
+        }
+
+        for( int c=1; c<argc ; ++c )
+        {
+            if( c == argc-1)
+            {
+                mArgumentString += mArguments( c )  + " ";
+            }
+            else
+            {
+                mArgumentString += mArguments( c );
+            }
+        }
+
         if( gCommunicatorCounter == 0 )
         {
 #ifdef BELFEM_PETSC
-            PetscErrorCode tErr = PetscInitialize( argc, argv, NULL, NULL );
+            PetscErrorCode tErr = PetscInitialize( &argc, &argv, NULL, NULL );
             BELFEM_ERROR( ! tErr, "Error while tying to initialize MPI/PETSC: %d", ( int ) tErr );
 
             // check data types
@@ -34,7 +50,7 @@ namespace belfem
             BELFEM_ERROR( ( std::is_same< PetscReal, real >::value ),
                 "<PetscReal> is not identical to datatype <real>" );
 #elif BELFEM_MPI
-            int tErr = MPI_Init( argc, argv );
+            int tErr = MPI_Init( &argc, &argv );
             BELFEM_ERROR( ! tErr, "Error while tying to initialize MPI: %d", ( int ) tErr );
 #endif
         }
@@ -49,13 +65,10 @@ namespace belfem
         mComms.push( 0 );
 #endif
         // save executable path
-        mExecutablePath = std::string( *argv[ 0 ] );
+        mExecutablePath = std::string( argv[ 0 ] );
 
         // save workdir
         mWorkDir = std::getenv("PWD");
-
-        // assemble argument string
-        mArguments = "<no belfem::Arguments object initialized>";
 
 #ifdef BELFEM_MPI
         int tVal;
@@ -101,11 +114,18 @@ namespace belfem
     }
 
 //-----------------------------------------------------------------------------
-
-    const std::string &
+    Cell< std::string > &
     Communicator::arguments()
     {
-        return mArguments;
+        return mArguments ;
+    }
+
+//-----------------------------------------------------------------------------
+
+    const std::string &
+    Communicator::argument_string()
+    {
+        return mArgumentString;
     }
 
 //-----------------------------------------------------------------------------
@@ -113,7 +133,7 @@ namespace belfem
     void
     Communicator::set_arguments( const string & aArguments )
     {
-        mArguments = aArguments ;
+        mArgumentString = aArguments ;
     }
 
 //------------------------------------------------------------------------------

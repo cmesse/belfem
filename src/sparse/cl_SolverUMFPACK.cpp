@@ -14,7 +14,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         UMFPACK::UMFPACK() :
-            Wrapper( "UMFPACK " )
+            Wrapper( "UMFPACK  " )
         {
         }
 

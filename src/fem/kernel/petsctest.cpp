@@ -29,7 +29,7 @@ int main( int    argc,
           char * argv[] )
 {
     // create communicator
-    gComm = Communicator( &argc, &argv );
+    gComm = Communicator( argc, argv );
 
     Matrix< real > tB( 5, 5, 0.0 ) ;
 

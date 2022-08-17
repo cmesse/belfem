@@ -12,6 +12,7 @@
 #include "cl_SolverMUMPS.hpp"
 #include "cl_SolverPARDISO.hpp"
 #include "cl_SolverPETSC.hpp"
+#include "cl_SolverSTRUMPACK.hpp"
 
 namespace belfem
 {
@@ -41,6 +42,16 @@ namespace belfem
 #else
                 BELFEM_ERROR( false,
                              "You are trying to create a MUMPS solver.\nHowever, we are not linked against MUMPS." );
+#endif
+                break;
+            }
+            case ( SolverType::STRUMPACK ) :
+            {
+#ifdef BELFEM_MUMPS
+                mWrapper = new solver::STRUMPACK();
+#else
+                BELFEM_ERROR( false,
+                             "You are trying to create a STRUMPACK solver.\nHowever, we are not linked against STRUMPACK." );
 #endif
                 break;
             }

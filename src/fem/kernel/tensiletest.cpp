@@ -38,7 +38,7 @@ int main( int    argc,
 {
     // every program in BELFEM begins with creating a communicator for the parallel
     // communication. If we run without MPI, the communicator does noting
-    gComm = Communicator( &argc, &argv );
+    gComm = Communicator( argc, argv );
 
     // if we wish, we can display the banner
     print_banner();

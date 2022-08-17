@@ -210,7 +210,7 @@ int main( int    argc,
           char * argv[] )
 {
     // create communicator
-    gComm = Communicator( &argc, &argv );
+    gComm = Communicator( argc, argv );
 
      // Mesh tMesh( "mesh_tet10.msh" );
     //Mesh tMesh( "quadrangle.msh" );

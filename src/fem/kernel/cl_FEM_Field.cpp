@@ -1858,11 +1858,13 @@ namespace belfem
                     if ( l == 0 )
                     {
                         // with the graph created, we can initialize the Jacobian
-                        mJacobian = new SpMatrix( tGraph, mSolver->type() == SolverType::PETSC ?
+                        mJacobian = new SpMatrix( tGraph,
+                                                  mSolver->type() == SolverType::PETSC ||
+                                                  mSolver->type() == SolverType::STRUMPACK ?
                         SpMatrixType::CSR : SpMatrixType::CSC,
                                                   mNumberOfFreeDofs, mNumberOfFreeDofs );
 
-                        if ( mMyRank == mParent->master())
+                        if ( mMyRank == mParent->master() )
                         {
                             message( 4, "    ... time for initializing Jacobian          : %u ms\n",
                                      ( unsigned int ) tTimer.stop());

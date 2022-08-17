@@ -499,7 +499,7 @@ namespace belfem
             this->collect_node_data( aElement->master(), "phi", tPhi );
 
             // delete me
-            Vector< real > tH0 = tBm * tPhi ;
+            Vector< real > tH0 ( tBm * tPhi );
             tH0 *= -1 ;
 
             real tHn  = dot( tn, tH0 );
