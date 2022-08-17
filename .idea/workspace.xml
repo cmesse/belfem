@@ -56,28 +56,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="120f1831-a9f1-4c21-bf0a-19444f852628" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/fem/edgeinterpolation/cl_EF_LINE3.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/edgeinterpolation/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/edgeinterpolation/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/edgeinterpolation/cl_EF_TRI6_TS.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/edgeinterpolation/cl_EF_TRI6_TS.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/edgeinterpolation/cl_EF_LINE3.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/interpolation/cl_IF_InterpolationFunctionFactory.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/interpolation/cl_IF_InterpolationFunctionFactory.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/interpolation/cl_IF_TRUSS2.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/interpolation/cl_IF_LINE2.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/interpolation/cl_IF_TRUSS3.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/interpolation/cl_IF_LINE3.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/interpolation/cl_IF_TRUSS4.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/interpolation/cl_IF_LINE4.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/interpolation/cl_IF_TRUSS5.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/interpolation/cl_IF_LINE5.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Group.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Group.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Group.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Group.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_SideSet.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_SideSet.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_SideSet.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_SideSet.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/en_FEM_DomainType.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/en_FEM_DomainType.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri3.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri3.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri3.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri3.hpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri6.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri6.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/lbl/test_input.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/lbl/test_input.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh.hpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -140,9 +123,9 @@
         <option name="com.jetbrains.cidr.cpp.gradle.execution.GradleNativeBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
+    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
-        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
     <configuration name="banner" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="banner" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="banner">
@@ -345,7 +328,7 @@
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="test_input" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$PROJECT_DIR$/cmake-build-debug/tslin" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="test_input" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="test_input">
+    <configuration name="test_input" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$PROJECT_DIR$/cmake-build-debug/tsquad" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="test_input" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="test_input">
       <envs>
         <env name="LD_LIBRARY_PATH" value="/opt/gcc/latest/lib64" />
       </envs>
@@ -603,7 +586,8 @@
       <workItem from="1660180232524" duration="7191000" />
       <workItem from="1660259730586" duration="46601000" />
       <workItem from="1660514274713" duration="5491000" />
-      <workItem from="1660525919570" duration="16170000" />
+      <workItem from="1660525919570" duration="27379000" />
+      <workItem from="1660700512874" duration="738000" />
     </task>
     <servers />
   </component>

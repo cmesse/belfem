@@ -9,6 +9,7 @@
 #include "fn_det.hpp"
 #include "fn_inv.hpp"
 #include "fn_crossmat.hpp"
+#include "fn_cross.hpp"
 
 namespace belfem
 {
@@ -30,7 +31,7 @@ namespace belfem
             mFields.Air = { "phi" };
             mFields.InterfaceScAir = { "lambda" };
             mFields.Cut = { "lambda" };
-            mFields.ThinShell = { "lambda_m", "lambda_s" };
+            mFields.ThinShell = { "lambda_m", "lambda_s", "lambda_z" };
 
             // non-dof fields
             mFields.MagneticFieldDensity     = { "bx", "by", "bz" };
@@ -497,8 +498,11 @@ namespace belfem
             // get phi field
             this->collect_node_data( aElement->master(), "phi", tPhi );
 
-            real tHnm = dot( tn.vector_data(), tBm * tPhi );
+            // delete me
+            Vector< real > tH0 = tBm * tPhi ;
+            tH0 *= -1 ;
 
+            real tHn  = dot( tn, tH0 );
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // lambda-condition for master element, air side
@@ -509,7 +513,7 @@ namespace belfem
 
             // get the column
             p = 0 ;
-            q = aRHS.length() - 2 ;
+            q = aRHS.length() - 3 ; // #lambda_z
 
             for( uint i=0; i<mNumberOfNodesPerElement; ++i )
             {
@@ -531,7 +535,9 @@ namespace belfem
             // get phi field
             this->collect_node_data( aElement->slave(), "phi", tPhi );
 
-            real tHns = dot( tn.vector_data(), tBs * tPhi );
+            // real tHns = -dot( tn.vector_data(), tBs * tPhi );
+            //Vector< real > tH1 = tBs * tPhi ;
+            //tH1 *= -1 ;
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // lambda-condition for slave element, air side
@@ -539,7 +545,7 @@ namespace belfem
 
             // next column
             p = mNumberOfNodesPerElement ;
-            q = aRHS.length() - 1 ;
+            q = aRHS.length() - 2 ; // #lambda_z
 
             crossmat( tn, tBs, tnxB );
 
@@ -582,9 +588,6 @@ namespace belfem
 
             uint tNumLayers = mGroup->number_of_thin_shell_layers() ;
 
-            real tL = mGroup->thin_shell_thickness();
-            real tY = 0 ;
-
             // loop over all layers
             for( uint l=0; l<tNumLayers; ++l )
             {
@@ -593,12 +596,6 @@ namespace belfem
 
                 // get thickness of thin shell
                 real t = mGroup->thin_shell_thickness( l );
-
-                // compute local coordinate for normal component of H
-                tY += 0.5 * t ;
-                real tEta = tY / tL ;
-                tY += 0.5 * t ;
-                real tHn = tHnm * ( 1.0 - tEta ) + tHns * tEta ;
 
                 tM(p,p)     += tMlayer(0,0) * t ;
                 tM(p+1,p)   += tMlayer(1,0) * t ;
@@ -623,6 +620,30 @@ namespace belfem
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // additional BC
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+            p = aRHS.length() - 1 ;
+            q = 0 ;
+
+            // normal component master
+            for( uint i=0; i<mNumberOfNodesPerElement; ++i )
+            {
+                tM( p, q )  =  (
+                           tn( 0 ) * tBm( 0, i)
+                          + tn( 1 ) * tBm( 1, i ) ) * tElementLength ;
+                tM( q, p ) = tM( p, q ) ;
+                ++q ;
+            }
+
+            // normal component slave
+            for( uint i=0; i<mNumberOfNodesPerElement; ++i )
+            {
+                tM( p, q )  =  -(
+                        tn( 0 ) * tBs( 0, i)
+                                       + tn( 1 ) * tBs( 1, i ) ) * tElementLength ;
+                tM( q, p ) = tM( p, q ) ;
+                ++q ;
+            }
+
 
             /*const IntegrationData * tIntMaster = mGroup->master_integration( aElement->facet()->master_index() );
             const IntegrationData * tIntSlave = mGroup->slave_integration( aElement->facet()->slave_index() );
@@ -657,13 +678,16 @@ namespace belfem
                 }
             } */
 
-            //this->print_dofs( aElement );
 
             // compute the right hand side
             aRHS += tM *  this->collect_q0_hphi_thinshell( aElement ) ;
 
             // finalize the Jacobian
             aJacobian += mDeltaTime * mGroup->work_K() ;
+
+
+
+
         }
 
 //------------------------------------------------------------------------------

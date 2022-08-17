@@ -1007,41 +1007,35 @@ namespace belfem
                 const uint       aLayer,
                 Vector< real > & aData )
         {
-            BELFEM_ASSERT( mNumberOfRhsDofsPerEdge == 1,
-                           "this function can be used for linear interpolation only ( one dof per edge )" );
-
-            BELFEM_ASSERT( mNumberOfRhsDofsPerFace == 0,
-                           "this function can be used for quadratic interpolation only ( zero dofs per face )" );
-
-            BELFEM_ASSERT(
-                    aData.length() >= mNumberOfEdgesPerElement,
-                    "Length of vector does not fit does not fit ( is %u, but need at least %u )",
-                    ( unsigned int ) aData.length(),
-                    ( unsigned int ) mNumberOfEdgesPerElement );
-
             BELFEM_ASSERT(
                     mMesh->field( aEdgeFieldLabel )->entity_type() == EntityType::EDGE,
                     "Field '%s' is not an edge field", aEdgeFieldLabel.c_str() );
 
-            // grab ghost element
-            mesh::Element * tElementA = mMesh->ghost_facet( aElement->id(), aLayer )->element();
+            // get the interpolation order ( in this case, we assume that the perpendicular order
+            // is equal to the edge order
+            uint tNumEdges = mEdgeDofMultiplicity + 1 ;
 
-            // get ref to field on mesh
-            Vector< real > & tField = mMesh->field_data( aEdgeFieldLabel );
+            uint tCount = 0 ;
+            uint tOff = mEdgeDofMultiplicity * aLayer ;
+
+            // get the field
+            Vector< real > & tData = mMesh->field_data( aEdgeFieldLabel );
 
             // loop over all edges
-            uint tCount = 0 ;
-            for( uint e=0; e< mNumberOfEdgesPerElement; ++e )
+            for( uint e=0; e<tNumEdges; ++e )
             {
-                aData( tCount++ ) = tField( tElementA->edge( e )->index() );
+                // get the edge
+                mesh::Edge * tEdge = mMesh->ghost_facet( aElement->id(), tOff + e )->edge( 0 );
+
+                // get the data
+                for( uint k=0; k<mEdgeDofMultiplicity ; ++k )
+                {
+                    aData( tCount++ ) = tData( mEdgeDofMultiplicity * tEdge->index() + k  );
+                }
             }
 
-            mesh::Element * tElementB = mMesh->ghost_facet( aElement->id(), aLayer+1 )->element();
+            BELFEM_ASSERT( tCount == aData.length(), "something went wrong while grabbinng edge data" );
 
-            for( uint e=0; e< mNumberOfEdgesPerElement; ++e )
-            {
-                aData( tCount++ ) = tField( tElementB->edge( e )->index() );
-            }
         }
 
 

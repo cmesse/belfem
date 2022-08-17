@@ -347,7 +347,7 @@ namespace belfem
                     aGroup->work_L().set_size( tN, tN, 0.0 );
 
                     // data for edge dofs
-                    aGroup->work_sigma().set_size( 2 * mEdgeDofMultiplicity * mNumberOfDofsPerEdge, 0.0 ) ;
+                    aGroup->work_sigma().set_size( tN , 0.0 ) ;
 
                     // todo: add face dofs for 3D
                     if( mNumberOfDofsPerFace > 0 && mMesh->number_of_dimensions() == 3 )

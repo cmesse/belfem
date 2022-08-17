@@ -564,7 +564,7 @@ namespace belfem
             Matrix< real > & tXs = mGroup->work_Eta() ;
 
             // expression cross( n, B )
-            Vector< real > tnxB = mGroup->work_gamma() ;
+            Vector< real > tnxB = mGroup->work_psi() ;
 
 
             // mass matrix for individual layer
@@ -633,7 +633,7 @@ namespace belfem
             real tT = 4.0 ;
 
             // data for magnetic field (H-data)
-            Vector< real > & tH = mGroup->work_sigma() ;
+            Vector< real > & tHt = mGroup->work_sigma() ;
             Vector< real > & tPhi = mGroup->work_phi() ;
             this->collect_node_data( aElement->master(), "phi", tPhi );
 
@@ -747,8 +747,8 @@ namespace belfem
 
                     for( uint l=0; l<tNumLayers; ++l )
                     {
-                        this->collect_edge_data_from_layer( aElement, "edge_h", l, tH );
-                        tH.print("edge_h");
+                        this->collect_edge_data_from_layer( aElement, "edge_h", l, tHt );
+                        tHt.print("edge_h");
                     }
                 }
 
