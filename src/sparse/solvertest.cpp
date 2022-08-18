@@ -44,7 +44,7 @@ int main( int    argc,
 
     Matrix< real > tK( 5, 5, 0.0 );
 
-    tK( 0, 0 ) =  1.0 ;
+    /*tK( 0, 0 ) =  1.0 ;
     tK( 0, 1 ) = -1.0 ;
     tK( 0, 3 ) = -3.0 ;
     tK( 1, 0 ) = -2.0 ;
@@ -56,11 +56,27 @@ int main( int    argc,
     tK( 3, 2 ) =  2.0 ;
     tK( 3, 3 ) =  7.0 ;
     tK( 4, 1 ) =  8.0 ;
-    tK( 4, 4 ) = -5.0 ;
+    tK( 4, 4 ) = -5.0 ;*/
+    tK(0,0) = 8.2 ;
+    tK(0,1) = 0.1 ;
+    tK(0,4) = 3.1 ;
+    tK(1,0) = 1e-12 ;
+    tK(1,2) = -4.8 ;
+    tK(2,0) = 6.2 ;
+    tK(2,1) = 1.1 ;
+    tK(2,3) = 2.6 ;
+    tK(3,2) = -1.0 ;
+    tK(4,3) = 99.9 ;
+    tK(4,4) = 4.0 ;
+
     uint tN = 5 ;
-    tK.print("K");
+    if( gComm.rank() == 0 )
+    {
+        tK.print( "K" );
+    }
 
     SpMatrix tM( tK, SpMatrixType::CSR );
+    //tM.print("M");
 
     Vector< real > tX( tN );
     for( uint k=0; k<tN; ++k )
@@ -69,6 +85,11 @@ int main( int    argc,
     }
 
     Vector< real > tB( tK * tX );
+    if( gComm.rank() == 0 )
+    {
+        tB.print("B");
+
+    }
     //tX.print("x");
     //tB.print("b");
 

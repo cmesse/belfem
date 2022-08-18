@@ -681,6 +681,18 @@ namespace belfem
                 }
             }
 
+            for( mesh::Facet * tFacet : mMesh->facets() )
+            {
+                for( uint k=0; k<tFacet->number_of_nodes(); ++k )
+                {
+                    if ( tFacet->node( k )->is_flagged() )
+                    {
+                        tFacet->flag_nodes() ;
+                        continue;
+                    }
+                }
+            }
+
             // also flag duplicates
             for( mesh::Node * tNode : tNodes )
             {

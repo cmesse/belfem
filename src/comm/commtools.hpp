@@ -1215,6 +1215,96 @@ namespace belfem
 #endif
     }
 
+// -------------------------------------------------------------------------
+
+    template< typename T >
+    index_t
+    receive( const proc_t aSource,
+             T             * aData )
+    {
+#ifdef BELFEM_MPI
+
+        // get total number of procs
+        proc_t tCommSize = gComm.size();
+
+        // get my rank
+        proc_t tMyRank   = gComm.rank();
+
+        if( aSource < tCommSize && aSource != tMyRank )
+        {
+            // Allocate memory for status/request vector
+            MPI_Status  tStatus;
+            MPI_Request tRequest;
+
+            // get the data types
+            comm_data_t tLengthType = get_comm_datatype ( ( index_t ) 0 );
+            comm_data_t tDataType = get_comm_datatype ( ( T ) 0 );
+
+            // get length of vector
+            index_t aNumberOfSamples = 0;
+
+            // create communication tag
+            int tCommTag = comm_tag( aSource, tMyRank );
+
+            // receive length from target
+            MPI_Irecv( & aNumberOfSamples,
+                       1,
+                       tLengthType,
+                       aSource,
+                       tCommTag,
+                       gComm.world(),
+                       &tRequest );
+
+            // wait until send is complete
+            MPI_Wait( &tRequest, &tStatus );
+
+            if( aNumberOfSamples > 0 )
+            {
+
+                // calculate number of individual messages to be sent
+                Vector< int > tLengths = split_message( aNumberOfSamples );
+                index_t tNumMessages = tLengths.length();
+
+                // Allocate status and request containers
+                MPI_Status*  tStatus2  = ( MPI_Status*  ) alloca( tNumMessages * sizeof( MPI_Status  ) );
+                MPI_Request* tRequest2 = ( MPI_Request* ) alloca( tNumMessages * sizeof( MPI_Request ) );
+
+                // offset in array
+                index_t tOffset = 0;
+
+                // loop over all messages
+                for( index_t m=0; m<tNumMessages; ++m )
+                {
+                    // increment comm tag
+                    tCommTag++;
+
+                    // receive data
+                    MPI_Irecv( aData + tOffset,
+                               tLengths( m ),
+                               tDataType,
+                               aSource,
+                               tCommTag,
+                               gComm.world(),
+                               &tRequest2[ m ] );
+
+                    // increment offset
+                    tOffset += tLengths( m );
+
+                    // wait until receive is complete
+                    MPI_Wait( &tRequest2[ m ], &tStatus2[ m ] );
+
+                }
+            }
+
+            return aNumberOfSamples ;
+        }
+        else
+        {
+            return 0 ;
+        }
+#endif
+    }
+
 //==============================================================================
 // Matrix from root to others
 //==============================================================================

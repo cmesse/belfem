@@ -24,6 +24,8 @@
 #endif
 #endif
 
+#include "cl_SolverStrumpackDistributor.hpp"
+
 namespace belfem
 {
     namespace solver
@@ -35,9 +37,12 @@ namespace belfem
             int           mArgC ;
             StringList  * mArgV = nullptr ;
 
+            StrumpackDistributor * mDistributor = nullptr ;
+
 
 #ifdef BELFEM_STRUMPACK
             strumpack::StrumpackSparseSolver<real,int> * mSolver = nullptr ;
+            strumpack::StrumpackSparseSolverMPIDist<real, int> * mDistSolver = nullptr ;
 #endif
 //------------------------------------------------------------------------------
         public:

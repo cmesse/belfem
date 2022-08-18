@@ -82,6 +82,7 @@ namespace belfem
         GMRES,   // Generalized Minimal Residual
         TFQMR,   // transpose free QMR
         BCGS,    // Stabilized version of BiConjugate Gradient
+        AUTO,    // for PETSc: GMRES, for STRUMPACK: GMRES if iterative, otherwise none
         UNDEFINED
     };
 

@@ -255,6 +255,10 @@ namespace belfem
             {
                 return "tfqmr" ;
             }
+            case( KrylovMethod::AUTO ) :
+            {
+                return "gmres" ;
+            }
             default:
             {
                 return "unknown";
@@ -272,6 +276,10 @@ namespace belfem
         if( tString ==  "preonly" )
         {
             return KrylovMethod::PREONLY ;
+        }
+        if( tString ==  "auto" )
+        {
+            return KrylovMethod::AUTO ;
         }
         else if ( tString == "bcgs" )
         {

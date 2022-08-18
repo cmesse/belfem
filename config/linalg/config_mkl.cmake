@@ -46,7 +46,11 @@ if( USE_MKL )
 
     # add thread
     if( USE_OPENMP )
-        set( BELFEM_MATRIX_LIBS " ${BELFEM_MATRIX_LIBS} ${BELFEM_MKL_LIBDIR}/libmkl_intel_thread.a ")
+        if( ${COMPILER_ID} EQUAL 1 AND NOT BELFEM_USE_CLANG )
+            set( BELFEM_MATRIX_LIBS " ${BELFEM_MATRIX_LIBS} ${BELFEM_MKL_LIBDIR}/libmkl_gnu_thread.a ")
+        else()
+            set( BELFEM_MATRIX_LIBS " ${BELFEM_MATRIX_LIBS} ${BELFEM_MKL_LIBDIR}/libmkl_intel_thread.a ")
+        endif()
     else()
         set( BELFEM_MATRIX_LIBS " ${BELFEM_MATRIX_LIBS} ${BELFEM_MKL_LIBDIR}/libmkl_sequential.a ")
     endif()

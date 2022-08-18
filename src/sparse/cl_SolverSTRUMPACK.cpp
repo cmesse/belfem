@@ -1,8 +1,10 @@
 //
 // Created by christian on 8/16/22.
 //
+#include "commtools.hpp"
 #include "cl_Communicator.hpp"
 #include "cl_Logger.hpp"
+
 #include "cl_SolverSTRUMPACK.hpp"
 #include "assert.hpp"
 // Externally Defined Global Communicator
@@ -23,10 +25,19 @@ namespace belfem
 
         STRUMPACK::~STRUMPACK()
         {
+            if( mDistributor != nullptr )
+            {
+                delete mDistributor ;
+            }
+
 #ifdef BELFEM_STRUMPACK
             if( mSolver != nullptr )
             {
                 delete mSolver;
+            }
+            if( mDistSolver != nullptr )
+            {
+                delete mDistSolver ;
             }
 #endif
             if( mArgV != nullptr )
@@ -45,9 +56,11 @@ namespace belfem
         {
             BELFEM_ASSERT(  aNumRhsColumns == 1,
                             "number of RHS cols must be 1 for STRUMPACK" );
-#ifdef BELFEM_STRUMPACK
-            aMatrix.set_indexing_base( SpMatrixIndexingBase::Cpp );
 
+            // call initialize function from parent
+            Wrapper::initialize();
+
+#ifdef BELFEM_STRUMPACK
             mArgC = gComm.arguments().size() ;
 
             mArgV = new StringList( mArgC );
@@ -57,27 +70,60 @@ namespace belfem
                 mArgV->push( tString );
             }
 
-            // see https://portal.nersc.gov/project/sparse/strumpack/v6.3.1/sparse_example_usage.html#autotoc_md9
-            BELFEM_ERROR( gComm.size() == 1 , "Parallel STRUMPACK not supportet yet");
+            if( gComm.size() == 1 )
+            {
+                aMatrix.set_indexing_base( SpMatrixIndexingBase::Cpp );
 
-            // create the solver
-            mSolver = new strumpack::StrumpackSparseSolver< double, int >(
-                    mArgC,
-                    mArgV->data(),
-                    gLog.info_level() >= 5 );
+                // create the solver
+                mSolver = new strumpack::StrumpackSparseSolver< double, int >(
+                        mArgC,
+                        mArgV->data(),
+                        gLog.info_level() >= 5 );
 
-            // set the options
-            mSolver->options().set_from_command_line( mArgC, mArgV->data() );
+                // set the options
+                mSolver->options().set_from_command_line( mArgC, mArgV->data() );
 
-            mSolver->set_csr_matrix(
-                    aMatrix.n_rows(),
-                    aMatrix.pointers(),
-                    aMatrix.indices(),
-                    aMatrix.data(),
-                    false );
+                mSolver->set_csr_matrix(
+                        aMatrix.n_rows(),
+                        aMatrix.pointers(),
+                        aMatrix.indices(),
+                        aMatrix.data(),
+                        false );
+            }
+            else if ( gComm.rank() == 0 )
+            {
+                aMatrix.set_indexing_base( SpMatrixIndexingBase::Cpp );
+                mDistributor = new StrumpackDistributor( aMatrix );
+                mDistSolver = new strumpack::StrumpackSparseSolverMPIDist<real, int>( gComm.world(),
+                        mArgC,
+                        mArgV->data(),
+                        gLog.info_level() >= 5 );
 
-            // call initialize function from parent
-            Wrapper::initialize();
+                mDistributor->send_values ( aMatrix );
+                mDistSolver->set_distributed_csr_matrix(
+                        mDistributor->n_rows(),
+                        aMatrix.pointers(),
+                        aMatrix.indices(),
+                        aMatrix.data(),
+                        mDistributor->dist() );
+
+
+            }
+            else
+            {
+                mDistributor = new StrumpackDistributor();
+                mDistSolver = new strumpack::StrumpackSparseSolverMPIDist<real, int>( gComm.world(),
+                                                                                       mArgC,
+                                                                                       mArgV->data(),
+                                                                                       gLog.info_level() >= 5 );
+                mDistributor->receive_values();
+                mDistSolver->set_distributed_csr_matrix(
+                        mDistributor->n_rows(),
+                        mDistributor->pointers(),
+                        mDistributor->indices(),
+                        mDistributor->values(),
+                        mDistributor->dist() );
+            }
 #endif
         }
 
@@ -97,27 +143,68 @@ namespace belfem
 
             aMatrix.set_indexing_base( SpMatrixIndexingBase::Cpp );
 
-            if( aRHS.length() != aLHS.length() )
+            if( aRHS.length() != aLHS.length() && gComm.rank() == 0 )
             {
                  aLHS.set_size( aRHS.length() );
             }
 
-            if( ! this->is_initialized() )
+            if( gComm.size() == 1 )
             {
-                this->initialize( aMatrix );
+                if ( ! this->is_initialized() )
+                {
+                    this->initialize( aMatrix );
+                }
+                else
+                {
+                    mSolver->update_matrix_values(
+                            aMatrix.n_rows(),
+                            aMatrix.pointers(),
+                            aMatrix.indices(),
+                            aMatrix.data(),
+                            false );
+                }
+
+                mSolver->factor();
+                mSolver->solve( aRHS.data(), aLHS.data());
             }
             else
             {
-                mSolver->update_matrix_values(
-                        aMatrix.n_rows(),
-                        aMatrix.pointers(),
-                        aMatrix.indices(),
-                        aMatrix.data(),
-                        false );
+                if ( ! this->is_initialized() )
+                {
+                    this->initialize( aMatrix );
+                }
+                else if( gComm.rank() == 0 )
+                {
+                    mDistributor->send_values ( aMatrix );
+                    mDistSolver->update_matrix_values(
+                            mDistributor->n_rows(),
+                            aMatrix.pointers(),
+                            aMatrix.indices(),
+                            aMatrix.data(),
+                            mDistributor->dist() );
+                }
+                else
+                {
+                    mDistributor->receive_values();
+                    mDistSolver->update_matrix_values(
+                            mDistributor->n_rows(),
+                            mDistributor->pointers(),
+                            mDistributor->indices(),
+                            mDistributor->values(),
+                            mDistributor->dist() );
+                };
+                mDistributor->distribute_rhs( aRHS );
+                comm_barrier();
+                if( gComm.rank() == 0 )
+                {
+                    mDistSolver->solve( aRHS.data(), aLHS.data() );
+                }
+                else
+                {
+                    mDistSolver->solve( mDistributor->rhs(), mDistributor->lhs());
+                }
+                mDistributor->collect_lhs( aLHS );
             }
-
-            mSolver->factor();
-            mSolver->solve( aRHS.data(), aLHS.data() );
 #else
             BELFEM_ERROR( false, "We are not linked against STRUMPACK");
 #endif
