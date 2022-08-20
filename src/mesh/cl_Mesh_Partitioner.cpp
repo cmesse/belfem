@@ -2,8 +2,6 @@
 // Created by Christian Messe on 27.10.19.
 //
 #include "cl_Mesh_Partitioner.hpp"
-
-#include "commtools.hpp"
 #include "random.hpp"
 
 #include "cl_Timer.hpp"

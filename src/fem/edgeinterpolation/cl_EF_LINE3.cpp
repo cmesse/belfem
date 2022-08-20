@@ -54,6 +54,7 @@ namespace belfem
                 Matrix< real > & tE = mE( k );
                 tE( 0, 0 ) =  1.5 * xi + 0.5 ;
                 tE( 0, 1 ) = -1.5 * xi + 0.5 ;
+                tE.print("E");
             }
 
         }

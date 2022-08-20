@@ -1298,11 +1298,8 @@ namespace belfem
 
             return aNumberOfSamples ;
         }
-        else
-        {
-            return 0 ;
-        }
 #endif
+        return 0 ;
     }
 
 //==============================================================================

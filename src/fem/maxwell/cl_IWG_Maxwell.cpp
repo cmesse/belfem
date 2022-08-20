@@ -150,7 +150,7 @@ namespace belfem
             // skip empty blocks and sidesets
            if( aGroup->number_of_elements() == 0 ) return;
 
-           // call function form parent
+           // call function form parentcd
            IWG::link_to_group( aGroup );
 
            // link the edge collector
@@ -175,7 +175,6 @@ namespace belfem
                // special function for second order thin shell
                if( mEdgeFunctionTS != nullptr )
                {
-                   aGroup->integration_points().print("Points");
                    mEdgeFunctionTS->precompute( aGroup->integration_points() );
                }
 

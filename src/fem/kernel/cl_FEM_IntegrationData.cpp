@@ -212,6 +212,24 @@ namespace belfem
                 mShapeFunction->dNdXi( mPoints.col( k ), mdNdXi( k ) );
             }
 
+
+            // also write derivative into vector
+            // ( special function for line elements only)
+            if( tNumDim == 1 )
+            {
+                mdPhidxi.set_size( mNumberOfIntegrationPoints, Vector< real >( tNumberOfNodes ) );
+                for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+                {
+                    Vector< real > & tPhi_xi = mdPhidxi( k );
+                    const Matrix< real > & tdNdXi  = mdNdXi( k );
+
+                    for( uint i=0; i<tNumberOfNodes; ++i )
+                    {
+                        tPhi_xi( i ) = tdNdXi( 0, i );
+                    }
+                }
+            }
+
             // allocate cells for second derivative
             md2NdXi2.set_size( mNumberOfIntegrationPoints,
                                Matrix< real >( tNumDim, tNumberOfNodes ) );

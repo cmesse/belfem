@@ -29,6 +29,7 @@ namespace belfem
 
             // nodal shape function
             Cell< Vector< real > > mPhi ;
+            Cell< Vector< real > > mdPhidxi ; // line elements only
             Cell< Matrix< real > > mN ;
             Cell< Matrix< real > > mNvector ;
             Cell< Matrix< real > > mdNdXi;
@@ -130,6 +131,14 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            /**
+             * return the node shape function deriivative as vector (line element only)
+             */
+            const Vector< real > &
+            dphidxi( const uint aIndex ) const ;
+
+//------------------------------------------------------------------------------
+
              /**
               * return the node shape function as Matrix (scalar field)
               */
@@ -208,6 +217,16 @@ namespace belfem
             IntegrationData::phi( const uint aIndex ) const
             {
                 return mPhi( aIndex ) ;
+            }
+//------------------------------------------------------------------------------
+
+            inline const Vector< real > &
+            IntegrationData::dphidxi( const uint aIndex ) const
+            {
+                BELFEM_ASSERT( mdPhidxi.size() > 0,
+                "dphidxi can only be called for line elements" );
+
+                return mdPhidxi( aIndex ) ;
             }
 
 //------------------------------------------------------------------------------

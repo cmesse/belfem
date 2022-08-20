@@ -498,11 +498,8 @@ namespace belfem
             // get phi field
             this->collect_node_data( aElement->master(), "phi", tPhi );
 
-            // delete me
-            Vector< real > tH0 ( tBm * tPhi );
-            tH0 *= -1 ;
-
-            real tHn  = dot( tn, tH0 );
+            // compute normal field (needed for material properties in stiffness matrix)
+            real tHn  = -dot( tn.vector_data(), tBm * tPhi );
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // lambda-condition for master element, air side

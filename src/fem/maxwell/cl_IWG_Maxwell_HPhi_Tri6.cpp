@@ -31,7 +31,7 @@ namespace belfem
 
             mFields.InterfaceScAir = { "lambda" };
             mFields.Cut = { "lambda" };
-            mFields.ThinShell = { "lambda_m", "lambda_s" };
+            mFields.ThinShell = { "lambda_m", "lambda_s", "lambda_z" };
 
 
             // non-dof fields
@@ -48,6 +48,8 @@ namespace belfem
 
             // create the TS function
             mEdgeFunctionTS = new EF_LINE3() ;
+            mHt.set_size( 3 );
+            mC.set_size( 1, 6 );
         }
 
 //------------------------------------------------------------------------------
@@ -623,9 +625,6 @@ namespace belfem
             // edge conditions
             real tE0 ;
             real tE1 ;
-            real tRho0 ;
-            real tRho1 ;
-            real tRho2 ;
 
             uint tNumLayers = mGroup->number_of_thin_shell_layers() ;
 
@@ -647,20 +646,23 @@ namespace belfem
                 // lambda-condition perpendicular master and slave
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-
                 real tdM ;
+
+                // get phi field
+                this->collect_node_data( aElement->master(), "phi", tPhi );
 
                 for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
                 {
                     // evaluate the edge function
                     const Matrix< real > & tE = mEdgeFunctionTS->E( k );
+
                     tE0 = tE( 0, 0 );
                     tE1 = tE( 0, 1 );
                     real tDetJ = mEdgeFunctionTS->abs_det_J() ;
 
                     // reset indices
                     p = 0;
-                    q = aRHS.length() - 2;
+                    q = aRHS.length() - 3;
                     r = mNumberOfNodesPerElement;
                     s = q + 1;
 
@@ -674,6 +676,9 @@ namespace belfem
 
                     // gradient operator
                     tB = inv( tMaster->dNdXi( k ) * tXm ) * tMaster->dNdXi( k );
+
+                    // compute the normal component of the field
+                    real tHn = -dot( tn.vector_data(), tB * tPhi );
 
                     // compute the expression n x B
                     crossmat( tn, tB, tnxB );
@@ -722,19 +727,23 @@ namespace belfem
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     p = r;
                     r = q - 2;
-                    tE0 = tW( k ) * tSign * tE( 0, 0 ) * tDetJ ;
-                    tM( p, q ) += tE0;
-                    tM( q, p ) += tE0;
-                    tM( r, s ) += tE0;
-                    tM( s, r ) += tE0;
+
+                    // weight factor for integration
+                    real tScale = tW( k ) * tSign * tDetJ ;
+
+                    real tES0 = tE( 0, 0 ) * tScale ;
+                    tM( p, q ) += tES0;
+                    tM( q, p ) += tES0;
+                    tM( r, s ) += tES0;
+                    tM( s, r ) += tES0;
 
                     ++p;
                     ++r;
-                    tE1 = tW( k ) * tSign * tE( 0, 1 ) * tDetJ ;
-                    tM( p, q ) += tE1;
-                    tM( q, p ) += tE1;
-                    tM( r, s ) += tE1;
-                    tM( s, r ) += tE1;
+                    real tES1 = tE( 0, 1 ) * tScale ;
+                    tM( p, q ) += tES1;
+                    tM( q, p ) += tES1;
+                    tM( r, s ) += tES1;
+                    tM( s, r ) += tES1;
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     // contribution for mass and stiffness matrix
@@ -748,14 +757,30 @@ namespace belfem
                     for( uint l=0; l<tNumLayers; ++l )
                     {
                         this->collect_edge_data_from_layer( aElement, "edge_h", l, tHt );
-                        tHt.print("edge_h");
+                        this->compute_layer_mass( l, tE0, tE1,  tMlayer );
+                        this->compute_layer_stiffness( l, tE0, tE1,  tHt, tHn, tKlayer );
+
+                        // add submatrix
+                        for( uint j=0; j<6; ++j )
+                        {
+                            for( uint i=0; i<6; ++i )
+                            {
+                                tM( p+i, p+j ) += tScale * tMlayer( i, j );
+                                tK( p+i, p+j) += tScale * tKlayer( i, j );
+                            }
+                        }
+
+                        // increment offset for the next layer
+                        p+= 2 ;
                     }
                 }
 
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+                tK.print("K");
                 tM.print( "M");
+
                 exit( 0 );
             }
             else
@@ -773,12 +798,12 @@ namespace belfem
 
         void
         IWG_Maxwell_HPhi_Tri6::compute_layer_mass(
+                const uint aLayer,
                 const real aE0,
                 const real aE1,
-                const real aThickness,
                 Matrix< real > & aM )
         {
-            mWork[ 0 ] =  constant::mu0 * aThickness / 30.0 ;
+            mWork[ 0 ] =  constant::mu0 * mGroup->thin_shell_thickness( aLayer ) / 30.0 ;
             mWork[ 1 ] = aE0 * aE0 * mWork[ 0 ] ;
             mWork[ 2 ] = aE0 * aE1 * mWork[ 0 ] ;
             mWork[ 3 ] = aE1 * aE1 * mWork[ 0 ] ;
@@ -831,67 +856,69 @@ namespace belfem
 
         void
         IWG_Maxwell_HPhi_Tri6::compute_layer_stiffness(
+                const uint aLayer,
                 const real aE0,
                 const real aE1,
-                const real aThickness,
-                const real aRho0,
-                const real aRho1,
-                const real aRho2,
+                const Vector< real > & aHt,
+                const real aHn,
                 Matrix< real > & aK )
         {
-            mWork[  0 ] =  1.0/( 30.0 *  aThickness );
-            mWork[  1 ] =  aE0 * aE0 * mWork[ 0 ] ;
-            mWork[  2 ] =  aE0 * aE1 * mWork[ 0 ] ;
-            mWork[  3 ] =  aE1 * aE1 * mWork[ 0 ] ;
-            mWork[  4 ] =  mWork[ 1 ] + mWork[ 1 ] ; //  2* e0 * e0 * /30t
-            mWork[  5 ] =  mWork[ 2 ] + mWork[ 2 ] ; //  2* e0 * e1 * /30t
-            mWork[  6 ] =  mWork[ 3 ] + mWork[ 3 ] ; //  2* e1 * e1 * /30t
-            mWork[  7 ] = -mWork[ 4 ] - mWork[ 4 ] ; // -4* e0 * e0 * /30t
-            mWork[  8 ] = -mWork[ 5 ] - mWork[ 5 ] ; // -4* e0 * e1 * /30t
-            mWork[  9 ] = -mWork[ 6 ] - mWork[ 6 ] ; // -4* e1 * e1 * /30t
-            mWork[ 10 ] =  37.* aRho0 + 36.* aRho1 -  3.*aRho2 ;
-            mWork[ 11 ] =  11.* aRho0 +  8.* aRho1 +     aRho2 ;
-            mWork[ 12 ] =   7.* aRho0 -  4.* aRho1 +  7.*aRho2 ;
-            mWork[ 13 ] =  48.* aRho0 + 64.* aRho1 + 48.*aRho2 ;
-            mWork[ 14 ] =       aRho0 +  8.* aRho1 + 11.*aRho2 ;
-            mWork[ 15 ] =  -3.* aRho0 + 36.* aRho1 + 37.*aRho2 ;
+            // reset matrix
+            aK.fill( 0.0 );
 
-            aK( 0, 0 ) =  mWork[ 1 ]*mWork[ 10 ];
-            aK( 1, 0 ) =  mWork[ 2 ]*mWork[ 10 ];
-            aK( 2, 0 ) =  mWork[ 7 ]*mWork[ 11 ];
-            aK( 3, 0 ) =  mWork[ 8 ]*mWork[ 11 ];
-            aK( 4, 0 ) =  mWork[ 1 ]*mWork[ 12 ];
-            aK( 5, 0 ) =  mWork[ 2 ]*mWork[ 12 ];
-            aK( 0, 1 ) =  mWork[ 2 ]*mWork[ 10 ];
-            aK( 1, 1 ) =  mWork[ 3 ]*mWork[ 10 ];
-            aK( 2, 1 ) =  mWork[ 8 ]*mWork[ 11 ];
-            aK( 3, 1 ) =  mWork[ 9 ]*mWork[ 11 ];
-            aK( 4, 1 ) =  mWork[ 2 ]*mWork[ 12 ];
-            aK( 5, 1 ) =  mWork[ 3 ]*mWork[ 12 ];
-            aK( 0, 2 ) =  mWork[ 7 ]*mWork[ 11 ];
-            aK( 1, 2 ) =  mWork[ 8 ]*mWork[ 11 ];
-            aK( 2, 2 ) =  mWork[ 1 ]*mWork[ 13 ];
-            aK( 3, 2 ) =  mWork[ 2 ]*mWork[ 13 ];
-            aK( 4, 2 ) =  mWork[ 7 ]*mWork[ 14 ];
-            aK( 5, 2 ) =  mWork[ 8 ]*mWork[ 14 ];
-            aK( 0, 3 ) =  mWork[ 8 ]*mWork[ 11 ];
-            aK( 1, 3 ) =  mWork[ 9 ]*mWork[ 11 ];
-            aK( 2, 3 ) =  mWork[ 2 ]*mWork[ 13 ];
-            aK( 3, 3 ) =  mWork[ 3 ]*mWork[ 13 ];
-            aK( 4, 3 ) =  mWork[ 8 ]*mWork[ 14 ];
-            aK( 5, 3 ) =  mWork[ 9 ]*mWork[ 14 ];
-            aK( 0, 4 ) =  mWork[ 1 ]*mWork[ 12 ];
-            aK( 1, 4 ) =  mWork[ 2 ]*mWork[ 12 ];
-            aK( 2, 4 ) =  mWork[ 7 ]*mWork[ 14 ];
-            aK( 3, 4 ) =  mWork[ 8 ]*mWork[ 14 ];
-            aK( 4, 4 ) =  mWork[ 1 ]*mWork[ 15 ];
-            aK( 5, 4 ) =  mWork[ 2 ]*mWork[ 15 ];
-            aK( 0, 5 ) =  mWork[ 2 ]*mWork[ 12 ];
-            aK( 1, 5 ) =  mWork[ 3 ]*mWork[ 12 ];
-            aK( 2, 5 ) =  mWork[ 8 ]*mWork[ 14 ];
-            aK( 3, 5 ) =  mWork[ 9 ]*mWork[ 14 ];
-            aK( 4, 5 ) =  mWork[ 2 ]*mWork[ 15 ];
-            aK( 5, 5 ) =  mWork[ 3 ]*mWork[ 15 ];
+            // grab material
+            const Material * tMaterial = mGroup->thin_shell_material( aLayer );
+
+            // integration data
+            const IntegrationData * tInteg = mGroup->thinshell_integration();
+
+            const Vector< real > & tW = tInteg->weights() ;
+
+            // get material
+            // temperature, todo: make not constant
+            real tT = 4.0 ;
+            real tDetJ = mGroup->thin_shell_thickness( aLayer ) * 0.5 ;
+
+            // integrate over thickness
+            for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+            {
+                // note:: usually, line elements are numbered like this
+                //        0 --- 2 --- 1
+                //        but here, we use the scheme
+                //        0 --- 1 --- 2
+                //        that's why we need to swap the indices in mHt and tPhiXi!
+
+                // edge-wise components of H
+                mHt( 0 ) = aE0 * aHt( 0 ) + aE1 * aHt( 1 ) ;
+                mHt( 2 ) = aE0 * aHt( 2 ) + aE1 * aHt( 3 ) ;
+                mHt( 1 ) = aE0 * aHt( 4 ) + aE1 * aHt( 5 ) ;
+
+                // derivative of shape function along thickness
+                const Vector< real > & tPhiXi = tInteg->dphidxi( k ) ;
+
+                // curl operator
+                mC( 0, 0 ) = aE0 * tPhiXi( 0 );
+                mC( 0, 1 ) = aE1 * tPhiXi( 0 );
+                mC( 0, 2 ) = aE0 * tPhiXi( 2 );
+                mC( 0, 3 ) = aE1 * tPhiXi( 2 );
+                mC( 0, 4 ) = aE0 * tPhiXi( 1 );
+                mC( 0, 5 ) = aE1 * tPhiXi( 1 );
+                mC /= tDetJ ;
+
+
+                // current : tHt derived along thickness
+                // real tJz = mC * aHt ;
+                real tJz = dot( tPhiXi, mHt ) / tDetJ ;
+
+                // tangential component of h
+                real tHt =   dot( tInteg->phi( k ), mHt );
+
+                // resistivity
+                real tRho = tMaterial->rho_el( tJz, tT, constant::mu0 * std::sqrt( tHt*tHt + aHn*aHn ) );
+
+                // contribution to stiffness matrix
+                aK += tW( k ) * trans( mC ) * tRho * mC * tDetJ ;
+            }
         }
 
 //------------------------------------------------------------------------------
