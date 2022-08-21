@@ -73,7 +73,7 @@ set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L${INTELROOT}/lib -Wl,-r
 
 #set( BELFEM_FORTRANLIBS "-lbfp754 -lchkpwrap_h -lchkpwrap_h_w -ldecimal -lifcore -lifcoremt -lifport -limf -liomp5 -liompstubs5 -lipgo -lirc -lirc_s -lirng -listrconv -lsvml" )
 
-if( USE_OPENMP AND NOT USE_MKL )
+if( USE_OPENMP )
     set( BELFEM_CFLAGS "${BELFEM_CFLAGS} -qopenmp" )
     set( BELFEM_CXXFLAGS "${BELFEM_CXXFLAGS} -qopenmp" )
     set( BELFEM_FCFLAGS "${BELFEM_FCFLAGS} -qopenmp" )
