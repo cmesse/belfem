@@ -77,7 +77,7 @@ namespace belfem
                 mNumNnzPerProc( p ) = 0 ;
 
                 // loop over all rows of this proc
-                for( int r=0; r<tNumRows; ++r )
+                for( uint r=0; r<tNumRows; ++r )
                 {
                     // count number of nnz
                     mNumNnzPerProc( p ) += tPointers[ r + tOffset + 1 ] - tPointers[ r + tOffset ];
@@ -91,8 +91,6 @@ namespace belfem
                 // reset number of rows
                 tNumRows = mNumRowsOther ;
             }
-
-
 
 
             // remember my nnz
@@ -159,7 +157,7 @@ namespace belfem
             if ( mMyRank == 0 )
             {
                 int tOff = mMyNumRows ;
-                for( uint p=1; p<mCommSize; ++p )
+                for( proc_t p=1; p<mCommSize; ++p )
                 {
                     send( p, mNumRowsOther, aRHS.data() + tOff );
                     tOff += mNumRowsOther ;
@@ -179,7 +177,7 @@ namespace belfem
             if ( mMyRank == 0 )
             {
                 int tOff = mMyNumRows ;
-                for( uint p=1; p<mCommSize; ++p )
+                for( proc_t p=1; p<mCommSize; ++p )
                 {
                     receive( p, aLHS.data() + tOff );
                     tOff += mNumRowsOther ;

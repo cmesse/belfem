@@ -14,11 +14,15 @@ if( USE_MUMPS )
 
     set( BELFEM_MATRIX_LIBS "${BELFEM_MUMPS_LIBS} ${BELFEM_MATRIX_LIBS}")
 
-
-    #if( BELFEM_USE_INTEL ) <-- use this if mpiicc (intel mpi)
-    #else()
-        # for mpich, use -lmpifort instead of -lmpi_mpifh
-    set( BELFEM_MATRIX_LIBS "${BELFEM_MATRIX_LIBS} -lmpi_mpifh -lmpi_usempif08 -lmpi_usempi_ignore_tkr" )
-    #endif()
+    # fixme, this will be set more reliable in the new cmake setup
+    if( BELFEM_USE_INTEL ) # <-- use this if mpiicc (intel mpi)
+        #pass
+    elseif( APPLE )
+        # assuming MPICH
+        set( BELFEM_MATRIX_LIBS "${BELFEM_MATRIX_LIBS} -lmpifort" )
+    else()
+        # assume openmpi
+        set( BELFEM_MATRIX_LIBS "${BELFEM_MATRIX_LIBS} -lmpi_mpifh -lmpi_usempif08 -lmpi_usempi_ignore_tkr" )
+    endif()
 
 endif()

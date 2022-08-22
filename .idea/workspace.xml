@@ -57,16 +57,11 @@
   <component name="ChangeListManager">
     <list default="true" id="120f1831-a9f1-4c21-bf0a-19444f852628" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/comm/commtools.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/comm/commtools.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/edgeinterpolation/cl_EF_LINE3.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/edgeinterpolation/cl_EF_LINE3.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_IntegrationData.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_IntegrationData.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_IntegrationData.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_IntegrationData.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri3.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri3.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri6.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri6.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri6.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri6.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh_Partitioner.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh_Partitioner.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/linalg/config_mumps.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/config/linalg/config_mumps.cmake" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/sparse/cl_SolverSTRUMPACK.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/sparse/cl_SolverSTRUMPACK.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sparse/cl_SolverSTRUMPACK.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/sparse/cl_SolverSTRUMPACK.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sparse/cl_SolverStrumpackDistributor.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/sparse/cl_SolverStrumpackDistributor.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -146,6 +141,11 @@
     <configuration default="true" type="GradleAppRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
         <option name="com.jetbrains.cidr.cpp.gradle.execution.GradleNativeBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
       </method>
     </configuration>
     <configuration name="banner" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="banner" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="banner">
@@ -610,7 +610,8 @@
       <workItem from="1660700512874" duration="29460000" />
       <workItem from="1660783436100" duration="3514000" />
       <workItem from="1660797153145" duration="4284000" />
-      <workItem from="1660872894092" duration="9101000" />
+      <workItem from="1660872894092" duration="11498000" />
+      <workItem from="1661197949759" duration="2091000" />
     </task>
     <servers />
   </component>

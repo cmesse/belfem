@@ -25,12 +25,12 @@ namespace belfem
 
         STRUMPACK::~STRUMPACK()
         {
+#ifdef BELFEM_STRUMPACK
             if( mDistributor != nullptr )
             {
                 delete mDistributor ;
             }
 
-#ifdef BELFEM_STRUMPACK
             if( mSolver != nullptr )
             {
                 delete mSolver;
@@ -39,12 +39,12 @@ namespace belfem
             {
                 delete mDistSolver ;
             }
-#endif
+
             if( mArgV != nullptr )
             {
                 delete mArgV ;
             }
-
+#endif
         }
 
 //------------------------------------------------------------------------------

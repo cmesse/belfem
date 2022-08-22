@@ -34,13 +34,12 @@ namespace belfem
 
         class STRUMPACK : public Wrapper
         {
+#ifdef BELFEM_STRUMPACK
             int           mArgC ;
             StringList  * mArgV = nullptr ;
 
             StrumpackDistributor * mDistributor = nullptr ;
 
-
-#ifdef BELFEM_STRUMPACK
             strumpack::StrumpackSparseSolver<real,int> * mSolver = nullptr ;
             strumpack::StrumpackSparseSolverMPIDist<real, int> * mDistSolver = nullptr ;
 #endif

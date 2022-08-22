@@ -2017,9 +2017,6 @@ namespace belfem
             // catch special case
             if ( aDofs.size() == 0 ) return ;
 
-            // make dofs unique
-            unique( aDofs );
-
             // temporary cells
             Cell< string > tNodeDofs ;
             Cell< string > tFaceDofs ;
@@ -2027,44 +2024,56 @@ namespace belfem
             Cell< string > tCellDofs ;
             Cell< string > tLambdaDofs ;
 
+            // maps to make sure the resulting list is unique
+            // we don't want to use a unique command because
+            // we want to preserve the order in which the dofs
+            // are defined
+            Map< string, uint > tDofMap ;
+
+            uint tCount = 0 ;
+
             for( const string & tDof : aDofs )
             {
-                // get type of entity
-                switch( entity_type( tDof ) )
-                {
-                    case( EntityType::NODE ) :
-                    {
-                        tNodeDofs.push( tDof );
-                        break ;
-                    }
-                    case( EntityType::EDGE ) :
-                    {
-                        tEdgeDofs.push( tDof );
-                        break ;
-                    }
-                    case( EntityType::FACE ) :
-                    {
-                        tFaceDofs.push( tDof );
-                        break ;
-                    }
-                    case( EntityType::CELL ) :
-                    {
-                        tCellDofs.push( tDof );
-                        break ;
-                    }
-                    case( EntityType::FACET ) :
-                    {
-                        tLambdaDofs.push( tDof );
-                        break ;
-                    }
-                    default :
-                    {
-                        BELFEM_ERROR( false, "Invalid entity type for dof %s", tDof.c_str() );
-                    }
-                }
-            }
+               if( ! tDofMap.key_exists( tDof ) )
+               {
+                   // remember this dof
+                   tDofMap[ tDof ] = tCount++;
 
-            uint tCount = aDofs.size() ;
+                   // get type of entity
+                   switch ( entity_type( tDof ))
+                   {
+                       case ( EntityType::NODE ) :
+                       {
+                           tNodeDofs.push( tDof );
+                           break;
+                       }
+                       case ( EntityType::EDGE ) :
+                       {
+                           tEdgeDofs.push( tDof );
+                           break;
+                       }
+                       case ( EntityType::FACE ) :
+                       {
+                           tFaceDofs.push( tDof );
+                           break;
+                       }
+                       case ( EntityType::CELL ) :
+                       {
+                           tCellDofs.push( tDof );
+                           break;
+                       }
+                       case ( EntityType::FACET ) :
+                       {
+                           tLambdaDofs.push( tDof );
+                           break;
+                       }
+                       default :
+                       {
+                           BELFEM_ERROR( false, "Invalid entity type for dof %s", tDof.c_str());
+                       }
+                   }
+               }
+            }
 
             // now we rearrange the dofs, beginning with the nodes
             aDofs.set_size( tCount, "" );
@@ -2092,7 +2101,6 @@ namespace belfem
             }
 
             BELFEM_ASSERT( tCount = aDofs.size(), "Error when rearranging dof cell");
-
 
             // special function to create labels for printout
             if( aMakeMap )
