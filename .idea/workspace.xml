@@ -57,11 +57,32 @@
   <component name="ChangeListManager">
     <list default="true" id="120f1831-a9f1-4c21-bf0a-19444f852628" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/linalg/config_mumps.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/config/linalg/config_mumps.cmake" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/compiler/config_gcc.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/config/compiler/config_gcc.cmake" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sparse/cl_SolverSTRUMPACK.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/sparse/cl_SolverSTRUMPACK.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sparse/cl_SolverSTRUMPACK.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/sparse/cl_SolverSTRUMPACK.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sparse/cl_SolverStrumpackDistributor.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/sparse/cl_SolverStrumpackDistributor.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofManager.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofManager.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofManagerBase.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofManagerBase.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofManagerBase.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofManagerBase.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofMgr_DofData.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofMgr_DofData.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofMgr_FieldData.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofMgr_FieldData.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofMgr_FieldData.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofMgr_FieldData.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Field.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Field.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Field.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Field.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Kernel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Kernel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Kernel.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Kernel.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri3.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri3.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_MaxwellFactory.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_MaxwellFactory.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_MaxwellFactory.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_MaxwellFactory.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_Maxwell_FieldList.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_Maxwell_FieldList.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_Maxwell_FieldList.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_Maxwell_FieldList.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/fn_FEM_compute_element_current_thinshell.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/fn_FEM_compute_element_current_thinshell.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/lbl/test_input.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/lbl/test_input.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Element.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Element.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Element.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Element.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh.hpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -141,11 +162,6 @@
     <configuration default="true" type="GradleAppRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
         <option name="com.jetbrains.cidr.cpp.gradle.execution.GradleNativeBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
-      </method>
-    </configuration>
-    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
-      <method v="2">
-        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
       </method>
     </configuration>
     <configuration name="banner" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="banner" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="banner">
@@ -348,7 +364,7 @@
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="test_input" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$PROJECT_DIR$/cmake-build-debug/tsquad" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="test_input" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="test_input">
+    <configuration name="test_input" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$PROJECT_DIR$/cmake-build-debug" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="test_input" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="test_input">
       <envs>
         <env name="LD_LIBRARY_PATH" value="/opt/gcc/latest/lib64" />
       </envs>
@@ -611,7 +627,9 @@
       <workItem from="1660783436100" duration="3514000" />
       <workItem from="1660797153145" duration="4284000" />
       <workItem from="1660872894092" duration="11498000" />
-      <workItem from="1661197949759" duration="2091000" />
+      <workItem from="1661197949759" duration="27405000" />
+      <workItem from="1661238860648" duration="121000" />
+      <workItem from="1661239009304" duration="790000" />
     </task>
     <servers />
   </component>

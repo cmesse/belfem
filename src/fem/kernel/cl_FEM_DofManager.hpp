@@ -254,6 +254,14 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
             /**
+             * collects node data from the others and send it to master
+             */
+            void
+            collect_field( const string & aFieldLabel ) ;
+
+//-----------------------------------------------------------------------------
+
+            /**
              * sends field data from master to the others
              */
             void

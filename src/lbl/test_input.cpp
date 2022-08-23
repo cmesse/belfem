@@ -141,9 +141,9 @@ int main( int    argc,
     uint & tTimeCount = tMesh->time_step() ;
 
     // check if we have to load a field from HDF5
-
-
     tMagfield->initialize() ; // must be called before loading mesh data
+
+
     //tFormulation->set_nan_values() ;
 
     if ( file_exists( tBackupFile ) && ! tRestart )
@@ -223,7 +223,6 @@ int main( int    argc,
        tFormulation->shift_fields();
        tFormulation->compute_boundary_conditions( tTime );
 
-
        uint tIter = 0;
 
        // residual
@@ -288,6 +287,11 @@ int main( int    argc,
            }
 
            tMagfield->compute_jacobian_and_rhs();
+
+           // synchronize ej because we need this for the quench
+           tMagfield->collect_field("elementEJ");
+           tMagfield->collect_field( "elementJ");
+
            tMagfield->solve();
 
            tEpsilon0 = tEpsilon ;
@@ -331,7 +335,7 @@ int main( int    argc,
        tMagfield->postprocess() ;
 
        // todo: move into postprocess routine
-       fem::compute_element_current_thinshell_tri3( tMagfield );
+       //fem::compute_element_current_thinshell_tri3( tMagfield );
 
        compute_normb( tMagfield, false );
 

@@ -143,6 +143,12 @@ namespace belfem
                         BoundaryAir.push( tDof );
                     }
 
+                    // ghost
+                    for( string tDof : Ghost )
+                    {
+                        NonDof.push( tDof );
+                    }
+
                     // check if cut dofs exist
                     if( Cut.size() > 0 )
                     {

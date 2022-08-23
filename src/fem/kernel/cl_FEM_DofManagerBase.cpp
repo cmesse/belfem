@@ -15,11 +15,10 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         DofManagerBase::DofManagerBase(  const DofManagerType  aType,
-                                         Kernel        * aParent,
-                                         Mesh          * aMesh  ) :
+                                         Kernel        * aParent  ) :
             mType( aType ),
             mParent( aParent ),
-            mMesh( aMesh ),
+            mMesh( aParent->mesh() ),
             mMyRank( comm_rank() )
         {
         }

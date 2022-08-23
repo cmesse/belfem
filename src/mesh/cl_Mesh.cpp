@@ -54,7 +54,7 @@ namespace belfem
             mMasterProc(  aMasterProc < comm_size() ? aMasterProc : 0 ),
             mComputeConnectivities( aComputeConnectivities )
     {
-        if( comm_rank() == mMasterProc )
+        if( comm_rank() == aMasterProc )
         {
             // start a timer
             Timer tTimer;
@@ -104,10 +104,27 @@ namespace belfem
                      ( unsigned int ) tTime );
 
 
-        }
 
-        // synchronize mesh dimensions
-        broadcast( mMasterProc, mNumberOfDimensions );
+            if( gComm.size() > 1 )
+            {
+                Vector< proc_t > tCommTable( gComm.size() );
+                uint tCount = 0 ;
+                for( proc_t p=0; p<gComm.size(); ++p )
+                {
+                    tCommTable( tCount++ ) = p ;
+                }
+
+                comm_barrier() ;
+
+                send( tCommTable, mNumberOfDimensions );
+            }
+        }
+        else
+        {
+            comm_barrier() ;
+
+            receive( aMasterProc, mNumberOfDimensions );
+        }
     }
 
 //------------------------------------------------------------------------------^
@@ -1044,8 +1061,8 @@ namespace belfem
             tField = new mesh::Field(
                     *this,
                     aLabel,
-                    mNumberOfFields,
-                    mNumberOfFields+1,
+                    mFields.size(),
+                    mFields.size()+1,
                     aEntity,
                     FieldType::SCALAR );
         }
@@ -1054,7 +1071,7 @@ namespace belfem
             tField = new mesh::Field(
                     *this,
                     aLabel,
-                    mNumberOfFields,
+                    mFields.size(),
                     aID,
                     aEntity,
                     FieldType::SCALAR );

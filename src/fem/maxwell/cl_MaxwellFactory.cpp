@@ -183,21 +183,24 @@ namespace belfem
         Mesh *
         MaxwellFactory::load_mesh( const InputFile & aInputFile )
         {
+            Mesh * aMesh = new Mesh( aInputFile.section( "mesh" )->get_string( "meshFile" ) );
 
-            Mesh * aMesh = new Mesh( aInputFile.section("mesh")->get_string("meshFile")  );
-
-            // get mesh unit
-            string tUnit = aInputFile.section("mesh")->get_string("meshUnit");
-
-            // we only need to scale the mesh if it is not in meters
-            if( tUnit != "m" )
+            if( gComm.rank() == 0 )
             {
-                // grab value
-                value tValue = unit_to_si( tUnit );
 
-                BELFEM_ERROR( check_unit( tValue, "m" ), "Invalid length unit: %s", tUnit.c_str() );
+                // get mesh unit
+                string tUnit = aInputFile.section( "mesh" )->get_string( "meshUnit" );
 
-                aMesh->scale_mesh( tValue.first );
+                // we only need to scale the mesh if it is not in meters
+                if ( tUnit != "m" )
+                {
+                    // grab value
+                    value tValue = unit_to_si( tUnit );
+
+                    BELFEM_ERROR( check_unit( tValue, "m" ), "Invalid length unit: %s", tUnit.c_str());
+
+                    aMesh->scale_mesh( tValue.first );
+                }
             }
 
             return aMesh ;
@@ -1506,6 +1509,9 @@ namespace belfem
             {
                 tMaxwell->set_ghost_sidesets( mGhostMaster, mGhostSideSets );
                 tMaxwell->set_ghost_blocks( mGhostBlocks );
+
+                // the maps associates the sideset facets with the index in the ghost block
+                tMaxwell->create_ghost_map( mKernel->mesh(), mThinShellSideSets, mKernel->comm_table() );
             }
 
             for ( BoundaryCondition * tBC: mBoundaryConditions )
@@ -1522,7 +1528,7 @@ namespace belfem
             mMagneticField = mKernel->create_field( tMaxwell );
 
             // create data arrays on mesh
-            mMagneticField->create_fields( tMaxwell );
+           // mMagneticField->create_fields( tMaxwell );
 
             // link field with materials
             this->link_materials( mMagneticField );
@@ -2751,24 +2757,28 @@ namespace belfem
                     }
                 }
 
-                // create scissors
-                mesh::Scissors tScissors( mMesh, tAirBlocks );
-                // add thin sheets
-                for( DomainGroup * tTape : mTapes )
+                mesh::Scissors * tScissors = nullptr ;
+
+                if( comm_rank() == 0 )
                 {
-                    tScissors.cut( tTape->groups(), tTape->minus(), tTape->plus(), true );
+                    // create scissors
+                    tScissors = new mesh::Scissors( mMesh, tAirBlocks );
+                    // add thin sheets
+                    for ( DomainGroup * tTape: mTapes )
+                    {
+                        tScissors->cut( tTape->groups(), tTape->minus(), tTape->plus(), true );
+                    }
+
+
+                    for ( DomainGroup * tCut: mCuts )
+                    {
+                        tScissors->cut( tCut->groups(), tCut->minus(), tCut->plus());
+                    }
+
+                    // finalize cuts
+                    tScissors->finalize();
                 }
-
-
-
-                for( DomainGroup * tCut : mCuts )
-                {
-                    tScissors.cut( tCut->groups(), tCut->minus(), tCut->plus() );
-                }
-
-                // finalize cuts
-                tScissors.finalize() ;
-
+                
                 // add tapes
                 if( mTapes.size() > 0 )
                 {
@@ -2799,9 +2809,8 @@ namespace belfem
 
 
                         // grab the sidesets and compute the normals
-                        Vector< id_t > tSideSets;
-                        tTapeRoller.get_sidesets( tSideSets );
-                        mesh::compute_surface_normals( mMesh, tSideSets, GroupType::SIDESET, false );
+                        tTapeRoller.get_sidesets( mThinShellSideSets );
+                        mesh::compute_surface_normals( mMesh, mThinShellSideSets, GroupType::SIDESET, false );
 
                         // revert the element orientation, otherwise the logic is messed up
                         // ( todo: why, I now think that we must not reverse!)
@@ -2824,6 +2833,7 @@ namespace belfem
                         mGhostBlocks   = tTapeRoller.ghost_block_ids() ;
 
                         comm_barrier() ;
+                        send_same( mCommTable, mThinShellSideSets ) ;
                         send_same( mCommTable, mGhostSideSets );
                         send_same( mCommTable, mGhostBlocks );
 
@@ -2833,6 +2843,7 @@ namespace belfem
                         comm_barrier() ;
                         receive( 0, mMaxBlockID );
                         comm_barrier() ;
+                        receive( 0, mThinShellSideSets );
                         receive( 0, mGhostSideSets );
                         receive( 0, mGhostBlocks );
                     }
@@ -2858,9 +2869,18 @@ namespace belfem
                         // get the cut IDS
                         Vector< id_t > tCutIDs ;
 
-                        // grab IDs from scissors
-                        tScissors.get_cut_ids( tCut->groups(), tCutIDs );
+                        if( comm_rank() == 0 )
+                        {
+                            // grab IDs from scissors
+                            tScissors->get_cut_ids( tCut->groups(), tCutIDs );
 
+                            // distribute ids
+                            send_same( mCommTable, tCutIDs );
+                        }
+                        else
+                        {
+                            receive( 0, tCutIDs );
+                        }
 
                         // link IDs to BC
                         tBC->set_sidesets( tCutIDs );
@@ -2874,37 +2894,44 @@ namespace belfem
                 comm_barrier();
 
                 // create the cut map that associates sidesets with cuts
-                Vector< id_t > tCutIDs ;
-                Vector< id_t > tSideSetIDs ;
+
+
                 if( gComm.rank() == 0 )
                 {
-                    Vector< proc_t > tCommTable( gComm.size() );
-                    for( proc_t p=0; p<gComm.size(); ++p )
+                    // refresh cut map
+                    tScissors->collect_cut_data();
+
+                    const Matrix< id_t > & tCutData = tScissors->cut_data() ;
+
+                    send_same( mCommTable, tScissors->cut_data() );
+
+                    mSideSetToCutMap.clear();
+
+                    uint tN = tCutData.n_cols() ;
+                    for( uint k=0; k<tN; ++k )
                     {
-                        tCommTable( p ) = p ;
+                        mSideSetToCutMap[ tCutData( 0, k ) ] = tCutData( 1, k );
                     }
 
-                    // refresh cut map
-                    tScissors.collect_cut_data();
-
-                    tCutIDs   = trans( tScissors.cut_data().row( 0 ) );
-                    tSideSetIDs = trans( tScissors.cut_data().row( 1 ) );
-
-                    send_same( tCommTable, tCutIDs );
-                    send_same( tCommTable, tSideSetIDs );
+                    delete tScissors ;
                 }
                 else
                 {
-                    receive( 0 , tCutIDs );
-                    receive( 0 , tSideSetIDs );
+                    Matrix< id_t > tCutData ;
+                    receive( 0 , tCutData );
+
+                    // crate the map
+                    mSideSetToCutMap.clear();
+
+                    uint tN = tCutData.n_cols() ;
+                    for( uint k=0; k<tN; ++k )
+                    {
+                        mSideSetToCutMap[ tCutData( 0, k ) ] = tCutData( 1, k );
+                    }
+
                 }
 
-                // crate the map
-                mSideSetToCutMap.clear();
-                for( uint k=0; k<tCutIDs.length(); ++k )
-                {
-                    mSideSetToCutMap[ tSideSetIDs( k ) ] = tCutIDs( k );
-                }
+
 
                 this->remove_coils();
             } // end h-phi formulation

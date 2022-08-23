@@ -2750,5 +2750,200 @@ namespace belfem
         }
 
 //------------------------------------------------------------------------------
+
+        // called by factory to create the index map for the thin shells
+        void
+        IWG_Maxwell::create_ghost_map(  Mesh * aMesh,
+                                        const Vector< id_t >   & aThinShellSideSets,
+                                        const Vector< proc_t > & aCommTable )
+        {
+            // reset the map
+            mGhostElementMap.clear() ;
+
+            // initialize the counter
+            index_t tCount = 0 ;
+
+            proc_t tCommSize = comm_size() ;
+
+            if( comm_rank() == 0 )
+            {
+                // collect the sideset ids
+                for( id_t tS : aThinShellSideSets )
+                {
+                    tCount += aMesh->sideset( tS )->number_of_facets() ;
+                }
+
+                // wait for other procs
+                comm_barrier() ;
+
+                // send the number of elements
+                send( aCommTable, tCount );
+
+                // exit if there is nothing to do
+                if( tCount == 0 )
+                {
+                    return ;
+                }
+
+                // collect the facets
+                Cell< mesh::Facet * > tFacets( tCount, nullptr );
+                Vector< id_t > tElementIDs( tCount );
+
+                tCount = 0 ;
+
+                // collect the sideset ids
+                for( id_t tS : aThinShellSideSets )
+                {
+                    if ( aMesh->sideset_exists( tS ) )
+                    {
+                        Cell< mesh::Facet * > & tSFacets = aMesh->sideset( tS )->facets() ;
+                        for( mesh::Facet * tFacet : tSFacets )
+                        {
+                            tFacets( tCount++ ) = tFacet ;
+                        }
+                    }
+                }
+
+                // counter for layers
+                uint l = 0 ;
+                uint tNumLayers = mGhostBlockIDs.length() ;
+
+                // count the elements per proc
+                Vector< index_t > tOwnerCount( tCommSize, 0 );
+
+
+                // loop over all ghost blocks
+                for( id_t b : mGhostBlockIDs )
+                {
+                    // grab the elements on the block
+                    Cell< mesh::Element * > & tElements = aMesh->block( b )->elements() ;
+
+                    // count owned elements
+
+                    // sanity check
+                    BELFEM_ASSERT( tElements.size() == tCount, "number of elements does not match ( is %lu expect %lu)",
+                                   ( long unsigned int ) tElements.size(), tCount );
+
+                    // reset the counter
+                    tCount = 0 ;
+
+                    // loop over all facets
+                    for( mesh::Facet * tFacet : tFacets )
+                    {
+                        // create a key
+                        luint tKey = tFacet->id() * tNumLayers + l ;
+
+                        // get element
+                        mesh::Element * tElement = tElements( tCount++ ) ;
+
+                        // make sure that ownership is correct
+                        BELFEM_ASSERT( tFacet->owner() == tElement->owner(),
+                        "Owner of facet %lu is %u but the one of ghost element %lu is %u. They must be the same",
+                                       ( long unsigned int ) tFacet->id(),
+                                       ( unsigned int ) tFacet->owner(),
+                                       ( long unsigned int ) tElement->id(),
+                                       ( unsigned int ) tElement->owner() );
+
+                        // increment the owner
+                        ++tOwnerCount( tFacet->owner() );
+
+                        // link key to element on mesh
+                        mGhostElementMap[ tKey ] = tElement ;
+                    }
+
+                    // increment layer counter
+                    ++l ;
+                }
+
+                // we are done if we run in serial
+                if( tCommSize == 1 )
+                {
+                    return ;
+                }
+
+                // for all other procs we must now create the subtables
+                Cell< Vector< long unsigned int > > tAllKeys( tCommSize, {} );
+                Cell< Vector< id_t > > tAllIDs( tCommSize, {} );
+
+                // allocate memory
+                for( proc_t p=0; p<tCommSize; ++p )
+                {
+                    if( tOwnerCount( p ) > 0 )
+                    {
+                        tAllKeys( p ).set_size( tOwnerCount( p ));
+                        tAllIDs( p ).set_size( tOwnerCount( p ));
+                    }
+                }
+
+                // reset the counters
+                tOwnerCount.fill( 0 ) ;
+                l = 0 ;
+
+                for( id_t b : mGhostBlockIDs )
+                {
+                    tCount = 0 ;
+
+                    // grab the elements on the block
+                    Cell< mesh::Element * > & tElements = aMesh->block( b )->elements() ;
+
+                    // loop over all facets
+                    for ( mesh::Facet * tFacet: tFacets )
+                    {
+
+                        // get the id container
+                        Vector< luint > & tKeys = tAllKeys( tFacet->owner() );
+                        Vector< id_t >  & tIDs  = tAllIDs( tFacet->owner() );
+
+                        // store values
+                        tKeys( tOwnerCount( tFacet->owner() ) )   = tFacet->id() * tNumLayers + l;
+                        tIDs( tOwnerCount( tFacet->owner() )++ ) = tElements( tCount++ )->id() ;
+                    }
+
+                    // increment layer counter
+                    ++l ;
+                }
+
+                // wait
+                comm_barrier() ;
+
+                // distribute values
+                send( aCommTable, tAllKeys );
+                send( aCommTable, tAllIDs );
+
+            }
+            else
+            {
+                comm_barrier() ;
+
+                receive( 0, tCount );
+
+                // exit if there is nothing to do
+                if( tCount == 0 )
+                {
+                    return ;
+                }
+
+                // wait
+                comm_barrier() ;
+
+                // get the keys from the master
+                Vector< luint > tMyKeys ;
+                receive( 0, tMyKeys );
+
+                // get the ids from the master
+                Vector< id_t > tMyIDs ;
+                receive( 0, tMyIDs );
+
+                // create the map
+                tCount = 0 ;
+                for( luint tKey : tMyKeys )
+                {
+                    mGhostElementMap[ tKey ] = aMesh->element( tMyIDs( tCount++ ) );
+                }
+            }
+
+        }
+
+//------------------------------------------------------------------------------
     }
 }

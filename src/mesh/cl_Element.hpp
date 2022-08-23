@@ -42,10 +42,10 @@ namespace belfem
             uint mNumberOfElements = 0;
 
             // Elements connected to this element
-            Element ** mElements ;
+            Element ** mElements = nullptr ;
 
             // Facets connected to this element (used for ghost)
-            Facet ** mFacets ;
+            Facet ** mFacets = nullptr ;
 
             // id of block this element is on
             id_t mBlockID = gNoID ;

@@ -20,7 +20,7 @@ namespace belfem
         DofManager::DofManager(
                 Kernel * aParent,
                 const index_t aIndex ) :
-                DofManagerBase( DofManagerType::NEW, aParent, aParent->mesh() ),
+                DofManagerBase( DofManagerType::NEW, aParent ),
                 mIndex( aIndex )
         {
 
@@ -110,6 +110,7 @@ namespace belfem
 
             // create the field information
             mFieldData->collect_node_owners() ;
+            mFieldData->collect_ghost_element_owners() ;
 
             // check if the linear projection flag is on
             if( this->enforce_linear_interpolation() )
@@ -185,14 +186,14 @@ namespace belfem
                     case( EntityType::FACET ) :
                     {
                         tFieldSize = (
-                                  mParent->mesh()->number_of_facets() * aIWG->lambda_multiplicity()
-                                + mParent->mesh()->number_of_connectors() ) ;
+                                mMesh->number_of_facets() * aIWG->lambda_multiplicity()
+                                + mMesh->number_of_connectors() ) ;
 
                         break ;
                     }
                     case( EntityType::ELEMENT ) :
                     {
-                        tFieldSize = mParent->mesh()->number_of_elements() ;
+                        tFieldSize = mMesh->number_of_elements() ;
                         break ;
                     }
                     case( EntityType::FACE ) :
@@ -219,12 +220,12 @@ namespace belfem
                 }
             }
 
-
             // with the fields created, we create the map on the dof data
             mDofData->create_field_map( aIWG );
 
             // tell exodus which fields are not to be written to exodus
             aIWG->hide_fields_from_exodus( mMesh );
+
 
         }
 
@@ -258,7 +259,8 @@ namespace belfem
             {
                 const string & tField = tFields( f );
 
-                if( mMesh->field( tField )->entity_type() == EntityType::NODE )
+                if( mMesh->field( tField )->entity_type() == EntityType::NODE ||
+                    mMesh->field( tField )->entity_type() == EntityType::ELEMENT )
                 {
                     mFieldData->collect( tField );
                 }
@@ -297,6 +299,7 @@ namespace belfem
 
             // inpitialize postprocessors, if they exist
             this->initialize_postprocessors();
+
         }
 
 //-----------------------------------------------------------------------------
@@ -770,6 +773,16 @@ namespace belfem
         DofManager::collect_fields( const Cell< string > & aFieldLabels )
         {
             mFieldData->collect( aFieldLabels );
+        }
+
+//-----------------------------------------------------------------------------
+
+        void
+        DofManager::collect_field( const string & aFieldLabel )
+        {
+            comm_barrier() ;
+            mFieldData->collect( aFieldLabel );
+            comm_barrier() ;
         }
 
 //-----------------------------------------------------------------------------

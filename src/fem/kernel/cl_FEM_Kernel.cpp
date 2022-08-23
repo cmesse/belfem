@@ -128,6 +128,7 @@ namespace belfem
                 // this->fix_ownerships();
                 // allocate memory for node table
                 mNodeTable.set_size( mNumberOfProcs, {} );
+                mElementTable.set_size( mNumberOfProcs, {} );
 
                 if ( mMesh->edges_exist() )
                 {
@@ -346,8 +347,6 @@ namespace belfem
         void
         Kernel::distribute_mesh()
         {
-
-
             if( mNumberOfProcs > 1 )
             {
                 // wait for other procs
@@ -1255,6 +1254,8 @@ namespace belfem
 
             Cell< mesh::Block * > & tBlocks = mMesh->blocks();
 
+            index_t tAllElementCount = 0 ;
+
             for( uint b=0; b<tNumBlocks; ++b )
             {
                 Cell< mesh::Element * > & tElements = tBlocks( b )->elements();
@@ -1268,6 +1269,7 @@ namespace belfem
                         ++tElementCount;
                     }
                 }
+                tAllElementCount += tElementCount ;
 
                 // send number of elements
                 send( aTarget, tElementCount );
@@ -1330,6 +1332,20 @@ namespace belfem
                     send( aTarget, tNodes );
                 }
             }
+
+            Vector< index_t > & tIndices = mElementTable( aTarget );
+            tIndices.set_size( tAllElementCount );
+            tAllElementCount = 0 ;
+
+            Cell< mesh::Element * > & tElements = mMesh->elements();
+            for( mesh::Element * tElement : tElements )
+            {
+                if( tElement->is_flagged() )
+                {
+                    tIndices( tAllElementCount++ ) = tElement->index() ;
+                }
+            }
+
         }
 
 //------------------------------------------------------------------------------
@@ -2197,7 +2213,7 @@ namespace belfem
                     }
 
                     mFields( f ) = new Field(
-                            this, mMesh, tBlockIDs, tNumDOFsPerNode( f ), tNumDOFsPerEdge( f ),
+                            this, tBlockIDs, tNumDOFsPerNode( f ), tNumDOFsPerEdge( f ),
                             tEnforceLinearFlag );
                 }
 
@@ -2261,7 +2277,6 @@ namespace belfem
 
                     mFields( f ) = new Field(
                             this,
-                            mSubMesh,
                             tBlockIDs,
                             tNumDOFsPerNode( f ),
                             tNumDOFsPerEdge( f ),
@@ -2401,6 +2416,23 @@ namespace belfem
                     "Only master may call the node table." );
 
             return mNodeTable( aProcIndex );
+        }
+
+//------------------------------------------------------------------------------
+
+        const Vector< index_t > &
+        Kernel::element_table( const uint aProcIndex )
+        {
+            BELFEM_ASSERT( mCommTable( aProcIndex ) != mMasterRank,
+                           "Element table is not specified for master." );
+
+            BELFEM_ASSERT( aProcIndex < mCommTable.length(),
+                           "Illegal proc index." );
+
+            BELFEM_ASSERT( mMyRank == mMasterRank,
+                           "Only master may call the element table." );
+
+            return mElementTable( aProcIndex );
         }
 
 //------------------------------------------------------------------------------

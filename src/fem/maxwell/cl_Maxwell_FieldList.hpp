@@ -76,6 +76,9 @@ namespace belfem
                 //! dofs per iron block
                 Cell< string > FerroLast ;
 
+                //! dofs on Ghost Elements
+                Cell< string > Ghost ;
+
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                 // interface dofs, set by child IWG
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

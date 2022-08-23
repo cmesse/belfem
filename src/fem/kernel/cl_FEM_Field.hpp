@@ -161,7 +161,6 @@ namespace belfem
 
             Field(
                     Kernel * aParent,
-                    Mesh   * aMesh,
                     const Vector< id_t > & aBlockIDs,
                     const uint             aNumberOfDOFsPerNode,
                     const uint             aNumberOfDOFsPerEdge=0,

@@ -2017,12 +2017,20 @@ namespace belfem
             // catch special case
             if ( aDofs.size() == 0 ) return ;
 
+            // note: the difference between cell and element is
+            // that element fields have one value per element.
+            // cells can have more. Element fields are wirtten to exodus
+            // cell fields are not
+
             // temporary cells
             Cell< string > tNodeDofs ;
             Cell< string > tFaceDofs ;
             Cell< string > tEdgeDofs ;
             Cell< string > tCellDofs ;
+            Cell< string > tElementDofs ;
             Cell< string > tLambdaDofs ;
+
+
 
             // maps to make sure the resulting list is unique
             // we don't want to use a unique command because
@@ -2062,6 +2070,11 @@ namespace belfem
                            tCellDofs.push( tDof );
                            break;
                        }
+                       case ( EntityType::ELEMENT ) :
+                       {
+                           tElementDofs.push( tDof );
+                           break;
+                       }
                        case ( EntityType::FACET ) :
                        {
                            tLambdaDofs.push( tDof );
@@ -2083,10 +2096,6 @@ namespace belfem
             {
                 aDofs( tCount++ ) = tDof ;
             }
-            for( const string & tDof : tLambdaDofs )
-            {
-                aDofs( tCount++ ) = tDof ;
-            }
             for( const string & tDof : tEdgeDofs )
             {
                 aDofs( tCount++ ) = tDof ;
@@ -2096,6 +2105,14 @@ namespace belfem
                 aDofs( tCount++ ) = tDof ;
             }
             for( const string & tDof : tCellDofs )
+            {
+                aDofs( tCount++ ) = tDof ;
+            }
+            for( const string & tDof : tElementDofs )
+            {
+                aDofs( tCount++ ) = tDof ;
+            }
+            for( const string & tDof : tLambdaDofs )
             {
                 aDofs( tCount++ ) = tDof ;
             }
@@ -2118,18 +2135,6 @@ namespace belfem
                 {
                     mDofLabels.push( tDof );
                     mDofMap[ tDof ] = tCount++ ;
-                }
-
-                for( const string & tDof : tLambdaDofs )
-                {
-                    mDofMap[ tDof ] = tCount ;
-                    tCount += this->lambda_multiplicity();
-                    BELFEM_ASSERT( this->lambda_multiplicity() > 0, "can't add lambda dof if multilplicity is zero" );
-
-                    for( uint k=0; k<this->lambda_multiplicity(); ++k )
-                    {
-                        mDofLabels.push( tDof );
-                    }
                 }
                 for( const string & tDof : tEdgeDofs )
                 {
@@ -2158,6 +2163,22 @@ namespace belfem
                     mDofMap[ tDof ] = tCount ;
                     tCount += this->cell_multiplicity();
                     for( uint k=0; k<this->cell_multiplicity(); ++k )
+                    {
+                        mDofLabels.push( tDof );
+                    }
+                }
+                for( const string & tDof : tElementDofs )
+                {
+                    mDofMap[ tDof ] = tCount++ ;
+                    mDofLabels.push( tDof );
+                }
+                for( const string & tDof : tLambdaDofs )
+                {
+                    mDofMap[ tDof ] = tCount ;
+                    tCount += this->lambda_multiplicity();
+                    BELFEM_ASSERT( this->lambda_multiplicity() > 0, "can't add lambda dof if multilplicity is zero" );
+
+                    for( uint k=0; k<this->lambda_multiplicity(); ++k )
                     {
                         mDofLabels.push( tDof );
                     }

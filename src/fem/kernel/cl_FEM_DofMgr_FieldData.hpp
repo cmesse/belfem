@@ -49,8 +49,10 @@ namespace belfem
                  * exists only on master
                  */
                 Cell< Vector< index_t > > mNodeOwnerList ;
+                Cell< Vector< index_t > > mGhostElementOwnerList ;
 
                 index_t mMyNumberOfOwnedNodes = 0 ;
+                index_t mMyNumberOfOwnedGhostElements = 0 ;
 
                 // special purpose data for linear to higher projection
                 Cell< Vector< index_t > > mAllCornerNodeIndices ;
@@ -80,6 +82,15 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+                void
+                collect_ghost_element_owners();
+
+//------------------------------------------------------------------------------
+
+                /**
+                 * field must be either
+                 * @param aLabel
+                 */
                 void
                 collect( const string & aLabel );
 
@@ -131,6 +142,14 @@ namespace belfem
                 communicate_noncorner_node_data(
                         const Cell< string > & aFieldLabels,
                         Matrix< real > & aData ) ;
+
+
+//------------------------------------------------------------------------------
+
+                const Vector< index_t > &
+                field_indices( const EntityType aType,
+                               const proc_t     aTarget,
+                               uint & aMultiplicity );
 
 //------------------------------------------------------------------------------
 

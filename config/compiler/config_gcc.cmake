@@ -32,7 +32,7 @@ else()
     set( BELFEM_FCFLAGS  "-O2 ${BELFEM_FC_NATIVE} -fallow-argument-mismatch" )
 endif()
 
-if( USE_OPENMP AND NOT USE_MKL )
+if( USE_OPENMP )
     set( BELFEM_CFLAGS "${BELFEM_CFLAGS} -fopenmp" )
     set( BELFEM_CXXFLAGS "${BELFEM_CXXFLAGS} -fopenmp" )
     set( BELFEM_FCFLAGS "${BELFEM_FCFLAGS} -fopenmp" )

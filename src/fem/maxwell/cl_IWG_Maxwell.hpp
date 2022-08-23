@@ -72,6 +72,9 @@ namespace belfem
             //! map telling which subtype a domain boundary is
             Map< id_t, MagfieldBcType > mMagfieldTypeMap ;
 
+            //! map telling the gost indices of thin shell elements
+            Map< luint, mesh::Element * > mGhostElementMap ;
+
 //------------------------------------------------------------------------------
         private:
 //------------------------------------------------------------------------------
@@ -193,6 +196,14 @@ namespace belfem
              */
              void
              set_nan_values();
+
+//------------------------------------------------------------------------------
+
+            // called by factory to create the index map for the thin shells
+            void
+            create_ghost_map(  Mesh * aMesh,
+                              const Vector< id_t >  & aThinShellSideSets,
+                              const Vector< proc_t > & aCommTable ) ;
 
 //------------------------------------------------------------------------------
         protected:

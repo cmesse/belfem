@@ -87,6 +87,7 @@ namespace belfem
 
             // list with nodes per proc, master only
             Cell< Vector< index_t > > mNodeTable;
+            Cell< Vector< index_t > > mElementTable;
             Cell< Vector< index_t > > mEdgeTable;
             Cell< Vector< index_t > > mFaceTable;
             Cell< Vector< index_t > > mFacetTable;
@@ -173,6 +174,14 @@ namespace belfem
              */
              const Vector< index_t > &
              node_table( const uint aProcIndex );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * return the list of elements from a specific proc other than master
+             */
+            const Vector< index_t > &
+            element_table( const uint aProcIndex );
 
 //------------------------------------------------------------------------------
 

@@ -47,6 +47,7 @@ namespace belfem
             FieldData::reset()
             {
                 mMyNumberOfOwnedNodes = 0 ;
+                mMyNumberOfOwnedGhostElements = 0 ;
                 mNodeOwnerList.clear();
                 mAllCornerNodeIndices.clear() ;
                 mAllNonCornerNodeIndices.clear() ;
@@ -148,10 +149,94 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
+            FieldData::collect_ghost_element_owners()
+            {
+                if( mCommSize > 1 )
+                {
+                    if ( mMyRank != mKernel->master() )
+                    {
+                        // count owned nodes
+                        mMyNumberOfOwnedGhostElements = 0;
+
+                        // loop over all ghost blocks
+                        for( id_t b : mMesh->ghost_block_ids() )
+                        {
+                            if( mMesh->block_exists( b ) )
+                            {
+                                // grab elements
+                                Cell< mesh::Element * > & tElements = mMesh->block( b )->elements();
+                                for ( mesh::Element * tElement: tElements )
+                                {
+                                    if ( tElement->owner() == mMyRank )
+                                    {
+                                        ++mMyNumberOfOwnedGhostElements;
+                                    }
+                                }
+                            }
+                        }
+
+
+                        // allocate memory
+                        Vector< id_t > tIDs( mMyNumberOfOwnedGhostElements );
+                        index_t tCount = 0;
+
+                        // collect IDs of owned nodes
+                        for( id_t b : mMesh->ghost_block_ids() )
+                        {
+                            if( mMesh->block_exists( b ) )
+                            {
+                                // grab elements
+                                Cell< mesh::Element * > & tElements = mMesh->block( b )->elements();
+                                for ( mesh::Element * tElement: tElements )
+                                {
+                                    if ( tElement->owner() == mMyRank )
+                                    {
+                                       tIDs( tCount++ ) = tElement->id() ;
+                                    }
+                                }
+                            }
+                        }
+
+                        send( mKernel->master(), tIDs );
+                    }
+                    else
+                    {
+                        uint tNumProcs = mKernel->comm_table().length();
+
+                        Cell< Vector< id_t > > tAllIDs( tNumProcs, Vector< id_t >() );
+
+                        receive( mKernel->comm_table(), tAllIDs );
+
+                        // allocate index vector
+                        mGhostElementOwnerList.set_size( tNumProcs, Vector< index_t >() );
+
+                        // loop over all ids
+                        for ( uint p = 0; p < tNumProcs; ++p )
+                        {
+                            Vector< index_t > & tIndices = mGhostElementOwnerList( p );
+                            Vector< id_t > & tIDs = tAllIDs( p );
+
+                            index_t tNumNodes = tIDs.length();
+                            tIndices.set_size( tNumNodes );
+
+                            for ( index_t k = 0; k < tNumNodes; ++k )
+                            {
+                                tIndices( k ) = mMesh->element( tIDs( k ) )->index();
+                            }
+                        }
+                    }
+                }
+            }
+
+//------------------------------------------------------------------------------
+
+            void
             FieldData::collect( const string & aLabel )
             {
+                EntityType tType = mMesh->field( aLabel )->entity_type() ;
 
-                BELFEM_ASSERT( mMesh->field( aLabel )->entity_type() == EntityType::NODE,
+                BELFEM_ASSERT( tType == EntityType::NODE ||
+                                       tType == EntityType::ELEMENT,
                     "Field %s is off type %s but must be node to collect",
                     aLabel.c_str(), to_string( mMesh->field( aLabel )->entity_type() ).c_str() );
 
@@ -160,24 +245,54 @@ namespace belfem
                     // grab field
                     Vector< real > & tField = mMesh->field_data( aLabel );
 
-                    if ( mMyRank != mKernel->master())
+                    if ( mMyRank != mKernel->master() )
                     {
-                        Vector< real > tSubField( mMyNumberOfOwnedNodes );
-
-                        // initialize counter
-                        index_t tCount = 0;
-
-                        // collect owned datals
-                        for ( mesh::Node * tNode : mMesh->nodes() )
+                        if( tType == EntityType::NODE )
                         {
-                            if ( tNode->owner() == mMyRank )
-                            {
-                                tSubField( tCount++ ) = tField( tNode->index() );
-                            }
-                        }
+                            Vector< real > tSubField( mMyNumberOfOwnedNodes );
 
-                        // send data to master
-                        send( mKernel->master(), tSubField );
+                            // initialize counter
+                            index_t tCount = 0;
+
+                            // collect owned datals
+                            for ( mesh::Node * tNode: mMesh->nodes())
+                            {
+                                if ( tNode->owner() == mMyRank )
+                                {
+                                    tSubField( tCount++ ) = tField( tNode->index());
+                                }
+                            }
+
+                            // send data to master
+                            send( mKernel->master(), tSubField );
+                        }
+                        else
+                        {
+                            Vector< real > tSubField( mMyNumberOfOwnedGhostElements );
+
+                            // initialize counter
+                            index_t tCount = 0;
+
+                            for( id_t b : mMesh->ghost_block_ids() )
+                            {
+                                if( mMesh->block_exists( b ) )
+                                {
+                                    // grab elements
+                                    Cell< mesh::Element * > & tElements = mMesh->block( b )->elements();
+                                    for ( mesh::Element * tElement: tElements )
+                                    {
+                                        if ( tElement->owner() == mMyRank )
+                                        {
+                                            tSubField( tCount++ ) = tField( tElement->index() );
+                                        }
+                                    }
+                                }
+                            }
+
+                            // send data to master
+                            send( mKernel->master(), tSubField );
+
+                        }
                     }
                     else
                     {
@@ -188,17 +303,36 @@ namespace belfem
                         // assemble
                         uint tNumProcs = mKernel->comm_table().length();
 
-                        for ( uint p = 0; p < tNumProcs; ++p )
+                        if( tType == EntityType::NODE )
                         {
-                            // grab index vector
-                            const Vector< index_t > & tIndices = mNodeOwnerList( p );
-                            const Vector< real > & tSubField = tSubFields( p );
-
-                            index_t tNumNodes = tIndices.length();
-
-                            for ( index_t k = 0; k < tNumNodes; ++k )
+                            for ( uint p = 0; p < tNumProcs; ++p )
                             {
-                                tField( tIndices( k ) ) = tSubField( k );
+                                // grab index vector
+                                const Vector< index_t > & tIndices = mNodeOwnerList( p );
+                                const Vector< real > & tSubField = tSubFields( p );
+
+                                index_t tNumNodes = tIndices.length();
+
+                                for ( index_t k = 0; k < tNumNodes; ++k )
+                                {
+                                    tField( tIndices( k )) = tSubField( k );
+                                }
+                            }
+                        }
+                        else
+                        {
+                            for ( uint p = 0; p < tNumProcs; ++p )
+                            {
+                                // grab index vector
+                                const Vector< index_t > & tIndices = mGhostElementOwnerList( p );
+                                const Vector< real > & tSubField = tSubFields( p );
+
+                                index_t tNumNodes = tIndices.length();
+
+                                for ( index_t k = 0; k < tNumNodes; ++k )
+                                {
+                                    tField( tIndices( k )) = tSubField( k );
+                                }
                             }
                         }
                     }
@@ -983,53 +1117,10 @@ namespace belfem
 
                         index_t tMultiplicity = 0 ;
 
-                        switch ( tF->entity_type() )
-                        {
-                            case( EntityType::NODE ) :
-                            {
-                                tMultiplicity = 1 ;
-                                break ;
-                            }
-                            case( EntityType::EDGE ) :
-                            {
-                                tMultiplicity = mParent->iwg()->edge_multiplicity() ;
-                                break ;
-                            }
-                            case( EntityType::FACE ) :
-                            {
-                                tMultiplicity = mParent->iwg()->face_multiplicity() ;
-                                break ;
-                            }
-                            case( EntityType::FACET ) :
-                            {
-                                tMultiplicity = mParent->iwg()->lambda_multiplicity() ;
-                                break ;
-                            }
-                            case( EntityType::CELL ) :
-                            {
-                                tMultiplicity = mParent->iwg()->cell_multiplicity() ;
-                                break ;
-                            }
-                            default :
-                            {
-                                BELFEM_ERROR( false, "invalid entity type" );
-                            }
-                        }
-
-
                         // loop over all procs
                         for( uint p=1; p<tNumberOfProcs; ++p )
                         {
-                            // check if this is a node or an edge field
-                            const Vector< index_t > & tIndices
-                                    = tF->entity_type() == EntityType::NODE ?
-                                            mKernel->node_table( p ) :
-                                    ( tF->entity_type() == EntityType::EDGE ?
-                                            mKernel->edge_table( p ) :
-                                    ( tF->entity_type() == EntityType::FACE ?
-                                            mKernel->face_table( p ) :
-                                            mKernel->facet_table( p ) ) );
-
+                            const Vector< index_t > & tIndices = this->field_indices( tF->entity_type(), p , tMultiplicity );
 
                             // get number of nodes
                             index_t tNumberOfEntities = tIndices.length()  ;
@@ -1075,7 +1166,56 @@ namespace belfem
                     {
                         // get data
                         receive( tMaster, mMesh->field_data( aFieldLabels( f ) ) );
+                    }
+                }
+            }
 
+//-----------------------------------------------------------------------------
+
+            const Vector< index_t > &
+            FieldData::field_indices( const EntityType  aType,
+                                      const proc_t      aTarget,
+                                                 uint & aMultiplicity )
+            {
+                switch ( aType )
+                {
+                    case( EntityType::NODE ) :
+                    {
+                        aMultiplicity = 1 ;
+                        return mKernel->node_table( aTarget );
+                    }
+                    case( EntityType::EDGE ) :
+                    {
+                        aMultiplicity = mParent->iwg()->edge_multiplicity() ;
+                        return mKernel->edge_table( aTarget );
+                    }
+                    case( EntityType::FACE ) :
+                    {
+                        aMultiplicity = mParent->iwg()->face_multiplicity() ;
+                        return mKernel->face_table( aTarget );
+                    }
+                    case( EntityType::FACET ) :
+                    {
+                        aMultiplicity = mParent->iwg()->lambda_multiplicity() ;
+                        return mKernel->facet_table( aTarget );
+                    }
+                    case( EntityType::CELL ) :
+                    {
+                        aMultiplicity = mParent->iwg()->cell_multiplicity() ;
+                        return mKernel->element_table( aTarget );
+                    }
+                    case( EntityType::ELEMENT ) :
+                    {
+                        aMultiplicity = 1 ;
+                        return mKernel->element_table( aTarget );
+                    }
+                    default :
+                    {
+                        BELFEM_ERROR( false, "invalid entity type" );
+                        aMultiplicity = 0 ;
+                        // need to return something here so that the compiler
+                        // is happy
+                        return mKernel->node_table( 0 );
                     }
                 }
             }

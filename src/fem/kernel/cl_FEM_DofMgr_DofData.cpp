@@ -631,6 +631,7 @@ namespace belfem
                     // get field index
                     index_t tFieldIndex = mMesh->field( tLabel )->index() ;
 
+
                     switch( tType )
                     {
                         case( EntityType::NODE ) :

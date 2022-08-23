@@ -98,6 +98,9 @@ namespace belfem
             // written by taperoller
             Vector< id_t > mGhostBlocks ;
 
+            // written by taperoller
+            Vector< id_t > mThinShellSideSets ;
+
             // this one is needed to tell the IWG where the DOFs are picket from
             id_t mGhostMaster = 0 ;
 

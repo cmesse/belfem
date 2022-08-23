@@ -31,12 +31,13 @@ namespace belfem
             mFields.Air = { "phi" };
             mFields.InterfaceScAir = { "lambda" };
             mFields.Cut = { "lambda" };
-            mFields.ThinShell = { "lambda_m", "lambda_s", "lambda_z" };
+            mFields.ThinShell = { "lambda_m", "lambda_s", "lambda_n" };
 
             // non-dof fields
             mFields.MagneticFieldDensity     = { "bx", "by", "bz" };
             mFields.CurrentDensity = {  "jz" };
             mFields.CurrentBC = { "lambda_I" };
+            mFields.Ghost = { "elementEJ", "elementJ" };
 
             mEdgeDofMultiplicity = 1 ;
             mFaceDofMultiplicity = 0 ;
@@ -683,8 +684,6 @@ namespace belfem
             aJacobian += mDeltaTime * mGroup->work_K() ;
 
 
-
-
         }
 
 //------------------------------------------------------------------------------
@@ -733,12 +732,14 @@ namespace belfem
             tC /= tJ ;
             real tHt ;
 
+            // value for ac losses
+            real tEJ = 0.0 ;
+
             for( uint k=0; k<tNumIntpoints; ++k )
             {
                 // get shape function
 
                 const Matrix< real > & tN = tInteg->N( k );
-
 
                 // magnetic field
                 tHt = tN( 0, 0 ) * aHt( 0 ) + tN( 0, 1 ) * aHt( 1 );
@@ -752,8 +753,29 @@ namespace belfem
 
                 // std::cout << k << " " << tMaterial->label() << " B=" << tB << " J=" << tJz << " rho " << tRho << std::endl ;
 
+                tEJ += tW( k ) * tRho ;
             }
-            aK *= tJ ;
+
+            // scale the value of the stiffness matrix
+            aK  *= tJ ;
+
+            // compute element length and scale the value of EJ to the cross section
+            real tDX = aElement->element()->node( 0 )->x() - aElement->element()->node( 1 )->x() ;
+            real tDY = aElement->element()->node( 0 )->y() - aElement->element()->node( 1 )->y() ;
+            tEJ *= tJ * std::sqrt( tDX * tDX + tDY * tDY ) * tJz * tJz ;
+
+            // compute the field index
+            index_t tIndex = mGhostElementMap( aElement->id() *  mGroup->number_of_thin_shell_layers() + aLayer )->index() ;
+
+
+            // id_t tID = mGhostElementMap( aElement->id() * ( aLayer + 1 ) )->id() ;
+
+            // store the value of tEJ in the field
+            //std::cout << "check " << gComm.rank() << " " << mMesh->field_data( "elementEJ").length()
+            //    << " " << mMesh->field_data( "elementJ").length() << std::endl ;
+
+            mMesh->field_data( "elementEJ")( tIndex ) = tEJ ;
+            mMesh->field_data( "elementJ")( tIndex )  = tJz ;
         }
 
 //------------------------------------------------------------------------------

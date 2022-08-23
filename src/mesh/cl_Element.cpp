@@ -14,8 +14,6 @@ namespace belfem
         Element::Element( const id_t aID )
         {
             this->set_id( aID );
-            mElements = nullptr ;
-            mFacets   = nullptr ;
         }
 
 //------------------------------------------------------------------------------
@@ -45,6 +43,11 @@ namespace belfem
         void
         Element::allocate_element_container( const uint aSize )
         {
+            if( mElements != nullptr )
+            {
+                free( mElements );
+            }
+
             if( aSize != 0 )
             {
                 // allocate container
@@ -65,6 +68,11 @@ namespace belfem
         void
         Element::allocate_facet_container( const uint aSize )
         {
+            if( mFacets != nullptr )
+            {
+                free( mFacets );
+            }
+
             if( aSize != 0 )
             {
                 // allocate container
@@ -72,7 +80,7 @@ namespace belfem
 
                 for( uint f=0; f<aSize; ++f )
                 {
-                    mElements[ f ] = nullptr ;
+                    mFacets[ f ] = nullptr ;
                 }
             }
         }

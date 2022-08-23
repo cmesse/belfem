@@ -57,8 +57,8 @@ namespace belfem
             }
 
             // create the element field
-            Vector< real >& tJ = tMesh->field_exists( "elementJ") ?
-                   tMesh->field_data( "elementJ") : tMesh->create_field( "elementJ", EntityType::ELEMENT );
+            Vector< real >& tJ = tMesh->field_exists( "elementI") ?
+                   tMesh->field_data( "elementI") : tMesh->create_field( "elementI", EntityType::ELEMENT );
 
             Vector< real > & tH = tMesh->field_data( "edge_h");
 

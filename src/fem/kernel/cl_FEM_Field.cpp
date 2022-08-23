@@ -21,22 +21,21 @@ namespace belfem
 
         Field::Field(
                 Kernel * aParent,
-                Mesh * aMesh,
                 const Vector< id_t > & aBlockIDs,
                 const uint             aNumberOfDOFsPerNode,
                 const uint             aNumberOfDOFsPerEdge,
                 const bool             aEnforceLinear ) :
-                DofManagerBase( DofManagerType::OLD, aParent, aMesh ),
+                DofManagerBase( DofManagerType::OLD, aParent ),
                 mBlockIDs( aBlockIDs ),
                 mNumberOfDOFsPerNode( aNumberOfDOFsPerNode ),
                 mNumberOfDOFsPerEdge( aNumberOfDOFsPerEdge ),
                 mEnforceLinear( aEnforceLinear ),
                 mBlockIntegrationOrder(
                         aParent->params()->block_integration_order(
-                                aMesh->number_of_fields() - aParent->field_offset() ) ),
+                                aParent->mesh()->number_of_fields() - aParent->field_offset() ) ),
                 mSideSetIntegrationOrder(
                         aParent->params()->sideset_integration_order(
-                                aMesh->number_of_fields() - aParent->field_offset() ) ),
+                                aParent->mesh()->number_of_fields() - aParent->field_offset() ) ),
                 mIntegrationScheme( aParent->params()->integration_scheme() )
         {
             // associate block IDs with indices on mesh

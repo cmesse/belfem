@@ -41,9 +41,9 @@ namespace belfem
         protected:
 //----------------------------------------------------------------------------
 
-            Kernel * mParent = nullptr ;
+            Kernel * mParent ;
 
-            Mesh * mMesh = nullptr ;
+            Mesh   * mMesh ;
 
             IWG  * mIWG = nullptr ;
 
@@ -54,8 +54,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             DofManagerBase( const DofManagerType  aType,
-                                  Kernel        * aParent,
-                                  Mesh          * aMesh ) ;
+                                  Kernel        * aParent ) ;
 
 //------------------------------------------------------------------------------
 
