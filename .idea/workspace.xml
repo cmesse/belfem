@@ -34,6 +34,7 @@
       <config projectName="belfem" targetName="interpolation" />
       <config projectName="belfem" targetName="doc" />
       <config projectName="belfem" targetName="libbelfem_postproc.a" />
+      <config projectName="belfem" targetName="pipette" />
       <config projectName="belfem" targetName="petsctst" />
       <config projectName="belfem" targetName="test_input" />
       <config projectName="belfem" targetName="libbelfem_spline.a" />
@@ -57,32 +58,33 @@
   <component name="ChangeListManager">
     <list default="true" id="120f1831-a9f1-4c21-bf0a-19444f852628" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/compiler/config_gcc.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/config/compiler/config_gcc.cmake" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/interpolation/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/interpolation/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Block.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Block.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofManager.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofManager.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofManagerBase.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofManagerBase.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofManagerBase.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofManagerBase.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofMgr_DofData.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofMgr_DofData.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofMgr_FieldData.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofMgr_FieldData.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofMgr_FieldData.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofMgr_FieldData.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Field.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Field.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Field.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Field.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Kernel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Kernel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Kernel.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Kernel.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Group.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Group.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Group.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_Group.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_IntegrationData.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/interpolation/cl_IF_IntegrationData.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_IntegrationData.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/interpolation/cl_IF_IntegrationData.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_SideSet.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_SideSet.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/fn_FEM_initialize_integration_points.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/interpolation/fn_IF_initialize_integration_points.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/fn_FEM_initialize_integration_points.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/interpolation/fn_IF_initialize_integration_points.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/fn_FEM_initialize_integration_points_on_facet.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/interpolation/fn_IF_initialize_integration_points_on_facet.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/fn_FEM_initialize_integration_points_on_facet.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/interpolation/fn_IF_initialize_integration_points_on_facet.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/fn_FEM_initialize_shape_function.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/interpolation/fn_IF_initialize_shape_function.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/kernel/fn_FEM_initialize_shape_function.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/interpolation/fn_IF_initialize_shape_function.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/CMakeLists.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri3.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri3.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_L2_Magfield.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_L2_Magfield.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_MaxwellFactory.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_MaxwellFactory.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_MaxwellFactory.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_MaxwellFactory.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_Maxwell_FieldList.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_Maxwell_FieldList.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_Maxwell_FieldList.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_Maxwell_FieldList.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/fn_FEM_compute_element_current_thinshell.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/fn_FEM_compute_element_current_thinshell.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/fn_FEM_compute_element_current_thinshell.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/fn_FEM_compute_element_current_thinshell.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/postproc/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/postproc/CMakeLists.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/lbl/test_input.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/lbl/test_input.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Element.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Element.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Element.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Element.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Facet.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Facet.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh_Basis.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh_Basis.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Node.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Node.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Node.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Node.hpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -151,17 +153,27 @@
 }</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/fem/interpolation" />
+      <recent name="$PROJECT_DIR$/src/fem/iwg" />
+      <recent name="$PROJECT_DIR$/src/numerics/integration" />
       <recent name="$PROJECT_DIR$/src/fem/edgeinterpolation" />
       <recent name="$PROJECT_DIR$/src/fem/maxwell/old" />
-      <recent name="$PROJECT_DIR$/src/fem/maxwell" />
-      <recent name="$PROJECT_DIR$/src/core" />
-      <recent name="$PROJECT_DIR$/src/fem/kernel" />
     </key>
   </component>
-  <component name="RunManager" selected="CMake Application.test_input">
+  <component name="RunAnythingCache">
+    <option name="myCommands">
+      <command value="mFunInterpolation" />
+    </option>
+  </component>
+  <component name="RunManager" selected="CMake Application.pipette">
     <configuration default="true" type="GradleAppRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
         <option name="com.jetbrains.cidr.cpp.gradle.execution.GradleNativeBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
     <configuration name="banner" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="banner" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="banner">
@@ -329,6 +341,11 @@
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
+    <configuration name="pipette" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="pipette" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="pipette">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="reset" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="reset" CONFIG_NAME="Debug">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -433,6 +450,7 @@
       <item itemvalue="CMake Application.normaltest" />
       <item itemvalue="CMake Application.ode" />
       <item itemvalue="CMake Application.pentatest" />
+      <item itemvalue="CMake Application.pipette" />
       <item itemvalue="CMake Application.petsctest" />
       <item itemvalue="CMake Application.petsctst" />
       <item itemvalue="CMake Application.reset" />
@@ -630,6 +648,9 @@
       <workItem from="1661197949759" duration="27405000" />
       <workItem from="1661238860648" duration="121000" />
       <workItem from="1661239009304" duration="790000" />
+      <workItem from="1661242441604" duration="1675000" />
+      <workItem from="1661293237601" duration="15689000" />
+      <workItem from="1661323435765" duration="8100000" />
     </task>
     <servers />
   </component>

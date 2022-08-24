@@ -2,10 +2,10 @@
 // Created by Christian Messe on 16.06.20.
 //
 
-#include "fn_FEM_initialize_integration_points_on_facet.hpp"
+#include "fn_IF_initialize_integration_points_on_facet.hpp"
 
 #include "fn_intpoints_auto_integration_order.hpp"
-#include "fn_FEM_initialize_integration_points.hpp"
+#include "fn_IF_initialize_integration_points.hpp"
 #include "meshtools.hpp"
 
 namespace belfem

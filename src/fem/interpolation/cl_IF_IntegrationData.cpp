@@ -2,12 +2,12 @@
 // Created by Christian Messe on 18.01.22.
 //
 
-#include "cl_FEM_IntegrationData.hpp"
+#include "cl_IF_IntegrationData.hpp"
 #include "cl_IF_InterpolationFunctionFactory.hpp"
 #include "fn_intpoints.hpp"
 #include "fn_intpoints_auto_integration_order.hpp"
 #include "meshtools.hpp"
-#include "fn_FEM_initialize_integration_points_on_facet.hpp"
+#include "fn_IF_initialize_integration_points_on_facet.hpp"
 #include "assert.hpp"
 
 namespace belfem

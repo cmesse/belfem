@@ -13,7 +13,7 @@
 #include "cl_MaxwellFactory.hpp"
 #include "cl_Profiler.hpp"
 #include "fn_FEM_compute_normb.hpp"
-#include "fn_FEM_compute_element_current_thinshell.hpp"
+//#include "fn_FEM_compute_element_current_thinshell.hpp"
 
 #ifdef BELFEM_GCC
 #pragma GCC diagnostic push

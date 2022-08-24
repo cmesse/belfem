@@ -760,9 +760,10 @@ namespace belfem
             aK  *= tJ ;
 
             // compute element length and scale the value of EJ to the cross section
-            real tDX = aElement->element()->node( 0 )->x() - aElement->element()->node( 1 )->x() ;
-            real tDY = aElement->element()->node( 0 )->y() - aElement->element()->node( 1 )->y() ;
-            tEJ *= tJ * std::sqrt( tDX * tDX + tDY * tDY ) * tJz * tJz ;
+            //real tDX = aElement->element()->node( 0 )->x() - aElement->element()->node( 1 )->x() ;
+            //real tDY = aElement->element()->node( 0 )->y() - aElement->element()->node( 1 )->y() ;
+            //tEJ *= tThickness * std::sqrt( tDX * tDX + tDY * tDY ) * tJz * tJz ;
+            tEJ *= tJz * tJz * 0.5 ;
 
             // compute the field index
             index_t tIndex = mGhostElementMap( aElement->id() *  mGroup->number_of_thin_shell_layers() + aLayer )->index() ;

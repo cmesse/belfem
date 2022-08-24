@@ -2,7 +2,7 @@
 // Created by Christian Messe on 03.11.19.
 //
 
-#include "fn_FEM_initialize_integration_points.hpp"
+#include "fn_IF_initialize_integration_points.hpp"
 #include "fn_intpoints_auto_integration_order.hpp"
 #include "fn_intpoints.hpp"
 namespace belfem

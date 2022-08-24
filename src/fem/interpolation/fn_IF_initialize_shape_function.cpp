@@ -2,7 +2,7 @@
 // Created by Christian Messe on 04.11.19.
 //
 
-#include "fn_FEM_initialize_shape_function.hpp"
+#include "fn_IF_initialize_shape_function.hpp"
 #include "cl_IF_InterpolationFunctionFactory.hpp"
 
 namespace belfem

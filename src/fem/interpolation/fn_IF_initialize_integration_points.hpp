@@ -2,8 +2,8 @@
 // Created by Christian Messe on 03.11.19.
 //
 
-#ifndef BELFEM_FN_FEM_INITIALIZE_INTEGRATION_POINTS_HPP
-#define BELFEM_FN_FEM_INITIALIZE_INTEGRATION_POINTS_HPP
+#ifndef BELFEM_FN_IF_INITIALIZE_INTEGRATION_POINTS_HPP
+#define BELFEM_FN_IF_INITIALIZE_INTEGRATION_POINTS_HPP
 
 #include "typedefs.hpp"
 #include "Mesh_Enums.hpp"
@@ -40,4 +40,4 @@ namespace belfem
 //------------------------------------------------------------------------------
     }
 }
-#endif //BELFEM_FN_FEM_INITIALIZE_INTEGRATION_POINTS_HPP
+#endif //BELFEM_FN_IF_INITIALIZE_INTEGRATION_POINTS_HPP

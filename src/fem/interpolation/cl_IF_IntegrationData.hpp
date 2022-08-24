@@ -2,8 +2,8 @@
 // Created by Christian Messe on 18.01.22.
 //
 
-#ifndef BELFEM_CL_FEM_INTEGRATIONDATA_HPP
-#define BELFEM_CL_FEM_INTEGRATIONDATA_HPP
+#ifndef BELFEM_CL_IF_INTEGRATIONDATA_HPP
+#define BELFEM_CL_IF_INTEGRATIONDATA_HPP
 
 #include "typedefs.hpp"
 #include "cl_Vector.hpp"
@@ -264,4 +264,4 @@ namespace belfem
 //------------------------------------------------------------------------------
     }
 }
-#endif //BELFEM_CL_FEM_INTEGRATIONDATA_HPP
+#endif //BELFEM_CL_IF_INTEGRATIONDATA_HPP

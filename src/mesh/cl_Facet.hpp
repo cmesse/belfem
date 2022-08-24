@@ -230,6 +230,11 @@ namespace belfem
             uint
             orientation_on_slave() const ;
 
+//----------------------------------------------------------------------------
+
+            bool
+            is_curved() const ;
+
 //-----------------------------------------------------------------------------
         };
 
@@ -487,6 +492,14 @@ namespace belfem
         Facet::orientation_on_slave() const
         {
             return mOrientationOnSlave ;
+        }
+
+//----------------------------------------------------------------------------
+
+        inline bool
+        Facet::is_curved() const
+        {
+            return mElement->is_curved() ;
         }
 
 //------------------------------------------------------------------------------

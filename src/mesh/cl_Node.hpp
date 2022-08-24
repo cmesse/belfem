@@ -21,7 +21,7 @@ namespace belfem
         class Node : public Vertex
         {
             // coordinates of this vector
-            Vector<real> mCoords;
+            real mCoords[ 3 ];
 
 //------------------------------------------------------------------------------
         public:
@@ -63,7 +63,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            const Vector<real> &
+            Vector<real>
             coords() const ;
 
 //------------------------------------------------------------------------------
@@ -95,7 +95,7 @@ namespace belfem
         inline real
         Node::x() const
         {
-            return mCoords( 0 );
+            return mCoords[ 0 ];
         }
 
 //------------------------------------------------------------------------------
@@ -103,7 +103,7 @@ namespace belfem
         inline real
         Node::y() const
         {
-            return mCoords( 1 );
+            return mCoords[ 1 ];
         }
 
 //------------------------------------------------------------------------------
@@ -111,15 +111,15 @@ namespace belfem
         inline real
         Node::z() const
         {
-            return mCoords( 2 );
+            return mCoords[ 2 ];
         }
 
 //------------------------------------------------------------------------------
 
-        inline const Vector<real> &
+        inline Vector<real>
         Node::coords() const
         {
-            return mCoords ;
+            return Vector< real >( {mCoords[0],mCoords[1], mCoords[2]} );
         }
 
 //------------------------------------------------------------------------------
@@ -127,7 +127,7 @@ namespace belfem
         inline real
         Node::x( const uint aDimension ) const
         {
-            return mCoords( aDimension );
+            return mCoords[ aDimension ];
         }
 
 //------------------------------------------------------------------------------

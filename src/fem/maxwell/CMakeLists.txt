@@ -18,7 +18,6 @@ set( SOURCES
         cl_MaxwellFactory.cpp
         fn_FEM_compute_brandt.cpp
         fn_FEM_compute_normb.cpp
-        fn_FEM_compute_element_current_thinshell.cpp
         )
 
 include_directories( ${BELFEM_SOURCE_DIR}/mesh )

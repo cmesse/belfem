@@ -12,8 +12,8 @@
 #include "cl_FEM_DofManagerBase.hpp"
 #include "cl_FEM_Block.hpp"
 #include "cl_FEM_BoundaryCondition.hpp"
-#include "fn_FEM_initialize_integration_points_on_facet.hpp"
-#include "fn_FEM_initialize_shape_function.hpp"
+#include "fn_IF_initialize_integration_points_on_facet.hpp"
+#include "fn_IF_initialize_shape_function.hpp"
 
 namespace belfem
 {

@@ -8,6 +8,7 @@ set( SOURCES
         fn_Mesh_compute_surface.cpp
         fn_Mesh_integrate_scalar_over_sidesets.cpp
         cl_OneDMapper.cpp
+        cl_Pipette.cpp
         )
 
 include_directories( ${BELFEM_SOURCE_DIR}/physics )
@@ -33,6 +34,11 @@ set ( LIBLIST
         )
 
 include( ${BELFEM_CONFIG_DIR}/scripts/Add_Library.cmake )
+
+set( EXECNAME pipette )
+set( MAIN pipette.cpp )
+include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
+
 
 if( USE_EXAMPLES )
 set( EXECNAME normaltest )

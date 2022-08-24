@@ -13,8 +13,8 @@
 
 #include "cl_FEM_Element.hpp"
 
-#include "fn_FEM_initialize_integration_points.hpp"
-#include "fn_FEM_initialize_shape_function.hpp"
+#include "fn_IF_initialize_integration_points.hpp"
+#include "fn_IF_initialize_shape_function.hpp"
 
 namespace belfem
 {

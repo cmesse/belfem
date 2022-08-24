@@ -4,7 +4,6 @@
 #include "commtools.hpp"
 #include "cl_Logger.hpp"
 #include "cl_Timer.hpp"
-#include "cl_Bitset.hpp"
 #include "cl_FEM_DofManager.hpp"
 #include "cl_FEM_Kernel.hpp"
 #include "en_FEM_DomainType.hpp"
@@ -926,8 +925,9 @@ namespace belfem
         {
             for ( DofManager * tProjector : mPostprocessors )
             {
-                // tProjector->compute_jacobian();
+                //tProjector->compute_jacobian();
                 tProjector->compute_rhs() ;
+                tProjector->save_system("projector.hdf5");
                 tProjector->solve();
                 comm_barrier();
             }

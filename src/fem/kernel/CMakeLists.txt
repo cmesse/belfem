@@ -1,10 +1,6 @@
 set( LIBNAME kernel )
 
 set( SOURCES
-        fn_FEM_initialize_integration_points.cpp
-        fn_FEM_initialize_integration_points_on_facet.cpp
-        fn_FEM_initialize_shape_function.cpp
-        cl_FEM_IntegrationData.cpp
         en_FEM_DomainType.cpp
         cl_FEM_Dof.cpp
         cl_FEM_Element.cpp

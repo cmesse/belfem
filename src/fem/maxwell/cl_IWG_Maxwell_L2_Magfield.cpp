@@ -272,6 +272,8 @@ namespace belfem
                     tB( 0, tCount++ ) = tdNdx( 0, i );
                     tB( 1, tCount++ ) = tdNdx( 1, i );
                 }
+
+
                 aJacobian += ( tW( k ) * tDetJ )
                       * ( trans( tN ) * tN + mAlpha * tDetJ * trans( tB ) * tB );
             }

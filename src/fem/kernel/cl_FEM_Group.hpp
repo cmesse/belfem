@@ -16,7 +16,7 @@
 #include "cl_IF_InterpolationFunction.hpp"
 #include "cl_Material.hpp"
 #include "en_FEM_DomainType.hpp"
-#include "cl_FEM_IntegrationData.hpp"
+#include "cl_IF_IntegrationData.hpp"
 
 namespace belfem
 {

@@ -485,10 +485,13 @@ namespace belfem
                     else if( tFlag == 2 )
                     {
                         mAlphaJ = to_real( tWord );
+                        tFlag = 0 ;
                     }
                     else if ( tFlag == 4 )
                     {
                         mAlphaB = to_real( tWord );
+                        tFlag = 0 ;
+
                     }
                     else if( tWord == "normb" || tWord == "norm_b" )
                     {
@@ -1466,7 +1469,7 @@ namespace belfem
         void
         MaxwellFactory::create_magnetic_field()
         {
-            // this is a hack, we will remove the old maxwell things
+            // make a new maxwell equation
             IWG_Maxwell * tMaxwell = this->create_iwg( mFormulation );
 
             // the IDs for the cuts differ from the sidesets on the mesh,
@@ -1928,6 +1931,7 @@ namespace belfem
             // create air projector
             if( tAirCount > 0 )
             {
+
                 // create the iwg
                 IWG_Maxwell * tIWG = new IWG_Maxwell_L2_Magfield(
                         this->element_type( tAirBlocks( 0 )),
@@ -2907,10 +2911,11 @@ namespace belfem
 
                     mSideSetToCutMap.clear();
 
+
                     uint tN = tCutData.n_cols() ;
                     for( uint k=0; k<tN; ++k )
                     {
-                        mSideSetToCutMap[ tCutData( 0, k ) ] = tCutData( 1, k );
+                        mSideSetToCutMap[ tCutData( 1, k ) ] = tCutData( 0, k );
                     }
 
                     delete tScissors ;
