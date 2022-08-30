@@ -456,6 +456,14 @@ namespace belfem
             // get number of fields from mesh
             uint tNumFields = mMesh->number_of_fields();
 
+            // collect field labels and sort them (exudus complains otherwise)
+            Cell< string > tLabels( tNumFields, "" );
+            for( uint k=0; k<tNumFields; ++k )
+            {
+                tLabels( k ) = mMesh->field( k )->label() ;
+            }
+            sort( tLabels );
+
             for( uint k=0; k<tNumFields; ++k )
             {
                 mesh::Field * tField = mMesh->field( k );
@@ -493,7 +501,7 @@ namespace belfem
             // collect fields
             for( uint k=0; k<tNumFields; ++k )
             {
-                mesh::Field * tField = mMesh->field( k );
+                mesh::Field * tField = mMesh->field( tLabels( k ) );
                 if( tField->write_field_to_file() )
                 {
                     switch ( tField->entity_type())

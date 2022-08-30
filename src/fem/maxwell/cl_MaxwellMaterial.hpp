@@ -69,6 +69,9 @@ namespace belfem
         // constant for magnetizatoin offset in BH curve
         real mM0 = BELFEM_QUIET_NAN ;
 
+        // maximum resistance for powerlaw
+        real mRhoMax = 1e-6 ;
+
         // help material for thermal data
         Material * mThermalMaterial = nullptr ;
 
@@ -155,6 +158,8 @@ namespace belfem
 
         void
         set_m0( const real & aM0 );
+
+//----------------------------------------------------------------------------
 
         real
         m0() const ;
@@ -294,7 +299,7 @@ namespace belfem
         inline real
         MaxwellMaterial::rho_el_powerlaw_ej( const real aJ, const real aT, const real aB ) const
         {
-            return mRhoc * std::pow( aJ / ( mJc + BELFEM_EPS ), mNm1 );
+            return std::min( mRhoc * std::pow( aJ / ( mJc + BELFEM_EPS ), mNm1 ), mRhoMax );
         }
 
 //----------------------------------------------------------------------------

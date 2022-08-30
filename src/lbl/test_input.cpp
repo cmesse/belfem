@@ -14,6 +14,7 @@
 #include "cl_Profiler.hpp"
 #include "fn_FEM_compute_normb.hpp"
 //#include "fn_FEM_compute_element_current_thinshell.hpp"
+#include "cl_Pipette.hpp"
 
 #ifdef BELFEM_GCC
 #pragma GCC diagnostic push
@@ -335,6 +336,33 @@ int main( int    argc,
        tMagfield->postprocess() ;
 
        // todo: move into postprocess routine
+       if( comm_rank() == 0 )
+       {
+           real tEI = 0 ;
+           real tI = 0 ;
+           mesh::Pipette tPipette ;
+
+           Vector< real > & tEJ = tMesh->field_data( "elementEJ");
+           Vector< real > & tJ = tMesh->field_data( "elementJ");
+
+           for( id_t tID : tMesh->ghost_block_ids() )
+           {
+               tPipette.set_element_type( tMesh->block( tID )->element_type() );
+
+               for( mesh::Element * tElement : tMesh->block( tID )->elements() )
+               {
+                    real tV = tPipette.measure( tElement );
+                    tEI += tEJ( tElement->index() ) * tV ;
+                    tI  += tJ( tElement->index() ) * tV ;
+               }
+           }
+
+           std::ofstream tCSV ;
+           tCSV.open( "acloss.csv", std::ios_base::app);
+           tCSV <<  tTime << ", " << tI << ", " << tEI << std::endl ;
+           tCSV.close() ;
+
+       }
        //fem::compute_element_current_thinshell_tri3( tMagfield );
 
        compute_normb( tMagfield, false );
