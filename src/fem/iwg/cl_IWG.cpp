@@ -1028,9 +1028,19 @@ namespace belfem
                 mesh::Edge * tEdge = mMesh->ghost_facet( aElement->id(), tOff + e )->edge( 0 );
 
                 // get the data
-                for( uint k=0; k<mEdgeDofMultiplicity ; ++k )
+                if( aElement->edge_direction( 0 ) )
                 {
-                    aData( tCount++ ) = tData( mEdgeDofMultiplicity * tEdge->index() + k  );
+                    for ( uint k = 0; k < mEdgeDofMultiplicity; ++k )
+                    {
+                        aData( tCount++ ) = tData( mEdgeDofMultiplicity * tEdge->index() + k );
+                    }
+                }
+                else
+                {
+                    for ( int k = mEdgeDofMultiplicity-1; k >= 0; k-- )
+                    {
+                        aData( tCount++ ) = tData( mEdgeDofMultiplicity * tEdge->index() + k );
+                    }
                 }
             }
 
