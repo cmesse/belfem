@@ -31,7 +31,7 @@ namespace belfem
 
             mFields.InterfaceScAir = { "lambda" };
             mFields.Cut = { "lambda" };
-            mFields.ThinShell = { "lambda_m", "lambda_s" };
+            mFields.ThinShell = { "lambda_m", "lambda_s", "lambda_n" };
             //mFields.ThinShell = { "lambda_m0", "lambda_m1", "lambda_s0", "lambda_s1", "lambda_n0", "lambda_n1" };
             //mFields.ThinShell = { "lambda_m0", "lambda_m1", "lambda_s0", "lambda_s1" };
 
@@ -750,10 +750,41 @@ namespace belfem
                 }
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                // normal condition master
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                q = aRHS.length() - 1 ;
+                p = 0 ;
+                for( uint i=0; i<mNumberOfNodesPerElement; ++i )
+                {
+                    tM( p, q ) += tScale *
+                                                   ( mN( 0 ) * tBm( 0, i )
+                                                     + mN( 1 ) * tBm( 1, i ) );
+
+                    tM( q, p ) = tM( p, q );
+
+                    ++p ;
+                }
+
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                // normal condition slave
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                q = aRHS.length() - 1 ;
+                for( uint i=0; i<mNumberOfNodesPerElement; ++i )
+                {
+                    tM( p, q ) -= tScale *
+                              ( mN( 0 ) * tBs( 0, i )
+                              + mN( 1 ) * tBs( 1, i ) );
+
+                    tM( q, p ) = tM( p, q );
+
+                    ++p ;
+                }
+
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                 // contribution for mass and stiffness matrix
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-                tScale = tW( k ) * mEdgeFunctionTS->abs_det_J() ;
+                tScale = tW( k ) ;
 
                 // evaluate normal value of H-field
                 real tHn =dot(  mE, mHn.vector_data() );
@@ -763,6 +794,11 @@ namespace belfem
                 for( uint l=0; l<tNumLayers; ++l )
                 {
                     this->collect_edge_data_from_layer( aElement, "edge_h", l, tHt );
+
+                    if( aElement->id() == 70 && k == 0 ) tHt.print("a");
+                    if( aElement->id() == 71  && k == 0 ) tHt.print("b");
+
+
                     this->compute_layer_mass( l, mE( 0 ), mE( 1 ),  tMlayer );
 
                     this->compute_layer_stiffness( k, l, mE( 0 ), mE( 1 ),  tHt, tHn, tKlayer );
@@ -787,7 +823,7 @@ namespace belfem
                 // perpendicular BC
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-                for( uint i=0; i<mNumberOfNodesPerElement; ++i )
+                /*for( uint i=0; i<mNumberOfNodesPerElement; ++i )
                 {
                     q = mNumberOfNodesPerElement ;
                     for ( uint j = 0; j < mNumberOfNodesPerElement; ++j )
@@ -812,7 +848,7 @@ namespace belfem
                                           + mN( 1 ) * tBm( 1, j )) * tScale ;
                     }
                     ++p ;
-                }
+                }*/
             }
 
 
@@ -831,6 +867,8 @@ namespace belfem
             aJacobian += mDeltaTime * mGroup->work_K() ;
 
             mLayerData *= 0.25 ;
+            if( aElement->id() == 70 ) mLayerData.print("A");
+            if( aElement->id() == 71 ) mLayerData.print("B");
 
             for( uint l=0; l<tNumLayers; ++l )
             {
@@ -935,7 +973,7 @@ namespace belfem
 
             // grab layer thickness
             const real tThickness = mGroup->thin_shell_thickness( aLayer );
-            real tDetJ = mGroup->thin_shell_thickness( aLayer ) * tThickness ;
+            real tDetJ = tThickness * 0.5 ;
 
             // element-wise curernt
             real tJz_el = 0 ;
