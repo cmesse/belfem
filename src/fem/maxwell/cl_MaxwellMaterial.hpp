@@ -299,7 +299,7 @@ namespace belfem
         inline real
         MaxwellMaterial::rho_el_powerlaw_ej( const real aJ, const real aT, const real aB ) const
         {
-            return std::min( mRhoc * std::pow( aJ / ( mJc + BELFEM_EPS ), mNm1 ), mRhoMax );
+            return std::min( mRhoc * std::pow( aJ / ( mJc + BELFEM_EPSILON ), mNm1 ), mRhoMax );
         }
 
 //----------------------------------------------------------------------------
@@ -310,8 +310,10 @@ namespace belfem
             // compute critical current
             real tJc = mAlpha * aT + mBeta ;
 
-            // compute flux creep exponent
-            return ( mEc / ( tJc + BELFEM_EPS ) ) * std::pow( aJ / tJc, mN0m1 * mT0 / aT );
+
+            return std::min( ( mEc / ( tJc + BELFEM_EPSILON ) ) * std::pow( aJ / tJc, mN0m1 * mT0 / aT ), mRhoMax );
+
+
         }
 
 //----------------------------------------------------------------------------
@@ -322,8 +324,9 @@ namespace belfem
             // compute critical current
             real tJc = mJc0 / ( 1. + aB / mB0 );
 
-            return ( mEc / ( tJc + BELFEM_EPS ) ) * std::pow( aJ / tJc,
-                                             mN1m1 + ( mN0m1-mN1m1 ) / ( 1. +  aB / mB0 ) );
+            return std::min( ( mEc / ( tJc + BELFEM_EPSILON ) ) * std::pow( aJ / tJc,
+                                             mN1m1 + ( mN0m1-mN1m1 ) / ( 1. +  aB / mB0 ) ), mRhoMax );
+
         }
 
 //----------------------------------------------------------------------------
@@ -334,9 +337,10 @@ namespace belfem
             // compute critical current
             real tJc = ( mAlpha * aT + mBeta ) / ( 1. + aB / mB0 );
 
-            return ( mEc / ( tJc + BELFEM_EPS ) ) * std::pow( aJ / tJc,
+            return std::min( ( mEc / ( tJc + BELFEM_EPSILON ) ) * std::pow( aJ / tJc,
                                              ( mN1m1 + ( mN0m1-mN1m1 ) / ( 1. +  aB / mB0 ) )
-                                             * ( mT0 / aT ) );
+                                             * ( mT0 / aT ) ), mRhoMax );
+
         }
 
 //----------------------------------------------------------------------------

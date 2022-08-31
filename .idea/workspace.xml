@@ -58,10 +58,20 @@
   <component name="ChangeListManager">
     <list default="true" id="120f1831-a9f1-4c21-bf0a-19444f852628" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/kernel/cl_FEM_DofManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/edgeinterpolation/cl_EF_EdgeFunction.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/edgeinterpolation/cl_EF_EdgeFunction.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/edgeinterpolation/cl_EF_LINE3.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/edgeinterpolation/cl_EF_LINE3.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/edgeinterpolation/cl_EF_LINE3.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/edgeinterpolation/cl_EF_LINE3.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri3.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri3.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri6.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri6.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri6.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri6.hpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_MaxwellMaterial.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_MaxwellMaterial.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_Maxwell_FieldList.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_Maxwell_FieldList.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_Maxwell_FieldList.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_Maxwell_FieldList.hpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/lbl/test_input.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/lbl/test_input.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh_ExodusWriter.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh_ExodusWriter.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/linalg/fn_crossmat.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/linalg/fn_crossmat.hpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -142,7 +152,7 @@
       <command value="mFunInterpolation" />
     </option>
   </component>
-  <component name="RunManager" selected="CMake Application.pipette">
+  <component name="RunManager" selected="CMake Application.test_input">
     <configuration default="true" type="GradleAppRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
         <option name="com.jetbrains.cidr.cpp.gradle.execution.GradleNativeBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -353,7 +363,7 @@
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="test_input" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$PROJECT_DIR$/cmake-build-debug" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="test_input" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="test_input">
+    <configuration name="test_input" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$PROJECT_DIR$/cmake-build-debug/example" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="test_input" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="test_input">
       <envs>
         <env name="LD_LIBRARY_PATH" value="/opt/gcc/latest/lib64" />
       </envs>
@@ -624,7 +634,8 @@
       <workItem from="1661293237601" duration="15689000" />
       <workItem from="1661323435765" duration="10257000" />
       <workItem from="1661376052691" duration="4086000" />
-      <workItem from="1661894013850" duration="1135000" />
+      <workItem from="1661894013850" duration="3355000" />
+      <workItem from="1661899896907" duration="30970000" />
     </task>
     <servers />
   </component>

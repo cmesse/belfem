@@ -191,7 +191,7 @@ int main( int    argc,
    // hide fields we don't need
    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-   if( comm_rank() == 0 )
+   /*if( comm_rank() == 0 )
    {
        Cell< string > tHide = { "SurfaceNormalsx",
                                 "SurfaceNormalsy",
@@ -203,7 +203,7 @@ int main( int    argc,
        {
            tMesh->field( tLabel )->set_write_to_file_flag( false );
        }
-   }
+   }*/
 
    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    // begin timeloop

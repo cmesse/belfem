@@ -29,6 +29,23 @@ namespace belfem
                     Matrix< real > & aJacobian,
                     Vector< real > & aRHS );
 
+
+            // matrix for element values that need to be integrated
+            // over thin shells
+            Matrix< real > mLayerData ;
+
+            // work vector for normals
+            Vector< real > mN ;
+
+            // work vector for normal component of H
+            Vector< real > mHn ;
+
+            // edge interpolation vector
+            Vector< real > mE ;
+
+            // edge index vector
+            Vector< uint > mU ;
+
 //------------------------------------------------------------------------------
         public:
 //------------------------------------------------------------------------------
@@ -140,6 +157,7 @@ namespace belfem
             void
             compute_layer_stiffness(
                     const uint aLayer,
+                    const uint aIntPoint,
                     const real aE0,
                     const real aE1,
                     const Vector< real > & aHt,

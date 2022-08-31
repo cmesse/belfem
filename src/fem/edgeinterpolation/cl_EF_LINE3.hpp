@@ -8,6 +8,8 @@
 #include "cl_EF_EdgeFunction.hpp"
 #include "cl_FEM_Element.hpp"
 #include "fn_polyval.hpp"
+#include "fn_dot.hpp"
+#include "fn_norm.hpp"
 
 namespace belfem
 {
@@ -24,10 +26,22 @@ namespace belfem
             Vector< real > mX ;
             Vector< real > mY ;
 
+            // coordinates of edge dofs
+            Vector< real > mXi;
+
             // scaling parameters
             Cell< Vector< real > > mNxi ;
-
             Cell< Matrix< real > > mE ;
+
+            // coefficients for edge function on dof 0
+            Vector< real > mC0 ;
+
+            // coefficients for edge function on dof 1
+            Vector< real > mC1 ;
+
+            // shape function of volume element
+            InterpolationFunction * mVolumeLagrange = nullptr ;
+            Cell< Matrix< real > >  mVolumeNxi ;
 
 //------------------------------------------------------------------------------
         public:
@@ -96,6 +110,16 @@ namespace belfem
             const Matrix< real > &
             CA( const uint aIndex = 0 ) ;
 
+//-----------------------------------------------------------------------------
+
+            const Matrix< real > &
+            vol_N_xi( const uint aIndex = 0 ) ;
+
+//-----------------------------------------------------------------------------
+
+           Vector< real > &
+           normal( const uint aIndex , const Matrix< real > & aX ) ;
+
 //------------------------------------------------------------------------------
         private:
 //------------------------------------------------------------------------------
@@ -113,6 +137,26 @@ namespace belfem
         {
             mAbsDetJ = this->compute_det_J( aIndex );
             return mE( aIndex );
+        }
+//-----------------------------------------------------------------------------
+
+        inline const Matrix< real > &
+        EF_LINE3::vol_N_xi( const uint aIndex )
+        {
+            return mVolumeNxi( aIndex );
+        }
+
+//-----------------------------------------------------------------------------
+
+        inline Vector< real > &
+        EF_LINE3::normal( const uint aIndex , const Matrix< real > & aX )
+        {
+            mNormal( 0 ) = -dot( mNxi( aIndex ), aX.col( 1 ) );
+            mNormal( 1 ) =  dot( mNxi( aIndex ), aX.col( 0 ) );
+
+            mAbsDetJ = norm( mNormal );
+            mNormal /= mAbsDetJ ;
+            return mNormal ;
         }
 
 //--------------------------------------------------------------------------

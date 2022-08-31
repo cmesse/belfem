@@ -76,6 +76,8 @@ namespace belfem
                 //! dofs per iron block
                 Cell< string > FerroLast ;
 
+                Cell< string > ThinShellLast ;
+
                 //! dofs on Ghost Elements
                 Cell< string > Ghost ;
 

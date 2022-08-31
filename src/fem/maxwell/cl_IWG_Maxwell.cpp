@@ -2698,10 +2698,9 @@ namespace belfem
             const Vector< real > & tPhi  = mMesh->field_data( "phi0" );
             const Vector< real > & tHe   = mMesh->field_data("edge_h0" );
             const Vector< real > & tHf   = mNumberOfDofsPerFace > 0 ? mMesh->field_data("face_h0" ) : tHe ;
-            const Vector< real > & tLm   = mMesh->field_data( "lambda_m" );
-            const Vector< real > & tLs   = mMesh->field_data( "lambda_s" );
 
-            bool tMasterFlip = false ;
+
+            uint tLambdaCount = 0 ;
 
             // loop over all dofs
             for( uint k=0; k<mNumberOfDofsPerElement; ++k )
@@ -2728,15 +2727,9 @@ namespace belfem
                     }
                     case( EntityType::FACET ) :
                     {
-                        if( tMasterFlip )
-                        {
-                            aQ0( k ) = tLs( tDof->mesh_basis()->index() );
-                        }
-                        else
-                        {
-                            aQ0( k ) = tLm( tDof->mesh_basis()->index() );
-                            tMasterFlip = true ;
-                        }
+                        // get lambda field
+                        const Vector< real > & tL = mMesh->field_data( mFields.ThinShellLast( tLambdaCount++ ) );
+                        aQ0( k ) = tL( tDof->mesh_basis()->index() );
                         break ;
                     }
                     default :

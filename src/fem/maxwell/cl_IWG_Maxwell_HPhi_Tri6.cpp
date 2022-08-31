@@ -31,13 +31,15 @@ namespace belfem
 
             mFields.InterfaceScAir = { "lambda" };
             mFields.Cut = { "lambda" };
-            mFields.ThinShell = { "lambda_m", "lambda_s", "lambda_z" };
-
+            //mFields.ThinShell = { "lambda_m", "lambda_s", "lambda_n" };
+            //mFields.ThinShell = { "lambda_m0", "lambda_m1", "lambda_s0", "lambda_s1", "lambda_n0", "lambda_n1" };
+            mFields.ThinShell = { "lambda_m0", "lambda_m1", "lambda_s0", "lambda_s1" };
 
             // non-dof fields
             mFields.MagneticFieldDensity     =  { "bx", "by", "bz" };
             mFields.CurrentDensity = {  "jz" };
             mFields.CurrentBC = { "lambda_I" };
+            mFields.Ghost = { "elementEJ", "elementJ" };
 
             mEdgeDofMultiplicity = 2 ;
             mFaceDofMultiplicity = 2 ;
@@ -50,6 +52,10 @@ namespace belfem
             mEdgeFunctionTS = new EF_LINE3() ;
             mHt.set_size( 3 );
             mC.set_size( 1, 6 );
+            mN.set_size( 2 );
+            mHn.set_size( 2 );
+            mU.set_size( 2 );
+            mE.set_size( 2 );
         }
 
 //------------------------------------------------------------------------------
@@ -146,6 +152,8 @@ namespace belfem
                 }
                 case( DomainType::ThinShell ) :
                 {
+                    mLayerData.set_size( mFields.Ghost.size(), mGroup->number_of_thin_shell_layers() );
+
                     mFunJacobian =
                             & IWG_Maxwell_HPhi_Tri6::compute_jacobian_and_rhs_thinshell ;
                     break ;
@@ -525,6 +533,7 @@ namespace belfem
 #ifdef BELFEM_GCC
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #endif
 
         void
@@ -533,7 +542,7 @@ namespace belfem
                 Matrix< real > & aJacobian,
                 Vector< real > & aRHS )
         {
-            this->print_dofs( aElement );
+            //this->print_dofs( aElement );
             mEdgeFunctionTS->link( aElement );
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -556,8 +565,14 @@ namespace belfem
             // container for geometry jacobian for master and slave
             Matrix< real > & tJ =  mGroup->work_J() ;
 
-            // container for gradient operator
-            Matrix< real > & tB = mGroup->work_B() ;
+            // container for gradient operator, master side
+            Matrix< real > & tBm = mGroup->work_B() ;
+
+            // container for gradient operator, slave side
+            Matrix< real > & tBs = mGroup->work_D() ;
+
+            // coordinates for master
+            Matrix< real > & tX  = mGroup->work_X() ;
 
             // coordinates for master
             Matrix< real > & tXm = mGroup->work_Xi() ;
@@ -576,10 +591,19 @@ namespace belfem
             Matrix< real > & tKlayer = mGroup->work_L() ;
 
             // additional indices
+            uint o ;
             uint p ;
             uint q ;
             uint r ;
             uint s ;
+
+            // index for edge 0
+            Vector< uint > & u = mU ;
+            u( 0 ) =  aElement->edge_direction( 0 ) ? 0 : 1 ;
+
+            // index for edge 1
+            u( 1 ) = aElement->edge_direction( 0 ) ? 1 : 0 ;
+
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // reset matrices
@@ -592,6 +616,9 @@ namespace belfem
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // geometry considerations and integration data
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+            // collect coordinates form element
+            this->collect_node_coords( aElement, tX );
 
             // collect coordinates from master
             this->collect_node_coords( aElement->master(), tXm );
@@ -622,172 +649,287 @@ namespace belfem
             BELFEM_ASSERT( tWs.length() == mNumberOfIntegrationPoints,
                            "number of integraiton points on slave does not match" );
 
-            // edge conditions
-            real tE0 ;
-            real tE1 ;
-
             uint tNumLayers = mGroup->number_of_thin_shell_layers() ;
-
-            // todo: compute temperature
-            real tT = 4.0 ;
 
             // data for magnetic field (H-data)
             Vector< real > & tHt = mGroup->work_sigma() ;
             Vector< real > & tPhi = mGroup->work_phi() ;
             this->collect_node_data( aElement->master(), "phi", tPhi );
 
+            // reset the thin shell data
+            mLayerData.fill( 0.0 );
+
             //if ( aElement->element()->is_curved() )
-            if( true )
+
+            // needed for normal computation
+            aElement->get_node_coors( mGroup->work_X() );
+
+            real tdM ;
+
+            Vector< real > mHs( 2 );
+
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            // lambda-condition master
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+            // get phi field
+            this->collect_node_data( aElement->master(), "phi", tPhi );
+
+            // delete me
+            this->collect_edge_data_from_layer( aElement, "edge_h", 0, tHt );
+
+            for( uint e=0; e<2; ++e )
             {
-                // needed for normal computation
-                aElement->get_node_coors( mGroup->work_X() );
+                // - - - - - - - - - - -
+                // in-plane condition
+                // - - - - - - - - - - -
+                p = 0 ;
 
-                // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                // lambda-condition perpendicular master and slave
-                // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                // row of bc
+                q = 2 * mNumberOfNodesPerElement + ( 2 * tNumLayers + 1 ) * mEdgeDofMultiplicity + e ;
 
-                real tdM ;
+                // offset
+                o = 2 * aElement->facet()->master_index();
 
-                // get phi field
-                this->collect_node_data( aElement->master(), "phi", tPhi );
+                // B-Matrix on dof 0
+                tBm = inv( mEdgeFunctionTS->vol_N_xi( u( e ) + o ) * tXm ) * mEdgeFunctionTS->vol_N_xi( u( e ) + o );
 
-                for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
+
+                // normal of dof 0
+                mN = mEdgeFunctionTS->normal( u( e ) + mNumberOfIntegrationPoints, tX );
+
+                // normal component of H at dof 0
+                mHn( e ) = -dot( mN.vector_data(), tBm * tPhi );
+
+                // compute the expression n x B
+                crossmat( mN, tBm, tnxB );
+
+                std::cout << "check m " << e << " " << -dot( tnxB, tPhi ) << " " << tHt( e ) << std::endl ;
+
+                // we use this value to scale the element for better conditioning.
+                // for curved elements, this is not the exact element length, but that doesn't matter
+                real tScale = 1.0 ; //  mEdgeFunctionTS->abs_det_J() ;
+
+                // loop over all nodes
+                for ( uint i = 0; i < mNumberOfNodesPerElement; ++i )
                 {
-                    // evaluate the edge function
-                    const Matrix< real > & tE = mEdgeFunctionTS->E( k );
+                    // compute integration increment
+                    tdM = tnxB( i ) * tScale ;
 
-                    tE0 = tE( 0, 0 );
-                    tE1 = tE( 0, 1 );
-                    real tDetJ = mEdgeFunctionTS->abs_det_J() ;
+                    // add increment to matrix
+                    tM( p, q ) = tdM;
+                    tM( q, p ) = tdM;
 
-                    // reset indices
-                    p = 0;
-                    q = aRHS.length() - 3;
-                    r = mNumberOfNodesPerElement;
-                    s = q + 1;
-
-                    // we don't need the normal. But calling this function
-                    // writes the integration element into mGroup->work_det_J()
-                    const Vector< real > & tn = this->normal_curved_2d( aElement, k );
-
-                    // - - - - - - - - - - -
-                    // master side
-                    // - - - - - - - - - - -
-
-                    // gradient operator
-                    tB = inv( tMaster->dNdXi( k ) * tXm ) * tMaster->dNdXi( k );
-
-                    // compute the normal component of the field
-                    real tHn = -dot( tn.vector_data(), tB * tPhi );
-
-                    // compute the expression n x B
-                    crossmat( tn, tB, tnxB );
-
-                    // loop over all nodes
-                    for ( uint i = 0; i < mNumberOfNodesPerElement; ++i )
-                    {
-                        // compute integration increment
-                        tdM = tWm( k ) * tnxB( i ) * tDetJ ;
-
-                        // add increment to matrix
-                        tM( p, q ) += tdM;
-                        tM( q, p ) += tdM;
-
-                        // increment index
-                        ++p;
-                    }
-
-                    // - - - - - - - - - - -
-                    // slave side
-                    // - - - - - - - - - - -
-
-                    // gradient operator
-                    tB = inv( tSlave->dNdXi( k ) * tXs ) * tSlave->dNdXi( k );
-
-                    // compute the expression n x B
-                    crossmat( tn, tB, tnxB );
-
-                    // loop over all nodes
-                    for ( uint i = 0; i < mNumberOfNodesPerElement; ++i )
-                    {
-                        // compute integration increment
-                        tdM = tWs( k ) * tnxB( i ) * tDetJ ;
-
-                        // add increment to matrix
-                        tM( r, s ) += tdM;
-                        tM( s, r ) += tdM;
-
-                        // increment index
-                        ++r;
-                    }
-
-
-                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                    // lambda-conditions
-                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                    p = r;
-                    r = q - 2;
-
-                    // weight factor for integration
-                    real tScale = tW( k ) * tSign * tDetJ ;
-
-                    real tES0 = tE( 0, 0 ) * tScale ;
-                    tM( p, q ) += tES0;
-                    tM( q, p ) += tES0;
-                    tM( r, s ) += tES0;
-                    tM( s, r ) += tES0;
-
+                    // increment index
                     ++p;
-                    ++r;
-                    real tES1 = tE( 0, 1 ) * tScale ;
-                    tM( p, q ) += tES1;
-                    tM( q, p ) += tES1;
-                    tM( r, s ) += tES1;
-                    tM( s, r ) += tES1;
+                }
+                p = 2 * mNumberOfNodesPerElement + e ;
+                tM( p, q ) = tScale;
+                tM( q, p ) = tScale;
 
-                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                    // contribution for mass and stiffness matrix
-                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                // - - - - - - - - - - -
+                // perpendicular condition
+                // - - - - - - - - - - -
 
-                    // compute perpendicular component of vector
+                /*p = 0 ;
+                q = aRHS.length() - e - 1 ;
+                for ( uint i = 0; i < mNumberOfNodesPerElement; ++i )
+                {
+                    tM( p, q ) =
+                            ( mN( 0 ) * tBm( 0, i )
+                            + mN( 1 ) * tBm( 1, i ) ) * tScale ;
+                    tM( q, p ) = tM( p, q ) ;
+                    ++p ;
+                }*/
 
 
-                    p = 2 * mNumberOfNodesPerElement ;
+            }
 
-                    for( uint l=0; l<tNumLayers; ++l )
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            // lambda-condition slave
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+            // get phi field
+            this->collect_node_data( aElement->slave(), "phi", tPhi );
+
+            // delete me
+            this->collect_edge_data_from_layer( aElement, "edge_h", tNumLayers-1, tHt );
+
+
+
+            for( uint e=0; e<2; ++e )
+            {
+                // - - - - - - - - - - -
+                // in-plane condition
+                // - - - - - - - - - - -
+
+                p = mNumberOfNodesPerElement ;
+
+                // row of bc
+                q = 2 * mNumberOfNodesPerElement + ( 2 * tNumLayers + 1 ) * mEdgeDofMultiplicity + e + 2 ;
+
+                // offset
+                o = 2 * aElement->facet()->slave_index();
+
+                // B-Matrix on dof 0
+                tBs = inv( mEdgeFunctionTS->vol_N_xi( u( e ) + o ) * tXs ) * mEdgeFunctionTS->vol_N_xi( u( e ) + o );
+
+                // normal of dof 0
+
+                mN = mEdgeFunctionTS->normal( u( e ) + mNumberOfIntegrationPoints, tX );
+                mU.print("u");
+                tX.print("X");
+                mN.print("N");
+                std::cout << "sign " << tSign << std::endl ;
+                std::cout << "det " << mEdgeFunctionTS->abs_det_J() << std::endl ;
+
+                mHs( e ) = -dot( mN.vector_data(), tBs * tPhi );
+
+                // compute the expression n x B
+                crossmat( mN, tBs, tnxB );
+
+                std::cout << "check s " << e << " " << -dot( tnxB, tPhi ) << " " << tHt( e ) << std::endl ;
+
+                // we use this value to scale the element for better conditioning.
+                // for curved elements, this is not the exact element length, but that doesn't matter
+                real tScale = 1.0 ; // mEdgeFunctionTS->abs_det_J()  ;
+
+                // loop over all nodes
+                for ( uint i = 0; i < mNumberOfNodesPerElement; ++i )
+                {
+                    // compute integration increment
+                    tdM = tnxB( i ) * tScale ;
+
+                    // add increment to matrix
+                    tM( p, q ) = tdM;
+                    tM( q, p ) = tdM;
+
+                    // increment index
+                    ++p;
+                }
+
+                p = 2 * mNumberOfNodesPerElement + ( 2 * tNumLayers + 1 ) * mEdgeDofMultiplicity + e ;
+
+                tM( p, q ) = tScale;
+                tM( q, p ) = tScale;
+
+                // - - - - - - - - - - -
+                // perpendicular condition
+                // - - - - - - - - - - -
+
+                /*p = mNumberOfNodesPerElement ;
+                q = aRHS.length() - e - 1 ;
+                for ( uint i = 0; i < mNumberOfNodesPerElement; ++i )
+                {
+                    tM( p, q ) =
+                             -( mN( 0 ) * tBs( 0, i )
+                              + mN( 1 ) * tBs( 1, i ) ) * tScale ;
+                    tM( q, p ) = tM( p, q ) ;
+                    ++p ;
+                }*/
+            }
+
+            std::cout << aElement->id() << " Hn e0: " << mHn( 0 ) << " " << mHs( 0 ) << " | e1: " << mHn( 1 ) << " " << mHs( 1 ) << std::endl ;
+
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            // contribution for mass and stiffness matrix
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
+            {
+
+                mE( 0 ) = mEdgeFunctionTS->E( k )( 0, 0 );
+                mE( 1 ) = mEdgeFunctionTS->E( k )( 0, 1 );
+
+                // compute length increment
+                mN = mEdgeFunctionTS->normal( k, tX );
+                real tScale = tW( k ) * mEdgeFunctionTS->abs_det_J() ;
+
+                // evaluate normal value of H-field
+                real tHn =dot(  mE, mHn.vector_data() );
+
+                p = 2 * mNumberOfNodesPerElement ;
+
+                for( uint l=0; l<tNumLayers; ++l )
+                {
+                    this->collect_edge_data_from_layer( aElement, "edge_h", l, tHt );
+                    this->compute_layer_mass( l, mE( 0 ), mE( 1 ),  tMlayer );
+
+                    this->compute_layer_stiffness( k, l, mE( 0 ), mE( 1 ),  tHt, tHn, tKlayer );
+
+                    // add submatrix to macro element
+                    for( uint j=0; j<6; ++j )
                     {
-                        this->collect_edge_data_from_layer( aElement, "edge_h", l, tHt );
-                        this->compute_layer_mass( l, tE0, tE1,  tMlayer );
-                        this->compute_layer_stiffness( l, tE0, tE1,  tHt, tHn, tKlayer );
-
-                        // add submatrix
-                        for( uint j=0; j<6; ++j )
+                        for( uint i=0; i<6; ++i )
                         {
-                            for( uint i=0; i<6; ++i )
-                            {
-                                tM( p+i, p+j ) += tScale * tMlayer( i, j );
-                                tK( p+i, p+j) += tScale * tKlayer( i, j );
-                            }
-                        }
+                            tM( p+i, p+j ) += tScale * tMlayer( i, j );
 
-                        // increment offset for the next layer
-                        p+= 2 ;
+                            tK( p+i, p+j)  += tScale * tKlayer( i, j );
+                        }
                     }
+
+                    // increment offset for the next layer
+                    p+= 2 ;
+                }
+            }
+
+             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            // perpendicular BC
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+            /*const IntegrationData * tIntMaster = mGroup->master_integration( aElement->facet()->master_index() );
+            const IntegrationData * tIntSlave = mGroup->slave_integration( aElement->facet()->slave_index() );
+
+            for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+            {
+                mN = mEdgeFunctionTS->normal( k, tX );
+
+                real tScale = tW( k ) * mEdgeFunctionTS->abs_det_J() ;
+
+                tBm = inv( tIntMaster->dNdXi( k ) * tXm ) * tIntMaster->dNdXi( k );
+                tBs = inv( tIntSlave->dNdXi( k ) * tXs ) * tIntSlave->dNdXi( k );
+
+                for( uint i=0; i<mNumberOfNodesPerElement; ++i )
+                {
+                    q = mNumberOfNodesPerElement ;
+                    for ( uint j = 0; j < mNumberOfNodesPerElement; ++j )
+                    {
+                        tM( i, q ) +=  tIntMaster->N( k )( 0, i )
+                                      * ( mN( 0 ) * tBs( 0, j )
+                                          + mN( 1 ) * tBs( 1, j ) ) * tScale ;
+                        ++q ;
+                    }
+
                 }
 
 
-                // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-                tK.print("K");
-                tM.print( "M");
+                p = mNumberOfNodesPerElement ;
+                for( uint i=0; i<mNumberOfNodesPerElement; ++i )
+                {
+                    for ( uint j = 0; j < mNumberOfNodesPerElement; ++j )
+                    {
+                        tM( p, j ) -= tIntSlave->N( k )( 0, i )
+                                      * ( mN( 0 ) * tBm( 0, j )
+                                          + mN( 1 ) * tBm( 1, j )) * tScale ;
+                    }
+                    ++p ;
+                }
+            }*/
 
-                exit( 0 );
-            }
-            else
-            {
-                BELFEM_ERROR( false, "function not implemented yet" );
-            }
-            exit( 0 );
+
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+            //tK.print("K");
+            //tM.print(       "M");
+            //exit( 0 );
+
+                // compute the right hand side
+            aRHS += tM *  this->collect_q0_hphi_thinshell( aElement ) ;
+
+            // finalize the Jacobian
+            aJacobian += mDeltaTime * mGroup->work_K() ;
+
+
         }
 
 #ifdef BELFEM_GCC
@@ -856,6 +998,7 @@ namespace belfem
 
         void
         IWG_Maxwell_HPhi_Tri6::compute_layer_stiffness(
+                const uint aIntPoint,
                 const uint aLayer,
                 const real aE0,
                 const real aE1,
@@ -877,7 +1020,16 @@ namespace belfem
             // get material
             // temperature, todo: make not constant
             real tT = 4.0 ;
-            real tDetJ = mGroup->thin_shell_thickness( aLayer ) * 0.5 ;
+
+            // grab layer thickness
+            const real tThickness = mGroup->thin_shell_thickness( aLayer );
+            real tDetJ = mGroup->thin_shell_thickness( aLayer ) * tThickness ;
+
+            // element-wise curernt
+            real tJz_el = 0 ;
+
+            // value for ac losses (element-wise)
+            real tEJ_El = 0.0 ;
 
             // integrate over thickness
             for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
@@ -905,7 +1057,6 @@ namespace belfem
                 mC( 0, 5 ) = aE1 * tPhiXi( 1 );
                 mC /= tDetJ ;
 
-
                 // current : tHt derived along thickness
                 // real tJz = mC * aHt ;
                 real tJz = dot( tPhiXi, mHt ) / tDetJ ;
@@ -918,7 +1069,16 @@ namespace belfem
 
                 // contribution to stiffness matrix
                 aK += tW( k ) * trans( mC ) * tRho * mC * tDetJ ;
+
+                tJz_el += tW( k ) * tJz ;
+                tEJ_El += tW( k ) *  tRho * tJz * tJz ;
             }
+
+            // compute the field index
+            //index_t tIndex = mGhostElementMap( aElement->id() *  mGroup->number_of_thin_shell_layers() + aLayer )->index() ;
+
+            mLayerData( 0, aLayer ) += tW( aIntPoint ) * tJz_el ;
+            mLayerData( 1, aLayer ) += tW( aIntPoint ) * tEJ_El ;
         }
 
 //------------------------------------------------------------------------------

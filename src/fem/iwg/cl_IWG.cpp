@@ -1034,7 +1034,7 @@ namespace belfem
                 }
             }
 
-            BELFEM_ASSERT( tCount == aData.length(), "something went wrong while grabbinng edge data" );
+            BELFEM_ASSERT( tCount == aData.length(), "something went wrong while grabbing edge data" );
 
         }
 

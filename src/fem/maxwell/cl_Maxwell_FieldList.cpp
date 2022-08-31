@@ -99,6 +99,11 @@ namespace belfem
                     for( const string & tDof : ThinShell )
                     {
                         Dofs.push( tDof );
+                        string tLastDof = tDof + "0";
+
+                        ThinShellLast.push(tLastDof );
+                        NonDof.push(tLastDof );
+                        Hidden.push( tLastDof );
                     }
 
                     // superconductor dofs

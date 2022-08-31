@@ -31,8 +31,8 @@ namespace belfem
             mFields.Air = { "phi" };
             mFields.InterfaceScAir = { "lambda" };
             mFields.Cut = { "lambda" };
-            mFields.ThinShell = { "lambda_m", "lambda_s", "lambda_n" };
-
+            //mFields.ThinShell = { "lambda_m", "lambda_s", "lambda_n" };
+            mFields.ThinShell = { "lambda_m", "lambda_s" };
             // non-dof fields
             mFields.MagneticFieldDensity     = { "bx", "by", "bz" };
             mFields.CurrentDensity = {  "jz" };
@@ -511,7 +511,7 @@ namespace belfem
 
             // get the column
             p = 0 ;
-            q = aRHS.length() - 3 ; // #lambda_z
+            q = aRHS.length() - 2 ; // #lambda_n
 
             for( uint i=0; i<mNumberOfNodesPerElement; ++i )
             {
@@ -543,8 +543,8 @@ namespace belfem
 
             // next column
             p = mNumberOfNodesPerElement ;
-            q = aRHS.length() - 2 ; // #lambda_z
-
+            //q = aRHS.length() - 2 ; // #lambda_n
+            q = aRHS.length() - 1 ; // #lambda_n
             crossmat( tn, tBs, tnxB );
 
             // loop over all nodes
@@ -559,16 +559,16 @@ namespace belfem
             // lambda-condition for master element, sheet side
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             q--;
-            tM( p, q ) = tSign ;
-            tM( q, p ) = tSign ;
+            tM( p, q ) = 1.0 ;
+            tM( q, p ) = 1.0 ;
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // lambda-condition for slave element, sheet side
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             p = q-1 ;
             q++;
-            tM( p, q ) = tSign ;
-            tM( q, p ) = tSign ;
+            tM( p, q ) = 1.0 ;
+            tM( q, p ) = 1.0 ;
 
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -619,14 +619,14 @@ namespace belfem
             // additional BC
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-            p = aRHS.length() - 1 ;
+            /*p = aRHS.length() - 1 ;
             q = 0 ;
 
             // normal component master
             for( uint i=0; i<mNumberOfNodesPerElement; ++i )
             {
                 tM( p, q )  =  (
-                           tn( 0 ) * tBm( 0, i)
+                            tn( 0 ) * tBm( 0, i )
                           + tn( 1 ) * tBm( 1, i ) ) * tElementLength ;
                 tM( q, p ) = tM( p, q ) ;
                 ++q ;
@@ -640,10 +640,10 @@ namespace belfem
                                        + tn( 1 ) * tBs( 1, i ) ) * tElementLength ;
                 tM( q, p ) = tM( p, q ) ;
                 ++q ;
-            }
+            }*/
 
 
-            /*const IntegrationData * tIntMaster = mGroup->master_integration( aElement->facet()->master_index() );
+            const IntegrationData * tIntMaster = mGroup->master_integration( aElement->facet()->master_index() );
             const IntegrationData * tIntSlave = mGroup->slave_integration( aElement->facet()->slave_index() );
 
             const Vector< real > & tW = mGroup->integration_weights();
@@ -660,7 +660,6 @@ namespace belfem
                                           + tn( 1 ) * tBs( 1, j )) * 0.5 * tElementLength ;
                         ++q ;
                     }
-                    aRHS( i ) += tW( k ) * 0.5 * tElementLength * tIntMaster->N( k )( 0, i ) * tHns ;
 
                 }
                 p = mNumberOfNodesPerElement ;
@@ -674,8 +673,7 @@ namespace belfem
                     }
                     ++p ;
                 }
-            } */
-
+            }
 
             // compute the right hand side
             aRHS += tM *  this->collect_q0_hphi_thinshell( aElement ) ;

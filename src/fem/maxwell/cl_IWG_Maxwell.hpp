@@ -727,8 +727,8 @@ namespace belfem
 
             // get the normal vector
             Vector< real > & aN = mNormal2D ;
-            aN( 0 ) = aElement->element()->node( 1 )->y()  - aElement->element()->node( 0 )->y() ;
-            aN( 1 ) = aElement->element()->node( 0 )->x()  - aElement->element()->node( 1 )->x() ;
+            aN( 0 ) = aElement->element()->node( 0 )->y()  - aElement->element()->node( 1 )->y() ;
+            aN( 1 ) = aElement->element()->node( 1 )->x()  - aElement->element()->node( 0 )->x() ;
 
             mGroup->work_det_J() = norm( aN );
             aN /= mGroup->work_det_J() ;
@@ -749,10 +749,10 @@ namespace belfem
             aN.fill( 0.0 );
 
             // the direction vector
-            aN( 0 ) = dot( mGroup->dNdXi( aIndex ).row( 0 ),
+            aN( 0 ) = -dot( mGroup->dNdXi( aIndex ).row( 0 ),
                                   mGroup->work_X().col( 1 ) );
 
-            aN( 1 ) = -dot( mGroup->dNdXi( aIndex ).row( 0 ),
+            aN( 1 ) = dot( mGroup->dNdXi( aIndex ).row( 0 ),
                             mGroup->work_X().col( 0 ) );
 
             // scale normal and integration scale
