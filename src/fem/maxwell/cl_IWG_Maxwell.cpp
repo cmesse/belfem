@@ -118,7 +118,7 @@ namespace belfem
                 // initialize the Dof list
                 mFields.initialize( this );
                 mFields.collect_block_dofs( tAllBlockIDs, mBlockTypes, mDofsPerBlock );
-                mFields.collect_sideset_dofs( tAllSideSetIDs, mSideSetTypes, mDofsPerSideSet );
+                mFields.collect_sideset_dofs( tAllSideSetIDs, mSideSetTypes, mMagfieldTypeMap, mDofsPerSideSet );
             }
             else
             {
@@ -302,7 +302,12 @@ namespace belfem
                 }
                 case ( DomainType::Boundary ) :
                 {
-                    // pass
+                    // we don't need this data for the wave, but for the farfield (magnetic wall)
+                    mNumberOfNodesPerElement = mesh::number_of_nodes( aGroup->master_type() );
+
+                    aGroup->work_X().set_size( mNumberOfNodesPerElement, mNumberOfDimensions );
+                    aGroup->work_J().set_size( mNumberOfDimensions, mNumberOfDimensions );
+
                     break ;
                 }
                 case( DomainType::ThinShell ) :
@@ -2937,6 +2942,14 @@ namespace belfem
 
         }
 
+//------------------------------------------------------------------------------
+
+        void
+        IWG_Maxwell::set_magfield_bc_type( const id_t aSideSetID, const MagfieldBcType aType )
+        {
+            mMagfieldTypeMap[ aSideSetID ] = aType ;
+        }
+        
 //------------------------------------------------------------------------------
     }
 }

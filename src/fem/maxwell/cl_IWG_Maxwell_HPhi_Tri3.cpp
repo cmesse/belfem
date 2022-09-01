@@ -32,6 +32,8 @@ namespace belfem
             mFields.InterfaceScAir = { "lambda" };
             mFields.Cut = { "lambda" };
             mFields.ThinShell = { "lambda_m", "lambda_s", "lambda_n" };
+            mFields.Farfield = { "lambda_n" };
+
             //mFields.ThinShell = { "lambda_m", "lambda_s" };
             // non-dof fields
             mFields.MagneticFieldDensity     = { "bx", "by", "bz" };
@@ -114,7 +116,13 @@ namespace belfem
                                 case ( MagfieldBcType::Wave ) :
                                 {
                                     mFunJacobian =
-                                            &IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_wave;
+                                            &IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_wave ;
+                                    break;
+                                }
+                                case ( MagfieldBcType::Farfied ) :
+                                {
+                                    mFunJacobian =
+                                            &IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_farfield ;
                                     break;
                                 }
                                 default :
@@ -385,6 +393,61 @@ namespace belfem
             tPhi( 2 ) = tHx * aElement->facet()->master()->node( 2 )->x()
                             + tHy * aElement->facet()->master()->node( 2  )->y();
             aRHS = aJacobian * tPhi ;
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_farfield(
+                Element        * aElement,
+                Matrix< real > & aJacobian,
+                Vector< real > & aRHS )
+        {
+
+            // the right hand side of the matrix
+            aJacobian.fill( 0.0 );
+            aRHS.fill( 0.0 );
+
+            // get the node coordinates
+            Matrix< real > & tX = mGroup->work_X() ;
+            this->collect_node_coords( aElement->master(), tX );
+
+
+            // get integration data from master
+            const IntegrationData * tMaster =
+                    mGroup->master_integration( aElement->facet()->master_index() );
+
+
+            // compute the jacobian ( can do this with one call since constant for triangle)
+            Matrix< real > & tInvJ = mGroup->work_J() ;
+            tInvJ = inv( tMaster->dNdXi( 0 ) * tX ) ;
+
+            // compute the B-Operator
+            Matrix< real > & tB = mGroup->work_B() ;
+            tB = tInvJ * tMaster->dNdXi( 0 ) ;
+
+            // compute the normal
+            const Vector< real > & tn = this->normal_straight_2d( aElement );
+
+            // compute the values for the matrix
+            aJacobian( 0, 3 ) =
+                      tn( 0 ) * tB( 0, 0 )
+                    + tn( 1 ) * tB( 1, 0 ) ;
+
+            aJacobian( 1, 3 ) =
+                      tn( 0 ) * tB( 0, 1 )
+                    + tn( 1 ) * tB( 1, 1 ) ;
+
+            aJacobian( 2, 3 ) =
+                      tn( 0 ) * tB( 0, 2 )
+                    + tn( 1 ) * tB( 1, 2 ) ;
+
+
+            aJacobian( 3, 0 ) = aJacobian( 0, 3 );
+            aJacobian( 3, 1 ) = aJacobian( 1, 3 ) ;
+            aJacobian( 3, 2 ) = aJacobian( 2, 3 ) ;
+
+            aJacobian *= 2.0 * mGroup->work_det_J() * constant::mu0 ;
         }
 
 //------------------------------------------------------------------------------

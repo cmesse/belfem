@@ -246,6 +246,8 @@ namespace belfem
             //! links sideset IDs with the designated types
             Map< id_t, DomainType > mSideSetTypes ;
 
+            //! links sideset IDs with the designated types
+            Map< id_t, DomainType > mSideSetSubTypes ;
 
             //! needed if tapes are implemented in this IWG
             //uint mNumberOfLayersPerShell = 0 ;

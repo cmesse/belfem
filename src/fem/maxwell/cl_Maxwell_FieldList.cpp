@@ -2,11 +2,11 @@
 // Created by christian on 12/20/21.
 //
 
-#include "cl_Maxwell_FieldList.hpp"
 #include "stringtools.hpp"
 #include "fn_entity_type.hpp"
 #include "assert.hpp"
 #include "cl_IWG_Maxwell.hpp"
+#include "cl_FEM_DofMgr_SideSetData.hpp"
 
 namespace belfem
 {
@@ -94,6 +94,14 @@ namespace belfem
                     {
                         Dofs.push( tDof );
                     }
+                    for( const string & tDof : Farfield )
+                    {
+                        Dofs.push( tDof );
+
+                        string tLastDof = tDof + "0";
+                        NonDof.push(tLastDof );
+                        Hidden.push( tLastDof );
+                    }
 
                     // shell dofs
                     for( const string & tDof : ThinShell )
@@ -146,6 +154,7 @@ namespace belfem
                         SymmetryAir.push( tDof );
                         AntiSymmetryAir.push( tDof );
                         BoundaryAir.push( tDof );
+                        Farfield.push( tDof );
                     }
 
                     // ghost
@@ -189,6 +198,8 @@ namespace belfem
                     aIWG->unique_and_rearrange( BoundarySc );
                     aIWG->unique_and_rearrange( BoundaryFerro );
                     aIWG->unique_and_rearrange( BoundaryAir );
+
+                    aIWG->unique_and_rearrange( Farfield );
 
                     // create other dof lists
                     for( string tDof : Dofs )
@@ -336,6 +347,7 @@ namespace belfem
             FieldList::collect_sideset_dofs(
                     const Vector< id_t >              & aSideSetIDs,
                     const Map< id_t, DomainType >     & aSideSetTypeMap,
+                    const Map< id_t, MagfieldBcType > & aSideSetSubTypeMap,
                     Cell< Vector< index_t > >         & aSideSetDofs )
             {
                 // determine the number of blocks that are used
@@ -424,10 +436,31 @@ namespace belfem
                         }
                         case( DomainType::Boundary ) :
                         {
-                            // todo: make compatible for other boundaries too
-                            this->create_doftable(
-                                    BoundaryAir,
-                                    aSideSetDofs( k ) );
+                            // todo: add also symmetry BCs here
+
+                            // check domain type
+                            switch( aSideSetSubTypeMap( aSideSetIDs( k ) ) )
+                            {
+                                case( MagfieldBcType::Wave ) :
+                                {
+                                    this->create_doftable(
+                                            BoundaryAir,
+                                            aSideSetDofs( k ) );
+                                    break ;
+                                }
+                                case( MagfieldBcType::Farfied ) :
+                                {
+                                    this->create_doftable(
+                                            Farfield,
+                                            aSideSetDofs( k ) );
+                                    break ;
+                                }
+                                default :
+                                {
+                                    BELFEM_ERROR( false, "This Magfield BC type is not implemented yet" );
+                                }
+                            }
+
                             break ;
                         }
                         default :

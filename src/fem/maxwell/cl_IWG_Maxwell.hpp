@@ -22,6 +22,7 @@
 #include "en_FEM_MagfieldBcType.hpp"
 #include "cl_EF_EdgeFunction.hpp"
 #include "cl_Maxwell_FieldList.hpp"
+
 #include "meshtools.hpp"
 
 namespace belfem
@@ -206,6 +207,14 @@ namespace belfem
                               const Vector< proc_t > & aCommTable ) ;
 
 //------------------------------------------------------------------------------
+
+        /**
+          * called by factory to specialize Magfield BC
+          */
+         void
+         set_magfield_bc_type( const id_t aSideSetID, const MagfieldBcType aType );
+
+//------------------------------------------------------------------------------
         protected:
 //------------------------------------------------------------------------------
 
@@ -373,8 +382,9 @@ namespace belfem
                                           Vector< real > & aRHS );
 
 //------------------------------------------------------------------------------
-
-            // specifically for thin shells
+            /**
+             * specifically for thin shells
+             */
             const Vector< real > &
             collect_q0_hphi_thinshell( Element * aElement );
 

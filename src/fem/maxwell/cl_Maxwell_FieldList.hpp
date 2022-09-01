@@ -107,6 +107,8 @@ namespace belfem
                 Cell< string > BoundaryFerro ;
                 Cell< string > BoundarySc ;
 
+                Cell< string > Farfield ;
+
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                 // non-dof Fields
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -169,6 +171,7 @@ namespace belfem
                 collect_sideset_dofs(
                         const Vector< id_t >              & aSideSetIDs,
                         const Map< id_t, DomainType >     & aSideSetTypeMap,
+                        const Map< id_t, MagfieldBcType > & aSideSetSubTypeMap,
                         Cell< Vector< index_t > >         & aSideSetDofs );
 
 //-----------------------------------------------------------------------------

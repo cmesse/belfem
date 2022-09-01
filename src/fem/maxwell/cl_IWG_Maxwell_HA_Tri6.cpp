@@ -25,7 +25,7 @@ namespace belfem
             mFields.Ferro = { "az" };
             mFields.Air = { "az" };
             mFields.Coil = { "az" };
-            mFields.BoundaryAir = { "lambda" };
+            mFields.BoundaryAir = { "lambda_n" };
 
             // non-dof fields
             mFields.MagneticFieldDensity =  { "bx", "by", "bz" };

@@ -34,6 +34,7 @@ namespace belfem
             mFields.ThinShell = { "lambda_m", "lambda_s", "lambda_n" };
             //mFields.ThinShell = { "lambda_m0", "lambda_m1", "lambda_s0", "lambda_s1", "lambda_n0", "lambda_n1" };
             //mFields.ThinShell = { "lambda_m0", "lambda_m1", "lambda_s0", "lambda_s1" };
+            mFields.Farfield = { "lambda_n" };
 
             // non-dof fields
             mFields.MagneticFieldDensity     =  { "bx", "by", "bz" };
@@ -768,7 +769,7 @@ namespace belfem
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                 // normal condition slave
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                q = aRHS.length() - 1 ;
+
                 for( uint i=0; i<mNumberOfNodesPerElement; ++i )
                 {
                     tM( p, q ) -= tScale *
@@ -801,7 +802,7 @@ namespace belfem
 
                     this->compute_layer_mass( l, mE( 0 ), mE( 1 ),  tMlayer );
 
-                    this->compute_layer_stiffness( k, l, mE( 0 ), mE( 1 ),  tHt, tHn, tKlayer );
+                    this->compute_layer_stiffness( l, k, mE( 0 ), mE( 1 ),  tHt, tHn, tKlayer );
 
                     // add submatrix to macro element
                     for( uint j=0; j<6; ++j )
@@ -948,8 +949,8 @@ namespace belfem
 
         void
         IWG_Maxwell_HPhi_Tri6::compute_layer_stiffness(
-                const uint aIntPoint,
                 const uint aLayer,
+                const uint aIntPoint,
                 const real aE0,
                 const real aE1,
                 const Vector< real > & aHt,

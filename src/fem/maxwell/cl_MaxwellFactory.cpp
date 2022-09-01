@@ -1057,7 +1057,7 @@ namespace belfem
                 {
                     continue;
                 }
-                if( tScalingType == "farfield"  )
+                else if( tScalingType == "farfield" )
                 {
                     tMagfieldBcType = MagfieldBcType::Farfied ;
                 }
@@ -1116,6 +1116,7 @@ namespace belfem
                             BELFEM_ERROR( false, "unsupported bc type" );
                         }
                     }
+
                 }
 
                 // check if this is a current bc
@@ -1232,9 +1233,7 @@ namespace belfem
                     else
                     {
                         // get imposing type
-                        BoundaryConditionImposing tImposing =  tMagfieldBcType == MagfieldBcType::Farfied ?
-                                                                 BoundaryConditionImposing::Dirichlet :
-                                                                 BoundaryConditionImposing::Weak ;
+                        BoundaryConditionImposing tImposing =  BoundaryConditionImposing::Weak ;
 
                         for( index_t w=1; w<tNumWords; ++w )
                         {
@@ -1253,12 +1252,16 @@ namespace belfem
                             mMagfieldBcMap[ tWords( w ) ] = tMagfield;
                         }
                     }
-                }
+
+
+                } // end if magfield
                 else if ( comm_rank() == 0 )
                 {
                     std::cout << "Warning: bc type " << tWords( 0 )  << " not implemented"  << std::endl ;
                 }
-            }
+
+
+            } // end bc loop
 
 
             // BCs must be in this order
@@ -1495,6 +1498,19 @@ namespace belfem
 
             tMaxwell->set_sidesets( mSideSetIDs, mSideSetTypes );
 
+            // also set the BC types
+            for( BoundaryCondition * tBC : mBoundaryConditions )
+            {
+                // check if this is a magfield bc
+                if( tBC->physics() == BoundaryConditionPhysics::Magfield )
+                {
+                    // loop over all sideset ids
+                    for( id_t tID : tBC->sidesets() )
+                    {
+                        tMaxwell->set_magfield_bc_type( tID, reinterpret_cast< MaxwellBoundaryConditionMagfield * >( tBC )->subtype() );
+                    }
+                }
+            }
 
             // the following lines are needed to tell the IWG from which sideset the dofs for the ghosts
             // are copied
@@ -1508,6 +1524,7 @@ namespace belfem
                     break ;
                 }
             }
+
             if( mGhostMaster > 0 )
             {
                 tMaxwell->set_ghost_sidesets( mGhostMaster, mGhostSideSets );
