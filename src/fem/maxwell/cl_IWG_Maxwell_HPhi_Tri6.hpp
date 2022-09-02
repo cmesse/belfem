@@ -130,11 +130,11 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            //void
-            //compute_jacobian_and_rhs_farfield(
-            //        Element        * aElement,
-            //        Matrix< real > & aJacobian,
-            //        Vector< real > & aRHS ) ;
+            void
+            compute_jacobian_and_rhs_farfield(
+                    Element        * aElement,
+                    Matrix< real > & aJacobian,
+                    Vector< real > & aRHS ) ;
 
 //------------------------------------------------------------------------------
 

@@ -117,10 +117,9 @@ namespace belfem
                 {
                     switch( mGroup->boundary_condition()->physics() )
                     {
-                        case ( BoundaryConditionPhysics::Magfield) :
+                        case ( BoundaryConditionPhysics::Magfield ) :
                         {
                             // get subtype for magfield bc
-
                             switch ( reinterpret_cast< const MaxwellBoundaryConditionMagfield * >(
                                     mGroup->boundary_condition())->subtype())
                             {
@@ -128,6 +127,12 @@ namespace belfem
                                 {
                                     mFunJacobian =
                                             &IWG_Maxwell_HPhi_Tri6::compute_jacobian_and_rhs_wave;
+                                    break;
+                                }
+                                case ( MagfieldBcType::Farfied ) :
+                                {
+                                    mFunJacobian =
+                                            &IWG_Maxwell_HPhi_Tri6::compute_jacobian_and_rhs_farfield ;
                                     break;
                                 }
                                 default :
@@ -526,6 +531,96 @@ namespace belfem
 
             aRHS = aJacobian * ( tHx * tX.col( 0 )
                                + tHy * tX.col( 1 ) );
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        IWG_Maxwell_HPhi_Tri6::compute_jacobian_and_rhs_farfield(
+                Element        * aElement,
+                Matrix< real > & aJacobian,
+                Vector< real > & aRHS )
+        {
+
+            // the right hand side of the matrix
+            aJacobian.fill( 0.0 );
+            aRHS.fill( 0.0 );
+
+            // get the node coordinates
+            Matrix< real > & tX = mGroup->work_X() ;
+            this->collect_node_coords( aElement->master(), tX );
+
+            // get integration data from master
+            const IntegrationData * tMaster =
+                    mGroup->master_integration( aElement->facet()->master_index() );
+
+            // get the integration weights
+            const Vector< real > tW = tMaster->weights() ;
+
+            // the gradient operator matrix
+            Matrix< real > & tB = mGroup->work_B() ;
+
+            if( aElement->master()->element()->is_curved() )
+            {
+                for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+                {
+                    // compute the gradient operator
+                    tB.matrix_data() = inv( tMaster->dNdXi( k ) * tX ) * inv( tMaster->dNdXi( k ) * tX ) ;
+
+                    // compute the normal
+                    const Vector< real > & tn = this->normal_curved_2d( aElement, k );
+
+                    real tScale = tW( k ) * mGroup->work_det_J() * constant::mu0 ;
+
+                    // loop over all nodes
+                    for( uint i=0; i<mNumberOfNodesPerElement; ++i )
+                    {
+                        aJacobian( 0, i ) += tScale * (
+                                  tn( 0 ) * tB( 0, i )
+                                + tn( 1 ) * tB( 1, i ) ) ;
+                    }
+                }
+
+                // make matrix symmetric
+                for( uint i=0; i<mNumberOfNodesPerElement; ++i )
+                {
+                    aJacobian( i, 0 ) =  aJacobian( 0, i ) ;
+                }
+
+            }
+            else
+            {
+                // grab the inverse jacobian
+                Matrix< real > & tInvJ = mGroup->work_J() ;
+                tInvJ =  inv( tMaster->dNdXi( 0 ) * tX ) ;
+
+                // compute the normal
+                const Vector< real > & tn = this->normal_straight_2d( aElement );
+
+                for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+                {
+                    // compute the gradient operator
+                    tB = tInvJ * tMaster->dNdXi( k );
+
+
+                    // loop over all nodes
+                    for( uint i=0; i<mNumberOfNodesPerElement; ++i )
+                    {
+                        aJacobian( 0, i ) += tW( k ) * (
+                                  tn( 0 ) * tB( 0, i )
+                                + tn( 1 ) * tB( 1, i ) ) ;
+                    }
+                }
+
+                // make matrix symmetric
+                for( uint i=0; i<mNumberOfNodesPerElement; ++i )
+                {
+                    aJacobian( i, 0 ) =  aJacobian( 0, i ) ;
+                }
+
+                // scale matrix ( det J has been computed by normal )
+                aJacobian *= mGroup->work_det_J() * constant::mu0 ;
+            }
         }
 
 
