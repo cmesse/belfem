@@ -766,10 +766,7 @@ namespace belfem
         Scissors::get_cut_ids( const Vector< id_t > & aSideSetIDs,
                                      Vector< id_t > & aCutIDs )
         {
-            proc_t tCommSize = comm_size() ;
-            proc_t tMyRank   = comm_rank() ;
-
-            if( tMyRank == mMesh->master() )
+            if( comm_rank() == mMesh->master() )
             {
                 index_t tCount = 0 ;
 
@@ -783,25 +780,6 @@ namespace belfem
                         aCutIDs( tCount++ ) = mSideSetToCutIDs( tSideSetID );
                     }
                 }
-
-                // communicate to other procs
-                if( tCommSize > 1 )
-                {
-                    // create comm table
-                    Vector< proc_t > tCommTable( tCommSize );
-
-                    for( proc_t tRank = 0; tRank<tCommSize; ++tRank )
-                    {
-
-                        tCommTable( tRank ) = tRank ;
-                    }
-
-                    send_same( tCommTable, aCutIDs );
-                }
-            }
-            else
-            {
-                receive( mMesh->master(), aCutIDs );
             }
         }
 

@@ -1612,5 +1612,35 @@ namespace belfem
         }
 #endif
     }
+
+    /**
+     * this is a simple test routine to check the MPI functionality.
+     * @param aMessage
+     */
+    inline uint
+    pingpong( const uint aMessage )
+    {
+        BELFEM_ASSERT( comm_size() == 2, "pingpong can only be played by two players" );
+        comm_barrier() ;
+
+        uint aResult = 0 ;
+        if( comm_rank() == 0 )
+        {
+            std::cout << "Ping " << aMessage << std::endl ;
+            send( 1, aMessage );
+            comm_barrier() ;
+            aResult = aMessage ;
+        }
+        else
+        {
+            receive( 0, aResult );
+            comm_barrier() ;
+            std::cout << "Pong " << aResult << std::endl << std::endl ;
+        }
+        comm_barrier() ;
+        return aResult ;
+
+    }
+
 } /* namespace belfem */
 #endif //BELFEM_COMMTOOLS_HPP

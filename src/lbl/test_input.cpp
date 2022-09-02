@@ -48,6 +48,7 @@ int main( int    argc,
     // read the input file
     InputFile tInputFile( "input.txt" );
 
+
     // create a new factory
     MaxwellFactory * tFactory = new MaxwellFactory( tInputFile );
 

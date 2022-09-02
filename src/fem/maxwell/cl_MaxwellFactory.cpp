@@ -2148,18 +2148,12 @@ namespace belfem
             {
                 this->create_interfaces();
             }
-
-
             // crate the layers of the tape
             this->create_layers() ;
-
             // with the blocks in place, we can also create the materials
             this->create_materials() ;
-
             this->select_bcs_and_cuts() ;
-
             this->select_sidesets() ;
-
         }
 
 //------------------------------------------------------------------------------
@@ -2799,7 +2793,7 @@ namespace belfem
                     // finalize cuts
                     tScissors->finalize();
                 }
-                
+
                 // add tapes
                 if( mTapes.size() > 0 )
                 {
@@ -2871,6 +2865,7 @@ namespace belfem
 
                 }
 
+                comm_barrier();
                 // link cut BCs
                 for( DomainGroup * tCut : mCuts )
                 {
@@ -2889,7 +2884,6 @@ namespace belfem
 
                         // get the cut IDS
                         Vector< id_t > tCutIDs ;
-
                         if( comm_rank() == 0 )
                         {
                             // grab IDs from scissors
@@ -2928,7 +2922,6 @@ namespace belfem
 
                     mSideSetToCutMap.clear();
 
-
                     uint tN = tCutData.n_cols() ;
                     for( uint k=0; k<tN; ++k )
                     {
@@ -2948,12 +2941,10 @@ namespace belfem
                     uint tN = tCutData.n_cols() ;
                     for( uint k=0; k<tN; ++k )
                     {
-                        mSideSetToCutMap[ tCutData( 0, k ) ] = tCutData( 1, k );
+                        mSideSetToCutMap[ tCutData( 1, k ) ] = tCutData( 0, k );
                     }
 
                 }
-
-
 
                 this->remove_coils();
             } // end h-phi formulation

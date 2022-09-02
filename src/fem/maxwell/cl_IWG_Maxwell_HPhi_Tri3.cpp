@@ -11,6 +11,9 @@
 #include "fn_crossmat.hpp"
 #include "fn_cross.hpp"
 
+
+#define HPHI_TRI3_LAMBDAN
+
 namespace belfem
 {
     namespace fem
@@ -31,9 +34,12 @@ namespace belfem
             mFields.Air = { "phi" };
             mFields.InterfaceScAir = { "lambda" };
             mFields.Cut = { "lambda" };
+#ifdef HPHI_TRI3_LAMBDAN
             mFields.ThinShell = { "lambda_m", "lambda_s", "lambda_n" };
+#else
+            mFields.ThinShell = { "lambda_m", "lambda_s" };
+#endif
             mFields.Farfield = { "lambda_n" };
-
             //mFields.ThinShell = { "lambda_m", "lambda_s" };
             // non-dof fields
             mFields.MagneticFieldDensity     = { "bx", "by", "bz" };
@@ -175,6 +181,7 @@ namespace belfem
             const Vector< real > & tW = mGroup->integration_weights() ;
 
             // crossed expressions
+            Matrix< real > & tB = mGroup->work_B() ;
             Vector< real > & tNxB  = mGroup->work_sigma() ;
             Vector< real > & tNxE  = mGroup->work_tau() ;
             Matrix< real > & tIntE = mGroup->work_Tau() ;
@@ -223,14 +230,12 @@ namespace belfem
                 }
             }
 
-            // compute Jacobian
-            mGroup->work_J() = tNodeFunction->dNdXi( 0 ) * mGroup->node_coords() ;
-
             // compute the B-Matrix ( is constant for linear elements )
-            mGroup->work_B() = inv( mGroup->work_J() ) * tNodeFunction->dNdXi( 0 );
+            tB =  inv( tNodeFunction->dNdXi( 0 ) * mGroup->node_coords()  )
+                    * tNodeFunction->dNdXi( 0 );
 
             // compute the cross product
-            crossmat( tn, mGroup->work_B(), tNxB );
+            crossmat( tn, tB, tNxB );
             crossmat( tn, tIntE, tNxE );
 
             // now we scale the parameters
@@ -417,14 +422,9 @@ namespace belfem
             const IntegrationData * tMaster =
                     mGroup->master_integration( aElement->facet()->master_index() );
 
-
-            // compute the jacobian ( can do this with one call since constant for triangle)
-            Matrix< real > & tInvJ = mGroup->work_J() ;
-            tInvJ = inv( tMaster->dNdXi( 0 ) * tX ) ;
-
             // compute the B-Operator
             Matrix< real > & tB = mGroup->work_B() ;
-            tB = tInvJ * tMaster->dNdXi( 0 ) ;
+            tB = inv( tMaster->dNdXi( 0 ) * tX ) * tMaster->dNdXi( 0 ) ;
 
             // compute the normal
             const Vector< real > & tn = this->normal_straight_2d( aElement );
@@ -474,9 +474,6 @@ namespace belfem
             BELFEM_ASSERT( tSign == ( aElement->edge_direction( 0 ) ? 1.0 : -1.0 ) ,
                            "Invalid Edge Direction for Element %lu",
                            ( long unsigned int ) aElement->id() );
-
-            // container for geometry jacobian for master and slave
-            Matrix< real > & tJ =  mGroup->work_J() ;
 
             // container for gradient operator
             Matrix< real > & tBm = mGroup->work_B() ;
@@ -553,11 +550,8 @@ namespace belfem
             // gradient operator master
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-            // compute jacobian ( it is constant in first order, so we can set k=0
-            tJ = tMaster->dNdXi( 0 ) * tXm ;
-
             // gradient operator
-            tBm = inv( tJ ) * tMaster->dNdXi( 0 ) ;
+            tBm = inv( tMaster->dNdXi( 0 ) * tXm ) * tMaster->dNdXi( 0 ) ;
 
             // get phi field
             this->collect_node_data( aElement->master(), "phi", tPhi );
@@ -574,8 +568,12 @@ namespace belfem
 
             // get the column
             p = 0 ;
-            //q = aRHS.length() - 2 ; // #lambda_n
-            q = aRHS.length() - 3 ; // #lambda_n
+
+#ifdef HPHI_TRI3_LAMBDAN
+            q = aRHS.length() - 3 ;
+#else
+            q = aRHS.length() - 2 ;
+#endif
             for( uint i=0; i<mNumberOfNodesPerElement; ++i )
             {
                 tM( p, q ) = tnxB( i ) ;
@@ -587,11 +585,8 @@ namespace belfem
             // gradient operator slave
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-            // compute jacobian ( it is constant in first order, so we can set k=0
-            tJ = tSlave->dNdXi( 0 ) * tXs ;
-
             // gradient operator
-            tBs = inv( tJ ) * tSlave->dNdXi( 0 ) ;
+            tBs = inv( tSlave->dNdXi( 0 ) * tXs ) * tSlave->dNdXi( 0 ) ;
 
             // get phi field
             this->collect_node_data( aElement->slave(), "phi", tPhi );
@@ -606,8 +601,11 @@ namespace belfem
 
             // next column
             p = mNumberOfNodesPerElement ;
+#ifdef HPHI_TRI3_LAMBDAN
             q = aRHS.length() - 2 ; // #lambda_n
-            //q = aRHS.length() - 1 ; // #lambda_n
+#else
+            q = aRHS.length() - 1 ; // #lambda_n
+#endif
             crossmat( tn, tBs, tnxB );
 
             // loop over all nodes
@@ -677,7 +675,7 @@ namespace belfem
             // ( thus simplifying an integral over constant)
             tM *= tElementLength ;
             tK *= tElementLength ;
-
+#ifdef HPHI_TRI3_LAMBDAN
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // additional BC
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -705,7 +703,7 @@ namespace belfem
                 ++q ;
             }
 
-
+#endif
             /*const IntegrationData * tIntMaster = mGroup->master_integration( aElement->facet()->master_index() );
             const IntegrationData * tIntSlave = mGroup->slave_integration( aElement->facet()->slave_index() );
 
