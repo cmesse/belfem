@@ -115,11 +115,6 @@ namespace belfem
             const Matrix< real > &
             vol_N_xi( const uint aIndex = 0 ) ;
 
-//-----------------------------------------------------------------------------
-
-           Vector< real > &
-           normal( const uint aIndex , const Matrix< real > & aX ) ;
-
 //------------------------------------------------------------------------------
         private:
 //------------------------------------------------------------------------------
@@ -144,19 +139,6 @@ namespace belfem
         EF_LINE3::vol_N_xi( const uint aIndex )
         {
             return mVolumeNxi( aIndex );
-        }
-
-//-----------------------------------------------------------------------------
-
-        inline Vector< real > &
-        EF_LINE3::normal( const uint aIndex , const Matrix< real > & aX )
-        {
-            mNormal( 0 ) = -dot( mNxi( aIndex ), aX.col( 1 ) );
-            mNormal( 1 ) =  dot( mNxi( aIndex ), aX.col( 0 ) );
-
-            mAbsDetJ = norm( mNormal );
-            mNormal /= mAbsDetJ ;
-            return mNormal ;
         }
 
 //--------------------------------------------------------------------------

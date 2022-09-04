@@ -24,14 +24,14 @@ namespace belfem
             // id on master element
             uint mMasterFaceID = BELFEM_UINT_MAX;
 
-            // neighbor element
+            // slave element for facet
             Element * mSlave = nullptr;
 
             // id on slave element
             uint mSlaveFaceID = BELFEM_UINT_MAX;
 
             // orientation on slave element
-            uint mOrientationOnSlave = BELFEM_UINT_MAX ;
+            uint mOrientationOnSlave = BELFEM_INT_MAX ;
 
 //------------------------------------------------------------------------------
         public:

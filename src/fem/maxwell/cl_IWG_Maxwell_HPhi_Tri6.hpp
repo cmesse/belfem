@@ -34,11 +34,8 @@ namespace belfem
             // over thin shells
             Matrix< real > mLayerData ;
 
-            // work vector for normals
-            Vector< real > mN ;
-
             // work vector for normal component of H
-            Vector< real > mHn ;
+            Vector< real > mH ;
 
             // edge interpolation vector
             Vector< real > mE ;

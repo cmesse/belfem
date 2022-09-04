@@ -38,9 +38,9 @@ namespace belfem
         T s = std::sin( aAngle );
         T d = 1.0 - c;
 
+#ifdef BELFEM_ARMADILLO
         T * tData = aMatrix.data() ;
 
-#ifdef BELFEM_ARMADILLO
         tData[ 0 ] = aAxis( 0 ) * aAxis ( 0 ) * d + c;
         tData[ 1 ] = aAxis( 1 ) * aAxis ( 0 ) * d + aAxis( 2 ) * s;
         tData[ 2 ] = aAxis( 2 ) * aAxis ( 0 ) * d - aAxis( 1 ) * s;
@@ -53,17 +53,17 @@ namespace belfem
         tData[ 7 ] = aAxis( 1 ) * aAxis ( 2 ) * d - aAxis( 0 ) * s;
         tData[ 8 ] = aAxis( 2 ) * aAxis ( 2 ) * d + c;
 #elif  BELFEM_BLAZE
-        tData[  0 ] = aAxis( 0 ) * aAxis ( 0 ) * d + c;
-        tData[  1 ] = aAxis( 1 ) * aAxis ( 0 ) * d + aAxis( 2 ) * s;
-        tData[  2 ] = aAxis( 2 ) * aAxis ( 0 ) * d - aAxis( 1 ) * s;
+        aMatrix( 0, 0 ) = aAxis( 0 ) * aAxis ( 0 ) * d + c;
+        aMatrix( 1, 0 ) = aAxis( 1 ) * aAxis ( 0 ) * d + aAxis( 2 ) * s;
+        aMatrix( 2, 0 ) = aAxis( 2 ) * aAxis ( 0 ) * d - aAxis( 1 ) * s;
 
-        tData[  4 ] = aAxis( 0 ) * aAxis ( 1 ) * d - aAxis( 2 ) * s;
-        tData[  5 ] = aAxis( 1 ) * aAxis ( 1 ) * d + c;
-        tData[  6 ] = aAxis( 2 ) * aAxis ( 1 ) * d + aAxis( 0 ) * s;
+        aMatrix( 0, 1 ) = aAxis( 0 ) * aAxis ( 1 ) * d - aAxis( 2 ) * s;
+        aMatrix( 1, 1 )  = aAxis( 1 ) * aAxis ( 1 ) * d + c;
+        aMatrix( 2, 1 )  = aAxis( 2 ) * aAxis ( 1 ) * d + aAxis( 0 ) * s;
 
-        tData[  8 ] = aAxis( 0 ) * aAxis ( 2 ) * d + aAxis( 1 ) * s;
-        tData[  9 ] = aAxis( 1 ) * aAxis ( 2 ) * d - aAxis( 0 ) * s;
-        tData[ 10 ] = aAxis( 2 ) * aAxis ( 2 ) * d + c;
+        aMatrix( 0, 2 )  = aAxis( 0 ) * aAxis ( 2 ) * d + aAxis( 1 ) * s;
+        aMatrix( 1, 2 )  = aAxis( 1 ) * aAxis ( 2 ) * d - aAxis( 0 ) * s;
+        aMatrix( 2, 2 )  = aAxis( 2 ) * aAxis ( 2 ) * d + c;
 #endif
 
     }

@@ -29,6 +29,7 @@ set( SOURCES
         cl_Mesh_Scissors.cpp
         cl_Mesh_TapeRoller.cpp
         cl_Mesh_CurvedElementChecker.cpp
+        cl_Mesh_OrientationChecker.cpp
         cl_TensorMeshFactory.cpp
         cl_EdgeFactory.cpp
         cl_FaceFactory.cpp
@@ -37,7 +38,7 @@ set( SOURCES
 include_directories( ${BELFEM_SOURCE_DIR}/core )
 include_directories( ${BELFEM_SOURCE_DIR}/comm )
 include_directories( ${BELFEM_SOURCE_DIR}/containers )
-
+include_directories( ${BELFEM_SOURCE_DIR}/math/tools )
 include( ${BELFEM_CONFIG_DIR}/scripts/Add_Library.cmake )
 
 set ( LIBLIST

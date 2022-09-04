@@ -5,6 +5,7 @@
 #include "cl_EF_LINE3.hpp"
 #include "fn_dot.hpp"
 #include "cl_IF_InterpolationFunctionFactory.hpp"
+#include "intpoints.hpp"
 
 namespace belfem
 {
@@ -15,10 +16,7 @@ namespace belfem
         EF_LINE3::EF_LINE3()
         {
             mXi.set_size( 2 );
-            mXi( 0 ) = -1./3. ; // -1. / std::sqrt( 3. );
-            mXi( 1 ) = 1./3.; // 1. / std::sqrt( 3. );
 
-            mNormal.set_size( 2 );
             mX.set_size(  3, 1 );
             mY.set_size( 3, 1 );
             mJ.set_size( 2, 2 );
@@ -26,6 +24,7 @@ namespace belfem
             InterpolationFunctionFactory tFactory ;
             mVolumeLagrange = tFactory.create_lagrange_function( ElementType::TRI6 );
         }
+
 //------------------------------------------------------------------------------
 
         EF_LINE3::~EF_LINE3()
@@ -40,6 +39,9 @@ namespace belfem
         {
             // number of integration points
             uint tNumIntPoints = aXi.n_cols() ;
+
+            mXi( 0 ) = aXi( 0, 0 );
+            mXi( 1 ) = aXi( 0, tNumIntPoints - 1 );
 
             // evaluate the node function
             mNxi.set_size( tNumIntPoints+2, { 0,0,0 } );
@@ -70,9 +72,9 @@ namespace belfem
             // the vandermonde matrix
             Matrix< real > tV( 2, 2);
             tV( 0, 0 )  =  1.0 ;
-            tV( 1, 0 ) = -mXi( 0 );
+            tV( 1, 0 ) = -mXi( 1 );
             tV( 0, 1 ) = -1.0 ;
-            tV( 1, 1 ) =  mXi( 1 );
+            tV( 1, 1 ) =  mXi( 0 );
             tV /= mXi( 0 ) - mXi( 1 );
 
             Vector< real > tF( 2 );
@@ -88,7 +90,7 @@ namespace belfem
                 real xi = aXi( 0, k );
                 Matrix< real > & tE = mE( k );
                 tE( 0, 0 ) = mC0( 0 ) * xi + mC0( 1 );
-                tE( 0, 1 ) = mC0( 1 ) * xi + mC0( 1 );
+                tE( 0, 1 ) = mC1( 0 ) * xi + mC1( 1 );
             }
 
             for( uint k=0; k<2; ++k )
@@ -96,7 +98,7 @@ namespace belfem
                 real xi = mX( k );
                 Matrix< real > & tE = mE( k=tNumIntPoints );
                 tE( 0, 0 ) = mC0( 0 ) * xi + mC0( 1 );
-                tE( 0, 1 ) = mC0( 1 ) * xi + mC0( 1 );
+                tE( 0, 1 ) = mC1( 0 ) * xi + mC1( 1 );
             }
 
             // now we precompute the data for the volume element

@@ -16,7 +16,7 @@
 #include "fn_min.hpp"
 #include "fn_max.hpp"
 #include "fn_unique.hpp"
-
+#include "cl_Mesh_OrientationChecker.hpp"
 
 namespace belfem
 {
@@ -72,6 +72,7 @@ namespace belfem
             // for higher order elements, the order is different in exodus
             this->convert_orders_for_quadratic_volume_elements_to_exo();
             this->create_blocks();
+            this->check_element_orientation();
             this->create_sidesets();
             this->create_mesh();
 
@@ -874,6 +875,22 @@ namespace belfem
                     }
 
                     mMesh->mBoundaryEdges( tCount++ ) = tEdge;
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        GmshReader::check_element_orientation()
+        {
+            OrientationChecker tChecker ;
+            for( Block * tBlock :  mMesh->mBlocks )
+            {
+                tChecker.set_element_type( tBlock->element_type() );
+                for( Element * tElement : tBlock->elements() )
+                {
+                    tChecker.process_element( tElement );
                 }
             }
         }

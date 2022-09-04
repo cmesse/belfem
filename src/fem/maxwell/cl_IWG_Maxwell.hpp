@@ -76,6 +76,9 @@ namespace belfem
             //! map telling the gost indices of thin shell elements
             Map< luint, mesh::Element * > mGhostElementMap ;
 
+            Vector< real > mNormal2D = { 0., 0., };
+            Vector< real > mNormal3D = { 0., 0., 0. };
+
 //------------------------------------------------------------------------------
         private:
 //------------------------------------------------------------------------------
@@ -109,8 +112,6 @@ namespace belfem
             Cell < string > mNedelecFields = { "edge_h", "edge_h0", "shell_edge_h", "shell_edge_h0" };
             Cell < string > mFaceFields = { "face_h", "face_h0", "face_edge_h", "face_edge_h0" };
 
-            Vector< real > mNormal2D = { 0., 0., };
-            Vector< real > mNormal3D = { 0., 0., 0. };
 
 //------------------------------------------------------------------------------
         public:

@@ -2828,7 +2828,7 @@ namespace belfem
                         mesh::compute_surface_normals( mMesh, mThinShellSideSets, GroupType::SIDESET, false );
 
                         // revert the element orientation, otherwise the logic is messed up
-                        // ( todo: why, I now think that we must not reverse!)
+                        // ( todo: why? I now think that we must not reverse!)
                         //tTapeRoller.revert_element_orientation();
 
                         // correct the node positions

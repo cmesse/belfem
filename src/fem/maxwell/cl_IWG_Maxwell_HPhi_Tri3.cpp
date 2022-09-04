@@ -417,7 +417,6 @@ namespace belfem
             Matrix< real > & tX = mGroup->work_X() ;
             this->collect_node_coords( aElement->master(), tX );
 
-
             // get integration data from master
             const IntegrationData * tMaster =
                     mGroup->master_integration( aElement->facet()->master_index() );

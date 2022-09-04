@@ -63,9 +63,6 @@ namespace belfem
             //! sum of all weights
             real mSumW ;
 
-            //! vector containing normal
-            Vector< real > mNormal ;
-
 //------------------------------------------------------------------------------
         public:
 //------------------------------------------------------------------------------
@@ -178,15 +175,6 @@ namespace belfem
             vol_N_xi( const uint aIndex = 0 ) ;
 
 //------------------------------------------------------------------------------
-
-            /**
-             * special function for thin shells. Returns the
-             * node derivative of the volume element
-             */
-            virtual const Vector< real > &
-            normal( const uint aIndex , const Matrix< real > & aX ) ;
-
-//------------------------------------------------------------------------------
         };
 //------------------------------------------------------------------------------
 
@@ -292,15 +280,6 @@ namespace belfem
         {
             BELFEM_ERROR( false, "Invalid call to EdgeFunction::vol_N_xi");
             return mC;
-        }
-
-//-----------------------------------------------------------------------------
-
-        inline const Vector< real > &
-        EdgeFunction::normal( const uint aIndex , const Matrix< real > & aX )
-        {
-            BELFEM_ERROR( false, "Invalid call to EdgeFunction::normal");
-            return mNormal ;
         }
 
 //------------------------------------------------------------------------------

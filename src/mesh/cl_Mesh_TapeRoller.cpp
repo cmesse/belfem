@@ -657,7 +657,7 @@ namespace belfem
 
                         // swap
                         tFacet->set_slave( tFacet->master(), tFacet->master_index());
-                        tFacet->set_master( tMaster, tMasterIndex, false );
+                        tFacet->set_master( tMaster, tMasterIndex, true );
 
                         // grab indices in reverse order
                         uint c = 0 ;
