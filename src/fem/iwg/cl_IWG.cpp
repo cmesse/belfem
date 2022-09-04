@@ -379,12 +379,14 @@ namespace belfem
                 mNumberOfIntegrationPoints = 0;
                 mNumberOfEdgesPerElement = 0 ;
                 mNumberOfNodesPerElement = 0 ;
+                mNumberOfThinShellLayers = 0 ;
             }
             else
             {
                 mNumberOfNodesPerElement = aGroup->number_of_nodes_per_element() ;
                 mNumberOfEdgesPerElement = aGroup->number_of_edges_per_element() ;
                 mNumberOfFacesPerElement = aGroup->number_of_faces_per_element() ;
+                mNumberOfThinShellLayers = 0 ;
 
                 switch ( mDofMode )
                 {
@@ -458,9 +460,11 @@ namespace belfem
 
                                 if( aGroup->domain_type() == DomainType::ThinShell )
                                 {
+                                    mNumberOfThinShellLayers = aGroup->number_of_thin_shell_layers() ;
+
                                     mNumberOfEdgeDofsPerElement =
                                             ( mNumberOfEdgesPerElement * mNumberOfDofsPerEdge
-                                            + mNumberOfFacesPerElement * mNumberOfDofsPerFace ) * aGroup->number_of_ghost_sidesets() ;
+                                            + mNumberOfFacesPerElement * mNumberOfDofsPerFace ) * mNumberOfThinShellLayers ;
                                 }
                                 else
                                 {
@@ -1000,12 +1004,13 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        void
+        uint
         IWG::collect_edge_data_from_layer(
                 Element        * aElement,
                 const string   & aEdgeFieldLabel,
                 const uint       aLayer,
-                Vector< real > & aData )
+                Vector< real > & aData,
+                const uint aCount )
         {
             BELFEM_ASSERT(
                     mMesh->field( aEdgeFieldLabel )->entity_type() == EntityType::EDGE,
@@ -1015,7 +1020,7 @@ namespace belfem
             // is equal to the edge order
             uint tNumEdges = mEdgeDofMultiplicity + 1 ;
 
-            uint tCount = 0 ;
+            uint tCount = aCount ;
             uint tOff = mEdgeDofMultiplicity * aLayer ;
 
             // get the field
@@ -1044,20 +1049,22 @@ namespace belfem
                 }
             }
 
-            BELFEM_ASSERT( tCount == aData.length(), "something went wrong while grabbing edge data" );
+            BELFEM_ASSERT( tCount == aData.length() || aCount > 0, "something went wrong while grabbing edge data" );
 
+            return tCount ;
         }
 
 
 //------------------------------------------------------------------------------
 
-        void
+        uint
         IWG::collect_edge_data_from_layer(
                 Element        * aElement,
                 const string   & aEdgeFieldLabel,
                 const string   & aFaceFieldLabel,
                 const uint       aLayer,
-                Vector< real > & aData )
+                Vector< real > & aData,
+                const uint aCount )
         {
             BELFEM_ERROR( false, "this function needs to be fixed, see other edge_data_from_layer" );
 
@@ -1084,7 +1091,7 @@ namespace belfem
             mesh::Element * tElement = mMesh->ghost_facet( aElement->id(), aLayer )->element();
 
             // initialize counter
-            uint tCount = 0 ;
+            uint tCount = aCount ;
 
             for( uint e=0; e< mNumberOfEdgesPerElement; ++e )
             {
@@ -1116,6 +1123,7 @@ namespace belfem
                 aData( tCount++ ) = tFaceField( tIndex + tIndex + 1 );
             }
 
+            return tCount ;
         }
 
 //------------------------------------------------------------------------------

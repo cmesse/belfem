@@ -2689,66 +2689,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        // specifically for thin shells
-        const Vector< real > &
-        IWG_Maxwell::collect_q0_hphi_thinshell( Element * aElement )
-        {
-            // grab the output vector
-            Vector< real > & aQ0 = mGroup->work_nedelec() ;
-
-            BELFEM_ASSERT( mGroup->domain_type() == DomainType::ThinShell,
-                "function IWG_Maxwell::collect_thin_shell_hphi0 can only be applied to a thin shell" );
-
-            // grab field data from mesh
-            const Vector< real > & tPhi  = mMesh->field_data( "phi0" );
-            const Vector< real > & tHe   = mMesh->field_data("edge_h0" );
-            const Vector< real > & tHf   = mNumberOfDofsPerFace > 0 ? mMesh->field_data("face_h0" ) : tHe ;
-
-
-            uint tLambdaCount = 0 ;
-
-            // loop over all dofs
-            for( uint k=0; k<mNumberOfDofsPerElement; ++k )
-            {
-                // grab dof
-                Dof * tDof = aElement->dof( k );
-
-                switch( tDof->mesh_basis()->entity_type() )
-                {
-                    case( EntityType::NODE ) :
-                    {
-                        aQ0( k ) = tPhi( tDof->mesh_basis()->index() );
-                        break ;
-                    }
-                    case( EntityType::EDGE ) :
-                    {
-                        aQ0( k ) = tHe( tDof->mesh_basis()->index() );
-                        break ;
-                    }
-                    case( EntityType::FACE ) :
-                    {
-                        aQ0( k ) = tHf( tDof->mesh_basis()->index() );
-                        break ;
-                    }
-                    case( EntityType::FACET ) :
-                    {
-                        // get lambda field
-                        const Vector< real > & tL = mMesh->field_data( mFields.ThinShellLast( tLambdaCount++ ) );
-                        aQ0( k ) = tL( tDof->mesh_basis()->index() );
-                        break ;
-                    }
-                    default :
-                    {
-                        BELFEM_ERROR( false, "Invalid dof type" );
-                    }
-                }
-            }
-
-            return aQ0 ;
-        }
-
-//------------------------------------------------------------------------------
-
         // called by factory to create the index map for the thin shells
         void
         IWG_Maxwell::create_ghost_map(  Mesh * aMesh,

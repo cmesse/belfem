@@ -161,7 +161,7 @@ namespace belfem
                 // get target
                 proc_t tTarget = aCommunicationList( p );
 
-                if( tTarget < tCommSize || tTarget != tMyRank )
+                if( tTarget < tCommSize && tTarget != tMyRank )
                 {
                     // create communication tag
                     int tCommTag = comm_tag( tMyRank, tTarget );
@@ -225,7 +225,7 @@ namespace belfem
                 // get target
                 proc_t tTarget = aCommunicationList( p );
 
-                if( tTarget < tCommSize || tTarget != tMyRank )
+                if( tTarget < tCommSize && tTarget != tMyRank )
                 {
                     // create communication tag
                     int tCommTag = comm_tag( tMyRank, tTarget );

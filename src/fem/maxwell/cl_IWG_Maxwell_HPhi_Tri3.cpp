@@ -644,10 +644,8 @@ namespace belfem
             // need thicknesses here
             p = 2 * mNumberOfNodesPerElement ;
 
-            uint tNumLayers = mGroup->number_of_thin_shell_layers() ;
-
             // loop over all layers
-            for( uint l=0; l<tNumLayers; ++l )
+            for( uint l=0; l<mNumberOfThinShellLayers; ++l )
             {
 
                 this->collect_edge_data_from_layer( aElement, "edge_h", l, tHt );
@@ -736,7 +734,7 @@ namespace belfem
             }*/
 
             // compute the right hand side
-            aRHS += tM *  this->collect_q0_hphi_thinshell( aElement ) ;
+            aRHS += tM *  this->collect_q0_thinshell( aElement ) ;
 
             // finalize the Jacobian
             aJacobian += mDeltaTime * mGroup->work_K() ;
@@ -836,6 +834,62 @@ namespace belfem
             mMesh->field_data( "elementEJ")( tIndex ) = tEJ ;
             mMesh->field_data( "elementJ")( tIndex )  = tJz ;
         }
+
+
+//------------------------------------------------------------------------------
+
+        // specifically for thin shells
+        const Vector< real > &
+        IWG_Maxwell_HPhi_Tri3::collect_q0_thinshell( Element * aElement )
+        {
+            // grab the output vector
+            Vector< real > & aQ0 = mGroup->work_nedelec() ;
+
+            BELFEM_ASSERT( mGroup->domain_type() == DomainType::ThinShell,
+                           "function IWG_Maxwell_HPhi_Tri3::collect_q0_thinshell can only be applied to a thin shell" );
+
+            // grab field data from mesh
+            const Vector< real > & tPhi  = mMesh->field_data( "phi0" );
+            const Vector< real > & tHe   = mMesh->field_data("edge_h0" );
+
+
+            uint tLambdaCount = 0 ;
+
+            // loop over all dofs
+            for( uint k=0; k<mNumberOfDofsPerElement; ++k )
+            {
+                // grab dof
+                Dof * tDof = aElement->dof( k );
+
+                switch( tDof->mesh_basis()->entity_type() )
+                {
+                    case( EntityType::NODE ) :
+                    {
+                        aQ0( k ) = tPhi( tDof->mesh_basis()->index() );
+                        break ;
+                    }
+                    case( EntityType::EDGE ) :
+                    {
+                        aQ0( k ) = tHe( tDof->mesh_basis()->index() );
+                        break ;
+                    }
+                    case( EntityType::FACET ) :
+                    {
+                        // get lambda field
+                        const Vector< real > & tL = mMesh->field_data( mFields.ThinShellLast( tLambdaCount++ ) );
+                        aQ0( k ) = tL( tDof->mesh_basis()->index() );
+                        break ;
+                    }
+                    default :
+                    {
+                        BELFEM_ERROR( false, "Invalid dof type" );
+                    }
+                }
+            }
+
+            return aQ0 ;
+        }
+
 
 //------------------------------------------------------------------------------
     }

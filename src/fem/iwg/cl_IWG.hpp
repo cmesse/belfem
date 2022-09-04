@@ -120,6 +120,7 @@ namespace belfem
             uint mNumberOfDofsPerFace = 0 ;  // counts dofs on LHS
             uint mNumberOfRhsDofsPerEdge = 0 ;  // counts dofs on RHS, needed for L2
             uint mNumberOfRhsDofsPerFace = 0 ;  // counts dofs on RHS, needed for L2
+            uint mNumberOfThinShellLayers = 0 ;
 
             // dimension for N
             uint mNumberOfSpatialDimensions;
@@ -248,9 +249,6 @@ namespace belfem
 
             //! links sideset IDs with the designated types
             Map< id_t, DomainType > mSideSetSubTypes ;
-
-            //! needed if tapes are implemented in this IWG
-            //uint mNumberOfLayersPerShell = 0 ;
 
 //------------------------------------------------------------------------------
         public:
@@ -940,22 +938,24 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            void
+            uint
             collect_edge_data_from_layer(
                     Element        * aElement,
                     const string   & aEdgeFieldLabel,
                     const uint       aLayer,
-                    Vector< real > & aData );
+                    Vector< real > & aData,
+                    const uint aCount=0 );
 
 //------------------------------------------------------------------------------
 
-            void
+            uint
             collect_edge_data_from_layer(
                     Element        * aElement,
                     const string   & aEdgeFieldLabel,
                     const string   & aFaceFieldLabel,
                     const uint       aLayer,
-                    Vector< real > & aData );
+                    Vector< real > & aData,
+                    const uint aCount=0 );
 
 //------------------------------------------------------------------------------
 

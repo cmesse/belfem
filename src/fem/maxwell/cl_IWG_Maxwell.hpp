@@ -383,18 +383,13 @@ namespace belfem
                                           Vector< real > & aRHS );
 
 //------------------------------------------------------------------------------
-            /**
-             * specifically for thin shells
-             */
-            const Vector< real > &
-            collect_q0_hphi_thinshell( Element * aElement );
-
-//------------------------------------------------------------------------------
         private:
 //------------------------------------------------------------------------------
 
             void
             link_collect_nedelec_data_function( Group * aGroup ) ;
+
+//------------------------------------------------------------------------------
 
             void
             collect_nedelec_data_linear(

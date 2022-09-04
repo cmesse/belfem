@@ -34,7 +34,6 @@
       <config projectName="belfem" targetName="interpolation" />
       <config projectName="belfem" targetName="doc" />
       <config projectName="belfem" targetName="libbelfem_postproc.a" />
-      <config projectName="belfem" targetName="pipette" />
       <config projectName="belfem" targetName="petsctst" />
       <config projectName="belfem" targetName="test_input" />
       <config projectName="belfem" targetName="libbelfem_spline.a" />
@@ -58,20 +57,16 @@
   <component name="ChangeListManager">
     <list default="true" id="120f1831-a9f1-4c21-bf0a-19444f852628" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/edgeinterpolation/cl_EF_EdgeFunction.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/edgeinterpolation/cl_EF_EdgeFunction.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/edgeinterpolation/cl_EF_LINE3.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/edgeinterpolation/cl_EF_LINE3.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/edgeinterpolation/cl_EF_LINE3.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/edgeinterpolation/cl_EF_LINE3.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/linalg/config_mumps.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/config/linalg/config_mumps.cmake" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/comm/commtools.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/comm/commtools.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/iwg/cl_IWG.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell.hpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri3.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri3.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri3.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri3.hpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri6.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri6.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri6.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_IWG_Maxwell_HPhi_Tri6.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/fem/maxwell/cl_MaxwellFactory.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/fem/maxwell/cl_MaxwellFactory.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/math/tools/fn_rotation_matrix.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/math/tools/fn_rotation_matrix.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mesh/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Facet.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Facet.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh_GmshReader.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh_GmshReader.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh_GmshReader.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh_GmshReader.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mesh/cl_Mesh_TapeRoller.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/mesh/cl_Mesh_TapeRoller.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -158,9 +153,9 @@
         <option name="com.jetbrains.cidr.cpp.gradle.execution.GradleNativeBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
+    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
-        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
     <configuration name="banner" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="banner" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="banner">
@@ -328,11 +323,6 @@
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="pipette" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="pipette" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="belfem" RUN_TARGET_NAME="pipette">
-      <method v="2">
-        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
-      </method>
-    </configuration>
     <configuration name="reset" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="belfem" TARGET_NAME="reset" CONFIG_NAME="Debug">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -437,7 +427,6 @@
       <item itemvalue="CMake Application.normaltest" />
       <item itemvalue="CMake Application.ode" />
       <item itemvalue="CMake Application.pentatest" />
-      <item itemvalue="CMake Application.pipette" />
       <item itemvalue="CMake Application.petsctest" />
       <item itemvalue="CMake Application.petsctst" />
       <item itemvalue="CMake Application.reset" />

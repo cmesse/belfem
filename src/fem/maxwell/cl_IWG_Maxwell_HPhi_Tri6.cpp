@@ -9,6 +9,8 @@
 #include "fn_inv.hpp"
 #include "fn_trans.hpp"
 #include "cl_EF_LINE3.hpp"
+#include "cl_FEM_DofManager.hpp"
+#include "cl_FEM_DofMgr_SolverData.hpp"
 
 namespace belfem
 {
@@ -729,8 +731,6 @@ namespace belfem
             BELFEM_ASSERT( tSlave->weights().length() == mNumberOfIntegrationPoints,
                            "number of integraiton points on slave does not match" );
 
-            uint tNumLayers = mGroup->number_of_thin_shell_layers();
-
             // data for magnetic field (H-data)
             Vector< real > & tHt = mGroup->work_sigma();
             Vector< real > & tPhi = mGroup->work_phi();
@@ -765,7 +765,7 @@ namespace belfem
 
             // air side
             p = 0 ;
-            q = 2 * mNumberOfNodesPerElement + ( 2 * tNumLayers + 1 ) * mEdgeDofMultiplicity ;
+            q = 2 * mNumberOfNodesPerElement + ( 2 * mNumberOfThinShellLayers + 1 ) * mEdgeDofMultiplicity ;
 
             // first point  master
             tBm = inv( tIntMaster->dNdXi( r ) * tXm ) * tIntMaster->dNdXi( r );
@@ -797,7 +797,7 @@ namespace belfem
                 ++p ;
             }
 
-            o = 2 * mNumberOfNodesPerElement + ( 2 * tNumLayers ) * mEdgeDofMultiplicity ;
+            o = 2 * mNumberOfNodesPerElement + ( 2 * mNumberOfThinShellLayers ) * mEdgeDofMultiplicity ;
             tM( o, q ) =  1.0 ;
             tM( q, o ) =  1.0 ;
 
@@ -807,7 +807,7 @@ namespace belfem
 
             // second point master
             p = 0 ;
-            q = 2 * mNumberOfNodesPerElement + ( 2 * tNumLayers + 1 ) * mEdgeDofMultiplicity + 1 ;
+            q = 2 * mNumberOfNodesPerElement + ( 2 * mNumberOfThinShellLayers + 1 ) * mEdgeDofMultiplicity + 1 ;
 
             tBm = inv( tIntMaster->dNdXi( s ) * tXm ) * tIntMaster->dNdXi( s );
             crossmat( this->normal_curved_2d( aElement, s ) , tBm, tnxB );
@@ -837,7 +837,7 @@ namespace belfem
             }
 
             // edge side
-            o =  2 * mNumberOfNodesPerElement + ( 2 * tNumLayers ) * mEdgeDofMultiplicity + 1 ;
+            o =  2 * mNumberOfNodesPerElement + ( 2 * mNumberOfThinShellLayers ) * mEdgeDofMultiplicity + 1 ;
             tM( o, q ) = 1.0 ;
             tM( q, o ) = 1.0 ;
 
@@ -902,7 +902,7 @@ namespace belfem
 
                 p = 2 * mNumberOfNodesPerElement ;
 
-                for( uint l=0; l<tNumLayers; ++l )
+                for( uint l=0; l<mNumberOfThinShellLayers; ++l )
                 {
                     this->collect_edge_data_from_layer( aElement, "edge_h", l, tHt );
 
@@ -931,19 +931,31 @@ namespace belfem
             // Jacobian and RHS
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // compute the right hand side
-            aRHS = tM *  this->collect_q0_hphi_thinshell( aElement ) ;
+            aRHS = tM *  this->collect_q0_thinshell( aElement ) ;
 
-            // if( aElement->id() == 75 ) tHt.print("Ht");
 
             // hack
-            //q = 2 * mNumberOfNodesPerElement + ( 2 * tNumLayers + 1 ) * mEdgeDofMultiplicity ;
-            //for( uint k=q; k<mNumberOfDofsPerElement; ++k )
-            //{
-            //    aRHS( k ) = 0.0 ;
-            //}
+            q = 2 * mNumberOfNodesPerElement + ( 2 * mNumberOfThinShellLayers + 1 ) * mEdgeDofMultiplicity ;
+            for( uint k=q; k<mNumberOfDofsPerElement; ++k )
+            {
+                aRHS( k ) = 0.0 ;
+            }
 
             // finalize the Jacobian
             aJacobian += mDeltaTime * mGroup->work_K() ;
+
+
+            if( aElement->id() == 75 )
+            {
+                this->print_dofs( aElement );
+                const Vector< real > & tLHS =  this->collect_q0_thinshell( aElement );
+
+
+                Vector< real > tRHS( aJacobian * tLHS );
+                tLHS.print("LHS");
+                aRHS.print("RHS0");
+                tRHS.print("RHS1");
+            }
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // Layer Data
@@ -951,7 +963,7 @@ namespace belfem
 
             // write layer data into mesh
             mLayerData *= 0.25 ;
-            for( uint l=0; l<tNumLayers; ++l )
+            for( uint l=0; l<mNumberOfThinShellLayers; ++l )
             {
                 // compute the field index
                 index_t tIndex = mGhostElementMap(
@@ -1108,6 +1120,56 @@ namespace belfem
 
             mLayerData( 0, aLayer ) += tW( aIntPoint ) * tJz_el ;
             mLayerData( 1, aLayer ) += tW( aIntPoint ) * tEJ_El ;
+        }
+
+//------------------------------------------------------------------------------
+
+        const Vector< real > &
+        IWG_Maxwell_HPhi_Tri6::collect_q0_thinshell( Element * aElement )
+        {
+            // grab the output vector
+            Vector< real > & aQ0 = mGroup->work_nedelec() ;
+
+            BELFEM_ASSERT( mGroup->domain_type() == DomainType::ThinShell,
+                           "function IWG_Maxwell_HPhi_Tri6::collect_q0_thinshell can only be applied to a thin shell" );
+
+            // grab field data from mesh
+            const Vector< real > & tPhi  = mMesh->field_data( "phi0" );
+
+            uint tCount = 0 ;
+
+            // get the node dofs
+            for( uint k=0; k<mNumberOfNodesPerElement ; ++k )
+            {
+                aQ0( tCount++ ) = tPhi( aElement->master()->element()->node( k )->index() );
+            }
+            for( uint k=0; k<mNumberOfNodesPerElement ; ++k )
+            {
+                aQ0( tCount++ ) = tPhi( aElement->slave()->element()->node( k )->index() );
+            }
+
+            // get the edge dofs
+            for( uint l=0; l<mNumberOfThinShellLayers ; ++l )
+            {
+                tCount = this->collect_edge_data_from_layer( aElement, "edge_h0", l, aQ0, tCount );
+            }
+
+            // get facet index
+            index_t tIndex = aElement->element()->edge( 0 )->index() ;
+
+            //todo: need to introduce edge-multiplicity here
+            for( const string & tLabel : mFields.ThinShellLast )
+            {
+                // get lambda field
+                const Vector< real > & tL = mMesh->field_data( tLabel );
+                aQ0( tCount++ ) = tL( tIndex );
+                if( aElement->id() == 75 )
+                {
+                    std::cout << "#last " << tLabel << " " << tL( tIndex ) << std::endl ;
+                }
+            }
+
+            return aQ0 ;
         }
 
 //------------------------------------------------------------------------------

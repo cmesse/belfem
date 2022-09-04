@@ -5,7 +5,7 @@ if( USE_MUMPS )
     endif()
 
     list( APPEND BELFEM_DEFS "BELFEM_MUMPS" )
-    set( BELFEM_MUMPS_LIBS "-ldmumps -lmumps_common -lesmumps -lpord -lstrumpack -lparmetis -lptscotch -lptscotcherr -lscotch -lscotcherr")
+    set( BELFEM_MUMPS_LIBS "-ldmumps -lmumps_common -lesmumps -lpord -lparmetis -lptscotch -lptscotcherr -lscotch -lscotcherr")
 
 
     list( APPEND BELFEM_INCLUDES "$ENV{TPLS}/include/mumps" )
