@@ -7,8 +7,6 @@ set( SOURCES
         cl_IWG_Maxwell_HA_Tri6.cpp
         cl_IWG_Maxwell_HPhi_Tri3.cpp
         cl_IWG_Maxwell_HPhi_Tri6.cpp
-        cl_IWG_Maxwell_HPhi_Tet4.cpp
-        cl_IWG_Maxwell_HPhi_Tet10.cpp
         cl_IWG_Maxwell_L2_Current.cpp
         cl_IWG_Maxwell_L2_Magfield.cpp
         cl_MaxwellMaterial.cpp

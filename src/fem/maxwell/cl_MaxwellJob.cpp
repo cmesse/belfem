@@ -8,8 +8,8 @@
 #include "cl_Element_Factory.hpp"
 #include "cl_IWG_Maxwell_HPhi_Tri3.hpp"
 #include "cl_IWG_Maxwell_HPhi_Tri6.hpp"
-#include "cl_IWG_Maxwell_HPhi_Tet4.hpp"
-#include "cl_IWG_Maxwell_HPhi_Tet10.hpp"
+//#include "cl_IWG_Maxwell_HPhi_Tet4.hpp"
+//#include "cl_IWG_Maxwell_HPhi_Tet10.hpp"
 #include "cl_MaxwellMaterial.hpp"
 #include "fn_r2.hpp"
 
@@ -91,7 +91,7 @@ namespace belfem
 
                     break ;
                 }
-                case( IwgType::MAXWELL_HPHI_TET4 ) :
+                /*case( IwgType::MAXWELL_HPHI_TET4 ) :
                 {
                     mLabel = "hphi_tet4";
 
@@ -110,7 +110,7 @@ namespace belfem
                     mEquation = new IWG_Maxwell_HPhi_Tet10 ;
 
                     break ;
-                }
+                }*/
                 default :
                 {
                     BELFEM_ERROR( false, "No test implemented for this type" );

@@ -315,8 +315,8 @@ namespace belfem
                     mNumberOfNodesPerElement = mesh::number_of_nodes( aGroup->slave_type() );
 
                     // container for node coordinates
-                    aGroup->work_Xi().set_size( mNumberOfNodesPerElement, mNumberOfDimensions );
-                    aGroup->work_Eta().set_size( mNumberOfNodesPerElement, mNumberOfDimensions );
+                    aGroup->work_Xm().set_size( mNumberOfNodesPerElement, mNumberOfDimensions );
+                    aGroup->work_Xs().set_size( mNumberOfNodesPerElement, mNumberOfDimensions );
 
                     // data for node coordinates of surface element
                     aGroup->work_X().set_size( mesh::number_of_nodes( aGroup->element_type() ), mNumberOfDimensions  );
@@ -346,6 +346,9 @@ namespace belfem
                     // help matrix for mass
                     uint tOrder =  mesh::interpolation_order_numeric( aGroup->element_type() ) ;
                     uint tN = tOrder == 2 ? 6 : 2 ;
+
+                    aGroup->work_G().set_size( 3, 2, 0.0 ); // layer mass
+                    aGroup->work_H().set_size( 5, 5, 0.0 ); // layer stiffness
 
                     aGroup->work_M().set_size( tN, tN, 0.0 );
                     aGroup->work_L().set_size( tN, tN, 0.0 );
@@ -2242,11 +2245,9 @@ namespace belfem
 
             aK.fill( 0.0 );
 
+            // grab node coords for normal vector
             if( aElement->element()->is_curved() )
             {
-                // grab node coords for normal vector
-                aElement->get_node_coors( mGroup->work_X() );
-
                 for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
                 {
                     // compute the normal
@@ -2369,9 +2370,6 @@ namespace belfem
         {
             const IntegrationData * tNodeFunction = this->interface_data( aElement );
 
-            // collect the node coords for the surface element
-            aElement->get_node_coors( mGroup->work_X() );
-
             // get integration weights
             const Vector< real > & tW = mGroup->integration_weights() ;
 
@@ -2385,9 +2383,6 @@ namespace belfem
 
             if( aElement->element()->is_curved() )
             {
-                // grab node coords for normal vector
-                aElement->get_node_coors( mGroup->work_X() );
-
                 for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
                 {
                     // get the normal

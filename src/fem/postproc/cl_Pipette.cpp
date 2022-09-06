@@ -78,6 +78,8 @@ namespace belfem
 
             mIntegrationData = new belfem::fem::IntegrationData( aType ) ;
             mIntegrationData->populate(  mesh::interpolation_order_numeric( aType ) );
+            mNumIntPoints = mIntegrationData->weights().length() ;
+
             mNodeCoordsFacet.set_size( mNumNodes, 3 );
             mNodeCoords.set_size( mNumNodes, mNumDim );
 

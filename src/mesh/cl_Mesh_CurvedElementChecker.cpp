@@ -42,6 +42,7 @@ namespace belfem
                 // loop over all elements
                 for( Element * tElement : tElements )
                 {
+
                     // perform flagging
                     ( this->*mFunCheck )( tElement );
 
@@ -318,6 +319,8 @@ namespace belfem
         CurvedElementChecker::check_quad9_2d( Element * aElement )
         {
 
+
+
             if( this->check_midpoint( aElement->node( 0 )->x(),
                                       aElement->node( 1 )->x(),
                                       aElement->node( 4 )->x() ) )
@@ -342,10 +345,10 @@ namespace belfem
             {
                 aElement->set_curved_flag() ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->x(),
+            else if( this->check_midpoint( aElement->node( 0 )->x(),
+                                           aElement->node( 1 )->x(),
                                            aElement->node( 2 )->x(),
                                            aElement->node( 3 )->x(),
-                                           aElement->node( 4 )->x(),
                                            aElement->node( 8 )->x() ) )
             {
                 aElement->set_curved_flag() ;
@@ -374,10 +377,10 @@ namespace belfem
             {
                 aElement->set_curved_flag() ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->y(),
+            else if( this->check_midpoint( aElement->node( 0 )->y(),
+                                           aElement->node( 1 )->y(),
                                            aElement->node( 2 )->y(),
                                            aElement->node( 3 )->y(),
-                                           aElement->node( 4 )->y(),
                                            aElement->node( 8 )->y() ) )
             {
                 aElement->set_curved_flag() ;
@@ -568,10 +571,10 @@ namespace belfem
             {
                 aElement->set_curved_flag() ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->x(),
+            else if( this->check_midpoint( aElement->node( 0 )->x(),
+                                           aElement->node( 1 )->x(),
                                            aElement->node( 2 )->x(),
                                            aElement->node( 3 )->x(),
-                                           aElement->node( 4 )->x(),
                                            aElement->node( 8 )->x() ) )
             {
                 aElement->set_curved_flag() ;
@@ -600,10 +603,10 @@ namespace belfem
             {
                 aElement->set_curved_flag() ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->y(),
+            else if( this->check_midpoint( aElement->node( 0 )->y(),
+                                           aElement->node( 1 )->y(),
                                            aElement->node( 2 )->y(),
                                            aElement->node( 3 )->y(),
-                                           aElement->node( 4 )->y(),
                                            aElement->node( 8 )->y() ) )
             {
                 aElement->set_curved_flag() ;
@@ -632,10 +635,10 @@ namespace belfem
             {
                 aElement->set_curved_flag() ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->z(),
+            else if( this->check_midpoint( aElement->node( 0 )->z(),
+                                           aElement->node( 1 )->z(),
                                            aElement->node( 2 )->z(),
                                            aElement->node( 3 )->z(),
-                                           aElement->node( 4 )->z(),
                                            aElement->node( 8 )->z() ) )
             {
                 aElement->set_curved_flag() ;

@@ -321,8 +321,6 @@ namespace belfem
             {
                 // flip the element
                 ( this->*mFunFlip )( aElement );
-
-                std::cout << "Flipping element " << aElement->id() << std::endl ;
             }
         }
 

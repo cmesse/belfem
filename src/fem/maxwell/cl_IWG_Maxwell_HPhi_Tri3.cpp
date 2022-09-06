@@ -231,7 +231,7 @@ namespace belfem
             }
 
             // compute the B-Matrix ( is constant for linear elements )
-            tB =  inv( tNodeFunction->dNdXi( 0 ) * mGroup->node_coords()  )
+            tB =  inv( tNodeFunction->dNdXi( 0 ) * mGroup->work_Xs()  )
                     * tNodeFunction->dNdXi( 0 );
 
             // compute the cross product
@@ -271,9 +271,9 @@ namespace belfem
                     aElement->facet()->slave_index() ) ;
 
             // compute Jacobian and B-function for air
-            aElement->slave()->get_node_coors( mGroup->node_coords() );
+            aElement->slave()->get_node_coors( mGroup->work_Xs() );
 
-            mGroup->work_J() = tSlave->dNdXi( 0 ) * mGroup->node_coords() ;
+            mGroup->work_J() = tSlave->dNdXi( 0 ) * mGroup->work_Xs() ;
 
             mGroup->work_B() = inv( mGroup->work_J() ) * tSlave->dNdXi( 0 );
 
@@ -414,8 +414,8 @@ namespace belfem
             aRHS.fill( 0.0 );
 
             // get the node coordinates
-            Matrix< real > & tX = mGroup->work_X() ;
-            this->collect_node_coords( aElement->master(), tX );
+            Matrix< real > & tXm = mGroup->work_Xm() ;
+            this->collect_node_coords( aElement->master(), tXm );
 
             // get integration data from master
             const IntegrationData * tMaster =
@@ -423,7 +423,7 @@ namespace belfem
 
             // compute the B-Operator
             Matrix< real > & tB = mGroup->work_B() ;
-            tB = inv( tMaster->dNdXi( 0 ) * tX ) * tMaster->dNdXi( 0 ) ;
+            tB = inv( tMaster->dNdXi( 0 ) * tXm ) * tMaster->dNdXi( 0 ) ;
 
             // compute the normal
             const Vector< real > & tn = this->normal_straight_2d( aElement );
@@ -468,9 +468,9 @@ namespace belfem
             Matrix< real > & tK = mGroup->work_K() ;
 
             // the sign of the edge, in this case, we use the physical tag
-            const real tSign = aElement->element()->physical_tag() == 1 ? 1.0 : -1.0 ;
+            //const real tSign = aElement->element()->physical_tag() == 1 ? 1.0 : -1.0 ;
 
-            BELFEM_ASSERT( tSign == ( aElement->edge_direction( 0 ) ? 1.0 : -1.0 ) ,
+            BELFEM_ASSERT( aElement->element()->physical_tag() == 1 ? 1.0 : -1.0 == ( aElement->edge_direction( 0 ) ? 1.0 : -1.0 ) ,
                            "Invalid Edge Direction for Element %lu",
                            ( long unsigned int ) aElement->id() );
 
@@ -479,10 +479,10 @@ namespace belfem
             Matrix< real > & tBs = mGroup->work_D() ;
 
             // coordinates for master
-            Matrix< real > & tXm = mGroup->work_Xi() ;
+            Matrix< real > & tXm = mGroup->work_Xm() ;
 
             // coordinates for slave
-            Matrix< real > & tXs = mGroup->work_Eta() ;
+            Matrix< real > & tXs = mGroup->work_Xs() ;
 
             // expression cross( n, B )
             Vector< real > tPhi = mGroup->work_phi() ;

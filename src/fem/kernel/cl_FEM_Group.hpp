@@ -109,8 +109,8 @@ namespace belfem
             Matrix< real > mWorkN;      // work matrix for N-Matrix
 
             Matrix< real > mWorkX;    // work matrix for special purpose node coordinates
-            Matrix< real > mWorkXi;   // work matrix for special purpose node coordinates
-            Matrix< real > mWorkEta;   // work matrix for special purpose node coordinates
+            Matrix< real > mWorkXm;   // work matrix for special purpose node coordinates
+            Matrix< real > mWorkXs;   // work matrix for special purpose node coordinates
 
             Vector< real > mWorkphi;  // work vector for nodal field data
             Matrix< real > mWorkPhi;  // work matrix for nodal field data
@@ -491,10 +491,10 @@ namespace belfem
             work_X();
 
             Matrix< real > &
-            work_Xi();
+            work_Xm();
 
             Matrix< real > &
-            work_Eta();
+            work_Xs();
 
             Vector< real > &
             work_nedelec();
@@ -1176,17 +1176,17 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline Matrix< real > &
-        Group::work_Xi()
+        Group::work_Xm()
         {
-            return mWorkXi;
+            return mWorkXm;
         }
 
 //------------------------------------------------------------------------------
 
         inline Matrix< real > &
-        Group::work_Eta()
+        Group::work_Xs()
         {
-            return mWorkEta;
+            return mWorkXs;
         }
 
 //------------------------------------------------------------------------------

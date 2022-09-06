@@ -1004,13 +1004,12 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        uint
+        void
         IWG::collect_edge_data_from_layer(
                 Element        * aElement,
                 const string   & aEdgeFieldLabel,
                 const uint       aLayer,
-                Vector< real > & aData,
-                const uint aCount )
+                Vector< real > & aData )
         {
             BELFEM_ASSERT(
                     mMesh->field( aEdgeFieldLabel )->entity_type() == EntityType::EDGE,
@@ -1020,7 +1019,7 @@ namespace belfem
             // is equal to the edge order
             uint tNumEdges = mEdgeDofMultiplicity + 1 ;
 
-            uint tCount = aCount ;
+            uint tCount = 0 ;
             uint tOff = mEdgeDofMultiplicity * aLayer ;
 
             // get the field
@@ -1049,22 +1048,19 @@ namespace belfem
                 }
             }
 
-            BELFEM_ASSERT( tCount == aData.length() || aCount > 0, "something went wrong while grabbing edge data" );
-
-            return tCount ;
+            BELFEM_ASSERT( tCount == aData.length(), "something went wrong while grabbing edge data" );
         }
 
 
 //------------------------------------------------------------------------------
 
-        uint
+        void
         IWG::collect_edge_data_from_layer(
                 Element        * aElement,
                 const string   & aEdgeFieldLabel,
                 const string   & aFaceFieldLabel,
                 const uint       aLayer,
-                Vector< real > & aData,
-                const uint aCount )
+                Vector< real > & aData )
         {
             BELFEM_ERROR( false, "this function needs to be fixed, see other edge_data_from_layer" );
 
@@ -1091,7 +1087,7 @@ namespace belfem
             mesh::Element * tElement = mMesh->ghost_facet( aElement->id(), aLayer )->element();
 
             // initialize counter
-            uint tCount = aCount ;
+            uint tCount = 0 ;
 
             for( uint e=0; e< mNumberOfEdgesPerElement; ++e )
             {
@@ -1122,8 +1118,6 @@ namespace belfem
                 aData( tCount++ ) = tFaceField( tIndex + tIndex );
                 aData( tCount++ ) = tFaceField( tIndex + tIndex + 1 );
             }
-
-            return tCount ;
         }
 
 //------------------------------------------------------------------------------
@@ -1225,7 +1219,7 @@ namespace belfem
                     uint tNumNodes = mesh::number_of_nodes( tType );
 
                     // allocate memory
-                    aGroup->work_Xi().set_size( tNumNodes,
+                    aGroup->work_Xm().set_size( tNumNodes,
                                                mNumberOfSpatialDimensions+1 );
 
                     // allocate memory

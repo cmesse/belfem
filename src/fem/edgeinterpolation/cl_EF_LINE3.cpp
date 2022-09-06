@@ -40,8 +40,8 @@ namespace belfem
             // number of integration points
             uint tNumIntPoints = aXi.n_cols() ;
 
-            mXi( 0 ) = aXi( 0, 0 );
-            mXi( 1 ) = aXi( 0, tNumIntPoints - 1 );
+            mXi( 0 ) =  -1./3.; // aXi( 0, 0 );
+            mXi( 1 ) =  1./3.; // aXi( 0, tNumIntPoints - 1 );
 
             // evaluate the node function
             mNxi.set_size( tNumIntPoints+2, { 0,0,0 } );

@@ -938,24 +938,22 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            uint
+            void
             collect_edge_data_from_layer(
                     Element        * aElement,
                     const string   & aEdgeFieldLabel,
                     const uint       aLayer,
-                    Vector< real > & aData,
-                    const uint aCount=0 );
+                    Vector< real > & aData );
 
 //------------------------------------------------------------------------------
 
-            uint
+            void
             collect_edge_data_from_layer(
                     Element        * aElement,
                     const string   & aEdgeFieldLabel,
                     const string   & aFaceFieldLabel,
                     const uint       aLayer,
-                    Vector< real > & aData,
-                    const uint aCount=0 );
+                    Vector< real > & aData );
 
 //------------------------------------------------------------------------------
 

@@ -43,6 +43,11 @@ namespace belfem
             // edge index vector
             Vector< uint > mU ;
 
+            Vector< int > mPivot ;
+            Vector< real > mAlpha;
+            Vector< real > mBeta;
+            Vector< real > mGamma ;
+
 //------------------------------------------------------------------------------
         public:
 //------------------------------------------------------------------------------
@@ -167,6 +172,7 @@ namespace belfem
                     const real aE1,
                     const Vector< real > & aHt,
                     const real aHn,
+                    const real adHndx,
                     Matrix< real > & aK );
 
 //------------------------------------------------------------------------------

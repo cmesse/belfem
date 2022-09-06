@@ -2077,6 +2077,7 @@ namespace belfem
             message( 4, "\n    Flagging curved elements ...\n"  );
         }
         comm_barrier() ;
+
         // check curved elements
         mesh::CurvedElementChecker tChecker( mNumberOfDimensions, mBlocks, mSideSets );
 

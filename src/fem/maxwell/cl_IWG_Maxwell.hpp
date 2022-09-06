@@ -710,13 +710,9 @@ namespace belfem
                     aElement->facet()->master_index() )->points() );
 
             // also populate node coordinates
-            aElement->slave()->get_node_coors( mGroup->node_coords() );
-
-            // these data are needed for the normal
-            if( aElement->element()->is_curved() )
-            {
-                aElement->get_node_coors( mGroup->work_X() );
-            }
+            aElement->master()->get_node_coors( mGroup->work_Xm() );
+            aElement->slave()->get_node_coors( mGroup->work_Xs() );
+            aElement->get_node_coors( mGroup->work_X() );
 
             // return the integration function for the nodes
             return ( this->*mGetInterfaceData )( aElement );
@@ -733,8 +729,8 @@ namespace belfem
 
             // get the normal vector
             Vector< real > & aN = mNormal2D ;
-            aN( 0 ) = aElement->element()->node( 0 )->y()  - aElement->element()->node( 1 )->y() ;
-            aN( 1 ) = aElement->element()->node( 1 )->x()  - aElement->element()->node( 0 )->x() ;
+            aN( 0 ) = aElement->element()->node( 1 )->y()  - aElement->element()->node( 0 )->y() ;
+            aN( 1 ) = aElement->element()->node( 0 )->x()  - aElement->element()->node( 1 )->x() ;
 
             mGroup->work_det_J() = norm( aN );
             aN /= mGroup->work_det_J() ;
@@ -755,11 +751,13 @@ namespace belfem
             aN.fill( 0.0 );
 
             // the direction vector
-            aN( 0 ) = -dot( mGroup->dNdXi( aIndex ).row( 0 ),
+            aN( 0 ) = dot( mGroup->dNdXi( aIndex ).row( 0 ),
                                   mGroup->work_X().col( 1 ) );
 
-            aN( 1 ) = dot( mGroup->dNdXi( aIndex ).row( 0 ),
+            aN( 1 ) = -dot( mGroup->dNdXi( aIndex ).row( 0 ),
                             mGroup->work_X().col( 0 ) );
+
+            // const IntegrationData * tIntMaster = mGroup->master_integration( aElement->facet()->master_index());
 
             // scale normal and integration scale
             mGroup->work_det_J() = norm( aN );

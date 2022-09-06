@@ -23,8 +23,8 @@
 
 #include "cl_IWG_Maxwell_HPhi_Tri3.hpp"
 #include "cl_IWG_Maxwell_HPhi_Tri6.hpp"
-#include "cl_IWG_Maxwell_HPhi_Tet4.hpp"
-#include "cl_IWG_Maxwell_HPhi_Tet10.hpp"
+//#include "cl_IWG_Maxwell_HPhi_Tet4.hpp"
+//#include "cl_IWG_Maxwell_HPhi_Tet10.hpp"
 
 #include "cl_IWG_Maxwell_L2_Current.hpp"
 #include "cl_IWG_Maxwell_L2_Magfield.hpp"
@@ -1377,16 +1377,6 @@ namespace belfem
                 case( IwgType::MAXWELL_HPHI_TRI6 ) :
                 {
                     return new IWG_Maxwell_HPhi_Tri6() ;
-                    break ;
-                }
-                case( IwgType::MAXWELL_HPHI_TET4 ) :
-                {
-                    return new IWG_Maxwell_HPhi_Tet4() ;
-                    break ;
-                }
-                case( IwgType::MAXWELL_HPHI_TET10 ) :
-                {
-                    return new IWG_Maxwell_HPhi_Tet10() ;
                     break ;
                 }
                 default:
@@ -2819,17 +2809,14 @@ namespace belfem
 
                         comm_barrier() ;
                         send( mCommTable, mMaxBlockID );
-                        // change the element orientation so that the normals point into the right direction
-                        //tTapeRoller.flip_element_orientation();
-
 
                         // grab the sidesets and compute the normals
                         tTapeRoller.get_sidesets( mThinShellSideSets );
                         mesh::compute_surface_normals( mMesh, mThinShellSideSets, GroupType::SIDESET, false );
 
                         // revert the element orientation, otherwise the logic is messed up
-                        // ( todo: why? I now think that we must not reverse!)
-                        //tTapeRoller.revert_element_orientation();
+                        // ( todo: why? I now think that we must not reverse or layers are backwards!)
+                        // tTapeRoller.revert_element_orientation();
 
                         // correct the node positions
                         tTapeRoller.shift_nodes( mTapeThicknesses );
