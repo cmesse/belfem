@@ -560,8 +560,8 @@ namespace belfem
             aRHS.fill( 0.0 );
 
             // get the node coordinates
-            Matrix< real > & tX = mGroup->work_X() ;
-            this->collect_node_coords( aElement->master(), tX );
+            Matrix< real > & tXm = mGroup->work_Xm() ;
+            this->collect_node_coords( aElement->master(), tXm );
 
             // get integration data from master
             const IntegrationData * tMaster =
@@ -573,66 +573,29 @@ namespace belfem
             // the gradient operator matrix
             Matrix< real > & tB = mGroup->work_B() ;
 
-            if( aElement->master()->element()->is_curved() )
+            // Edge Function
+            mEdgeFunctionTS->link( aElement );
+
+            for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
             {
-                for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
-                {
-                    // compute the gradient operator
-                    tB.matrix_data() = inv( tMaster->dNdXi( k ) * tX ) * inv( tMaster->dNdXi( k ) * tX ) ;
-
-                    // compute the normal
-                    const Vector< real > & tn = this->normal_curved_2d( aElement, k );
-
-                    real tScale = tW( k ) * mGroup->work_det_J() * constant::mu0 ;
-
-                    // loop over all nodes
-                    for( uint i=0; i<mNumberOfNodesPerElement; ++i )
-                    {
-                        aJacobian( 0, i ) += tScale * (
-                                  tn( 0 ) * tB( 0, i )
-                                + tn( 1 ) * tB( 1, i ) ) ;
-                    }
-                }
-
-                // make matrix symmetric
-                for( uint i=0; i<mNumberOfNodesPerElement; ++i )
-                {
-                    aJacobian( i, 0 ) =  aJacobian( 0, i ) ;
-                }
-
-            }
-            else
-            {
-                // grab the inverse jacobian
-                Matrix< real > & tInvJ = mGroup->work_J() ;
-                tInvJ =  inv( tMaster->dNdXi( 0 ) * tX ) ;
+                // compute the gradient operator
+                tB.matrix_data() = inv( tMaster->dNdXi( k ) * tXm ) * tMaster->dNdXi( k ) ;
 
                 // compute the normal
-                const Vector< real > & tn = this->normal_straight_2d( aElement );
+                const Vector< real > & tn = this->normal_curved_2d( aElement, k );
 
-                for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
-                {
-                    // compute the gradient operator
-                    tB = tInvJ * tMaster->dNdXi( k );
+                // loop over all nodes
 
+                real tScale = tW( k ) * mGroup->work_det_J() * constant::mu0 ;
 
-                    // loop over all nodes
-                    for( uint i=0; i<mNumberOfNodesPerElement; ++i )
-                    {
-                        aJacobian( 0, i ) += tW( k ) * (
-                                  tn( 0 ) * tB( 0, i )
-                                + tn( 1 ) * tB( 1, i ) ) ;
-                    }
-                }
-
-                // make matrix symmetric
                 for( uint i=0; i<mNumberOfNodesPerElement; ++i )
                 {
-                    aJacobian( i, 0 ) =  aJacobian( 0, i ) ;
+                    real tVal = tScale * (
+                              tn( 0 ) * tB( 0, i )
+                            + tn( 1 ) * tB( 1, i ) ) ;
+                    aJacobian( mNumberOfNodesPerElement, i ) += tVal ;
+                    aJacobian( i, mNumberOfNodesPerElement ) += tVal ;
                 }
-
-                // scale matrix ( det J has been computed by normal )
-                aJacobian *= mGroup->work_det_J() * constant::mu0 ;
             }
         }
 

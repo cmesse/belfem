@@ -79,6 +79,12 @@ namespace belfem
             Vector< real > mNormal2D = { 0., 0., };
             Vector< real > mNormal3D = { 0., 0., 0. };
 
+            // link to function
+            const Vector< real > &
+            ( IWG_Maxwell::*mFunNormalCurved )
+                    (       Element        * aElement,
+                            const uint       aIndex );
+
 //------------------------------------------------------------------------------
         private:
 //------------------------------------------------------------------------------
@@ -286,6 +292,16 @@ namespace belfem
 
             const Vector< real > &
             normal_curved_2d( Element * aElement, const uint aIndex );
+
+//------------------------------------------------------------------------------
+
+            const Vector< real > &
+            normal_curved_tri( Element * aElement, const uint aIndex );
+
+//------------------------------------------------------------------------------
+
+            const Vector< real > &
+            normal_curved_quad( Element * aElement, const uint aIndex );
 
 //------------------------------------------------------------------------------
 
@@ -746,26 +762,10 @@ namespace belfem
         inline const Vector< real > &
         IWG_Maxwell::normal_curved_2d( Element * aElement, const uint aIndex )
         {
-            Vector< real > & aN = mNormal2D ;
-
-            aN.fill( 0.0 );
-
-            // the direction vector
-            aN( 0 ) = dot( mGroup->dNdXi( aIndex ).row( 0 ),
-                                  mGroup->work_X().col( 1 ) );
-
-            aN( 1 ) = -dot( mGroup->dNdXi( aIndex ).row( 0 ),
-                            mGroup->work_X().col( 0 ) );
-
-            // const IntegrationData * tIntMaster = mGroup->master_integration( aElement->facet()->master_index());
-
-            // scale normal and integration scale
-            mGroup->work_det_J() = norm( aN );
-
-            aN /= mGroup->work_det_J() ;
-
-            return aN ;
+           return ( this->*mFunNormalCurved )( aElement, aIndex );
         }
+
+
 
 //------------------------------------------------------------------------------
 
@@ -809,6 +809,8 @@ namespace belfem
         inline const Vector< real > &
         IWG_Maxwell::normal_curved_3d( Element * aElement, const uint aIndex )
         {
+
+            BELFEM_ERROR( false, "rewrite this function");
 
             BELFEM_ASSERT( mesh::geometry_type( aElement->element()->type() ) == GeometryType::TRI,
                           "Element must be a triangle" );

@@ -178,6 +178,24 @@ namespace belfem
                    mEdgeFunctionTS->precompute( aGroup->integration_points() );
                }
 
+               switch( mesh::geometry_type( aGroup->master_type() ) )
+               {
+                   case ( GeometryType::TRI ) :
+                   {
+                       mFunNormalCurved = & IWG_Maxwell::normal_curved_tri;
+                       break;
+                   }
+                   case ( GeometryType::QUAD ) :
+                   {
+                       mFunNormalCurved = & IWG_Maxwell::normal_curved_quad;
+                       break;
+                   }
+                   default :
+                   {
+                       BELFEM_ERROR( false, "functtion not implemented");
+                   }
+               }
+
                // set integration function
                switch( mesh::geometry_type( aGroup->slave_type() ) )
                {
@@ -2884,7 +2902,115 @@ namespace belfem
         {
             mMagfieldTypeMap[ aSideSetID ] = aType ;
         }
-        
+
+//------------------------------------------------------------------------------
+
+        const Vector< real > &
+        IWG_Maxwell::normal_curved_tri( Element * aElement, const uint aIndex )
+        {
+            // get integration data from master
+            const IntegrationData * tIntMaster =
+                    mGroup->master_integration( aElement->facet()->master_index() );
+
+            Matrix< real > & tJ = mGroup->work_J();
+            tJ = tIntMaster->dNdXi( aIndex ) * mGroup->work_Xm();
+
+            real tdXds ;
+            real tdYds ;
+            switch( aElement->facet()->master_index() )
+            {
+                case( 0 ) : // s-> eta
+                {
+                    tdXds = tJ( 1, 0 );
+                    tdYds = tJ( 1, 1 );
+                    break ;
+                }
+                case( 1 ) : // s-> zeta
+                {
+                    tdXds = -tJ( 0, 0 ) - tJ( 1, 0 )  ;
+                    tdYds = -tJ( 0, 1 ) - tJ( 1, 1 )  ;
+                    break ;
+                }
+                case( 2 ) : // s->xi
+                {
+                    tdXds = tJ( 0, 0 );
+                    tdYds = tJ( 0, 1 );
+                    break ;
+                }
+                default :
+                {
+                    BELFEM_ERROR( false, "invalid side index");
+                }
+            }
+
+            mNormal2D( 0 ) =   tdYds ;
+            mNormal2D( 1 ) =  -tdXds ;
+
+            mGroup->work_det_J() = norm( mNormal2D );
+            mNormal2D /= mGroup->work_det_J() ;
+
+            // scale determinant
+            mGroup->work_det_J() *= 0.5 ;
+
+            return mNormal2D ;
+        }
+
+//------------------------------------------------------------------------------
+
+        const Vector< real > &
+        IWG_Maxwell::normal_curved_quad( Element * aElement, const uint aIndex )
+        {
+            // get integration data from master
+            const IntegrationData * tIntMaster =
+                    mGroup->master_integration( aElement->facet()->master_index() );
+
+            Matrix< real > & tJ = mGroup->work_J();
+            tJ = tIntMaster->dNdXi( aIndex ) * mGroup->work_Xm();
+
+            real tdXds ;
+            real tdYds ;
+            switch( aElement->facet()->master_index() )
+            {
+                case ( 0 ) : // s-> xi
+                {
+                    tdXds = tJ( 0, 0 );
+                    tdYds = tJ( 0, 1 );
+                    break ;
+                }
+                case ( 1 ) : // s-> eta
+                {
+                    tdXds = tJ( 1, 0 );
+                    tdYds = tJ( 1, 1 );
+                    break ;
+                }
+                case ( 2 ) : // s-> -xi
+                {
+                    tdXds = -tJ( 0, 0 );
+                    tdYds = -tJ( 0, 1 );
+                    break ;
+                }
+                case ( 3 ) : // s-> -eta
+                {
+                    tdXds = -tJ( 1, 0 );
+                    tdYds = -tJ( 1, 1 );
+                    break ;
+                }
+                default :
+                {
+                    BELFEM_ERROR( false, "invalid side index");
+                }
+            }
+
+            mNormal2D( 0 ) =   tdYds ;
+            mNormal2D( 1 ) =  -tdXds ;
+
+            mGroup->work_det_J() = norm( mNormal2D );
+            mNormal2D /= mGroup->work_det_J() ;
+
+            return mNormal2D ;
+
+        }
+
 //------------------------------------------------------------------------------
     }
 }
