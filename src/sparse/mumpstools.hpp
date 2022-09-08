@@ -23,12 +23,8 @@ extern"C" {
         const double * aValues,
         double       * aX,
         const double * aY,
-        int          * aInfo ) ;
-
-//------------------------------------------------------------------------------
-
-    double
-    mumpstools_get_determinant() ;
+        int          * aInfo,
+        double       * aRInfoG ) ;
 
 //------------------------------------------------------------------------------
 #ifdef __cplusplus

@@ -1,8 +1,3 @@
-module mumpstools
-    implicit none
-    double precision, public, save :: gDeterminant = 0.0
-end module mumpstools
-
 !> List of Parameters
 !> 1: Master Rank         : 0 ( default )
 !> 2: Parallel mode       : 0 - host not working
@@ -29,6 +24,10 @@ end module mumpstools
 !>                        :>0 - maxumum number of refinement steps
 !> 8: Compute Determinant : 0 - no
 !>                        : 1 - yes
+!> 11: Error Analysis    : 0 - none
+!>                       : 1 - full
+!>                       : 2 - main
+
 subroutine mumpstools_solve( &
         aIParameters, & !> list of integer parameters, see above
         aRParameters, & !> list of real parameters
@@ -40,7 +39,8 @@ subroutine mumpstools_solve( &
         aValues,     & !> data in matrix
         aX,          & !> left hand side
         aY,          & !> right hand side
-        aInfo        & !> information for debugging
+        aInfo,       & !> information for debugging
+        aRInfoG      & !> information for debugging
         ) bind( c )
     use, intrinsic :: iso_c_binding
     use, intrinsic :: iso_fortran_env, only : &
@@ -51,7 +51,7 @@ subroutine mumpstools_solve( &
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     ! ARGUMENTS
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    integer( c_int ), intent( in    ), dimension( 10 )                 :: aIParameters
+    integer( c_int ), intent( in    ), dimension( 11 )                 :: aIParameters
     real( c_double ), intent( in ),    dimension( 1 )                  :: aRParameters
     integer( c_int ), intent( in    )                                  :: aN
     integer( c_int ), intent( in    )                                  :: aNNZ
@@ -62,6 +62,7 @@ subroutine mumpstools_solve( &
     real( c_double ), intent( inout ), dimension( aN * aNRHS ), target :: aX
     real( c_double ), intent( in    ), dimension( aN * aNRHS ), target :: aY
     integer( c_int ), intent( out   ), dimension( 40  )                :: aInfo
+    real( c_double ), intent(out ), dimension( 20  )                   :: aRInfoG
 
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     ! Shortcuts for better code readability of user parameters
@@ -77,6 +78,7 @@ subroutine mumpstools_solve( &
     integer :: tComputeDeterminant
     integer :: tMemoryRelaxation
     integer :: tBlrMode
+    integer :: tErrorAnalysisMode
     double precision :: tEpsilon
 
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -116,6 +118,7 @@ subroutine mumpstools_solve( &
     tComputeDeterminant          = aIParameters(  8 )
     tMemoryRelaxation            = aIParameters(  9 )
     tBlrMode                     = aIParameters( 10 )
+    tErrorAnalysisMode           = aIParameters( 11 )
 
     tEpsilon                     = aRParameters( 1 )
 
@@ -158,22 +161,13 @@ subroutine mumpstools_solve( &
     case( 5 )
         ! set info level
         tMUMPS%ICNTL( 4 ) = 2
-
-        ! compute all the statistics (very expensive).
-        tMUMPS%ICNTL( 11 ) = 1
     case( 4 )
         ! set info level
         tMUMPS%ICNTL( 4 ) = 2
 
-        ! compute main statistics
-        tMUMPS%ICNTL( 11 ) = 2
-
     case default
         ! set info level
         tMUMPS%ICNTL( 4 ) = 0
-
-        ! no error analysis is performed (no statistics).
-        tMUMPS%ICNTL( 11 ) = 0
     end select
 
     ! Matrix is already assembled
@@ -191,7 +185,9 @@ subroutine mumpstools_solve( &
     ! refinement steps
     tMUMPS%ICNTL( 10 ) = tNumRefinementSteps
 
-    ! 11 statistics, see further up
+    ! statistics mode
+    tMUMPS%ICNTL( 11 ) = tErrorAnalysisMode
+
     if( tMemoryRelaxation .gt. 0 ) then
         tMUMPS%ICNTL( 14 ) = tMemoryRelaxation
     end if
@@ -247,36 +243,17 @@ subroutine mumpstools_solve( &
     call DMUMPS( tMUMPS )
 
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    ! SAVE DETERMINANT BEFORE DESTRUCTION
-    ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-    if( tComputeDeterminant .eq. 1 ) then
-        gDeterminant = tMUMPS%RINFOG( 12 )
-    end if
-
-    ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     ! FINALIZE
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     ! copy local info into output
-    forall( k=1:40 ) aInfo( k ) = tMUMPS%INFO( k )
+    forall( k=1:40 ) aInfo( k )   = tMUMPS%INFO( k )
+    forall( k=1:20 ) aRInfoG( k ) = tMUMPS%RINFOG( k )
 
     ! tidy up
     tMUMPS%JOB = -2
     call DMUMPS( tMUMPS )
 
 end subroutine mumpstools_solve
-
-!------------------------------------------------------------------------------
-
-function mumpstools_get_determinant() bind( c ) result( aDet )
-    use, intrinsic :: iso_c_binding
-    use mumpstools
-    implicit none
-    real( c_double ) :: aDet
-
-    aDet = gDeterminant
-
-end function mumpstools_get_determinant
 
 !------------------------------------------------------------------------------

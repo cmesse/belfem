@@ -12,6 +12,7 @@ set( SOURCES
         cl_SolverSTRUMPACK.cpp
         cl_SolverStrumpackDistributor.cpp
         en_SolverEnums.cpp
+        fn_rcond.cpp
         petsctools.cpp )
 
 if ( USE_MUMPS )

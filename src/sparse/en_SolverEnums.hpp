@@ -130,6 +130,19 @@ namespace belfem
          FactorizationOnly        = 3,
          UNDEFINED                = 4
      };
+//------------------------------------------------------------------------------
+
+    /**
+     * MUMPS only
+     */
+    enum class MumpsErrorAnalysis
+    {
+        None                     = 0,
+        Full                     = 1,
+        Main                     = 2,
+        UNDEFINED                = 3
+    };
+
 
 //------------------------------------------------------------------------------
 

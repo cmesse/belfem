@@ -135,5 +135,29 @@ namespace belfem
         }
 
 //------------------------------------------------------------------------------
+
+        real
+        Wrapper::get_cond0() const
+        {
+            BELFEM_ERROR( false,
+                          "get_cond0() is not implemented for solver %s",
+                          mLabel.c_str() );
+
+            return BELFEM_QUIET_NAN ;
+        }
+
+//------------------------------------------------------------------------------
+
+        real
+        Wrapper::get_cond1() const
+        {
+            BELFEM_ERROR( false,
+                          "get_cond1() is not implemented for solver %s",
+                          mLabel.c_str() );
+
+            return BELFEM_QUIET_NAN ;
+        }
+
+//------------------------------------------------------------------------------
     }
 }

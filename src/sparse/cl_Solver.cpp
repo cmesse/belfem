@@ -206,6 +206,8 @@ namespace belfem
         }
     }
 
+//------------------------------------------------------------------------------
+
     void
     Solver::set_mumps_blr(
             const BlockLowRanking aBlr,
@@ -219,6 +221,23 @@ namespace belfem
 
             // write information
             tMUMPS->set_block_low_ranking( aBlr, aEpsilon );
+        }
+    }
+
+//------------------------------------------------------------------------------
+
+    void
+    Solver::set_mumps_error_analysis(
+            const MumpsErrorAnalysis aSetting )
+    {
+        if( mType == SolverType::MUMPS )
+        {
+            // get weapper
+            solver::MUMPS * tMUMPS =
+                    reinterpret_cast< solver::MUMPS * > ( mWrapper );
+
+            // write information
+            tMUMPS->set_error_analysis( aSetting );
         }
     }
 

@@ -1011,9 +1011,13 @@ namespace belfem
                 // compute the field index
                 index_t tIndex = mGhostElementMap(
                         aElement->id() * mGroup->number_of_thin_shell_layers() + l )->index();
+                real tJz = mLayerData(0, l );
 
-                mMesh->field_data( "elementJ" )( tIndex ) =  mLayerData(0, l );
-                mMesh->field_data( "elementEJ" )( tIndex ) = mLayerData( 1, l );
+                // real tRho = mGroup->thin_shell_material( l )->rho_el( tJz );
+
+                mMesh->field_data( "elementJ" )( tIndex ) =  tJz ;
+                //mMesh->field_data( "elementEJ" )( tIndex ) = tRho * tJz * tJz ;
+                 mMesh->field_data( "elementEJ" )( tIndex ) = mLayerData( 1, l );
             }
         }
 #ifdef BELFEM_GCC

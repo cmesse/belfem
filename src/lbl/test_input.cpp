@@ -15,7 +15,7 @@
 #include "fn_FEM_compute_normb.hpp"
 //#include "fn_FEM_compute_element_current_thinshell.hpp"
 #include "cl_Pipette.hpp"
-
+#include "fn_rcond.hpp"
 #ifdef BELFEM_GCC
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
@@ -210,6 +210,8 @@ int main( int    argc,
    // begin timeloop
    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+   tMagfield->solver()->set_mumps_error_analysis( MumpsErrorAnalysis::Full );
+
    while( tTime < tMaxTime )
    {
        real tOmegaP = tNonlinear.picardOmega ;
@@ -346,23 +348,39 @@ int main( int    argc,
            Vector< real > & tEJ = tMesh->field_data( "elementEJ");
            Vector< real > & tJ = tMesh->field_data( "elementJ");
 
+           std::cout << "=====" << std::endl ;
            for( id_t tID : tMesh->ghost_block_ids() )
            {
                tPipette.set_element_type( tMesh->block( tID )->element_type() );
+               std::cout <<" block " << tID << std::endl ;
 
+               real tJc = 47500e6 ;
                for( mesh::Element * tElement : tMesh->block( tID )->elements() )
                {
                     real tV = tPipette.measure( tElement );
                     tEI += tEJ( tElement->index() ) * tV ;
                     tI  += tJ( tElement->index() ) * tV ;
+                    std::cout << tElement->id() << " " << 0.5*(tElement->node( 0 )->x()+tElement->node( 1 )->x()) << " " << tV << " " << tJ( tElement->index() )/tJc << " " << tEJ( tElement->index() ) << " " << std::endl ;
+
                }
            }
+           std::cout << "-----" << std::endl ;
+           std::cout  <<  tTime << ", " << tI << ", " << tEI << std::endl ;
 
            std::ofstream tCSV ;
            tCSV.open( "acloss.csv", std::ios_base::app);
            tCSV <<  tTime << ", " << tI << ", " << tEI << std::endl ;
            tCSV.close() ;
 
+            // compute the rcond function
+           real tC0 = tMagfield->solver()->wrapper()->get_cond0() ;
+           real tC1 = tMagfield->solver()->wrapper()->get_cond1() ;
+           real tK = tC0 > tC1 ? tC0 : tC1 ;
+
+           // Sophie's truncation function
+           real tR = tK/( 1 - tK*BELFEM_EPS )* 2.0 * BELFEM_EPS ;
+
+           std::cout << "cond: " << tK << " " << tR << std::endl ;
        }
        //fem::compute_element_current_thinshell_tri3( tMagfield );
 

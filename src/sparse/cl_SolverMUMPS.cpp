@@ -26,11 +26,12 @@ namespace belfem
 #endif
         {
             // allocate user settings
-            mIParameters.set_size( 10, 0 );
+            mIParameters.set_size( 11, 0 );
             mRParameters.set_size( 1, 0.0 );
 
             // allocate information vector
             mInfo.set_size( 40, 0 );
+            mRInfoG.set_size( 20, 0 );
 
             this->init_defaults();
         }
@@ -111,21 +112,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        real
-        MUMPS::get_determinant() const
-        {
-#ifdef BELFEM_MUMPS
-            return mIParameters( 7 ) == 0 ?
-                    BELFEM_SIGNALING_NAN :
-                    mumpstools_get_determinant() ;
-#else
-            BELFEM_ERROR( false, "We are not linked against MUMPS" );
-            return BELFEM_SIGNALING_NAN ;
-#endif
-        }
-
-//------------------------------------------------------------------------------
-
         void
         MUMPS::free()
         {
@@ -173,21 +159,8 @@ namespace belfem
                         aMatrix.data(),
                         aLHS.data(),
                         aRHS.data(),
-                        mInfo.data() );
-
-                /*call_mumps(
-                        aMatrix.n_rows(),
-                        aMatrix.number_of_nonzeros(),
-                        1,
-                        aMatrix.rows(),
-                        aMatrix.cols(),
-                        aMatrix.data(),
-                        aLHS.data(),
-                        aRHS.data(),
-                        5,
-                        0,
-                        mInfo.data() ); */
-
+                        mInfo.data(),
+                        mRInfoG.data() );
             }
             else
             {
@@ -203,7 +176,8 @@ namespace belfem
                         NULL,
                         NULL,
                         NULL,
-                        mInfo.data() );
+                        mInfo.data(),
+                        mRInfoG.data() );
             }
 
             // check result
@@ -270,7 +244,8 @@ namespace belfem
                         aMatrix.data(),
                         aLHS.data(),
                         aRHS.data(),
-                        mInfo.data() );
+                        mInfo.data(),
+                        mRInfoG.data() );
 #else
                Vector< real > tX;
                Vector< real > tY;
@@ -291,7 +266,8 @@ namespace belfem
                         aMatrix.data(),
                         tX.data(),
                         tY.data(),
-                        mInfo.data() );
+                        mInfo.data(),
+                        mRInfoG.data() );
 
                // unflatten vector to matrix
                this->vec2mat( tX, aLHS );
@@ -311,7 +287,8 @@ namespace belfem
                         NULL,
                         NULL,
                         NULL,
-                        mInfo.data() );
+                        mInfo.data(),
+                        mRInfoG.data() );
             }
 
             // check result
@@ -819,6 +796,45 @@ namespace belfem
         {
             mIParameters( 9 ) = static_cast< int > ( aBLK );
             mRParameters( 0 ) = aEpsilon ;
+
+        }
+//------------------------------------------------------------------------------
+
+        void
+        MUMPS::set_error_analysis(
+                const MumpsErrorAnalysis aSetting )
+        {
+            mIParameters( 10 ) = static_cast< int >( aSetting );
+        }
+
+//------------------------------------------------------------------------------
+
+        real
+        MUMPS::get_determinant() const
+        {
+            return mIParameters( 7 ) == 0 ?
+                   BELFEM_SIGNALING_NAN :
+                   mRInfoG( 11 ) ;
+        }
+
+//------------------------------------------------------------------------------
+
+        real
+        MUMPS::get_cond0() const
+        {
+            return mIParameters( 10 ) == 1 ?
+                   mRInfoG( 9 )  :
+                   BELFEM_SIGNALING_NAN ;
+        }
+
+//------------------------------------------------------------------------------
+
+        real
+        MUMPS::get_cond1() const
+        {
+            return mIParameters( 10 ) == 1 ?
+                   mRInfoG( 10 )  :
+                   BELFEM_SIGNALING_NAN ;
         }
 
 //------------------------------------------------------------------------------

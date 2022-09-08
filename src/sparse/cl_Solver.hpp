@@ -125,6 +125,10 @@ namespace belfem
                 const BlockLowRanking aBlr,
                 const real            aEpsilon );
 
+        void
+        set_mumps_error_analysis(
+                const MumpsErrorAnalysis aSetting );
+
 //------------------------------------------------------------------------------
 
         /**

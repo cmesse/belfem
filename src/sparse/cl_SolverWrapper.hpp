@@ -101,8 +101,8 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            virtual void
-            free();
+        virtual void
+        free();
 
 //------------------------------------------------------------------------------
 
@@ -110,8 +110,26 @@ namespace belfem
          * returns the determinant, if supported by the solver
          * and computation was requested
          */
-         real
-         get_determinant() const ;
+        virtual real
+        get_determinant() const ;
+
+//------------------------------------------------------------------------------
+
+        /**
+        * returns the conditioning numbner, if supported by the solver
+        * and computation was requested
+        */
+        virtual real
+        get_cond0() const ;
+
+//------------------------------------------------------------------------------
+
+        /**
+         * returns the conditioning numbner, if supported by the solver
+         * and computation was requested
+        */
+       virtual real
+       get_cond1() const ;
 
 //------------------------------------------------------------------------------
         protected:

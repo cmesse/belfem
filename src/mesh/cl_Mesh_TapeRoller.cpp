@@ -324,7 +324,7 @@ namespace belfem
                 tElement->insert_node( tFacet1->node( 1 ), 5 );
                 tElement->insert_node( tFacet2->node( 2 ), 6 );
                 tElement->insert_node( tFacet1->node( 0 ), 7 );
-                tElement->insert_node( tFacet1->node( 1 ), 8 );
+                tElement->insert_node( tFacet1->node( 2 ), 8 );
 
                 // add element to Container
                 tElements( e ) = tElement ;
@@ -516,6 +516,13 @@ namespace belfem
 
                     // shift node
                     tX += tShift( l ) * tN;
+
+                    if( tNode->id() == 39574 || tNode->id() == 39575 )
+                    {
+                        std::cout << "check" << std::endl ;
+                        tX.print("X");
+                        tN.print("N");
+                    }
 
                     // write node coordinates back
                     tNode->set_coords( tX );
@@ -1110,6 +1117,8 @@ namespace belfem
                    tnorm = std::sqrt( tdx*tdx + tdy*tdy );
 
                    // we store the information on the tags of the element
+                   // todo: this is wrong and must be fixed
+
                    uint tTag = tnorm > 1.0 ? 1 : 0 ;
 
                    tFacet->element()->set_physical_tag( tTag );
