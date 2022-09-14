@@ -130,16 +130,12 @@ namespace belfem
                 mNodeTable.set_size( mNumberOfProcs, {} );
                 mElementTable.set_size( mNumberOfProcs, {} );
 
-                if ( mMesh->edges_exist() )
-                {
-                    // allocate memory for edge table
-                    mEdgeTable.set_size( mNumberOfProcs, {} );
-                }
-                if( mMesh->faces_exist() )
-                {
-                    // allocate memory for face table
-                    mFaceTable.set_size( mNumberOfProcs, {} );
-                }
+                // allocate memory for edge table
+                mEdgeTable.set_size( mNumberOfProcs, {} );
+
+                // allocate memory for face table
+                mFaceTable.set_size( mNumberOfProcs, {} );
+
                 // for lambda dofs
                 mFacetTable.set_size( mNumberOfProcs, {} );
                 mConnectorTable.set_size( mNumberOfProcs, {} );
