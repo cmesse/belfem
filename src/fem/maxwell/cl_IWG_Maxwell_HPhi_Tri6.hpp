@@ -43,10 +43,15 @@ namespace belfem
             // edge index vector
             Vector< uint > mU ;
 
-            Vector< int > mPivot ;
-            Vector< real > mAlpha;
-            Vector< real > mBeta;
-            Vector< real > mGamma ;
+            Vector< real > mHn ;
+            Vector< real > mW ;
+
+            Matrix< real > mArho ;
+            Vector< real > mBrho ;
+            Vector< real > mCrho ;
+            Vector< int >  mPrho ;
+            Matrix< real > mL ;
+
 
 //------------------------------------------------------------------------------
         public:
@@ -162,6 +167,7 @@ namespace belfem
                     const real aE0,
                     const real aE1,
                     Matrix< real > & aM );
+
 //------------------------------------------------------------------------------
 
             void
@@ -172,13 +178,37 @@ namespace belfem
                     const real aE1,
                     const Vector< real > & aHt,
                     const real aHn,
-                    const real adHndx,
+                    const real aXLength,
                     Matrix< real > & aK );
+
+//------------------------------------------------------------------------------
+
+            void
+            compute_layer_stabilizer(
+                    const Vector< real > & aHt,
+                    const real aXLength,
+                    const real aYLength,
+                    Matrix< real > & aL );
 
 //------------------------------------------------------------------------------
 
             const Vector< real > &
             collect_q0_thinshell( Element * aElement );
+
+//------------------------------------------------------------------------------
+
+            const Vector< real > &
+            eval_quad9( const real aX, const real aY );
+
+//------------------------------------------------------------------------------
+
+            const Vector< real > &
+            eval_quad9_dx( const real aX, const real aY );
+
+//------------------------------------------------------------------------------
+
+            const Vector< real > &
+            eval_quad9_dy( const real aX, const real aY );
 
 //------------------------------------------------------------------------------
         };
@@ -256,6 +286,57 @@ namespace belfem
                 Vector< real > & aRHS )
         {
             IWG_Maxwell::compute_jacobian_and_rhs_cut( aElement, aJacobian, aRHS );
+        }
+
+//------------------------------------------------------------------------------
+
+        inline const Vector< real > &
+        IWG_Maxwell_HPhi_Tri6::eval_quad9( const real aX, const real aY )
+        {
+            mCrho( 0 ) = 1.0 ;
+            mCrho( 1 ) = aX ;
+            mCrho( 2 ) = aY ;
+            mCrho( 3 ) = aX*aX ;
+            mCrho( 4 ) = aX*aY ;
+            mCrho( 5 ) = aY*aY ;
+            mCrho( 6 ) = mCrho( 3 )*aY ;
+            mCrho( 7 ) = aX*mCrho( 5 ) ;
+            mCrho( 8 ) = mCrho( 3 )*mCrho( 5 );
+            return mCrho ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline const Vector< real > &
+        IWG_Maxwell_HPhi_Tri6::eval_quad9_dx( const real aX, const real aY )
+        {
+            mCrho( 0 ) = 0.0 ;
+            mCrho( 1 ) = 1.0 ;
+            mCrho( 2 ) = 0.0 ;
+            mCrho( 3 ) = aX + aX ;
+            mCrho( 4 ) = aY ;
+            mCrho( 5 ) = 0.0 ;
+            mCrho( 6 ) = mCrho( 3 )*aY ;
+            mCrho( 7 ) = aY*aY ;
+            mCrho( 8 ) = mCrho( 3 )*mCrho( 7 );
+            return mCrho ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline const Vector< real > &
+        IWG_Maxwell_HPhi_Tri6::eval_quad9_dy( const real aX, const real aY )
+        {
+            mCrho( 0 ) = 0.0 ;
+            mCrho( 1 ) = 0.0 ;
+            mCrho( 2 ) = 1.0 ;
+            mCrho( 3 ) = 0.0 ;
+            mCrho( 4 ) = aX ;
+            mCrho( 5 ) = aY + aY ;
+            mCrho( 6 ) = aX * aX ;
+            mCrho( 7 ) = mCrho( 5 )*aY ;
+            mCrho( 8 ) = mCrho( 5 )*mCrho( 6 );
+            return mCrho ;
         }
 
 //------------------------------------------------------------------------------
