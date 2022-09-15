@@ -360,7 +360,7 @@ int main( int    argc,
                     real tV = tPipette.measure( tElement );
                     tEI += tEJ( tElement->index() ) * tV ;
                     tI  += tJ( tElement->index() ) * tV ;
-                    std::cout << tElement->id() << " " << 0.5*(tElement->node( 0 )->x()+tElement->node( 1 )->x()) << " " << tV << " " << tJ( tElement->index() )/tJc << " " << tEJ( tElement->index() ) << " " << std::endl ;
+                    std::cout << 0.5*(tElement->node( 0 )->x()+tElement->node( 1 )->x()) << " " << tJ( tElement->index() )/tJc << " " << tEJ( tElement->index() ) << " " << std::endl ;
 
                }
            }

@@ -87,6 +87,10 @@ namespace belfem
         ( MaxwellMaterial::*mFunRho )
         ( const real aJ, const real aT, const real aB ) const;
 
+        real
+        ( MaxwellMaterial::*mFunRhoCrit )
+                ( const real aJ, const real aT, const real aB ) const;
+
 //----------------------------------------------------------------------------
     public:
 //----------------------------------------------------------------------------
@@ -108,6 +112,12 @@ namespace belfem
         // electric resistance
         real
         rho_el ( const real aJ=0, const real aT=BELFEM_TREF, const real aB=0 ) const ;
+
+//----------------------------------------------------------------------------
+
+        // electric resistance
+        real
+        rho_el_crit ( const real aJ, const real aT=BELFEM_TREF, const real aB=0 ) const ;
 
 //----------------------------------------------------------------------------
 
@@ -243,10 +253,16 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
+        rho_el_crit_error( const real aJ, const real aT, const real aB  ) const ;
+
+        real
         rho_el_const ( const real aJ, const real aT=BELFEM_TREF, const real aB=0 ) const ;
 
         real
         rho_el_powerlaw_ej( const real aJ, const real aT=BELFEM_TREF, const real aB=0  ) const ;
+
+        real
+        rho_el_crit_powerlaw_ej( const real aJ, const real aT, const real aB  ) const ;
 
         real
         rho_el_powerlaw_ejt(const real aJ, const real aT=BELFEM_TREF, const real aB=0 ) const ;
@@ -269,6 +285,13 @@ namespace belfem
         MaxwellMaterial::rho_el( const real aJ, const real aT, const real aB ) const
         {
             return ( this->*mFunRho )( std::abs( aJ ), aT, std::abs( aB ) );
+        }
+//----------------------------------------------------------------------------
+
+        inline real
+        MaxwellMaterial::rho_el_crit( const real aJ, const real aT, const real aB ) const
+        {
+            return ( this->*mFunRhoCrit )( std::abs( aJ ), aT, std::abs( aB ) );
         }
 
 //----------------------------------------------------------------------------
@@ -300,6 +323,15 @@ namespace belfem
         MaxwellMaterial::rho_el_powerlaw_ej( const real aJ, const real aT, const real aB ) const
         {
             return std::min( mRhoc * std::pow( aJ / ( mJc + BELFEM_EPSILON ), mNm1 ), mRhoMax );
+        }
+
+
+//----------------------------------------------------------------------------
+
+        inline real
+        MaxwellMaterial::rho_el_crit_powerlaw_ej( const real aJ, const real aT, const real aB ) const
+        {
+            return mRhoc ;
         }
 
 //----------------------------------------------------------------------------

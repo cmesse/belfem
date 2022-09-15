@@ -274,6 +274,16 @@ namespace belfem
 
 //----------------------------------------------------------------------------
 
+    // electric resistance
+    real
+    Material::rho_el_crit (  const real aJ, const real aT, const real aB ) const
+    {
+        BELFEM_ERROR( false, "rho_el_crit() not implemented for material %s", mLabel.c_str() );
+        return BELFEM_QUIET_NAN ;
+    }
+
+//----------------------------------------------------------------------------
+
     real
     Material::nu_s( const real aB, const real aT ) const
     {

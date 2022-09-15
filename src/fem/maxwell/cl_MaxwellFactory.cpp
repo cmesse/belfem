@@ -1320,8 +1320,8 @@ namespace belfem
             // write flags to parameters
             mParameters->enforce_linear( tFlags );
 
-            //mParameters->set_sideset_integration_orders( 5 );
-            //mParameters->set_block_integration_orders( 5 );
+            // mParameters->set_sideset_integration_orders( 7 );
+            // mParameters->set_block_integration_orders( 7 );
 
             if( comm_rank() == 0 )
             {

@@ -262,6 +262,9 @@ namespace belfem
         virtual
         real rho_el ( const real aJ=0, const real aT=0, const real aB=0 ) const ;
 
+        // electric resistance
+        virtual
+        real rho_el_crit ( const real aJ, const real aT, const real aB ) const ;
 
 //----------------------------------------------------------------------------
 

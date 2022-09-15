@@ -75,13 +75,14 @@ namespace belfem
     {
         mResistivityLaw = ResistivityLaw::DependJ ;
         mFunRho = & MaxwellMaterial::rho_el_powerlaw_ej ;
-
+        mFunRhoCrit = & MaxwellMaterial::rho_el_crit_powerlaw_ej ;
         this->reset_parameters();
 
         mRhoc  = aEc / aJc ;
         mEc    = aEc ;
         mJc    = aJc ;
         mNm1   = aN - 1.;
+        mRhoMax = 100 * mRhoc ;
     }
 
 //----------------------------------------------------------------------------
@@ -95,8 +96,8 @@ namespace belfem
             const real aB0 )
     {
         mResistivityLaw = ResistivityLaw::DependJB ;
-        mFunRho = & MaxwellMaterial::rho_el_powerlaw_ejb ;
-
+        mFunRho     = & MaxwellMaterial::rho_el_powerlaw_ejb ;
+        mFunRhoCrit = & MaxwellMaterial::rho_el_crit_error ;
         this->reset_parameters();
 
         mEc   = aEc ;
@@ -118,6 +119,7 @@ namespace belfem
     {
         mResistivityLaw = ResistivityLaw::DependJT ;
         mFunRho = & MaxwellMaterial::rho_el_powerlaw_ejt ;
+        mFunRhoCrit = & MaxwellMaterial::rho_el_crit_error ;
 
         this->reset_parameters();
 
@@ -145,6 +147,7 @@ namespace belfem
     {
         mResistivityLaw = ResistivityLaw::DependJBT ;
         mFunRho = & MaxwellMaterial::rho_el_powerlaw_ejbt ;
+        mFunRhoCrit = & MaxwellMaterial::rho_el_crit_error ;
 
         this->reset_parameters();
 
@@ -198,6 +201,7 @@ namespace belfem
         mRhoSpline = aSpline ;
         mResistivityLaw = ResistivityLaw::DependT ;
         mFunRho = & MaxwellMaterial::rho_el_spline_t ;
+        mFunRhoCrit = & MaxwellMaterial::rho_el_crit_error ;
 
         mPermeabilityLaw = PermeabilityLaw::Constant ;
         mFunMur = & MaxwellMaterial::mu_r_const ;
@@ -288,6 +292,15 @@ namespace belfem
             delete mThermalMaterial;
         }
         mThermalMaterial = tFactory.create_material( aLabel );
+    }
+
+//----------------------------------------------------------------------------
+
+    real
+    MaxwellMaterial::rho_el_crit_error( const real aJ, const real aT=BELFEM_TREF, const real aB=0  ) const
+    {
+        BELFEM_ERROR( false, "rho_el_crit not implemented for this material");
+        return BELFEM_QUIET_NAN ;
     }
 
 //----------------------------------------------------------------------------

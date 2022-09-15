@@ -2949,7 +2949,7 @@ namespace belfem
             mGroup->work_det_J() = norm( mNormal2D );
             mNormal2D /= mGroup->work_det_J() ;
 
-            // scale determinant
+            // scale determinant because we integrate from -1 to +1
             mGroup->work_det_J() *= 0.5 ;
 
             return mNormal2D ;

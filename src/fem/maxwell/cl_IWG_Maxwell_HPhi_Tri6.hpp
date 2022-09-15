@@ -52,7 +52,6 @@ namespace belfem
             Vector< int >  mPrho ;
             Matrix< real > mL ;
 
-
 //------------------------------------------------------------------------------
         public:
 //------------------------------------------------------------------------------
@@ -188,7 +187,8 @@ namespace belfem
                     const Vector< real > & aHt,
                     const real aXLength,
                     const real aYLength,
-                    Matrix< real > & aL );
+                    const real aRhoCrit,
+                    Matrix< real > & aG );
 
 //------------------------------------------------------------------------------
 

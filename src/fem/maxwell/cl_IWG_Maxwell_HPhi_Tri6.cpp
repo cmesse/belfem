@@ -76,7 +76,6 @@ namespace belfem
             mCrho.set_size( 9 );
             mPrho.set_size( 9 );
             mL.set_size( 2, 6 );
-
         }
 
 //------------------------------------------------------------------------------
@@ -864,7 +863,13 @@ namespace belfem
                 // compute coeffs for rho
                 gesv( mArho, mBrho, mPrho );
 
-                this->compute_layer_stabilizer( tHt, tLength, mGroup->thin_shell_thickness( l ), tMlayer );
+                // critical current
+                const Material * tMaterial = mGroup->thin_shell_material( l );
+                real tRhoCrit = tMaterial->type() == MaterialType::Maxwell ?
+                        tMaterial->rho_el_crit( 0.0, 0.0, 0.0 ) : 0.0 ;
+
+                this->compute_layer_stabilizer( tHt, tLength,
+                                                mGroup->thin_shell_thickness( l ), tRhoCrit, tMlayer );
 
                 for ( uint j = 0; j < 6; ++j )
                 {
@@ -1095,9 +1100,15 @@ namespace belfem
                 const Vector< real > & aHt,
                 const real aXLength,
                 const real aYLength,
-                Matrix< real > & aL )
+                const real aRhoCrit,
+                Matrix< real > & aG )
         {
-            real tC = 1 ;
+            /*real tC = 0 ;
+            for( uint k=0; k<6; ++k )
+            {
+                tC += aL( k, k )*aL( k, k ) ;
+            }
+            tC = std::sqrt( tC ); */
 
             // integration data
             const IntegrationData * tInteg = mGroup->thinshell_integration();
@@ -1106,9 +1117,9 @@ namespace belfem
 
             const Matrix< real > & tXi = tInteg->points() ;
 
-            aL.fill( 0.0 );
+            aG.fill( 0.0 );
 
-            real tDelta = tC * ( aXLength * aYLength );
+            real tC =  ( aXLength * aXLength );
 
             for( uint l=0; l<mNumberOfIntegrationPoints; ++l )
             {
@@ -1169,9 +1180,32 @@ namespace belfem
                     mL( 1, 4 ) += ( -1.5*eta - 0.75 ) * tVal ;
                     mL( 1, 5 ) += ( 1.5*eta + 0.75 )  * tVal ;
 
-                    aL += tW( k ) * tDelta * trans( mL ) * mL ;
+                    real tDelta = aRhoCrit == 0 ? tC : tC * tRho / aRhoCrit ;
+
+                    aG += tW( k ) * tDelta * trans( mL ) * mL ;
+
+                    /*mL( 0, 0 ) = 0.5 * ( 1. - 3. * xi );
+                    mL( 0, 1 ) = 0.5 * ( 1. + 3. * xi );
+                    mL( 1, 0 ) = 0.5 * eta * ( eta - 1.0 );
+                    mL( 1, 1 ) = 1.0 - eta * eta ;
+                    mL( 1, 2 ) = 0.5 * eta * ( eta +  1.0 );
+
+                    mC( 0, 0 ) = mL( 1, 0 ) * mL( 0, 0 ) ;
+                    mC( 0, 1 ) = mL( 1, 0 ) * mL( 0, 1 ) ;
+                    mC( 0, 2 ) = mL( 1, 1 ) * mL( 0, 0 ) ;
+                    mC( 0, 3 ) = mL( 1, 1 ) * mL( 0, 1 ) ;
+                    mC( 0, 4 ) = mL( 1, 2 ) * mL( 0, 0 ) ;
+                    mC( 0, 5 ) = mL( 1, 2 ) * mL( 0, 1 ) ; */
                 }
             }
+
+            /*real tD = 0 ;
+            for( uint k=0; k<6; ++k )
+            {
+                tD += aL( k, k )*tDelta*aL( k, k ) ;
+            }
+            tD = std::sqrt( tD ); */
+
         }
 
 #ifdef BELFEM_GCC

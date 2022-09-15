@@ -517,13 +517,6 @@ namespace belfem
                     // shift node
                     tX += tShift( l ) * tN;
 
-                    if( tNode->id() == 39574 || tNode->id() == 39575 )
-                    {
-                        std::cout << "check" << std::endl ;
-                        tX.print("X");
-                        tN.print("N");
-                    }
-
                     // write node coordinates back
                     tNode->set_coords( tX );
 
