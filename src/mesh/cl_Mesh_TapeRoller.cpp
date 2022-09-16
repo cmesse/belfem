@@ -981,21 +981,74 @@ namespace belfem
                     }
                 }
 
+
                 // count number of edges
                 index_t tCount = 0;
+
+                // now we need to fix the node connectivities on these edges
+                for ( id_t tID: mSelectedSideSets )
+                {
+                    // get the container with the facets
+                    Cell< Facet * > & tFacets = mMesh->sideset( tID )->facets();
+
+                    uint tNumNodesPerEdge =
+                            mesh::interpolation_order_numeric(
+                                    mMesh->sideset( tID )->element_type() ) + 1 ;
+
+                    Cell< Node * > tNodes( tNumNodesPerEdge, nullptr );
+
+                    // loop over all facets
+                    for ( Facet * tFacet: tFacets )
+                    {
+                        Element * tElement = tFacet->element() ;
+
+                        // loop over all edges of this faced
+                        for( uint e=0; e<tElement->number_of_edges(); ++e )
+                        {
+                            // grab edge
+                            Edge * tEdge = tElement->edge( e );
+
+                            if( tEdge->is_flagged() )
+                            {
+                                ++tCount ;
+
+                                // get nodes from facet
+                                tElement->get_nodes_of_edge( e, tNodes );
+
+                                // flip nodes if the edge direction is different
+                                if ( tNodes( 0 )->id() > tNodes( 1 )->id() )
+                                {
+                                    reverse( tNodes );
+                                }
+
+                                // change node on edge
+                                for( uint k=0; k<tNumNodesPerEdge; ++k )
+                                {
+                                    tEdge->insert_node( tNodes( k ), k );
+                                }
+
+                                tEdge->unflag() ;
+                            }
+                        }
+                    }
+                }
+
+                for ( id_t tID: mSelectedSideSets )
+                {
+                    // get the container with the facets
+                    Cell< Facet * > & tFacets = mMesh->sideset( tID )->facets();
+
+                    // loop over all facets
+                    for ( Facet * tFacet: tFacets )
+                    {
+                        tFacet->element()->flag_edges();
+                    }
+                }
 
 
 
                 // count cloned edges and create edge map
                 Cell< Edge * > & tEdges = mMesh->edges();
-
-                for ( Edge * tEdge: tEdges )
-                {
-                    if ( tEdge->is_flagged())
-                    {
-                        ++tCount ;
-                    }
-                }
 
                 // clone the edges
                 for( uint l=0; l<mNumberOfGhostLayers; ++l )

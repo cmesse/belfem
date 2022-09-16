@@ -360,7 +360,7 @@ int main( int    argc,
                     real tV = tPipette.measure( tElement );
                     tEI += tEJ( tElement->index() ) * tV ;
                     tI  += tJ( tElement->index() ) * tV ;
-                    std::cout << 0.5*(tElement->node( 0 )->x()+tElement->node( 1 )->x()) << " " << tJ( tElement->index() )/tJc << " " << tEJ( tElement->index() ) << " " << std::endl ;
+                    std::cout << tElement->id() << " " << 0.5*(tElement->node( 0 )->x()+tElement->node( 1 )->x()) << " " << tV << " " << tJ( tElement->index() )/tJc << " " << tEJ( tElement->index() ) << " " << std::endl ;
 
                }
            }
@@ -373,14 +373,14 @@ int main( int    argc,
            tCSV.close() ;
 
             // compute the rcond function
-           /*real tC0 = tMagfield->solver()->wrapper()->get_cond0() ;
-           real tC1 = tMagfield->solver()->wrapper()->get_cond1() ;
-           real tK = tC0 > tC1 ? tC0 : tC1 ;
+           //real tC0 = tMagfield->solver()->wrapper()->get_cond0() ;
+           //real tC1 = tMagfield->solver()->wrapper()->get_cond1() ;
+           //real tK = tC0 > tC1 ? tC0 : tC1 ;
 
            // Sophie's truncation function
-           real tR = tK/( 1 - tK*BELFEM_EPS )* 2.0 * BELFEM_EPS ;
+           //real tR = tK/( 1 - tK*BELFEM_EPS )* 2.0 * BELFEM_EPS ;
 
-           std::cout << "cond: " << tK << " " << tR << std::endl ; */
+           //std::cout << "cond: " << tK << " " << tR << std::endl ;
        }
        //fem::compute_element_current_thinshell_tri3( tMagfield );
 

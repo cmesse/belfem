@@ -731,6 +731,8 @@ namespace belfem
             // element lengfth
             real tLength = 0 ;
 
+            // std::cout << "el " << aElement->id() << " " << tSign << " | " << aElement->master()->id() << " " << aElement->slave()->id() << " |  " << aElement->element()->node( 0 )->id() << " " << aElement->element()->node( 1 )->id() << std::endl ;
+
             // loop over all integration points
             for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
             {
@@ -1119,7 +1121,7 @@ namespace belfem
 
             aG.fill( 0.0 );
 
-            real tC =  ( aXLength * aXLength );
+            real tC =  ( aXLength * aXLength ) ;
 
             for( uint l=0; l<mNumberOfIntegrationPoints; ++l )
             {
@@ -1180,7 +1182,7 @@ namespace belfem
                     mL( 1, 4 ) += ( -1.5*eta - 0.75 ) * tVal ;
                     mL( 1, 5 ) += ( 1.5*eta + 0.75 )  * tVal ;
 
-                    real tDelta = aRhoCrit == 0 ? tC : tC * tRho / aRhoCrit ;
+                    real tDelta = aRhoCrit == 0 ? tC : tC * std::pow( tRho / aRhoCrit, 2 );
 
                     aG += tW( k ) * tDelta * trans( mL ) * mL ;
 

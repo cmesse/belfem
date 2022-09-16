@@ -173,7 +173,7 @@ namespace belfem
             void
             cut( const Vector< id_t > & aSidesetIDs,
                  const Vector< id_t > & aMinusBlocks,
-                 const Vector< id_t > & aPusBlocks,
+                 const Vector< id_t > & aPlusBlocks,
                  const bool aIsSheet=false );
 
 //------------------------------------------------------------------------------
