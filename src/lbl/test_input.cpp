@@ -13,6 +13,8 @@
 #include "cl_MaxwellFactory.hpp"
 #include "cl_Profiler.hpp"
 #include "fn_FEM_compute_normb.hpp"
+#include "fn_sum.hpp"
+
 //#include "fn_FEM_compute_element_current_thinshell.hpp"
 #include "cl_Pipette.hpp"
 #include "fn_rcond.hpp"
@@ -212,7 +214,8 @@ int main( int    argc,
 
    tMagfield->solver()->set_mumps_error_analysis( MumpsErrorAnalysis::Full );
 
-   while( tTime < tMaxTime )
+
+    while( tTime < tMaxTime )
    {
        real tOmegaP = tNonlinear.picardOmega ;
        real tOmegaN = tNonlinear.newtonOmega ;
@@ -335,8 +338,6 @@ int main( int    argc,
            gLog.message( 1, "    timestep completed in %4.2f seconds", ( float ) tTimer.stop() * 0.001 );
        }
 
-       // postprocess
-       tMagfield->postprocess() ;
 
        // todo: move into postprocess routine
        if( comm_rank() == 0 )
@@ -345,43 +346,108 @@ int main( int    argc,
            real tI = 0 ;
            mesh::Pipette tPipette ;
 
-           Vector< real > & tEJ = tMesh->field_data( "elementEJ");
-           Vector< real > & tJ = tMesh->field_data( "elementJ");
+           Vector< real > & tEJel = tMesh->field_data( "elementEJ");
+           Vector< real > & tJel = tMesh->field_data( "elementJ");
 
-           std::cout << "=====" << std::endl ;
+           string tTimeString = sprint("%04u", tTimeCount ) ;
+
+           std::ofstream tTimeFile ;
+           tTimeFile.open( "time.csv", std::ios_base::app);
+           tTimeFile << tTimeCount << "," << tTime << std::endl ;
+           tTimeFile.close() ;
+
            for( id_t tID : tMesh->ghost_block_ids() )
            {
+               string tFileName = "tape_" +  std::to_string( tID ) + "_" + tTimeString + ".csv";
+
+               std::ofstream tTapeFile ;
+               tTapeFile.open( tFileName, std::ios_base::app);
+               //tTapeFile << "t=" << tTime << ", " << std::endl ;
+
                tPipette.set_element_type( tMesh->block( tID )->element_type() );
-               std::cout <<" block " << tID << std::endl ;
+               tTapeFile << "el,xm,v,j,e*j" << std::endl ;
 
                real tJc = 47500e6 ;
                for( mesh::Element * tElement : tMesh->block( tID )->elements() )
                {
                     real tV = tPipette.measure( tElement );
-                    tEI += tEJ( tElement->index() ) * tV ;
-                    tI  += tJ( tElement->index() ) * tV ;
-                    std::cout << tElement->id() << " " << 0.5*(tElement->node( 0 )->x()+tElement->node( 1 )->x()) << " " << tV << " " << tJ( tElement->index() )/tJc << " " << tEJ( tElement->index() ) << " " << std::endl ;
+                    tEI += tEJel( tElement->index() ) * tV ;
+                    tI  += tJel( tElement->index() ) * tV ;
+                    tTapeFile << tElement->id() << "," << 0.5*(tElement->node( 0 )->x()+tElement->node( 1 )->x()) << "," << tV << "," << tJel( tElement->index() )/tJc << "," << tEJel( tElement->index() )<< std::endl ;
+               }
+               tTapeFile.close() ;
 
+           }
+
+           for( fem::Block * tBlock : tMagfield->blocks() )
+           {
+               if( tBlock->domain_type() == DomainType::SuperConductor && tBlock->element_type() == ElementType::TRI6 )
+               {
+
+                   tFormulation->link_to_group( tBlock );
+
+                   // get elements
+                   Cell< fem::Element * > & tElements = tBlock->elements() ;
+
+                   for( fem::Element * tElement : tElements )
+                   {
+                       tI += tFormulation->compute_element_current( tElement );
+                   }
                }
            }
-           std::cout << "-----" << std::endl ;
-           std::cout  <<  tTime << ", " << tI << ", " << tEI << std::endl ;
+           tMagfield->synchronize_fields( {"elementJ"} );
+           Vector< real > tAllI( comm_size(), 0.0 );
+           receive( tKernel->comm_table(), tAllI );
+           tAllI( 0 ) = 0 ;
+
+           tI += sum( tAllI );
+
+
+           //std::cout << "-----" << std::endl ;
+          // std::cout  <<  tTime << ", " << tI << ", " << tEI << std::endl ;
 
            std::ofstream tCSV ;
            tCSV.open( "acloss.csv", std::ios_base::app);
            tCSV <<  tTime << ", " << tI << ", " << tEI << std::endl ;
            tCSV.close() ;
 
-            // compute the rcond function
-           //real tC0 = tMagfield->solver()->wrapper()->get_cond0() ;
-           //real tC1 = tMagfield->solver()->wrapper()->get_cond1() ;
-           //real tK = tC0 > tC1 ? tC0 : tC1 ;
+           // compute the rcond function
+           /*real tC0 = tMagfield->solver()->wrapper()->get_cond0() ;
+           real tC1 = tMagfield->solver()->wrapper()->get_cond1() ;
+           real tK = tC0 > tC1 ? tC0 : tC1 ;
 
            // Sophie's truncation function
-           //real tR = tK/( 1 - tK*BELFEM_EPS )* 2.0 * BELFEM_EPS ;
+           real tR = tK/( 1 - tK*BELFEM_EPS )* 2.0 * BELFEM_EPS ;
 
-           //std::cout << "cond: " << tK << " " << tR << std::endl ;
+           std::cout << "cond: " << tK << " " << tR << std::endl ;*/
        }
+       else
+       {
+           real tI = 0.0 ;
+
+           for( fem::Block * tBlock : tMagfield->blocks() )
+           {
+               if( tBlock->domain_type() == DomainType::SuperConductor && tBlock->element_type() == ElementType::TRI6 )
+               {
+
+                   tFormulation->link_to_group( tBlock );
+
+                   // get elements
+                   Cell< fem::Element * > & tElements = tBlock->elements() ;
+
+                   for( fem::Element * tElement : tElements )
+                   {
+                       tI += tFormulation->compute_element_current( tElement );
+                   }
+               }
+           }
+           tMagfield->synchronize_fields( {"elementJ"} );
+
+           send( 0, tI );
+
+
+       }
+
        //fem::compute_element_current_thinshell_tri3( tMagfield );
 
        compute_normb( tMagfield, false );

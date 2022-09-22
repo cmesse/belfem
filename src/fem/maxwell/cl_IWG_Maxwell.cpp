@@ -308,9 +308,11 @@ namespace belfem
                     // data for nxE or nxC in 3D
                     aGroup->work_Tau().set_size( mNumberOfDimensions, mNumberOfEdgeDofsPerElement );
 
-                    // data for node coordinates of surface element ( 3D only )
+                    // data for node coordinates of surface element
                     aGroup->work_X().set_size( mesh::number_of_nodes( aGroup->element_type() ), mNumberOfDimensions  );
-
+                    aGroup->work_Xm().set_size( mesh::number_of_nodes( aGroup->master_type() ), mNumberOfDimensions );
+                    aGroup->work_Xs().set_size( mesh::number_of_nodes( aGroup->slave_type() ), mNumberOfDimensions );
+                    
                     // contains the expression N_xi * X for surface
                     aGroup->work_L().set_size( 2, 3 );
 
@@ -3009,6 +3011,13 @@ namespace belfem
 
             return mNormal2D ;
 
+        }
+
+        real
+        IWG_Maxwell::compute_element_current( Element * aElement )
+        {
+            BELFEM_ERROR( false, "compute_element_current() not implemented for this IWG");
+            return BELFEM_QUIET_NAN ;
         }
 
 //------------------------------------------------------------------------------

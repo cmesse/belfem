@@ -177,7 +177,7 @@ namespace belfem
                 }
                 case( DomainType::ThinShell ) :
                 {
-                    mLayerData.set_size( mFields.Ghost.size(), mGroup->number_of_thin_shell_layers() );
+                    mLayerData.set_size( mFields.Ghost.size() + 1 , mGroup->number_of_thin_shell_layers() );
 
                     mFunJacobian =
                             & IWG_Maxwell_HPhi_Tri6::compute_jacobian_and_rhs_thinshell ;
@@ -870,6 +870,7 @@ namespace belfem
                 real tRhoCrit = tMaterial->type() == MaterialType::Maxwell ?
                         tMaterial->rho_el_crit( 0.0, 0.0, 0.0 ) : 0.0 ;
 
+
                 this->compute_layer_stabilizer( tHt, tLength,
                                                 mGroup->thin_shell_thickness( l ), tRhoCrit, tMlayer );
 
@@ -917,6 +918,8 @@ namespace belfem
                 mMesh->field_data( "elementJ" )( tIndex ) =  tJz ;
                 //mMesh->field_data( "elementEJ" )( tIndex ) = tRho * tJz * tJz ;
                 mMesh->field_data( "elementEJ" )( tIndex ) = mLayerData( 1, l );
+
+                std::cout << "check " << aElement->id() << " " << tJz * tLength * mGroup->thin_shell_thickness( l ) << " " << mLayerData( 2, l ) << std::endl ;
             }
         }
 #ifdef BELFEM_GCC
@@ -1086,6 +1089,12 @@ namespace belfem
 
             mLayerData( 0, aLayer ) += tW( aIntPoint ) * tJz_el ;
             mLayerData( 1, aLayer ) += tW( aIntPoint ) * tEJ_El ;
+
+            mLayerData( 2, aLayer ) += tW( aIntPoint ) *
+                    (    aE0 * ( aHt( 0 ) - aHt( 4 ) )
+                            + aE1 * ( aHt( 1 ) - aHt( 3 ) ) )  * aXLength * 2 ;
+
+
         }
 
 //------------------------------------------------------------------------------
@@ -1121,7 +1130,8 @@ namespace belfem
 
             aG.fill( 0.0 );
 
-            real tC =  ( aXLength * aXLength ) ;
+            real tC = ( aXLength * aYLength ) ;
+
 
             for( uint l=0; l<mNumberOfIntegrationPoints; ++l )
             {
@@ -1182,8 +1192,8 @@ namespace belfem
                     mL( 1, 4 ) += ( -1.5*eta - 0.75 ) * tVal ;
                     mL( 1, 5 ) += ( 1.5*eta + 0.75 )  * tVal ;
 
+                        // std::cout << "delta " << tDelta << std::endl ;
                     real tDelta = aRhoCrit == 0 ? tC : tC * std::pow( tRho / aRhoCrit, 2 );
-
                     aG += tW( k ) * tDelta * trans( mL ) * mL ;
 
                     /*mL( 0, 0 ) = 0.5 * ( 1. - 3. * xi );
@@ -1200,6 +1210,8 @@ namespace belfem
                     mC( 0, 5 ) = mL( 1, 2 ) * mL( 0, 1 ) ; */
                 }
             }
+
+
 
             /*real tD = 0 ;
             for( uint k=0; k<6; ++k )
@@ -1281,6 +1293,50 @@ namespace belfem
                 ++tCount ;
             }
             return aQ0 ;
+        }
+
+//------------------------------------------------------------------------------
+
+        real
+        IWG_Maxwell_HPhi_Tri6::compute_element_current( Element * aElement )
+        {
+            // link edge funcition with element
+            mEdgeFunction->link( aElement );
+
+            Matrix< real > & tX = mGroup->work_X() ;
+            aElement->get_node_coors( tX );
+
+            const Vector< real > & tW = mGroup->integration_weights() ;
+
+            real aI = 0.0 ;
+            real tV = 0.0 ;
+
+            // grab edge data
+            this->collect_nedelec_data( aElement,
+                                        NedelecField::H,
+                                        mGroup->work_nedelec() );
+
+            Vector< real > tJz( 1 );
+
+            // loop over all integration points
+            for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
+            {
+                // get operator for curl function
+                const Matrix< real > & tC = mEdgeFunction->C( k );
+
+                // compute current
+                tJz = tC * mGroup->work_nedelec() ;
+
+                // add current to integral
+                aI += tW( k ) * tJz( 0 ) * mEdgeFunction->abs_det_J();
+
+                // compute volume
+                tV += tW( k ) *  mEdgeFunction->abs_det_J();
+            }
+
+            mMesh->field_data( "elementJ")( aElement->element()->index() ) = aI / tV ;
+
+            return aI ;
         }
 
 //------------------------------------------------------------------------------

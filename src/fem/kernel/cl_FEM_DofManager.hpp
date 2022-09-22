@@ -368,6 +368,24 @@ namespace belfem
             void
             fix_node_dofs_on_ghost_sidesets() ;
 
+//------------------------------------------------------------------------------
+
+            /**
+             * return the blocks on this dof manager
+             * @return
+             */
+            Cell< Block * > &
+            blocks();
+
+//------------------------------------------------------------------------------
+
+            /**
+             * return the sidesets on this dof manager
+             * @return
+             */
+            Cell< SideSet * > &
+            sidesets();
+
 //-----------------------------------------------------------------------------
         private:
 //-----------------------------------------------------------------------------
@@ -566,6 +584,22 @@ namespace belfem
         DofManager::postprocessors()
         {
             return mPostprocessors ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline Cell< Block * > &
+        DofManager::blocks()
+        {
+            return mBlockData->blocks() ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline  Cell< SideSet * > &
+        DofManager::sidesets()
+        {
+            return mSideSetData->sidesets() ;
         }
 
 //-----------------------------------------------------------------------------
