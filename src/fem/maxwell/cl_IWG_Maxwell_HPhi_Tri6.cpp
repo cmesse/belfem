@@ -71,10 +71,13 @@ namespace belfem
             mHn.set_size( 16 );
             mW.set_size( 16 );
 
+            mAHn.set_size( 2, 2 );
+            mBHn.set_size( 2 );
+
             mArho.set_size( 9, 9 );
             mBrho.set_size( 9 );
             mCrho.set_size( 9 );
-            mPrho.set_size( 9 );
+            mPivot.set_size( 9 );
             mL.set_size( 2, 6 );
         }
 
@@ -564,6 +567,7 @@ namespace belfem
 
             // get the node coordinates
             Matrix< real > & tXm = mGroup->work_Xm() ;
+            this->collect_node_coords( aElement, mGroup->work_X() );
             this->collect_node_coords( aElement->master(), tXm );
 
             // get integration data from master
@@ -617,6 +621,11 @@ namespace belfem
                 Matrix< real > & aJacobian,
                 Vector< real > & aRHS )
         {
+            //std::cout << "====== " << aElement->facet()->master_index() << " " << aElement->facet()->slave_index() << std::endl ;
+            //aElement->element()->print() ;
+            //aElement->master()->element()->print() ;
+            //aElement->slave()->element()->print() ;
+
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // main containers
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -660,11 +669,11 @@ namespace belfem
 
             // get integration data from master
             const IntegrationData * tIntMaster =
-                    mGroup->master_integration( aElement->facet()->master_index());
+                    mGroup->master_integration( aElement->facet()->master_index() );
 
             // get integration data from slave
             const IntegrationData * tIntSlave =
-                    mGroup->slave_integration( aElement->facet()->slave_index());
+                    mGroup->slave_integration( aElement->facet()->slave_index() );
 
 
             // field on master side
@@ -693,9 +702,9 @@ namespace belfem
             // stiffness matrix for individual layer
             Matrix< real > & tKlayer = mGroup->work_L();
 
-            Matrix< real > & tJ = mGroup->work_J();
-            Matrix< real > & tG = mGroup->work_G();
-            Matrix< real > & tH = mGroup->work_H();
+            //Matrix< real > & tJ = mGroup->work_J();
+            //Matrix< real > & tG = mGroup->work_G();
+            //Matrix< real > & tH = mGroup->work_H();
 
             // reset the thin shell data
             mLayerData.fill( 0.0 );
@@ -721,7 +730,15 @@ namespace belfem
             BELFEM_ASSERT( mGroup->thinshell_integration()->weights().length() == mNumberOfIntegrationPoints,
                            "number of integraiton points on thin shell does not match" );
 
+            if( aElement->id() == 17 )
+            {
+                std::cout << aElement->facet()->master_index() << " " << aElement->facet()->slave_index() << std::endl ;
+                tXm.print("Xm");
+                tXs.print("Xs");
+                tPhiM.print("phiM");
+                tPhiS.print("phiS");
 
+            }
             // indices
             uint p ;
             uint q ;
@@ -730,8 +747,7 @@ namespace belfem
 
             // element lengfth
             real tLength = 0 ;
-
-            // std::cout << "el " << aElement->id() << " " << tSign << " | " << aElement->master()->id() << " " << aElement->slave()->id() << " |  " << aElement->element()->node( 0 )->id() << " " << aElement->element()->node( 1 )->id() << std::endl ;
+            //std::cout << std::endl << "------- " << std::endl << "el " << aElement->id() << " " << tSign << " | " << aElement->master()->id() << " " << aElement->slave()->id() << " |  " << aElement->element()->node( 0 )->id() << " " << aElement->element()->node( 1 )->id() << std::endl ;
 
             // loop over all integration points
             for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
@@ -739,6 +755,7 @@ namespace belfem
                 // compute element normal, also writes integration increment
                 // into mGroup->work_det_J()
                 const Vector< real > & tn = this->normal_curved_2d( aElement, k );
+                //const Vector< real > & tn = this->normal_straight_2d( aElement );
 
                 // integration increment for this point
                 real tWDetJ = tW( k ) * mGroup->work_det_J() ;
@@ -758,10 +775,27 @@ namespace belfem
                 // normal component of H ( needed for material properties)
                 mHn( k ) = -dot( tn.vector_data(), tBm.matrix_data() * tPhiM.vector_data() );
 
+                // Matrix< real > txm(  tIntMaster->N( k ).matrix_data() * tXm.matrix_data() ) ;
+                // Matrix< real > txs(  tIntSlave->N( k ).matrix_data() * tXs.matrix_data() ) ;
+                // txm.print("xm");
+                // txs.print("xs");
 
+                // std::cout << "n " << k << " " << mHn( k ) << " " <<  -dot( tn.vector_data(), tBs.matrix_data() * tPhiS.vector_data() ) << std::endl ;
+
+                /*if( aElement->id() == 17 && k == 2 )
+                {
+                    tn.print("n");
+                    Vector< real > bm( tBm.matrix_data() * tPhiM.vector_data() );
+                    Vector< real > bs( tBs.matrix_data() * tPhiS.vector_data() ) ;
+                    bm.print("bm");
+                    bs.print("bs");
+
+                }*/
                 tWDetJ /= mDeltaTime ;
 
                 crossmat( tn , tBm, tnxB );
+                //real tH1 = dot( tnxB, tPhiM ) ;
+
                 p = mNumberOfNodesPerElement+mNumberOfNodesPerElement;
                 q = p + mNumberOfThinShellLayers * 4 + 2 ;
 
@@ -787,6 +821,15 @@ namespace belfem
                 p = q - 2 ;
                 q += 2 ;
                 crossmat( tn , tBs, tnxB );
+                //real tH2 = dot( tnxB, tPhiS ) ;
+
+                // hack x-coordinate for output
+                //real tXi =  mGroup->integration_points()( 0, k ) ;
+
+                //real tx = 0.5 * ( aElement->element()->node( 0 )->x() * ( 1 - tXi)
+                 //       + aElement->element()->node( 1 )->x() * ( 1 + tXi) );
+
+                //std::cout << aElement->id() << " j: " << tx << " " << tH1 << " " << tH2 << " " << ( tH2-tH1 ) / mGroup->thin_shell_thickness( 0 ) << std::endl ;
 
                 for( uint j=0; j<mEdgeDofMultiplicity; ++j )
                 {
@@ -825,6 +868,23 @@ namespace belfem
 #endif
             }
 
+            /*mAHn.fill( 0.0 );
+            mBHn.fill( 0.0 );
+            // derivative of Hn to xi
+            for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
+            {
+                real tXi = mGroup->integration_points()( 0, k ) ;
+                mAHn( 0, 0 ) += tW( k ) * tXi * tXi ;
+                mAHn( 1, 0 ) += tW( k ) * tXi ;
+                mAHn( 0, 1 ) += tW( k ) * tXi ;
+                mAHn( 1, 1 ) += tW( k ) ;
+
+                mBHn( 0 ) += tW( k ) * mHn( k ) * tXi ;
+                mBHn( 1 ) += tW( k ) * tXi ;
+            }
+            gesv( mAHn, mBHn, mPivot );
+            real tdHndX = -mBHn( 0 ) / tLength * 2.0 ; */
+
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // Mass and Stiffness contributions
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -847,8 +907,7 @@ namespace belfem
 
                     this->compute_layer_mass( l, mE( 0 ), mE( 1 ), tMlayer );
 
-                    this->compute_layer_stiffness( l, k, mE( 0 ), mE( 1 ), tHt, mHn( k ), tLength, tKlayer );
-
+                    this->compute_layer_stiffness( l, k, mE( 0 ), mE( 1 ), tHt, mHn( k ), 0.0, tLength, tKlayer );
 
                     for ( uint j = 0; j < 6; ++j )
                     {
@@ -863,7 +922,7 @@ namespace belfem
                 }
 
                 // compute coeffs for rho
-                gesv( mArho, mBrho, mPrho );
+                gesv( mArho, mBrho, mPivot );
 
                 // critical current
                 const Material * tMaterial = mGroup->thin_shell_material( l );
@@ -919,8 +978,9 @@ namespace belfem
                 //mMesh->field_data( "elementEJ" )( tIndex ) = tRho * tJz * tJz ;
                 mMesh->field_data( "elementEJ" )( tIndex ) = mLayerData( 1, l );
 
-                std::cout << "check " << aElement->id() << " " << tJz * tLength * mGroup->thin_shell_thickness( l ) << " " << mLayerData( 2, l ) << std::endl ;
+                // std::cout << "check " << aElement->id() << " " << tJz * tLength * mGroup->thin_shell_thickness( l ) << " " << mLayerData( 2, l ) << std::endl ;
             }
+
         }
 #ifdef BELFEM_GCC
 #pragma GCC diagnostic pop
@@ -994,6 +1054,7 @@ namespace belfem
                 const real aE1,
                 const Vector< real > & aHt,
                 const real aHn,
+                const real adHndX,
                 const real  aXLength,
                 Matrix< real > & aK )
         {
@@ -1024,19 +1085,20 @@ namespace belfem
 
             const Matrix< real > & tXi = tInteg->points() ;
 
+            // note:: usually, line elements are numbered like this
+            //        0 --- 2 --- 1
+            //        but here, we use the scheme
+            //        0 --- 1 --- 2
+            //        that's why we need to swap the indices in mHt and tPhiXi!
+
+            // edge-wise components of H
+            mHt( 0 ) = aE0 * aHt( 0 ) + aE1 * aHt( 1 ) ; // field on master side
+            mHt( 2 ) = aE0 * aHt( 2 ) + aE1 * aHt( 3 ) ; // middle field
+            mHt( 1 ) = aE0 * aHt( 4 ) + aE1 * aHt( 5 ) ; // field on slave side
+
             // integrate over thickness
             for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
             {
-                // note:: usually, line elements are numbered like this
-                //        0 --- 2 --- 1
-                //        but here, we use the scheme
-                //        0 --- 1 --- 2
-                //        that's why we need to swap the indices in mHt and tPhiXi!
-
-                // edge-wise components of H
-                mHt( 0 ) = aE0 * aHt( 0 ) + aE1 * aHt( 1 ) ;
-                mHt( 2 ) = aE0 * aHt( 2 ) + aE1 * aHt( 3 ) ;
-                mHt( 1 ) = aE0 * aHt( 4 ) + aE1 * aHt( 5 ) ;
 
                 // derivative of shape function along thickness
                 const Vector< real > & tPhiXi = tInteg->dphidxi( k ) ;
@@ -1058,10 +1120,12 @@ namespace belfem
                 //std::cout << "x y " << adHndx << " " <<  dot( tPhiXi, mHt ) / tDetJ << std::endl ;
 
                 //real tJz = -adHndx + dot( tPhiXi, mHt ) / tDetJ ;
-                real tJz = dot( tPhiXi, mHt ) / tDetJ ;
+                real tJz = dot( tPhiXi, mHt ) / tDetJ - adHndX ;
 
                 // tangential component of h
                 real tHt =   dot( tInteg->phi( k ), mHt );
+
+                // std::cout << "   " << k << " " << tHt << " " << tJz << std::endl ;
 
                 // resistivity
                 real tRho = tMaterial->rho_el( tJz, tT, constant::mu0 * std::sqrt( tHt*tHt + aHn*aHn )  );
@@ -1092,7 +1156,7 @@ namespace belfem
 
             mLayerData( 2, aLayer ) += tW( aIntPoint ) *
                     (    aE0 * ( aHt( 0 ) - aHt( 4 ) )
-                            + aE1 * ( aHt( 1 ) - aHt( 3 ) ) )  * aXLength * 2 ;
+                            + aE1 * ( aHt( 1 ) - aHt( 5 ) ) )  * aXLength * 2 ;
 
 
         }

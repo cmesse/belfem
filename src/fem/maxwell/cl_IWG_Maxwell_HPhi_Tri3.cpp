@@ -536,14 +536,8 @@ namespace belfem
             const IntegrationData * tSlave =
                     mGroup->slave_integration( aElement->facet()->slave_index() );
 
-            // integration weights on master
-            const Vector< real > & tWm = tMaster->weights() ;
-
-            // integration weights on slave
-            const Vector< real > & tWs = tSlave->weights() ;
-
-            BELFEM_ASSERT( tWm.length() == mNumberOfIntegrationPoints, "number of integraiton points on master does not match" );
-            BELFEM_ASSERT( tWs.length() == mNumberOfIntegrationPoints, "number of integraiton points on slave does not match" );
+            BELFEM_ASSERT( tMaster->weights().length() == mNumberOfIntegrationPoints, "number of integraiton points on master does not match" );
+            BELFEM_ASSERT( tSlave->weights().length() == mNumberOfIntegrationPoints, "number of integraiton points on slave does not match" );
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // gradient operator master

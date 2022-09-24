@@ -301,6 +301,7 @@ namespace belfem
         {
             return ( this->*mFunMur )( std::abs( aH ), aT );
         }
+
 //----------------------------------------------------------------------------
 
         inline real

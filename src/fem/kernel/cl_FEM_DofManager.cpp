@@ -927,7 +927,7 @@ namespace belfem
             {
                 //tProjector->compute_jacobian();
                 tProjector->compute_rhs() ;
-                tProjector->save_system("projector.hdf5");
+                //tProjector->save_system("projector.hdf5");
                 tProjector->solve();
                 comm_barrier();
             }

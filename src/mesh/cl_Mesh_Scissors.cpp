@@ -656,8 +656,6 @@ namespace belfem
 
             mConnectorSetIDs.set_size( tNumSideSets );
 
-            index_t tNodeCount = 0 ;
-
             mMesh->unflag_all_nodes() ;
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

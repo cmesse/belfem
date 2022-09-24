@@ -11,7 +11,7 @@
 #include "cl_Matrix.hpp"
 #include "fn_norm.hpp"
 #include "fn_dot.hpp"
-
+#include "fn_trans.hpp"
 #include "cl_IWG_Timestep.hpp"
 #include "cl_FEM_Element.hpp"
 #include "cl_FEM_Group.hpp"
@@ -78,12 +78,6 @@ namespace belfem
 
             Vector< real > mNormal2D = { 0., 0., };
             Vector< real > mNormal3D = { 0., 0., 0. };
-
-            // link to function
-            const Vector< real > &
-            ( IWG_Maxwell::*mFunNormalCurved )
-                    (       Element        * aElement,
-                            const uint       aIndex );
 
 //------------------------------------------------------------------------------
         private:
@@ -220,11 +214,11 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        /**
-          * called by factory to specialize Magfield BC
-          */
-         void
-         set_magfield_bc_type( const id_t aSideSetID, const MagfieldBcType aType );
+            /**
+              * called by factory to specialize Magfield BC
+              */
+             void
+             set_magfield_bc_type( const id_t aSideSetID, const MagfieldBcType aType );
 
 //------------------------------------------------------------------------------
         protected:
@@ -297,16 +291,6 @@ namespace belfem
 
             const Vector< real > &
             normal_curved_2d( Element * aElement, const uint aIndex );
-
-//------------------------------------------------------------------------------
-
-            const Vector< real > &
-            normal_curved_tri( Element * aElement, const uint aIndex );
-
-//------------------------------------------------------------------------------
-
-            const Vector< real > &
-            normal_curved_quad( Element * aElement, const uint aIndex );
 
 //------------------------------------------------------------------------------
 
@@ -767,7 +751,23 @@ namespace belfem
         inline const Vector< real > &
         IWG_Maxwell::normal_curved_2d( Element * aElement, const uint aIndex )
         {
-           return ( this->*mFunNormalCurved )( aElement, aIndex );
+            const Matrix< real > & tdNdXi = mGroup->dNdXi( aIndex );
+            const Matrix< real > & tX = mGroup->work_X() ;
+
+            mNormal2D.fill( 0.0 );
+            for( uint k=0; k<aElement->element()->number_of_nodes(); ++k )
+            {
+                mNormal2D( 0 ) +=  tdNdXi( 0, k ) * tX( k, 1 );
+                mNormal2D( 1 ) -=  tdNdXi( 0, k ) * tX( k, 0 );
+            }
+
+            mGroup->work_det_J() = norm( mNormal2D );
+            mNormal2D /= mGroup->work_det_J() ;
+
+            // scale determinant
+            mGroup->work_det_J() *= 0.5 ;
+
+            return mNormal2D ;
         }
 
 
