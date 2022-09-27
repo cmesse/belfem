@@ -730,7 +730,6 @@ namespace belfem
 
             // element lengfth
             real tLength = 0 ;
-
             // std::cout << "el " << aElement->id() << " " << tSign << " | " << aElement->master()->id() << " " << aElement->slave()->id() << " |  " << aElement->element()->node( 0 )->id() << " " << aElement->element()->node( 1 )->id() << std::endl ;
 
             // loop over all integration points
@@ -762,6 +761,10 @@ namespace belfem
                 tWDetJ /= mDeltaTime ;
 
                 crossmat( tn , tBm, tnxB );
+                real tH1 = dot( tnxB, tPhiM ) ;
+
+
+
                 p = mNumberOfNodesPerElement+mNumberOfNodesPerElement;
                 q = p + mNumberOfThinShellLayers * 4 + 2 ;
 
@@ -787,6 +790,10 @@ namespace belfem
                 p = q - 2 ;
                 q += 2 ;
                 crossmat( tn , tBs, tnxB );
+                real tH2 = dot( tnxB, tPhiM ) ;
+
+
+                 std::cout << aElement->id() << " j: " << tH1 << " " << tH2 << " " << ( tH2-tH1 ) / mGroup->thin_shell_thickness( 0 ) << std::endl ;
 
                 for( uint j=0; j<mEdgeDofMultiplicity; ++j )
                 {
@@ -921,6 +928,7 @@ namespace belfem
 
                 std::cout << "check " << aElement->id() << " " << tJz * tLength * mGroup->thin_shell_thickness( l ) << " " << mLayerData( 2, l ) << std::endl ;
             }
+
         }
 #ifdef BELFEM_GCC
 #pragma GCC diagnostic pop
@@ -1024,19 +1032,25 @@ namespace belfem
 
             const Matrix< real > & tXi = tInteg->points() ;
 
+            // note:: usually, line elements are numbered like this
+            //        0 --- 2 --- 1
+            //        but here, we use the scheme
+            //        0 --- 1 --- 2
+            //        that's why we need to swap the indices in mHt and tPhiXi!
+
+            // edge-wise components of H
+            mHt( 0 ) = aE0 * aHt( 0 ) + aE1 * aHt( 1 ) ;
+            mHt( 2 ) = aE0 * aHt( 2 ) + aE1 * aHt( 3 ) ;
+            mHt( 1 ) = aE0 * aHt( 4 ) + aE1 * aHt( 5 ) ;
+
+            mHt.print("mHt");
+
             // integrate over thickness
             for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
             {
-                // note:: usually, line elements are numbered like this
-                //        0 --- 2 --- 1
-                //        but here, we use the scheme
-                //        0 --- 1 --- 2
-                //        that's why we need to swap the indices in mHt and tPhiXi!
 
-                // edge-wise components of H
-                mHt( 0 ) = aE0 * aHt( 0 ) + aE1 * aHt( 1 ) ;
-                mHt( 2 ) = aE0 * aHt( 2 ) + aE1 * aHt( 3 ) ;
-                mHt( 1 ) = aE0 * aHt( 4 ) + aE1 * aHt( 5 ) ;
+
+
 
                 // derivative of shape function along thickness
                 const Vector< real > & tPhiXi = tInteg->dphidxi( k ) ;
@@ -1092,7 +1106,7 @@ namespace belfem
 
             mLayerData( 2, aLayer ) += tW( aIntPoint ) *
                     (    aE0 * ( aHt( 0 ) - aHt( 4 ) )
-                            + aE1 * ( aHt( 1 ) - aHt( 3 ) ) )  * aXLength * 2 ;
+                            + aE1 * ( aHt( 1 ) - aHt( 5 ) ) )  * aXLength * 2 ;
 
 
         }

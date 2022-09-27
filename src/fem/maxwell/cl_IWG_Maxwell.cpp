@@ -2551,6 +2551,7 @@ namespace belfem
             aRHS( 0 ) = 0.0 ;
             aRHS( 1 ) = 0.0 ;
             this->collect_lambda_data( aElement, "lambda_I", aRHS( 2 ) );
+            std::cout << "check I " << aElement->id() << " " << aRHS( 2 ) << std::endl ;
 
             // compute residual vector
             aRHS *= mDeltaTime ;

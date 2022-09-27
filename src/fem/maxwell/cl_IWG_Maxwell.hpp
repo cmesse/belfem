@@ -220,11 +220,11 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        /**
-          * called by factory to specialize Magfield BC
-          */
-         void
-         set_magfield_bc_type( const id_t aSideSetID, const MagfieldBcType aType );
+            /**
+              * called by factory to specialize Magfield BC
+              */
+             void
+             set_magfield_bc_type( const id_t aSideSetID, const MagfieldBcType aType );
 
 //------------------------------------------------------------------------------
         protected:

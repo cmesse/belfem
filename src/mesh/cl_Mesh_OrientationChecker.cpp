@@ -1,6 +1,7 @@
 //
 // Created by christian on 9/2/22.
 //
+#include "constants.hpp"
 #include "cl_Mesh_OrientationChecker.hpp"
 #include "meshtools.hpp"
 #include "fn_sum.hpp"
@@ -298,6 +299,35 @@ namespace belfem
             mZ( 7 ) = aElement->node( 7 )->z() ;
         }
 
+
+//-----------------------------------------------------------------------------
+
+        real
+        OrientationChecker::compute_phi1( const uint aNumNodes )
+        {
+            real tXm = 0.0 ;
+            real tYm = 0.0 ;
+            for( uint k=0; k<aNumNodes; ++k )
+            {
+                tXm += mX( k );
+                tYm += mY( k );
+            }
+            tXm /= aNumNodes ;
+            tYm /= aNumNodes ;
+
+
+            // polar coordinate of node 0
+            real tPhi0 = std::atan2( mY( 0 )-tYm, mX( 0 )-tXm );
+
+            // rotate node coordinates
+            real tS = std::sin( tPhi0 );
+            real tC = std::cos( tPhi0 );
+            real tX1 =   tC * ( mX(1 ) - tXm ) + tS * ( mY( 1 ) - tYm ) ;
+            real tY1 = - tS * ( mX(1 ) - tXm ) + tC * ( mY( 1 ) - tYm ) ;
+
+            return std::atan2( tY1, tX1 ) ;
+        }
+
 //------------------------------------------------------------------------------
 
         void
@@ -305,19 +335,8 @@ namespace belfem
         {
             // collect the node coordinates
             ( this->*mFunCollect )( aElement );
-
-            // center point of element
-            real tXm = sum( mX ) / mNumCornerNodesPerElement ;
-            real tYm = sum( mY ) / mNumCornerNodesPerElement ;
-
-            // polar coordinate of node 0
-            real tPhi0 = std::atan2( mY( 0 ) - tYm, mX( 0 ) - tXm );
-
-            // polar coordinate of node 1
-            real tPhi1 = std::atan2( mY( 1 ) - tYm, mX( 1 ) - tXm );
-
             // check if element needs to be flipped
-            if( tPhi1 - tPhi0 < 0 )
+            if( this->compute_phi1( mNumCornerNodesPerElement ) < 0 )
             {
                 // flip the element
                 ( this->*mFunFlip )( aElement );
@@ -377,23 +396,12 @@ namespace belfem
                            std::abs( mZ( 2 ) ) < BELFEM_MESH_EPSILON,
                           "error while trying to check tet element" );
 
-            // next, we check the orientation of the triangle as we do with tri elements
-            tXm = ( mX( 0 ) + mX( 1 ) + mX( 2 ) ) / 3.0;
-            tYm = ( mY( 0 ) + mY( 1 ) + mY( 2 ) ) / 3.0;
-
-            // polar coordinate of node 0
-            real tPhi0 = std::atan2( mY( 0 ) - tYm, mX( 0 ) - tXm );
-
-            // polar coordinate of node 1
-            real tPhi1 = std::atan2( mY( 1 ) - tYm, mX( 1 ) - tXm );
-
             // check if element needs to be flipped
-            if( ( tPhi1 - tPhi0 ) * mZ( 3 ) < 0 )
+            if( this->compute_phi1( 3 ) * mZ( 3 ) < 0 )
             {
                 // flip the element
                 ( this->*mFunFlip )( aElement );
             }
-
         }
 
 //------------------------------------------------------------------------------
@@ -449,21 +457,12 @@ namespace belfem
                            std::abs( mZ( 2 ) ) < BELFEM_MESH_EPSILON,
                            "error while trying to check tet element" );
 
-            // next, we check the orientation of the triangle as we do with tri elements
-            tXm = ( mX( 0 ) + mX( 1 ) + mX( 2 ) ) / 3.0;
-            tYm = ( mY( 0 ) + mY( 1 ) + mY( 2 ) ) / 3.0;
-
-            // polar coordinate of node 0
-            real tPhi0 = std::atan2( mY( 0 ) - tYm, mX( 0 ) - tXm );
-
-            // polar coordinate of node 1
-            real tPhi1 = std::atan2( mY( 1 ) - tYm, mX( 1 ) - tXm );
 
             // now we compute the center of the other triangle
             tZm = ( mZ( 0 ) + mZ( 1 ) + mZ( 2 ) ) / 3.0;
 
             // check if element needs to be flipped
-            if( ( tPhi1 - tPhi0 ) * tZm < 0 )
+            if( this->compute_phi1( 3 ) * tZm < 0 )
             {
                 // flip the element
                 ( this->*mFunFlip )( aElement );
@@ -522,24 +521,14 @@ namespace belfem
                 mZ( k ) = mQ( 2 );
             }
 
-            // center of first surface
-            tXm = 0.25 * ( mX( 0 ) + mX( 1 ) + mX( 2 ) + mX( 3 ) );
-            tYm = 0.25 * ( mY( 0 ) + mY( 1 ) + mY( 2 ) + mY( 3 ) );
-
             // 4 * center of second surface
             tZm = mZ( 4 ) + mZ( 5 ) + mZ( 6 ) + mZ( 7 );
 
             // 4 * center of second surface
             tZm -= mZ( 0 ) + mZ( 1 ) + mZ( 2 ) + mZ( 3 );
 
-            // polar coordinate of node 0
-            real tPhi0 = std::atan2( mY( 0 ) - tYm, mX( 0 ) - tXm );
-
-            // polar coordinate of node 1
-            real tPhi1 = std::atan2( mY( 1 ) - tYm, mX( 1 ) - tXm );
-
             // check if element needs to be flipped
-            if( ( tPhi1 - tPhi0 ) * tZm < 0 )
+            if( this->compute_phi1( 4 ) * tZm < 0 )
             {
                 // flip the element
                 ( this->*mFunFlip )( aElement );

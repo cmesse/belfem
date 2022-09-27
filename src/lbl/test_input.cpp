@@ -304,7 +304,6 @@ int main( int    argc,
            tEpsilon0 = tEpsilon ;
            tEpsilon = tMagfield->residual( tIter++ );
 
-
            if ( tKernel->is_master() )
            {
                string tAlgLabel = tFormulation->algorithm() == SolverAlgorithm::Picard ? " P " : " NR";
@@ -448,7 +447,10 @@ int main( int    argc,
 
        }
 
+       Vector< id_t > tCheck = { 7273, 7252, 5378, 5399, 3022, 3038, 1632, 1653 };
+
        //fem::compute_element_current_thinshell_tri3( tMagfield );
+       tMagfield->postprocess() ;
 
        compute_normb( tMagfield, false );
 
