@@ -20,7 +20,7 @@ namespace belfem
         real tR1 = 10.0 ;
         real tF1 = _check_ratio( aDeltaX0, aLength, aNumCells, tR1 );
 
-        real tRatio ;
+        real tRatio = BELFEM_QUIET_NAN ;
         real tF = BELFEM_REAL_MAX ;
 
         index_t tCount = 0;

@@ -63,7 +63,7 @@ namespace belfem
         mResistivityLaw = ResistivityLaw::Constant ;
 
         mFunRho = & MaxwellMaterial::rho_el_const ;
-
+        mFunRhoCrit = & MaxwellMaterial::rho_el_crit_powerlaw_ej ;
         this->reset_parameters();
         mRhoc = aRhoEl ;
     }

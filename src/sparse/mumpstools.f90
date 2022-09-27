@@ -46,7 +46,6 @@ subroutine mumpstools_solve( &
     use, intrinsic :: iso_fortran_env, only : &
             stdout=>output_unit, &
             stderr=>error_unit
-    use mumpstools
     implicit none
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     ! ARGUMENTS

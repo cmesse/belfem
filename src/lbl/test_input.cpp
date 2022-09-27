@@ -452,8 +452,10 @@ int main( int    argc,
        //fem::compute_element_current_thinshell_tri3( tMagfield );
        tMagfield->postprocess() ;
 
-       compute_normb( tMagfield, false );
-
+       if( tComputeNormB )
+       {
+           compute_normb( tMagfield, false );
+       }
 
        // save mesh
        real tOldTime = tTime ;

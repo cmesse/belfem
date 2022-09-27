@@ -73,7 +73,7 @@ namespace belfem
             bool mOwnBoundaryConditions = true ;
 
             //! flag telling if we want to compute the biot-savart field
-            bool mBiotSavartFlag = false ;
+            // bool mBiotSavartFlag = false ;
 
             // timestepping info
             real mTimeStep = BELFEM_QUIET_NAN ;
@@ -165,7 +165,7 @@ namespace belfem
             bool mComputeNormB = false ;
 
             DofManager * mMagneticField = nullptr ;
-            DofManager * mThermalField  = nullptr ;
+            // DofManager * mThermalField  = nullptr ;
 
             Map< id_t, id_t > mSideSetToCutMap ;
 

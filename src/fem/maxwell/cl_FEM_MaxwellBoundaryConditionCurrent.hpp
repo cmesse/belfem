@@ -25,9 +25,9 @@ namespace belfem
             Cell< string > mCurrentFields ;
 
             // the function that is used to compute the current
-            real
-            ( MaxwellBoundaryConditionCurrent::*mFunCurrent )
-            (  const real aTime ) ;
+            //real
+            //( MaxwellBoundaryConditionCurrent::*mFunCurrent )
+            //(  const real aTime ) ;
 
 
 //-----------------------------------------------------------------------------
