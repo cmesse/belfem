@@ -116,6 +116,8 @@ namespace belfem
                         }
 
                         send( mKernel->master(), tIDs );
+
+
                     }
                     else
                     {
@@ -346,62 +348,143 @@ namespace belfem
             {
                 if( mCommSize > 1 )
                 {
+
+
+                    uint tNumFields = aLabels.size();
+
                     if ( mMyRank != mKernel->master() )
                     {
-                        uint tNumFields = aLabels.size();
+                        // field counters
+                        uint tNodeFieldCount = 0 ;
+                        uint tElementFieldCount = 0 ;
 
-                        Matrix< real > tSubFields( mMyNumberOfOwnedNodes, tNumFields );
-
+                        // count fields
                         for ( uint f = 0; f < tNumFields; ++f )
                         {
-                            BELFEM_ASSERT( mMesh->field( aLabels( f ) )->entity_type() ==  EntityType::NODE,
-                                          "Field %s is off type %s but must be node to collect",
-                                          aLabels( f ).c_str(), to_string( mMesh->field( aLabels( f ) )->entity_type() ).c_str() );
+                            switch( mMesh->field( aLabels( f ) )->entity_type() )
+                            {
+                                case( EntityType::NODE ) :
+                                {
+                                    ++tNodeFieldCount ;
+                                    break ;
+                                }
+                                case( EntityType::ELEMENT ) :
+                                {
+                                    ++tElementFieldCount ;
+                                    break ;
+                                }
+                                default :
+                                {
+                                    BELFEM_ASSERT( mMyRank != mKernel->master(),
+                                                   "Field %s is off type %s but must be node or element to collect",
+                                                   aLabels( f ).c_str(),
+                                                   to_string( mMesh->field( aLabels( f ) )->entity_type() ).c_str() );
 
+                                }
+                            }
+                        }
+
+
+                        Matrix< real > tNodeData( mMyNumberOfOwnedNodes, tNodeFieldCount );
+                        Matrix< real > tElementData( mMyNumberOfOwnedGhostElements, tElementFieldCount );
+
+                        tNodeFieldCount = 0 ;
+                        tElementFieldCount = 0 ;
+                        
+                        for ( uint f = 0; f < tNumFields; ++f )
+                        {
                             Vector< real > & tField = mMesh->field_data( aLabels( f ) );
 
                             // initialize counter
                             index_t tCount = 0;
 
-                            // collect owned data
-                            for ( mesh::Node * tNode : mMesh->nodes() )
+                            if( mMesh->field( aLabels( f ) )->entity_type() == EntityType::NODE )
                             {
-
-                                if ( tNode->owner() == mMyRank )
+                                // collect node data
+                                for ( mesh::Node * tNode: mMesh->nodes())
                                 {
-                                    tSubFields( tCount++, f ) = tField( tNode->index() );
+
+                                    if ( tNode->owner() == mMyRank )
+                                    {
+                                        tNodeData( tCount++, tNodeFieldCount ) = tField( tNode->index() );
+                                    }
                                 }
+                                ++tNodeFieldCount;
                             }
+                            else
+                            {
+                                for( id_t b : mMesh->ghost_block_ids() )
+                                {
+                                    if( mMesh->block_exists( b ) )
+                                    {
+                                        // grab elements
+                                        Cell< mesh::Element * > & tElements = mMesh->block( b )->elements();
+                                        for ( mesh::Element * tElement: tElements )
+                                        {
+                                            if ( tElement->owner() == mMyRank )
+                                            {
+                                                tElementData( tCount++, tElementFieldCount ) = tField( tElement->index() );
+                                            }
+                                        }
+                                    }
+                                }
+                                ++tElementFieldCount;
+                            }
+
                         }
                         // send data to master
-                        send( mKernel->master(), tSubFields );
+                        send( mKernel->master(), tNodeData );
+                        send( mKernel->master(), tElementData );
                     }
                     else
                     {
                         // collect subfields
-                        Cell< Matrix< real > > tAllSubFields;
-                        receive( mKernel->comm_table(), tAllSubFields );
-
-                        uint tNumFields = aLabels.size() ;
+                        Cell< Matrix< real > > tAllNodeData ;
+                        Cell< Matrix< real > > tAllElementData ;
+                        receive( mKernel->comm_table(), tAllNodeData );
+                        receive( mKernel->comm_table(), tAllElementData );
 
                         // assemble
                         uint tNumProcs = mKernel->comm_table().length();
 
+
+
                         for ( uint p = 1; p < tNumProcs; ++p )
                         {
-                            // grab index vector
-                            const Vector< index_t > & tIndices = mNodeOwnerList( p );
-                            const Matrix< real >    & tFields  = tAllSubFields( p );
 
-                            index_t tNumNodes = tIndices.length();
+                            // field counters
+                            uint tNodeFieldCount = 0 ;
+                            uint tElementFieldCount = 0 ;
+
+                            // grab index vector
+                            const Vector< index_t > & tNodeIndices    = mNodeOwnerList( p );
+                            const Vector< index_t > & tElementIndices = mGhostElementOwnerList( p );
+                            const Matrix< real >    & tNodeFields     = tAllNodeData( p );
+                            const Matrix< real >    & tElementFields  = tAllElementData( p );
+
+
+                            index_t tNumNodes    = tNodeIndices.length();
+                            index_t tNumElements = tElementIndices.length();
 
                             for ( uint f = 0; f < tNumFields; ++f )
                             {
                                 Vector< real > & tField = mMesh->field_data( aLabels( f ) );
 
-                                for ( index_t k = 0; k < tNumNodes; ++k )
+                                if( mMesh->field( aLabels( f ) )->entity_type() == EntityType::NODE )
                                 {
-                                    tField( tIndices( k ) ) = tFields( k, f );
+                                    for ( index_t k = 0; k < tNumNodes; ++k )
+                                    {
+                                        tField( tNodeIndices( k ) ) = tNodeFields( k, tNodeFieldCount );
+                                    }
+                                    ++tNodeFieldCount ;
+                                }
+                                else if ( mMesh->field( aLabels( f ) )->entity_type() == EntityType::ELEMENT )
+                                {
+                                    for ( index_t e = 0; e < tNumElements; ++e )
+                                    {
+                                        tField( tElementIndices( e ) ) = tElementFields( e, tElementFieldCount );
+                                    }
+                                    ++tElementFieldCount ;
                                 }
                             }
                         }

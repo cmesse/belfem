@@ -90,10 +90,6 @@ namespace belfem
         // todo: delete from here
         // contains list of original ids ( row 0 ) vs duplicates (row 1)
         // written by scissors if cut is performed
-        Matrix< id_t > mNodeCutTable ;
-        Matrix< id_t > mNodeTapeTable ;
-        Map< id_t, mesh::Node * > mNodeCutMap ;
-        Map< id_t, mesh::Node * > mNodeTapeMap ;
         Map< id_t, mesh::Node * > mNodeTapeCutMap ;
 
         // contains a list of cloned facets vs originals (for tapes)
@@ -462,22 +458,6 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
-         * returns the cut duplicate of a node
-         */
-        mesh::Node *
-        cut_duplicate_node( const id_t aID );
-
-//------------------------------------------------------------------------------
-
-        /**
-         * returns the cut duplicate of a node
-         */
-        mesh::Node *
-        tape_duplicate_node( const id_t aID );
-
-//------------------------------------------------------------------------------
-
-        /**
          * returns the original facet the ghost was cloned from
          */
 
@@ -809,22 +789,6 @@ namespace belfem
 
          bool
          is_kernel_mesh() const ;
-
-//------------------------------------------------------------------------------
-
-        /**
-         * expose the cut table for the nodes
-         */
-        Matrix< id_t > &
-        node_cut_table() ;
-
-//------------------------------------------------------------------------------
-
-        /**
-         * expose the cut table for the nodes
-         */
-        Matrix< id_t > &
-        node_tape_table() ;
 
 //------------------------------------------------------------------------------
 
@@ -1501,43 +1465,9 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     inline Matrix< id_t > &
-    Mesh::node_cut_table()
-    {
-        return mNodeCutTable ;
-    }
-
-//------------------------------------------------------------------------------
-
-    inline Matrix< id_t > &
-    Mesh::node_tape_table()
-    {
-        return mNodeTapeTable ;
-    }
-
-//------------------------------------------------------------------------------
-
-    inline Matrix< id_t > &
     Mesh::tape_facet_table()
     {
         return mTapeFacetTable ;
-    }
-
-//------------------------------------------------------------------------------
-
-    inline mesh::Node *
-    Mesh::cut_duplicate_node( const id_t aID )
-    {
-        return mNodeCutMap.key_exists( aID )
-            ? mNodeCutMap( aID ) : mNodeMap( aID );
-    }
-
-//------------------------------------------------------------------------------
-
-    inline mesh::Node *
-    Mesh::tape_duplicate_node( const id_t aID )
-    {
-        return mNodeTapeMap.key_exists( aID )
-               ? mNodeTapeMap( aID ) : mNodeMap( aID );
     }
 
 //------------------------------------------------------------------------------

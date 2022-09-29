@@ -432,59 +432,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        void
-        Partitioner::fix_cut_related_ownerships()
-        {
-            /*Matrix< id_t > &  tNodeTable = mMesh->node_cut_table() ;
-
-            index_t tNumNodes = tNodeTable.n_cols() ;
-
-            index_t tCount = 1 ;
-
-            while( tCount > 0 )
-            {
-                // reset the counter
-                tCount = 0;
-
-                // check element owners of nodes connected to cuts
-                for ( index_t k = 0; k < tNumNodes; ++k )
-                {
-                    proc_t tOwner = gNoOwner;
-
-                    for( uint j=0; j<2; ++j )
-                    {
-                        Node * tN = mMesh->node( tNodeTable( j, k ));
-                        for ( uint e = 0; e < tN->number_of_elements(); ++e )
-                        {
-                            Element * tE = tN->element( e );
-
-                            if ( tE->owner() < tOwner )
-                            {
-                                tOwner = tE->owner();
-                            }
-                        }
-                    }
-
-                    for( uint j=0; j<2; ++j )
-                    {
-                        Node * tN = mMesh->node( tNodeTable( j, k ));
-                        for ( uint e = 0; e < tN->number_of_elements(); ++e )
-                        {
-                            Element * tE = tN->element( e );
-
-                            if ( tOwner < tE->owner() )
-                            {
-                                tE->set_owner( tOwner );
-                                ++tCount ;
-                            }
-                        }
-                    }
-                }
-            } */
-        }
-
-//------------------------------------------------------------------------------
-
         const Vector < metis_t > &
         Partitioner::partition()
         {

@@ -84,6 +84,7 @@ namespace belfem
             if( aGroupType == GroupType::CUT )
             {
                 mNumberOfNodesPerElement = 2 ;
+
                 this->initialize_elements( aFacets );
                 this->collect_nodes( aFacets );
                 this->create_element_map();

@@ -1093,28 +1093,13 @@ namespace belfem
             //        that's why we need to swap the indices in mHt and tPhiXi!
 
             // edge-wise components of H
-<<<<<<< HEAD
-            mHt( 0 ) = aE0 * aHt( 0 ) + aE1 * aHt( 1 ) ;
-            mHt( 2 ) = aE0 * aHt( 2 ) + aE1 * aHt( 3 ) ;
-            mHt( 1 ) = aE0 * aHt( 4 ) + aE1 * aHt( 5 ) ;
-
-            mHt.print("mHt");
-=======
             mHt( 0 ) = aE0 * aHt( 0 ) + aE1 * aHt( 1 ) ; // field on master side
             mHt( 2 ) = aE0 * aHt( 2 ) + aE1 * aHt( 3 ) ; // middle field
             mHt( 1 ) = aE0 * aHt( 4 ) + aE1 * aHt( 5 ) ; // field on slave side
->>>>>>> b22643e81cb43862f91c1684b4078b5865883948
 
             // integrate over thickness
             for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
             {
-<<<<<<< HEAD
-
-
-
-=======
->>>>>>> b22643e81cb43862f91c1684b4078b5865883948
-
                 // derivative of shape function along thickness
                 const Vector< real > & tPhiXi = tInteg->dphidxi( k ) ;
 

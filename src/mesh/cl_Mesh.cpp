@@ -1863,25 +1863,6 @@ namespace belfem
             mVertexMap[ tVertex->id() ] = tVertex;
         }
 
-        // map for cuts
-        mNodeCutMap.clear() ;
-        index_t tNumNodes = mNodeCutTable.n_cols() ;
-
-        for( index_t k=0; k<tNumNodes; ++k )
-        {
-            mNodeCutMap[ mNodeCutTable( 0, k ) ]
-                = mNodeMap( mNodeCutTable( 1, k ) );
-        }
-
-        // map for tapes
-        mNodeTapeMap.clear();
-        tNumNodes = mNodeTapeTable.n_cols() ;
-
-        for( index_t k=0; k<tNumNodes; ++k )
-        {
-            mNodeTapeMap[ mNodeTapeTable( 0, k ) ]
-                    = mNodeMap( mNodeTapeTable( 1, k ) );
-        }
 
         // map for ghost facets
         mTapeFacetMap.clear() ;
@@ -1905,7 +1886,6 @@ namespace belfem
         mFacetMap.clear();
         mSideSetMap.clear();
         mVertexMap.clear();
-        mNodeCutMap.clear() ;
     }
 
 //-----------------------------------------------------------------------------
@@ -1983,12 +1963,13 @@ namespace belfem
                 proc_t tOwner = mNumberOfPartitions;
 
                 // grab nodes and duplicates
-                tNodes.set_size( 4, nullptr );
-                tNodes( 0 ) = tNode ;
-                tNodes( 1 ) = this->tape_duplicate_node( tNode->id() );
-                tNodes( 2 ) = this->cut_duplicate_node( tNode->id() );
-                tNodes( 3 ) = this->cut_duplicate_node( tNodes( 1 )->id() );
-                unique( tNodes );
+                tNodes.set_size( tNode->number_of_duplicates()+1, nullptr );
+                uint c = 0 ;
+                tNodes( c++ ) = tNode ;
+                for( uint d=0; d<tNode->number_of_duplicates(); ++d )
+                {
+                    tNodes( c++ ) = tNode->duplicate( d );
+                }
 
                 for ( mesh::Node * tN: tNodes )
                 {
@@ -2008,7 +1989,6 @@ namespace belfem
                         ++tCount ;
                     }
                 }
-
             }
         }
     }

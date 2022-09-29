@@ -102,7 +102,6 @@ namespace belfem
                         // get sideset
                         mesh::SideSet * tSideSet = mMesh->sideset( tSideSetID );
 
-
                         // count owned facets
                         index_t tCount = 0;
                         for ( mesh::Facet * tFacet : tSideSet->facets() )

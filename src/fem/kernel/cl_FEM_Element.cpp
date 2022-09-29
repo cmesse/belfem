@@ -1141,6 +1141,7 @@ namespace belfem
             {
                 for ( uint k = 0; k < aNumberOfNodesPerElement; ++k )
                 {
+
                     mDOFs[ aCount++ ] = aDofManager->dof( aDofManager->calculate_dof_id(
                             aReferenceElement->node( k ), tDofType ) );
                 }
@@ -1536,18 +1537,44 @@ namespace belfem
                 }
                 else
                 {
-                    // check if this is a cut
-                    tA = mParent->parent()->mesh()->cut_duplicate_node( tA )->id() ;
-                    tB = mParent->parent()->mesh()->cut_duplicate_node( tB )->id() ;
+                    mesh::Node * tNodeA = mElement->edge( e )->node( 0 ) ;
+                    mesh::Node * tNodeB = mElement->edge( e )->node( 1 );
+
+                    mesh::Node * tNodeC = tNodes( 0 );
+                    mesh::Node * tNodeD = tNodes( 1 );
+
+                    // find the minumal node indices
+                    tA = tNodeA->id() ;
+                    for( uint d=0; d<tNodeA->number_of_duplicates(); ++d )
+                    {
+                        tA = tNodeA->duplicate( d )->id() < tA ? tNodeA->duplicate( d )->id() : tA ;
+                    }
+                    tB = tNodeB->id() ;
+                    for( uint d=0; d<tNodeB->number_of_duplicates(); ++d )
+                    {
+                        tB = tNodeB->duplicate( d )->id() < tB ? tNodeB->duplicate( d )->id() : tB ;
+                    }
+                    id_t tC = tNodeC->id() ;
+                    for( uint d=0; d<tNodeC->number_of_duplicates(); ++d )
+                    {
+                        tC = tNodeC->duplicate( d )->id() < tC ? tNodeC->duplicate( d )->id() : tC ;
+                    }
+                    id_t tD = tNodeD->id() ;
+                    for( uint d=0; d<tNodeD->number_of_duplicates(); ++d )
+                    {
+                        tD = tNodeD->duplicate( d )->id() < tD ? tNodeD->duplicate( d )->id() : tD ;
+                    }
+
+                    // find duplicates
 
                     bool tSuccess = false ;
 
-                    if ( tA == tNodes(0)->id() && tB == tNodes(1)->id() )
+                    if ( tA == tC && tB == tD )
                     {
                         mEdgeDirections.set( e );
                         tSuccess = true ;
                     }
-                    else if ( tA == tNodes(1)->id() && tB == tNodes(0)->id() )
+                    else if ( tA == tD && tB == tC )
                     {
                         mEdgeDirections.reset( e );
                         tSuccess = true ;

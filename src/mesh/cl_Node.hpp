@@ -80,6 +80,28 @@ namespace belfem
             void
             set_coords( const real aX, const real aY, const real & aZ  );
 
+            void
+            allocate_duplicate_container( const uint aNumberOfDuplicates );
+
+            void
+            add_duplicate( Node * aNode );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * returns the number of duplicates of this node
+             */
+            uint
+            number_of_duplicates() const ;
+
+//------------------------------------------------------------------------------
+
+            /**
+             * returns duplicates of this node
+             */
+             Node *
+             duplicate( const uint aIndex );
+
 //------------------------------------------------------------------------------
         };
 //------------------------------------------------------------------------------
@@ -128,6 +150,43 @@ namespace belfem
         Node::x( const uint aDimension ) const
         {
             return mCoords[ aDimension ];
+        }
+
+//------------------------------------------------------------------------------
+
+        /**
+         * returns the number of duplicates of this node
+         */
+        inline uint
+        Node::number_of_duplicates() const
+        {
+            return this->number_of_vertices() ;
+        }
+
+//------------------------------------------------------------------------------
+
+        /**
+         * returns duplicates of this node
+         */
+        inline Node *
+        Node::duplicate( const uint aIndex )
+        {
+            return reinterpret_cast< Node * >( this->vertex( aIndex ) );
+        }
+//------------------------------------------------------------------------------
+
+        inline void
+        Node::allocate_duplicate_container( const uint aNumberOfDuplicates )
+        {
+            this->init_vertex_container( aNumberOfDuplicates );
+        }
+
+//------------------------------------------------------------------------------
+
+        inline void
+        Node::add_duplicate( Node * aNode )
+        {
+            this->insert_vertex( aNode );
         }
 
 //------------------------------------------------------------------------------

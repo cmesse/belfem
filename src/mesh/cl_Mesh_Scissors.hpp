@@ -20,6 +20,7 @@ namespace belfem
             class CutData
             {
                 const id_t mID ;
+                const bool mIsTape ;
 
                 // vector contains sideset id, plus side and minus side
                 Cell< Vector< id_t > > mData ;
@@ -31,17 +32,20 @@ namespace belfem
                 CutData( const id_t aCutID,
                          const id_t aSideSetID,
                          const id_t aPlusBlock,
-                         const id_t aMinusBlock );
+                         const id_t aMinusBlock,
+                         const bool aIsTape );
 
                 CutData( const id_t aCutID,
                          const Vector< id_t > & aSideSetIDs,
                          const id_t aPlusBlock,
-                         const id_t aMinusBlock );
+                         const id_t aMinusBlock,
+                         const bool aIsTape );
 
                 CutData( const id_t aCutID,
                          const Vector< id_t > & aSideSetIDs,
                          const Vector< id_t > & aPlusBlocks,
-                         const Vector< id_t > & aMinusBlocks );
+                         const Vector< id_t > & aMinusBlocks,
+                         const bool aIsTape );
 
 //------------------------------------------------------------------------------
 
@@ -51,6 +55,11 @@ namespace belfem
 
                 id_t
                 id() const;
+
+//------------------------------------------------------------------------------
+
+                bool
+                is_tape() const;
 
 //------------------------------------------------------------------------------
 
@@ -72,6 +81,14 @@ namespace belfem
             CutData::id() const
             {
                 return mID ;
+            }
+
+//------------------------------------------------------------------------------
+
+            inline bool
+            CutData::is_tape() const
+            {
+                return mIsTape ;
             }
 
 //------------------------------------------------------------------------------
@@ -98,7 +115,6 @@ namespace belfem
             Mesh * mMesh ;
             const proc_t mMyRank ;
 
-            const index_t mNumberOfOriginalNodes ;
 
             Cell< Node * >    & mNodes ;
             Cell< Facet * >   & mFacets ;
@@ -116,8 +132,7 @@ namespace belfem
             index_t mNumberOfCuts = 0 ;
             index_t mNumberOfTapes = 0 ;
 
-            Cell< scissors::CutData * > mCuts ;
-            Cell< scissors::CutData * > mTapes ;
+            Cell< scissors::CutData * > mCutsAndTapes ;
 
             // flattened dataset
             Matrix< id_t > mTapeData ;
@@ -126,12 +141,6 @@ namespace belfem
             index_t mNumberOfNodes = 0 ;
             index_t mNumberOfFacets = 0 ;
 
-            // map that links minus node ids with plus nodes
-            //Map< id_t, mesh::Node * > mNodeMapTapes ;
-            //Map< id_t, mesh::Node * > mNodeMapCuts ;
-
-            // map that links minus facet ids with plus facets
-            //Map< id_t, mesh::Facet * > mFacetMap ;
 
             // list of connector sidesets
             Vector< id_t > mConnectorSetIDs ;
@@ -144,11 +153,47 @@ namespace belfem
             // check if a block is plus
             Map< id_t, index_t > mPlus ;
 
+            // new data from here
+            //const Matrix< uint > mCase =  { { 0, 1, 2 }, { 3, 4, 5 }, { 6, 7, 8 } } ;
+            //const Vector< uint > mLookup = { 0, 1, 1, 1, 1, 1, 1, 2, 3 };
+
+            Cell< SideSet * > mCuts ;
+
+            // - - - - - -  - - - - - - - - - - - - - - - - - - - -
+            // new from here
+            // - - - - - -  - - - - - - - - - - - - - - - - - - - -
+
+            //! all used sidesets on the original mesh
+            Cell< SideSet * > mAllSideSets ;
+
+            //! sidesets on the original mesh that become tapes
+            Cell< SideSet * > mTapeSideSets ;
+
+            //! sidesets on the original mesh that become cuts
+            Cell< SideSet * > mCutSideSets ;
+
+            //! lookup table for number of nodes to be crated
+            //! rows: num tapes, cols: num cuts
+            const Matrix< uint > mLookup =  { { 0, 1, 1 }, { 1, 1, 1 }, { 1, 2, 3 } } ;
+
+            //! number of tape sidesets per node
+            Vector< uint > mNumTapesPerNode ;
+
+            //! number of cut sidesets per node
+            Vector< uint > mNumCutsPerNode ;
+
+            //! multi purpose counting container
+            Vector< uint > mNodeCounter ;
+
+            //! list of plus blocks per node
+            Cell< Vector< id_t > > mPlusBlocksTable ;
 //------------------------------------------------------------------------------
         public:
 //------------------------------------------------------------------------------
 
             Scissors( Mesh * aMesh, const Vector< id_t > & aAirBlockIDs );
+
+//----------------------------------------------------------------------------
 
             ~Scissors();
 
@@ -158,7 +203,7 @@ namespace belfem
             cut( const id_t aSidesetID,
                  const id_t aPlusBlock,
                  const id_t aMinusBlock,
-                 const bool aIsSheet=false );
+                 const bool aIsTape=false );
 
 //------------------------------------------------------------------------------
 
@@ -166,7 +211,7 @@ namespace belfem
             cut( const Vector< id_t > & aSidesetIDs,
                  const id_t aPlusBlock,
                  const id_t aMinusBlock,
-                 const bool aIsSheet=false );
+                 const bool aIsTape=false );
 
 //------------------------------------------------------------------------------
 
@@ -174,7 +219,7 @@ namespace belfem
             cut( const Vector< id_t > & aSidesetIDs,
                  const Vector< id_t > & aMinusBlocks,
                  const Vector< id_t > & aPlusBlocks,
-                 const bool aIsSheet=false );
+                 const bool aIsTape=false );
 
 //------------------------------------------------------------------------------
 
@@ -216,33 +261,36 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            // help function to check input sanity
             void
-            count_nodes( const bool aTapeMode  );
+            check_compatibility( const bool aTapeMode );
+
+//------------------------------------------------------------------------------
+            // NEW FROM HERE
+//------------------------------------------------------------------------------
+
+            void
+            collect_sidesets();
 
 //------------------------------------------------------------------------------
 
             void
-            count_facets( const bool aTapeMode  );
+            collect_original_nodes();
 
 //------------------------------------------------------------------------------
 
             void
-            duplicate_nodes( const bool aTapeMode );
+            count_duplicate_nodes();
 
 //------------------------------------------------------------------------------
 
             void
-            create_cut_table( const bool aTapeMode  );
+            create_node_duplicates();
 
 //------------------------------------------------------------------------------
 
             void
-            relink_facets();
-
-//------------------------------------------------------------------------------
-
-            void
-            relink_elements( const bool aTapeMode );
+            relink_elements();
 
 //------------------------------------------------------------------------------
 
@@ -251,9 +299,37 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            // help function to check input sanity
             void
-            check_compatibility( const bool aTapeMode );
+            unflag_nodes();
+
+//------------------------------------------------------------------------------
+
+            void
+            flag_nodes();
+
+//------------------------------------------------------------------------------
+
+            void
+            add_nodes_to_mesh();
+
+//------------------------------------------------------------------------------
+
+            void
+            rearrange_nodes( Cell< Node * > & aMaster,
+                             Cell< Node * > & aSlaveIn,
+                             Cell< Node * > & aSlaveOut,
+                             Vector< uint > & aFlags );
+
+
+//------------------------------------------------------------------------------
+
+            void
+            relink_facets();
+
+//------------------------------------------------------------------------------
+
+            uint
+            inside_node( const ElementType aElementType );
 
 //------------------------------------------------------------------------------
         };

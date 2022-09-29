@@ -693,9 +693,10 @@ namespace belfem
             {
                 if( tNode->is_flagged() )
                 {
-                    mMesh->tape_duplicate_node( tNode->id() )->flag() ;
-                    mMesh->cut_duplicate_node( tNode->id() )->flag() ;
-                    mMesh->tape_duplicate_node(  mMesh->tape_duplicate_node( tNode->id() )->id() )->flag() ;
+                    for( uint k=0 ; k<tNode->number_of_duplicates(); ++k )
+                    {
+                        tNode->duplicate( k )->flag() ;
+                    }
                 }
             }
 
@@ -745,7 +746,7 @@ namespace belfem
             send( aTarget, tY );
             send( aTarget, tZ );
 
-            for( uint s=0; s<2; ++s )
+            /*for( uint s=0; s<2; ++s )
             {
                 // count nodes that are cut
                 tCount = 0;
@@ -782,8 +783,41 @@ namespace belfem
 
 
                 send( aTarget, tNodeSubTable );
-            }
+            }*/
 
+
+
+            // check if nodes have been set
+            if( tCount > 0 )
+            {
+                // count duplicates
+                tCount = 0 ;
+                for( mesh::Node * tNode : tNodes )
+                {
+                    if( tNode->is_flagged() )
+                    {
+                        tCount += tNode->number_of_duplicates() + 1 ;
+                    }
+                }
+
+                // populate duplicates
+                tIDs.set_size( tCount, 0 );
+                tCount = 0;
+                for ( mesh::Node * tNode: tNodes )
+                {
+                    if ( tNode->is_flagged())
+                    {
+                        tIDs( tCount++ ) = tNode->number_of_duplicates();
+
+                        for ( uint d = 0; d < tNode->number_of_duplicates(); ++d )
+                        {
+                            tIDs( tCount++ ) = tNode->duplicate( d )->id();
+                        }
+                    }
+                }
+
+                send( aTarget, tIDs );
+            }
         }
 
 //------------------------------------------------------------------------------
@@ -1214,8 +1248,8 @@ namespace belfem
             receive( mMasterRank, tX );
             receive( mMasterRank, tY );
             receive( mMasterRank, tZ );
-            receive( mMasterRank, mSubMesh->node_cut_table() );
-            receive( mMasterRank, mSubMesh->node_tape_table() );
+            //receive( mMasterRank, mSubMesh->node_cut_table() );
+            //receive( mMasterRank, mSubMesh->node_tape_table() );
 
             index_t tNumberOfNodes = tIDs.length();
 
@@ -1228,11 +1262,28 @@ namespace belfem
                     mesh::Node * tNode = new mesh::Node(
                             tIDs( k ), tX( k ), tY( k ), tZ( k ));
 
-                    tNode->set_owner( tOwners( k ) );
+                    tNode->set_owner( tOwners( k ));
 
                     mNodeMap[ tIDs( k ) ] = tNode;
 
                     tNodes( k ) = tNode;
+                }
+
+                // receive duplicates
+                receive( mMasterRank, tIDs );
+                index_t tCount = 0;
+                for ( mesh::Node * tNode: tNodes )
+                {
+                    // get number of duplicates
+                    uint tN = tIDs( tCount++ );
+                    if( tN > 0 )
+                    {
+                        tNode->allocate_duplicate_container( tN );
+                        for( uint d=0; d<tN; ++d )
+                        {
+                            tNode->add_duplicate( mNodeMap( tIDs( tCount++ ) ) );
+                        }
+                    }
                 }
             }
         }
