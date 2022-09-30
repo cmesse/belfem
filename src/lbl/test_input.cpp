@@ -214,9 +214,25 @@ int main( int    argc,
 
    tMagfield->solver()->set_mumps_error_analysis( MumpsErrorAnalysis::Full );
 
+   uint & tTimeLoop = tFormulation->time_loop();
 
-    while( tTime < tMaxTime )
+   if( tTimeLoop == 0 )
    {
+       tMesh->save( tOutFile );
+   }
+
+   while( tTime < tMaxTime )
+   {
+       if( tTimeLoop++ == 10 )
+       {
+           // save mesh
+           real tOldTime = tTime;
+           tTime *= 1000.0;
+           tMesh->save( tOutFile );
+           tTime = tOldTime;
+           tTimeLoop = 1;
+       }
+
        real tOmegaP = tNonlinear.picardOmega ;
        real tOmegaN = tNonlinear.newtonOmega ;
 
@@ -347,6 +363,7 @@ int main( int    argc,
 
            Vector< real > & tEJel = tMesh->field_data( "elementEJ");
            Vector< real > & tJel = tMesh->field_data( "elementJ");
+           Vector< real > & tRhoel = tMesh->field_data( "elementRho");
 
            string tTimeString = sprint("%04u", tTimeCount ) ;
 
@@ -354,6 +371,20 @@ int main( int    argc,
            tTimeFile.open( "time.csv", std::ios_base::app);
            tTimeFile << tTimeCount << "," << tTime << std::endl ;
            tTimeFile.close() ;
+
+
+           // compute the rcond function
+           real tK = 0 ;
+           real tR = 0 ;
+           if( tMagfield->solver()->type() == SolverType::MUMPS )
+           {
+               real tC0 = tMagfield->solver()->wrapper()->get_cond0();
+               real tC1 = tMagfield->solver()->wrapper()->get_cond1();
+               tK = tC0 > tC1 ? tC0 : tC1;
+
+               // Sofia's truncation function
+               tR = tK / ( 1 - tK * BELFEM_EPS ) * 2.0 * BELFEM_EPS;
+           }
 
            for( id_t tID : tMesh->ghost_block_ids() )
            {
@@ -364,7 +395,7 @@ int main( int    argc,
                //tTapeFile << "t=" << tTime << ", " << std::endl ;
 
                tPipette.set_element_type( tMesh->block( tID )->element_type() );
-               tTapeFile << "el,xm,v,j,e*j" << std::endl ;
+               tTapeFile << "x,v,j,e*j,rho" << std::endl ;
 
                real tJc = 47500e6 ;
                for( mesh::Element * tElement : tMesh->block( tID )->elements() )
@@ -372,7 +403,7 @@ int main( int    argc,
                     real tV = tPipette.measure( tElement );
                     tEI += tEJel( tElement->index() ) * tV ;
                     tI  += tJel( tElement->index() ) * tV ;
-                    tTapeFile << tElement->id() << "," << 0.5*(tElement->node( 0 )->x()+tElement->node( 1 )->x()) << "," << tV << "," << tJel( tElement->index() )/tJc << "," << tEJel( tElement->index() )<< std::endl ;
+                    tTapeFile << 0.5*(tElement->node( 0 )->x()+tElement->node( 1 )->x()) << "," << tV << "," << tJel( tElement->index() )/tJc << "," << tEJel( tElement->index() )<< "," << tRhoel( tElement->index() ) << std::endl ;
                }
                tTapeFile.close() ;
 
@@ -407,18 +438,10 @@ int main( int    argc,
 
            std::ofstream tCSV ;
            tCSV.open( "acloss.csv", std::ios_base::app);
-           tCSV <<  tTime << ", " << tI << ", " << tEI << std::endl ;
+           tCSV <<  tTime << ", " << tI << ", " << tEI << ", " << std::log10(tK) << ", " << std::log10(tR) << std::endl ;
            tCSV.close() ;
 
-           // compute the rcond function
-           /*real tC0 = tMagfield->solver()->wrapper()->get_cond0() ;
-           real tC1 = tMagfield->solver()->wrapper()->get_cond1() ;
-           real tK = tC0 > tC1 ? tC0 : tC1 ;
-
-           // Sophie's truncation function
-           real tR = tK/( 1 - tK*BELFEM_EPS )* 2.0 * BELFEM_EPS ;
-
-           std::cout << "cond: " << tK << " " << tR << std::endl ;*/
+           std::cout << "    cond: " << tK << " " << tR << std::endl ;
        }
        else
        {
@@ -447,7 +470,6 @@ int main( int    argc,
 
        }
 
-       Vector< id_t > tCheck = { 7273, 7252, 5378, 5399, 3022, 3038, 1632, 1653 };
 
        //fem::compute_element_current_thinshell_tri3( tMagfield );
        tMagfield->postprocess() ;
@@ -457,12 +479,6 @@ int main( int    argc,
            compute_normb( tMagfield, false );
        }
 
-       // save mesh
-       real tOldTime = tTime ;
-       tTime *= 1000.0 ;
-       tMesh->save( tOutFile );
-       tTime = tOldTime ;
-
        //tMesh->save( "test.exo");
 
        // save backup
@@ -470,6 +486,8 @@ int main( int    argc,
 
        comm_barrier() ;
    }
+
+    tMesh->save( tOutFile );
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // tidy up

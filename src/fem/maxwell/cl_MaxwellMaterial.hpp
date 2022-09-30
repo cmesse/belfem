@@ -70,7 +70,7 @@ namespace belfem
         real mM0 = BELFEM_QUIET_NAN ;
 
         // maximum resistance for powerlaw
-        real mRhoMax = 1e-6 ;
+        real mRhoMax = 1e-10 ;
 
         // help material for thermal data
         Material * mThermalMaterial = nullptr ;
@@ -323,9 +323,21 @@ namespace belfem
         inline real
         MaxwellMaterial::rho_el_powerlaw_ej( const real aJ, const real aT, const real aB ) const
         {
-            return std::min( mRhoc * std::pow( aJ / ( mJc + BELFEM_EPSILON ), mNm1 ), mRhoMax );
-        }
+            real aRho = mRhoc * std::pow( aJ / ( mJc + BELFEM_EPSILON ), mNm1 ) ;
 
+            if ( aRho < BELFEM_EPSILON )
+            {
+                return BELFEM_EPSILON ;
+            }
+            else if ( aRho > mRhoMax )
+            {
+                return mRhoMax ;
+            }
+            else
+            {
+                return aRho ;
+            }
+        }
 
 //----------------------------------------------------------------------------
 

@@ -82,7 +82,7 @@ namespace belfem
         mEc    = aEc ;
         mJc    = aJc ;
         mNm1   = aN - 1.;
-        mRhoMax = 100 * mRhoc ;
+        //mRhoMax = 100 * mRhoc ;
     }
 
 //----------------------------------------------------------------------------

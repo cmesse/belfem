@@ -74,6 +74,9 @@ namespace belfem
             // flag telling if we have been initialized
             bool mIsInitialized = false ;
 
+            // value for timeloop, needed if we don't want to write every timestep
+            uint mTimeLoop = 0 ;
+
 //------------------------------------------------------------------------------
         protected:
 //------------------------------------------------------------------------------
@@ -676,6 +679,11 @@ namespace belfem
             // timestep, if this is a transient problem
             const real &
             timestep() const;
+
+//---------------------------------------------------------------------------------
+
+            uint &
+            time_loop() ;
 
 //------------------------------------------------------------------------------
 
@@ -1496,6 +1504,15 @@ namespace belfem
         IWG::number_of_ghost_sidesets() const
         {
             return mGhostSideSetIDs.length();
+        }
+
+
+//---------------------------------------------------------------------------------
+
+        inline uint &
+        IWG::time_loop()
+        {
+            return mTimeLoop ;
         }
 
 //---------------------------------------------------------------------------------

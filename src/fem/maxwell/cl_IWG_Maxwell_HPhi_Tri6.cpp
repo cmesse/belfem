@@ -51,7 +51,7 @@ namespace belfem
             mFields.MagneticFieldDensity     =  { "bx", "by", "bz" };
             mFields.CurrentDensity = {  "jz" };
             mFields.CurrentBC = { "lambda_I" };
-            mFields.Ghost = { "elementEJ", "elementJ" };
+            mFields.Ghost = { "elementEJ", "elementJ", "elementRho" };
 
             mEdgeDofMultiplicity = 2 ;
             mFaceDofMultiplicity = 2 ;
@@ -790,7 +790,13 @@ namespace belfem
                     bs.print("bs");
 
                 }*/
-                tWDetJ /= mDeltaTime ;
+
+                //
+
+                tWDetJ /= mDeltaTime  ;
+
+                // penalty
+                //tWDetJ *= 0.01 / mDeltaTime  ;
 
                 crossmat( tn , tBm, tnxB );
 
@@ -803,13 +809,13 @@ namespace belfem
                 {
                     for( uint i=0; i<mNumberOfNodesPerElement; ++i )
                     {
-                        tValue = tWDetJ * mE( j ) * tnxB( i );
+                        tValue = tWDetJ * mE( j ) * tnxB( i ) ;
                         tK( i, q+j ) += tValue ;
                         tK( q+j, i ) += tValue ;
                     }
                     for( uint i=0; i<mEdgeDofMultiplicity; ++i )
                     {
-                        tValue = tWDetJ * mE( i ) * mE( j );
+                        tValue = tWDetJ * mE( i ) * mE( j )  ;
                         tK( p+i, q+j ) += tValue ;
                         tK( q+j, p+i ) += tValue ;
                     }
@@ -836,13 +842,13 @@ namespace belfem
                 {
                     for( uint i=0; i<mNumberOfNodesPerElement; ++i )
                     {
-                        tValue = tWDetJ * mE( j ) * tnxB( i );
+                        tValue = tWDetJ * mE( j ) * tnxB( i )  ;
                         tK( mNumberOfNodesPerElement+i, q+j ) += tValue ;
                         tK( q+j, mNumberOfNodesPerElement+i ) += tValue ;
                     }
                     for( uint i=0; i<mEdgeDofMultiplicity; ++i )
                     {
-                        tValue = tWDetJ * mE( i ) * mE( j );
+                        tValue = tWDetJ * mE( i ) * mE( j ) ;
                         tK( p+i, q+j ) += tValue ;
                         tK( q+j, p+i ) += tValue ;
                     }
@@ -855,17 +861,43 @@ namespace belfem
                 {
                     for( uint i=0; i<mNumberOfNodesPerElement; ++i )
                     {
-                        tValue = tWDetJ * mE( j ) * ( tn( 0 ) * tBm( 0, i ) + tn( 1 ) * tBm( 1, i ) );
+                        tValue = tWDetJ * mE( j ) * ( tn( 0 ) * tBm( 0, i ) + tn( 1 ) * tBm( 1, i ) ) ;
                         tK( i, q+j ) += tValue ;
                         tK( q+j, i ) += tValue ;
                     }
                     for( uint i=0; i<mNumberOfNodesPerElement; ++i )
                     {
-                        tValue = tWDetJ * mE( j ) * ( tn( 0 ) * tBs( 0, i ) + tn( 1 ) * tBs( 1, i ) );
+                        tValue = tWDetJ * mE( j ) * ( tn( 0 ) * tBs( 0, i ) + tn( 1 ) * tBs( 1, i ) ) ;
                         tK( mNumberOfNodesPerElement+i, q+j ) -= tValue ;
                         tK( q+j, mNumberOfNodesPerElement+i ) -= tValue ;
                     }
                 }
+#else
+                /*q = mNumberOfNodesPerElement ;
+                const Vector< real > & tNm = tIntMaster->phi( k );
+                const Vector< real > & tNs = tIntSlave->phi( k );
+
+                // flux from slave to master
+                for( uint i=0; i<mNumberOfNodesPerElement; ++i )
+                {
+                    for( uint j=0; j<mNumberOfNodesPerElement; ++j )
+                    {
+                        tK( i, q + j ) -= tNm( i ) *
+                                ( tn( 0 ) * tBs( 0, j )
+                                + tn( 1 ) * tBs( 1, j ) ) * tWDetJ ;
+                    }
+                }
+
+                // flux from master to slave
+                for( uint i=0; i<mNumberOfNodesPerElement; ++i )
+                {
+                    for( uint j=0; j<mNumberOfNodesPerElement; ++j )
+                    {
+                        tK( i + q, j ) += tNs( i ) *
+                                            ( tn( 0 ) * tBm( 0, j )
+                                            + tn( 1 ) * tBm( 1, j ) ) * tWDetJ ;
+                    }
+                }*/
 #endif
             }
 
@@ -922,6 +954,7 @@ namespace belfem
                     }
                 }
 
+                // begin stabilization
                 // compute coeffs for rho
                 gesv( mArho, mBrho, mPivot );
 
@@ -971,13 +1004,9 @@ namespace belfem
                 // compute the field index
                 index_t tIndex = mGhostElementMap(
                         aElement->id() * mGroup->number_of_thin_shell_layers() + l )->index();
-                real tJz = mLayerData(0, l );
-
-                // real tRho = mGroup->thin_shell_material( l )->rho_el( tJz );
-
-                mMesh->field_data( "elementJ" )( tIndex ) =  tJz ;
-                //mMesh->field_data( "elementEJ" )( tIndex ) = tRho * tJz * tJz ;
-                mMesh->field_data( "elementEJ" )( tIndex ) = mLayerData( 1, l );
+                mMesh->field_data( "elementJ" )( tIndex )   = mLayerData( 0, l );
+                mMesh->field_data( "elementEJ" )( tIndex )  = mLayerData( 1, l );
+                mMesh->field_data( "elementRho" )( tIndex ) = mLayerData( 2, l );
 
                 // std::cout << "check " << aElement->id() << " " << tJz * tLength * mGroup->thin_shell_thickness( l ) << " " << mLayerData( 2, l ) << std::endl ;
             }
@@ -1082,7 +1111,8 @@ namespace belfem
             real tJz_el = 0 ;
 
             // value for ac losses (element-wise)
-            real tEJ_El = 0.0 ;
+            real tEJ_el = 0.0 ;
+            real tRho_el = 0.0 ;
 
             const Matrix< real > & tXi = tInteg->points() ;
 
@@ -1148,15 +1178,13 @@ namespace belfem
                 aK += tW( k ) * trans( mC ) * tRho * mC * tDetJ ;
 
                 tJz_el += tW( k ) * tJz ;
-                tEJ_El += tW( k ) *  tRho * tJz * tJz ;
+                tEJ_el += tW( k ) *  tRho * tJz * tJz ;
+                tRho_el += tW( k ) * tRho ;
             }
 
             mLayerData( 0, aLayer ) += tW( aIntPoint ) * tJz_el ;
-            mLayerData( 1, aLayer ) += tW( aIntPoint ) * tEJ_El ;
-
-            mLayerData( 2, aLayer ) += tW( aIntPoint ) *
-                    (    aE0 * ( aHt( 0 ) - aHt( 4 ) )
-                            + aE1 * ( aHt( 1 ) - aHt( 5 ) ) )  * aXLength * 2 ;
+            mLayerData( 1, aLayer ) += tW( aIntPoint ) * tEJ_el ;
+            mLayerData( 2, aLayer ) += tW( aIntPoint ) * tRho_el ;
 
 
         }

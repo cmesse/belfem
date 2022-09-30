@@ -414,6 +414,7 @@ namespace belfem
                 tFile.create_group("TimeInfo");
                 tFile.save_data( "timestamp", mMesh->time_stamp() );
                 tFile.save_data( "timestep", mMesh->time_step() );
+                tFile.save_data( "timeloop", this->time_loop() );
                 tFile.close_active_group();
 
                 tFile.create_group("Fields");
@@ -488,6 +489,7 @@ namespace belfem
                     tFile.select_group( "TimeInfo" );
                     tFile.load_data( "timestamp", aMesh->time_stamp());
                     tFile.load_data( "timestep", aMesh->time_step());
+                    tFile.load_data( "timeloop", this->time_loop() );
 
                     tFile.close_active_group();
 
@@ -512,8 +514,10 @@ namespace belfem
 
                     Vector< real > tTime( tCommTable.length(), aMesh->time_stamp());
                     Vector< uint > tTimeCount( tCommTable.length(), aMesh->time_step());
+                    Vector< uint > tTimeLoop( tCommTable.length(), this->time_loop() );
                     send( tCommTable, tTime );
                     send( tCommTable, tTimeCount );
+                    send( tCommTable, tTimeLoop );
                 }
             }
             else
@@ -528,6 +532,7 @@ namespace belfem
                     comm_barrier();
                     receive( mField->parent()->master(), aMesh->time_stamp());
                     receive( mField->parent()->master(), aMesh->time_step());
+                    receive( mField->parent()->master(), this->time_loop() );
                 }
             }
 
@@ -2467,6 +2472,13 @@ namespace belfem
                // create name for old dof
                 string tOldDof = tDof + "0" ;
 
+                // #hack
+                if( ! mMesh->field_exists( tOldDof ) )
+                {
+                    mMesh->create_field( tOldDof, mMesh->field( tDof)->entity_type() );
+                    mMesh->field( tOldDof )->set_write_to_file_flag( false );
+                }
+
                 // check if field for old dofs exists
                 if( mMesh->field_exists( tOldDof ) )
                 {
@@ -2530,10 +2542,19 @@ namespace belfem
             aJacobian( 2, 2 ) =  0.0 ;
 
 
+
             aRHS( 0 ) = 0.0 ;
             aRHS( 1 ) = 0.0 ;
             this->collect_lambda_data( aElement, "lambda_I", aRHS( 2 ) );
+
+            /*uint tCount = 0 ;
+            this->collect_node_data( aElement, "phi0", mQ0cut, tCount );
+            this->collect_lambda_data( aElement, "lambda0", mQ0cut( tCount++ );
+            aRHS += aJacobian * mQ0cut ; */
+
             //std::cout << "check I " << aElement->id() << " " << aRHS( 2 ) << std::endl ;
+
+
 
             // compute residual vector
             aRHS *= mDeltaTime ;

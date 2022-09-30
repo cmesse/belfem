@@ -78,6 +78,7 @@ namespace belfem
 
             Vector< real > mNormal2D = { 0., 0., };
             Vector< real > mNormal3D = { 0., 0., 0. };
+            Vector< real > mQ0cut = { 0, 0, 0 };
 
 //------------------------------------------------------------------------------
         private:
