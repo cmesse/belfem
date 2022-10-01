@@ -323,20 +323,7 @@ namespace belfem
         inline real
         MaxwellMaterial::rho_el_powerlaw_ej( const real aJ, const real aT, const real aB ) const
         {
-            real aRho = mRhoc * std::pow( aJ / ( mJc + BELFEM_EPSILON ), mNm1 ) ;
-
-            if ( aRho < BELFEM_EPSILON )
-            {
-                return BELFEM_EPSILON ;
-            }
-            else if ( aRho > mRhoMax )
-            {
-                return mRhoMax ;
-            }
-            else
-            {
-                return aRho ;
-            }
+            return  std::min( mRhoc * std::pow( aJ / ( mJc + BELFEM_EPSILON ), mNm1 ) , mRhoMax );
         }
 
 //----------------------------------------------------------------------------

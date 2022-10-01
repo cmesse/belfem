@@ -52,6 +52,7 @@ namespace belfem
             Matrix< real > mArho ;
             Vector< real > mBrho ;
             Vector< real > mCrho ;
+            Matrix< real > mRho ;
             Vector< int >  mPivot ;
             Matrix< real > mL ;
 

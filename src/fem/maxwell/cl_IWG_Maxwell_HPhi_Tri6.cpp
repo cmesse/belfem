@@ -70,6 +70,7 @@ namespace belfem
 
             mHn.set_size( 16 );
             mW.set_size( 16 );
+            mRho.set_size( 16, 16 );
 
             mAHn.set_size( 2, 2 );
             mBHn.set_size( 2 );
@@ -78,6 +79,9 @@ namespace belfem
             mBrho.set_size( 9 );
             mCrho.set_size( 9 );
             mPivot.set_size( 9 );
+
+
+
             mL.set_size( 2, 6 );
         }
 
@@ -730,15 +734,6 @@ namespace belfem
             BELFEM_ASSERT( mGroup->thinshell_integration()->weights().length() == mNumberOfIntegrationPoints,
                            "number of integraiton points on thin shell does not match" );
 
-            if( aElement->id() == 17 )
-            {
-                std::cout << aElement->facet()->master_index() << " " << aElement->facet()->slave_index() << std::endl ;
-                tXm.print("Xm");
-                tXs.print("Xs");
-                tPhiM.print("phiM");
-                tPhiS.print("phiS");
-
-            }
             // indices
             uint p ;
             uint q ;
@@ -747,6 +742,8 @@ namespace belfem
 
             // element lengfth
             real tLength = 0 ;
+
+            //real tIz = 0.0 ;
 
             // loop over all integration points
             for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
@@ -791,12 +788,9 @@ namespace belfem
 
                 }*/
 
-                //
+                // uncommenting this improves the conditioning a lot!
+                // tWDetJ /= mDeltaTime  ;
 
-                tWDetJ /= mDeltaTime  ;
-
-                // penalty
-                //tWDetJ *= 0.01 / mDeltaTime  ;
 
                 crossmat( tn , tBm, tnxB );
 
@@ -837,6 +831,9 @@ namespace belfem
                  //       + aElement->element()->node( 1 )->x() * ( 1 + tXi) );
 
                 //std::cout << aElement->id() << " j: " << tx << " " << tH1 << " " << tH2 << " " << ( tH2-tH1 ) / mGroup->thin_shell_thickness( 0 ) << std::endl ;
+
+                // #hack
+                //tIz += tW( k ) * ( tH2-tH1 ) / mGroup->thin_shell_thickness( 0 ) * 0.5 / 47500e6 ;
 
                 for( uint j=0; j<mEdgeDofMultiplicity; ++j )
                 {
@@ -960,8 +957,7 @@ namespace belfem
 
                 // critical current
                 const Material * tMaterial = mGroup->thin_shell_material( l );
-                real tRhoCrit = tMaterial->type() == MaterialType::Maxwell ?
-                        tMaterial->rho_el_crit( 0.0, 0.0, 0.0 ) : 0.0 ;
+                real tRhoCrit = tMaterial->type() == MaterialType::Maxwell ? tMaterial->rho_el_crit( 0.0, 0.0, 0.0 ) : 0.0 ;
 
 
                 this->compute_layer_stabilizer( tHt, tLength,
@@ -1159,7 +1155,9 @@ namespace belfem
 
                 // resistivity
                 real tRho = tMaterial->rho_el( tJz, tT, constant::mu0 * std::sqrt( tHt*tHt + aHn*aHn )  );
-                tRho = tRho < BELFEM_EPSILON ? BELFEM_EPSILON : tRho ;
+
+                // remember value
+                mRho( k, aIntPoint ) = tRho ;
 
                 real tX = 0.5 * ( tXi( 0, aIntPoint ) + 1.0 ) * aXLength ;
                 real tY = 0.5 * ( tXi( 0, k )  + 1.0 ) * tThickness ;
@@ -1167,11 +1165,17 @@ namespace belfem
                 const Vector< real > & tQ = this->eval_quad9( tX, tY );
                 for( uint j=0; j<9; ++j )
                 {
-                    for ( uint i = 0; i < 9; ++i )
+                    /*for ( uint i = 0; i < 9; ++i )
                     {
                         mArho( i, j ) += tQ( i ) * tQ( j );
                     }
-                    mBrho( j ) += std::log( tRho ) * tQ( j );
+                    mBrho( j ) += std::log( std::max( tRho, BELFEM_EPS ) ) * tQ( j ); */
+
+                    for ( uint i = 0; i < 9; ++i )
+                    {
+                        mArho( i, j ) += tW( k ) * tQ( i ) * tQ( j );
+                    }
+                    mBrho( j ) += tW( k ) * tRho * tQ( j );
                 }
 
                 // contribution to stiffness matrix
@@ -1222,7 +1226,7 @@ namespace belfem
 
             aG.fill( 0.0 );
 
-            real tC = ( aXLength * aYLength ) ;
+            real tC = ( aXLength * aXLength ) ;
 
 
             for( uint l=0; l<mNumberOfIntegrationPoints; ++l )
@@ -1238,9 +1242,15 @@ namespace belfem
                     real tY = 0.5 * ( eta + 1.0 ) * aYLength ;
 
                     // derivatives of rho
-                    real tRho = std::exp( dot( this->eval_quad9( tX, tY ), mBrho ) );
-                    real tdRhodX = tRho * dot( this->eval_quad9_dx( tX, tY ), mBrho );
-                    real tdRhodY = tRho * dot( this->eval_quad9_dy( tX, tY ), mBrho );
+                    // real tRho = std::exp( dot( this->eval_quad9( tX, tY ), mBrho ) );
+                    // real tdRhodX = tRho * dot( this->eval_quad9_dx( tX, tY ), mBrho );
+                    // real tdRhodY = tRho * dot( this->eval_quad9_dy( tX, tY ), mBrho );
+                    // std::cout << "check " << l << " " << k << " " << this->eval_quad9( tX, tY ) / mRho( k, l ) << std::endl ;
+
+                    real tRho = mRho( k, l );
+                    real tdRhodX =  dot( this->eval_quad9_dx( tX, tY ), mBrho );
+                    real tdRhodY = dot( this->eval_quad9_dy( tX, tY ), mBrho );
+
 
                     real tVal = 2.0 / aYLength ;
 

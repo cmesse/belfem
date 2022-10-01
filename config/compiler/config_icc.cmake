@@ -41,7 +41,7 @@ endif()
 #-------------------------------------------------------------------------------
 
 # Build 64-bit binaries.
-set( BELFEM_CXXFLAGS "${BELFEM_CXXFLAGS} -m64 -std=gnu++14")
+set( BELFEM_CXXFLAGS "${BELFEM_CXXFLAGS} -m64 -std=gnu++14 -diag-disable=10441")
 
 # Add UTF-8 support for identifier names.
 #set( BELFEM_CXXFLAGS "${BELFEM_CXXFLAGS} -fextended-identifiers")
