@@ -8,6 +8,7 @@
 #include "typedefs.hpp"
 #include "cl_Cell.hpp"
 #include "cl_Mesh.hpp"
+#include "cl_Progressbar.hpp"
 
 namespace belfem
 {
@@ -89,7 +90,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
-            populate_blocks();
+            populate_blocks( Progressbar * aProgressbar );
 
 //------------------------------------------------------------------------------
 
@@ -104,7 +105,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
-            populate_sidesets();
+            populate_sidesets( Progressbar * aProgressbar );
 
 //------------------------------------------------------------------------------
 

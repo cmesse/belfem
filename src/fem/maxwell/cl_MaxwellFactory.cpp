@@ -907,21 +907,9 @@ namespace belfem
                 tLine += " " + mInputFile.line( k );
             }
 
-            // tidy up and create words
-            Cell< string > tWords = string_to_words(
-                    clean_string(
-                            search_and_replace(
-                                    search_and_replace( tLine, ",", " " ),
-                                    ";", " " )));
-
-
             // convert to vector
-            Vector< id_t > tData( tWords.size());
-
-            for ( index_t k = 0; k < tWords.size(); ++k )
-            {
-                tData( k ) = std::stoi( tWords( k ));
-            }
+            Vector< id_t > tData ;
+            this->read_id_line( tLine, tData );
 
             // end get raw data
             // -  - - - - - - - - - - - - - - -
@@ -964,16 +952,16 @@ namespace belfem
                 }
                 case( DomainType::ThinShell ) :
                 {
-                    // make sure that data can be divided by three
-                    BELFEM_ERROR( tData.length() % 4 == 0, "Number of cut data must be divisible by four" );
 
-                    index_t tN = tData.length() / 4 ;
+                    // make sure that data can be divided by three
+                    BELFEM_ERROR( tData.length() % 3 == 0, "Number of tape data must be divisible by three" );
+
+                    index_t tN = tData.length() / 3 ;
 
                     // populate data
                     Vector< id_t > tGroups( tN );
                     Vector< id_t > tPlus( tN );
                     Vector< id_t > tMinus( tN );
-                    Vector< id_t > tMaster( tN );
 
                     index_t tCount = 0;
 
@@ -982,12 +970,11 @@ namespace belfem
                         tGroups( i ) = tData( tCount++ );
                         tPlus( i )   = tData( tCount++ );
                         tMinus( i )  = tData( tCount++ );
-                        tMaster( i ) = tData( tCount++ );
                     }
 
                     // create the group object
                     return new DomainThinShell( tLabel, tGroups,
-                                                tPlus, tMinus, tMaster, tType  );
+                                                tPlus, tMinus, tPlus, tType  );
                 }
                 case ( DomainType::Air ) :
                 case ( DomainType::Boundary ) :
@@ -3253,6 +3240,55 @@ namespace belfem
                          mTapeMaterialLabels( k  ).c_str() ,
                          ( unsigned int ) std::ceil( mTapeThicknesses( k ) *1e6 ) );
 
+            }
+        }
+
+// -----------------------------------------------------------------------------
+
+        void
+        MaxwellFactory::read_id_line( const string & aLine, Vector< id_t > & aIDs )
+        {
+            // tidy up and create words
+            Cell< string > tWords = string_to_words(
+                    search_and_replace(
+                            search_and_replace( aLine, ",", " " ),
+                            ";", " " ));
+
+            // count numbers
+            uint tCount = 0 ;
+            uint tNumWords = tWords.size() ;
+
+            // count numbers
+            for ( uint w=0; w<tNumWords; ++w )
+            {
+                if( tWords( w ) == ":" )
+                {
+                    tCount += std::stoi( tWords( w+1 ) ) - std::stoi( tWords( w-1 ) ) - 1 ;
+                }
+                else
+                {
+                    ++tCount ;
+                }
+            }
+
+            // allocate vector
+            aIDs.set_size( tCount );
+            tCount = 0 ;
+            for ( uint w=0; w<tNumWords; ++w )
+            {
+                if( tWords( w ) == ":" )
+                {
+                    id_t tA = std::stoi( tWords( w-1 ) ) + 1 ;
+                    id_t tB = std::stoi( tWords( w+1 ) ) ;
+                    for( id_t tX = tA ; tX < tB; ++tX )
+                    {
+                        aIDs( tCount++ ) = tX ;
+                    }
+                }
+                else
+                {
+                    aIDs( tCount++ ) = std::stoi( tWords( w ) );
+                }
             }
         }
 

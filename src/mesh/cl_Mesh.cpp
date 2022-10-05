@@ -245,7 +245,7 @@ namespace belfem
             // start the timer
             Timer tTimer;
 
-            message( 2, "    Saving Mesh to %s ...", filename( aFilePath ).c_str() );
+            message( 2, "\n    Saving Mesh to %s ...", filename( aFilePath ).c_str() );
 
             string tType = string_to_lower( filetype( aFilePath ));
 
@@ -300,8 +300,19 @@ namespace belfem
                 BELFEM_ERROR( false, "Don't know how to write mesh of type: %s", tType.c_str() );
             }
 
-            message( 2, "    Time %u ms.\n",
-                     ( unsigned int ) tTimer.stop() );
+            uint tTime = tTimer.stop() ;
+
+            if( tTime < 1000 )
+            {
+                message( 2, "    Time %u ms.\n",
+                         ( unsigned int ) tTime );
+            }
+            else
+            {
+                message( 2, "    Time %4.1f s.\n",
+                         ( float ) tTime * 0.001 );
+            }
+            
         }
     }
 

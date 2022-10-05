@@ -12,6 +12,9 @@
 #include "cl_FEM_DofManager.hpp"
 #include "cl_FEM_DofMgr_SolverData.hpp"
 #include "fn_gesv.hpp"
+#include "fn_eigen.hpp"
+#include "fn_max.hpp"
+#include "fn_det.hpp"
 
 #define HPHI_TRI6_LAMBDAN
 
@@ -64,6 +67,8 @@ namespace belfem
             mEdgeFunctionTS = new EF_LINE3() ;
             mHt.set_size( 3 );
             mC.set_size( 1, 6 );
+            mdCdx.set_size( 6 );
+            mdCdy.set_size(  6 );
             mH.set_size( 2 );
             mU.set_size( 2 );
             mE.set_size( 2 );
@@ -71,18 +76,26 @@ namespace belfem
             mHn.set_size( 16 );
             mW.set_size( 16 );
             mRho.set_size( 16, 16 );
-
+            mJz.set_size( 16, 16 );
+            mdRhodx.set_size( 16, 16 );
+            mdRhody.set_size( 16, 16 );
             mAHn.set_size( 2, 2 );
             mBHn.set_size( 2 );
 
-            mArho.set_size( 9, 9 );
-            mBrho.set_size( 9 );
+            //mArho.set_size( 9, 9 );
+            //mBrho.set_size( 9 );
             mCrho.set_size( 9 );
             mPivot.set_size( 9 );
 
 
-
+            // for stabilzation
             mL.set_size( 2, 6 );
+            mN.set_size( 2, 6, 0.0 );
+
+            mXi.set_size( 5 );
+            mEta.set_size( 5 );
+            mPhi.set_size( 3 );
+            mPsi.set_size( 5 );
         }
 
 //------------------------------------------------------------------------------
@@ -640,6 +653,10 @@ namespace belfem
             // stiffness matrix
             Matrix< real > & tK = mGroup->work_K();
 
+            // stiffness matrix
+            Matrix< real > & tA = tK;
+
+
             tM.fill( 0.0 );
             tK.fill( 0.0 );
             aRHS.fill( 0.0 );
@@ -789,8 +806,9 @@ namespace belfem
                 }*/
 
                 // uncommenting this improves the conditioning a lot!
-                // tWDetJ /= mDeltaTime  ;
 
+                // tWDetJ /= mDeltaTime  ;
+                //tWDetJ *= mDeltaTime ;  // <-- use this if we add onto M
 
                 crossmat( tn , tBm, tnxB );
 
@@ -804,14 +822,14 @@ namespace belfem
                     for( uint i=0; i<mNumberOfNodesPerElement; ++i )
                     {
                         tValue = tWDetJ * mE( j ) * tnxB( i ) ;
-                        tK( i, q+j ) += tValue ;
-                        tK( q+j, i ) += tValue ;
+                        tA( i, q+j ) += tValue ;
+                        tA( q+j, i ) += tValue ;
                     }
                     for( uint i=0; i<mEdgeDofMultiplicity; ++i )
                     {
                         tValue = tWDetJ * mE( i ) * mE( j )  ;
-                        tK( p+i, q+j ) += tValue ;
-                        tK( q+j, p+i ) += tValue ;
+                        tA( p+i, q+j ) += tValue ;
+                        tA( q+j, p+i ) += tValue ;
                     }
                 }
 
@@ -840,14 +858,14 @@ namespace belfem
                     for( uint i=0; i<mNumberOfNodesPerElement; ++i )
                     {
                         tValue = tWDetJ * mE( j ) * tnxB( i )  ;
-                        tK( mNumberOfNodesPerElement+i, q+j ) += tValue ;
-                        tK( q+j, mNumberOfNodesPerElement+i ) += tValue ;
+                        tA( mNumberOfNodesPerElement+i, q+j ) += tValue ;
+                        tA( q+j, mNumberOfNodesPerElement+i ) += tValue ;
                     }
                     for( uint i=0; i<mEdgeDofMultiplicity; ++i )
                     {
                         tValue = tWDetJ * mE( i ) * mE( j ) ;
-                        tK( p+i, q+j ) += tValue ;
-                        tK( q+j, p+i ) += tValue ;
+                        tA( p+i, q+j ) += tValue ;
+                        tA( q+j, p+i ) += tValue ;
                     }
                 }
 
@@ -859,14 +877,14 @@ namespace belfem
                     for( uint i=0; i<mNumberOfNodesPerElement; ++i )
                     {
                         tValue = tWDetJ * mE( j ) * ( tn( 0 ) * tBm( 0, i ) + tn( 1 ) * tBm( 1, i ) ) ;
-                        tK( i, q+j ) += tValue ;
-                        tK( q+j, i ) += tValue ;
+                        tA( i, q+j ) += tValue ;
+                        tA( q+j, i ) += tValue ;
                     }
                     for( uint i=0; i<mNumberOfNodesPerElement; ++i )
                     {
                         tValue = tWDetJ * mE( j ) * ( tn( 0 ) * tBs( 0, i ) + tn( 1 ) * tBs( 1, i ) ) ;
-                        tK( mNumberOfNodesPerElement+i, q+j ) -= tValue ;
-                        tK( q+j, mNumberOfNodesPerElement+i ) -= tValue ;
+                        tA( mNumberOfNodesPerElement+i, q+j ) -= tValue ;
+                        tA( q+j, mNumberOfNodesPerElement+i ) -= tValue ;
                     }
                 }
 #else
@@ -898,7 +916,7 @@ namespace belfem
 #endif
             }
 
-            /*mAHn.fill( 0.0 );
+            mAHn.fill( 0.0 );
             mBHn.fill( 0.0 );
             // derivative of Hn to xi
             for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
@@ -913,7 +931,7 @@ namespace belfem
                 mBHn( 1 ) += tW( k ) * tXi ;
             }
             gesv( mAHn, mBHn, mPivot );
-            real tdHndX = -mBHn( 0 ) / tLength * 2.0 ; */
+            real tdHndX = -mBHn( 0 ) / tLength * 2.0 ;
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // Mass and Stiffness contributions
@@ -921,8 +939,8 @@ namespace belfem
 
             for( uint l=0; l<mNumberOfThinShellLayers; ++l)
             {
-                mArho.fill( 0.0 );
-                mBrho.fill( 0.0 );
+                //mArho.fill( 0.0 );
+                //mBrho.fill( 0.0 );
 
                 this->collect_edge_data_from_layer( aElement, "edge_h", l, tHt );
 
@@ -953,21 +971,22 @@ namespace belfem
 
                 // begin stabilization
                 // compute coeffs for rho
-                gesv( mArho, mBrho, mPivot );
+                // gesv( mArho, mBrho, mPivot );
 
                 // critical current
                 const Material * tMaterial = mGroup->thin_shell_material( l );
                 real tRhoCrit = tMaterial->type() == MaterialType::Maxwell ? tMaterial->rho_el_crit( 0.0, 0.0, 0.0 ) : 0.0 ;
 
 
-                this->compute_layer_stabilizer( tHt, tLength,
-                                                mGroup->thin_shell_thickness( l ), tRhoCrit, tMlayer );
+                this->compute_layer_stabilizer( aElement, tHt, tLength,
+                                                mGroup->thin_shell_thickness( l ), tRhoCrit, tMlayer, tKlayer );
 
                 for ( uint j = 0; j < 6; ++j )
                 {
                     for ( uint i = 0; i < 6; ++i )
                     {
                         tM( p + i, p + j ) += tMlayer( i, j );
+                        tK( p + i, p + j ) += tKlayer( i, j );
                     }
                 }
 
@@ -1071,6 +1090,11 @@ namespace belfem
         }
 
 //------------------------------------------------------------------------------
+#ifdef BELFEM_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#endif
 
         void
         IWG_Maxwell_HPhi_Tri6::compute_layer_stiffness(
@@ -1118,65 +1142,114 @@ namespace belfem
             //        0 --- 1 --- 2
             //        that's why we need to swap the indices in mHt and tPhiXi!
 
-            // edge-wise components of H
-            mHt( 0 ) = aE0 * aHt( 0 ) + aE1 * aHt( 1 ) ; // field on master side
-            mHt( 2 ) = aE0 * aHt( 2 ) + aE1 * aHt( 3 ) ; // middle field
-            mHt( 1 ) = aE0 * aHt( 4 ) + aE1 * aHt( 5 ) ; // field on slave side
+            real xi = tXi( 0, aIntPoint );
+
+            mXi( 0 ) = xi - 0.005 ;
+            mXi( 1 ) = xi + 0.005 ;
+            mXi( 2 ) = xi ;
+            mXi( 3 ) = xi ;
+            mXi( 4 ) = xi ;
+
 
             // integrate over thickness
             for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
             {
                 // derivative of shape function along thickness
-                const Vector< real > & tPhiXi = tInteg->dphidxi( k ) ;
+                // const Vector< real > & tPhiXi  = tInteg->dphidxi( k ) ;
 
-                // curl operator
-                mC( 0, 0 ) = aE0 * tPhiXi( 0 );
-                mC( 0, 1 ) = aE1 * tPhiXi( 0 );
-                mC( 0, 2 ) = aE0 * tPhiXi( 2 );
-                mC( 0, 3 ) = aE1 * tPhiXi( 2 );
-                mC( 0, 4 ) = aE0 * tPhiXi( 1 );
-                mC( 0, 5 ) = aE1 * tPhiXi( 1 );
-                mC /= tDetJ ;
+                real eta = tXi( 0, k );
 
+                mEta( 0 ) = eta ;
+                mEta( 1 ) = eta ;
+                mEta( 2 ) = eta-0.005 ; // because we have a left-hand system here
+                mEta( 3 ) = eta+0.005 ;
+                mEta( 4 ) = eta ;
 
-                // mHt.print("Ht");
+                real tJz = 0 ;
+                real tRho = 0 ;
 
-                // current : tHt derived along thickness
-                // real tJz = mC * aHt ;
-                //std::cout << "x y " << adHndx << " " <<  dot( tPhiXi, mHt ) / tDetJ << std::endl ;
+                // comopute rho and gradients
+                for( uint l=0; l<5; ++l )
+                {
+                    xi = mXi( l );
+                    eta = mEta( l );
+
+                    real tE0 = 0.5 * ( 1 - 3 * xi );
+                    real tE1 = 0.5 * ( 1 + 3 * xi );
+                    mPhi( 0 ) = eta - 0.5;
+                    mPhi( 1 ) = eta + 0.5;
+                    mPhi( 2 ) = -2 * eta;
+
+                    // curl operator
+                    mC( 0, 0 ) = tE0 * mPhi( 0 );
+                    mC( 0, 1 ) = tE1 * mPhi( 0 );
+                    mC( 0, 2 ) = tE0 * mPhi( 2 );
+                    mC( 0, 3 ) = tE1 * mPhi( 2 );
+                    mC( 0, 4 ) = tE0 * mPhi( 1 );
+                    mC( 0, 5 ) = tE1 * mPhi( 1 );
+                    mC /= tDetJ;
+
+                    // edge-wise components of H
+                    mHt( 0 ) = tE0 * aHt( 0 ) + tE1 * aHt( 1 ) ; // field on master side
+                    mHt( 2 ) = tE0 * aHt( 2 ) + tE1 * aHt( 3 ) ; // middle field
+                    mHt( 1 ) = tE0 * aHt( 4 ) + tE1 * aHt( 5 ) ; // field on slave side
+
+                    // mHt.print("Ht");
+                    // current : tHt derived along thickness
+                    real tHt =   dot( tInteg->phi( k ), mHt );
+                    tJz = dot( mC.row( 0 ), aHt );
+                    tRho = std::max( tMaterial->rho_el( tJz, tT, constant::mu0 * std::sqrt( tHt*tHt + aHn*aHn )  ), BELFEM_EPS );
+                    mPsi( l ) = tRho ;
+                }
+
+                // remember values
+                mRho( k, aIntPoint ) = tRho ;
+                mdRhodx( k, aIntPoint ) = ( mPsi( 1 )-mPsi( 0 ) ) / ( 0.01 * aXLength );
+                mdRhody( k, aIntPoint ) = ( mPsi( 3)-mPsi( 2 ) ) / ( 0.01 * tThickness );
+                mJz( k, aIntPoint ) = tJz ;
+
+                //real tdJzdx = dot( mdCdx, aHt );
+                //real tdJzdy = dot( mdCdy , aHt ); // <-- is  this wrong?
+
 
                 //real tJz = -adHndx + dot( tPhiXi, mHt ) / tDetJ ;
-                real tJz = dot( tPhiXi, mHt ) / tDetJ - adHndX ;
+               // real tJz = dot( tPhiXi, mHt ) / tDetJ - adHndX ;
 
                 // tangential component of h
-                real tHt =   dot( tInteg->phi( k ), mHt );
+                // real tHt =   dot( tInteg->phi( k ), mHt );
 
                 // std::cout << "   " << k << " " << tHt << " " << tJz << std::endl ;
 
                 // resistivity
-                real tRho = tMaterial->rho_el( tJz, tT, constant::mu0 * std::sqrt( tHt*tHt + aHn*aHn )  );
+                //real tRho = std::max( tMaterial->rho_el( tJz, tT, constant::mu0 * std::sqrt( tHt*tHt + aHn*aHn )  ), BELFEM_EPS );
 
-                // remember value
+                // remember values
                 mRho( k, aIntPoint ) = tRho ;
 
-                real tX = 0.5 * ( tXi( 0, aIntPoint ) + 1.0 ) * aXLength ;
+                // todo: #hack
+                /*if( std::abs( tJz ) > BELFEM_EPSILON )
+                {
+                    mdRhodx( k, aIntPoint ) = tRho * tdJzdx / tJz * 34;
+                    mdRhody( k, aIntPoint ) = tRho * tdJzdy / tJz * 34;
+                }
+                else
+                {
+                    mdRhodx( k, aIntPoint ) = 0.0 ;
+                    mdRhody( k, aIntPoint ) = 0.0 ;
+                }*/
+
+                /*real tX = 0.5 * ( tXi( 0, aIntPoint ) + 1.0 ) * aXLength ;
                 real tY = 0.5 * ( tXi( 0, k )  + 1.0 ) * tThickness ;
 
                 const Vector< real > & tQ = this->eval_quad9( tX, tY );
                 for( uint j=0; j<9; ++j )
                 {
-                    /*for ( uint i = 0; i < 9; ++i )
-                    {
-                        mArho( i, j ) += tQ( i ) * tQ( j );
-                    }
-                    mBrho( j ) += std::log( std::max( tRho, BELFEM_EPS ) ) * tQ( j ); */
-
                     for ( uint i = 0; i < 9; ++i )
                     {
-                        mArho( i, j ) += tW( k ) * tQ( i ) * tQ( j );
+                        mArho( i, j ) += tW( aIntPoint ) * tW( k ) * tQ( i ) * tQ( j );
                     }
-                    mBrho( j ) += tW( k ) * tRho * tQ( j );
-                }
+                    mBrho( j ) += tW( aIntPoint ) * tW( k ) * std::log( tRho ) * tQ( j );
+                }*/
 
                 // contribution to stiffness matrix
                 aK += tW( k ) * trans( mC ) * tRho * mC * tDetJ ;
@@ -1189,26 +1262,21 @@ namespace belfem
             mLayerData( 0, aLayer ) += tW( aIntPoint ) * tJz_el ;
             mLayerData( 1, aLayer ) += tW( aIntPoint ) * tEJ_el ;
             mLayerData( 2, aLayer ) += tW( aIntPoint ) * tRho_el ;
-
-
         }
 
 //------------------------------------------------------------------------------
 
-#ifdef BELFEM_GCC
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-#endif
 
 
         void
         IWG_Maxwell_HPhi_Tri6::compute_layer_stabilizer(
+                Element * aElement,
                 const Vector< real > & aHt,
                 const real aXLength,
                 const real aYLength,
                 const real aRhoCrit,
-                Matrix< real > & aG )
+                Matrix< real > & aM,
+                Matrix< real > & aK )
         {
             /*real tC = 0 ;
             for( uint k=0; k<6; ++k )
@@ -1224,11 +1292,15 @@ namespace belfem
 
             const Matrix< real > & tXi = tInteg->points() ;
 
-            aG.fill( 0.0 );
+            aM.fill( 0.0 );
+            aK.fill( 0.0 );
 
-            real tC = ( aXLength * aXLength ) ;
+            // real tC = 0.25  * ( aXLength * aYLength ) * 500 ;
+            //real tC = 0.25  * ( aXLength * aYLength ) * 500 ;
+            real tDetJ = 0.25 * ( aXLength * aYLength ) ;
+            real tR = 0.0 ;
 
-
+            real tC = 25000 ;
             for( uint l=0; l<mNumberOfIntegrationPoints; ++l )
             {
                 real xi = tXi( 0, l );
@@ -1238,18 +1310,31 @@ namespace belfem
                 for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
                 {
 
+                    const Vector< real > & tPhi  = tInteg->phi( k ) ;
+
                     real eta = tXi( 0, k ) ;
                     real tY = 0.5 * ( eta + 1.0 ) * aYLength ;
 
                     // derivatives of rho
-                    // real tRho = std::exp( dot( this->eval_quad9( tX, tY ), mBrho ) );
-                    // real tdRhodX = tRho * dot( this->eval_quad9_dx( tX, tY ), mBrho );
-                    // real tdRhodY = tRho * dot( this->eval_quad9_dy( tX, tY ), mBrho );
-                    // std::cout << "check " << l << " " << k << " " << this->eval_quad9( tX, tY ) / mRho( k, l ) << std::endl ;
+                    real tRho = mRho( k, l ) ;
+                    real tdRhodX = mdRhodx( k, l ) ;
+                    real tdRhodY = mdRhody( k, l ) ;
 
-                    real tRho = mRho( k, l );
-                    real tdRhodX =  dot( this->eval_quad9_dx( tX, tY ), mBrho );
-                    real tdRhodY = dot( this->eval_quad9_dy( tX, tY ), mBrho );
+                    //real tRho =  std::exp( dot( this->eval_quad9( tX, tY ), mBrho ) );
+                    //real tdRhodX = tRho * dot( this->eval_quad9_dx( tX, tY ), mBrho );
+                    //real tdRhodY = tRho * dot( this->eval_quad9_dy( tX, tY ), mBrho );
+
+
+                    //real tRho =  dot( this->eval_quad9( tX, tY ), mBrho );
+                    //real tdRhodX =  dot( this->eval_quad9_dx( tX, tY ), mBrho );
+                    //real tdRhodY = dot( this->eval_quad9_dy( tX, tY ), mBrho );
+
+                    /*if( aElement->id() == 72 )
+                    {
+                        std::cout << tX << " " << tY << "  " << tRho << " " << mRho( k, l ) << " " << mJ( k, l )/47500e6 << std::endl ;
+                    }*/
+
+                    // std::cout << "check " << l << " " << k << " | " << tRho << " " << mRho( k, l ) << " | " << tdRhodX << " " << tdRhodY << std::endl ;
 
 
                     real tVal = 2.0 / aYLength ;
@@ -1268,6 +1353,27 @@ namespace belfem
                     mL( 0, 4 ) = tdRhodY * mCrho( 4 );
                     mL( 0, 5 ) = tdRhodY * mCrho( 5 );
 
+                    tVal = 4.0 / ( aYLength * aYLength ) * tRho ;
+
+                    real tE0 = 0.5 - 1.5 * xi ;
+                    real tE1 = 0.5 + 1.5 * xi ;
+
+                    mN( 0, 0 ) = tE0 * tPhi( 0 );
+                    mN( 0, 1 ) = tE1 * tPhi( 0 );
+                    mN( 0, 2 ) = tE0 * tPhi( 2 );
+                    mN( 0, 3 ) = tE1 * tPhi( 2 );
+                    mN( 0, 4 ) = tE0 * tPhi( 1 );
+                    mN( 0, 5 ) = tE1 * tPhi( 1 );
+                    mN *= constant::mu0 / mDeltaTime ;
+
+                    mL( 0, 0 ) += tE0  * tVal ;
+                    mL( 0, 1 ) += ( 1.5*xi + 0.5 )  * tVal ;
+                    mL( 0, 2 ) -= ( tE0 + tE0 ) * tVal ;
+                    mL( 0, 3 ) -= ( tE1 + tE1 )  * tVal ;
+                    mL( 0, 4 ) += tE0 * tVal ;
+                    mL( 0, 5 ) += ( 1.5*xi + 0.5 )  * tVal ;
+
+
                     mL( 1, 0 ) = -tdRhodX * mCrho( 0 );
                     mL( 1, 1 ) = -tdRhodX * mCrho( 1 );
                     mL( 1, 2 ) = -tdRhodX * mCrho( 2 );
@@ -1276,14 +1382,6 @@ namespace belfem
                     mL( 1, 5 ) = -tdRhodX * mCrho( 5 );
 
 
-                    tVal = 4.0 / ( aYLength * aYLength ) * tRho ;
-
-                    mL( 0, 0 ) += ( 0.5 - 1.5*xi )  * tVal ;
-                    mL( 0, 1 ) += ( 1.5*xi + 0.5 )  * tVal ;
-                    mL( 0, 2 ) += ( 3.0*xi - 1.0 )  * tVal ;
-                    mL( 0, 3 ) += ( -3.0*xi - 1.0 ) * tVal ;
-                    mL( 0, 4 ) += ( 0.5 - 1.5*xi )  * tVal ;
-                    mL( 0, 5 ) += ( 1.5*xi + 0.5 )  * tVal ;
 
                     tVal = -4.0 / ( aXLength * aYLength ) * tRho ;
 
@@ -1294,9 +1392,15 @@ namespace belfem
                     mL( 1, 4 ) += ( -1.5*eta - 0.75 ) * tVal ;
                     mL( 1, 5 ) += ( 1.5*eta + 0.75 )  * tVal ;
 
-                        // std::cout << "delta " << tDelta << std::endl ;
-                    real tDelta = aRhoCrit == 0 ? tC : tC * std::pow( tRho / aRhoCrit, 2 );
-                    aG += tW( k ) * tDelta * trans( mL ) * mL ;
+                    // std::cout << "delta " << tDelta << std::endl ;
+                    //real tTau = aRhoCrit == 0 ? tC : tC * std::pow( tRho / aRhoCrit, 2 ) ;
+                    real tTau = aRhoCrit == 0 ? tC : tC * std::pow( tRho / aRhoCrit, 1 ) ;
+                    // aK += tW( l ) * tW( k ) * trans( mL ) * mL * tDetJ ;
+                    aM += tW( l ) * tW( k ) * trans( mL ) * mL * tDetJ * tTau ;
+                    tR += tW( l ) * tW( k ) * tTau * tDetJ ;
+
+                    //aM += tW( l ) * tW( k ) * tTau * trans( mL ) * mL * tDetJ ;
+
 
                     /*mL( 0, 0 ) = 0.5 * ( 1. - 3. * xi );
                     mL( 0, 1 ) = 0.5 * ( 1. + 3. * xi );
@@ -1314,7 +1418,10 @@ namespace belfem
             }
 
 
+            //aM *= aXLength * aYLength * constant::mu0 / max( mCrho )  * 1e10 ;
 
+
+            aK.fill( 0.0 );
             /*real tD = 0 ;
             for( uint k=0; k<6; ++k )
             {

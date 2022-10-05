@@ -21,6 +21,8 @@ namespace belfem
 
             // curl operator for thin shell
             Matrix< real > mC ;
+            Vector< real > mdCdx ;
+            Vector< real > mdCdy ;
 
             // link to function
             void
@@ -49,12 +51,20 @@ namespace belfem
             Matrix< real > mAHn;
             Vector< real > mBHn;
 
-            Matrix< real > mArho ;
-            Vector< real > mBrho ;
+            //Matrix< real > mArho ;
+            //Vector< real > mBrho ;
             Vector< real > mCrho ;
             Matrix< real > mRho ;
+            Matrix< real > mdRhodx ;
+            Matrix< real > mdRhody ;
+            Matrix< real > mJz ;
             Vector< int >  mPivot ;
             Matrix< real > mL ;
+            Matrix< real > mN ;
+            Vector< real >  mXi ;
+            Vector< real >  mEta ;
+            Vector< real >  mPhi ;
+            Vector< real >  mPsi ;
 
 //------------------------------------------------------------------------------
         public:
@@ -194,11 +204,13 @@ namespace belfem
 
             void
             compute_layer_stabilizer(
+                    Element * aElement,
                     const Vector< real > & aHt,
                     const real aXLength,
                     const real aYLength,
                     const real aRhoCrit,
-                    Matrix< real > & aG );
+                    Matrix< real > & aM ,
+                    Matrix< real > & aK );
 
 //------------------------------------------------------------------------------
 

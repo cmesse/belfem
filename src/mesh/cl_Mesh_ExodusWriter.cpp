@@ -38,24 +38,37 @@ namespace belfem
 #ifdef BELFEM_EXODUS
             mPath = aPath;
 
+            // count number of entities
+            uint tCount = mMesh->number_of_blocks() ;
+            for ( SideSet * tSideSet : mMesh->sidesets() )
+            {
+                if( ! tSideSet->is_hidden() )
+                {
+                    ++tCount ;
+                }
+            }
+            Progressbar * tProgressbar = tCount > 100 && comm_rank() == 0
+                        ? new Progressbar( tCount ) : nullptr ;
             this->populate_header();
-
             this->populate_node_coords();
             this->populate_element_ids();
-            this->populate_blocks();
-
+            this->populate_blocks( tProgressbar );
             this->populate_element_connectivity();
             if( mNumSideSets > 0 )
             {
-                this->populate_sidesets();
+                this->populate_sidesets( tProgressbar );
             }
-
             this->populate_time();
             this->populate_global_variables();
             this->populate_fields();
-
             this->close_file();
 
+            // delete progressbar
+            if( tProgressbar != nullptr )
+            {
+                tProgressbar->finish() ;
+                delete tProgressbar ;
+            }
 
 #else
             BELFEM_ERROR( false, "Exodus is not linked in this runtime." );
@@ -233,7 +246,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        ExodusWriter::populate_blocks()
+        ExodusWriter::populate_blocks( Progressbar * aProgressbar )
         {
 #ifdef BELFEM_EXODUS
             StringList tLabels( mNumBlocks );
@@ -272,6 +285,10 @@ namespace belfem
                 this->check( "ex_put_prop");
 
                 tLabels.push( tBlock->label() );
+                if ( aProgressbar != nullptr )
+                {
+                    aProgressbar->step() ;
+                }
             }
 
             mError = ex_put_names(
@@ -378,7 +395,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        ExodusWriter::populate_sidesets()
+        ExodusWriter::populate_sidesets( Progressbar * aProgessbar )
         {
 #ifdef BELFEM_EXODUS
             Cell< SideSet * > & tSideSets = mMesh->sidesets() ;
@@ -389,7 +406,7 @@ namespace belfem
             for( SideSet * tSideSet : tSideSets )
             {
                 // check if sideset exists on exodus
-                if ( !tSideSet->is_hidden() )
+                if ( ! tSideSet->is_hidden() )
                 {
                     // number of facets
                     int64_t tNumFacets = tSideSet->number_of_facets();
@@ -430,7 +447,13 @@ namespace belfem
                     free( tSideSetIDs );
 
                     tLabels.push( tSideSet->label() );
+
+                    if( aProgessbar != nullptr )
+                    {
+                        aProgessbar->step() ;
+                    }
                 }
+
             }
 
             mError = ex_put_names(

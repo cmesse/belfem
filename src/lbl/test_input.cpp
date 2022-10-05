@@ -291,20 +291,12 @@ int main( int    argc,
                tFormulation->set_omega( tOmegaN );
                if( tCountN++ > 1 )
                {
-                   if ( tEpsilon < tEpsilon0 )
-                   {
 
-                       tOmegaN *= std::max(std::min( std::pow( tEpsilon0 / tEpsilon, 0.25 ), 1.05 ), 0.5 );
+                   tOmegaN *= std::max(std::min( std::pow( tEpsilon0 / tEpsilon, 0.25 ), 1.05 ), 0.5 );
 
-                       if ( tOmegaN > 1.0 )
-                       {
-                           tOmegaN = 1.0;
-                       }
-                   }
-                   else
+                   if ( tOmegaN > 1.0 )
                    {
-                       tOmegaN *= tCountN ;
-                       tOmegaN /= tCountN + 1 ;
+                       tOmegaN = 1.0;
                    }
                }
            }
