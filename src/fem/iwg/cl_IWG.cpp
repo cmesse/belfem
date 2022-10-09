@@ -1276,6 +1276,26 @@ namespace belfem
             }
         }
 
+//------------------------------------------------------------------------------
+
+        void
+        IWG::set_tau( const real aTau )
+        {
+            if( mField->parent()->master() == mField->rank() )
+            {
+                mTau = aTau;
+
+                Vector< real > tTau(
+                        mField->parent()->comm_table().length(),
+                        mTau );
+
+                send( mField->parent()->comm_table(), tTau );
+            }
+            else
+            {
+                receive( mField->parent()->master(), mTau );
+            }
+        }
 
 //------------------------------------------------------------------------------
 

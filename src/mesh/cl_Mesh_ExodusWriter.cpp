@@ -59,7 +59,7 @@ namespace belfem
                 this->populate_sidesets( tProgressbar );
             }
             this->populate_time();
-            this->populate_global_variables();
+            //this->populate_global_variables();
             this->populate_fields();
             this->close_file();
 

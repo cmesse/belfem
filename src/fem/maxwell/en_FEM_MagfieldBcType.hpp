@@ -11,11 +11,11 @@ namespace belfem
     {
         enum class MagfieldBcType
         {
-            Wave      = 0,
-            Farfied   = 1,
-            Symmetry  = 2,
-            Bearing   = 3,
-            UNDEFINED = 4
+            Wave          = 0,
+            Symmetry      = 1,  // = farfield
+            AntiSymmetry  = 2,
+            Bearing       = 3,
+            UNDEFINED     = 4
         };
     }
 }

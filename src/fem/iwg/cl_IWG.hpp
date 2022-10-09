@@ -71,6 +71,9 @@ namespace belfem
             // penalty factor for weak BC
             real mPsi       = 1.0 ;
 
+            // penalty factor for tape smoothing
+            real mTau       = 0.0 ;
+
             // flag telling if we have been initialized
             bool mIsInitialized = false ;
 
@@ -620,7 +623,7 @@ namespace belfem
             /**
              * get relaxation parameter
              */
-             const real &
+             real
              omega() const;
 
 //------------------------------------------------------------------------------
@@ -644,8 +647,24 @@ namespace belfem
             /**
              * get penalty parameter
              */
-            const real &
+            real
             psi() const;
+
+//------------------------------------------------------------------------------
+
+            /**
+              * set the penalty parameter
+              */
+            void
+            set_tau( const real aPsi );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * get penalty parameter
+             */
+            real
+            tau() const;
 
 //------------------------------------------------------------------------------
 
@@ -1208,7 +1227,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        inline const real &
+        inline real
         IWG::omega() const
         {
             return mOmega ;
@@ -1216,10 +1235,18 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        inline const real &
+        inline real
         IWG::psi() const
         {
             return mPsi ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline real
+        IWG::tau() const
+        {
+            return mTau ;
         }
 
 //------------------------------------------------------------------------------

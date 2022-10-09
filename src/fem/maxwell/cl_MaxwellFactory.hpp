@@ -111,6 +111,11 @@ namespace belfem
             Cell< DomainGroup * >        mBoundaries ;
             Map< string, DomainGroup * > mBoundaryMap ;
 
+            Cell< DomainGroup * >        mRawSymmetries ;
+            Cell< DomainGroup * >        mRawAntiSymmetries ;
+            Cell< DomainGroup * >        mSymmetries ;
+            Cell< DomainGroup * >        mAntiSymmetries ;
+
             Cell< DomainGroup * >        mInterfaces ;
 
             Cell< DomainGroup * >        mCuts ;
@@ -176,8 +181,11 @@ namespace belfem
             //! container with tape materials.
             Cell< Material * > mTapeMaterials ;
 
-            //! maximim block id of original mesh
+            //! maximum block id of original mesh
             id_t mMaxBlockID = gNoID ;
+
+            //! setting for stabilization parameter
+            real mTau = 0 ;
 
 //------------------------------------------------------------------------------
         public:
@@ -394,6 +402,11 @@ namespace belfem
 
             void
             create_interfaces();
+
+// -----------------------------------------------------------------------------
+
+            void
+            create_symmetries( const bool aAntiFlag );
 
 // -----------------------------------------------------------------------------
 

@@ -39,7 +39,11 @@ namespace belfem
 #else
             mFields.ThinShell = { "lambda_m", "lambda_s" };
 #endif
-            mFields.Farfield = { "lambda_n" };
+            mFields.SymmetryAir = { "lambda_n" };
+            mFields.SymmetryFerro = { "lambda_n" };
+            mFields.AntiSymmetryAir = { "lambda_n" };
+            mFields.AntiSymmetryFerro = { "lambda_n" };
+
             //mFields.ThinShell = { "lambda_m", "lambda_s" };
             // non-dof fields
             mFields.MagneticFieldDensity     = { "bx", "by", "bz" };
@@ -73,7 +77,7 @@ namespace belfem
 
             switch( aGroup->domain_type() )
             {
-                case( DomainType::SuperConductor ) :
+                case( DomainType::Conductor ) :
                 {
                     mFunJacobian =
                             & IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_superconductor ;
@@ -85,7 +89,7 @@ namespace belfem
                             & IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_air ;
                     break ;
                 }
-                case( DomainType::FerroMagnetic ) :
+                case( DomainType::Ferro ) :
                 {
                     mFunJacobian =
                             & IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_ferro ;
@@ -109,6 +113,12 @@ namespace belfem
                             & IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_fmair ;
                     break ;
                 }
+                case ( DomainType::Symmetry ) :
+                {
+                    mFunJacobian =
+                            &IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_symmetry_air ;
+                    break;
+                }
                 case( DomainType::Boundary ) :
                 {
                     switch( mGroup->boundary_condition()->physics() )
@@ -123,12 +133,6 @@ namespace belfem
                                 {
                                     mFunJacobian =
                                             &IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_wave ;
-                                    break;
-                                }
-                                case ( MagfieldBcType::Farfied ) :
-                                {
-                                    mFunJacobian =
-                                            &IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_farfield ;
                                     break;
                                 }
                                 default :
@@ -286,7 +290,7 @@ namespace belfem
             // again, we use a mathematical trick since n and B are constant
 
             crossmat( tn, tB, tnxB );
-            tnxB *= mGroup->work_det_J() * constant::mu0 ; ;
+            tnxB *= mGroup->work_det_J()  ; ;
 
 
             tM.fill( 0.0 );
@@ -403,7 +407,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_farfield(
+        IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_symmetry_air(
                 Element        * aElement,
                 Matrix< real > & aJacobian,
                 Vector< real > & aRHS )

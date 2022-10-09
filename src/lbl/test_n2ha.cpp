@@ -63,7 +63,7 @@ int main( int    argc,
     Vector< id_t > tMinus( 1, 3 );
 
     // block identification
-    tMaxwell->set_block( 1, DomainType::SuperConductor );
+    tMaxwell->set_block( 1, DomainType::Conductor );
     tMaxwell->set_block( { 2, 3 }, DomainType::Coil );
     tMaxwell->set_block( 4, DomainType::Air );
     tMaxwell->set_sideset( { 1, 2, 3, 4, 5, 6, 7, 8 },  DomainType::Interface ); */
@@ -71,7 +71,7 @@ int main( int    argc,
     Vector< id_t > tPlus( 1, 3 );
     Vector< id_t > tMinus( 1, 4 );
 
-    tMaxwell->set_block( { 1, 2 }, DomainType::SuperConductor );
+    tMaxwell->set_block( { 1, 2 }, DomainType::Conductor );
     tMaxwell->set_block( { 3, 4 }, DomainType::Coil );
     tMaxwell->set_block( 5, DomainType::Air );
     if( tMaxwell->type() == IwgType::MAXWELL_HA2D )
@@ -102,11 +102,11 @@ int main( int    argc,
     DofManager * tField = tKernel.create_field( tMaxwell );
 
 
-    tCurrent->set_block( 1, DomainType::SuperConductor );
+    tCurrent->set_block( 1, DomainType::Conductor );
     DofManager * tField2 = tKernel.create_field( tCurrent );
 
 
-    tMagneticA->set_block( { 1, 2 }, DomainType::SuperConductor );
+    tMagneticA->set_block( { 1, 2 }, DomainType::Conductor );
     tMagneticB->set_block( { 3, 4 }, DomainType::Coil );
     tMagneticB->set_block( 5, DomainType::Air );
 

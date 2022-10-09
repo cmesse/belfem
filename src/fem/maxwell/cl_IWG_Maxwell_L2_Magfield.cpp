@@ -101,7 +101,7 @@ namespace belfem
 
             switch ( aGroup->domain_type() )
             {
-                case( DomainType::SuperConductor ) :
+                case( DomainType::Conductor ) :
                 {
                     mFunJacobian = mAlpha == 0 ?
                                    & IWG_Maxwell_L2_Magfield::compute_jacobian_2d_alpha0 :
@@ -121,7 +121,7 @@ namespace belfem
 
                     break ;
                 }
-                case( DomainType::FerroMagnetic ) :
+                case( DomainType::Ferro ) :
                 {
                     mFunJacobian = mAlpha == 0 ?
                                    &IWG_Maxwell_L2_Magfield::compute_jacobian_2d_alpha0 :
@@ -154,7 +154,7 @@ namespace belfem
 
             switch ( aGroup->domain_type() )
             {
-                case( DomainType::SuperConductor ) :
+                case( DomainType::Conductor ) :
                 {
                     mFunJacobian = mAlpha == 0 ?
                                    & IWG_Maxwell_L2_Magfield::compute_jacobian_2d_alpha0 :
@@ -164,7 +164,7 @@ namespace belfem
 
                     break ;
                 }
-                case( DomainType::FerroMagnetic ) :
+                case( DomainType::Ferro ) :
                 case( DomainType::Air ) :
                 case( DomainType::Coil ) :
                 {

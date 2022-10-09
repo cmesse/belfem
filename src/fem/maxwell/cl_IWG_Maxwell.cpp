@@ -209,7 +209,7 @@ namespace belfem
             // check matrix function for superconductors
             switch( aGroup->domain_type() )
             {
-                case(  DomainType::SuperConductor ) :
+                case(  DomainType::Conductor ) :
                 {
                     // allocate container for node data, used for temperature
                     aGroup->work_tau().set_size( mNumberOfNodesPerElement );
@@ -227,7 +227,7 @@ namespace belfem
                     break ;
                 }
                 case( DomainType::Air ) :
-                case( DomainType::FerroMagnetic ) :
+                case( DomainType::Ferro ) :
                 case( DomainType::Coil ) :
                 {
                     // allocate container for all dofs, phi or a field
@@ -368,6 +368,18 @@ namespace belfem
                     //aGroup->work_tau().set_size( this->number_of_ghost_sidesets(), 0.0 );
 
                     aGroup->work_nedelec().set_size( mNumberOfDofsPerElement );
+
+                    break ;
+                }
+                case( DomainType::SymmetryAir ) :
+                case( DomainType::SymmetryFerro ) :
+                case( DomainType::AntiSymmetryAir ) :
+                case( DomainType::AntiSymmetryFerro ) :
+                {
+                    aGroup->work_Xm().set_size( mNumberOfNodesPerElement, mNumberOfDimensions );
+
+                    // todo: need to be more specific in 3D, since need to differ between A and PHI
+                    aGroup->work_B().set_size( mNumberOfDimensions, mNumberOfNodesPerElement );
 
                     break ;
                 }
@@ -610,7 +622,7 @@ namespace belfem
         void
         IWG_Maxwell::link_sc_matrix_function( Group * aGroup )
         {
-            if (  ( aGroup->domain_type() == DomainType::SuperConductor && aGroup->type() == GroupType::BLOCK ) )
+            if (  ( aGroup->domain_type() == DomainType::Conductor && aGroup->type() == GroupType::BLOCK ) )
             //    || ( aGroup->domain_type() == DomainType::ThinShell && aGroup->type() == GroupType::SHELL ) )
             {
                 // get material of block
@@ -746,7 +758,7 @@ namespace belfem
         void
         IWG_Maxwell::link_ferro_matrix_function( Group * aGroup )
         {
-            if( aGroup->domain_type() == DomainType::FerroMagnetic && aGroup->type() == GroupType::BLOCK )
+            if( aGroup->domain_type() == DomainType::Ferro && aGroup->type() == GroupType::BLOCK )
             {
                 switch( aGroup->element_type() )
                 {
@@ -2578,7 +2590,7 @@ namespace belfem
                 for ( id_t tID: mBlockIDs )
                 {
                     if ( mMesh->block_exists( tID ) &&
-                            (   mBlockTypes( tID ) == DomainType::SuperConductor
+                            (   mBlockTypes( tID ) == DomainType::Conductor
                              || mBlockTypes( tID ) == DomainType::Coil ) )
                     {
                         mMesh->block( tID )->flag_nodes();
@@ -2648,7 +2660,7 @@ namespace belfem
                     mMesh->unflag_all_nodes();
                     for ( id_t tID: mBlockIDs )
                     {
-                        if ( mMesh->block_exists( tID ) && mBlockTypes( tID ) == DomainType::FerroMagnetic )
+                        if ( mMesh->block_exists( tID ) && mBlockTypes( tID ) == DomainType::Ferro )
                         {
                             mMesh->block( tID )->flag_nodes();
                         }
@@ -2662,7 +2674,7 @@ namespace belfem
                     {
                         if ( mMesh->block_exists( tID ) &&
                              ( mBlockTypes( tID ) == DomainType::Air
-                               || mBlockTypes( tID ) == DomainType::FerroMagnetic
+                               || mBlockTypes( tID ) == DomainType::Ferro
                                || mBlockTypes( tID ) == DomainType::Coil ))
                         {
                             mMesh->block( tID )->flag_nodes();

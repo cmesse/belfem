@@ -15,22 +15,24 @@ namespace belfem
             Default = 0,         // default setting for blocks and sidesets
             Air             =  1,  // Maxwell Specific, do not change order!
             Coil            =  2,  // Maxwell Specific, do not change order!
-            FerroMagnetic   =  3,  // Maxwell Specific, do not change order!
-            SuperConductor  =  4,  // Maxwell Specific, do not change order!
+            Ferro           =  3,  // Maxwell Specific, do not change order!
+            Conductor       =  4,  // Maxwell Specific, do not change order!
             InterfaceScAir  =  5,  // Maxwell Specific
             InterfaceFmAir  =  6,  // Maxwell Specific
             InterfaceScFm   =  7,  // Maxwell Specific
-            SymmetrySc      =  8,  // Maxwell Specific
-            SymmetryFm      =  9,  // Maxwell Specific
-            SymmetryAir     = 10,  // Maxwell Specific
-            AntiSymmetrySc  = 11,  // Maxwell Specific
-            AntiSymmetryFm  = 12,  // Maxwell Specific
-            AntiSymmetryAir = 13,  // Maxwell Specific
-            Cut             = 14,  // Maxwell Specific
-            Boundary        = 15,  // Maxwell Specific
-            ThinShell       = 16,  // Maxwell Specific
-            Ghost           = 17,  // Maxwell Specific
-            UNDEFINED = 18
+            Symmetry        =  8,  // Maxwell Specific
+            AntiSymmetry    =  9,  // Maxwell Specific
+            SymmetryConductor      = 10,  // Maxwell Specific
+            SymmetryFerro      = 11,  // Maxwell Specific
+            SymmetryAir     = 12,  // Maxwell Specific
+            AntiSymmetryConductor  = 13,  // Maxwell Specific
+            AntiSymmetryFerro  = 14,  // Maxwell Specific
+            AntiSymmetryAir = 15,  // Maxwell Specific
+            Cut             = 16,  // Maxwell Specific
+            Boundary        = 17,  // Maxwell Specific
+            ThinShell       = 18,  // Maxwell Specific
+            Ghost           = 19,  // Maxwell Specific
+            UNDEFINED = 20
         };
 
 //------------------------------------------------------------------------------

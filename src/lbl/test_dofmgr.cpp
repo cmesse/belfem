@@ -58,11 +58,11 @@ int main( int    argc,
     IWG_Maxwell_N2HA * tIWG = reinterpret_cast< IWG_Maxwell_N2HA *  >
             ( tKernel.create_equation( IwgType::MAXWELL_N2HA ) );
 
-    //tIWG->set_block( 2, DomainType::SuperConductor );
+    //tIWG->set_block( 2, DomainType::Conductor );
     //tIWG->set_block( 1, DomainType::Air );
     //tIWG->set_sideset( 1,  DomainType::Interface );
 
-    tIWG->set_block( 1, DomainType::SuperConductor );
+    tIWG->set_block( 1, DomainType::Conductor );
     tIWG->set_block( { 2, 3 }, DomainType::Coil );
     tIWG->set_block( 4, DomainType::Air );
     tIWG->set_sideset( { 1, 2, 3, 4 },  DomainType::Interface );

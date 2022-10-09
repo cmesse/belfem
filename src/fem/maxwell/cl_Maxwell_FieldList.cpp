@@ -57,28 +57,46 @@ namespace belfem
                     for( const string & tDof : SymmetryAir )
                     {
                         Dofs.push( tDof );
+                        string tLastDof = tDof + "0";
+                        NonDof.push(tLastDof );
+                        Hidden.push( tLastDof );
                     }
                     for( const string & tDof : SymmetryFerro )
                     {
                         Dofs.push( tDof );
+                        string tLastDof = tDof + "0";
+                        NonDof.push(tLastDof );
+                        Hidden.push( tLastDof );
                     }
-                    for( const string & tDof : SymmetrySc )
+                    for( const string & tDof : SymmetryConductor )
                     {
                         Dofs.push( tDof );
+                        string tLastDof = tDof + "0";
+                        NonDof.push(tLastDof );
+                        Hidden.push( tLastDof );
                     }
 
                     // antisymmetry
                     for( const string & tDof : AntiSymmetryAir )
                     {
                         Dofs.push( tDof );
+                        string tLastDof = tDof + "0";
+                        NonDof.push(tLastDof );
+                        Hidden.push( tLastDof );
                     }
                     for( const string & tDof : AntiSymmetryFerro )
                     {
                         Dofs.push( tDof );
+                        string tLastDof = tDof + "0";
+                        NonDof.push(tLastDof );
+                        Hidden.push( tLastDof );
                     }
-                    for( const string & tDof : AntiSymmetrySc )
+                    for( const string & tDof : AntiSymmetryConductor )
                     {
                         Dofs.push( tDof );
+                        string tLastDof = tDof + "0";
+                        NonDof.push(tLastDof );
+                        Hidden.push( tLastDof );
                     }
 
                     // boundary
@@ -93,14 +111,6 @@ namespace belfem
                     for( const string & tDof : BoundarySc )
                     {
                         Dofs.push( tDof );
-                    }
-                    for( const string & tDof : Farfield )
-                    {
-                        Dofs.push( tDof );
-
-                        string tLastDof = tDof + "0";
-                        NonDof.push(tLastDof );
-                        Hidden.push( tLastDof );
                     }
 
                     // shell dofs
@@ -120,8 +130,8 @@ namespace belfem
                         Dofs.push( tDof );
                         InterfaceScFm.push( tDof );
                         InterfaceScAir.push( tDof );
-                        SymmetrySc.push( tDof );
-                        AntiSymmetrySc.push( tDof );
+                        SymmetryConductor.push( tDof );
+                        AntiSymmetryConductor.push( tDof );
                         BoundarySc.push( tDof );
                         ThinShell.push( tDof );
                     }
@@ -154,7 +164,6 @@ namespace belfem
                         SymmetryAir.push( tDof );
                         AntiSymmetryAir.push( tDof );
                         BoundaryAir.push( tDof );
-                        Farfield.push( tDof );
                     }
 
                     // ghost
@@ -187,19 +196,17 @@ namespace belfem
                     aIWG->unique_and_rearrange( InterfaceScAir );
                     aIWG->unique_and_rearrange( InterfaceFmAir );
 
-                    aIWG->unique_and_rearrange( SymmetrySc );
+                    aIWG->unique_and_rearrange( SymmetryConductor );
                     aIWG->unique_and_rearrange( SymmetryFerro );
                     aIWG->unique_and_rearrange( SymmetryAir );
 
-                    aIWG->unique_and_rearrange( AntiSymmetrySc );
+                    aIWG->unique_and_rearrange( AntiSymmetryConductor );
                     aIWG->unique_and_rearrange( AntiSymmetryFerro );
                     aIWG->unique_and_rearrange( AntiSymmetryAir );
 
                     aIWG->unique_and_rearrange( BoundarySc );
                     aIWG->unique_and_rearrange( BoundaryFerro );
                     aIWG->unique_and_rearrange( BoundaryAir );
-
-                    aIWG->unique_and_rearrange( Farfield );
 
                     // create other dof lists
                     for( string tDof : Dofs )
@@ -303,7 +310,7 @@ namespace belfem
                     switch( aBlockTypeMap( aBlockIDs( k ) ) )
                     {
                         // set the block specific dof types
-                        case( DomainType::SuperConductor ) :
+                        case( DomainType::Conductor ) :
                         {
                             // set dofs to superconductor
                             this->create_doftable(
@@ -319,7 +326,7 @@ namespace belfem
                                     aBlockDofs( k ) );
                             break ;
                         }
-                        case( DomainType::FerroMagnetic ) :
+                        case( DomainType::Ferro ) :
                         {
                             this->create_doftable(
                                     Ferro,
@@ -359,7 +366,6 @@ namespace belfem
 
                 for( uint k=0; k<tNumSideSets; ++k )
                 {
-
                     // check the type of the sideset
                     switch( aSideSetTypeMap( aSideSetIDs( k ) ) )
                     {
@@ -385,28 +391,35 @@ namespace belfem
                                     aSideSetDofs( k ) );
                             break ;
                         }
-                        case( DomainType::SymmetrySc ) :
+                        case( DomainType::SymmetryConductor ) :
+                        {
+                            this->create_doftable(
+                                    SymmetryConductor,
+                                    aSideSetDofs( k ) );
+                            break ;
+                        }
+                        case( DomainType::SymmetryAir ) :
                         {
                             this->create_doftable(
                                     SymmetryAir,
                                     aSideSetDofs( k ) );
                             break ;
                         }
-                        case( DomainType::SymmetryFm ) :
+                        case( DomainType::SymmetryFerro ) :
                         {
                             this->create_doftable(
                                     SymmetryFerro,
                                     aSideSetDofs( k ) );
                             break ;
                         }
-                        case( DomainType::AntiSymmetrySc ) :
+                        case( DomainType::AntiSymmetryConductor ) :
                         {
                             this->create_doftable(
-                                    AntiSymmetrySc,
+                                    AntiSymmetryConductor,
                                     aSideSetDofs( k ) );
                             break ;
                         }
-                        case( DomainType::AntiSymmetryFm ) :
+                        case( DomainType::AntiSymmetryFerro ) :
                         {
                             this->create_doftable(
                                     AntiSymmetryFerro,
@@ -448,10 +461,10 @@ namespace belfem
                                             aSideSetDofs( k ) );
                                     break ;
                                 }
-                                case( MagfieldBcType::Farfied ) :
+                                case( MagfieldBcType::Symmetry ) : // farfield
                                 {
                                     this->create_doftable(
-                                            Farfield,
+                                            SymmetryAir,
                                             aSideSetDofs( k ) );
                                     break ;
                                 }
@@ -465,7 +478,8 @@ namespace belfem
                         }
                         default :
                         {
-                            BELFEM_ERROR( false, "Invalid sideset type" );
+                            BELFEM_ERROR( false, "Invalid sideset type for sideset %lu",
+                                          ( long unsigned int ) aSideSetIDs( k ) );
                         }
                     }
 

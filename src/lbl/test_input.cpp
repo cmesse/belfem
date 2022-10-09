@@ -31,7 +31,6 @@ Logger       gLog( 3 );
 
 //------------------------------------------------------------------------------
 
-
 int main( int    argc,
           char * argv[] )
 {
@@ -403,7 +402,7 @@ int main( int    argc,
 
            for( fem::Block * tBlock : tMagfield->blocks() )
            {
-               if( tBlock->domain_type() == DomainType::SuperConductor && tBlock->element_type() == ElementType::TRI6 )
+               if( tBlock->domain_type() == DomainType::Conductor && tBlock->element_type() == ElementType::TRI6 )
                {
 
                    tFormulation->link_to_group( tBlock );
@@ -441,7 +440,7 @@ int main( int    argc,
 
            for( fem::Block * tBlock : tMagfield->blocks() )
            {
-               if( tBlock->domain_type() == DomainType::SuperConductor && tBlock->element_type() == ElementType::TRI6 )
+               if( tBlock->domain_type() == DomainType::Conductor && tBlock->element_type() == ElementType::TRI6 )
                {
 
                    tFormulation->link_to_group( tBlock );

@@ -15,6 +15,7 @@ namespace belfem
     namespace fem
     {
 //------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
         IWG_Maxwell_HPhi_Tet4::IWG_Maxwell_HPhi_Tet4() :
         IWG_Maxwell( ElementType::TET4,
@@ -64,13 +65,13 @@ namespace belfem
 
             switch( aGroup->domain_type() )
             {
-                case( DomainType::SuperConductor ) :
+                case( DomainType::Conductor ) :
                 {
                     mFunJacobian =
                             & IWG_Maxwell_HPhi_Tet4::compute_jacobian_and_rhs_superconductor ;
                     break ;
                 }
-                case( DomainType::FerroMagnetic ) :
+                case( DomainType::Ferro ) :
                 {
                     mFunJacobian =
                             & IWG_Maxwell_HPhi_Tet4::compute_jacobian_and_rhs_ferro ;
@@ -246,7 +247,7 @@ namespace belfem
 
             // again, we use a mathematical trick since n and B are constant
             crossmat( tn, tB, tnxB );
-            tnxB *= mGroup->work_det_J() * constant::mu0 / 6.0 ;
+            tnxB *= mGroup->work_det_J() / 6.0 ;
 
             tM.fill( 0.0 );
 

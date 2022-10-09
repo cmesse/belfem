@@ -135,7 +135,25 @@ namespace belfem
             {
                 delete tGroup ;
             }
+
             mBoundaryMap.clear() ;
+
+            for( DomainGroup * tGroup : mRawSymmetries )
+            {
+                delete tGroup ;
+            }
+            for( DomainGroup * tGroup : mRawAntiSymmetries )
+            {
+                delete tGroup ;
+            }
+            for( DomainGroup * tGroup : mSymmetries )
+            {
+                delete tGroup ;
+            }
+            for( DomainGroup * tGroup : mAntiSymmetries )
+            {
+                delete tGroup ;
+            }
 
             for( DomainGroup * tGroup : mInterfaces )
             {
@@ -254,6 +272,12 @@ namespace belfem
             uint tElementOrder = mMesh->max_element_order() ;
             comm_barrier() ;
             broadcast( 0, tElementOrder );
+
+            // read the tau parameter
+            if( mInputFile.section( "maxwell")->section("solver")->section("nonlinear")->key_exists("stabilize") )
+            {
+                mTau = mInputFile.section("maxwell")->section("solver")->section("nonlinear")->get_real( "stabilize");
+            }
 
             // get string from input file
             string tKey = string_to_lower(
@@ -852,8 +876,8 @@ namespace belfem
             // loop over all blocks
             for( DomainGroup * tGroup : mBlocks )
             {
-                if(    tGroup->type() == DomainType::SuperConductor
-                    || tGroup->type() == DomainType::FerroMagnetic )
+                if(    tGroup->type() == DomainType::Conductor
+                    || tGroup->type() == DomainType::Ferro )
                 {
                     // grab material
                     Material * tMaterial = mMaterialMap( tGroup->label() );
@@ -889,7 +913,7 @@ namespace belfem
             size_t tSplit = tString.find_first_of( " ", 0 );
 
             // get type of block
-            const string tTypeString = tString.substr( 0, tSplit );
+            string tTypeString = tString.substr( 0, tSplit );
 
 
             // get name of block
@@ -914,13 +938,18 @@ namespace belfem
             // end get raw data
             // -  - - - - - - - - - - - - - - -
 
+            if( string_to_lower( tTypeString ) == "farfield" )
+            {
+                tTypeString = "symmetry" ;
+            }
+
             // create domain type
             DomainType tType = domain_type( tTypeString );
 
             switch ( tType )
             {
-                case ( DomainType::SuperConductor ) :
-                case ( DomainType::FerroMagnetic )  :
+                case ( DomainType::Conductor ) :
+                case ( DomainType::Ferro )  :
                 case ( DomainType::Coil ) :
                 {
                     return new DomainSolid( tType, tLabel, tData );
@@ -978,6 +1007,8 @@ namespace belfem
                 }
                 case ( DomainType::Air ) :
                 case ( DomainType::Boundary ) :
+                case( DomainType::Symmetry ) :
+                case( DomainType::AntiSymmetry ) :
                 {
                     return new DomainGroup( tType, tLabel, tData );
                 }
@@ -1044,13 +1075,13 @@ namespace belfem
                 {
                     continue;
                 }
-                else if( tScalingType == "farfield" )
-                {
-                    tMagfieldBcType = MagfieldBcType::Farfied ;
-                }
-                else if( tScalingType == "symmetry"  )
+                else if( tScalingType == "farfield" ||  tScalingType == "symmetry"  )
                 {
                     tMagfieldBcType = MagfieldBcType::Symmetry ;
+                }
+                else if( tScalingType == "antisymmetry"  )
+                {
+                    tMagfieldBcType = MagfieldBcType::AntiSymmetry ;
                 }
                 else if ( tScalingType == "bearing" || tScalingType == "anchor" || tScalingType == "fixedpoint" )
                 {
@@ -1452,6 +1483,8 @@ namespace belfem
             // make a new maxwell equation
             IWG_Maxwell * tMaxwell = this->create_iwg( mFormulation );
 
+
+
             // the IDs for the cuts differ from the sidesets on the mesh,
             // we need to change this
             for( uint s=0; s<mSideSetIDs.length(); ++s )
@@ -1474,6 +1507,7 @@ namespace belfem
             tMaxwell->set_blocks( mBlockIDs, mBlockTypes );
 
             tMaxwell->set_sidesets( mSideSetIDs, mSideSetTypes );
+
 
             // also set the BC types
             for( BoundaryCondition * tBC : mBoundaryConditions )
@@ -1535,6 +1569,10 @@ namespace belfem
 
             // set timestepping info
             tMaxwell->set_timestep( mTimeStep );
+
+
+            // set the tau parameter for stabilization
+            tMaxwell->set_tau( mTau );
 
             // todo, must be always theta=1
             BELFEM_ERROR( mTheta = 1.0 , "must use Euler Implicit here!");
@@ -1726,7 +1764,7 @@ namespace belfem
             uint tCount = 0.0 ;
             for(  uint b=0; b<mBlockTypes.size(); ++b )
             {
-                if( mBlockTypes( b ) == DomainType::SuperConductor )
+                if( mBlockTypes( b ) == DomainType::Conductor )
                 {
                     ++tCount ;
                 }
@@ -1738,13 +1776,13 @@ namespace belfem
                 tCount = 0;
                 for ( uint b = 0; b < mBlockTypes.size(); ++b )
                 {
-                    if ( mBlockTypes( b ) == DomainType::SuperConductor )
+                    if ( mBlockTypes( b ) == DomainType::Conductor )
                     {
                         tBlocks( tCount++ ) = mBlockIDs( b );
                     }
                 }
 
-                Cell< DomainType > tTypes( tCount, DomainType::SuperConductor );
+                Cell< DomainType > tTypes( tCount, DomainType::Conductor );
 
                 // get the element type
                 ElementType tType = this->element_type( tBlocks( 0 ) );
@@ -1842,12 +1880,12 @@ namespace belfem
                         ++tAirCount ;
                         break ;
                     }
-                    case( DomainType::FerroMagnetic ) :
+                    case( DomainType::Ferro ) :
                     {
                         ++tFerroCount ;
                         break ;
                     }
-                    case( DomainType::SuperConductor ) :
+                    case( DomainType::Conductor ) :
                     {
                         ++tConductorCount ;
                         break ;
@@ -1886,12 +1924,12 @@ namespace belfem
                         tAirBlocks( tAirCount++ ) =  mBlockIDs( b );
                         break ;
                     }
-                    case( DomainType::FerroMagnetic ) :
+                    case( DomainType::Ferro ) :
                     {
                         tFerroBlocks( tFerroCount++ ) =   mBlockIDs( b );
                         break ;
                     }
-                    case( DomainType::SuperConductor ) :
+                    case( DomainType::Conductor ) :
                     {
                         tConductorBlocks( tConductorCount++ ) = mBlockIDs( b );
                         break ;
@@ -1961,7 +1999,7 @@ namespace belfem
                         tMode,
                         mAlphaB );
 
-                Cell< DomainType > tTypes( tFerroBlocks.length(), DomainType::FerroMagnetic );
+                Cell< DomainType > tTypes( tFerroBlocks.length(), DomainType::Ferro );
 
                 // set the blocks of the IWG
                 tIWG->set_blocks( tFerroBlocks, tTypes );
@@ -1982,7 +2020,7 @@ namespace belfem
                         tMode,
                         mAlphaB );
 
-                Cell< DomainType > tTypes( tConductorBlocks.length(), DomainType::SuperConductor );
+                Cell< DomainType > tTypes( tConductorBlocks.length(), DomainType::Conductor );
 
                 // set the blocks of the IWG
                 tIWG->set_blocks( tConductorBlocks, tTypes );
@@ -2119,12 +2157,17 @@ namespace belfem
                 this->write_block_phystags_to_mesh();
                 this->fix_facet_masters() ;
                 this->create_interfaces();
+                this->create_symmetries( false ) ;
+                this->create_symmetries( true ) ;
                 this->write_sideset_phystags_to_mesh();
             }
             else
             {
                 this->create_interfaces();
+                this->create_symmetries( false ) ;
+                this->create_symmetries( true ) ;
             }
+
             // crate the layers of the tape
             this->create_layers() ;
             // with the blocks in place, we can also create the materials
@@ -2209,6 +2252,18 @@ namespace belfem
                         mBoundaryMap[ tGroup->label() ] = tGroup;
                         break ;
                     }
+                    case( DomainType::Symmetry ) :
+                    {
+                        // add group to list
+                        mRawSymmetries.push( tGroup );
+                        break ;
+                    }
+                    case( DomainType::AntiSymmetry ) :
+                    {
+                        // add group to list
+                        mRawAntiSymmetries.push( tGroup );
+                        break ;
+                    }
                     default :
                     {
                         BELFEM_ERROR( false, "invalid sideset type" );
@@ -2282,7 +2337,7 @@ namespace belfem
                     mBlockIDs( tCount++ ) = tGroups( k );
                     if ( ! tBlockTypeMap.key_exists( tGroups( k ) ) )
                     {
-                        if( tGroup->type() == DomainType::SuperConductor )
+                        if( tGroup->type() == DomainType::Conductor )
                         {
                             ++tNedelecCount ;
                         }
@@ -2308,7 +2363,7 @@ namespace belfem
             tCount = 0 ;
             for( id_t tID : mBlockIDs )
             {
-                if( tBlockTypeMap( tID ) == DomainType::SuperConductor )
+                if( tBlockTypeMap( tID ) == DomainType::Conductor )
                 {
                     mNedelecBlocks( tCount++ ) = tID ;
                 }
@@ -2516,9 +2571,9 @@ namespace belfem
                                 = static_cast< DomainType >( tFacet->slave()->physical_tag() );
 
                             // check if this sideset is an interface
-                            if ( ( tMasterType == DomainType::SuperConductor && tSlaveType == DomainType::Air )
-                               ||( tMasterType == DomainType::SuperConductor && tSlaveType == DomainType::FerroMagnetic )
-                               ||( tMasterType == DomainType::FerroMagnetic  && tSlaveType == DomainType::Air ) )
+                            if ( ( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Air )
+                               ||( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Ferro )
+                               ||( tMasterType == DomainType::Ferro  && tSlaveType == DomainType::Air ) )
                             {
                                 ++tCount ;
                             }
@@ -2554,21 +2609,21 @@ namespace belfem
                                     = static_cast< DomainType >( tFacet->slave()->physical_tag() );
 
                             // check if this sideset is an interface
-                            if ( tMasterType == DomainType::SuperConductor && tSlaveType == DomainType::Air )
+                            if ( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Air )
                             {
                                 tSideSetIDs( tCount )     = tSideSet->id();
                                 tMasterBlockIDs( tCount ) = tFacet->master()->geometry_tag() ;
                                 tSlaveBlockIDs( tCount )  = tFacet->slave()->geometry_tag() ;
                                 tSideSetTypes( tCount++ ) = static_cast< uint >( DomainType::InterfaceScAir );
                             }
-                            else if ( tMasterType == DomainType::SuperConductor && tSlaveType == DomainType::FerroMagnetic )
+                            else if ( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Ferro )
                             {
                                 tSideSetIDs( tCount )     = tSideSet->id();
                                 tMasterBlockIDs( tCount ) = tFacet->master()->geometry_tag() ;
                                 tSlaveBlockIDs( tCount )  = tFacet->slave()->geometry_tag() ;
                                 tSideSetTypes( tCount++ ) = static_cast< uint >( DomainType::InterfaceScFm );
                             }
-                            else if ( tMasterType == DomainType::FerroMagnetic && tSlaveType == DomainType::Air )
+                            else if ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Air )
                             {
                                 tSideSetIDs( tCount )     = tSideSet->id();
                                 tMasterBlockIDs( tCount ) = tFacet->master()->geometry_tag() ;
@@ -2643,6 +2698,196 @@ namespace belfem
 // -----------------------------------------------------------------------------
 
         void
+        MaxwellFactory::create_symmetries( const bool aAntiFlag )
+        {
+            Vector< id_t > tSideSetIDs ;
+            Vector< uint > tMasterTypes ;
+
+            Cell< DomainGroup * > & tRawSymmetries = aAntiFlag ? mRawAntiSymmetries : mRawSymmetries ;
+            Cell< DomainGroup * > & tSymmetries = aAntiFlag ? mAntiSymmetries : mSymmetries ;
+
+            const DomainType tAirType = aAntiFlag ?
+                    DomainType::AntiSymmetryAir
+                    : DomainType::SymmetryAir ;
+
+            const DomainType tFerroType = aAntiFlag ?
+                    DomainType::AntiSymmetryFerro :
+                    DomainType::SymmetryFerro ;
+
+            const DomainType tConductorType = aAntiFlag ?
+                                          DomainType::AntiSymmetryConductor :
+                                          DomainType::SymmetryConductor ;
+
+            const string tAirLabel =  aAntiFlag ? "antiSymmetryAir" : "symmetryAir" ;
+            const string tFerroLabel =  aAntiFlag ? "antiSymmetryFerro" : "symmetryFerro" ;
+            const string tConductorLabel =  aAntiFlag ? "antiSymmetryConductor" : "symmetryConductor" ;
+
+            // cast domain types
+            if( comm_rank() == mMesh->master() )
+            {
+                // reset the counter
+                uint tCount = 0 ;
+
+                for( DomainGroup * tGroup : tRawSymmetries )
+                {
+                    tCount += tGroup->groups().length() ;
+                }
+
+                // allocate memory
+                tSideSetIDs.set_size( tCount );
+                tMasterTypes.set_size( tCount );
+
+                // reset the counter
+                tCount = 0 ;
+
+                // loop over all groups
+                for( DomainGroup * tGroup : tRawSymmetries )
+                {
+                    // loop over all sidesets
+                    for( id_t s : tGroup->groups() )
+                    {
+                        mesh::SideSet * tSideSet = mMesh->sideset( s );
+
+                        // get first facet
+                        mesh::Facet * tFacet = tSideSet->facet_by_index( 0 );
+
+                        // sanity check
+                        BELFEM_ERROR( !tFacet->has_slave(),
+                                      "sideset %lu is supposed to be a symmetry, but it is not at the edge of the mesh",
+                                      ( long unsigned int ) s );
+
+                        // remember sidesetr ID
+                        tSideSetIDs( tCount ) = s;
+
+                        // remember type
+                        tMasterTypes( tCount++ ) = tFacet->master()->physical_tag() ;
+                    }
+                }
+                comm_barrier() ;
+                send_same( mCommTable, tSideSetIDs );
+                send_same( mCommTable, tMasterTypes );
+            }
+            else
+            {
+                comm_barrier();
+                receive( mMesh->master(), tSideSetIDs );
+                receive( mMesh->master(), tMasterTypes );
+            }
+
+
+            uint tNumSideSets = tSideSetIDs.length() ;
+
+            // count sideset types
+            uint c = 0 ;
+            uint f = 0 ;
+            uint a = 0 ;
+
+            for( uint s=0; s<tNumSideSets; ++s )
+            {
+                // check if sideset exists
+                if( mMesh->sideset_exists( tSideSetIDs( s ) ) )
+                {
+                    // check if sideset is not empty
+                    if( mMesh->sideset( tSideSetIDs( s ) )->number_of_facets() > 0 )
+                    {
+
+                        switch (  static_cast< DomainType >( tMasterTypes( s ) ) )
+                        {
+                            case( DomainType::Conductor ) :
+                            {
+                                ++c ;
+                                break ;
+                            }
+                            case( DomainType::Ferro ) :
+                            {
+                                ++f ;
+                                break ;
+                            }
+                            case( DomainType::Air ) :
+                            {
+                                ++a ;
+                                break ;
+                            }
+                            default:
+                            {
+                                BELFEM_ERROR( false, "This should never happen!");
+                            }
+                        }
+                    }
+                }
+            }
+
+            // allocate ids
+            Vector< id_t > tAir( a );
+            Vector< id_t > tConductor( c ) ;
+            Vector< id_t > tFerro( f ) ;
+
+            // reset counters
+            a = 0 ;
+            f = 0 ;
+            c = 0 ;
+
+            for( uint s=0; s<tNumSideSets; ++s )
+            {
+                // check if sideset exists
+                if( mMesh->sideset_exists( tSideSetIDs( s ) ) )
+                {
+                    // check if sideset is not empty
+                    if( mMesh->sideset( tSideSetIDs( s ) )->number_of_facets() > 0 )
+                    {
+
+                        switch (  static_cast< DomainType >( tMasterTypes( s ) ) )
+                        {
+                            case( DomainType::Conductor ) :
+                            {
+                                tConductor( c++ ) = tSideSetIDs( s ) ;
+                                break ;
+                            }
+                            case( DomainType::Ferro ) :
+                            {
+                                tFerro( f++ ) = tSideSetIDs( s ) ;
+                                break ;
+                            }
+                            case( DomainType::Air ) :
+                            {
+                                tAir( a++ ) = tSideSetIDs( s ) ;
+                                break ;
+                            }
+                            default:
+                            {
+                                BELFEM_ERROR( false, "This should never happen!");
+                            }
+                        }
+                    }
+                }
+            }
+
+            // create sidesets
+            if( a > 0 )
+            {
+                DomainGroup * tGroup = new DomainGroup( tAirType, tAirLabel, tAir );
+                tSymmetries.push( tGroup );
+            }
+            if( f > 0 )
+            {
+                DomainGroup * tGroup = new DomainGroup( tFerroType, tFerroLabel, tFerro );
+                tSymmetries.push( tGroup );
+            }
+            if( c > 0 )
+            {
+                DomainGroup * tGroup = new DomainGroup( tConductorType, tConductorLabel, tConductor );
+                tSymmetries.push( tGroup );
+            }
+
+            for( DomainGroup * tGroup : tSymmetries )
+            {
+                mSideSets.push( tGroup );
+            }
+        }
+
+// -----------------------------------------------------------------------------
+
+        void
         MaxwellFactory::select_bcs_and_cuts()
         {
             if( is_maxwell_ha( mFormulation ) )
@@ -2653,7 +2898,7 @@ namespace belfem
                 {
                     switch ( tGroup->type())
                     {
-                        case ( DomainType::SuperConductor ) :
+                        case ( DomainType::Conductor ) :
                         {
                             tCurrentCount += tGroup->groups().length();
                             break;
@@ -2680,7 +2925,7 @@ namespace belfem
                 tCurrentCount = 0;
                 for ( DomainGroup * tGroup: mBlocks )
                 {
-                    if ( tGroup->type() == DomainType::SuperConductor )
+                    if ( tGroup->type() == DomainType::Conductor )
                     {
                         for ( id_t tID: tGroup->groups())
                         {
@@ -2703,7 +2948,7 @@ namespace belfem
                             tAirCount += tGroup->groups().length() ;
                             break ;
                         }
-                        case( DomainType::SuperConductor ) :
+                        case( DomainType::Conductor ) :
                         {
                             tCurrentCount += tGroup->groups().length() ;
                             break ;
@@ -2734,7 +2979,7 @@ namespace belfem
                             }
                             break;
                         }
-                        case( DomainType::SuperConductor ) :
+                        case( DomainType::Conductor ) :
                         {
                             for ( id_t tID: tGroup->groups() )
                             {

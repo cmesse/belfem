@@ -17,17 +17,17 @@ namespace belfem
         {
             switch ( aDomaintype )
             {
-                case ( DomainType::SuperConductor ) :
+                case ( DomainType::Conductor ) :
                 {
-                    return "SuperConductor";
+                    return "Conductor";
                 }
                 case ( DomainType::Coil ) :
                 {
                     return "Coil";
                 }
-                case ( DomainType::FerroMagnetic ) :
+                case ( DomainType::Ferro ) :
                 {
-                    return "FerroMagnetic";
+                    return "Ferro";
                 }
                 case ( DomainType::Air ) :
                 {
@@ -38,6 +38,20 @@ namespace belfem
                 case ( DomainType::InterfaceScFm ) :
                 {
                     return "Interface";
+                }
+                case ( DomainType::Symmetry ) :
+                case ( DomainType::SymmetryAir ) :
+                case ( DomainType::SymmetryFerro ) :
+                case ( DomainType::SymmetryConductor ) :
+                {
+                    return "Symmetry";
+                }
+                case ( DomainType::AntiSymmetry ) :
+                case ( DomainType::AntiSymmetryAir ) :
+                case ( DomainType::AntiSymmetryFerro ) :
+                case ( DomainType::AntiSymmetryConductor ) :
+                {
+                    return "AntiSymmetry";
                 }
                 case ( DomainType::Cut ) :
                 {
@@ -65,9 +79,9 @@ namespace belfem
         {
             string tString = string_to_lower( aString );
 
-            if ( tString == "superconductor" )
+            if ( tString == "conductor" ||  tString == "superconductor"  )
             {
-                return DomainType::SuperConductor;
+                return DomainType::Conductor;
             }
             else if ( tString == "coil" )
             {
@@ -75,7 +89,7 @@ namespace belfem
             }
             else if ( tString == "ferro" || tString == "ferromagnetic" )
             {
-                return DomainType::FerroMagnetic;
+                return DomainType::Ferro;
             }
             else if ( tString == "air" || tString == "vacuum" )
             {
@@ -88,6 +102,14 @@ namespace belfem
             else if ( tString == "boundary" )
             {
                 return DomainType::Boundary;
+            }
+            else if ( tString == "symmetry" )
+            {
+                return DomainType::Symmetry;
+            }
+            else if ( tString == "antisymmetry" )
+            {
+                return DomainType::AntiSymmetry;
             }
             else if ( tString == "thinshell" || tString == "tape" || tString == "shell"  )
             {

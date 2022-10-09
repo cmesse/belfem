@@ -67,7 +67,7 @@ int main( int    argc,
     IWG_Maxwell_L2 * tL2J = new IWG_Maxwell_L2( tType, Maxwell_L2_Mode::H2J );
     //IWG_Maxwell_L2 * tL2B = new IWG_Maxwell_L2( tType, Maxwell_L2_Mode::H2B );
 
-    tIWG->set_blocks( { 1, 2 }, { DomainType::SuperConductor, DomainType::Air } );
+    tIWG->set_blocks( { 1, 2 }, { DomainType::Conductor, DomainType::Air } );
 
     if( true )
     {
@@ -95,12 +95,12 @@ int main( int    argc,
     tBC->set_sidesets( { 1, 2, 3, 4 } );
     tIWG->add_boundary_condition( tBC );
 
-    tL2J->set_block( 1, DomainType::SuperConductor );
+    tL2J->set_block( 1, DomainType::Conductor );
     //tL2H->set_block( 2, DomainType::Air );
 
     // crate the fields
     DofManager * tMagfield = tKernel.create_field( tIWG );
-    tMagfield->block( 1 )->set_domain_type( DomainType::SuperConductor );
+    tMagfield->block( 1 )->set_domain_type( DomainType::Conductor );
     tMagfield->block( 2 )->set_domain_type( DomainType::Air );
 
     if( true )
@@ -141,7 +141,7 @@ int main( int    argc,
     // set the material
     tMagfield->block( 1 )->set_material( tMat );
     tL2->block( 1 )->set_material( tMat );
-    tL2->block( 1 )->set_domain_type( DomainType::SuperConductor );
+    tL2->block( 1 )->set_domain_type( DomainType::Conductor );
 
     Vector< real > tB( 2, 0.0 );
     tB( 1 ) = compute_brandt( tMagfield, tHaHp );

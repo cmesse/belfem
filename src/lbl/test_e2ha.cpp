@@ -289,7 +289,7 @@ int main( int    argc,
     //Vector< id_t > tMinus( 1, 3 );
 
     // block identification
-    tMaxwell->set_block( 1, DomainType::SuperConductor );
+    tMaxwell->set_block( 1, DomainType::Conductor );
     tMaxwell->set_block( 3, DomainType::Coil );
     tMaxwell->set_block( 2, DomainType::Air );
     tMaxwell->set_sideset( 1,  DomainType::Interface );

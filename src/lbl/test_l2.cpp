@@ -236,9 +236,9 @@ int main( int    argc,
     IWG_Maxwell_L2 * tL2c = new IWG_Maxwell_L2( tType, Maxwell_L2_Mode::H2J );
 
 
-    tL2a->set_block( 1, DomainType::SuperConductor );
-    tL2b->set_block( 1, DomainType::SuperConductor );
-    tL2c->set_block( 1, DomainType::SuperConductor );
+    tL2a->set_block( 1, DomainType::Conductor );
+    tL2b->set_block( 1, DomainType::Conductor );
+    tL2c->set_block( 1, DomainType::Conductor );
 
     DofManager * tFa = tKernel.create_field( tL2a );
     DofManager * tFb = tKernel.create_field( tL2b );
@@ -265,9 +265,9 @@ int main( int    argc,
     tFc->set_solver( SolverType::UMFPACK );
 #endif
 
-    tFa->block( 1 )->set_domain_type( DomainType::SuperConductor );
-    tFb->block( 1 )->set_domain_type( DomainType::SuperConductor );
-    tFc->block( 1 )->set_domain_type( DomainType::SuperConductor );
+    tFa->block( 1 )->set_domain_type( DomainType::Conductor );
+    tFb->block( 1 )->set_domain_type( DomainType::Conductor );
+    tFc->block( 1 )->set_domain_type( DomainType::Conductor );
 
     tL2a->set_field( tFa );
     tL2b->set_field( tFb );

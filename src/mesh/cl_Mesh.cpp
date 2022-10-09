@@ -312,7 +312,7 @@ namespace belfem
                 message( 2, "    Time %4.1f s.\n",
                          ( float ) tTime * 0.001 );
             }
-            
+
         }
     }
 

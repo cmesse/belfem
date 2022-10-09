@@ -106,7 +106,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
-            compute_jacobian_and_rhs_farfield(
+            compute_jacobian_and_rhs_symmetry_air(
                     Element        * aElement,
                     Matrix< real > & aJacobian,
                     Vector< real > & aRHS ) ;

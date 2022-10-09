@@ -120,8 +120,8 @@ namespace belfem
             // define the topology
             Vector< id_t > tBlockIDs = { 1, 2, 3, 4 };
             Cell< DomainType > tBlockTypes = {
-                    DomainType::SuperConductor,
-                    DomainType::FerroMagnetic,
+                    DomainType::Conductor,
+                    DomainType::Ferro,
                     DomainType::Coil,
                     DomainType::Air };
 
@@ -182,8 +182,8 @@ namespace belfem
             mMagneticField->block( 2 )->set_material( mMaterials( 1 ) );
 
             // we must also set the block and sideset types.
-            mMagneticField->block( 1 )->set_domain_type( DomainType::SuperConductor );
-            mMagneticField->block( 2 )->set_domain_type( DomainType::FerroMagnetic );
+            mMagneticField->block( 1 )->set_domain_type( DomainType::Conductor );
+            mMagneticField->block( 2 )->set_domain_type( DomainType::Ferro );
             mMagneticField->block( 3 )->set_domain_type( DomainType::Coil );
             mMagneticField->block( 4 )->set_domain_type( DomainType::Air );
 

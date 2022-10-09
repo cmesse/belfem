@@ -62,7 +62,7 @@ namespace belfem
 
             switch( aGroup->domain_type() )
             {
-                case( DomainType::SuperConductor ) :
+                case( DomainType::Conductor ) :
                 {
                     mFunJacobian =
                             & IWG_Maxwell_HPhi_Tet10::compute_jacobian_and_rhs_superconductor ;
@@ -74,7 +74,7 @@ namespace belfem
                             & IWG_Maxwell_HPhi_Tet10::compute_jacobian_and_rhs_air ;
                     break ;
                 }
-                case( DomainType::FerroMagnetic ) :
+                case( DomainType::Ferro ) :
                 {
                     mFunJacobian =
                             & IWG_Maxwell_HPhi_Tet10::compute_jacobian_and_rhs_ferro ;
@@ -331,7 +331,7 @@ namespace belfem
                     const Vector< real > & tn = this->normal_curved_3d( aElement, k );
 
                     // compute the integration constant
-                    tOmega = -tW( k ) * mGroup->work_det_J() * constant::mu0 ;
+                    tOmega = -tW( k ) * mGroup->work_det_J() ;
 
                     // get the shape function
                     const Vector< real > & tN = tMaster->phi( k );
@@ -369,7 +369,7 @@ namespace belfem
                     const Vector< real > & tN = tMaster->phi( k );
                     tB = tInvJ * tSlave->dNdXi( k );
                     crossmat( tn, tB, tnxB );
-                    tOmega = -tW( k ) * mGroup->work_det_J() * constant::mu0 ;
+                    tOmega = -tW( k ) * mGroup->work_det_J() ;
 
                     for( uint j=0; j<10; ++j )
                     {

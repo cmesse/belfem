@@ -97,17 +97,15 @@ namespace belfem
 
                 Cell< string > SymmetryAir ;
                 Cell< string > SymmetryFerro ;
-                Cell< string > SymmetrySc ;
+                Cell< string > SymmetryConductor ;
 
                 Cell< string > AntiSymmetryAir ;
                 Cell< string > AntiSymmetryFerro ;
-                Cell< string > AntiSymmetrySc ;
+                Cell< string > AntiSymmetryConductor ;
 
                 Cell< string > BoundaryAir ;
                 Cell< string > BoundaryFerro ;
                 Cell< string > BoundarySc ;
-
-                Cell< string > Farfield ;
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                 // non-dof Fields

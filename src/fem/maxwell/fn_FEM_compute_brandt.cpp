@@ -26,7 +26,7 @@ namespace belfem
                 // grab the first block
                 Block * tBlock = aField->block( 1 );
 
-                BELFEM_ASSERT( tBlock->domain_type() == DomainType::SuperConductor,
+                BELFEM_ASSERT( tBlock->domain_type() == DomainType::Conductor,
                               "Block 1 must be of type superconductor" );
 
                 // get the material from that block

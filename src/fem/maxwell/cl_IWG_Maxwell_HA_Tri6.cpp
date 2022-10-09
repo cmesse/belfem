@@ -57,7 +57,7 @@ namespace belfem
 
             switch( aGroup->domain_type() )
             {
-                case( DomainType::SuperConductor ) :
+                case( DomainType::Conductor ) :
                 {
                     mFunJacobian =
                             & IWG_Maxwell_HA_Tri6::compute_jacobian_and_rhs_superconductor ;
@@ -75,7 +75,7 @@ namespace belfem
                             & IWG_Maxwell_HA_Tri6::compute_jacobian_and_rhs_coil ;
                     break ;
                 }
-                case( DomainType::FerroMagnetic ) :
+                case( DomainType::Ferro ) :
                 {
                     mFunJacobian =
                             & IWG_Maxwell_HA_Tri6::compute_jacobian_and_rhs_ferro ;
