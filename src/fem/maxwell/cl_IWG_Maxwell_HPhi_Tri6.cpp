@@ -56,7 +56,7 @@ namespace belfem
             mFields.MagneticFieldDensity     =  { "bx", "by", "bz" };
             mFields.CurrentDensity = {  "jz" };
             mFields.CurrentBC = { "lambda_I" };
-            mFields.Ghost = { "elementEJ", "elementJ", "elementRho" };
+            mFields.Ghost = { "elementEJ", "elementJ", "elementJJc", "elementRho" };
 
             mEdgeDofMultiplicity = 2 ;
             mFaceDofMultiplicity = 2 ;
@@ -79,6 +79,7 @@ namespace belfem
             mW.set_size( 16 );
             mRho.set_size( 16, 16 );
             mJz.set_size( 16, 16 );
+            mJc.set_size( 16, 16 );
             mdRhodx.set_size( 16, 16 );
             mdRhody.set_size( 16, 16 );
             mAHn.set_size( 2, 2 );
@@ -1373,11 +1374,9 @@ namespace belfem
 
                 // critical current
                 const Material * tMaterial = mGroup->thin_shell_material( l );
-                real tRhoCrit = tMaterial->type() == MaterialType::Maxwell ? tMaterial->rho_el_crit( 0.0, 0.0, 0.0 ) : 0.0 ;
-
 
                 this->compute_layer_stabilizer( aElement, tHt, tLength,
-                                                mGroup->thin_shell_thickness( l ), tRhoCrit, tMlayer, tKlayer );
+                                                mGroup->thin_shell_thickness( l ), tMaterial->creep_expinent_minus_1(), tMlayer, tKlayer );
 
                 for ( uint j = 0; j < 6; ++j )
                 {
@@ -1419,7 +1418,8 @@ namespace belfem
                         aElement->id() * mGroup->number_of_thin_shell_layers() + l )->index();
                 mMesh->field_data( "elementJ" )( tIndex )   = mLayerData( 0, l );
                 mMesh->field_data( "elementEJ" )( tIndex )  = mLayerData( 1, l );
-                mMesh->field_data( "elementRho" )( tIndex ) = mLayerData( 2, l );
+                mMesh->field_data( "elementJJc" )( tIndex ) = mLayerData( 2, l );
+                mMesh->field_data( "elementRho" )( tIndex ) = mLayerData( 3, l );
 
                 // std::cout << "check " << aElement->id() << " " << tJz * tLength * mGroup->thin_shell_thickness( l ) << " " << mLayerData( 2, l ) << std::endl ;
             }
@@ -1519,7 +1519,7 @@ namespace belfem
 
             // get material
             // temperature, todo: make not constant
-            real tT = 4.0 ;
+            real tT = 10.0 ;
 
             // grab layer thickness
             const real tThickness = mGroup->thin_shell_thickness( aLayer );
@@ -1527,6 +1527,7 @@ namespace belfem
 
             // element-wise curernt
             real tJz_el = 0 ;
+            real tJJc_el = 0 ;
 
             // value for ac losses (element-wise)
             real tEJ_el = 0.0 ;
@@ -1565,6 +1566,10 @@ namespace belfem
 
                 real tJz = 0 ;
                 real tRho = 0 ;
+                real tB = 0 ;
+                real tAlpha = 0 ;
+
+                real tJc= 0 ;
 
                 // comopute rho and gradients
                 for( uint l=0; l<5; ++l )
@@ -1596,7 +1601,11 @@ namespace belfem
                     // current : tHt derived along thickness
                     real tHt =   dot( tInteg->phi( k ), mHt );
                     tJz = dot( mC.row( 0 ), aHt );
-                    tRho = std::max( tMaterial->rho_el( tJz, tT, constant::mu0 * std::sqrt( tHt*tHt + aHn*aHn )  ), BELFEM_EPS );
+                    tB = std::sqrt( tHt*tHt + aHn*aHn ) ;
+                    tAlpha = tB < BELFEM_EPSILON ? 0 : std::acos( tHt / tB );
+                    tB *= constant::mu0 ;
+
+                    tRho = std::max( tMaterial->rho_el( tJz, tT, tB, tAlpha ), BELFEM_EPS );
                     mPsi( l ) = tRho ;
                 }
 
@@ -1605,6 +1614,9 @@ namespace belfem
                 mdRhodx( k, aIntPoint ) = ( mPsi( 1 )-mPsi( 0 ) ) / ( 0.01 * aXLength );
                 mdRhody( k, aIntPoint ) = ( mPsi( 3)-mPsi( 2 ) ) / ( 0.01 * tThickness );
                 mJz( k, aIntPoint ) = tJz ;
+
+                tJc = tMaterial->j_crit( tT, tB , tAlpha );
+                mJc( k, aIntPoint ) = tJc ;
 
                 //real tdJzdx = dot( mdCdx, aHt );
                 //real tdJzdy = dot( mdCdy , aHt ); // <-- is  this wrong?
@@ -1654,12 +1666,14 @@ namespace belfem
 
                 tJz_el += tW( k ) * tJz ;
                 tEJ_el += tW( k ) *  tRho * tJz * tJz ;
+                tJJc_el += tW( k ) * tJz / tJc ;
                 tRho_el += tW( k ) * tRho ;
             }
 
             mLayerData( 0, aLayer ) += tW( aIntPoint ) * tJz_el ;
             mLayerData( 1, aLayer ) += tW( aIntPoint ) * tEJ_el ;
-            mLayerData( 2, aLayer ) += tW( aIntPoint ) * tRho_el ;
+            mLayerData( 2, aLayer ) += tW( aIntPoint ) * tJJc_el ;
+            mLayerData( 3, aLayer ) += tW( aIntPoint ) * tRho_el ;
         }
 
 //------------------------------------------------------------------------------
@@ -1672,7 +1686,7 @@ namespace belfem
                 const Vector< real > & aHt,
                 const real aXLength,
                 const real aYLength,
-                const real aRhoCrit,
+                const real aNminus1,
                 Matrix< real > & aM,
                 Matrix< real > & aK )
         {
@@ -1792,7 +1806,8 @@ namespace belfem
 
                     // std::cout << "delta " << tDelta << std::endl ;
                     //real tTau = aRhoCrit == 0 ? tC : tC * std::pow( tRho / aRhoCrit, 2 ) ;
-                    real tTau = aRhoCrit == 0 ? tC : tC * std::pow( tRho / aRhoCrit, 1 ) ;
+                    real tTau = aNminus1 == 0 ? tC : tC * std::pow( mJz( k, l ) / mJc( k, k ), aNminus1 ) ;
+
                     // aK += tW( l ) * tW( k ) * trans( mL ) * mL * tDetJ ;
                     aM += tW( l ) * tW( k ) * trans( mL ) * mL * tDetJ * tTau ;
                     tR += tW( l ) * tW( k ) * tTau * tDetJ ;

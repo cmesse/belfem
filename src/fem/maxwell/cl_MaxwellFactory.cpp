@@ -663,11 +663,20 @@ namespace belfem
                 // create new material
                 MaxwellMaterial * aMaterial = new MaxwellMaterial( aInput->label() );
 
-                // check if resistance exists
+                // legacy patch, resistivity sounds better than resistance
+                string tType = "" ;
                 if ( aInput->key_exists( "resistance" ) )
                 {
-                    // check type of resistance law
-                    const string tType = string_to_lower( aInput->get_string( "resistance" ));
+                    tType = string_to_lower( aInput->get_string( "resistance" ));
+                }
+                else if ( aInput->key_exists( "resistivity" ) )
+                {
+                    tType = string_to_lower( aInput->get_string( "resistivity" ));
+                }
+
+                // check if resistivity exists
+                if ( tType.size() > 0 )
+                {
 
                     // sanity checks
                     if ( tType == "powerlaw-ej" || tType == "powerlaw-ejb" || tType == "powerlaw-ejt" ||
@@ -684,12 +693,17 @@ namespace belfem
                                 || ( !aInput->key_exists( "n" ) && aInput->key_exists( "n0" )),
                                 "variable must be called either n or n0, not both" );
 
-                        BELFEM_ERROR(
-                                ( aInput->key_exists( "jc" ) && !aInput->key_exists( "jc0" ))
-                                || ( !aInput->key_exists( "jc" ) && aInput->key_exists( "jc0" )),
-                                "variable must be called either jc or jc0, not both" );
-
+                        // don't throw this error if we provide a database
+                        if( !  ( aInput->key_exists("database") && aInput->key_exists("dataset") ) )
+                        {
+                            BELFEM_ERROR(
+                                    ( aInput->key_exists( "jc" ) && !aInput->key_exists( "jc0" ))
+                                    || ( !aInput->key_exists( "jc" ) && aInput->key_exists( "jc0" )),
+                                    "must provide either jc, jc0 or database and dataset" );
+                        }
                     }
+
+
 
                     if ( tType == "constant" )
                     {
@@ -707,17 +721,31 @@ namespace belfem
                             real tEc = aInput->get_value( "ec", "V/m" ).first;
 
                             real tJc = aInput->key_exists( "jc" ) ?
-                                       aInput->get_value( "jc", "A/m^2" ).first :
-                                       aInput->get_value( "jc0", "A/m^2" ).first;
+                                  aInput->get_value( "jc", "A/m^2" ).first :
+                                  aInput->get_value( "jc0", "A/m^2" ).first;
 
                             aMaterial->set_rho_el_const( tEc / tJc );
                         }
                     }
-                    else if ( tType == "powerlaw-ej" )
+                    else if ( tType == "powerlaw-ej" || tType == "powerlaw" )
                     {
-                        real tJc = aInput->key_exists( "jc0" ) ?
-                                   aInput->get_value( "jc0", "A/m^2" ).first :
-                                   aInput->get_value( "jc", "A/m^2" ).first;
+                        real tJc = BELFEM_QUIET_NAN;
+
+                        string tDatabase;
+                        string tDataset;
+
+                        if ( aInput->key_exists( "database" ) && aInput->key_exists( "dataset" ))
+                        {
+                            tDatabase = aInput->get_string( "database" );
+                            tDataset = aInput->get_string( "dataset" );
+                            tJc = 0;
+                        }
+                        else
+                        {
+                            tJc = aInput->key_exists( "jc0" ) ?
+                                  aInput->get_value( "jc0", "A/m^2" ).first :
+                                  aInput->get_value( "jc", "A/m^2" ).first;
+                        }
 
                         real tN = aInput->key_exists( "n0" ) ?
                                   aInput->get_value( "n0", "-" ).first :
@@ -728,6 +756,11 @@ namespace belfem
                                    aInput->get_value( "ec", "V/m" ).first;
 
                         aMaterial->set_rho_el_ej( tEc, tJc, tN );
+
+                        if( tJc == 0 )
+                        {
+                            aMaterial->set_j_crit( tDatabase, tDataset );
+                        }
 
                     }
                     else if ( tType == "powerlaw-ejt" )

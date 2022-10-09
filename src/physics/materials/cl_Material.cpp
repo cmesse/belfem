@@ -266,19 +266,25 @@ namespace belfem
 
     // electric resistance
     real
-    Material::rho_el (  const real aJ, const real aT, const real aB ) const
+    Material::j_crit( const real aT, const real aB, const real aAngle ) const
     {
-        BELFEM_ERROR( false, "rho_el() not implemented for material %s", mLabel.c_str() );
-        return BELFEM_QUIET_NAN ;
+        return  0 ;
+    }
+//----------------------------------------------------------------------------
+
+    real
+    Material::creep_expinent_minus_1() const
+    {
+        return  0 ;
     }
 
 //----------------------------------------------------------------------------
 
     // electric resistance
     real
-    Material::rho_el_crit (  const real aJ, const real aT, const real aB ) const
+    Material::rho_el ( const real aJ, const real aT, const real aB, const real aAngle ) const
     {
-        BELFEM_ERROR( false, "rho_el_crit() not implemented for material %s", mLabel.c_str() );
+        BELFEM_ERROR( false, "rho_el() not implemented for material %s", mLabel.c_str() );
         return BELFEM_QUIET_NAN ;
     }
 

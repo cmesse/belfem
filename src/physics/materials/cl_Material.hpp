@@ -260,11 +260,15 @@ namespace belfem
 
         // electric resistance
         virtual
-        real rho_el ( const real aJ=0, const real aT=0, const real aB=0 ) const ;
+        real rho_el ( const real aJ=0, const real aT=0, const real aB=0, const real aAngle=0 ) const ;
 
         // electric resistance
         virtual
-        real rho_el_crit ( const real aJ, const real aT, const real aB ) const ;
+        real j_crit( const real aT=0, const real aB=0, const real aAngle=0 ) const ;
+
+        // the n-1 value
+        virtual
+        real creep_expinent_minus_1() const ;
 
 //----------------------------------------------------------------------------
 

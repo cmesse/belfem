@@ -84,7 +84,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
             real
-            rho_el ( const real aJ, const real aT, const real aB ) const ;
+            rho_el ( const real aJ, const real aT, const real aB, const real aAngle ) const ;
 
 //----------------------------------------------------------------------------
         private:

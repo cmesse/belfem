@@ -65,7 +65,7 @@ namespace belfem
                 Cell< mesh::Node * > & tNodes = aField->mesh()->nodes();
 
                 // get the critical current density
-                real Jc = tMat->jc();
+                real Jc = tMat->j_crit();
 
                 // half width of superconductor
                 real a = std::abs( 0.5 * ( aField->mesh()->node( 2 )->x()

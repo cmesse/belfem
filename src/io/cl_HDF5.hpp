@@ -250,6 +250,20 @@ namespace belfem
         load_data( const string         & aLabel,
                          Vector< real > & aVector );
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+        void
+        load_data(  const string         & aLabel,
+                    uint                 * aArray,
+                    const index_t          aMemorySize );
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+        void
+        load_data(  const string         & aLabel,
+                    real                 * aArray,
+                    const index_t          aMemorySize );
+
 //------------------------------------------------------------------------------
 // Save Matrices
 //------------------------------------------------------------------------------

@@ -460,7 +460,7 @@ namespace belfem
 
         // electric resistance
         real
-        Copper::rho_el ( const real aJ, const real aT, const real aB ) const
+        Copper::rho_el ( const real aJ, const real aT, const real aB, const real aAngle ) const
         {
             // resistivity for zero magnetic field
             real tRho0 = this->rho_el0( aT );

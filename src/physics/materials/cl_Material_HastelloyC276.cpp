@@ -161,7 +161,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        HastelloyC276::rho_el( const real aJ, const real aT, const real aB ) const
+        HastelloyC276::rho_el( const real aJ, const real aT, const real aB, const real aAngle ) const
         {
             if ( aT < mSwitchRhoT0 )
             {

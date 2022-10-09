@@ -688,6 +688,112 @@ namespace belfem
         }
 #endif
     }
+
+//------------------------------------------------------------------------------
+
+    // send the same vector to all procs on communication lust
+    template< typename T >
+    void
+    distribute(
+            Vector< T >   & aData,
+            const proc_t    aMasterProc=0 )
+    {
+#ifdef BELFEM_MPI
+
+        // get total number of procs
+        proc_t tCommSize = gComm.size();
+
+        // get my id
+        proc_t tMyRank = gComm.rank();
+
+        if( tCommSize < 1 )
+        {
+            return;
+        }
+
+        if( tMyRank == aMasterProc )
+        {
+
+            // Allocate memory for status/request vector
+            MPI_Status*  tStatus  = ( MPI_Status*  ) alloca( sizeof( MPI_Status  ) * tCommSize );
+            MPI_Request* tRequest = ( MPI_Request* ) alloca( sizeof( MPI_Request ) * tCommSize );
+
+            // get the data types
+            comm_data_t tLengthType = get_comm_datatype ( ( index_t ) 0 );
+            comm_data_t tDataType = get_comm_datatype ( ( T ) 0 );
+
+            // loop over all procs
+            for( proc_t tTarget = 0; tTarget < tCommSize; ++tTarget )
+            {
+                // if target exists and is not myself
+                if ( tTarget != tMyRank )
+                {
+                    // create communication tag
+                    int tCommTag = comm_tag( tMyRank, tTarget );
+
+                    // get length of vector
+                    index_t tLength = aData.length();
+
+                    // send length to target
+                    MPI_Isend( &tLength,
+                               1,
+                               tLengthType,
+                               tTarget,
+                               tCommTag,
+                               gComm.world(),
+                               &tRequest[ tTarget ] );
+
+                    // wait until send is complete
+                    MPI_Wait( &tRequest[ tTarget ], &tStatus[ tTarget ] );
+
+                    if ( tLength > 0 )
+                    {
+                        // calculate number of individual messages to be sent
+                        Vector< int > tLengths = split_message( aData.length());
+                        index_t tNumMessages = tLengths.length();
+
+                        // Allocate status and request containers
+                        MPI_Status * tStatus2 = ( MPI_Status * ) alloca( tNumMessages * sizeof( MPI_Status ));
+                        MPI_Request * tRequest2 = ( MPI_Request * ) alloca( tNumMessages * sizeof( MPI_Request ));
+
+                        // offset in array
+                        index_t tOffset = 0;
+
+                        // loop over all messages
+                        for ( index_t m = 0; m < tNumMessages; ++m )
+                        {
+                            // increment comm tag
+                            tCommTag++;
+
+                            // get raw pointer of vector
+                            const T * tData = aData.data();
+
+                            // send data
+                            MPI_Isend( &tData[ tOffset ],
+                                       tLengths( m ),
+                                       tDataType,
+                                       tTarget,
+                                       tCommTag,
+                                       gComm.world(),
+                                       &tRequest2[ m ] );
+
+                            // increment offset
+                            tOffset += tLengths( m );
+
+                            // wait until send is complete
+                            MPI_Wait( &tRequest2[ m ], &tStatus2[ m ] );
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            receive( aMasterProc, aData );
+        }
+#endif
+    }
+
 //------------------------------------------------------------------------------
 
     // send the same matrix to all procs on communication lust

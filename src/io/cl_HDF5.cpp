@@ -435,6 +435,7 @@ namespace belfem
                 aValue,
                 mStatus );
     }
+
 //------------------------------------------------------------------------------
 // Save Vectors
 //------------------------------------------------------------------------------
@@ -663,6 +664,38 @@ namespace belfem
                 mActiveGroup,
                 aLabel,
                 aMatrix,
+                mStatus );
+    }
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    void
+    HDF5::load_data(
+            const string         & aLabel,
+            index_t              * aArray,
+            const index_t          aMemorySize )
+    {
+        hdf5::load_array_from_file(
+                mActiveGroup,
+                aLabel,
+                aArray,
+                aMemorySize,
+                mStatus );
+    }
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    void
+    HDF5::load_data(
+            const string         & aLabel,
+            real                 * aArray,
+            const index_t          aMemorySize )
+    {
+        hdf5::load_array_from_file(
+                mActiveGroup,
+                aLabel,
+                aArray,
+                aMemorySize,
                 mStatus );
     }
 

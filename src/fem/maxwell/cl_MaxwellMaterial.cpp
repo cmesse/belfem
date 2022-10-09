@@ -53,6 +53,10 @@ namespace belfem
         {
             delete mThermalMaterial ;
         }
+        if( mJcData != nullptr )
+        {
+            delete mJcData ;
+        }
     }
 
 //----------------------------------------------------------------------------
@@ -63,7 +67,6 @@ namespace belfem
         mResistivityLaw = ResistivityLaw::Constant ;
 
         mFunRho = & MaxwellMaterial::rho_el_const ;
-        mFunRhoCrit = & MaxwellMaterial::rho_el_crit_powerlaw_ej ;
         this->reset_parameters();
         mRhoc = aRhoEl ;
     }
@@ -74,15 +77,17 @@ namespace belfem
     MaxwellMaterial::set_rho_el_ej( const real aEc, const real aJc, const real aN )
     {
         mResistivityLaw = ResistivityLaw::DependJ ;
-        mFunRho = & MaxwellMaterial::rho_el_powerlaw_ej ;
-        mFunRhoCrit = & MaxwellMaterial::rho_el_crit_powerlaw_ej ;
+
         this->reset_parameters();
+
+        mFunRho   = & MaxwellMaterial::rho_el_powerlaw ;
+        mFunJcrit = & MaxwellMaterial::j_crit_const ;
+        mFunMm1   = & MaxwellMaterial::nm1_const ;
 
         mRhoc  = aEc / aJc ;
         mEc    = aEc ;
         mJc    = aJc ;
         mNm1   = aN - 1.;
-        //mRhoMax = 100 * mRhoc ;
     }
 
 //----------------------------------------------------------------------------
@@ -96,8 +101,11 @@ namespace belfem
             const real aB0 )
     {
         mResistivityLaw = ResistivityLaw::DependJB ;
-        mFunRho     = & MaxwellMaterial::rho_el_powerlaw_ejb ;
-        mFunRhoCrit = & MaxwellMaterial::rho_el_crit_error ;
+
+        mFunRho   = & MaxwellMaterial::rho_el_powerlaw ;
+        mFunJcrit = & MaxwellMaterial::j_crit_b ;
+        mFunMm1   = & MaxwellMaterial::nm1_b ;
+
         this->reset_parameters();
 
         mEc   = aEc ;
@@ -118,8 +126,9 @@ namespace belfem
             const real aTc )
     {
         mResistivityLaw = ResistivityLaw::DependJT ;
-        mFunRho = & MaxwellMaterial::rho_el_powerlaw_ejt ;
-        mFunRhoCrit = & MaxwellMaterial::rho_el_crit_error ;
+        mFunRho   = & MaxwellMaterial::rho_el_powerlaw ;
+        mFunJcrit = & MaxwellMaterial::j_crit_t ;
+        mFunMm1   = & MaxwellMaterial::nm1_t ;
 
         this->reset_parameters();
 
@@ -146,8 +155,9 @@ namespace belfem
             const real aTc )
     {
         mResistivityLaw = ResistivityLaw::DependJBT ;
-        mFunRho = & MaxwellMaterial::rho_el_powerlaw_ejbt ;
-        mFunRhoCrit = & MaxwellMaterial::rho_el_crit_error ;
+        mFunRho   = & MaxwellMaterial::rho_el_powerlaw ;
+        mFunJcrit = & MaxwellMaterial::j_crit_bt ;
+        mFunMm1   = & MaxwellMaterial::nm1_bt ;
 
         this->reset_parameters();
 
@@ -163,6 +173,19 @@ namespace belfem
         mAlpha  = -mBeta / aTc ;
     }
 
+//----------------------------------------------------------------------------
+
+    void
+    MaxwellMaterial::set_j_crit( const string & aDatabase, const string & aDataset )
+    {
+        if( mJcData != nullptr )
+        {
+            delete mJcData ;
+        }
+        mJcData = new Database( aDatabase, aDataset );
+        mFunJcrit = & MaxwellMaterial::j_crit_database ;
+        mResistivityLaw = ResistivityLaw::DependJBT ;
+    }
 
 //----------------------------------------------------------------------------
 
@@ -201,7 +224,9 @@ namespace belfem
         mRhoSpline = aSpline ;
         mResistivityLaw = ResistivityLaw::DependT ;
         mFunRho = & MaxwellMaterial::rho_el_spline_t ;
-        mFunRhoCrit = & MaxwellMaterial::rho_el_crit_error ;
+
+        mFunJcrit = & MaxwellMaterial::j_crit_const ;
+        mJc = 0 ;
 
         mPermeabilityLaw = PermeabilityLaw::Constant ;
         mFunMur = & MaxwellMaterial::mu_r_const ;
@@ -292,15 +317,6 @@ namespace belfem
             delete mThermalMaterial;
         }
         mThermalMaterial = tFactory.create_material( aLabel );
-    }
-
-//----------------------------------------------------------------------------
-
-    real
-    MaxwellMaterial::rho_el_crit_error( const real aJ, const real aT=BELFEM_TREF, const real aB=0  ) const
-    {
-        BELFEM_ERROR( false, "rho_el_crit not implemented for this material");
-        return BELFEM_QUIET_NAN ;
     }
 
 //----------------------------------------------------------------------------

@@ -4,6 +4,7 @@ set( SOURCES
         filetools.cpp
         HDF5_Tools.cpp
         cl_HDF5.cpp
+        cl_Database.cpp
         cl_Ascii.cpp
         cl_InputFile.cpp
         cl_Input_Section.cpp

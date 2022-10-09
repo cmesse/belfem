@@ -8,6 +8,7 @@
 #include "cl_IsotropicMaterial.hpp"
 #include "en_FEM_DomainType.hpp"
 #include "cl_Spline.hpp"
+#include "cl_Database.hpp"
 
 namespace belfem
 {
@@ -20,6 +21,9 @@ namespace belfem
 
         // spline if resisivity is only temperature dependent
         Spline * mRhoSpline = nullptr ;
+
+        // for jc database
+        Database * mJcData = nullptr ;
 
         // cell with labels of target groups
         Cell< string > mDomainLabels ;
@@ -85,11 +89,15 @@ namespace belfem
 
         real
         ( MaxwellMaterial::*mFunRho )
-        ( const real aJ, const real aT, const real aB ) const;
+        ( const real aJ, const real aT, const real aB, const real aAngle ) const;
 
         real
-        ( MaxwellMaterial::*mFunRhoCrit )
-                ( const real aJ, const real aT, const real aB ) const;
+        ( MaxwellMaterial::*mFunJcrit )
+                (  const real aT, const real aB, const real aAngle ) const;
+
+        real
+        ( MaxwellMaterial::*mFunMm1 )
+                (  const real aT, const real aB  ) const;
 
 //----------------------------------------------------------------------------
     public:
@@ -111,13 +119,7 @@ namespace belfem
 
         // electric resistance
         real
-        rho_el ( const real aJ=0, const real aT=BELFEM_TREF, const real aB=0 ) const ;
-
-//----------------------------------------------------------------------------
-
-        // electric resistance
-        real
-        rho_el_crit ( const real aJ, const real aT=BELFEM_TREF, const real aB=0 ) const ;
+        rho_el ( const real aJ=0, const real aT=BELFEM_TREF, const real aB=0, const real aAngle=0 ) const ;
 
 //----------------------------------------------------------------------------
 
@@ -143,6 +145,11 @@ namespace belfem
 
         void
         set_rho_el_ejbt( const real aEc, const real aJc0, const real aN0, const real aN1, const real aB0, const real aT0, const real aTc  );
+
+//----------------------------------------------------------------------------
+
+        void
+        set_j_crit( const string & aDatabase, const string & aDataset );
 
 //----------------------------------------------------------------------------
 
@@ -188,7 +195,7 @@ namespace belfem
          * return the critical current density
          */
          real
-         jc() const;
+         j_crit( const real aT=0, const real aB=0, const real aAlpha=0 ) const;
 
 //----------------------------------------------------------------------------
 
@@ -233,6 +240,11 @@ namespace belfem
         set_thermal_material( const string aLabel );
 
 //----------------------------------------------------------------------------
+
+        real
+        creep_expinent_minus_1() const ;
+
+//----------------------------------------------------------------------------
     private:
 //----------------------------------------------------------------------------
 
@@ -250,31 +262,43 @@ namespace belfem
         real
         nu_s_spline ( const real aB=0, const real aT=BELFEM_TREF ) const ;
 
+        real
+        j_crit_const( const real aT, const real aB, const real aAngle ) const ;
+
+        real
+        j_crit_t( const real aT, const real aB, const real aAngle ) const ;
+
+        real
+        j_crit_b( const real aT, const real aB, const real aAngle ) const ;
+
+        real
+        j_crit_bt( const real aT, const real aB, const real aAngle ) const ;
+
+        real
+        j_crit_database( const real aT, const real aB, const real aAngle ) const ;
+
+        real
+        nm1_const( const real aT, const real aB ) const ;
+
+        real
+        nm1_t( const real aT, const real aB ) const ;
+
+        real
+        nm1_b( const real aT, const real aB ) const ;
+
+        real
+        nm1_bt( const real aT, const real aB ) const ;
+
 //----------------------------------------------------------------------------
 
         real
-        rho_el_crit_error( const real aJ, const real aT, const real aB  ) const ;
+        rho_el_const ( const real aJ, const real aT=BELFEM_TREF, const real aB=0, const real aAngle=0 ) const ;
 
         real
-        rho_el_const ( const real aJ, const real aT=BELFEM_TREF, const real aB=0 ) const ;
+        rho_el_powerlaw( const real aJ, const real aT=BELFEM_TREF, const real aB=0, const real aAngle=0   ) const ;
 
         real
-        rho_el_powerlaw_ej( const real aJ, const real aT=BELFEM_TREF, const real aB=0  ) const ;
-
-        real
-        rho_el_crit_powerlaw_ej( const real aJ, const real aT, const real aB  ) const ;
-
-        real
-        rho_el_powerlaw_ejt(const real aJ, const real aT=BELFEM_TREF, const real aB=0 ) const ;
-
-        real
-        rho_el_powerlaw_ejb( const real aJ, const real aT=BELFEM_TREF, const real aB=0  ) const ;
-
-        real
-        rho_el_powerlaw_ejbt( const real aJ, const real aT=BELFEM_TREF, const real aB=0  ) const ;
-
-        real
-        rho_el_spline_t( const real aJ, const real aT=BELFEM_TREF, const real aB=0  ) const ;
+        rho_el_spline_t( const real aJ, const real aT=BELFEM_TREF, const real aB=0, const real aAngle=0   ) const ;
 
 //---------------------------------------------------------------------------
     };
@@ -282,16 +306,9 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         inline real
-        MaxwellMaterial::rho_el( const real aJ, const real aT, const real aB ) const
+        MaxwellMaterial::rho_el( const real aJ, const real aT, const real aB, const real aAngle ) const
         {
-            return ( this->*mFunRho )( std::abs( aJ ), aT, std::abs( aB ) );
-        }
-//----------------------------------------------------------------------------
-
-        inline real
-        MaxwellMaterial::rho_el_crit( const real aJ, const real aT, const real aB ) const
-        {
-            return ( this->*mFunRhoCrit )( std::abs( aJ ), aT, std::abs( aB ) );
+            return ( this->*mFunRho )( std::abs( aJ ), aT, std::abs( aB ), aAngle );
         }
 
 //----------------------------------------------------------------------------
@@ -313,7 +330,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         inline real
-        MaxwellMaterial::rho_el_const( const real aJ, const real aT, const real aB ) const
+        MaxwellMaterial::rho_el_const( const real aJ, const real aT, const real aB, const real aAngle ) const
         {
             return mRhoc ;
         }
@@ -321,64 +338,18 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         inline real
-        MaxwellMaterial::rho_el_powerlaw_ej( const real aJ, const real aT, const real aB ) const
+        MaxwellMaterial::rho_el_powerlaw( const real aJ, const real aT, const real aB, const real aAngle ) const
         {
-            return  std::min( mRhoc * std::pow( aJ / ( mJc + BELFEM_EPSILON ), mNm1 ) , mRhoMax );
+            real tJc = ( this->*mFunJcrit )( aT, aB, aAngle );
+            real tNm1 = ( this->*mFunMm1 )( aT, aB );
+
+            return  std::min( ( mEc / tJc ) * std::pow( aJ / ( tJc + BELFEM_EPSILON ), tNm1 ) , mRhoMax );
         }
 
 //----------------------------------------------------------------------------
 
         inline real
-        MaxwellMaterial::rho_el_crit_powerlaw_ej( const real aJ, const real aT, const real aB ) const
-        {
-            return mRhoc ;
-        }
-
-//----------------------------------------------------------------------------
-
-        inline real
-        MaxwellMaterial::rho_el_powerlaw_ejt( const real aJ, const real aT, const real aB ) const
-        {
-            // compute critical current
-            real tJc = mAlpha * aT + mBeta ;
-
-
-            return std::min( ( mEc / ( tJc + BELFEM_EPSILON ) ) * std::pow( aJ / tJc, mN0m1 * mT0 / aT ), mRhoMax );
-
-
-        }
-
-//----------------------------------------------------------------------------
-
-        inline real
-        MaxwellMaterial::rho_el_powerlaw_ejb( const real aJ, const real aT, const real aB  ) const
-        {
-            // compute critical current
-            real tJc = mJc0 / ( 1. + aB / mB0 );
-
-            return std::min( ( mEc / ( tJc + BELFEM_EPSILON ) ) * std::pow( aJ / tJc,
-                                             mN1m1 + ( mN0m1-mN1m1 ) / ( 1. +  aB / mB0 ) ), mRhoMax );
-
-        }
-
-//----------------------------------------------------------------------------
-
-        inline real
-        MaxwellMaterial::rho_el_powerlaw_ejbt( const real aJ, const real aT, const real aB  ) const
-        {
-            // compute critical current
-            real tJc = ( mAlpha * aT + mBeta ) / ( 1. + aB / mB0 );
-
-            return std::min( ( mEc / ( tJc + BELFEM_EPSILON ) ) * std::pow( aJ / tJc,
-                                             ( mN1m1 + ( mN0m1-mN1m1 ) / ( 1. +  aB / mB0 ) )
-                                             * ( mT0 / aT ) ), mRhoMax );
-
-        }
-
-//----------------------------------------------------------------------------
-
-        inline real
-        MaxwellMaterial::rho_el_spline_t( const real aJ, const real aT, const real aB ) const
+        MaxwellMaterial::rho_el_spline_t( const real aJ, const real aT, const real aB, const real aAngle ) const
         {
             return mRhoSpline->eval( aT );
         }
@@ -440,14 +411,9 @@ namespace belfem
          * return the critical current density
          */
         inline real
-        MaxwellMaterial::jc() const
+        MaxwellMaterial::j_crit( const real aT, const real aB, const real aAngle ) const
         {
-            BELFEM_ASSERT( mResistivityLaw == ResistivityLaw::Constant
-                || mResistivityLaw == ResistivityLaw::DependJ,
-                "material law bust be either constant or e-j power to return jc");
-
-            return mJc ;
-
+            return ( this->*mFunJcrit )( aT, aB, aAngle );
         }
 
 //----------------------------------------------------------------------------
@@ -493,6 +459,86 @@ namespace belfem
 
             return mThermalMaterial->lambda( aT, aB );
         }
+
+//----------------------------------------------------------------------------
+
+        inline real
+        MaxwellMaterial::creep_expinent_minus_1() const
+        {
+            return mNm1 ;
+        }
+
+//----------------------------------------------------------------------------
+
+    inline real
+    MaxwellMaterial::j_crit_const( const real aT, const real aB, const real aAngle ) const
+    {
+        return mJc ;
+    }
+
+//----------------------------------------------------------------------------
+
+    inline real
+    MaxwellMaterial::j_crit_t( const real aT, const real aB, const real aAngle ) const
+    {
+        return mAlpha * aT + mBeta ;
+    }
+
+//----------------------------------------------------------------------------
+
+    inline real
+    MaxwellMaterial::j_crit_b( const real aT, const real aB, const real aAngle ) const
+    {
+        return mJc0 / ( 1. + aB / mB0 );
+    }
+
+//----------------------------------------------------------------------------
+
+    inline real
+    MaxwellMaterial::j_crit_bt( const real aT, const real aB, const real aAngle ) const
+    {
+        return ( mAlpha * aT + mBeta ) / ( 1. + aB / mB0 );
+    }
+
+//----------------------------------------------------------------------------
+
+    inline real
+    MaxwellMaterial::j_crit_database( const real aT, const real aB, const real aAngle ) const
+    {
+        return mJcData->compute( aAngle, aT, aB );
+    }
+
+//----------------------------------------------------------------------------
+
+    inline real
+    MaxwellMaterial::nm1_const( const real aT, const real aB ) const
+    {
+        return mNm1 ;
+    }
+
+//----------------------------------------------------------------------------
+
+    inline real
+    MaxwellMaterial::nm1_t( const real aT, const real aB ) const
+    {
+        return mN0m1 * mT0 / aT ;
+    }
+
+//----------------------------------------------------------------------------
+
+    inline real
+    MaxwellMaterial::nm1_b( const real aT, const real aB ) const
+    {
+        return mN1m1 + ( mN0m1-mN1m1 ) / ( 1. +  aB / mB0 ) ;
+    }
+
+//----------------------------------------------------------------------------
+
+    inline real
+    MaxwellMaterial::nm1_bt( const real aT, const real aB ) const
+    {
+        return ( mN1m1 + ( mN0m1-mN1m1 ) / ( 1. +  aB / mB0 ) ) * ( mT0 / aT ) ;
+    }
 
 //----------------------------------------------------------------------------
 }

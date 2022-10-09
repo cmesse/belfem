@@ -246,7 +246,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         real
-        Pb40Sn60::rho_el ( const real aJ, const real aT, const real aB ) const
+        Pb40Sn60::rho_el ( const real aJ, const real aT, const real aB, const real aAngle ) const
         {
             if( aT < mSwitchRT0 )
             {

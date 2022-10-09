@@ -58,6 +58,7 @@ namespace belfem
             Matrix< real > mdRhodx ;
             Matrix< real > mdRhody ;
             Matrix< real > mJz ;
+            Matrix< real > mJc ;
             Vector< int >  mPivot ;
             Matrix< real > mL ;
             Matrix< real > mN ;
@@ -232,7 +233,7 @@ namespace belfem
                     const Vector< real > & aHt,
                     const real aXLength,
                     const real aYLength,
-                    const real aRhoCrit,
+                    const real aNminus1,
                     Matrix< real > & aM ,
                     Matrix< real > & aK );
 
