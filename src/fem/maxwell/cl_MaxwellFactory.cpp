@@ -2163,6 +2163,18 @@ namespace belfem
                               mInputFile.section("maxwell")
                                       ->section("solver")->section("linear") );
 
+            // catch problem with PARDISO
+            if( aProjector->solver()->type() ==  SolverType::PARDISO )
+            {
+#ifdef BELFEM_STRUMPACK
+                aProjector->set_solver( SolverType::STRUMPACK );
+#elseif BELFEM_MUMPS
+                aProjector->set_solver( SolverType::MUMPS );
+#else
+                aProjector->set_solver( SolverType::UMFPACK );
+#endif
+            }
+
             // no BLR for L2, otherwise crash!
             aProjector->solver()->set_mumps_blr( BlockLowRanking::Off, 0.0 );
 
