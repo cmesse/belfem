@@ -215,14 +215,14 @@ int main( int    argc,
 
    uint & tTimeLoop = tFormulation->time_loop();
 
-   if( tTimeLoop == 0 )
-   {
-       tMesh->save( tOutFile );
-   }
+   //if( tTimeLoop == 0 )
+   //{
+   //    tMesh->save( tOutFile );
+   //}
 
    while( tTime < tMaxTime )
    {
-       if( tTimeLoop++ == 10 )
+       if( tTimeLoop++ == 100 )
        {
            // save mesh
            real tOldTime = tTime;
@@ -232,8 +232,8 @@ int main( int    argc,
            tTimeLoop = 1;
        }
 
-       real tOmegaP = tNonlinear.picardOmega ;
-       real tOmegaN = tNonlinear.newtonOmega ;
+       real tOmegaP = tTime == 0 ? 0.1 : tNonlinear.picardOmega ;
+       real tOmegaN = tTime == 0 ? 0.1 : tNonlinear.newtonOmega ;
 
        // increment timestep
        tTime += tDeltaTime;
@@ -261,8 +261,8 @@ int main( int    argc,
 
        Timer tTimer;
 
-       index_t tCountP = 0 ;
-       index_t tCountN = 0 ;
+       //index_t tCountP = 0 ;
+       //index_t tCountN = 0 ;
 
 
        while ( tEpsilon > tNonlinear.newtonEpsilon || tIter < tNonlinear.minIter )
@@ -272,7 +272,7 @@ int main( int    argc,
                tFormulation->set_algorithm( SolverAlgorithm::Picard );
                tFormulation->set_omega( tOmegaP );
 
-               if( tCountP++ > 0 )
+               /*if( tCountP++ > 0 )
                {
                        tOmegaP *= std::max(std::min( std::pow( tEpsilon0 / tEpsilon, 0.25 ), 1.05 ), 0.5 );
                        if ( tOmegaP > 1.0 )
@@ -281,23 +281,22 @@ int main( int    argc,
                        }
                }
                tCountN = 0 ;
-               tOmegaN = std::min( tOmegaN, tOmegaP );
+               tOmegaN = std::min( tOmegaN, tOmegaP ); */
            }
            else
            {
 
                tFormulation->set_algorithm( SolverAlgorithm::NewtonRaphson );
                tFormulation->set_omega( tOmegaN );
-               if( tCountN++ > 1 )
+               /*if( tCountN++ > 1 )
                {
-
                    tOmegaN *= std::max(std::min( std::pow( tEpsilon0 / tEpsilon, 0.25 ), 1.05 ), 0.5 );
 
                    if ( tOmegaN > 1.0 )
                    {
                        tOmegaN = 1.0;
                    }
-               }
+               }*/
            }
 
            tMagfield->compute_jacobian_and_rhs();
@@ -354,6 +353,7 @@ int main( int    argc,
 
            Vector< real > & tEJel = tMesh->field_data( "elementEJ");
            Vector< real > & tJel = tMesh->field_data( "elementJ");
+           Vector< real > & tJJcel = tMesh->field_data( "elementJJc");
            Vector< real > & tRhoel = tMesh->field_data( "elementRho");
 
            string tTimeString = sprint("%04u", tTimeCount ) ;
@@ -386,15 +386,14 @@ int main( int    argc,
                //tTapeFile << "t=" << tTime << ", " << std::endl ;
 
                tPipette.set_element_type( tMesh->block( tID )->element_type() );
-               tTapeFile << "x,v,j,e*j,rho" << std::endl ;
+               tTapeFile << "x,v,jjc,e*j,rho" << std::endl ;
 
-               real tJc = 47500e6 ;
                for( mesh::Element * tElement : tMesh->block( tID )->elements() )
                {
                     real tV = tPipette.measure( tElement );
                     tEI += tEJel( tElement->index() ) * tV ;
                     tI  += tJel( tElement->index() ) * tV ;
-                    tTapeFile << 0.5*(tElement->node( 0 )->x()+tElement->node( 1 )->x()) << "," << tV << "," << tJel( tElement->index() )/tJc << "," << tEJel( tElement->index() )<< "," << tRhoel( tElement->index() ) << std::endl ;
+                    tTapeFile << 0.5*(tElement->node( 0 )->x()+tElement->node( 1 )->x()) << "," << tV << "," << tJJcel( tElement->index() ) << "," << tEJel( tElement->index() )<< "," << tRhoel( tElement->index() ) << std::endl ;
                }
                tTapeFile.close() ;
 
@@ -431,8 +430,10 @@ int main( int    argc,
            tCSV.open( "acloss.csv", std::ios_base::app);
            tCSV <<  tTime << ", " << tI << ", " << tEI << ", " << std::log10(tK) << ", " << std::log10(tR) << std::endl ;
            tCSV.close() ;
-
-           std::cout << "    cond: " << tK << " " << tR << std::endl ;
+           if( tMagfield->solver()->type() == SolverType::MUMPS )
+           {
+               std::cout << "    cond: " << tK << " " << tR << std::endl;
+           }
        }
        else
        {

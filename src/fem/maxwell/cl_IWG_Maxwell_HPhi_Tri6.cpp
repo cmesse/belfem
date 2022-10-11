@@ -1602,7 +1602,7 @@ namespace belfem
                     real tHt =   dot( tInteg->phi( k ), mHt );
                     tJz = dot( mC.row( 0 ), aHt );
                     tB = std::sqrt( tHt*tHt + aHn*aHn ) ;
-                    tAlpha = tB < BELFEM_EPSILON ? 0 : std::acos( tHt / tB );
+                    tAlpha = tB < BELFEM_EPSILON ? 0 : std::abs( std::asin( tHt / tB ) );
                     tB *= constant::mu0 ;
 
                     tRho = std::max( tMaterial->rho_el( tJz, tT, tB, tAlpha ), BELFEM_EPS );
