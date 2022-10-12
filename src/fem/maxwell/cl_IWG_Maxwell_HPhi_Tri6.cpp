@@ -1543,8 +1543,11 @@ namespace belfem
 
             real xi = tXi( 0, aIntPoint );
 
-            mXi( 0 ) = xi - 0.005 ;
-            mXi( 1 ) = xi + 0.005 ;
+            real tdxi  = 0.01 ;
+            real tdeta = 0.01 ;
+
+            mXi( 0 ) = xi - tdxi ;
+            mXi( 1 ) = xi + tdxi ;
             mXi( 2 ) = xi ;
             mXi( 3 ) = xi ;
             mXi( 4 ) = xi ;
@@ -1560,8 +1563,8 @@ namespace belfem
 
                 mEta( 0 ) = eta ;
                 mEta( 1 ) = eta ;
-                mEta( 2 ) = eta-0.005 ; // because we have a left-hand system here
-                mEta( 3 ) = eta+0.005 ;
+                mEta( 2 ) = eta+tdeta  ; // because we have a left-hand system here
+                mEta( 3 ) = eta-tdeta  ;
                 mEta( 4 ) = eta ;
 
                 real tJz = 0 ;
@@ -1611,8 +1614,8 @@ namespace belfem
 
                 // remember values
                 mRho( k, aIntPoint ) = tRho ;
-                mdRhodx( k, aIntPoint ) = ( mPsi( 1 )-mPsi( 0 ) ) / ( 0.01 * aXLength );
-                mdRhody( k, aIntPoint ) = ( mPsi( 3)-mPsi( 2 ) ) / ( 0.01 * tThickness );
+                mdRhodx( k, aIntPoint ) = ( mPsi( 1 )-mPsi( 0 ) ) / ( tdxi * aXLength )  ;
+                mdRhody( k, aIntPoint ) = ( mPsi( 3)-mPsi( 2 ) ) / ( tdeta * tThickness ) ;
                 mJz( k, aIntPoint ) = tJz ;
 
                 tJc = tMaterial->j_crit( tT, tB , tAlpha );
@@ -1718,7 +1721,6 @@ namespace belfem
                 real xi = tXi( 0, l );
                 real tX = 0.5 * ( xi + 1.0 ) * aXLength ;
 
-
                 for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
                 {
 
@@ -1770,13 +1772,13 @@ namespace belfem
                     real tE0 = 0.5 - 1.5 * xi ;
                     real tE1 = 0.5 + 1.5 * xi ;
 
-                    /*mN( 0, 0 ) = tE0 * tPhi( 0 );
+                    mN( 0, 0 ) = tE0 * tPhi( 0 );
                     mN( 0, 1 ) = tE1 * tPhi( 0 );
                     mN( 0, 2 ) = tE0 * tPhi( 2 );
                     mN( 0, 3 ) = tE1 * tPhi( 2 );
                     mN( 0, 4 ) = tE0 * tPhi( 1 );
                     mN( 0, 5 ) = tE1 * tPhi( 1 );
-                    mN *= constant::mu0 / mDeltaTime ;*/
+                    mN *= constant::mu0;
 
                     mL( 0, 0 ) += tE0  * tVal ;
                     mL( 0, 1 ) += ( 1.5*xi + 0.5 )  * tVal ;
@@ -1806,13 +1808,14 @@ namespace belfem
 
                     // std::cout << "delta " << tDelta << std::endl ;
                     //real tTau = aRhoCrit == 0 ? tC : tC * std::pow( tRho / aRhoCrit, 2 ) ;
-                    real tTau = aNminus1 == 0 ? tC : tC * std::pow( mJz( k, l ) / mJc( k, k ), aNminus1 ) ;
+                    real tTau =  aNminus1 == 0 ? tC : tC * std::pow( mJz( k, l ) / mJc( k, k ), aNminus1 ) ;
 
-                    // aK += tW( l ) * tW( k ) * trans( mL ) * mL * tDetJ ;
                     aM += tW( l ) * tW( k ) * trans( mL ) * mL * tDetJ * tTau ;
-                    tR += tW( l ) * tW( k ) * tTau * tDetJ ;
 
-                    //aM += tW( l ) * tW( k ) * tTau * trans( mL ) * mL * tDetJ ;
+
+                    //aM += tW( l ) * tW( k ) * trans( mL ) * mN * tDetJ * tTau ;
+
+                    //aK += tW( l ) * tW( k ) * trans( mL ) * mL * tDetJ * tTau ;
 
 
                     /*mL( 0, 0 ) = 0.5 * ( 1. - 3. * xi );
@@ -1835,12 +1838,6 @@ namespace belfem
 
 
             aK.fill( 0.0 );
-            /*real tD = 0 ;
-            for( uint k=0; k<6; ++k )
-            {
-                tD += aL( k, k )*tDelta*aL( k, k ) ;
-            }
-            tD = std::sqrt( tD ); */
 
         }
 

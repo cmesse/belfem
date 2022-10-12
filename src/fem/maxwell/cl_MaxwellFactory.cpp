@@ -2168,7 +2168,7 @@ namespace belfem
             {
 #ifdef BELFEM_STRUMPACK
                 aProjector->set_solver( SolverType::STRUMPACK );
-#elseif BELFEM_MUMPS
+#elif BELFEM_MUMPS
                 aProjector->set_solver( SolverType::MUMPS );
 #else
                 aProjector->set_solver( SolverType::UMFPACK );
