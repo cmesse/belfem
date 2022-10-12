@@ -66,6 +66,8 @@ namespace belfem
             Vector< real >  mEta ;
             Vector< real >  mPhi ;
             Vector< real >  mPsi ;
+            Vector< real >  mX ;
+            Vector< real >  mY ;
 
 //------------------------------------------------------------------------------
         public:

@@ -222,7 +222,7 @@ int main( int    argc,
 
    while( tTime < tMaxTime )
    {
-       if( tTimeLoop++ == 100 )
+       if( tTimeLoop++ == 10 )
        {
            // save mesh
            real tOldTime = tTime;

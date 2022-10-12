@@ -99,6 +99,9 @@ namespace belfem
             mEta.set_size( 5 );
             mPhi.set_size( 3 );
             mPsi.set_size( 5 );
+            mX.set_size( 5 );
+            mY.set_size( 5 );
+
         }
 
 //------------------------------------------------------------------------------
@@ -1543,11 +1546,11 @@ namespace belfem
 
             real xi = tXi( 0, aIntPoint );
 
-            real tdxi  = 0.01 ;
-            real tdeta = 0.01 ;
+            real tdxi  = 0.001 ;
+            real tdeta = 0.001 ;
 
-            mXi( 0 ) = xi - tdxi ;
-            mXi( 1 ) = xi + tdxi ;
+            mXi( 0 ) = xi + tdxi ;
+            mXi( 1 ) = xi - tdxi ;
             mXi( 2 ) = xi ;
             mXi( 3 ) = xi ;
             mXi( 4 ) = xi ;
@@ -1563,8 +1566,8 @@ namespace belfem
 
                 mEta( 0 ) = eta ;
                 mEta( 1 ) = eta ;
-                mEta( 2 ) = eta+tdeta  ; // because we have a left-hand system here
-                mEta( 3 ) = eta-tdeta  ;
+                mEta( 2 ) = eta-tdeta  ; //flip sign, because we have a left-hand system here
+                mEta( 3 ) = eta+tdeta  ;
                 mEta( 4 ) = eta ;
 
                 real tJz = 0 ;
