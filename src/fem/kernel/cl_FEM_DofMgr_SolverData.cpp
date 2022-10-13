@@ -1823,6 +1823,17 @@ namespace belfem
                 {
                     aFile.load_data( "VolumeLoads", mVolumeLoads );
                 }
+		if( mFieldValues.length() > 0 )
+		{
+		    aFile.load_data( "FieldValues", mFieldValues );
+		    for ( Dof * tDof : mDOFs )
+		    {
+			    if( ! tDof->is_fixed() )
+			    {
+				    tDof->value() = mFieldValues( tDof->index() );
+			    }
+		    }
+		}
             }
 
             void
@@ -1851,7 +1862,10 @@ namespace belfem
                 {
                     aFile.save_data( "VolumeLoads", mVolumeLoads );
                 }
-
+		if( mFieldValues.length() > 0 )
+		{
+		    aFile.save_data( "FieldValues", mFieldValues );
+		}
             }
 
 #endif

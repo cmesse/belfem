@@ -322,11 +322,12 @@ namespace belfem
     real
     Spline::eval( const real aX ) const
     {
-        index_t tCol = find_col( aX );
+	real tX = aX > mXmax ? mXmax : aX ;
+	index_t tCol = find_col( tX );
 
-        return (   ( mData( 0, tCol )   * aX
-                   + mData( 1, tCol ) ) * aX
-                   + mData( 2, tCol ) ) * aX
+        return (   ( mData( 0, tCol )   * tX
+                   + mData( 1, tCol ) ) * tX
+                   + mData( 2, tCol ) ) * tX
                    + mData( 3, tCol );
     }
 
@@ -335,10 +336,11 @@ namespace belfem
     real
     Spline::deval( const real aX ) const
     {
-        auto tCol = find_col( aX );
+	real tX = aX > mXmax ? mXmax : aX ;
+        auto tCol = find_col( tX );
 
-        return ( ( 3.0 * mData( 0, tCol )   * aX
-                 + 2.0 * mData( 1, tCol ) ) * aX
+        return ( ( 3.0 * mData( 0, tCol )   * tX
+                 + 2.0 * mData( 1, tCol ) ) * tX
                  +       mData( 2, tCol ) );
     }
 
@@ -347,9 +349,10 @@ namespace belfem
     real
     Spline::ddeval( const real aX ) const
     {
-        auto tCol = find_col( aX );
+	real tX = aX > mXmax ? mXmax : aX ;
+        auto tCol = find_col( tX );
 
-        return 6.0 * mData( 0, tCol ) * aX + 2.0 * mData( 1, tCol );
+        return 6.0 * mData( 0, tCol ) * tX + 2.0 * mData( 1, tCol );
     }
 
 //------------------------------------------------------------------------------
@@ -357,10 +360,11 @@ namespace belfem
     real
     Spline::entropy( const real aX ) const
     {
-        auto tCol = find_col( aX );
-        return      ( 1.5 * mData( 0, tCol )   * aX
-                   +  2.0 * mData( 1, tCol ) ) * aX
-                   +        mData( 2, tCol )   * std::log( aX )
+	real tX = aX > mXmax ? mXmax : aX ;
+        auto tCol = find_col( tX );
+        return      ( 1.5 * mData( 0, tCol )   * tX
+                   +  2.0 * mData( 1, tCol ) ) * tX
+                   +        mData( 2, tCol )   * std::log( tX )
                    +        mData( 4, tCol );
     }
 
