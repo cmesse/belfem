@@ -2256,7 +2256,6 @@ namespace belfem
                 Matrix< real > & aM,
                 Matrix< real > & aK )
         {
-
             const IntegrationData * tNodeFunction = this->interface_data( aElement );
 
             // get integration weights
@@ -2267,6 +2266,9 @@ namespace belfem
             // grab node coords for normal vector
             if( aElement->element()->is_curved() )
             {
+                // needed for normal computation, but is also done in interface data
+                // this->collect_node_coords( aElement->master(), mGroup->work_Xm() );
+
                 for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
                 {
                     // compute the normal
@@ -2541,7 +2543,6 @@ namespace belfem
                 Matrix< real > & aJacobian,
                 Vector< real > & aRHS )
         {
-
 
             aJacobian( 0, 0 ) =  0.0 ;
             aJacobian( 1, 0 ) =  0.0 ;
@@ -2931,5 +2932,6 @@ namespace belfem
         }
 
 //------------------------------------------------------------------------------
+
     }
 }

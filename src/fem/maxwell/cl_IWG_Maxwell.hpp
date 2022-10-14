@@ -76,8 +76,6 @@ namespace belfem
             //! map telling the gost indices of thin shell elements
             Map< luint, mesh::Element * > mGhostElementMap ;
 
-            Vector< real > mNormal2D = { 0., 0., };
-            Vector< real > mNormal3D = { 0., 0., 0. };
             Vector< real > mQ0cut = { 0, 0, 0 };
 
 //------------------------------------------------------------------------------
@@ -387,7 +385,6 @@ namespace belfem
             compute_jacobian_and_rhs_cut( Element        * aElement,
                                           Matrix< real > & aJacobian,
                                           Vector< real > & aRHS );
-
 //------------------------------------------------------------------------------
         private:
 //------------------------------------------------------------------------------
@@ -729,22 +726,7 @@ namespace belfem
         inline const Vector< real > &
         IWG_Maxwell::normal_straight_2d( Element * aElement )
         {
-
-            BELFEM_ASSERT( mesh::geometry_type( aElement->element()->type() ) == GeometryType::LINE,
-                          "Element must be a line" );
-
-            // get the normal vector
-            Vector< real > & aN = mNormal2D ;
-            aN( 0 ) = aElement->element()->node( 1 )->y()  - aElement->element()->node( 0 )->y() ;
-            aN( 1 ) = aElement->element()->node( 0 )->x()  - aElement->element()->node( 1 )->x() ;
-
-            mGroup->work_det_J() = norm( aN );
-            aN /= mGroup->work_det_J() ;
-
-            // scale determinant
-            mGroup->work_det_J() *= 0.5 ;
-
-            return aN ;
+            return this->normal_tri3( aElement );
         }
 
 //------------------------------------------------------------------------------
@@ -752,26 +734,8 @@ namespace belfem
         inline const Vector< real > &
         IWG_Maxwell::normal_curved_2d( Element * aElement, const uint aIndex )
         {
-            const Matrix< real > & tdNdXi = mGroup->dNdXi( aIndex );
-            const Matrix< real > & tX = mGroup->work_X() ;
-
-            mNormal2D.fill( 0.0 );
-            for( uint k=0; k<aElement->element()->number_of_nodes(); ++k )
-            {
-                mNormal2D( 0 ) +=  tdNdXi( 0, k ) * tX( k, 1 );
-                mNormal2D( 1 ) -=  tdNdXi( 0, k ) * tX( k, 0 );
-            }
-
-            mGroup->work_det_J() = norm( mNormal2D );
-            mNormal2D /= mGroup->work_det_J() ;
-
-            // scale determinant
-            mGroup->work_det_J() *= 0.5 ;
-
-            return mNormal2D ;
+            return this->normal_tri6( aElement, aIndex );
         }
-
-
 
 //------------------------------------------------------------------------------
 

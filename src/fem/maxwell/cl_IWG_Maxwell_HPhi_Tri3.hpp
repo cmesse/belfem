@@ -114,6 +114,30 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
+            compute_jacobian_and_rhs_antisymmetry_air(
+                    Element        * aElement,
+                    Matrix< real > & aJacobian,
+                    Vector< real > & aRHS ) ;
+
+//------------------------------------------------------------------------------
+
+            void
+            compute_jacobian_and_rhs_symmetry_ferro(
+                    Element        * aElement,
+                    Matrix< real > & aJacobian,
+                    Vector< real > & aRHS ) ;
+
+//------------------------------------------------------------------------------
+
+            void
+            compute_jacobian_and_rhs_antisymmetry_ferro(
+                    Element        * aElement,
+                    Matrix< real > & aJacobian,
+                    Vector< real > & aRHS ) ;
+
+//------------------------------------------------------------------------------
+
+            void
             compute_jacobian_and_rhs_cut(
                     Element        * aElement,
                     Matrix< real > & aJacobian,

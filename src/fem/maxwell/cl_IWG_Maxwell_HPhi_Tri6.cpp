@@ -190,7 +190,7 @@ namespace belfem
                         {
                             // get subtype for magfield bc
                             switch ( reinterpret_cast< const MaxwellBoundaryConditionMagfield * >(
-                                    mGroup->boundary_condition())->subtype())
+                                    mGroup->boundary_condition())->subtype() )
                             {
                                 case ( MagfieldBcType::Wave ) :
                                 {
@@ -210,7 +210,6 @@ namespace belfem
                                             &IWG_Maxwell_HPhi_Tri6::compute_jacobian_and_rhs_antisymmetry_air ;
                                     break;
                                 }
-
                                 default :
                                 {
                                     BELFEM_ERROR( false, "Invalid boundary condition subtype" );
@@ -255,6 +254,13 @@ namespace belfem
                 Matrix< real > & aJacobian,
                 Vector< real > & aRHS )
         {
+            // make sure that the facet is correctly oriented
+            BELFEM_ASSERT( static_cast< DomainType >( aElement->master()->element()->physical_tag() ) == DomainType::Conductor,
+                           "Master element of facet %lu must be of DomainType::Conductor", ( long unsigned int ) aElement->id() );
+
+            BELFEM_ASSERT( static_cast< DomainType >( aElement->slave()->element()->physical_tag() ) == DomainType::Air,
+                           "Master element of facet %lu must be of DomainType::Air", ( long unsigned int ) aElement->id() );
+
             // link edge function with element
             const IntegrationData * tNodeFunction = this->interface_data( aElement );
 
@@ -266,7 +272,6 @@ namespace belfem
 
             Vector< real > & tnxE  = mGroup->work_tau() ;
             Vector< real > & tnxB  = mGroup->work_sigma() ;
-
 
             // now we can build the stiffness matrix
             Matrix< real > & tK = aJacobian ;
@@ -295,6 +300,10 @@ namespace belfem
 
             if( aElement->master()->element()->is_curved() )
             {
+                // needed for normal, but is also done by this->interface_data( aElement );
+                // this->collect_node_coords( aElement->master(), mGroup->work_Xm() );
+                // this->collect_node_coords( aElement->slave(), mGroup->work_Xs() );
+
                 for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
                 {
                     // gradient operator for air element
@@ -435,17 +444,28 @@ namespace belfem
                 Matrix< real > & aJacobian,
                 Vector< real > & aRHS )
         {
+            // make sure that the facet is correctly oriented
+            BELFEM_ASSERT( static_cast< DomainType >( aElement->master()->element()->physical_tag() ) == DomainType::Ferro,
+                           "Master element of facet %lu must be of DomainType::Ferro", ( long unsigned int ) aElement->id() );
+
+            BELFEM_ASSERT( static_cast< DomainType >( aElement->slave()->element()->physical_tag() ) == DomainType::Air,
+                           "Master element of facet %lu must be of DomainType::Air", ( long unsigned int ) aElement->id() );
+
+
             const IntegrationData * tMaster =  mGroup->master_integration(
                     aElement->facet()->master_index() ) ;
 
             const IntegrationData * tSlave =  mGroup->slave_integration(
                     aElement->facet()->slave_index() ) ;
 
+
             // get node coords, needed to compute geometry Jacobian
             aElement->slave()->get_node_coors( mGroup->work_Xs() );
+
             // the B-Matrix
             Matrix< real > & tK = mGroup->work_K() ;
             Matrix< real > & tM = aJacobian ;
+
             //Matrix< real > & tJ = mGroup->work_J() ;
             Matrix< real > & tB = mGroup->work_B() ;
             Vector< real > & tnxB = mGroup->work_sigma() ;
@@ -453,11 +473,12 @@ namespace belfem
 
             tK.fill( 0.0 );
 
+            // collect node coords, needed below and to compo
+            this->collect_node_coords( aElement->master(), mGroup->work_Xm() );
+            this->collect_node_coords( aElement->slave(), mGroup->work_Xs() );
+
             if( aElement->element()->is_curved() )
             {
-                // grab node coords for normal vector
-                aElement->get_node_coors( mGroup->work_X() );
-
                 for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
                 {
                     const Vector< real > & tn = this->normal_curved_2d( aElement, k );
@@ -526,7 +547,7 @@ namespace belfem
 
 
                 // grab node coords for normal vector
-                aElement->get_node_coors( mGroup->work_X() );
+                this->collect_node_coords( aElement->master(), mGroup->work_Xm() );
 
                 // integration weights
                 const Vector< real > & tW = mGroup->integration_weights();
@@ -636,95 +657,9 @@ namespace belfem
                 Matrix< real > & aJacobian,
                 Vector< real > & aRHS )
         {
-            // the right hand side of the matrix
-            aJacobian.fill( 0.0 );
-            aRHS.fill( 0.0 );
-
-            // get the node coordinates
-            Matrix< real > & tXm = mGroup->work_Xm();
-            this->collect_node_coords( aElement, mGroup->work_X() );
-            this->collect_node_coords( aElement->master(), tXm );
-
-            // get integration data from master
-            const IntegrationData * tMaster =
-                    mGroup->master_integration( aElement->facet()->master_index() );
-
-            // get the integration weights
-            const Vector< real > tW = tMaster->weights();
-
-
-            // the gradient operator matrix
-            Matrix< real > & tB = mGroup->work_B();
-
-            // scaling parameter
-            const real & tDetJ = mGroup->work_det_J() ;
-
-            uint p = mNumberOfNodesPerElement ;
-            uint q = mNumberOfNodesPerElement+1 ;
-
-            real tValue ;
-
-            // Edge Function
-            mEdgeFunctionTS->link( aElement );
-
-            if( aElement->master()->element()->is_curved() )
-            {
-                // loop over all integration points
-                for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
-                {
-
-                    // gradient operator for air element
-                    tB = inv( tMaster->dNdXi( k ) * tXm ) * tMaster->dNdXi( k ) ;
-
-                    // normal at integration point ( also computes mGroup->work_det_J() )
-                    const Vector< real > & tn = this->normal_curved_2d( aElement, k );
-
-                    // matrix for n' · b
-                    for( uint i=0; i<mNumberOfNodesPerElement; ++i )
-                    {
-                        tValue = tW( k ) * ( tn( 0 ) * tB( 0, i )
-                                                  + tn( 1 ) * tB( 1, i ) )  ;
-
-                        aJacobian( p, i ) += mEdgeFunctionTS->E( k )( 0, 0 ) * tValue ;
-                        aJacobian( q, i ) += mEdgeFunctionTS->E( k )( 0, 1 ) * tValue ;
-                        aJacobian( i, p ) += mEdgeFunctionTS->E( k )( 0, 0 ) * tValue ;
-                        aJacobian( i, q ) += mEdgeFunctionTS->E( k )( 0, 1 ) * tValue ;
-                    }
-                }
-
-                aJacobian *= constant::mu0 ;
-            }
-            else
-            {
-
-                // the geometry Jacobian
-                Matrix< real > & tInvJ = mGroup->work_J() ;
-                tInvJ = inv( tMaster->dNdXi( 0 ) * tXm );
-
-                // normal at integration point ( also computes mGroup->work_det_J() )
-                const Vector< real > & tn = this->normal_straight_2d( aElement );
-
-                // loop over all integration points
-                for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
-                {
-                    // gradient operator for air element
-                    tB = tInvJ * tMaster->dNdXi( k ) ;
-
-                    // matrix for n' · b
-                    for( uint i=0; i<mNumberOfNodesPerElement; ++i )
-                    {
-                        tValue = tW( k ) * ( tn( 0 ) * tB( 0, i )
-                                                  + tn( 1 ) * tB( 1, i ) )  ;
-
-                        aJacobian( p, i ) += mEdgeFunctionTS->E( k )( 0, 0 ) * tValue ;
-                        aJacobian( q, i ) += mEdgeFunctionTS->E( k )( 0, 1 ) * tValue ;
-                        aJacobian( i, p ) += mEdgeFunctionTS->E( k )( 0, 0 ) * tValue ;
-                        aJacobian( i, q ) += mEdgeFunctionTS->E( k )( 0, 1 ) * tValue ;
-                    }
-                }
-
-                aJacobian *= tDetJ * constant::mu0 ;
-            }
+            // that this works is a coincidence that we shamelessly exploit
+            this->compute_jacobian_and_rhs_antisymmetry_ferro( aElement, aJacobian, aRHS );
+            aJacobian *= constant::mu0 ;
         }
 
 //------------------------------------------------------------------------------
@@ -735,97 +670,9 @@ namespace belfem
                 Matrix< real > & aJacobian,
                 Vector< real > & aRHS )
         {
-
-            // the right hand side of the matrix
-            aJacobian.fill( 0.0 );
-            aRHS.fill( 0.0 );
-
-            // get the node coordinates
-            Matrix< real > & tXm = mGroup->work_Xm();
-            this->collect_node_coords( aElement, mGroup->work_X() );
-            this->collect_node_coords( aElement->master(), tXm );
-
-            // get integration data from master
-            const IntegrationData * tMaster =
-                    mGroup->master_integration( aElement->facet()->master_index() );
-
-            // get the integration weights
-            const Vector< real > tW = tMaster->weights();
-
-
-            // the gradient operator matrix
-            Matrix< real > & tB = mGroup->work_B();
-
-            // scaling parameter
-            const real & tDetJ = mGroup->work_det_J() ;
-
-            uint p = mNumberOfNodesPerElement ;
-            uint q = mNumberOfNodesPerElement+1 ;
-
-            real tValue ;
-
-            // Edge Function
-            mEdgeFunctionTS->link( aElement );
-
-            if( aElement->master()->element()->is_curved() )
-            {
-                // loop over all integration points
-                for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
-                {
-
-                    // gradient operator for air element
-                    tB = inv( tMaster->dNdXi( k ) * tXm ) * tMaster->dNdXi( k ) ;
-
-                    // normal at integration point ( also computes mGroup->work_det_J() )
-                    const Vector< real > & tn = this->normal_curved_2d( aElement, k );
-
-                    // matrix for n x b
-
-                    for( uint i=0; i<mNumberOfNodesPerElement; ++i )
-                    {
-                        tValue = tW( k ) * ( tn( 1 ) * tB( 0, i )
-                                                    - tn( 0 ) * tB( 1, i ) )  ;
-
-                        aJacobian( p, i ) += mEdgeFunctionTS->E( k )( 0, 0 ) * tValue ;
-                        aJacobian( q, i ) += mEdgeFunctionTS->E( k )( 0, 1 ) * tValue ;
-                        aJacobian( i, p ) += mEdgeFunctionTS->E( k )( 0, 0 ) * tValue ;
-                        aJacobian( i, q ) += mEdgeFunctionTS->E( k )( 0, 1 ) * tValue ;
-                    }
-                }
-
-                aJacobian *= constant::mu0 ;
-            }
-            else
-            {
-
-                // the geometry Jacobian
-                Matrix< real > & tInvJ = mGroup->work_J() ;
-                tInvJ = inv( tMaster->dNdXi( 0 ) * tXm );
-
-                // normal at integration point ( also computes mGroup->work_det_J() )
-                const Vector< real > & tn = this->normal_straight_2d( aElement );
-
-                // loop over all integration points
-                for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
-                {
-                    // gradient operator for air element
-                    tB = tInvJ * tMaster->dNdXi( k ) ;
-
-                    // matrix for n x b
-                    for( uint i=0; i<mNumberOfNodesPerElement; ++i )
-                    {
-                        tValue = tW( k ) * ( tn( 1 ) * tB( 0, i )
-                                                  - tn( 0 ) * tB( 1, i ) )  ;
-
-                        aJacobian( p, i ) += mEdgeFunctionTS->E( k )( 0, 0 ) * tValue ;
-                        aJacobian( q, i ) += mEdgeFunctionTS->E( k )( 0, 1 ) * tValue ;
-                        aJacobian( i, p ) += mEdgeFunctionTS->E( k )( 0, 0 ) * tValue ;
-                        aJacobian( i, q ) += mEdgeFunctionTS->E( k )( 0, 1 ) * tValue ;
-                    }
-                }
-
-                aJacobian *= tDetJ * constant::mu0 ;
-            }
+            // that this works is a coincidence that we shamelessly exploit
+            this->compute_jacobian_and_rhs_symmetry_ferro( aElement, aJacobian, aRHS );
+            aJacobian *= constant::mu0 ;
         }
 
 //------------------------------------------------------------------------------
@@ -851,8 +698,7 @@ namespace belfem
                     mGroup->master_integration( aElement->facet()->master_index() );
 
             // get the integration weights
-            const Vector< real > tW = tMaster->weights();
-
+            const Vector< real > & tW = mGroup->integration_weights();
 
             // the gradient operator matrix
             Matrix< real > & tB = mGroup->work_B();
@@ -950,7 +796,7 @@ namespace belfem
                     mGroup->master_integration( aElement->facet()->master_index() );
 
             // get the integration weights
-            const Vector< real > tW = tMaster->weights();
+            const Vector< real > & tW = mGroup->integration_weights();
 
 
             // the gradient operator matrix
@@ -972,12 +818,11 @@ namespace belfem
                 // loop over all integration points
                 for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
                 {
-
-                    // gradient operator for air element
-                    tB = inv( tMaster->dNdXi( k ) * tXm ) * tMaster->dNdXi( k ) ;
-
                     // normal at integration point ( also computes mGroup->work_det_J() )
                     const Vector< real > & tn = this->normal_curved_2d( aElement, k );
+
+                    // gradient operator for air element
+                    tB = inv( mGroup->work_J() ) * tMaster->dNdXi( k ) ;
 
                     // matrix for n x b
 
@@ -1182,7 +1027,7 @@ namespace belfem
                 mE( 1 ) = mEdgeFunctionTS->E( k )( 0, 1 );
 
                 // gradient operator master
-                tBm = inv( tIntMaster->dNdXi( k ) * tXm ) * tIntMaster->dNdXi( k );
+                tBm = inv( mGroup->work_J() ) * tIntMaster->dNdXi( k );
 
                 // gradient operator slave
                 tBs = inv( tIntSlave->dNdXi( k ) * tXs ) * tIntSlave->dNdXi( k );
@@ -1346,14 +1191,33 @@ namespace belfem
 
                 this->collect_edge_data_from_layer( aElement, "edge_h", l, tHt );
 
-                // initial offset for node coordinate
+                // initial offset for node coo
                 p = 2 * mNumberOfNodesPerElement ;
 
                 for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
                 {
+
                     // evaluate points for edge function
                     mE( 0 ) = mEdgeFunctionTS->E( k )( 0, 0 );
                     mE( 1 ) = mEdgeFunctionTS->E( k )( 0, 1 );
+
+                    // gradient operator master
+                    tBm = inv( tIntMaster->dNdXi( k ) * tXm ) * tIntMaster->dNdXi( k );
+
+                    // gradient operator slave
+                    tBs = inv( tIntSlave->dNdXi( k ) * tXs ) * tIntSlave->dNdXi( k );
+
+                    Vector< real > tHm( tBm * tPhiM );
+                    Vector< real > tHs( tBs * tPhiS );
+
+
+                    //std::cout << "check M " << tHm( 0 ) << " " <<
+                    //      mE( 0 ) * tHt( 0 )
+                    //    + mE( 1 ) *  tHt( 1 ) << std::endl ;
+                    //std::cout << "check S " << tHs( 0 ) << " " << mE( 0 ) *  tHt( 4 ) +  mE( 1 ) *  tHt( 5 ) << std::endl ;
+
+
+
 
                     this->compute_layer_mass( l, mE( 0 ), mE( 1 ), tMlayer );
 

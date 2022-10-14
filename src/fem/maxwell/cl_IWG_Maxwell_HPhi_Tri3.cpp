@@ -49,7 +49,7 @@ namespace belfem
             mFields.MagneticFieldDensity     = { "bx", "by", "bz" };
             mFields.CurrentDensity = {  "jz" };
             mFields.CurrentBC = { "lambda_I" };
-            mFields.Ghost = { "elementEJ", "elementJ" };
+            mFields.Ghost = { "elementEJ", "elementJ", "elementJJc", "elementRho" };
 
             mEdgeDofMultiplicity = 1 ;
             mFaceDofMultiplicity = 0 ;
@@ -113,11 +113,29 @@ namespace belfem
                             & IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_fmair ;
                     break ;
                 }
-                case ( DomainType::Symmetry ) :
+                case ( DomainType::SymmetryAir ) :
                 {
                     mFunJacobian =
                             &IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_symmetry_air ;
                     break;
+                }
+                case ( DomainType::AntiSymmetryAir ) :
+                {
+                    mFunJacobian =
+                            & IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_antisymmetry_air ;
+                    break;
+                }
+                case( DomainType::SymmetryFerro ) :
+                {
+                    mFunJacobian =
+                            &IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_symmetry_ferro ;
+                    break;
+                }
+                case( DomainType::AntiSymmetryFerro ) :
+                {
+                    mFunJacobian =
+                            & IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_antisymmetry_ferro ;
+                    break ;
                 }
                 case( DomainType::Boundary ) :
                 {
@@ -132,7 +150,19 @@ namespace belfem
                                 case ( MagfieldBcType::Wave ) :
                                 {
                                     mFunJacobian =
-                                            &IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_wave ;
+                                            & IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_wave ;
+                                    break;
+                                }
+                                case ( MagfieldBcType::Symmetry ) :
+                                {
+                                    mFunJacobian =
+                                            & IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_symmetry_air ;
+                                    break;
+                                }
+                                case ( MagfieldBcType::AntiSymmetry ) :
+                                {
+                                    mFunJacobian =
+                                            & IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_antisymmetry_air ;
                                     break;
                                 }
                                 default :
@@ -277,6 +307,7 @@ namespace belfem
             // compute Jacobian and B-function for air
             aElement->slave()->get_node_coors( mGroup->work_Xs() );
 
+            this->collect_node_coords( aElement->slave(), mGroup->work_Xs() );
             mGroup->work_J() = tSlave->dNdXi( 0 ) * mGroup->work_Xs() ;
 
             mGroup->work_B() = inv( mGroup->work_J() ) * tSlave->dNdXi( 0 );
@@ -412,7 +443,35 @@ namespace belfem
                 Matrix< real > & aJacobian,
                 Vector< real > & aRHS )
         {
+            // that this works is a coincidence that we shamelessly exploit
+            this->compute_jacobian_and_rhs_antisymmetry_ferro( aElement,
+                                                               aJacobian,
+                                                               aRHS ) ;
+            aJacobian *= constant::mu0 ;
+        }
 
+//------------------------------------------------------------------------------
+
+        void
+        IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_antisymmetry_air(
+                Element        * aElement,
+                Matrix< real > & aJacobian,
+                Vector< real > & aRHS )
+        {
+            // that this works is a coincidence that we shamelessly exploit
+            this->compute_jacobian_and_rhs_symmetry_ferro( aElement, aJacobian, aRHS );
+
+            aJacobian *= constant::mu0 ;
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_symmetry_ferro(
+                Element        * aElement,
+                Matrix< real > & aJacobian,
+                Vector< real > & aRHS )
+        {
             // the right hand side of the matrix
             aJacobian.fill( 0.0 );
             aRHS.fill( 0.0 );
@@ -434,15 +493,63 @@ namespace belfem
 
             // compute the values for the matrix
             aJacobian( 0, 3 ) =
-                      tn( 0 ) * tB( 0, 0 )
+                    tn( 1 ) * tB( 0, 0 )
+                    - tn( 0 ) * tB( 1, 0 ) ;
+
+            aJacobian( 1, 3 ) =
+                    tn( 1 ) * tB( 0, 1 )
+                    - tn( 0 ) * tB( 1, 1 ) ;
+
+            aJacobian( 2, 3 ) =
+                    tn( 1 ) * tB( 0, 2 )
+                    - tn( 0 ) * tB( 1, 2 ) ;
+
+
+            aJacobian( 3, 0 ) = aJacobian( 0, 3 );
+            aJacobian( 3, 1 ) = aJacobian( 1, 3 ) ;
+            aJacobian( 3, 2 ) = aJacobian( 2, 3 ) ;
+
+            aJacobian *= 2.0 * mGroup->work_det_J();
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_antisymmetry_ferro(
+                Element        * aElement,
+                Matrix< real > & aJacobian,
+                Vector< real > & aRHS )
+        {
+            // the right hand side of the matrix
+            aJacobian.fill( 0.0 );
+            aRHS.fill( 0.0 );
+
+            // get the node coordinates
+            Matrix< real > & tXm = mGroup->work_Xm() ;
+            this->collect_node_coords( aElement->master(), tXm );
+
+            // get integration data from master
+            const IntegrationData * tMaster =
+                    mGroup->master_integration( aElement->facet()->master_index() );
+
+            // compute the B-Operator
+            Matrix< real > & tB = mGroup->work_B() ;
+            tB = inv( tMaster->dNdXi( 0 ) * tXm ) * tMaster->dNdXi( 0 ) ;
+
+            // compute the normal
+            const Vector< real > & tn = this->normal_straight_2d( aElement );
+
+            // compute the values for the matrix
+            aJacobian( 0, 3 ) =
+                    tn( 0 ) * tB( 0, 0 )
                     + tn( 1 ) * tB( 1, 0 ) ;
 
             aJacobian( 1, 3 ) =
-                      tn( 0 ) * tB( 0, 1 )
+                    tn( 0 ) * tB( 0, 1 )
                     + tn( 1 ) * tB( 1, 1 ) ;
 
             aJacobian( 2, 3 ) =
-                      tn( 0 ) * tB( 0, 2 )
+                    tn( 0 ) * tB( 0, 2 )
                     + tn( 1 ) * tB( 1, 2 ) ;
 
 
@@ -450,7 +557,7 @@ namespace belfem
             aJacobian( 3, 1 ) = aJacobian( 1, 3 ) ;
             aJacobian( 3, 2 ) = aJacobian( 2, 3 ) ;
 
-            aJacobian *= 2.0 * mGroup->work_det_J() * constant::mu0 ;
+            aJacobian *= 2.0 ;
         }
 
 //------------------------------------------------------------------------------
@@ -503,6 +610,9 @@ namespace belfem
             // data for magnetic field (H-data)
             Vector< real > & tHt = mGroup->work_sigma() ;
 
+            // stiffness matrix
+            Matrix< real > & tA = tK;
+
             // additional indices
             uint p ;
             uint q ;
@@ -547,87 +657,15 @@ namespace belfem
             // gradient operator master
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-            // gradient operator
+            // gradient operators
             tBm = inv( tMaster->dNdXi( 0 ) * tXm ) * tMaster->dNdXi( 0 ) ;
+            tBs = inv( tSlave->dNdXi( 0 ) * tXs ) * tSlave->dNdXi( 0 ) ;
 
             // get phi field
             this->collect_node_data( aElement->master(), "phi", tPhi );
 
             // compute normal field (needed for material properties in stiffness matrix)
             real tHn  = -dot( tn.vector_data(), tBm * tPhi );
-
-            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            // lambda-condition for master element, air side
-            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-            // compute the B-Matrix ( is constant for linear elements )
-            crossmat( tn, tBm, tnxB );
-
-            // get the column
-            p = 0 ;
-
-#ifdef HPHI_TRI3_LAMBDAN
-            q = aRHS.length() - 3 ;
-#else
-            q = aRHS.length() - 2 ;
-#endif
-            for( uint i=0; i<mNumberOfNodesPerElement; ++i )
-            {
-                tM( p, q ) = tnxB( i ) ;
-                tM( q, p ) = tnxB( i ) ;
-                ++p ;
-            }
-
-            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            // gradient operator slave
-            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-            // gradient operator
-            tBs = inv( tSlave->dNdXi( 0 ) * tXs ) * tSlave->dNdXi( 0 ) ;
-
-            // get phi field
-            this->collect_node_data( aElement->slave(), "phi", tPhi );
-
-            // real tHns = -dot( tn.vector_data(), tBs * tPhi );
-            //Vector< real > tH1 = tBs * tPhi ;
-            //tH1 *= -1 ;
-
-            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            // lambda-condition for slave element, air side
-            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-            // next column
-            p = mNumberOfNodesPerElement ;
-#ifdef HPHI_TRI3_LAMBDAN
-            q = aRHS.length() - 2 ; // #lambda_n
-#else
-            q = aRHS.length() - 1 ; // #lambda_n
-#endif
-            crossmat( tn, tBs, tnxB );
-
-            // loop over all nodes
-            for( uint i=0; i<mNumberOfNodesPerElement; ++i )
-            {
-                tM( p, q ) = tnxB( i ) ;
-                tM( q, p ) = tnxB( i ) ;
-                ++p ;
-            }
-
-            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            // lambda-condition for master element, sheet side
-            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            q--;
-            tM( p, q ) = 1.0 ;
-            tM( q, p ) = 1.0 ;
-
-            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            // lambda-condition for slave element, sheet side
-            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            p = q-1 ;
-            q++;
-            tM( p, q ) = 1.0 ;
-            tM( q, p ) = 1.0 ;
-
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // contribution for mass and stiffness matrix
@@ -648,6 +686,9 @@ namespace belfem
 
                 this->collect_edge_data_from_layer( aElement, "edge_h", l, tHt );
 
+                Vector< real > tH( 2 );
+                tH = tBm * tPhi ;
+
                 // get thickness of thin shell
                 real t = mGroup->thin_shell_thickness( l );
 
@@ -666,10 +707,65 @@ namespace belfem
 
             }
 
-            // scale mass matrix with element length
-            // ( thus simplifying an integral over constant)
-            tM *= tElementLength ;
-            tK *= tElementLength ;
+
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            // lambda-condition for master element, air side
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+
+
+#ifdef HPHI_TRI3_LAMBDAN
+            q = aRHS.length() - 3 ;
+#else
+            q = aRHS.length() - 2 ;
+#endif
+            // compute the B-Matrix ( is constant for linear elements )
+            crossmat( tn, tBm, tnxB );
+
+
+            // get the column
+            p = 0 ;
+
+            for( uint i=0; i<mNumberOfNodesPerElement; ++i )
+            {
+                tA( p, q ) = tnxB( i ) ;
+                tA( q, p ) = tnxB( i ) ;
+                ++p ;
+            }
+
+
+            // next column
+            q += 1 ;
+
+            crossmat( tn, tBs, tnxB );
+            // loop over all nodes
+            for( uint i=0; i<mNumberOfNodesPerElement; ++i )
+            {
+                tA( p, q ) = tnxB( i ) ;
+                tA( q, p ) = tnxB( i ) ;
+                ++p ;
+            }
+
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            // lambda-condition for master element, sheet side
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            q-= 1 ;
+
+            tA( p, q ) = 1.0 ;
+            tA( q, p ) = 1.0 ;
+
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            // lambda-condition for slave element, sheet side
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#ifdef HPHI_TRI3_LAMBDAN
+            p = aRHS.length() - 4 ;
+#else
+            p = aRHS.length() - 3 ;
+#endif
+            q+= 1 ;
+            tA( p, q ) = 1.0 ;
+            tA( q, p ) = 1.0 ;
+
 #ifdef HPHI_TRI3_LAMBDAN
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // additional BC
@@ -681,20 +777,20 @@ namespace belfem
             // normal component master
             for( uint i=0; i<mNumberOfNodesPerElement; ++i )
             {
-                tM( p, q )  =  (
+                tA( p, q )  =  (
                             tn( 0 ) * tBm( 0, i )
-                          + tn( 1 ) * tBm( 1, i ) ) * tElementLength ;
-                tM( q, p ) = tM( p, q ) ;
+                          + tn( 1 ) * tBm( 1, i ) );
+                tA( q, p ) = tA( p, q ) ;
                 ++q ;
             }
 
             // normal component slave
             for( uint i=0; i<mNumberOfNodesPerElement; ++i )
             {
-                tM( p, q )  =  -(
-                        tn( 0 ) * tBs( 0, i)
-                                       + tn( 1 ) * tBs( 1, i ) ) * tElementLength ;
-                tM( q, p ) = tM( p, q ) ;
+                tA( p, q )  =  -(
+                        tn( 0 ) * tBs( 0, i )
+                      + tn( 1 ) * tBs( 1, i ) ) ;
+                tA( q, p ) = tA( p, q ) ;
                 ++q ;
             }
 
@@ -731,13 +827,17 @@ namespace belfem
                 }
             }*/
 
+
+            // scale mass matrix with element length
+            // ( thus simplifying an integral over constant)
+            tM *= tElementLength ;
+            tK *= tElementLength ;
+
             // compute the right hand side
             aRHS += tM *  this->collect_q0_thinshell( aElement ) ;
 
             // finalize the Jacobian
             aJacobian += mDeltaTime * mGroup->work_K() ;
-
-
         }
 
 //------------------------------------------------------------------------------
@@ -788,7 +888,7 @@ namespace belfem
 
             // value for ac losses
             real tEJ = 0.0 ;
-
+            real tJJc = 0.0 ;
             for( uint k=0; k<tNumIntpoints; ++k )
             {
                 // get shape function
@@ -798,16 +898,19 @@ namespace belfem
                 // magnetic field
                 tHt = tN( 0, 0 ) * aHt( 0 ) + tN( 0, 1 ) * aHt( 1 );
 
-                tB = constant::mu0 * sqrt( tHt * tHt + aHn * aHn );
+                tB = std::sqrt( tHt*tHt + aHn*aHn ) ;
+                real tAlpha = tB < BELFEM_EPSILON ? 0 : std::abs( std::asin( tHt / tB ) );
+                tB *= constant::mu0 ;
 
                 //real tRho = std::min( tMaterial->rho_el( tJz, tT, tB ) + 1e-12 , 1e-3 );
-                real tRho = tMaterial->rho_el( tJz, tT, tB ) ;
+                real tRho = std::max( tMaterial->rho_el( tJz, tT, tB, tAlpha ), BELFEM_EPS );
 
                 aK += ( tW( k ) * tRho ) * trans( tC ) * tC ;
 
                 // std::cout << k << " " << tMaterial->label() << " B=" << tB << " J=" << tJz << " rho " << tRho << std::endl ;
 
                 tEJ += tW( k ) * tRho ;
+                tJJc += tW( k ) * tJz / tMaterial->j_crit( tT, tB, tAlpha );
             }
 
             // scale the value of the stiffness matrix
@@ -818,6 +921,7 @@ namespace belfem
             //real tDY = aElement->element()->node( 0 )->y() - aElement->element()->node( 1 )->y() ;
             //tEJ *= tThickness * std::sqrt( tDX * tDX + tDY * tDY ) * tJz * tJz ;
             tEJ *= tJz * tJz * 0.5 ;
+            tJJc *= 0.5 ;
 
             // compute the field index
             index_t tIndex = mGhostElementMap( aElement->id() *  mGroup->number_of_thin_shell_layers() + aLayer )->index() ;
@@ -831,6 +935,7 @@ namespace belfem
 
             mMesh->field_data( "elementEJ")( tIndex ) = tEJ ;
             mMesh->field_data( "elementJ")( tIndex )  = tJz ;
+            mMesh->field_data( "elementJJc")( tIndex )  = tJJc ;
         }
 
 

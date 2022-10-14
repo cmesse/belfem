@@ -317,6 +317,14 @@ namespace belfem
                 Matrix< real > & aJacobian,
                 Vector< real > & aRHS )
         {
+            // make sure that the facet is correctly oriented
+            BELFEM_ASSERT( static_cast< DomainType >( aElement->master()->element()->physical_tag() ) == DomainType::Conductor,
+                           "Master element of facet %lu must be of DomainType::Conductor", ( long unsigned int ) aElement->id() );
+
+            BELFEM_ASSERT( static_cast< DomainType >( aElement->slave()->element()->physical_tag() ) == DomainType::Ferro,
+                           "Master element of facet %lu must be of DomainType::Ferro", ( long unsigned int ) aElement->id() );
+
+
             this->compute_interface_ha_tri6( aElement, aJacobian, mGroup->work_K() );
 
             // compute RHS

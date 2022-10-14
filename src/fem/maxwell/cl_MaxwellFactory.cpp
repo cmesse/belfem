@@ -858,7 +858,6 @@ namespace belfem
                         real tM = BELFEM_QUIET_NAN;
                         aMaterial->set_nu_s( this->read_bhfile( tPath, tUnitB, tUnitH, tMaxB, tM ));
                         aMaterial->set_m0( tM );
-
                     }
                     else
                     {
@@ -2215,6 +2214,7 @@ namespace belfem
 
             // crate the layers of the tape
             this->create_layers() ;
+
             // with the blocks in place, we can also create the materials
             this->create_materials() ;
             this->select_bcs_and_cuts() ;
@@ -2552,31 +2552,72 @@ namespace belfem
         void
         MaxwellFactory::fix_facet_masters()
         {
+            // make sure that everything is unflagged
+            mMesh->unflag_all_facets();
+
+            // first, we check the interfaces
+            for( mesh::SideSet * tSideSet : mMesh->sidesets() )
+            {
+                // make sure that this is an internal sideset
+                if( tSideSet->facet_by_index( 0 )->has_slave() )
+                {
+                    // get the sidesets on the mesh
+                    Cell< mesh::Facet * > & tFacets = tSideSet->facets() ;
+
+                    // loop over all facets
+                    for( mesh::Facet * tFacet : tFacets )
+                    {
+                        DomainType tMasterType
+                                = static_cast< DomainType >( tFacet->master()->physical_tag() );
+
+                        DomainType tSlaveType
+                                = static_cast< DomainType >( tFacet->slave()->physical_tag());
+
+                        // the rule is: conductor beats ferro beats air
+
+                        // check if this sideset is an interface and must be swapped
+                        if (   ( tMasterType == DomainType::Air && tSlaveType == DomainType::Conductor )
+                            || ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Conductor )
+                            || ( tMasterType == DomainType::Air && tSlaveType == DomainType::Ferro ))
+                        {
+                            tFacet->flag() ;
+                        }
+                        else if( tMasterType == tSlaveType )
+                        {
+                           // otherwise, we prefer the element with the lower ID
+                           if( tFacet->master()->id() > tFacet->slave()->id() )
+                           {
+                               tFacet->flag() ;
+                           }
+                        }
+                    }
+                }
+            }
+
             // get the sidesets on the mesh
             Cell< mesh::Facet * > & tFacets = mMesh->facets() ;
 
             // loop over all facets
             for( mesh::Facet * tFacet : tFacets )
             {
-                // check if facet has a slave
-                if( tFacet->has_slave() )
+                // check if facet is flagged for swapping
+                if( tFacet->is_flagged() )
                 {
                     // grab master and slave elements
                     mesh::Element * tMaster = tFacet->master() ;
                     mesh::Element * tSlave  = tFacet->slave() ;
 
-                    // if master tag is smaller than slave, we must swap
-                    if( tSlave->physical_tag() > tMaster->physical_tag() )
-                    {
-                        // grab indices
-                        index_t tMasterIndex = tFacet->master_index() ;
-                        index_t tSlaveIndex  = tFacet->slave_index() ;
+                    // grab indices
+                    index_t tMasterIndex = tFacet->master_index() ;
+                    index_t tSlaveIndex  = tFacet->slave_index() ;
 
-                        // swap elements
-                        tFacet->set_master( tSlave, tSlaveIndex );
-                        tFacet->set_slave( tMaster, tMasterIndex );
+                    // swap elements
+                    tFacet->set_master( tSlave, tSlaveIndex );
+                    tFacet->set_slave( tMaster, tMasterIndex );
 
-                    }
+                    // swap elements
+                    tFacet->set_master( tSlave, tSlaveIndex );
+                    tFacet->set_slave( tMaster, tMasterIndex );
                 }
             }
         }

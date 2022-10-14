@@ -222,9 +222,15 @@ int main( int    argc,
 
    while( tTime < tMaxTime )
    {
-       if( tTimeLoop++ == 10 )
+       if( tTimeLoop++ >= 10 )
        {
-           // save mesh
+           // save backup
+	   string tString = sprint("%s.%04u", tBackupFile.c_str(), ( unsigned int ) tTimeCount );
+
+           // save backup
+           tFormulation->save( tString );
+
+	   // save mesh
            real tOldTime = tTime;
            tTime *= 1000.0;
            tMesh->save( tOutFile );

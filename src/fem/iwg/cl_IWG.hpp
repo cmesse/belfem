@@ -256,6 +256,12 @@ namespace belfem
             //! links sideset IDs with the designated types
             Map< id_t, DomainType > mSideSetSubTypes ;
 
+            // normal, if this is a 2d problem
+            Vector< real > mNormal2D = { 0., 0., };
+
+            // normal, if this is a 3d problem
+            Vector< real > mNormal3D = { 0., 0., 0. };
+
 //------------------------------------------------------------------------------
         public:
 //------------------------------------------------------------------------------
@@ -1103,6 +1109,29 @@ namespace belfem
 
             void
             collect_node_coords( Element * aElement, Matrix< real > & aX );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * computes the normal of the facet.
+             * @param aElement
+             * @param aIndex
+             * @return
+             */
+            const Vector< real > &
+            normal_tri3( Element * aElement, const uint aIndex=0  ) ;
+
+//------------------------------------------------------------------------------
+            /**
+             * computes the normal of the facet.
+             * We assume that the coordinates of the master element
+             * have been collected in mGroup->work_Xm();
+             * @param aElement
+             * @param aIndex
+             * @return
+             */
+            const Vector< real > &
+            normal_tri6( Element * aElement, const uint aIndex  ) ;
 
 //------------------------------------------------------------------------------
         private:

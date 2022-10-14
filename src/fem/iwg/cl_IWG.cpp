@@ -2309,6 +2309,132 @@ namespace belfem
         }
 
 //------------------------------------------------------------------------------
+
+        const Vector< real > &
+        IWG::normal_tri3( Element * aElement, const uint aIndex  )
+        {
+            switch( aElement->facet()->master_index() )
+            {
+                case( 0 ) :
+                {
+                    mNormal2D( 0 ) =
+                             aElement->element()->node( 1 )->y()
+                            -aElement->element()->node( 0 )->y();
+
+                    mNormal2D( 1 ) =
+                            aElement->element()->node( 0 )->x()
+                            -aElement->element()->node( 1 )->x();
+
+                    break;
+                }
+                case( 1 ) :
+                {
+                    mNormal2D( 0 ) =
+                            aElement->element()->node( 2 )->y()
+                            -aElement->element()->node( 1 )->y();
+
+                    mNormal2D( 1 ) =
+                            aElement->element()->node( 1 )->x()
+                            -aElement->element()->node( 2 )->x();
+                    break;
+                }
+                case( 2 ) :
+                {
+                    mNormal2D( 0 ) =
+                            aElement->element()->node( 0 )->y()
+                            -aElement->element()->node( 2 )->y();
+
+                    mNormal2D( 1 ) =
+                            aElement->element()->node( 2 )->x()
+                            -aElement->element()->node( 0 )->x();
+                    break;
+                }
+                default :
+                {
+                    BELFEM_ERROR( false, "Invalid index for facet %lu",
+                                  ( long unsigned int ) aElement->id() );
+                }
+            }
+
+            // this value will contain the length of the side
+            mGroup->work_det_J() = std::sqrt(
+                      mNormal2D( 0 )* mNormal2D( 0 )
+                      + mNormal2D( 1 )* mNormal2D( 1 ) );
+
+            // now let's norm the vector
+            mNormal2D /= mGroup->work_det_J() ;
+
+            // finally, we must adapt this value, since along the edge
+            // we integrate from -1 to 1 rather than 0 to 1
+            mGroup->work_det_J() *= 0.5 ;
+
+            // now we can return the normal
+            return mNormal2D ;
+        }
+
+//------------------------------------------------------------------------------
+
+        const Vector< real > &
+        IWG::normal_tri6( Element * aElement, const uint aIndex  )
+        {
+            Matrix< real > & tJ = mGroup->work_J();
+
+            // compute the Jacobian matrix
+            tJ = mGroup->master_integration(
+                            aElement->facet()->master_index() )
+                                    ->dNdXi( aIndex )* mGroup->work_Xm() ;
+
+            switch( aElement->facet()->master_index() )
+            {
+                case( 0 ) :
+                {
+                    mNormal2D( 0 ) =
+                              tJ( 1, 1 )
+                            - tJ( 0, 1 );
+
+                    mNormal2D( 1 ) =
+                              tJ( 0, 0 )
+                            - tJ( 1, 0 );
+
+                    break;
+                }
+                case( 1 ) :
+                {
+                    mNormal2D( 0 ) = - tJ( 1, 1 ) ;
+                    mNormal2D( 1 ) =   tJ( 1, 0 ) ;
+
+                    break;
+                }
+                case( 2 ) :
+                {
+                    mNormal2D( 0 ) =  tJ( 0, 1 ) ;
+                    mNormal2D( 1 ) = -tJ( 0, 0 ) ;
+                    break;
+                }
+                default :
+                {
+                    BELFEM_ERROR( false, "Invalid index for facet %lu",
+                                  ( long unsigned int ) aElement->id() );
+                }
+            }
+
+            // if this edge was straignt, this would be the length of this side
+            mGroup->work_det_J() = std::sqrt(
+                    mNormal2D( 0 )* mNormal2D( 0 )
+                     + mNormal2D( 1 )* mNormal2D( 1 ) );
+
+            // now let's norm the vector
+            mNormal2D /= mGroup->work_det_J() ;
+
+            // finally, we must adapt this value, since along the edge
+            // we integrate from -1 to 1 rather than 0 to 1
+            mGroup->work_det_J() *= 0.5 ;
+
+            // now we can return the normal
+            return mNormal2D ;
+        }
+
+//------------------------------------------------------------------------------
     }
 }
 

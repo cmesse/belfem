@@ -1705,7 +1705,7 @@ namespace belfem
                     if( ( aResidual == 0  && aIteration == 0 ) || aResidual > 1E12 || std::isnan( aResidual ) )
                     {
 
-                        // mParent->save_system("error.hdf5");
+                        mParent->save_system("error.hdf5");
 
                         BELFEM_ERROR( false,
                                      "ITERATION SCHEME FAILED: R2 = %8.2g \nYOU CAN TRY THE FOLLIOWING THINGS: \n    * CHECK YOUR BOUNDARY CONDITIONS\n    * MAKE A BETTER CONDITIONED MESH\n    * USE A DIFFERENT PRECONDITIONER OR A DIRECT SOLVER\n    * DECREASE THE TIMESTEP\n    * DECREASE THE RELAXATION PARAMETER\n", aResidual );
