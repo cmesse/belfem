@@ -79,6 +79,53 @@ namespace belfem
                 }
             }
         }
+
+//------------------------------------------------------------------------------
+
+        template <>
+        void
+        LagrangeElement< 10, 4, 6, 4, 4 >::get_corner_nodes_of_facet( const uint aFacetIndex, Cell< Node * > & aNodes )
+        {
+            // allocate the node container
+            aNodes.set_size( 3, nullptr );
+
+            switch( aFacetIndex )
+            {
+                case( 0 ):
+                {
+                    aNodes( 0 ) = mNodes[ 0 ];
+                    aNodes( 1 ) = mNodes[ 1 ];
+                    aNodes( 2 ) = mNodes[ 3 ];
+                    break;
+                }
+                case( 1 ):
+                {
+                    aNodes( 0 ) = mNodes[ 1 ];
+                    aNodes( 1 ) = mNodes[ 2 ];
+                    aNodes( 2 ) = mNodes[ 3 ];
+                    break;
+                }
+                case( 2 ):
+                {
+                    aNodes( 0 ) = mNodes[ 2 ];
+                    aNodes( 1 ) = mNodes[ 0 ];
+                    aNodes( 2 ) = mNodes[ 3 ];
+                    break;
+                }
+                case( 3 ):
+                {
+                    aNodes( 0 ) = mNodes[ 0 ];
+                    aNodes( 1 ) = mNodes[ 2 ];
+                    aNodes( 2 ) = mNodes[ 1 ];
+                    break;
+                }
+                default:
+                {
+                    this->throw_facet_error( aFacetIndex );
+                }
+            }
+        }
+
 //------------------------------------------------------------------------------
 
         template <>

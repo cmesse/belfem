@@ -402,6 +402,16 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             virtual void
+            get_corner_nodes_of_facet( const uint aFacetIndex, Cell<Node *> & aNodes )
+            {
+                BELFEM_ERROR( false,
+                              "invalid call of base class function get_corner_nodes_of_facet() from Element %lu",
+                              ( long unsigned int ) this->id() );
+            }
+
+//------------------------------------------------------------------------------
+
+            virtual void
             get_edges_of_facet( const uint aFacetIndex, Cell< Edge * > & aEdges )
             {
                 BELFEM_ERROR( false,

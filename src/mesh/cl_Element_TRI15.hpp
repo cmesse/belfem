@@ -73,6 +73,42 @@ namespace belfem
 
         template <>
         void
+        LagrangeElement< 15, 3, 3, 3, 1 >::get_corner_nodes_of_facet( const uint aFacetIndex, Cell< Node * > & aNodes )
+        {
+            // allocate the node container
+            aNodes.set_size( 2, nullptr );
+
+            switch( aFacetIndex )
+            {
+                case( 0 ):
+                {
+                    aNodes( 0 ) = mNodes[ 0 ];
+                    aNodes( 1 ) = mNodes[ 1 ];
+                    break;
+                }
+                case( 1 ):
+                {
+                    aNodes( 0 ) = mNodes[ 1 ];
+                    aNodes( 1 ) = mNodes[ 2 ];
+                    break;
+                }
+                case( 2 ):
+                {
+                    aNodes( 0 ) = mNodes[ 2 ];
+                    aNodes( 1 ) = mNodes[ 0 ];
+                    break;
+                }
+                default:
+                {
+                    this->throw_facet_error( aFacetIndex );
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        template <>
+        void
         LagrangeElement< 15, 3, 3, 3, 1 >::get_edges_of_facet(
                 const uint aFacetIndex, Cell< Edge * > & aEdges )
         {

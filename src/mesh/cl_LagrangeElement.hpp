@@ -251,6 +251,11 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
+            get_corner_nodes_of_facet( const uint aFacetIndex, Cell< Node * > & aNodes );
+
+//------------------------------------------------------------------------------
+
+            void
             get_edges_of_facet( const uint aFacetIndex, Cell< Edge * > & aEdges );
 
 //------------------------------------------------------------------------------
@@ -830,6 +835,17 @@ namespace belfem
         {
             BELFEM_ERROR( false,
                     "Function get_nodes_of_facet() not implemented for element %lu",
+
+                          ( long unsigned int ) this->id() );
+        }
+//------------------------------------------------------------------------------
+
+        template< uint N, uint C, uint E, uint T, uint F >
+        void
+        LagrangeElement< N, C, E, T, F >::get_corner_nodes_of_facet( const uint aFacetIndex, Cell< Node * > & aNodes )
+        {
+            BELFEM_ERROR( false,
+                          "Function get_corner_nodes_of_facet() not implemented for element %lu",
                           ( long unsigned int ) this->id() );
         }
 

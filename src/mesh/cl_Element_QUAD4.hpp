@@ -63,6 +63,16 @@ namespace belfem
                 }
             }
         }
+
+//------------------------------------------------------------------------------
+
+        template <>
+        void
+        LagrangeElement< 4, 4, 4, 4, 1 >::get_corner_nodes_of_facet( const uint aFacetIndex, Cell< Node * > & aNodes )
+        {
+            this->get_nodes_of_facet( aFacetIndex, aNodes );
+        }
+
 //------------------------------------------------------------------------------
 
         template <>

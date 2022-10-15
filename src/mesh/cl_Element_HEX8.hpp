@@ -93,6 +93,15 @@ namespace belfem
 
         template <>
         void
+        LagrangeElement< 8, 8, 12, 6, 6 >::get_corner_nodes_of_facet( const uint aFacetIndex, Cell< Node * > & aNodes )
+        {
+            this->get_nodes_of_facet( aFacetIndex, aNodes );
+        }
+
+//------------------------------------------------------------------------------
+
+        template <>
+        void
         LagrangeElement< 8, 8, 12, 6, 6 >::get_nodes_of_edge( const uint aEdgeIndex, Cell< Node * > & aNodes )
         {
             // allocate the node container

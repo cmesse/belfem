@@ -95,6 +95,64 @@ namespace belfem
 
         template <>
         void
+        LagrangeElement< 18, 6, 9, 5, 5 >::get_corner_nodes_of_facet( const uint aFacetIndex, Cell< Node * > & aNodes )
+        {
+            switch( aFacetIndex )
+            {
+                case( 0 ):
+                {
+                    aNodes.set_size( 4, nullptr );
+                    aNodes( 0 ) = mNodes[ 0 ];
+                    aNodes( 1 ) = mNodes[ 1 ];
+                    aNodes( 2 ) = mNodes[ 4 ];
+                    aNodes( 3 ) = mNodes[ 3 ];
+                    break;
+                }
+                case( 1 ):
+                {
+                    aNodes.set_size( 4, nullptr );
+                    aNodes( 0 ) = mNodes[ 1 ];
+                    aNodes( 1 ) = mNodes[ 2 ];
+                    aNodes( 2 ) = mNodes[ 5 ];
+                    aNodes( 3 ) = mNodes[ 4 ];
+                    break;
+                }
+                case( 2 ):
+                {
+                    aNodes.set_size( 4, nullptr );
+                    aNodes( 0 ) = mNodes[ 2 ];
+                    aNodes( 1 ) = mNodes[ 0 ];
+                    aNodes( 2 ) = mNodes[ 3 ];
+                    aNodes( 3 ) = mNodes[ 5 ];
+                    break;
+                }
+                case( 3 ):
+                {
+                    aNodes.set_size( 3, nullptr );
+                    aNodes( 0 ) = mNodes[ 0 ];
+                    aNodes( 1 ) = mNodes[ 2 ];
+                    aNodes( 2 ) = mNodes[ 1 ];
+                    break;
+                }
+                case( 4 ):
+                {
+                    aNodes.set_size( 3, nullptr );
+                    aNodes( 0 ) = mNodes[ 3 ];
+                    aNodes( 1 ) = mNodes[ 4 ];
+                    aNodes( 2 ) = mNodes[ 5 ];
+                    break;
+                }
+                default:
+                {
+                    this->throw_facet_error( aFacetIndex );
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        template <>
+        void
         LagrangeElement< 18, 6, 9, 5, 5 >::get_nodes_of_edge( const uint aEdgeIndex, Cell< Node * > & aNodes )
         {
             // allocate the node container
