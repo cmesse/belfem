@@ -3,8 +3,6 @@ set( LIBNAME maxwell )
 set( SOURCES
         cl_Maxwell_FieldList.cpp
         cl_IWG_Maxwell.cpp
-        cl_IWG_Maxwell_HA_Tri3.cpp
-        cl_IWG_Maxwell_HA_Tri6.cpp
         cl_IWG_Maxwell_HPhi_Tri3.cpp
         cl_IWG_Maxwell_HPhi_Tri6.cpp
         cl_IWG_Maxwell_L2_Current.cpp

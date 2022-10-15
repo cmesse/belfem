@@ -8,7 +8,7 @@
 #include "en_IWGs.hpp"
 #include "cl_FEM_Kernel.hpp"
 #include "cl_IWG_Maxwell_L2_old.hpp"
-#include "cl_IWG_Maxwell_HA_Tri3.hpp"
+//#include "cl_IWG_Maxwell_HA_Tri3.hpp"
 #include "cl_IWG_Maxwell_HPhi_Tri3.hpp"
 #include "cl_IWG_Maxwell_HPhi_Tri6.hpp"
 #include "cl_MaxwellMaterial.hpp"

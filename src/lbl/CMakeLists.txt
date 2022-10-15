@@ -55,13 +55,8 @@ endif()
 #set( MAIN test_dofmgr.cpp)
 #include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
 
-#set( EXECNAME test_n2ha )
-#set( MAIN test_n2ha.cpp)
-#include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
 
-#set( EXECNAME test_e2ha )
-#set( MAIN test_e2ha.cpp)
-#include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
+
 
 set( EXECNAME petsctst )
 set( MAIN petsctst.cpp)
@@ -74,37 +69,3 @@ include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
 set( EXECNAME test_input )
 set( MAIN test_input.cpp)
 include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
-
-#set( EXECNAME test_curved )
-#set( MAIN test_curved.cpp)
-#include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
-
-#set( EXECNAME test_tape )
-#set( MAIN test_tape.cpp )
-#include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
-
-#set( EXECNAME test_l2 )
-#set( MAIN test_l2.cpp)
-#include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
-
-#set( EXECNAME test_phiback )
-#set( MAIN test_phiback.cpp)
-#include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
-
-#set( EXECNAME test_tet10vis )
-#set( MAIN test_tet10vis.cpp)
-#include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
-
-#set( EXECNAME ndlc_l2test )
-#set( MAIN ndlc_l2test.cpp)
-#include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
-
-#set( EXECNAME ndlc_htest )
-#set( MAIN ndlc_htest.cpp)
-#include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
-
-
-
-#set( EXECNAME surfacetest )
-#set( MAIN surfacetest.cpp)
-#include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )

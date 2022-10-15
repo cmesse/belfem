@@ -301,16 +301,22 @@ namespace belfem
                 Matrix< real > & aJacobian,
                 Vector< real > & aRHS )
         {
-            const IntegrationData * tSlave =  mGroup->slave_integration(
-                    aElement->facet()->slave_index() ) ;
+            // make sure that the facet is correctly oriented
+            BELFEM_ASSERT( static_cast< DomainType >( aElement->slave()->element()->physical_tag() ) == DomainType::Ferro,
+                           "Master element of facet %lu must be of DomainType::Ferro", ( long unsigned int ) aElement->id() );
+
+            BELFEM_ASSERT( static_cast< DomainType >( aElement->master()->element()->physical_tag() ) == DomainType::Air,
+                           "Master element of facet %lu must be of DomainType::Air", ( long unsigned int ) aElement->id() );
+
+            const IntegrationData * tMaster =  mGroup->master_integration(
+                    aElement->facet()->master_index() ) ;
 
             // compute Jacobian and B-function for air
-            aElement->slave()->get_node_coors( mGroup->work_Xs() );
-
+            this->collect_node_coords( aElement->master(), mGroup->work_Xm() );
             this->collect_node_coords( aElement->slave(), mGroup->work_Xs() );
-            mGroup->work_J() = tSlave->dNdXi( 0 ) * mGroup->work_Xs() ;
 
-            mGroup->work_B() = inv( mGroup->work_J() ) * tSlave->dNdXi( 0 );
+            mGroup->work_B() = inv( tMaster->dNdXi( 0 ) * mGroup->work_Xm() )
+                    * tMaster->dNdXi( 0 );
 
                   Matrix< real > & tM    = aJacobian ;
                   Matrix< real > & tK    = mGroup->work_K();
@@ -321,8 +327,7 @@ namespace belfem
             // again, we use a mathematical trick since n and B are constant
 
             crossmat( tn, tB, tnxB );
-            tnxB *= mGroup->work_det_J()  ; ;
-
+            tnxB *= -mGroup->work_det_J()  ; // flip sign, because n should point out of ferro
 
             tM.fill( 0.0 );
             switch( aElement->facet()->master_index() )

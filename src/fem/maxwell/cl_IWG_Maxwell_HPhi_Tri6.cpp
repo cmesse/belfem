@@ -445,10 +445,10 @@ namespace belfem
                 Vector< real > & aRHS )
         {
             // make sure that the facet is correctly oriented
-            BELFEM_ASSERT( static_cast< DomainType >( aElement->master()->element()->physical_tag() ) == DomainType::Ferro,
+            BELFEM_ASSERT( static_cast< DomainType >( aElement->slave()->element()->physical_tag() ) == DomainType::Ferro,
                            "Master element of facet %lu must be of DomainType::Ferro", ( long unsigned int ) aElement->id() );
 
-            BELFEM_ASSERT( static_cast< DomainType >( aElement->slave()->element()->physical_tag() ) == DomainType::Air,
+            BELFEM_ASSERT( static_cast< DomainType >( aElement->master()->element()->physical_tag() ) == DomainType::Air,
                            "Master element of facet %lu must be of DomainType::Air", ( long unsigned int ) aElement->id() );
 
 
@@ -481,11 +481,12 @@ namespace belfem
             {
                 for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
                 {
+                    // double sign flip, because n and omega are each flipped!
                     const Vector< real > & tn = this->normal_curved_2d( aElement, k );
+                    real tOmega = tW( k ) * mGroup->work_det_J() ;
 
-                    real tOmega = -tW( k ) * mGroup->work_det_J() ;
-                    const Vector< real > & tN = tMaster->phi( k );
-                    tB = inv( tSlave->dNdXi( k ) * mGroup->work_Xs() ) * tSlave->dNdXi( k );
+                    const Vector< real > & tN = tSlave->phi( k );
+                    tB = inv( tMaster->dNdXi( k ) * mGroup->work_Xm() ) * tMaster->dNdXi( k );
                     crossmat( tn, tB, tnxB );
 
                     for( uint j=0; j<6; ++j )
@@ -504,14 +505,16 @@ namespace belfem
 
                 // compute the Jacobian
                 Matrix< real > & tInvJ = mGroup->work_invJ();
-                tInvJ = inv( tSlave->dNdXi( 0 ) * mGroup->work_Xs() );
+                tInvJ = inv( tMaster->dNdXi( 0 ) * mGroup->work_Xm() );
 
                 for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
                 {
-                    const Vector< real > & tN = tMaster->phi( k );
-                    tB = tInvJ * tSlave->dNdXi( k );
+                    const Vector< real > & tN = tSlave->phi( k );
+                    tB = tInvJ * tMaster->dNdXi( k );
                     crossmat( tn, tB, tnxB );
-                    real tOmega = -tW( k ) * mGroup->work_det_J() ;
+
+                    // double sign flip, because n and omega are each flipped!
+                    real tOmega = tW( k ) * mGroup->work_det_J() ;
 
                     for( uint j=0; j<6; ++j )
                     {

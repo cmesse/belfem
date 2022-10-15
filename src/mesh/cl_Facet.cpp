@@ -66,10 +66,10 @@ namespace belfem
             if( this->has_master() && this->has_slave() )
             {
                 Cell< Node * > tMasterNodes;
-                mMaster->get_nodes_of_facet( this->master_index(), tMasterNodes );
+                mMaster->get_corner_nodes_of_facet( this->master_index(), tMasterNodes );
 
                 Cell< Node * > tSlaveNodes;
-                mSlave->get_nodes_of_facet( this->slave_index(), tSlaveNodes );
+                mSlave->get_corner_nodes_of_facet( this->slave_index(), tSlaveNodes );
 
                 BELFEM_ASSERT( tMasterNodes.size() == tSlaveNodes.size(), "Facets do not match" );
 

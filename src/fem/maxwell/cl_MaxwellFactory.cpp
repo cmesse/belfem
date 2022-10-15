@@ -18,8 +18,8 @@
 #include "en_FEM_MagfieldBcType.hpp"
 
 
-#include "cl_IWG_Maxwell_HA_Tri3.hpp"
-#include "cl_IWG_Maxwell_HA_Tri6.hpp"
+//#include "cl_IWG_Maxwell_HA_Tri3.hpp"
+//#include "cl_IWG_Maxwell_HA_Tri6.hpp"
 
 #include "cl_IWG_Maxwell_HPhi_Tri3.hpp"
 #include "cl_IWG_Maxwell_HPhi_Tri6.hpp"
@@ -1423,14 +1423,6 @@ namespace belfem
         {
             switch( aType )
             {
-                case( IwgType::MAXWELL_HA_TRI3 ) :
-                {
-                    return new IWG_Maxwell_HA_Tri3() ;
-                }
-                case( IwgType::MAXWELL_HA_TRI6 ) :
-                {
-                    return new IWG_Maxwell_HA_Tri6() ;
-                }
                 case( IwgType::MAXWELL_HPHI_TRI3 ) :
                 {
                     return new IWG_Maxwell_HPhi_Tri3() ;
@@ -1443,7 +1435,7 @@ namespace belfem
                 }
                 default:
                 {
-                    BELFEM_ERROR( false, "invalid type");
+                    BELFEM_ERROR( false, "unsoppurted type");
                     return nullptr ;
                 }
             }
@@ -2582,12 +2574,12 @@ namespace belfem
                         DomainType tSlaveType
                                 = static_cast< DomainType >( tFacet->slave()->physical_tag());
 
-                        // the rule is: conductor beats ferro beats air
+                        // the rule is: conductor beats air beats ferro
 
                         // check if this sideset is an interface and must be swapped
                         if (   ( tMasterType == DomainType::Air && tSlaveType == DomainType::Conductor )
                             || ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Conductor )
-                            || ( tMasterType == DomainType::Air && tSlaveType == DomainType::Ferro ))
+                            || ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Air ))
                         {
                             tFacet->flag() ;
                         }
