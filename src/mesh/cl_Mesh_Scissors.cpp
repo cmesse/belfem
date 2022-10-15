@@ -802,7 +802,7 @@ namespace belfem
                 }
             }
 
-            BELFEM_ASSERT( tCount = mDuplicateNodes.size(),
+            BELFEM_ASSERT( tCount == mDuplicateNodes.size(),
                            "Number of duplicated notes does not match ( is %lu, but expect %lu )",
                            ( long unsigned int ) tCount ,
                            ( long unsigned int ) mDuplicateNodes.size()  );

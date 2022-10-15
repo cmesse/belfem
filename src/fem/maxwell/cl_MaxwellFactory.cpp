@@ -38,6 +38,7 @@
 #include "fn_dpolyval.hpp"
 
 #include "fn_Mesh_compute_surface_normals.hpp"
+#include "cl_Element_Factory.hpp"
 
 namespace belfem
 {
@@ -56,6 +57,17 @@ namespace belfem
             this->create_domain_groups();
             this->select_blocks();
 
+            this->read_formulation();
+            /*if( mFormulation == IwgType::MAXWELL_HPHI_TRI6 )
+            {
+                if( comm_rank() == 0 )
+                {
+                    this->reduce_order_of_ferro_blocks_tri6();
+                }
+                comm_barrier() ;
+            }*/
+
+
             // create the edges for this mesh
             mMesh->create_edges( false, mNedelecBlocks, mNedelecSideSets ) ;
 
@@ -67,7 +79,6 @@ namespace belfem
                 mMesh->create_faces( false, mNedelecBlocks, mNedelecSideSets ) ;
             }
 
-            this->read_formulation();
 
             // read the timestepping information
             this->read_timestep() ;
@@ -1229,6 +1240,7 @@ namespace belfem
                         // convert string to numbers
                         Cell< string > tVals = string_to_words( tValStr );
 
+
                         // convert string to vector
                         Vector< real > tValues( tVals.size() );
                         for ( uint k = 0; k < tVals.size(); ++k )
@@ -1539,7 +1551,6 @@ namespace belfem
             tMaxwell->set_blocks( mBlockIDs, mBlockTypes );
 
             tMaxwell->set_sidesets( mSideSetIDs, mSideSetTypes );
-
 
             // also set the BC types
             for( BoundaryCondition * tBC : mBoundaryConditions )
@@ -1992,36 +2003,6 @@ namespace belfem
                 tMode = Magfield_L2_Mode::HA ;
             }
 
-            // create air projector
-            if( tAirCount > 0 )
-            {
-
-                // create the iwg
-                IWG_Maxwell * tIWG = new IWG_Maxwell_L2_Magfield(
-                        this->element_type( tAirBlocks( 0 )),
-                                                                  tMode,
-                                                                  mAlphaB );
-
-                Cell< DomainType > tTypes( tAirBlocks.length(), DomainType::Air );
-
-                // set the blocks of the IWG
-                tIWG->set_blocks( tAirBlocks, tTypes );
-
-                if( is_maxwell_hphi( mFormulation ) && tCutCount > 0 )
-                {
-                    Cell< DomainType > tCutTypes( tCuts.length(), DomainType::Cut );
-                    tIWG->set_sidesets( tCuts, tCutTypes );
-                }
-
-                // add iwg to kernel
-                DofManager * tProjector = this->add_postprocessor_to_kernel( tIWG );
-
-                // fix group types of IWG
-                tIWG->update_group_types();
-
-                tProjector->precompute_air_matrix();
-            }
-
             // crate ferro projector
             if( tFerroCount > 0 )
             {
@@ -2059,6 +2040,34 @@ namespace belfem
 
                 // add iwg to kernel
                 this->add_postprocessor_to_kernel( tIWG );
+
+                // fix group types of IWG
+                tIWG->update_group_types();
+            }
+
+            // create air projector
+            if( tAirCount > 0 )
+            {
+
+                // create the iwg
+                IWG_Maxwell * tIWG = new IWG_Maxwell_L2_Magfield(
+                        this->element_type( tAirBlocks( 0 )),
+                        tMode,
+                        mAlphaB );
+
+                Cell< DomainType > tTypes( tAirBlocks.length(), DomainType::Air );
+
+                // set the blocks of the IWG
+                tIWG->set_blocks( tAirBlocks, tTypes );
+
+                if( is_maxwell_hphi( mFormulation ) && tCutCount > 0 )
+                {
+                    Cell< DomainType > tCutTypes( tCuts.length(), DomainType::Cut );
+                    tIWG->set_sidesets( tCuts, tCutTypes );
+                }
+
+                // add iwg to kernel
+                DofManager * tProjector = this->add_postprocessor_to_kernel( tIWG );
 
                 // fix group types of IWG
                 tIWG->update_group_types();
@@ -2849,6 +2858,8 @@ namespace belfem
                         tMasterTypes( tCount++ ) = tFacet->master()->physical_tag() ;
                     }
                 }
+
+
                 comm_barrier() ;
                 send_same( mCommTable, tSideSetIDs );
                 send_same( mCommTable, tMasterTypes );
@@ -2870,35 +2881,27 @@ namespace belfem
 
             for( uint s=0; s<tNumSideSets; ++s )
             {
-                // check if sideset exists
-                if( mMesh->sideset_exists( tSideSetIDs( s ) ) )
-                {
-                    // check if sideset is not empty
-                    if( mMesh->sideset( tSideSetIDs( s ) )->number_of_facets() > 0 )
-                    {
 
-                        switch (  static_cast< DomainType >( tMasterTypes( s ) ) )
-                        {
-                            case( DomainType::Conductor ) :
-                            {
-                                ++c ;
-                                break ;
-                            }
-                            case( DomainType::Ferro ) :
-                            {
-                                ++f ;
-                                break ;
-                            }
-                            case( DomainType::Air ) :
-                            {
-                                ++a ;
-                                break ;
-                            }
-                            default:
-                            {
-                                BELFEM_ERROR( false, "This should never happen!");
-                            }
-                        }
+                switch (  static_cast< DomainType >( tMasterTypes( s ) ) )
+                {
+                    case( DomainType::Conductor ) :
+                    {
+                        ++c ;
+                        break ;
+                    }
+                    case( DomainType::Ferro ) :
+                    {
+                        ++f ;
+                        break ;
+                    }
+                    case( DomainType::Air ) :
+                    {
+                        ++a ;
+                        break ;
+                    }
+                    default:
+                    {
+                        BELFEM_ERROR( false, "This should never happen!");
                     }
                 }
             }
@@ -2913,37 +2916,29 @@ namespace belfem
             f = 0 ;
             c = 0 ;
 
+            // popolate ID vectors
             for( uint s=0; s<tNumSideSets; ++s )
             {
-                // check if sideset exists
-                if( mMesh->sideset_exists( tSideSetIDs( s ) ) )
+                switch (  static_cast< DomainType >( tMasterTypes( s ) ) )
                 {
-                    // check if sideset is not empty
-                    if( mMesh->sideset( tSideSetIDs( s ) )->number_of_facets() > 0 )
+                    case( DomainType::Conductor ) :
                     {
-
-                        switch (  static_cast< DomainType >( tMasterTypes( s ) ) )
-                        {
-                            case( DomainType::Conductor ) :
-                            {
-                                tConductor( c++ ) = tSideSetIDs( s ) ;
-                                break ;
-                            }
-                            case( DomainType::Ferro ) :
-                            {
-                                tFerro( f++ ) = tSideSetIDs( s ) ;
-                                break ;
-                            }
-                            case( DomainType::Air ) :
-                            {
-                                tAir( a++ ) = tSideSetIDs( s ) ;
-                                break ;
-                            }
-                            default:
-                            {
-                                BELFEM_ERROR( false, "This should never happen!");
-                            }
-                        }
+                        tConductor( c++ ) = tSideSetIDs( s ) ;
+                        break ;
+                    }
+                    case( DomainType::Ferro ) :
+                    {
+                        tFerro( f++ ) = tSideSetIDs( s ) ;
+                        break ;
+                    }
+                    case( DomainType::Air ) :
+                    {
+                        tAir( a++ ) = tSideSetIDs( s ) ;
+                        break ;
+                    }
+                    default:
+                    {
+                        BELFEM_ERROR( false, "This should never happen!");
                     }
                 }
             }
@@ -2952,21 +2947,16 @@ namespace belfem
             if( a > 0 )
             {
                 DomainGroup * tGroup = new DomainGroup( tAirType, tAirLabel, tAir );
-                tSymmetries.push( tGroup );
+                mSideSets.push( tGroup );
             }
             if( f > 0 )
             {
                 DomainGroup * tGroup = new DomainGroup( tFerroType, tFerroLabel, tFerro );
-                tSymmetries.push( tGroup );
+                mSideSets.push( tGroup );
             }
             if( c > 0 )
             {
                 DomainGroup * tGroup = new DomainGroup( tConductorType, tConductorLabel, tConductor );
-                tSymmetries.push( tGroup );
-            }
-
-            for( DomainGroup * tGroup : tSymmetries )
-            {
                 mSideSets.push( tGroup );
             }
         }
@@ -3621,6 +3611,207 @@ namespace belfem
                     aIDs( tCount++ ) = std::stoi( tWords( w ) );
                 }
             }
+        }
+// -----------------------------------------------------------------------------
+
+        void
+        MaxwellFactory::reduce_order_of_ferro_blocks_tri6()
+        {
+            // first we need to flag all nodes that are meant to be deleted
+            mMesh->unflag_all_nodes() ;
+            mMesh->unflag_all_elements() ;
+
+            uint tNumBlocks   = mBlockIDs.length() ;
+
+            mesh::ElementFactory tFactory ;
+
+            // count blocks with new elements that are to be created
+            index_t tCount = 0 ;
+            for( uint b=0; b<tNumBlocks; ++b )
+            {
+                // check if this is a ferro block
+                if ( mBlockTypes( b ) == DomainType::Ferro )
+                {
+                    tCount += mMesh->block( b )->number_of_elements() ;
+                }
+            }
+
+            // allocate container with elements that we want to delete
+            Cell< mesh::Element * > tOldElements( tCount, nullptr );
+
+            // reset the counter
+            tCount = 0 ;
+
+            // we also grab all elements form the mesh
+            Cell< mesh::Element * > & tMeshElements = mMesh->elements() ;
+
+            for( uint b=0; b<tNumBlocks; ++b )
+            {
+                // check if this is a ferro block
+                if ( mBlockTypes( b ) == DomainType::Ferro )
+                {
+                    // get the elements
+                    Cell< mesh::Element * > & tBlockElements
+                            = mMesh->block( mBlockIDs( b ) )->elements() ;
+
+                    // get the number of elements
+                    index_t tNumElems = tBlockElements.size() ;
+
+                    for( index_t e=0; e<tNumElems; ++e )
+                    {
+                        // grab the element
+                        mesh::Element * tOldElement = tBlockElements( e );
+
+                        // flag node for deletion
+                        for( uint k=3; k<6;  ++k )
+                        {
+                            tOldElement->node( k )->flag() ;
+                        }
+
+                        // create a new element
+                        mesh::Element * tNewElement = tFactory.create_lagrange_element( ElementType::TRI3, tOldElement->id() );
+
+                        // copy some data
+                        tNewElement->set_block_id( tOldElement->block_id() );
+                        tNewElement->set_physical_tag( tOldElement->physical_tag() );
+                        tNewElement->set_index( tOldElement->index() );
+
+                        // link nodes
+                        for( uint k=0; k<3;  ++k )
+                        {
+                            tNewElement->insert_node( tOldElement->node( k ), k );
+                        }
+
+                        // replace old element in containers
+                        tMeshElements( tOldElement->index() ) = tNewElement ;
+                        tBlockElements( e ) = tNewElement ;
+
+                        // add old element to list for deletion
+                        tOldElements( tCount++ ) = tOldElement ;
+
+                    } // end loop over all elements
+
+                } // end ferro block
+            } // end loop over all blocks
+
+            index_t tNumFacets = mMesh->number_of_facets() ;
+            Cell< mesh::Facet * > & tMeshFacets = mMesh->facets() ;
+
+            for( mesh::SideSet * tSideSet : mMesh->sidesets() )
+            {
+                Cell< mesh::Facet * > & tSideSetFacets = tSideSet->facets();
+                index_t tNumFacets = tSideSetFacets.size();
+
+                for ( index_t f = 0; f < tNumFacets; ++f )
+                {
+                    mesh::Facet * tOldFacet = tSideSetFacets( f );
+
+                    // switch if we delete the midnode
+                    bool tDeleteMidnode = false;
+
+                    // switch if we realign the midnode
+                    bool tChangeMaster = false;
+
+                    // switch if we realign the midnode
+                    bool tChangeSlave = false;
+
+                    // check if facet has a master
+                    if ( tOldFacet->has_master() )
+                    {
+                        // check if master is ferro
+                        if ( tOldFacet->master()->is_flagged())
+                        {
+                            // we change the master
+                            tChangeMaster = true;
+
+                            // check if facet has slave
+                            if ( tOldFacet->has_slave() )
+                            {
+                                // check if facet is ferro
+                                if ( tOldFacet->slave()->is_flagged())
+                                {
+                                    // we delete the midnode
+                                    tDeleteMidnode = true;
+                                }
+                            }
+                            else
+                            {
+                                // we delete the midnode
+                                tDeleteMidnode = true;
+                            }
+                        }
+                    }
+
+                    if ( tOldFacet->has_slave() )
+                    {
+                        // check if facet is ferro
+                        if ( tOldFacet->slave()->is_flagged() )
+                        {
+                            // we change  the slave
+                            tChangeSlave = true;
+
+                            if( ! tOldFacet->has_master() )
+                            {
+                                tDeleteMidnode = true ;
+                            }
+                        }
+                    }
+
+                    if ( tDeleteMidnode )
+                    {
+                        // create a new facet
+                        mesh::Element * tElement = tFactory.create_lagrange_element( ElementType::LINE2,
+                                                                                     tOldFacet->id());
+                        tElement->insert_node( tOldFacet->element()->node( 0 ), 0 );
+                        tElement->insert_node( tOldFacet->element()->node( 1 ), 1 );
+
+                        mesh::Facet * tNewFacet = new mesh::Facet( tElement );
+                        tNewFacet->set_index( tOldFacet->index());
+                        if ( tOldFacet->has_master())
+                        {
+                            tNewFacet->set_master( tMeshElements( tOldFacet->master()->index()),
+                                                   tOldFacet->master_index(), false );
+                        }
+                        if ( tOldFacet->has_slave())
+                        {
+                            tNewFacet->set_slave( tMeshElements( tOldFacet->slave()->index()), tOldFacet->slave_index());
+                        }
+
+                        // replace facet in containers
+                        tSideSetFacets( f ) = tNewFacet ;
+                        tMeshFacets( tOldFacet->index() ) = tNewFacet;
+                        delete tOldFacet;
+                    }
+                    else
+                    {
+                        if ( tChangeMaster )
+                        {
+                            tOldFacet->set_master( tMeshElements( tOldFacet->master()->index() ), tOldFacet->master_index(),
+                                                   false );
+                        }
+                        if ( tChangeSlave )
+                        {
+                            tOldFacet->set_slave( tMeshElements( tOldFacet->slave()->index()), tOldFacet->slave_index());
+                        }
+
+                        if ( tChangeMaster || tChangeSlave )
+                        {
+                            // center this node
+                            real tX = 0.5 * ( tOldFacet->node( 0 )->x() + tOldFacet->node( 1 )->x());
+                            real tY = 0.5 * ( tOldFacet->node( 0 )->y() + tOldFacet->node( 1 )->y());
+                            tOldFacet->node( 2 )->set_coords( tX, tY );
+
+                            // we don't want to delete this node anymore
+                            tOldFacet->node( 2 )->unflag();
+                        }
+                    }
+                } // end loop over all sidesets
+            } // end loop over all facets
+
+            mMesh->unfinalize() ;
+            mMesh->finalize() ;
+            mMesh->save( "test.exo");
+            exit( 0 );
         }
 
 // -----------------------------------------------------------------------------

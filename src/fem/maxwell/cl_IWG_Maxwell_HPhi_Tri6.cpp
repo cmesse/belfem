@@ -525,6 +525,51 @@ namespace belfem
             tM = - trans( tK );
             aRHS = tM * this->collect_q0_aphi_2d( aElement );
             aJacobian += tK * this->timestep() ;
+
+            /*if( aElement->id() == 217 )
+            {
+                this->print_dofs( aElement );
+
+                Vector< real > tPhi( 6 );
+                Vector< real > tAz( 6 );
+                this->collect_node_data( aElement->master(), "az", tAz );
+                this->collect_node_data( aElement->slave(), "phi", tPhi );
+
+                tPhi.print( "phi" );
+                tAz.print( "az" );
+
+                // get the normal
+                const Vector< real > & tn = this->normal_straight_2d( aElement );
+                tn.print( "n" );
+
+                uint k = 1;
+
+                // compute the Jacobian
+                Matrix< real > & tInvJ = mGroup->work_invJ();
+                tInvJ = inv( tSlave->dNdXi( k ) * mGroup->work_Xs());
+
+                const Vector< real > & tN = tMaster->phi( k );
+                tB = tInvJ * tSlave->dNdXi( k );
+                crossmat( tn, tB, tnxB );
+                tB.print( "Bs" );
+
+                tInvJ = inv( tMaster->dNdXi( k ) * mGroup->work_Xm());
+
+                tB = tInvJ * tMaster->dNdXi( k );
+                crossmat( tn, tB, tnxB );
+                tB.print( "Bm" );
+
+                Matrix< real > tC( 2, 6 );
+                tC.set_row(0, tB.row( 1 ) );
+                tB *= -1 ;
+                tC.set_row(1, tB.row( 0 ) );
+                tC.print("C");
+
+                tN.print( "N" );
+
+                exit( 0 );
+            }*/
+
         }
 
 //------------------------------------------------------------------------------
@@ -1675,7 +1720,7 @@ namespace belfem
 
                     // std::cout << "delta " << tDelta << std::endl ;
                     //real tTau = aRhoCrit == 0 ? tC : tC * std::pow( tRho / aRhoCrit, 2 ) ;
-                    real tTau =  aNminus1 == 0 ? tC : tC * std::pow( mJz( k, l ) / mJc( k, k ), aNminus1 ) ;
+                    real tTau =  tC ; // aNminus1 == 0 ? tC : tC * std::pow( mJz( k, l ) / mJc( k, k ), aNminus1 ) ;
 
                     aM += tW( l ) * tW( k ) * trans( mL ) * mL * tDetJ * tTau ;
 

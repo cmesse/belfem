@@ -2223,7 +2223,22 @@ namespace belfem
         void
         IWG::print_dofs( Element * aElement )
         {
-            std::cout << "Element : " << aElement->id() << std::endl ;
+            std::cout << "Element : " << aElement->id() ;
+
+            if( aElement->facet() != nullptr )
+            {
+                if( aElement->master() != nullptr )
+                {
+                    std::cout << "        M: " << aElement->master()->id() << " ( " << aElement->facet()->master_index() << ")" ;
+                }
+
+
+                if( aElement->slave() != nullptr )
+                {
+                    std::cout << "        S: " << aElement->slave()->id() << " ( " << aElement->facet()->slave_index() << ")" ;
+                }
+            }
+            std::cout <<std::endl;
 
             unsigned int tCount = 0 ;
             uint tNumDofs = aElement->number_of_dofs() ;

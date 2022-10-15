@@ -959,46 +959,6 @@ namespace belfem
             }
         }
 
-//------------------------------------------------------------------------------
-
-        void
-        DofManager::precompute_air_matrix()
-        {
-            BELFEM_ASSERT(
-                    mIWG->mode() == IwgMode::Direct,
-                    "precompute_air_matrix() requires an IWG with direct solving mode");
-
-            // deactivate all sidesets
-            for( SideSet * tSideSet : mSideSetData->sidesets() )
-            {
-                tSideSet->activate( false );
-            }
-            // activate only air blocks
-            for( Block * tBlock : mBlockData->blocks() )
-            {
-                tBlock->activate( tBlock->domain_type() == DomainType::Air );
-            }
-            // unset the  switch
-            mSolverData->use_reset_values( false );
-
-            this->compute_jacobian();
-            mSolverData->remember_initialization_values( false );
-
-            // also sets the flag to true
-            mSolverData->use_reset_values( true );
-
-            // activate all sidesets
-            for( SideSet * tSideSet : mSideSetData->sidesets() )
-            {
-                tSideSet->activate( true );
-            }
-            // activate only non-air blocks
-            for( Block * tBlock : mBlockData->blocks() )
-            {
-                tBlock->activate( tBlock->domain_type() != DomainType::Air );
-            }
-        }
-
 //-----------------------------------------------------------------------------
     }
 }

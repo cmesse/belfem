@@ -77,7 +77,6 @@ namespace belfem
                 // get first id of node on slave side
                 id_t tID = tSlaveNodes( 0 )->id();
 
-
                 // loop over all master nodes
                 for ( uint t = 0; t < tMasterNodes.size(); ++t )
                 {
