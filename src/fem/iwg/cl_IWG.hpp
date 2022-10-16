@@ -135,7 +135,9 @@ namespace belfem
             uint mNumberOfDerivativeDimensions = 0 ;
 
             // matrix size
-            uint   mNumberOfNodesPerElement;
+            uint   mNumberOfNodesPerElement = BELFEM_UINT_MAX ;
+            uint   mNumberOfNodesPerMaster = BELFEM_UINT_MAX ;
+            uint   mNumberOfNodesPerSlave = BELFEM_UINT_MAX ;
 
             uint   mNumberOfEdgesPerElement = 0 ;
             uint   mNumberOfFacesPerElement = 0 ;

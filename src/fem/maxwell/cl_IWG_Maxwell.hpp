@@ -350,6 +350,14 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
+            compute_interface_ha_tri6_tri3(
+                    Element        * aElement,
+                    Matrix< real > & aM,
+                    Matrix< real > & aK );
+
+//------------------------------------------------------------------------------
+
+            void
             compute_interface_ha_tet4(
                     Element        * aElement,
                     Matrix< real > & aM,
@@ -385,6 +393,35 @@ namespace belfem
             compute_jacobian_and_rhs_cut( Element        * aElement,
                                           Matrix< real > & aJacobian,
                                           Vector< real > & aRHS );
+
+//------------------------------------------------------------------------------
+
+            void
+            compute_jacobian_and_rhs_symmmetry_a_tri3( Element        * aElement,
+                                          Matrix< real > & aJacobian,
+                                          Vector< real > & aRHS );
+
+//------------------------------------------------------------------------------
+
+            void
+            compute_jacobian_and_rhs_antisymmmetry_a_tri3( Element        * aElement,
+                                                       Matrix< real > & aJacobian,
+                                                       Vector< real > & aRHS );
+
+//------------------------------------------------------------------------------
+
+            void
+            compute_jacobian_and_rhs_symmmetry_a_tri6( Element        * aElement,
+                                                       Matrix< real > & aJacobian,
+                                                       Vector< real > & aRHS );
+
+//------------------------------------------------------------------------------
+
+            void
+            compute_jacobian_and_rhs_antisymmmetry_a_tri6( Element        * aElement,
+                                                           Matrix< real > & aJacobian,
+                                                           Vector< real > & aRHS );
+
 //------------------------------------------------------------------------------
         private:
 //------------------------------------------------------------------------------

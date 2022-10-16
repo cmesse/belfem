@@ -58,14 +58,14 @@ namespace belfem
             this->select_blocks();
 
             this->read_formulation();
-            /*if( mFormulation == IwgType::MAXWELL_HPHI_TRI6 )
+            if( mFormulation == IwgType::MAXWELL_HPHI_TRI6 )
             {
                 if( comm_rank() == 0 )
                 {
                     this->reduce_order_of_ferro_blocks_tri6();
                 }
                 comm_barrier() ;
-            }*/
+            }
 
 
             // create the edges for this mesh
@@ -2431,18 +2431,17 @@ namespace belfem
                 tElement->set_physical_tag( 0 );
             }
 
+
+            uint tNumZeros = ( uint ) std::log10( mMesh->number_of_blocks() );
+            tNumZeros < 1 ? 1 : tNumZeros ;
+
+            string tFormat = "%0" + std::to_string( tNumZeros ) + "u_%s" ;
+
             for( mesh::Block * tBlock : mMesh->blocks() )
             {
-                // generate new default label for sideset
-                std::ostringstream tLabel ;
-                if( mMesh->number_of_blocks() > 9 && tBlock->id() < 10 )
-                {
-                    tLabel << "0" ;
-                }
-                tLabel << tBlock->id() << "_Block";
-                tBlock->label() = tLabel.str() ;
+                tBlock->label() = sprint( tFormat.c_str(), ( uint ) tBlock->id(), "Block" );
             }
-
+            tFormat += "_%s" ;
 
             for ( DomainGroup * tGroup : mBlocks )
             {
@@ -2464,22 +2463,10 @@ namespace belfem
                             tElement->set_physical_tag( tTag );
                         }
 
-                        // generate new label for block
-                        std::ostringstream tLabel;
-                        if ( mMesh->number_of_blocks() > 9 && tBlockID < 10 )
-                        {
-                            tLabel << "0";
-                        }
-                        tLabel << tBlock->id() << "_";
-                        if ( string_to_lower( tGroup->label()) == string_to_lower( to_string( tGroup->type())))
-                        {
-                            tLabel << to_string( tGroup->type());
-                        }
-                        else
-                        {
-                            tLabel << to_string( tGroup->type()) << "_" << tGroup->label();
-                        }
-                        tBlock->label() = tLabel.str();
+                        tBlock->label() = sprint( tFormat.c_str(),
+                                                  ( uint ) tBlock->id(),
+                                                  to_string( tGroup->type()).c_str(),
+                                                  tGroup->label().c_str() );
                     }
                 }
             }
@@ -2660,7 +2647,7 @@ namespace belfem
                             // check if this sideset is an interface
                             if ( ( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Air )
                                ||( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Ferro )
-                               ||( tMasterType == DomainType::Ferro  && tSlaveType == DomainType::Air ) )
+                               ||( tMasterType == DomainType::Air  && tSlaveType == DomainType::Ferro ) )
                             {
                                 ++tCount ;
                             }
@@ -2710,7 +2697,7 @@ namespace belfem
                                 tSlaveBlockIDs( tCount )  = tFacet->slave()->geometry_tag() ;
                                 tSideSetTypes( tCount++ ) = static_cast< uint >( DomainType::InterfaceScFm );
                             }
-                            else if ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Air )
+                            else if ( tMasterType == DomainType::Air && tSlaveType == DomainType::Ferro )
                             {
                                 tSideSetIDs( tCount )     = tSideSet->id();
                                 tMasterBlockIDs( tCount ) = tFacet->master()->geometry_tag() ;
@@ -2720,7 +2707,6 @@ namespace belfem
                         }
                     }
                 }
-
                 comm_barrier() ;
                 send_same( mCommTable, tSideSetIDs );
                 send_same( mCommTable, tMasterBlockIDs );
@@ -3624,7 +3610,7 @@ namespace belfem
                 // check if this is a ferro block
                 if ( mBlockTypes( b ) == DomainType::Ferro )
                 {
-                    tCount += mMesh->block( b )->number_of_elements() ;
+                    tCount += mMesh->block( mBlockIDs( b ) )->number_of_elements() ;
                 }
             }
 
@@ -3653,6 +3639,7 @@ namespace belfem
                     {
                         // grab the element
                         mesh::Element * tOldElement = tBlockElements( e );
+                        tOldElement->flag();
 
                         // flag node for deletion
                         for( uint k=3; k<6;  ++k )
@@ -3665,7 +3652,9 @@ namespace belfem
 
                         // copy some data
                         tNewElement->set_block_id( tOldElement->block_id() );
+                        tNewElement->set_geometry_tag( tOldElement->geometry_tag() );
                         tNewElement->set_physical_tag( tOldElement->physical_tag() );
+
                         tNewElement->set_index( tOldElement->index() );
 
                         // link nodes
@@ -3800,10 +3789,43 @@ namespace belfem
                 } // end loop over all sidesets
             } // end loop over all facets
 
+            // delete elements
+            for( mesh::Element * tElement : tOldElements )
+            {
+                delete tElement ;
+            }
+
+            // delete nodes
+            Cell< mesh::Node * > & tNewNodes = mMesh->nodes() ;
+            Cell< mesh::Node * > tOldNodes;
+            tOldNodes.vector_data() =  std::move( tNewNodes.vector_data() );
+
+            tCount = 0 ;
+            for( mesh::Node * tNode : tOldNodes )
+            {
+                if ( ! tNode->is_flagged() )
+                {
+                    ++tCount ;
+                }
+            }
+            tNewNodes.set_size( tCount, nullptr );
+            tCount = 0 ;
+            for( mesh::Node * tNode : tOldNodes )
+            {
+                if ( tNode->is_flagged() )
+                {
+                    delete tNode ;
+                }
+                else
+                {
+                    tNewNodes( tCount++ ) = tNode ;
+                }
+            }
+
+
+            // recreate mesh
             mMesh->unfinalize() ;
             mMesh->finalize() ;
-            mMesh->save( "test.exo");
-            exit( 0 );
         }
 
 // -----------------------------------------------------------------------------

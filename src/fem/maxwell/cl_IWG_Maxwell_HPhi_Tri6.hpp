@@ -324,8 +324,7 @@ namespace belfem
             BELFEM_ASSERT( static_cast< DomainType >( aElement->slave()->element()->physical_tag() ) == DomainType::Ferro,
                            "Master element of facet %lu must be of DomainType::Ferro", ( long unsigned int ) aElement->id() );
 
-
-            this->compute_interface_ha_tri6( aElement, aJacobian, mGroup->work_K() );
+            this->compute_interface_ha_tri6_tri3( aElement, aJacobian, mGroup->work_K() );
 
             // compute RHS
             aRHS = aJacobian * this->collect_q0_ha_2d( aElement );

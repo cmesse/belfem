@@ -695,6 +695,17 @@ namespace belfem
                                     * tNumberOfDofsPerFace ) ;
                     }
                 }
+                else if( aSideSet->domain_type() == DomainType::InterfaceFmAir ) // exists only in h-phi
+                {
+                    if( mNumberOfDerivativeDimensions == 2 )
+                    {
+                        return mesh::number_of_nodes( aSideSet->master_type() ) + mesh::number_of_nodes( aSideSet->slave_type() );
+                    }
+                    else
+                    {
+                        return ( mesh::number_of_nodes( aSideSet->master_type() ) + mesh::number_of_nodes( aSideSet->slave_type() ) ) * 3 ;
+                    }
+                }
                 else
                 {
                     // update number of dofs
@@ -809,11 +820,13 @@ namespace belfem
                 const string   & aFieldLabel,
                 Vector< real > & aData )
         {
+            uint tNumNodes = aElement->element()->number_of_nodes() ;
+
             BELFEM_ASSERT(
-                    aData.length() == mNumberOfNodesPerElement,
+                    aData.length() == tNumNodes,
                     "Number of rows for matrix does not fit ( is %u, but need %u )",
                     ( unsigned int ) aData.length(),
-                    ( unsigned int ) mNumberOfNodesPerElement );
+                    ( unsigned int ) tNumNodes );
 
 
             // get ref to field on mesh
@@ -824,7 +837,7 @@ namespace belfem
                     "Field '%s' is not a node field", aFieldLabel.c_str() );
 
             // loop over all nodes
-            for( uint i=0; i< mNumberOfNodesPerElement; ++i )
+            for( uint i=0; i< tNumNodes; ++i )
             {
                 aData( i  ) = tField( aElement->element()->node( i )->index() );
             }
@@ -839,11 +852,13 @@ namespace belfem
                 Vector< real > & aData,
                           uint & aOffset )
         {
+            uint tNumNodes = aElement->element()->number_of_nodes() ;
+
             BELFEM_ASSERT(
-                    aData.length() >= mNumberOfNodesPerElement,
+                    aData.length() >= tNumNodes,
                     "Number of rows for matrix does not fit ( is %u, but need at least %u )",
                     ( unsigned int ) aData.length(),
-                    ( unsigned int ) mNumberOfNodesPerElement );
+                    ( unsigned int ) tNumNodes );
 
 
             // get ref to field on mesh
@@ -854,7 +869,7 @@ namespace belfem
                     "Field '%s' is not a node field", aFieldLabel.c_str() );
 
             // loop over all nodes
-            for( uint i=0; i< mNumberOfNodesPerElement; ++i )
+            for( uint i=0; i< tNumNodes; ++i )
             {
                 aData( aOffset++  ) = tField( aElement->element()->node( i )->index() );
             }

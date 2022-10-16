@@ -15,6 +15,7 @@
 
 #include "fn_IF_initialize_integration_points.hpp"
 #include "fn_IF_initialize_shape_function.hpp"
+#include "fn_intpoints_auto_integration_order.hpp"
 
 namespace belfem
 {
@@ -117,13 +118,12 @@ namespace belfem
                 {
                     delete tData ;
                 }
-                if( ! mMasterAndSlaveSameType )
+
+                for ( IntegrationData * tData : mSlaveIntegration )
                 {
-                    for ( IntegrationData * tData : mSlaveIntegration )
-                    {
-                        delete tData ;
-                    }
+                    delete tData ;
                 }
+
                 this->delete_pointers();
            }
 
@@ -471,11 +471,21 @@ namespace belfem
         void
         SideSet::initialize_lookup_tables()
         {
+            // determine integration order
+            uint tIntegrationOrder = mParent->sideset_integration_order() ;
 
-            // check type flag
-            mMasterAndSlaveSameType = mMasterType == mSlaveType ;
+            // this line is to make sure that master and slave have the same integration order,
+            // even if not set by dof manager.
+            if(   mMasterType != ElementType::UNDEFINED && mSlaveType != ElementType::UNDEFINED
+                && mMasterType != ElementType::EMPTY && mSlaveType != ElementType::EMPTY
+                && tIntegrationOrder == 0 )
+            {
+                tIntegrationOrder = std::max(
+                        auto_integration_order( mMasterType ),
+                        auto_integration_order( mSlaveType ) );
+            }
 
-            if( mMasterType != ElementType::UNDEFINED )
+            if( mMasterType != ElementType::UNDEFINED && mMasterType != ElementType::EMPTY )
             {
                 uint tNumFacets = mesh::number_of_facets( mMasterType );
                 mMasterIntegration.set_size( tNumFacets, nullptr );
@@ -483,14 +493,12 @@ namespace belfem
                 {
                     mMasterIntegration( f ) = new IntegrationData( mMasterType );
                     mMasterIntegration( f )->populate_for_master( f,
-                                                               mParent->sideset_integration_order(),
+                                                                  tIntegrationOrder,
                                                                mParent->integration_scheme() );
                 }
             }
-            if( mSlaveType != ElementType::UNDEFINED )
+            if( mSlaveType != ElementType::UNDEFINED && mSlaveType != ElementType::EMPTY )
             {
-                mMasterAndSlaveSameType = false ;
-
                 if( mesh::geometry_type( mSlaveType ) == GeometryType::TRI )
                 {
                     mSlaveIntegration.set_size( 3, nullptr );
@@ -499,7 +507,7 @@ namespace belfem
                     {
                         mSlaveIntegration( f ) = new IntegrationData( mSlaveType );
                         mSlaveIntegration( f )->populate_for_slave_tri( f,
-                                                                  mParent->sideset_integration_order(),
+                                                                        tIntegrationOrder,
                                                                   mParent->integration_scheme() );
                     }
                 }

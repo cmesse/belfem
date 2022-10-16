@@ -51,9 +51,6 @@ namespace belfem
             // container for temperature for alpha BC
             real mTinf = BELFEM_QUIET_NAN ;
 
-            // flag telling if master and slave types are the same
-            bool mMasterAndSlaveSameType = false ;
-
             // conainer with reference blocks for sideset integrations
             Cell< IntegrationData * > mMasterIntegration ;
             Cell< IntegrationData * > mSlaveIntegration ;

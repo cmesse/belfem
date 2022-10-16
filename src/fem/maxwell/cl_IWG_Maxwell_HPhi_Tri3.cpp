@@ -477,44 +477,11 @@ namespace belfem
                 Matrix< real > & aJacobian,
                 Vector< real > & aRHS )
         {
-            // the right hand side of the matrix
-            aJacobian.fill( 0.0 );
-            aRHS.fill( 0.0 );
+            this->compute_jacobian_and_rhs_symmmetry_a_tri3(
+                    aElement,
+                    aJacobian,
+                    aRHS );
 
-            // get the node coordinates
-            Matrix< real > & tXm = mGroup->work_Xm() ;
-            this->collect_node_coords( aElement->master(), tXm );
-
-            // get integration data from master
-            const IntegrationData * tMaster =
-                    mGroup->master_integration( aElement->facet()->master_index() );
-
-            // compute the B-Operator
-            Matrix< real > & tB = mGroup->work_B() ;
-            tB = inv( tMaster->dNdXi( 0 ) * tXm ) * tMaster->dNdXi( 0 ) ;
-
-            // compute the normal
-            const Vector< real > & tn = this->normal_straight_2d( aElement );
-
-            // compute the values for the matrix
-            aJacobian( 0, 3 ) =
-                    tn( 1 ) * tB( 0, 0 )
-                    - tn( 0 ) * tB( 1, 0 ) ;
-
-            aJacobian( 1, 3 ) =
-                    tn( 1 ) * tB( 0, 1 )
-                    - tn( 0 ) * tB( 1, 1 ) ;
-
-            aJacobian( 2, 3 ) =
-                    tn( 1 ) * tB( 0, 2 )
-                    - tn( 0 ) * tB( 1, 2 ) ;
-
-
-            aJacobian( 3, 0 ) = aJacobian( 0, 3 );
-            aJacobian( 3, 1 ) = aJacobian( 1, 3 ) ;
-            aJacobian( 3, 2 ) = aJacobian( 2, 3 ) ;
-
-            aJacobian *= 2.0 * mGroup->work_det_J();
         }
 
 //------------------------------------------------------------------------------
@@ -525,44 +492,9 @@ namespace belfem
                 Matrix< real > & aJacobian,
                 Vector< real > & aRHS )
         {
-            // the right hand side of the matrix
-            aJacobian.fill( 0.0 );
-            aRHS.fill( 0.0 );
-
-            // get the node coordinates
-            Matrix< real > & tXm = mGroup->work_Xm() ;
-            this->collect_node_coords( aElement->master(), tXm );
-
-            // get integration data from master
-            const IntegrationData * tMaster =
-                    mGroup->master_integration( aElement->facet()->master_index() );
-
-            // compute the B-Operator
-            Matrix< real > & tB = mGroup->work_B() ;
-            tB = inv( tMaster->dNdXi( 0 ) * tXm ) * tMaster->dNdXi( 0 ) ;
-
-            // compute the normal
-            const Vector< real > & tn = this->normal_straight_2d( aElement );
-
-            // compute the values for the matrix
-            aJacobian( 0, 3 ) =
-                    tn( 0 ) * tB( 0, 0 )
-                    + tn( 1 ) * tB( 1, 0 ) ;
-
-            aJacobian( 1, 3 ) =
-                    tn( 0 ) * tB( 0, 1 )
-                    + tn( 1 ) * tB( 1, 1 ) ;
-
-            aJacobian( 2, 3 ) =
-                    tn( 0 ) * tB( 0, 2 )
-                    + tn( 1 ) * tB( 1, 2 ) ;
-
-
-            aJacobian( 3, 0 ) = aJacobian( 0, 3 );
-            aJacobian( 3, 1 ) = aJacobian( 1, 3 ) ;
-            aJacobian( 3, 2 ) = aJacobian( 2, 3 ) ;
-
-            aJacobian *= 2.0 ;
+            this->compute_jacobian_and_rhs_antisymmmetry_a_tri3(
+                    aElement,
+                    aJacobian, aRHS );
         }
 
 //------------------------------------------------------------------------------
