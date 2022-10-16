@@ -322,8 +322,8 @@ namespace belfem
     real
     Spline::eval( const real aX ) const
     {
-	real tX = aX > mXmax ? mXmax : aX ;
-	index_t tCol = find_col( tX );
+	    real tX = aX > mXmax ? mXmax : aX ;
+	    index_t tCol = find_col( tX );
 
         return (   ( mData( 0, tCol )   * tX
                    + mData( 1, tCol ) ) * tX
@@ -336,7 +336,7 @@ namespace belfem
     real
     Spline::deval( const real aX ) const
     {
-	real tX = aX > mXmax ? mXmax : aX ;
+	    real tX = aX > mXmax ? mXmax : aX ;
         auto tCol = find_col( tX );
 
         return ( ( 3.0 * mData( 0, tCol )   * tX
@@ -349,7 +349,7 @@ namespace belfem
     real
     Spline::ddeval( const real aX ) const
     {
-	real tX = aX > mXmax ? mXmax : aX ;
+	    real tX = aX > mXmax ? mXmax : aX ;
         auto tCol = find_col( tX );
 
         return 6.0 * mData( 0, tCol ) * tX + 2.0 * mData( 1, tCol );
@@ -360,7 +360,7 @@ namespace belfem
     real
     Spline::entropy( const real aX ) const
     {
-	real tX = aX > mXmax ? mXmax : aX ;
+	    real tX = aX > mXmax ? mXmax : aX ;
         auto tCol = find_col( tX );
         return      ( 1.5 * mData( 0, tCol )   * tX
                    +  2.0 * mData( 1, tCol ) ) * tX
@@ -373,10 +373,11 @@ namespace belfem
     real
     Spline::dentropy( const real aX ) const
     {
-        auto tCol = find_col( aX );
-        return   3.0 * mData( 0, tCol ) * aX
+        real tX = aX > mXmax ? mXmax : aX ;
+        auto tCol = find_col( tX );
+        return   3.0 * mData( 0, tCol ) * tX
                + 2.0 * mData( 1, tCol )
-               +       mData( 2, tCol )/aX;
+               +       mData( 2, tCol )/tX;
     }
 
 //------------------------------------------------------------------------------

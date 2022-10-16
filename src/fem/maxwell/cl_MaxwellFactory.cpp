@@ -2441,7 +2441,6 @@ namespace belfem
             {
                 tBlock->label() = sprint( tFormat.c_str(), ( uint ) tBlock->id(), "Block" );
             }
-            tFormat += "_%s" ;
 
             for ( DomainGroup * tGroup : mBlocks )
             {
@@ -2465,7 +2464,6 @@ namespace belfem
 
                         tBlock->label() = sprint( tFormat.c_str(),
                                                   ( uint ) tBlock->id(),
-                                                  to_string( tGroup->type()).c_str(),
                                                   tGroup->label().c_str() );
                     }
                 }
