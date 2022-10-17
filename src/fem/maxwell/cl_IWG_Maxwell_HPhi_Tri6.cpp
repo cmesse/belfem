@@ -43,9 +43,14 @@ namespace belfem
 
             mFields.SymmetryAir = { "lambda_n0", "lambda_n1" };
             mFields.AntiSymmetryAir = { "lambda_n0", "lambda_n1" };
+
+#ifdef BELFEM_FERRO_LINEAR
             mFields.SymmetryFerro = { "lambda" };
             mFields.AntiSymmetryFerro = { "lambda" };
-
+#else
+            mFields.SymmetryFerro = { "lambda_n0", "lambda_n1" };
+            mFields.AntiSymmetryFerro = { "lambda_n0", "lambda_n1" };
+#endif
 
 #ifdef HPHI_TRI6_LAMBDAN
             mFields.ThinShell = { "lambda_m0", "lambda_m1", "lambda_s0", "lambda_s1",  "lambda_t0", "lambda_t1" };
@@ -677,8 +682,13 @@ namespace belfem
                 Matrix< real > & aJacobian,
                 Vector< real > & aRHS )
         {
+#ifdef BELFEM_FERRO_LINEAR
             this->compute_jacobian_and_rhs_symmmetry_a_tri3(
                     aElement, aJacobian, aRHS );
+#else
+            this->compute_jacobian_and_rhs_symmmetry_a_tri6(
+                    aElement, aJacobian, aRHS );
+#endif
         }
 
 //------------------------------------------------------------------------------
@@ -689,9 +699,13 @@ namespace belfem
                 Matrix< real > & aJacobian,
                 Vector< real > & aRHS )
         {
-
+#ifdef BELFEM_FERRO_LINEAR
             this->compute_jacobian_and_rhs_antisymmmetry_a_tri3(
                     aElement, aJacobian, aRHS );
+#else
+            this->compute_jacobian_and_rhs_antisymmmetry_a_tri6(
+                    aElement, aJacobian, aRHS );
+#endif
         }
 
 //------------------------------------------------------------------------------
@@ -850,7 +864,8 @@ namespace belfem
                 mE( 1 ) = mEdgeFunctionTS->E( k )( 0, 1 );
 
                 // gradient operator master
-                tBm = inv( mGroup->work_J() ) * tIntMaster->dNdXi( k );
+                //tBm = inv( mGroup->work_J() ) * tIntMaster->dNdXi( k );
+                tBm = inv( tIntMaster->dNdXi( k ) * tXm ) * tIntMaster->dNdXi( k );
 
                 // gradient operator slave
                 tBs = inv( tIntSlave->dNdXi( k ) * tXs ) * tIntSlave->dNdXi( k );
@@ -1209,7 +1224,7 @@ namespace belfem
 
             // get material
             // temperature, todo: make not constant
-            real tT = 10.0 ;
+            real tT = 77.0 ;
 
             // grab layer thickness
             const real tThickness = mGroup->thin_shell_thickness( aLayer );
@@ -1236,8 +1251,8 @@ namespace belfem
             real tdxi  = 0.001 ;
             real tdeta = 0.001 ;
 
-            mXi( 0 ) = xi + tdxi ;
-            mXi( 1 ) = xi - tdxi ;
+            mXi( 0 ) = xi - tdxi ;
+            mXi( 1 ) = xi + tdxi ;
             mXi( 2 ) = xi ;
             mXi( 3 ) = xi ;
             mXi( 4 ) = xi ;

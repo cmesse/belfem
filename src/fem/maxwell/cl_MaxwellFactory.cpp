@@ -58,6 +58,7 @@ namespace belfem
             this->select_blocks();
 
             this->read_formulation();
+#ifdef BELFEM_FERRO_LINEAR
             if( mFormulation == IwgType::MAXWELL_HPHI_TRI6 )
             {
                 if( comm_rank() == 0 )
@@ -66,7 +67,7 @@ namespace belfem
                 }
                 comm_barrier() ;
             }
-
+#endif
 
             // create the edges for this mesh
             mMesh->create_edges( false, mNedelecBlocks, mNedelecSideSets ) ;
