@@ -207,6 +207,8 @@ namespace belfem
         mNuSpline = aSpline ;
         mPermeabilityLaw = PermeabilityLaw::Spline ;
         mFunNus = & MaxwellMaterial::nu_s_spline ;
+        mBmax = aSpline->x_max() ;
+        mHmax = aSpline->eval( mBmax ) * mBmax ;
 
         // we don't want the mu_r to return a reasonable value
         // don't worry, mu_r should never be called in this mode

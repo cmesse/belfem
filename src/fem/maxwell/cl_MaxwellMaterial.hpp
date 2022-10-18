@@ -69,6 +69,8 @@ namespace belfem
 
         // constant used for magnetic field dependencies
         real mB0    = BELFEM_QUIET_NAN ;
+        real mBmax  = BELFEM_QUIET_NAN ;
+        real mHmax  = BELFEM_QUIET_NAN ;
 
         // constant for magnetizatoin offset in BH curve
         real mM0 = BELFEM_QUIET_NAN ;
@@ -378,7 +380,14 @@ namespace belfem
         inline real
         MaxwellMaterial::nu_s_spline ( const real aB, const real aT ) const
         {
-            return std::exp( mNuSpline->eval( aB ) );
+            if( aB < mBmax )
+            {
+                return std::exp( mNuSpline->eval( aB ));
+            }
+            else
+            {
+                return ( mHmax + constant::nu0 * ( aB - mBmax ) ) / aB ;
+            }
         }
 
 //----------------------------------------------------------------------------

@@ -233,7 +233,7 @@ int main( int    argc,
 	   // save mesh
            real tOldTime = tTime;
            tTime *= 1000.0;
-           tMesh->save( tOutFile );
+           //tMesh->save( tOutFile );
            tTime = tOldTime;
            tTimeLoop = 1;
        }
