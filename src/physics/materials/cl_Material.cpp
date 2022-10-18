@@ -297,5 +297,14 @@ namespace belfem
         return BELFEM_QUIET_NAN ;
     }
 
+//----------------------------------------------------------------------------
+
+    real
+    Material::mu_s( const real aB, const real aT ) const
+    {
+        BELFEM_ERROR( false, "mu_s() not implemented for material %s", mLabel.c_str() );
+        return BELFEM_QUIET_NAN ;
+    }
+
 //-----------------------------------------------------------------------
 }

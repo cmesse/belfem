@@ -898,10 +898,18 @@ namespace belfem
             mDofData->init_dof_values() ;
         }
 
+//-----------------------------------------------------------------------------
+
         void
         DofManager::print_worst_dof()
         {
             mSolverData->print_worst_dof() ;
+        }
+
+        void
+        DofManager::write_residuals_to_mesh()
+        {
+            mSolverData->write_residuals_to_mesh() ;
         }
 
 //-----------------------------------------------------------------------------

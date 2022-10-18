@@ -19,6 +19,8 @@ namespace belfem
         // spline for the permeability
         Spline * mNuSpline = nullptr ;
 
+        Spline * mMuSpline = nullptr ;
+
         // spline if resisivity is only temperature dependent
         Spline * mRhoSpline = nullptr ;
 
@@ -90,6 +92,10 @@ namespace belfem
         ( const real aB, const real aT  ) const;
 
         real
+        ( MaxwellMaterial::*mFunMus )
+                ( const real aB, const real aT  ) const;
+
+        real
         ( MaxwellMaterial::*mFunRho )
         ( const real aJ, const real aT, const real aB, const real aAngle ) const;
 
@@ -112,6 +118,10 @@ namespace belfem
         // magnetic permeability
         real
         mu_r ( const real aH=0, const real aT=BELFEM_TREF ) const ;
+
+        // magnetic permeability
+        real
+        mu_s ( const real aH=0, const real aT=BELFEM_TREF ) const ;
 
         // magnetic resistance
         real
@@ -161,7 +171,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         void
-        set_nu_s( Spline * aSpline );
+        set_nu_s( Spline * aMuSpline, Spline * aNuSpline );
 
 //----------------------------------------------------------------------------
 
@@ -265,6 +275,9 @@ namespace belfem
         nu_s_spline ( const real aB=0, const real aT=BELFEM_TREF ) const ;
 
         real
+        mu_s_spline ( const real aH=0, const real aT=BELFEM_TREF ) const ;
+
+        real
         j_crit_const( const real aT, const real aB, const real aAngle ) const ;
 
         real
@@ -328,6 +341,13 @@ namespace belfem
         {
             return ( this->*mFunNus )( std::abs( aB ), aT );
         }
+//----------------------------------------------------------------------------
+
+        inline real
+        MaxwellMaterial::mu_s ( const real aH, const real aT ) const
+        {
+            return ( this->*mFunMus )( std::abs( aH ), aT );
+        }
 
 //----------------------------------------------------------------------------
 
@@ -389,6 +409,21 @@ namespace belfem
                 return ( mHmax + constant::nu0 * ( aB - mBmax ) ) / aB ;
             }
         }
+
+//----------------------------------------------------------------------------
+
+    inline real
+    MaxwellMaterial::mu_s_spline ( const real aH, const real aT ) const
+    {
+        if( aH < mHmax )
+        {
+            return std::exp( mMuSpline->eval( aH ) );
+        }
+        else
+        {
+            return ( mBmax + constant::mu0 * ( aH - mHmax ) ) / aH ;
+        }
+    }
 
 //----------------------------------------------------------------------------
 

@@ -278,6 +278,13 @@ namespace belfem
         virtual real
         nu_s( const real aH=0, const real aT=BELFEM_TREF ) const;
 
+//----------------------------------------------------------------------------
+
+        /**
+         * Secant Permeability
+         */
+        virtual real
+        mu_s( const real aH=0, const real aT=BELFEM_TREF ) const;
 
 //----------------------------------------------------------------------------
 

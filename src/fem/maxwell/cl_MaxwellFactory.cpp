@@ -60,6 +60,8 @@ namespace belfem
             this->select_blocks();
 
             this->read_formulation();
+
+#ifdef BELFEM_FERRO_HPHIA
 #ifdef BELFEM_FERRO_LINEAR
             if( mFormulation == IwgType::MAXWELL_HPHI_TRI6 )
             {
@@ -70,7 +72,7 @@ namespace belfem
                 comm_barrier() ;
             }
 #endif
-
+#endif
             // create the edges for this mesh
             mMesh->create_edges( false, mNedelecBlocks, mNedelecSideSets ) ;
 
@@ -870,7 +872,9 @@ namespace belfem
                         const value tMaxB = aInput->get_value( "maxb", "T" );
 
                         real tM = BELFEM_QUIET_NAN;
-                        aMaterial->set_nu_s( this->read_bhfile( tPath, tUnitB, tUnitH, tMaxB, tM ));
+                        Cell< Spline * > tSplines = this->read_bhfile( tPath, tUnitB, tUnitH, tMaxB, tM ) ;
+                        aMaterial->set_nu_s( tSplines ( 0 ), tSplines( 1 ) );
+
                         aMaterial->set_m0( tM );
                     }
                     else
@@ -2563,7 +2567,7 @@ namespace belfem
                                 = static_cast< DomainType >( tFacet->slave()->physical_tag());
 
                         // the rule is: conductor beats air beats ferro
-
+#ifdef BELFEM_FERRO_HPHIA
                         // check if this sideset is an interface and must be swapped
                         if (   ( tMasterType == DomainType::Air && tSlaveType == DomainType::Conductor )
                             || ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Conductor )
@@ -2571,6 +2575,14 @@ namespace belfem
                         {
                             tFacet->flag() ;
                         }
+#else
+                        // check if this sideset is an interface and must be swapped
+                        if (   ( tMasterType == DomainType::Air && tSlaveType == DomainType::Conductor )
+                            || ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Conductor ) )
+                        {
+                            tFacet->flag() ;
+                        }
+#endif
                         else if( tMasterType == tSlaveType )
                         {
                            // otherwise, we prefer the element with the lower ID
@@ -2644,7 +2656,7 @@ namespace belfem
 
                             DomainType tSlaveType
                                 = static_cast< DomainType >( tFacet->slave()->physical_tag() );
-
+#ifdef BELFEM_FERRO_HPHIA
                             // check if this sideset is an interface
                             if ( ( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Air )
                                ||( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Ferro )
@@ -2652,6 +2664,14 @@ namespace belfem
                             {
                                 ++tCount ;
                             }
+#else
+                            // check if this sideset is an interface
+                            if ( ( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Air )
+                               ||( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Ferro ) )
+                            {
+                                ++tCount ;
+                            }
+#endif
                         }
                     }
                 }
@@ -2698,6 +2718,7 @@ namespace belfem
                                 tSlaveBlockIDs( tCount )  = tFacet->slave()->geometry_tag() ;
                                 tSideSetTypes( tCount++ ) = static_cast< uint >( DomainType::InterfaceScFm );
                             }
+#ifdef BELFEM_FERRO_HPHIA
                             else if ( tMasterType == DomainType::Air && tSlaveType == DomainType::Ferro )
                             {
                                 tSideSetIDs( tCount )     = tSideSet->id();
@@ -2705,6 +2726,7 @@ namespace belfem
                                 tSlaveBlockIDs( tCount )  = tFacet->slave()->geometry_tag() ;
                                 tSideSetTypes( tCount++ ) = static_cast< uint >( DomainType::InterfaceFmAir );
                             }
+#endif
                         }
                     }
                 }
@@ -3304,7 +3326,7 @@ namespace belfem
 
 // -----------------------------------------------------------------------------
 
-        Spline *
+        Cell< Spline * >
         MaxwellFactory::read_bhfile(
                 const string & aPath,
                 const string & aUnitB,
@@ -3455,6 +3477,7 @@ namespace belfem
                 uint tNumPoints = 1001;
                 Vector <real> tB( tNumPoints );
                 Vector <real> tH( tNumPoints );
+
                 linspace( 0.0, tBmax, tNumPoints, tB );
                 OneDMapper tMapper( tB, 1 );
                 tMapper.project( tB2, tH2, tH );
@@ -3463,7 +3486,6 @@ namespace belfem
                 {
                     tY( k ) = std::log( tH( k ) / tB( k ) );
                 }
-
 
 
                 // fix bug
@@ -3475,7 +3497,7 @@ namespace belfem
                 bool tFoundPeak = false ;
 
                 // look for peak ( a numerical bug )
-                for( int k=tCount; k>=0; --k )
+                for( int k=tCount; k>0; --k )
                 {
                     real tS = tY( k + 1 ) - tY( k ) ;
                     if( tS * tS0 < 0 )
@@ -3484,6 +3506,12 @@ namespace belfem
                         tCount = k ;
                         break ;
                     }
+                }
+
+                if( ! tFoundPeak )
+                {
+                    tCount = 1 ;
+                    tFoundPeak = true ;
                 }
 
                 // check if we have found a peek
@@ -3530,13 +3558,81 @@ namespace belfem
                 SpMatrix tHelpMatrix;
                 spline::create_helpmatrix( tNumPoints, tB( 1 ), tHelpMatrix );
 
+                Cell< Spline * > aSplines( 2 , nullptr );
+                aSplines( 0 ) = new Spline( tB, tY, tHelpMatrix, 0, 0, 0  );
+
+
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                // Step 8 : create the spline for nu
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+                real tHmax = aSplines( 0 )->eval( tBmax );
+
+                linspace( 0.0, tHmax, tNumPoints, tH );
+                OneDMapper tMapper2( tH, 1 );
+                tMapper2.project( tH2, tB2, tB );
+
+
+                SpMatrix tHelpMatrix2;
+                spline::create_helpmatrix( tNumPoints, tH( 1 ), tHelpMatrix2 );
+
+                for( uint k=1; k<tNumPoints; ++k )
+                {
+                    tY( k ) = std::log( tB( k ) / tH( k ) );
+                }
+
+                // fix bug
+                for( tCount = 0 ; tB( tCount ) < 0.2  ; ++tCount );
+
+                // sign :
+                tS0 = tY( tCount + 1 ) - tY( tCount );
+
+                tFoundPeak = false ;
+
+                // look for peak ( a numerical bug )
+                for( int k=tCount; k>0; --k )
+                {
+                    real tS = tY( k + 1 ) - tY( k ) ;
+                    if( tS * tS0 < 0 )
+                    {
+                        tFoundPeak = true ;
+                        tCount = k ;
+                        break ;
+                    }
+                }
+
+                if( ! tFoundPeak )
+                {
+                    tCount = 1 ;
+                    tFoundPeak = true ;
+                }
+
+                // check if we have found a peek
+                if( tFoundPeak )
+                {
+                    // derivative at reference point
+                    real a = ( tY( tCount+2 ) - tY( tCount+1 ) ) / ( tH( tCount + 2 ) - tH( tCount + 1 ) );
+                    real b = tY( tCount + 1 ) - a * tH( tCount + 1 );
+
+                    // fix peak
+                    for( uint k=0; k<=tCount; ++k )
+                    {
+                        tY( k ) = a * tH( k ) + b ;
+                    }
+                }
+
+                aSplines( 1 ) = new Spline( tH, tY, tHelpMatrix2, 0, 0, 0  );
+
                 // create the spline and send its parameters to the other procs
-                return new Spline( tB, tY, tHelpMatrix, 0, 0, 0  );
+                return aSplines ;
             }
             else
             {
                 receive( 0, aM );
-                return new Spline( 0 );
+                Cell< Spline * > aSplines( 2 , nullptr );
+                aSplines( 0 ) = new Spline( 0 );
+                aSplines( 1 ) = new Spline( 0  );
+                return aSplines ;
             }
         }
 

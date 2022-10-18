@@ -1942,6 +1942,31 @@ namespace belfem
             }
 
 //------------------------------------------------------------------------------
+
+            void
+            SolverData::write_residuals_to_mesh()
+            {
+                if( mParent->is_master() && mRhsVector.length() > 0 )
+                {
+                    Vector< real > tR = mParent->mesh()->field_exists( "residual") ?
+                            mParent->mesh()->field_data( "residual" ) :
+                            mParent->mesh()->create_field( "residual") ;
+
+                    tR.fill( 0.0 );
+
+                    index_t tCount = 0 ;
+                    for( Dof * tDof : mFreeDofs )
+                    {
+                        if ( tDof->is_node() )
+                        {
+                            tR( tDof->dof_index_on_field() )  = mRhsVector( tCount ) / mRhsNorm ;
+                        }
+                        ++tCount ;
+                    }
+                }
+            }
+
+//------------------------------------------------------------------------------
         } /* end namespace dofmgr */
     } /* end namespace fem */
 } /* end namespace belfem */

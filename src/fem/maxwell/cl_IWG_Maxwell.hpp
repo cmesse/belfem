@@ -6,6 +6,7 @@
 #define BELFEM_CL_IWG_MAXWELL_HPP
 
 #define BELFEM_FERRO_LINEAR
+// #define BELFEM_FERRO_HPHIA
 
 #include "typedefs.hpp"
 #include "assert.hpp"
@@ -385,6 +386,14 @@ namespace belfem
 
             void
             compute_jacobian_and_rhs_air_phi_higher_order(
+                    Element        * aElement,
+                    Matrix< real > & aJacobian,
+                    Vector< real > & aRHS ) ;
+
+//------------------------------------------------------------------------------
+
+            void
+            compute_jacobian_and_rhs_ferro_phi_higher_order(
                     Element        * aElement,
                     Matrix< real > & aJacobian,
                     Vector< real > & aRHS ) ;

@@ -41,6 +41,8 @@ namespace belfem
                     (       Element        * aElement,
                             Vector< real > & aRHS );
 
+            Vector< real > mH ;
+
 //------------------------------------------------------------------------------
         public:
 //------------------------------------------------------------------------------
@@ -118,6 +120,11 @@ namespace belfem
 
             void
             compute_rhs_2d_phi( Element * aElement, Vector< real > & aRHS );
+
+//------------------------------------------------------------------------------
+
+            void
+            compute_rhs_2d_phi_ferro( Element * aElement, Vector< real > & aRHS );
 
 //------------------------------------------------------------------------------
 

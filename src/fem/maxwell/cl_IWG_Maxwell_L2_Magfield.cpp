@@ -126,9 +126,11 @@ namespace belfem
                     mFunJacobian = mAlpha == 0 ?
                                    &IWG_Maxwell_L2_Magfield::compute_jacobian_2d_alpha0 :
                                    &IWG_Maxwell_L2_Magfield::compute_jacobian_2d_alpha1;
-
+#ifdef BELFEM_FERRO_HPHIA
                     mFunRHS = &IWG_Maxwell_L2_Magfield::compute_rhs_2d_a;
-
+#else
+                    mFunRHS      = & IWG_Maxwell_L2_Magfield::compute_rhs_2d_phi_ferro ;
+#endif
                     break;
                 }
                 case( DomainType::Cut ) :
@@ -348,6 +350,33 @@ namespace belfem
             }
 
             aRHS *= -constant::mu0 ;
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        IWG_Maxwell_L2_Magfield::compute_rhs_2d_phi_ferro(
+                Element * aElement, Vector< real > & aRHS )
+        {
+            // link edge function with element
+            mEdgeFunction->link( aElement, false, true, false );
+
+            // integration weights
+            const Vector< real > & tW = mGroup->integration_weights() ;
+
+            Vector< real > & tPhi = mGroup->work_phi();
+            this->collect_node_data( aElement, "phi", tPhi );
+
+            aRHS.fill( 0.0 );
+            for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+            {
+                mH =mEdgeFunction->B( k ) * tPhi  ;
+
+                real tMu = mMaterial->mu_s( norm( mH ) );
+                aRHS -= ( tW( k ) * mEdgeFunction->abs_det_J() * tMu )
+                        * trans( mGroup->Nvector( k ) )
+                        * mH ;
+            }
         }
 
 //------------------------------------------------------------------------------

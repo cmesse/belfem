@@ -442,6 +442,9 @@ int main( int    argc,
            tCSV <<  tTime << ", " << tI << ", " << tEI << ", " << std::log10(tK) << ", " << std::log10(tR) << std::endl ;
            tCSV.close() ;
             */
+
+           tMagfield->write_residuals_to_mesh();
+
            if( tMagfield->solver()->type() == SolverType::MUMPS )
            {
                std::cout << "    cond: " << tK << " " << tR << std::endl;

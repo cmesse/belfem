@@ -183,6 +183,14 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        void
+        DofManagerBase::write_residuals_to_mesh()
+        {
+            BELFEM_ERROR( false, "invalid call to abstract base class function." );
+        }
+
+//------------------------------------------------------------------------------
+
         bool
         DofManagerBase::dof_exists( const id_t aID ) const
         {

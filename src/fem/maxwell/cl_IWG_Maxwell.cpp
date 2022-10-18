@@ -235,6 +235,7 @@ namespace belfem
                 {
                     // allocate container for all dofs, phi or a field
                     aGroup->work_phi().set_size( mNumberOfNodesPerElement );
+                    aGroup->work_psi().set_size( mNumberOfNodesPerElement );
 
                     // for A-Vector
                     if( aGroup->parent()->mesh()->number_of_dimensions() == 3 )
@@ -1912,7 +1913,7 @@ namespace belfem
             // grab node data, needed to compute nu_s( b )
             // let's try the data from the last timestep
             this->collect_node_data( aElement,
-                                        "az0",
+                                        "az",
                                         mGroup->work_phi() );
 
             aK = ( 0.5 * std::abs( det( mGroup->work_J() ) )
@@ -1934,7 +1935,7 @@ namespace belfem
             // grab node data
             Vector< real > & tAz = mGroup->work_phi() ;
 
-            this->collect_node_data( aElement, "az0", tAz );
+            this->collect_node_data( aElement, "az", tAz );
 
             // reset matrices
             aK.fill( 0.0 );
@@ -2110,6 +2111,54 @@ namespace belfem
 #
             // compute right hand side
             aRHS = aJacobian * mGroup->work_phi() ;
+        }
+//------------------------------------------------------------------------------
+
+        void
+        IWG_Maxwell::compute_jacobian_and_rhs_ferro_phi_higher_order(
+                Element        * aElement,
+                Matrix< real > & aJacobian,
+                Vector< real > & aRHS )
+        {
+            // link edge function with element
+            mEdgeFunction->link( aElement, false, true, false );
+
+            Vector< real > & tPhi0 = mGroup->work_psi() ;
+            Vector< real > & tPhi = mGroup->work_phi() ;
+
+            // grab node data from last timestep
+            this->collect_node_data( aElement,
+                                     "phi0",
+                                     mGroup->work_psi() );
+
+            // grab node data from last timestep
+            this->collect_node_data( aElement,
+                                     "phi",
+                                     mGroup->work_phi() );
+
+            // get integration weights
+            const Vector< real > & tW = mGroup->integration_weights() ;
+
+            aJacobian.fill( 0.0 );
+
+            for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+            {
+                // get gradient operator matrix
+                const Matrix< real > & tB = mEdgeFunction->B( k );
+
+                // compute B
+                real tmu0 = mMaterial->mu_s( norm( tB * tPhi0 ) );
+                real tmu1 = mMaterial->mu_s( norm( tB * tPhi0 ) );
+
+                real tVal = tW( k ) * mEdgeFunction->abs_det_J() *
+                        ( tmu1 + ( tmu1 - tmu0) / mDeltaTime );
+
+                // integrate mass matrix
+                aJacobian += tVal * trans( tB ) * tB ;
+            }
+#
+            // compute right hand side
+            aRHS = aJacobian * tPhi0 ;
         }
 
 //------------------------------------------------------------------------------
@@ -2673,7 +2722,7 @@ namespace belfem
             aRHS *= mDeltaTime ;
 
             //  finalize Jacobian ( M + delta_t * theta * K )
-            aJacobian *= mDeltaTime ;
+            aJacobian *= mDeltaTime  ;
 
         }
 

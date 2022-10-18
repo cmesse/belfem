@@ -35,7 +35,7 @@ namespace belfem
             // dof fields
             mFields.Superconductor = { "edge_h", "face_h" };
             mFields.Air = { "phi" };
-            mFields.Ferro = { "az" };
+
 
             mFields.InterfaceScAir = { "lambda_t0", "lambda_t1" };
             //mFields.InterfaceScFm = { };
@@ -43,11 +43,17 @@ namespace belfem
 
             mFields.SymmetryAir = { "lambda_n0", "lambda_n1" };
             mFields.AntiSymmetryAir = { "lambda_n0", "lambda_n1" };
-
+#ifdef BELFEM_FERRO_HPHIA
+            mFields.Ferro = { "az" };
 #ifdef BELFEM_FERRO_LINEAR
             mFields.SymmetryFerro = { "lambda" };
             mFields.AntiSymmetryFerro = { "lambda" };
 #else
+            mFields.SymmetryFerro = { "lambda_n0", "lambda_n1" };
+            mFields.AntiSymmetryFerro = { "lambda_n0", "lambda_n1" };
+#endif
+#else
+            mFields.Ferro = { "phi" };
             mFields.SymmetryFerro = { "lambda_n0", "lambda_n1" };
             mFields.AntiSymmetryFerro = { "lambda_n0", "lambda_n1" };
 #endif
@@ -178,14 +184,24 @@ namespace belfem
                 }
                 case( DomainType::SymmetryFerro ) :
                 {
+#ifdef BELFEM_FERRO_HPHIA
                     mFunJacobian =
                             &IWG_Maxwell_HPhi_Tri6::compute_jacobian_and_rhs_symmetry_ferro ;
+#else
+                    mFunJacobian =
+                            &IWG_Maxwell_HPhi_Tri6::compute_jacobian_and_rhs_symmetry_air ;
+#endif
                     break;
                 }
                 case( DomainType::AntiSymmetryFerro ) :
                 {
+#ifdef BELFEM_FERRO_HPHIA
                     mFunJacobian =
                             & IWG_Maxwell_HPhi_Tri6::compute_jacobian_and_rhs_antisymmetry_ferro ;
+#else
+                    mFunJacobian =
+                            & IWG_Maxwell_HPhi_Tri6::compute_jacobian_and_rhs_antisymmetry_air ;
+#endif
                     break ;
                 }
                 case( DomainType::Boundary ) :

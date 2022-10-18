@@ -308,6 +308,9 @@ namespace belfem
             void
             print_worst_dof() ;
 
+            void
+            write_residuals_to_mesh();
+
 //------------------------------------------------------------------------------
 #ifdef BELFEM_HDF5
 
