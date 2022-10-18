@@ -898,6 +898,12 @@ namespace belfem
             mDofData->init_dof_values() ;
         }
 
+        void
+        DofManager::print_worst_dof()
+        {
+            mSolverData->print_worst_dof() ;
+        }
+
 //-----------------------------------------------------------------------------
 
 

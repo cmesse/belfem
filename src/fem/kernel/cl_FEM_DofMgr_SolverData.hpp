@@ -101,6 +101,9 @@ namespace belfem
                 Vector< real > mJacobianValues0 ;
                 Vector< real > mDirichletValues0 ;
 
+                // needed for worst dof function
+                Cell< Dof * > mFreeDofs ;
+
 //------------------------------------------------------------------------------
             public:
 //------------------------------------------------------------------------------
@@ -291,6 +294,12 @@ namespace belfem
 
                 void
                 use_reset_values( const bool aFlag );
+
+
+//-----------------------------------------------------------------------------
+
+                void
+                print_worst_dof();
 
 //------------------------------------------------------------------------------
 #ifdef BELFEM_HDF5

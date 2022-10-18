@@ -233,7 +233,7 @@ int main( int    argc,
 	   // save mesh
            real tOldTime = tTime;
            tTime *= 1000.0;
-           //tMesh->save( tOutFile );
+           tMesh->save( tOutFile );
            tTime = tOldTime;
            tTimeLoop = 1;
        }
@@ -330,7 +330,9 @@ int main( int    argc,
            {
                if ( tKernel->is_master() )
                {
+                   const Vector< real > & tRhs = tMagfield->rhs_vector() ;
                    std::cout << "    WARNING: too many iterations. Exiting this time step" << std::endl ;
+                   tMagfield->print_worst_dof();
                }
                break ;
            }
@@ -339,7 +341,9 @@ int main( int    argc,
            {
                if ( tKernel->is_master() )
                {
+                   //tMagfield->solver()->
                    std::cout << "    WARNING: desired convergence could not be reached" << std::endl ;
+                   tMagfield->print_worst_dof();
                }
                break ;
            }
@@ -364,10 +368,10 @@ int main( int    argc,
 
            string tTimeString = sprint("%04u", tTimeCount ) ;
 
-           std::ofstream tTimeFile ;
+          /* std::ofstream tTimeFile ;
            tTimeFile.open( "time.csv", std::ios_base::app);
            tTimeFile << tTimeCount << "," << tTime << std::endl ;
-           tTimeFile.close() ;
+           tTimeFile.close() ; */
 
 
            // compute the rcond function
@@ -383,6 +387,7 @@ int main( int    argc,
                tR = tK / ( 1 - tK * BELFEM_EPS ) * 2.0 * BELFEM_EPS;
            }
 
+           /*
            for( id_t tID : tMesh->ghost_block_ids() )
            {
                string tFileName = "tape_" +  std::to_string( tID ) + "_" + tTimeString + ".csv";
@@ -403,7 +408,7 @@ int main( int    argc,
                }
                tTapeFile.close() ;
 
-           }
+           }*/
 
            for( fem::Block * tBlock : tMagfield->blocks() )
            {
@@ -432,10 +437,11 @@ int main( int    argc,
            //std::cout << "-----" << std::endl ;
           // std::cout  <<  tTime << ", " << tI << ", " << tEI << std::endl ;
 
-           std::ofstream tCSV ;
+           /*std::ofstream tCSV ;
            tCSV.open( "acloss.csv", std::ios_base::app);
            tCSV <<  tTime << ", " << tI << ", " << tEI << ", " << std::log10(tK) << ", " << std::log10(tR) << std::endl ;
            tCSV.close() ;
+            */
            if( tMagfield->solver()->type() == SolverType::MUMPS )
            {
                std::cout << "    cond: " << tK << " " << tR << std::endl;

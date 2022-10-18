@@ -17,6 +17,9 @@
 #include "fn_norm.hpp"
 #include "cl_Timer.hpp"
 #include "meshtools.hpp"
+#include "fn_max.hpp"
+#include "fn_min.hpp"
+#include "fn_entity_type.hpp"
 
 namespace belfem
 {
@@ -142,6 +145,19 @@ namespace belfem
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
                 // create the graph and initialize the matrices
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+                // needed to find worst dof
+                if( mParent->is_master() )
+                {
+                    mFreeDofs.set_size( mMyNumberOfFreeDofs, nullptr );
+                    for( Dof * tDof : mDOFs )
+                    {
+                        if( ! tDof->is_fixed() )
+                        {
+                            mFreeDofs( tDof->index() ) = tDof ;
+                        }
+                    }
+                }
 
                 Cell< graph::Vertex * > tGraph ;
                 if( mMyNumberOfFixedDofs > 0 )
@@ -1869,6 +1885,61 @@ namespace belfem
             }
 
 #endif
+//------------------------------------------------------------------------------
+
+            void
+            SolverData::print_worst_dof()
+            {
+                if( mParent->is_master() && mRhsVector.length() > 0 )
+                {
+                    real tRmin = std::abs( min( mRhsVector ));
+                    real tRmax = std::abs( max( mRhsVector ));
+                    real tR = tRmin > tRmax ? tRmin : tRmax;
+
+                    index_t tIndex = gNoIndex;
+
+                    for ( index_t k = 0; k < mNumberOfFreeDofs; ++k )
+                    {
+                        if ( std::abs( mRhsVector( k )) == tR )
+                        {
+                            tIndex = k;
+                            break;
+                        }
+                    }
+
+                    // get dof
+                    Dof * tDof = mFreeDofs( tIndex );
+
+                    string tVertexLabel = to_string( tDof->entity_type() ) ;
+                    string tDofLabel = mParent->iwg()->dof_label( tDof->type_id() ) ;
+
+
+
+                    std::cout << "    Worst dof : " << tVertexLabel << " " << tDof->mesh_basis()->id()
+                              << " :  " << tDofLabel ;
+
+                    if( tVertexLabel == "facet" )
+                    {
+                        mesh::Facet * tFacet = reinterpret_cast< mesh::Facet * >( tDof->mesh_basis() );
+                        if( tFacet->has_master() )
+                        {
+                            std::cout << " M: " << tFacet->master()->id() ;
+                        }
+                        if( tFacet->has_slave() )
+                        {
+                            std::cout << " S: " << tFacet->slave()->id() ;
+                        }
+                        if( ! tFacet->has_master() && ! tFacet->has_slave() )
+                        {
+                            std::cout << " ( cut )" ;
+                        }
+                    }
+
+
+                    std::cout << std::endl << "                value : " << mLhsVector( tDof->index() ) << " res : " << mRhsVector( tDof->index() )/ mRhsNorm << std::endl ;
+                }
+
+            }
 
 //------------------------------------------------------------------------------
         } /* end namespace dofmgr */

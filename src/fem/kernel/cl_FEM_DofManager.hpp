@@ -305,6 +305,9 @@ namespace belfem
             void
             init_dof_values();
 
+            void
+            print_worst_dof() ;
+
 //------------------------------------------------------------------------------
 #ifdef BELFEM_HDF5
 
