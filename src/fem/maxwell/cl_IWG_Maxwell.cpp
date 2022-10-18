@@ -2152,7 +2152,7 @@ namespace belfem
 
                 // compute B
                 real tmu0 = mMaterial->mu_s( norm( tB * tPhi0 ) );
-                real tmu1 = mMaterial->mu_s( norm( tB * tPhi0 ) );
+                real tmu1 = mMaterial->mu_s( norm( tB * tPhi ) );
 
                 real tVal = tW( k ) * mEdgeFunction->abs_det_J() ;
 

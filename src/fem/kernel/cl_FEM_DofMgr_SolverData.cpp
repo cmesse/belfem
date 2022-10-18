@@ -1717,6 +1717,8 @@ namespace belfem
                     // distribute data
                     Vector< real > tResidual( mKernel->comm_table().length(), aResidual );
 
+                    //this->write_residuals_to_mesh() ;
+
                     // catch error
                     if( ( aResidual == 0  && aIteration == 0 ) || aResidual > 1E12 || std::isnan( aResidual ) )
                     {
@@ -1957,13 +1959,16 @@ namespace belfem
                     index_t tCount = 0 ;
                     for( Dof * tDof : mFreeDofs )
                     {
+
                         if ( tDof->is_node() )
                         {
-                            tR( tDof->dof_index_on_field() )  = mRhsVector( tCount ) / mRhsNorm ;
+
+                            tR( tDof->mesh_basis()->index() )  = mRhsVector( tCount ) ;
                         }
                         ++tCount ;
                     }
                 }
+
             }
 
 //------------------------------------------------------------------------------

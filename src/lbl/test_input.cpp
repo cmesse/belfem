@@ -443,8 +443,6 @@ int main( int    argc,
            tCSV.close() ;
             */
 
-           tMagfield->write_residuals_to_mesh();
-
            if( tMagfield->solver()->type() == SolverType::MUMPS )
            {
                std::cout << "    cond: " << tK << " " << tR << std::endl;
