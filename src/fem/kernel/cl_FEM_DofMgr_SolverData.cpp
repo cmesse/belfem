@@ -1915,7 +1915,7 @@ namespace belfem
 
 
 
-                    std::cout << "    Worst dof : " << tVertexLabel << " " << tDof->mesh_basis()->id()
+                    std::cout << std::endl << "    Worst dof : " << tVertexLabel << " " << tDof->mesh_basis()->id()
                               << " :  " << tDofLabel ;
 
                     if( tVertexLabel == "facet" )
@@ -1931,12 +1931,12 @@ namespace belfem
                         }
                         if( ! tFacet->has_master() && ! tFacet->has_slave() )
                         {
-                            std::cout << " ( cut )" ;
+                            std::cout << " cut: " << tFacet->node( 0 )->id() << "-" << tFacet->node( 1 )->id();
                         }
                     }
 
 
-                    std::cout << std::endl << "                value : " << mLhsVector( tDof->index() ) << " res : " << mRhsVector( tDof->index() )/ mRhsNorm << std::endl ;
+                    std::cout << std::endl << "                value : " << mLhsVector( tDof->index() ) << " res : " << mRhsVector( tDof->index() )/ mRhsNorm << std::endl << std::endl ;
                 }
 
             }

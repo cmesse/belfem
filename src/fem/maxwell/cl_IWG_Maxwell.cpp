@@ -1912,7 +1912,7 @@ namespace belfem
             // grab node data, needed to compute nu_s( b )
             // let's try the data from the last timestep
             this->collect_node_data( aElement,
-                                        "az",
+                                        "az0",
                                         mGroup->work_phi() );
 
             aK = ( 0.5 * std::abs( det( mGroup->work_J() ) )
@@ -1934,7 +1934,7 @@ namespace belfem
             // grab node data
             Vector< real > & tAz = mGroup->work_phi() ;
 
-            this->collect_node_data( aElement, "az", tAz );
+            this->collect_node_data( aElement, "az0", tAz );
 
             // reset matrices
             aK.fill( 0.0 );
@@ -2670,10 +2670,10 @@ namespace belfem
 
 
             // compute residual vector
-            // aRHS *= mDeltaTime ;
+            aRHS *= mDeltaTime ;
 
             //  finalize Jacobian ( M + delta_t * theta * K )
-            // aJacobian *= mDeltaTime ;
+            aJacobian *= mDeltaTime ;
 
         }
 
