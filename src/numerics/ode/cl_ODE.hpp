@@ -25,7 +25,7 @@ namespace belfem
         public:
 //------------------------------------------------------------------------------
 
-            ODE( const uint & aDimension ) :
+            ODE( const uint aDimension ) :
                 mDimension( aDimension )
             {};
 

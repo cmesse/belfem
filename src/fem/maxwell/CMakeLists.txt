@@ -1,6 +1,7 @@
 set( LIBNAME maxwell )
 
 set( SOURCES
+        cl_BhExtrapolationOde.cpp
         cl_Maxwell_FieldList.cpp
         cl_IWG_Maxwell.cpp
         cl_IWG_Maxwell_HPhi_Tri3.cpp
@@ -27,11 +28,13 @@ include_directories( ${BELFEM_SOURCE_DIR}/math/tools )
 include_directories( ${BELFEM_SOURCE_DIR}/math/graph )
 include_directories( ${BELFEM_SOURCE_DIR}/numerics/integration )
 include_directories( ${BELFEM_SOURCE_DIR}/numerics/spline )
+include_directories( ${BELFEM_SOURCE_DIR}/numerics/ode )
 include_directories( ${BELFEM_SOURCE_DIR}/physics )
 include_directories( ${BELFEM_SOURCE_DIR}/physics/materials )
 
 set ( LIBLIST
         sparse
+        ode
         mesh
         integration
         interpolation

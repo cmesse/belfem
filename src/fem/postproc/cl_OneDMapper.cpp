@@ -363,7 +363,9 @@ namespace belfem
         index_t i = 0 ;
         index_t k = aSourceNodes.length() - 1 ;
         index_t j = ( i + k +1 ) / 2 ;
-        for( uint e=0; e<10; ++e )
+        index_t n = k ;
+
+        for( index_t e=0; e<n; ++e )
         {
             if( aSourceNodes( i ) <= aX  && aSourceNodes( j ) >= aX )
             {

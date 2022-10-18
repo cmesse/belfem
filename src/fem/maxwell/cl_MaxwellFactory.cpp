@@ -16,7 +16,9 @@
 
 #include "en_SolverEnums.hpp"
 #include "en_FEM_MagfieldBcType.hpp"
-
+#include "cl_ODE_Integrator.hpp"
+#include "cl_BhExtrapolationOde.hpp"
+#include "en_ODE_Type.hpp"
 
 //#include "cl_IWG_Maxwell_HA_Tri3.hpp"
 //#include "cl_IWG_Maxwell_HA_Tri6.hpp"
@@ -3342,8 +3344,9 @@ namespace belfem
                 uint ln = tWords.size() == 2 ? tFile.length() : std::stoi( tWords( 0 )) + 1;
 
                 // create vectors with values
-                Vector <real> tB0( ln - l0, 0.0 );
-                Vector <real> tH0( ln - l0, 0.0 );
+                uint tn0 = ln - l0 ;
+                Vector <real> tB0( tn0, 0.0 );
+                Vector <real> tH0( tn0, 0.0 );
 
                 // read data
                 uint tCount = 0;
@@ -3355,96 +3358,149 @@ namespace belfem
                 }
 
                 BELFEM_ERROR( tB0( 0 ) == 0.0, "b-datapoints must begin with zero" );
+                BELFEM_ERROR( tn0 > 2, "need at least three datapoints!" );
 
                 // offset
                 aM = tH0( 0 );
                 tH0 -= aM ;
 
-                // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                // Step 2 : project data to finer and equidistant grid
-                // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                // check inputs
 
-                uint tNumPoints0 = 100;
-                Vector <real> tB1( tNumPoints0 );
-                Vector <real> tH1( tNumPoints0 );
-
-                // get last values in textfile
-                real tBn = tB0( tCount - 1 );
-                real tHn = tH0( tCount - 1 );
-
-                linspace( 0.0, tBn, tNumPoints0, tB1 );
-                OneDMapper tMapper( tB1, 1 );
-                tMapper.project( tB0, tH0, tH1 );
-
-                // fix number
-                tH1( 0 ) = 0.0;
-
-                // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                // Step 3 : compute derivative at final point
-                // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-                Vector <real> tV( 5 );
-                Vector <real> tW( 5 );
-                Vector <real> tC( 3 );
-
-                tV( 0 ) = tB1( tNumPoints0 - 5 );
-                tV( 1 ) = tB1( tNumPoints0 - 4 );
-                tV( 2 ) = tB1( tNumPoints0 - 3 );
-                tV( 3 ) = tB1( tNumPoints0 - 2 );
-                tV( 4 ) = tB1( tNumPoints0 - 1 );
-
-                tW( 0 ) = tH1( tNumPoints0 - 5 );
-                tW( 1 ) = tH1( tNumPoints0 - 4 );
-                tW( 2 ) = tH1( tNumPoints0 - 3 );
-                tW( 3 ) = tH1( tNumPoints0 - 2 );
-                tW( 4 ) = tH1( tNumPoints0 - 1 );
-
-                polyfit( tV, tW, 2, tC );
-                real tDHDBn = dpolyval( tC, tBn );
-
-                // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                // Step 4 : create polynomial for extrapolation
-                // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
+                real tBn = tB0( tn0 - 1 );
                 real tBmax = aMaxB.first;
 
                 BELFEM_ERROR( tBmax > tBn, "max value of b mus be bigger than in textfile!" );
-                real tHmax = tHn + ( tBmax - tBn ) * constant::nu0;
-
-                create_beam_poly( tBn, tHn, tDHDBn, tBmax, tHmax, constant::nu0, tC );
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                // Step 5 : populate extended table
+                // Step 2 : compute derivative at final point
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-                uint tNumPoints1 = tNumPoints0 * tBmax / tBn + 1;
-                Vector <real> tB2( tNumPoints1 );
-                Vector <real> tH2( tNumPoints1 );
-                Vector <real> tY2( tNumPoints1 );
-                real tDeltaB = tB1( 1 );
-                for ( uint k = 0; k < tNumPoints0; ++k )
+
+                real tdHdBn  ;
+                real td2HdB2n  ;
+                real tHn ;
+
+                // number of samples for poly
+                uint tn = tn0 < 5 ? tn0 : 5 ;
+
+                Vector< real > tB1( tn );
+                Vector< real > tH1( tn );
+                Vector< real > tC( 3 );
+
+                for( uint k=0; k<tn; ++k )
                 {
-                    tB2( k ) = tB1( k );
-                    tH2( k ) = tH1( k );
+                    tB1( k ) = tB0( tn0 - tn + k );
+                    tH1( k ) = tH0( tn0 - tn + k );
                 }
-                for ( uint k = tNumPoints0; k < tNumPoints1; ++k )
+                polyfit( tB1, tH1, 2, tC );
+                tdHdBn = dpolyval( tC, tBn );
+                td2HdB2n = 2 * tC( 0 );
+                tHn = polyval( tC, tBn );
+
+
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                // Step 3 : extrapolate curve
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+                // create the ode
+                BhExtrapolationOde tOde( tBn, tdHdBn, td2HdB2n, tBmax );
+
+                // create the integrator
+                ode::Integrator tIntegrator( tOde, ode::Type::RK45 );
+
+                real tX = tBn ;
+                tIntegrator.timestep() = tB0( tn0-1 ) - tB0( tn0 -2 ) ;
+                tIntegrator.maxtime() = tBmax ;
+                Vector< real > tY( 1 , tHn );
+
+                uint tn2 = 0 ;
+                Cell< real > tB3 ;
+                Cell< real > tH3 ;
+                while ( ( uint ) tIntegrator.step( tX, tY ) < 2 )
                 {
-                    tB2( k ) = tB2( k - 1 ) + tDeltaB;
-                    tH2( k ) = polyval( tC, tB2( k ));
+                    tB3.push( tX );
+                    tH3.push( tY( 0 ) );
                 }
+                uint tn1 = tB3.size() ;
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                // Step 6 : compute value for lnmu
+                // Step 4 : merge datasets
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                for ( uint k = 1; k < tNumPoints1; ++k )
+
+                Vector< real > tB2( tn0 + tn1 );
+                Vector< real > tH2( tn0 + tn1 );
+
+
+                // first dataset
+                for( uint k=1; k<tn0; ++k )
                 {
-                    tY2( k ) = std::log( tH2( k ) / tB2( k ) );
+                    tB2( k ) = tB0( k );
+                    tH2( k ) = tH0( k );
                 }
 
-                // extrapolate first value
-                tY2( 0 ) = tY2( 1 ) - ( tY2( 2 ) - tY2( 1 )) / ( tB2( 2 ) - tB2( 1 )) * tB2( 1 );
+                tCount = tn0 ;
+
+                // second dataset
+                for( uint k=0; k<tn1; ++k )
+                {
+                    tB2( tCount ) = tB3( k );
+                    tH2( tCount ) =tH3( k ) ;
+                    ++tCount ;
+                }
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                // Step 5 : project data to an equidistant grid
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+                uint tNumPoints = 1001;
+                Vector <real> tB( tNumPoints );
+                Vector <real> tH( tNumPoints );
+                linspace( 0.0, tBmax, tNumPoints, tB );
+                OneDMapper tMapper( tB, 1 );
+                tMapper.project( tB2, tH2, tH );
+                tY.set_size( tNumPoints );
+                for( uint k=1; k<tNumPoints; ++k )
+                {
+                    tY( k ) = std::log( tH( k ) / tB( k ) );
+                }
+
+
+
+                // fix bug
+                for( tCount = 0 ; tB( tCount ) < 0.2  ; ++tCount );
+
+                // sign :
+                real tS0 = tY( tCount + 1 ) - tY( tCount );
+
+                bool tFoundPeak = false ;
+
+                // look for peak ( a numerical bug )
+                for( int k=tCount; k>=0; --k )
+                {
+                    real tS = tY( k + 1 ) - tY( k ) ;
+                    if( tS * tS0 < 0 )
+                    {
+                        tFoundPeak = true ;
+                        tCount = k ;
+                        break ;
+                    }
+                }
+
+                // check if we have found a peek
+                if( tFoundPeak )
+                {
+                    // derivative at reference point
+                    real a = ( tY( tCount+2 ) - tY( tCount+1 ) ) / ( tB( tCount + 2 ) - tB( tCount + 1 ) );
+                    real b = tY( tCount + 1 ) - a * tB( tCount + 1 );
+
+                    // fix peak
+                    for( uint k=0; k<=tCount; ++k )
+                    {
+                        tY( k ) = a * tB( k ) + b ;
+                    }
+                }
+
+                // - - - - - - - - - -   - - - - - - - - - - - - - - - - - -
                 // Step 7 : synchronize M0 value
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -3464,17 +3520,18 @@ namespace belfem
                     send( tCommList, tAllM );
                 }
 
+
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                // Step 8 : create the spline
+                // Step 7 : create the spline
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
                 // help matrix for spline
                 SpMatrix tHelpMatrix;
-                spline::create_helpmatrix( tNumPoints1, tB2( 1 ), tHelpMatrix );
+                spline::create_helpmatrix( tNumPoints, tB( 1 ), tHelpMatrix );
 
                 // create the spline and send its parameters to the other procs
-                return new Spline( tB2, tY2, tHelpMatrix, 0, 0,0  );
+                return new Spline( tB, tY, tHelpMatrix, 0, 0, 0  );
             }
             else
             {
