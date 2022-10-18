@@ -3566,12 +3566,11 @@ namespace belfem
                 // Step 8 : create the spline for nu
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-                real tHmax = aSplines( 0 )->eval( tBmax );
+                real tHmax = std::exp( aSplines( 0 )->eval( tBmax ) ) * tBmax ;
 
                 linspace( 0.0, tHmax, tNumPoints, tH );
                 OneDMapper tMapper2( tH, 1 );
                 tMapper2.project( tH2, tB2, tB );
-
 
                 SpMatrix tHelpMatrix2;
                 spline::create_helpmatrix( tNumPoints, tH( 1 ), tHelpMatrix2 );

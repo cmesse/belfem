@@ -308,9 +308,9 @@ namespace belfem
 
         tDeltaX -= aDeltaX;
 
-        BELFEM_ASSERT( norm( tDeltaX ) < 1e-9,
+        BELFEM_ASSERT( ( norm( tDeltaX )/( aX( tN-1) - aX( 0 ) )  ) < 1e-9,
                     "X-Vector is not equidistant ( %f ) ",
-                    norm( tDeltaX ));
+                       ( double ) norm( tDeltaX ));
 
         BELFEM_ASSERT( aDeltaX > 0, "Invalid input" );
 

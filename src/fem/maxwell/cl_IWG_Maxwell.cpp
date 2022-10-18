@@ -2139,7 +2139,11 @@ namespace belfem
             // get integration weights
             const Vector< real > & tW = mGroup->integration_weights() ;
 
-            aJacobian.fill( 0.0 );
+            Matrix< real > & tM = aJacobian ;
+            Matrix< real > & tK = mGroup->work_K() ;
+
+            tM.fill( 0 );
+            tK.fill( 0 );
 
             for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
             {
@@ -2150,15 +2154,15 @@ namespace belfem
                 real tmu0 = mMaterial->mu_s( norm( tB * tPhi0 ) );
                 real tmu1 = mMaterial->mu_s( norm( tB * tPhi0 ) );
 
-                real tVal = tW( k ) * mEdgeFunction->abs_det_J() *
-                        ( tmu1 + ( tmu1 - tmu0) / mDeltaTime );
+                real tVal = tW( k ) * mEdgeFunction->abs_det_J() ;
 
                 // integrate mass matrix
-                aJacobian += tVal * trans( tB ) * tB ;
+                tM += tVal * tmu1 * trans( tB ) * tB ;
+                tK += tVal * ( ( tmu1 - tmu0) / mDeltaTime ) * trans( tB ) * tB ;
             }
-#
-            // compute right hand side
-            aRHS = aJacobian * tPhi0 ;
+
+            aRHS = tM * tPhi0 ;
+            tM += mDeltaTime * tK ;
         }
 
 //------------------------------------------------------------------------------
