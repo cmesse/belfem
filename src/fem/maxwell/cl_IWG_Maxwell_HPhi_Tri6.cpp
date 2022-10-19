@@ -521,6 +521,7 @@ namespace belfem
                     }
                 }
             }
+            tK /= mDeltaTime ;
             // todo: why not negative ?
             tM = trans( tK );
 

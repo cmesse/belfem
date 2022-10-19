@@ -6,7 +6,7 @@
 #define BELFEM_CL_IWG_MAXWELL_HPP
 
 #define BELFEM_FERRO_LINEAR
-// #define BELFEM_FERRO_HPHIA
+#define BELFEM_FERRO_HPHIA
 
 #include "typedefs.hpp"
 #include "assert.hpp"

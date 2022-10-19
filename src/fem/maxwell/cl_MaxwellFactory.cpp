@@ -872,9 +872,7 @@ namespace belfem
                         const value tMaxB = aInput->get_value( "maxb", "T" );
 
                         real tM = BELFEM_QUIET_NAN;
-                        Cell< Spline * > tSplines = this->read_bhfile( tPath, tUnitB, tUnitH, tMaxB, tM ) ;
-                        aMaterial->set_nu_s( tSplines ( 0 ), tSplines( 1 ) );
-
+                        aMaterial->set_nu_s( this->read_bhfile( tPath, tUnitB, tUnitH, tMaxB, tM ) );
                         aMaterial->set_m0( tM );
                     }
                     else
@@ -3326,7 +3324,7 @@ namespace belfem
 
 // -----------------------------------------------------------------------------
 
-        Cell< Spline * >
+        Spline *
         MaxwellFactory::read_bhfile(
                 const string & aPath,
                 const string & aUnitB,
@@ -3442,7 +3440,13 @@ namespace belfem
                 {
                     tB3.push( tX );
                     tH3.push( tY( 0 ) );
+                    if( tX > tOde.bmax() )
+                    {
+                        break ;
+                    }
                 }
+                tBmax = tX ;
+
                 uint tn1 = tB3.size() ;
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -3488,8 +3492,10 @@ namespace belfem
                 }
 
 
-                // fix bug
-                for( tCount = 0 ; tB( tCount ) < 0.2  ; ++tCount );
+                // fix peak
+                real tBmin = 0.2 ;
+
+                for( tCount = 0 ; tB( tCount ) < tBmin  ; ++tCount );
 
                 // sign :
                 real tS0 = tY( tCount + 1 ) - tY( tCount );
@@ -3553,85 +3559,20 @@ namespace belfem
                 // Step 7 : create the spline
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+                tn2 = tn0 + tn1 ;
 
                 // help matrix for spline
                 SpMatrix tHelpMatrix;
                 spline::create_helpmatrix( tNumPoints, tB( 1 ), tHelpMatrix );
 
                 Cell< Spline * > aSplines( 2 , nullptr );
-                aSplines( 0 ) = new Spline( tB, tY, tHelpMatrix, 0, 0, 0  );
+                return new Spline( tB, tY, tHelpMatrix, 0, 0, 0  );
 
-
-                // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                // Step 8 : create the spline for nu
-                // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-                real tHmax = std::exp( aSplines( 0 )->eval( tBmax ) ) * tBmax ;
-
-                linspace( 0.0, tHmax, tNumPoints, tH );
-                OneDMapper tMapper2( tH, 1 );
-                tMapper2.project( tH2, tB2, tB );
-
-                SpMatrix tHelpMatrix2;
-                spline::create_helpmatrix( tNumPoints, tH( 1 ), tHelpMatrix2 );
-
-                for( uint k=1; k<tNumPoints; ++k )
-                {
-                    tY( k ) = std::log( tB( k ) / tH( k ) );
-                }
-
-                // fix bug
-                for( tCount = 0 ; tB( tCount ) < 0.2  ; ++tCount );
-
-                // sign :
-                tS0 = tY( tCount + 1 ) - tY( tCount );
-
-                tFoundPeak = false ;
-
-                // look for peak ( a numerical bug )
-                for( int k=tCount; k>0; --k )
-                {
-                    real tS = tY( k + 1 ) - tY( k ) ;
-                    if( tS * tS0 < 0 )
-                    {
-                        tFoundPeak = true ;
-                        tCount = k ;
-                        break ;
-                    }
-                }
-
-                if( ! tFoundPeak )
-                {
-                    tCount = 1 ;
-                    tFoundPeak = true ;
-                }
-
-                // check if we have found a peek
-                if( tFoundPeak )
-                {
-                    // derivative at reference point
-                    real a = ( tY( tCount+2 ) - tY( tCount+1 ) ) / ( tH( tCount + 2 ) - tH( tCount + 1 ) );
-                    real b = tY( tCount + 1 ) - a * tH( tCount + 1 );
-
-                    // fix peak
-                    for( uint k=0; k<=tCount; ++k )
-                    {
-                        tY( k ) = a * tH( k ) + b ;
-                    }
-                }
-
-                aSplines( 1 ) = new Spline( tH, tY, tHelpMatrix2, 0, 0, 0  );
-
-                // create the spline and send its parameters to the other procs
-                return aSplines ;
             }
             else
             {
                 receive( 0, aM );
-                Cell< Spline * > aSplines( 2 , nullptr );
-                aSplines( 0 ) = new Spline( 0 );
-                aSplines( 1 ) = new Spline( 0  );
-                return aSplines ;
+                return new Spline( 0 );
             }
         }
 

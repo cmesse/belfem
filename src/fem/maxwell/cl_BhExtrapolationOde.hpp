@@ -36,6 +36,15 @@ namespace belfem
                 const Vector< real > & aY,
                 Vector< real > & adYdT ) ;
 
+//-----------------------------------------------------------------------------
+
+        inline real
+        bmax() const
+        {
+            return mBswitch ;
+        }
+
+//-----------------------------------------------------------------------------
     };
 }
 #endif //BELFEM_CL_BHEXTRAPOLATIONODE_HPP

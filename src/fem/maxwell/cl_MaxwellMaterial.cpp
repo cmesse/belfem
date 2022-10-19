@@ -45,10 +45,6 @@ namespace belfem
         {
             delete mNuSpline ;
         }
-        if( mMuSpline != nullptr )
-        {
-            delete mMuSpline ;
-        }
         if( mRhoSpline != nullptr )
         {
             delete mRhoSpline ;
@@ -206,16 +202,15 @@ namespace belfem
 //----------------------------------------------------------------------------
 
     void
-    MaxwellMaterial::set_nu_s( Spline * aMuSpline, Spline * aNuSpline )
+    MaxwellMaterial::set_nu_s( Spline * aNuSpline )
     {
-        mMuSpline = aMuSpline ;
         mNuSpline = aNuSpline ;
 
         mPermeabilityLaw = PermeabilityLaw::Spline ;
         mFunNus = & MaxwellMaterial::nu_s_spline ;
         mFunMus = & MaxwellMaterial::mu_s_spline ;
-        mBmax = aMuSpline->x_max() ;
-        mHmax = aMuSpline->eval( mBmax ) * mBmax ;
+        mBmax = aNuSpline->x_max() ;
+        mHmax = std::exp( aNuSpline->eval( mBmax ) ) * mBmax ;
 
         // we don't want the mu_r to return a reasonable value
         // don't worry, mu_r should never be called in this mode

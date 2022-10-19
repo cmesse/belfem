@@ -19,8 +19,6 @@ namespace belfem
         // spline for the permeability
         Spline * mNuSpline = nullptr ;
 
-        Spline * mMuSpline = nullptr ;
-
         // spline if resisivity is only temperature dependent
         Spline * mRhoSpline = nullptr ;
 
@@ -171,7 +169,7 @@ namespace belfem
 //----------------------------------------------------------------------------
 
         void
-        set_nu_s( Spline * aMuSpline, Spline * aNuSpline );
+        set_nu_s( Spline * aNuSpline );
 
 //----------------------------------------------------------------------------
 
@@ -415,9 +413,44 @@ namespace belfem
     inline real
     MaxwellMaterial::mu_s_spline ( const real aH, const real aT ) const
     {
-        if( aH < mHmax )
+        if( aH < BELFEM_EPSILON )
         {
-            return std::exp( mMuSpline->eval( aH ) );
+            return  0 ;
+        }
+        else if( aH < mHmax )
+        {
+
+            real tF = 1 ;
+            //real tdF ;
+            uint tCount = 0 ;
+            real aMu ;
+            // real tdNu ;
+
+            real tB ;
+            real tB0 = constant::mu0 * aH ;
+            real tF0 = this->nu_s( tB0 ) * tB0 - aH ;
+            real tB1 = mBmax ;
+
+
+            while( std::abs( tF ) > aH *1e-12 )
+            {
+                tB = 0.5 * ( tB1 + tB0 );
+
+                tF = this->nu_s( tB ) * tB - aH ;
+
+                if ( tF0 * tF  > 0 )
+                {
+                    tB0 = tB;
+                    tF0 = tF;
+                }
+                else
+                {
+                    tB1 = tB;
+                }
+
+                BELFEM_ERROR( tCount++ < 200, "Too many iterations.");
+            }
+            return tB / aH ;
         }
         else
         {

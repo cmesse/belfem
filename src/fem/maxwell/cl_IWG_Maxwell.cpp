@@ -2145,14 +2145,20 @@ namespace belfem
             tM.fill( 0 );
             tK.fill( 0 );
 
+            // todo: we should use another element field.
+            Vector< real > & tField = mMesh->field_data( "elementJJc");
+
             for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
             {
                 // get gradient operator matrix
                 const Matrix< real > & tB = mEdgeFunction->B( k );
 
                 // compute B
-                real tmu0 = mMaterial->mu_s( norm( tB * tPhi0 ) );
-                real tmu1 = mMaterial->mu_s( norm( tB * tPhi ) );
+                real th0  = norm( tB * tPhi0 ) ;
+                real th1  = norm( tB * tPhi ) ;
+
+                real tmu0 = mMaterial->mu_s( th0  );
+                real tmu1 = mMaterial->mu_s( th1 );
 
                 real tVal = tW( k ) * mEdgeFunction->abs_det_J() ;
 
@@ -2723,10 +2729,10 @@ namespace belfem
 
 
             // compute residual vector
-            aRHS *= mDeltaTime ;
+            //aRHS *= mDeltaTime ;
 
             //  finalize Jacobian ( M + delta_t * theta * K )
-            aJacobian *= mDeltaTime  ;
+            //aJacobian *= mDeltaTime  ;
 
         }
 

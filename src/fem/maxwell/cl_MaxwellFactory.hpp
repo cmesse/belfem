@@ -420,7 +420,7 @@ namespace belfem
 
 // -----------------------------------------------------------------------------
 
-            Cell< Spline * >
+            Spline *
             read_bhfile(
                     const string & aPath,
                     const string & aUnitB,

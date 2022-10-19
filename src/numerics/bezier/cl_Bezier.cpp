@@ -93,12 +93,12 @@ namespace belfem
             if ( tF * tF0 > 0.0 )
             {
                 tXi0 = aXi ;
-                tF = tF0 ;
+                tF0 = tF ;
             }
             else
             {
                 tXi1 = aXi ;
-                //tF = tF1 ;
+                //tF1 = tF ;
             }
 
             BELFEM_ERROR( tCount++ < 100, "Too many iterations.");
