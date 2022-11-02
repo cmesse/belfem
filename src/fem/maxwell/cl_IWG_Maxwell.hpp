@@ -7,6 +7,7 @@
 
 #define BELFEM_FERRO_LINEAR
 #define BELFEM_FERRO_HPHIA
+/// #define BELFEM_FERROAIR_LAMBDA --> moved to IWG
 
 #include "typedefs.hpp"
 #include "assert.hpp"

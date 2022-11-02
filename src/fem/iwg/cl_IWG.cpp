@@ -697,6 +697,13 @@ namespace belfem
                 }
                 else if( aSideSet->domain_type() == DomainType::InterfaceFmAir ) // exists only in h-phi
                 {
+#ifdef BELFEM_FERROAIR_LAMBDA
+
+
+                    // todo: also make this for 3D
+                    return mesh::number_of_nodes( aSideSet->master_type() )
+                        + mesh::number_of_nodes( aSideSet->slave_type() ) + 2 ;
+#else
                     if( mNumberOfDerivativeDimensions == 2 )
                     {
                         return mesh::number_of_nodes( aSideSet->master_type() ) + mesh::number_of_nodes( aSideSet->slave_type() );
@@ -705,6 +712,7 @@ namespace belfem
                     {
                         return ( mesh::number_of_nodes( aSideSet->master_type() ) + mesh::number_of_nodes( aSideSet->slave_type() ) ) * 3 ;
                     }
+#endif
                 }
                 else
                 {

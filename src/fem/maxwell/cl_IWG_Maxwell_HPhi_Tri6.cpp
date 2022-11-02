@@ -38,7 +38,12 @@ namespace belfem
 
 
             mFields.InterfaceScAir = { "lambda_t0", "lambda_t1" };
-            //mFields.InterfaceScFm = { };
+            //mFields.InterfaceScFm = { "lambda_n0", "lambda_n1"  };
+
+#ifdef BELFEM_FERROAIR_LAMBDA
+            mFields.InterfaceFmAir = { "lambda_n0", "lambda_n1"  };
+#endif
+
             mFields.Cut = { "lambda" };
 
             mFields.SymmetryAir = { "lambda_n0", "lambda_n1" };
@@ -488,20 +493,63 @@ namespace belfem
             Matrix< real > & tK = mGroup->work_K() ;
             Matrix< real > & tM = aJacobian ;
 
-            Matrix< real > & tB = mGroup->work_B() ;
             const Vector< real > & tW = mGroup->integration_weights() ;
 
             tK.fill( 0.0 );
             tM.fill( 0.0 );
 
+
+
+
             // collect node coords, needed below and to compo
             aElement->master()->get_node_coors( mGroup->work_Xm() );
-            //aElement->slave()->get_node_coors( mGroup->work_Xs() );
+            aElement->slave()->get_node_coors( mGroup->work_Xs() );
 
             uint tNumNodesPerAir   = aElement->master()->element()->number_of_nodes() ;
             uint tNumNodesPerFerro = aElement->slave()->element()->number_of_nodes() ;
 
+#ifdef BELFEM_FERROAIR_LAMBDA
 
+            const Vector< real > & tn = this->normal_straight_2d( aElement );
+
+            Matrix< real > & tBm = mGroup->work_B() ;
+            Matrix< real > & tBs = mGroup->work_C() ;
+
+            uint p =  tNumNodesPerAir + tNumNodesPerFerro ;
+            uint q = p + 1 ;
+
+            for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
+            {
+                tBm = inv( tMaster->dNdXi( k ) * mGroup->work_Xm() ) * tMaster->dNdXi( k );
+                tBs = inv( tSlave->dNdXi( k ) * mGroup->work_Xs() ) * tSlave->dNdXi( k );
+
+                real tOmega = tW( k ) * mGroup->work_det_J() ;
+
+                for( uint i = 0 ; i<tNumNodesPerAir; ++i )
+                {
+                    tK( p, i ) +=
+                            (   tn( 0 ) * tBm( 0,  i )
+                             +  tn( 1 ) * tBm( 1, i ) ) * tOmega ;
+                    tK( q, i ) +=
+                               (   tn( 0 ) * tBm( 1,  i )
+                                -  tn( 1 ) * tBm( 0, i ) ) * tOmega ;
+                }
+                for( uint j=0; j<tNumNodesPerFerro; ++j )
+                {
+                    tK( p, j + tNumNodesPerFerro ) +=
+                               (   tn( 0 ) * tBs( 1,  j )
+                                -  tn( 1 ) * tBs( 0, j ) ) * tOmega ;
+                    tK( q, j + tNumNodesPerFerro ) -=
+                            (   tn( 0 ) * tBs( 0,  j )
+                                -  tn( 1 ) * tBs( 1, j ) ) * tOmega ;
+                }
+            }
+
+            tM = tK + trans( tK );
+            aRHS.fill( 0 );
+
+#else
+            Matrix< real > & tB = mGroup->work_B() ;
             for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
             {
                 // normal of air side
@@ -521,24 +569,15 @@ namespace belfem
                     }
                 }
             }
-            tK /= mDeltaTime ;
+
             // todo: why not negative ?
             tM = trans( tK );
 
+
+
             aRHS = tM * this->collect_q0_aphi_2d( aElement );
-            aJacobian += tK * this->timestep() ;
-
-            /*this->print_dofs( aElement );
-            Vector< real > Phi( aElement->master()->element()->number_of_nodes() );
-            Vector< real > A( aElement->slave()->element()->number_of_nodes()  );
-            this->collect_node_data( aElement->master(), "phi0", Phi );
-            this->collect_node_data( aElement->slave(), "az0", A );
-            this->collect_q0_aphi_2d( aElement ).print("q");
-            Phi.print("phi");
-            A.print("A");
-
-            tK.print("K");
-            exit( 0 );*/
+            aJacobian += tK * this->timestep();
+#endif
         }
 
 //------------------------------------------------------------------------------
@@ -1482,6 +1521,14 @@ namespace belfem
                     mCrho( 4 ) =  ( -0.25*(2.0*eta + 1.0)*(3.0*xi - 1.0) ) * tVal ;
                     mCrho( 5 ) =  ( 0.25*(2.0*eta + 1.0)*(3.0*xi + 1.0)  ) * tVal ;
 
+
+                    tVal = 4.0 / ( aYLength * aYLength ) * tRho ;
+
+                    real tE0 = 0.5 - 1.5 * xi ;
+                    real tE1 = 0.5 + 1.5 * xi ;
+
+                    //mL.fill( 0.0 );
+
                     mL( 0, 0 ) = tdRhodY * mCrho( 0 );
                     mL( 0, 1 ) = tdRhodY * mCrho( 1 );
                     mL( 0, 2 ) = tdRhodY * mCrho( 2 );
@@ -1489,18 +1536,8 @@ namespace belfem
                     mL( 0, 4 ) = tdRhodY * mCrho( 4 );
                     mL( 0, 5 ) = tdRhodY * mCrho( 5 );
 
-                    tVal = 4.0 / ( aYLength * aYLength ) * tRho ;
 
-                    real tE0 = 0.5 - 1.5 * xi ;
-                    real tE1 = 0.5 + 1.5 * xi ;
 
-                    mN( 0, 0 ) = tE0 * tPhi( 0 );
-                    mN( 0, 1 ) = tE1 * tPhi( 0 );
-                    mN( 0, 2 ) = tE0 * tPhi( 2 );
-                    mN( 0, 3 ) = tE1 * tPhi( 2 );
-                    mN( 0, 4 ) = tE0 * tPhi( 1 );
-                    mN( 0, 5 ) = tE1 * tPhi( 1 );
-                    mN *= constant::mu0;
 
                     mL( 0, 0 ) += tE0  * tVal ;
                     mL( 0, 1 ) += ( 1.5*xi + 0.5 )  * tVal ;

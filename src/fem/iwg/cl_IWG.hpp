@@ -16,7 +16,7 @@
 
 #define BELFEM_MAX_DOFTYPES  32
 #define BELFEM_MAX_NUMPROCS  64
-
+//#define BELFEM_FERROAIR_LAMBDA
 namespace belfem
 {
     class Mesh;

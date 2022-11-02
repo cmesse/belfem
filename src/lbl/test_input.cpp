@@ -291,7 +291,7 @@ int main( int    argc,
            }
            else
            {
-
+               //tFormulation->set_algorithm( SolverAlgorithm::Picard );
                tFormulation->set_algorithm( SolverAlgorithm::NewtonRaphson );
                tFormulation->set_omega( tOmegaN );
                /*if( tCountN++ > 1 )
@@ -387,28 +387,28 @@ int main( int    argc,
                tR = tK / ( 1 - tK * BELFEM_EPS ) * 2.0 * BELFEM_EPS;
            }
 
-           /*
+
            for( id_t tID : tMesh->ghost_block_ids() )
            {
-               string tFileName = "tape_" +  std::to_string( tID ) + "_" + tTimeString + ".csv";
+               //string tFileName = "tape_" +  std::to_string( tID ) + "_" + tTimeString + ".csv";
 
-               std::ofstream tTapeFile ;
-               tTapeFile.open( tFileName, std::ios_base::app);
+               //std::ofstream tTapeFile ;
+               //tTapeFile.open( tFileName, std::ios_base::app);
                //tTapeFile << "t=" << tTime << ", " << std::endl ;
 
                tPipette.set_element_type( tMesh->block( tID )->element_type() );
-               tTapeFile << "x,v,jjc,e*j,rho" << std::endl ;
+               //tTapeFile << "x,v,jjc,e*j,rho" << std::endl ;
 
                for( mesh::Element * tElement : tMesh->block( tID )->elements() )
                {
                     real tV = tPipette.measure( tElement );
                     tEI += tEJel( tElement->index() ) * tV ;
                     tI  += tJel( tElement->index() ) * tV ;
-                    tTapeFile << 0.5*(tElement->node( 0 )->x()+tElement->node( 1 )->x()) << "," << tV << "," << tJJcel( tElement->index() ) << "," << tEJel( tElement->index() )<< "," << tRhoel( tElement->index() ) << std::endl ;
+                    //tTapeFile << 0.5*(tElement->node( 0 )->x()+tElement->node( 1 )->x()) << "," << tV << "," << tJJcel( tElement->index() ) << "," << tEJel( tElement->index() )<< "," << tRhoel( tElement->index() ) << std::endl ;
                }
-               tTapeFile.close() ;
+               //tTapeFile.close() ;
 
-           }*/
+           }
 
            for( fem::Block * tBlock : tMagfield->blocks() )
            {
@@ -437,11 +437,10 @@ int main( int    argc,
            //std::cout << "-----" << std::endl ;
           // std::cout  <<  tTime << ", " << tI << ", " << tEI << std::endl ;
 
-           /*std::ofstream tCSV ;
+           std::ofstream tCSV ;
            tCSV.open( "acloss.csv", std::ios_base::app);
            tCSV <<  tTime << ", " << tI << ", " << tEI << ", " << std::log10(tK) << ", " << std::log10(tR) << std::endl ;
            tCSV.close() ;
-            */
 
            if( tMagfield->solver()->type() == SolverType::MUMPS )
            {

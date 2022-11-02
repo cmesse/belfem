@@ -2573,6 +2573,13 @@ namespace belfem
                         {
                             tFacet->flag() ;
                         }
+#elif BELFEM_FERROAIR_LAMBDA
+                            if (   ( tMasterType == DomainType::Air && tSlaveType == DomainType::Conductor )
+                            || ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Conductor )
+                            || ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Air ))
+                        {
+                            tFacet->flag() ;
+                        }
 #else
                         // check if this sideset is an interface and must be swapped
                         if (   ( tMasterType == DomainType::Air && tSlaveType == DomainType::Conductor )
@@ -2662,6 +2669,14 @@ namespace belfem
                             {
                                 ++tCount ;
                             }
+#elif BELFEM_FERROAIR_LAMBDA
+                            // check if this sideset is an interface
+                            if ( ( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Air )
+                               ||( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Ferro )
+                               ||( tMasterType == DomainType::Air  && tSlaveType == DomainType::Ferro ) )
+                            {
+                                ++tCount ;
+                            }
 #else
                             // check if this sideset is an interface
                             if ( ( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Air )
@@ -2717,6 +2732,14 @@ namespace belfem
                                 tSideSetTypes( tCount++ ) = static_cast< uint >( DomainType::InterfaceScFm );
                             }
 #ifdef BELFEM_FERRO_HPHIA
+                            else if ( tMasterType == DomainType::Air && tSlaveType == DomainType::Ferro )
+                            {
+                                tSideSetIDs( tCount )     = tSideSet->id();
+                                tMasterBlockIDs( tCount ) = tFacet->master()->geometry_tag() ;
+                                tSlaveBlockIDs( tCount )  = tFacet->slave()->geometry_tag() ;
+                                tSideSetTypes( tCount++ ) = static_cast< uint >( DomainType::InterfaceFmAir );
+                            }
+#elif BELFEM_FERROAIR_LAMBDA
                             else if ( tMasterType == DomainType::Air && tSlaveType == DomainType::Ferro )
                             {
                                 tSideSetIDs( tCount )     = tSideSet->id();
