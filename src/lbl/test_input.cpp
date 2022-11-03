@@ -225,12 +225,12 @@ int main( int    argc,
        if( tTimeLoop++ >= 10 )
        {
            // save backup
-	   string tString = sprint("%s.%04u", tBackupFile.c_str(), ( unsigned int ) tTimeCount );
+	       /*string tString = sprint("%s.%04u", tBackupFile.c_str(), ( unsigned int ) tTimeCount );
 
            // save backup
-           tFormulation->save( tString );
+           tFormulation->save( tString ); */
 
-	   // save mesh
+	       // save mesh
            real tOldTime = tTime;
            tTime *= 1000.0;
            tMesh->save( tOutFile );
@@ -390,23 +390,23 @@ int main( int    argc,
 
            for( id_t tID : tMesh->ghost_block_ids() )
            {
-               //string tFileName = "tape_" +  std::to_string( tID ) + "_" + tTimeString + ".csv";
+               string tFileName = "tape_" +  std::to_string( tID ) + "_" + tTimeString + ".csv";
 
-               //std::ofstream tTapeFile ;
-               //tTapeFile.open( tFileName, std::ios_base::app);
-               //tTapeFile << "t=" << tTime << ", " << std::endl ;
+               std::ofstream tTapeFile ;
+               tTapeFile.open( tFileName, std::ios_base::app);
+               ////tTapeFile << "t=" << tTime << ", " << std::endl ;
 
                tPipette.set_element_type( tMesh->block( tID )->element_type() );
-               //tTapeFile << "x,v,jjc,e*j,rho" << std::endl ;
+               tTapeFile << "x,v,jjc,e*j,rho" << std::endl ;
 
                for( mesh::Element * tElement : tMesh->block( tID )->elements() )
                {
                     real tV = tPipette.measure( tElement );
                     tEI += tEJel( tElement->index() ) * tV ;
                     tI  += tJel( tElement->index() ) * tV ;
-                    //tTapeFile << 0.5*(tElement->node( 0 )->x()+tElement->node( 1 )->x()) << "," << tV << "," << tJJcel( tElement->index() ) << "," << tEJel( tElement->index() )<< "," << tRhoel( tElement->index() ) << std::endl ;
+                    tTapeFile << 0.5*(tElement->node( 0 )->x()+tElement->node( 1 )->x()) << "," << tV << "," << tJJcel( tElement->index() ) << "," << tEJel( tElement->index() )<< "," << tRhoel( tElement->index() ) << std::endl ;
                }
-               //tTapeFile.close() ;
+               tTapeFile.close() ;
 
            }
 

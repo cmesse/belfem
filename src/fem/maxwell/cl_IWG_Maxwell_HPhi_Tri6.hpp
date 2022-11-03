@@ -61,11 +61,21 @@ namespace belfem
             Matrix< real > mJc ;
             Vector< int >  mPivot ;
             Matrix< real > mL ;
-            Matrix< real > mN ;
+
+            Vector< real > mN ;
+            Vector< real > mdNdeta ;
+            Vector< real > md2Ndeta2 ;
+            Vector< real > mdEdxi ;
+            Vector< real > mdEdy ;
+            Vector< real > md2Edy2 ;
+            Vector< real > md2Edxdy ;
+
+
             Vector< real >  mXi ;
             Vector< real >  mEta ;
             Vector< real >  mPhi ;
             Vector< real >  mPsi ;
+            Vector< real >  mSigma ;
             Vector< real >  mX ;
             Vector< real >  mY ;
 
