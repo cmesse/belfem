@@ -27,17 +27,20 @@ namespace belfem
             {
                 case( 1 ) :
                 {
-                    mThinShellIntegrationData = new IntegrationData( ElementType::LINE2 );
+                    mThinShellIntegrationData = new IntegrationData( ElementType::LINE2,
+                                                                     mParent->iwg()->interpolation_type() );
                     break ;
                 }
                 case( 2 ) :
                 {
-                    mThinShellIntegrationData = new IntegrationData( ElementType::LINE3 );
+                    mThinShellIntegrationData = new IntegrationData( ElementType::LINE3,
+                                                                     mParent->iwg()->interpolation_type() );
                     break ;
                 }
                 case( 3 ) :
                 {
-                    mThinShellIntegrationData = new IntegrationData( ElementType::LINE4 );
+                    mThinShellIntegrationData = new IntegrationData( ElementType::LINE4,
+                                                                     mParent->iwg()->interpolation_type() );
                     break ;
                 }
                 default :

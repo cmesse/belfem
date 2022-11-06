@@ -4,10 +4,11 @@
 
 #ifndef BELFEM_CL_IWG_MAXWELL_HPP
 #define BELFEM_CL_IWG_MAXWELL_HPP
+// #define BELFEM_FERROAIR_ENRICHED --> moved to IWG
 
 #define BELFEM_FERRO_LINEAR
-#define BELFEM_FERRO_HPHIA
-/// #define BELFEM_FERROAIR_LAMBDA --> moved to IWG
+
+#define BELFEM_FERRO_HPHIA // use a-formulation in ferro for h-phi
 
 #include "typedefs.hpp"
 #include "assert.hpp"

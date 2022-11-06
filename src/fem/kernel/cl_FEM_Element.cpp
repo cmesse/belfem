@@ -335,6 +335,8 @@ namespace belfem
                           "can't have edge dofs on both master and slave" );
 
             // face dofs
+
+
             const Vector< index_t > & tMasterFaceDofTypes =
                     aMasterBlockID == 0 ? tEmpty :
                     tIWG->dofs_per_face( aMasterBlockID );
@@ -342,6 +344,12 @@ namespace belfem
             const Vector< index_t > & tSlaveFaceDofTypes =
                     aSlaveBlockID == 0 ? tEmpty :
                     tIWG->dofs_per_face( aSlaveBlockID );
+
+            // when using enrichment, we can have dof t
+            const Vector< index_t > & tFacetOnlyNodeDofTypes =
+                    tIWG->dofs_per_node_on_sideset( aSideSetID, true );
+
+
 
             BELFEM_ASSERT( ! (  tMasterFaceDofTypes.length() > 0 && tSlaveFaceDofTypes.length() > 0 ),
                           "can't have face dofs on both master and slave" );
@@ -419,6 +427,7 @@ namespace belfem
                 {
                     this->link_dofs_master_and_slave(
                             aDofManager,
+                            tFacetOnlyNodeDofTypes,
                             tMasterNodeDofTypes,
                             tSlaveNodeDofTypes,
                             tMasterEdgeDofTypes,
@@ -810,6 +819,7 @@ namespace belfem
         void
         Element::link_dofs_master_and_slave(
                 DofManager  * aDofManager,
+                const Vector< index_t > & aFacetOnlyNodeDofTypes,
                 const Vector< index_t > & aMasterNodeDofTypes,
                 const Vector< index_t > & aSlaveNodeDofTypes,
                 const Vector< index_t > & aMasterEdgeDofTypes,
@@ -844,6 +854,8 @@ namespace belfem
             index_t tNumberOfFacesOnSlave =
                     mSlave->element()->number_of_faces() ;
 
+            index_t tNumberOfNodesOnFacet = mElement->number_of_nodes() ;
+
             // compute memory for dofs
             mNumberOfDofs =
                       tNumberOfNodesOnMaster * aMasterNodeDofTypes.length()
@@ -854,6 +866,7 @@ namespace belfem
                     + aDofManager->iwg()->face_multiplicity() * (
                           tNumberOfFacesOnMaster * aMasterFaceDofTypes.length()
                         + tNumberOfFacesOnSlave  * aSlaveFaceDofTypes.length() )
+                    + tNumberOfNodesOnFacet * aFacetOnlyNodeDofTypes.length()
                     + aLambdaDofTypes.length() ;
 
             // link edge directions
@@ -906,7 +919,7 @@ namespace belfem
                                       tCount );
             }
 
-            // link to node dofs on facet
+            // link to node dofs on master
             this->link_node_dofs( aDofManager,
                                   aMasterNodeDofTypes,
                                   mMaster->element(),
@@ -919,6 +932,13 @@ namespace belfem
                                   mSlave->element(),
                                   tNumberOfNodesOnSlave,
                                   tCount ) ;
+
+            // link node dofs on facet
+            this->link_node_dofs( aDofManager,
+                                  aFacetOnlyNodeDofTypes,
+                                  mElement,
+                                  tNumberOfNodesOnFacet,
+                                  tCount );
 
             // for contact etc
             this->link_lambda_dofs( aDofManager,

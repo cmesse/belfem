@@ -6,6 +6,7 @@
 #define BELFEM_CL_IWG_HPP
 
 #include "typedefs.hpp"
+#include "cl_Bitset.hpp"
 #include "cl_Vector.hpp"
 #include "cl_Matrix.hpp"
 #include "cl_Mesh.hpp"
@@ -15,8 +16,9 @@
 #include "en_IWG_SideSetDofLinkMode.hpp"
 
 #define BELFEM_MAX_DOFTYPES  32
-#define BELFEM_MAX_NUMPROCS  64
-//#define BELFEM_FERROAIR_LAMBDA
+#define BELFEM_MAX_NUMPROCS  128
+#define BELFEM_FERROAIR_ENRICHED
+
 namespace belfem
 {
     class Mesh;
@@ -221,12 +223,15 @@ namespace belfem
             // table containing elements per sideset and entity
             Cell< Vector < index_t > > mDofsPerSideSet ;
 
-
             //! contains the block dofs
             Cell< DofTable * > mBlockDofs ;
 
             //! contains the sideset dofs
             Cell< DofTable * > mSideSetDofs ;
+
+            //! contains the sideset dofs that sit only on the sideset,
+            //! but not on master or slave
+            Cell< DofTable * > mSideSetOnlyDofs ;
 
             Vector< index_t > mEdgeFieldIndices ;
             Vector< index_t > mFaceFieldIndices ;
@@ -263,6 +268,8 @@ namespace belfem
 
             // normal, if this is a 3d problem
             Vector< real > mNormal3D = { 0., 0., 0. };
+
+            InterpolationType mInterpolationType = InterpolationType::LAGRANGE ;
 
 //------------------------------------------------------------------------------
         public:
@@ -529,22 +536,22 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             const Vector< index_t > &
-            dofs_per_node_on_sideset( const id_t aSideSetID ) const ;
+            dofs_per_node_on_sideset( const id_t aSideSetID, const bool aSideSetOnly = false ) const ;
 
 //------------------------------------------------------------------------------
 
             const Vector< index_t > &
-            dofs_per_edge_on_sideset( const id_t aSideSetID ) const ;
+            dofs_per_edge_on_sideset( const id_t aSideSetID, const bool aSideSetOnly = false ) const ;
 
 //------------------------------------------------------------------------------
 
             const Vector< index_t > &
-            dofs_per_face_on_sideset( const id_t aSideSetID ) const ;
+            dofs_per_face_on_sideset( const id_t aSideSetID, const bool aSideSetOnly = false ) const ;
 
 //------------------------------------------------------------------------------
 
             const Vector< index_t > &
-            dofs_per_cell_on_sideset( const id_t aSideSetID ) const ;
+            dofs_per_cell_on_sideset( const id_t , const bool aSideSetOnly = false ) const ;
 
 //------------------------------------------------------------------------------
 
@@ -617,6 +624,22 @@ namespace belfem
              */
              IwgType
              type() const ;
+
+//------------------------------------------------------------------------------
+
+            /**
+             * set the interpolation type of node elements
+             */
+            void
+            set_interpolation_type( const InterpolationType aType );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * return the interpolation type of node elements
+             */
+            InterpolationType
+            interpolation_type() const ;
 
 //------------------------------------------------------------------------------
 
@@ -1158,6 +1181,16 @@ namespace belfem
             create_sideset_dof_tables( const uint aNumSideSets, const uint aNumGhostSidesets );
 
 //---------------------------------------------------------------------------------
+
+            void
+            count_sideset_dofs_per_sideset(
+                    Vector< index_t >             & aDofsPerSideSet,
+                    DofTable                      * aDofTable,
+                    Vector< uint >                & aCount,
+                    Bitset< BELFEM_MAX_DOFTYPES > & aBitset,
+                    const bool                      aUseBitset );
+
+//---------------------------------------------------------------------------------
         };
 //------------------------------------------------------------------------------
 
@@ -1379,33 +1412,41 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline const Vector< index_t > &
-        IWG::dofs_per_node_on_sideset( const id_t aSideSetID ) const
+        IWG::dofs_per_node_on_sideset( const id_t aSideSetID, const bool aSideSetOnly ) const
         {
-            return mSideSetDofs( mSideSetIndices( aSideSetID ) )->Node ;
+            return aSideSetOnly ?
+                   mSideSetOnlyDofs( mSideSetIndices( aSideSetID ) )->Node :
+                   mSideSetDofs( mSideSetIndices( aSideSetID ) )->Node ;
         }
 
 //------------------------------------------------------------------------------
 
         inline const Vector< index_t > &
-        IWG::dofs_per_edge_on_sideset( const id_t aSideSetID ) const
+        IWG::dofs_per_edge_on_sideset( const id_t aSideSetID, const bool aSideSetOnly ) const
         {
-            return mSideSetDofs( mSideSetIndices( aSideSetID ) )->Edge ;
+            return aSideSetOnly ?
+                   mSideSetOnlyDofs( mSideSetIndices( aSideSetID ) )->Edge :
+                   mSideSetDofs( mSideSetIndices( aSideSetID ) )->Edge ;
         }
 
 //------------------------------------------------------------------------------
 
         inline const Vector< index_t > &
-        IWG::dofs_per_face_on_sideset( const id_t aSideSetID ) const
+        IWG::dofs_per_face_on_sideset( const id_t aSideSetID, const bool aSideSetOnly  ) const
         {
-            return mSideSetDofs( mSideSetIndices( aSideSetID ) )->Face ;
+            return aSideSetOnly ?
+                   mSideSetOnlyDofs( mSideSetIndices( aSideSetID ) )->Face :
+                   mSideSetDofs( mSideSetIndices( aSideSetID ) )->Face ;
         }
 
 //------------------------------------------------------------------------------
 
         inline const Vector< index_t > &
-        IWG::dofs_per_cell_on_sideset( const id_t aSideSetID ) const
+        IWG::dofs_per_cell_on_sideset( const id_t aSideSetID, const bool aSideSetOnly  ) const
         {
-            return mSideSetDofs( mSideSetIndices( aSideSetID ) )->Cell ;
+            return aSideSetOnly ?
+                   mSideSetOnlyDofs( mSideSetIndices( aSideSetID ) )->Cell :
+                   mSideSetDofs( mSideSetIndices( aSideSetID ) )->Cell ;
         }
 
 //------------------------------------------------------------------------------
@@ -1453,7 +1494,6 @@ namespace belfem
         inline const Vector< index_t > &
         IWG::dofs_per_sideset( const id_t aSidesetID ) const
         {
-
             return mDofsPerSideSet( mSideSetIndices( aSidesetID ) );
         }
 
@@ -1520,7 +1560,14 @@ namespace belfem
         inline uint
         IWG::doftype( const string & aDofLabel ) const
         {
-            return mDofTypeMap( aDofLabel );
+            if( mDofTypeMap.key_exists( aDofLabel ) )
+            {
+                return mDofTypeMap( aDofLabel );
+            }
+            else
+            {
+                return BELFEM_UINT_MAX ;
+            }
         }
 
 //------------------------------------------------------------------------------
@@ -1571,6 +1618,22 @@ namespace belfem
         IWG::time_loop()
         {
             return mTimeLoop ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline void
+        IWG::set_interpolation_type( const InterpolationType aType )
+        {
+            mInterpolationType = aType ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline InterpolationType
+        IWG::interpolation_type() const
+        {
+            return mInterpolationType ;
         }
 
 //---------------------------------------------------------------------------------

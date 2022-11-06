@@ -42,6 +42,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             IntegrationData( const ElementType aElementType,
+                             const InterpolationType aType = InterpolationType::LAGRANGE,
                              InterpolationFunction * aShapeFunction = nullptr );
 
             ~IntegrationData();
@@ -95,7 +96,7 @@ namespace belfem
              * access the shape function
              */
              const InterpolationFunction *
-             function() ;
+             function() const ;
 
 //------------------------------------------------------------------------------
 
@@ -182,7 +183,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             inline const InterpolationFunction *
-            IntegrationData::function()
+            IntegrationData::function() const
             {
                 return mShapeFunction ;
             }

@@ -1593,6 +1593,12 @@ namespace belfem
             // for thin shells
             tMaxwell->set_thin_shell_link_mode( SideSetDofLinkMode::MasterAndSlave );
 
+            // set bernstein flag
+            if( mUseBernstein )
+            {
+                tMaxwell->set_interpolation_type( InterpolationType::BERNSTEIN );
+            }
+
             mKernel->add_equation( tMaxwell );
 
             // create dof manager for magnetic field
@@ -1829,6 +1835,11 @@ namespace belfem
 
                 IWG_Maxwell * tIWG = new IWG_Maxwell_L2_Current( tType, mAlphaJ );
 
+                if( mUseBernstein )
+                {
+                    tIWG->set_interpolation_type( InterpolationType::BERNSTEIN );
+                }
+
                 // set the blocks of the IWG
                 tIWG->set_blocks( tBlocks, tTypes );
 
@@ -2008,6 +2019,11 @@ namespace belfem
                         this->element_type( tFerroBlocks( 0 )),
                         tMode,
                         mAlphaB );
+
+                if( mUseBernstein )
+                {
+                    tIWG->set_interpolation_type( InterpolationType::BERNSTEIN );
+                }
 
                 Cell< DomainType > tTypes( tFerroBlocks.length(), DomainType::Ferro );
 
@@ -2265,6 +2281,12 @@ namespace belfem
             string tKey = string_to_lower(
                     mInputFile.section("maxwell")->get_string("formulation") );
             bool tIsHPhi = ( tKey == "h-phi" || tKey == "h-φ" || tKey == "h-Φ" ) ;
+
+            // set the bernstein flag
+            if( mInputFile.section("maxwell")->key_exists( "bernstein" ) )
+            {
+                mUseBernstein = mInputFile.section("maxwell")->get_bool("bernstein");
+            }
 
             // loop over all sidesets
             for( index_t s=0; s<tNumSideSets; ++s )
@@ -2573,7 +2595,7 @@ namespace belfem
                         {
                             tFacet->flag() ;
                         }
-#elif BELFEM_FERROAIR_LAMBDA
+#elif BELFEM_FERROAIR_ENRICHED
                             if (   ( tMasterType == DomainType::Air && tSlaveType == DomainType::Conductor )
                             || ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Conductor )
                             || ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Air ))
@@ -2669,7 +2691,7 @@ namespace belfem
                             {
                                 ++tCount ;
                             }
-#elif BELFEM_FERROAIR_LAMBDA
+#elif BELFEM_FERROAIR_ENRICHED
                             // check if this sideset is an interface
                             if ( ( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Air )
                                ||( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Ferro )
@@ -2739,7 +2761,7 @@ namespace belfem
                                 tSlaveBlockIDs( tCount )  = tFacet->slave()->geometry_tag() ;
                                 tSideSetTypes( tCount++ ) = static_cast< uint >( DomainType::InterfaceFmAir );
                             }
-#elif BELFEM_FERROAIR_LAMBDA
+#elif BELFEM_FERROAIR_ENRICHED
                             else if ( tMasterType == DomainType::Air && tSlaveType == DomainType::Ferro )
                             {
                                 tSideSetIDs( tCount )     = tSideSet->id();

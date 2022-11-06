@@ -16,7 +16,9 @@ namespace belfem
     {
 //------------------------------------------------------------------------------
 
-        IntegrationData::IntegrationData( const ElementType aElementType, InterpolationFunction * aShapeFunction ) :
+        IntegrationData::IntegrationData( const ElementType aElementType,
+                                          const InterpolationType aType,
+                                          InterpolationFunction * aShapeFunction ) :
             mElementType( aElementType )
         {
             // create a temporary factory
@@ -26,7 +28,7 @@ namespace belfem
             if( aShapeFunction == nullptr )
             {
                 // create the shape function
-                mShapeFunction = tFactory.create_lagrange_function( aElementType );
+                mShapeFunction = tFactory.create_function( aElementType, aType );
 
                 // set owning flag
                 mOwnShapeFunction = true ;

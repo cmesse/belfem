@@ -265,6 +265,13 @@ namespace belfem
             facet() ;
 
 //------------------------------------------------------------------------------
+            /**
+             * return the material of this element
+             */
+             const Material *
+             material() const ;
+
+//------------------------------------------------------------------------------
         private:
 //------------------------------------------------------------------------------
 
@@ -283,6 +290,8 @@ namespace belfem
              */
             void
             link_dofs( Field * aField );
+
+//------------------------------------------------------------------------------
 
             /**
              * connect element with dofs of field
@@ -334,6 +343,7 @@ namespace belfem
             void
             link_dofs_master_and_slave(
                     DofManager  * aDofManager,
+                    const Vector< index_t > & aFacetOnlyNodeDofTypes,
                     const Vector< index_t > & aMasterNodeDofTypes,
                     const Vector< index_t > & aSlaveNodeDofTypes,
                     const Vector< index_t > & aMasterEdgeDofTypes,
@@ -490,6 +500,14 @@ namespace belfem
         Element::facet()
         {
             return mFacet ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline const Material *
+        Element::material() const
+        {
+            return mParent->material() ;
         }
 
 //------------------------------------------------------------------------------

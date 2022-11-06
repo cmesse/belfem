@@ -23,6 +23,10 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             ~InterpolationFunctionFactory() = default;
+//------------------------------------------------------------------------------
+
+            InterpolationFunction *
+            create_function( const ElementType & aElementType, const InterpolationType aType );
 
 //------------------------------------------------------------------------------
 
@@ -33,6 +37,11 @@ namespace belfem
 
             InterpolationFunction *
             create_hermite_function( const ElementType & aElementType );
+
+//------------------------------------------------------------------------------
+
+            InterpolationFunction *
+            create_bernstein_function( const ElementType & aElementType );
 
 //------------------------------------------------------------------------------
         };

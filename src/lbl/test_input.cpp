@@ -222,7 +222,7 @@ int main( int    argc,
     //tMesh->save( tOutFile );
    while( tTime < tMaxTime )
    {
-       if( tTimeLoop++ >= 10 )
+       if( tTimeLoop++ >= 2 )
        {
            // save backup
 	       /*string tString = sprint("%s.%04u", tBackupFile.c_str(), ( unsigned int ) tTimeCount );
@@ -322,8 +322,6 @@ int main( int    argc,
 
                std::cout << "    iteration:  " << tIter << tAlgLabel << " omega " << tFormulation->omega()
                          << " log10(epsilon): " << std::round( std::log10( tEpsilon ) * 100 ) * 0.01 << std::endl;
-
-
            }
 
            if( tIter > tNonlinear.maxIter )
@@ -351,6 +349,7 @@ int main( int    argc,
        if ( tKernel->is_master() )
        {
            gLog.message( 1, "    timestep completed in %4.2f seconds", ( float ) tTimer.stop() * 0.001 );
+           tMagfield->print_worst_dof();
        }
 
 

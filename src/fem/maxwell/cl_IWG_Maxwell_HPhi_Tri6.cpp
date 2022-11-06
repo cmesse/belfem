@@ -15,7 +15,7 @@
 #include "fn_eigen.hpp"
 #include "fn_max.hpp"
 #include "fn_det.hpp"
-
+#include "cl_IF_InterpolationFunction.hpp"
 #define HPHI_TRI6_LAMBDAN
 
 namespace belfem
@@ -40,8 +40,10 @@ namespace belfem
             mFields.InterfaceScAir = { "lambda_t0", "lambda_t1" };
             //mFields.InterfaceScFm = { "lambda_n0", "lambda_n1"  };
 
-#ifdef BELFEM_FERROAIR_LAMBDA
-            mFields.InterfaceFmAir = { "lambda_n0", "lambda_n1"  };
+#ifdef BELFEM_FERROAIR_ENRICHED
+            // mFields.InterfaceFmAir = { "lambda_t0", "lambda_t1", "lambda_n0", "lambda_n1" };
+            mFields.InterfaceFmAir = { "lambda_t0", "lambda_t1" };
+
 #endif
 
             mFields.Cut = { "lambda" };
@@ -82,7 +84,7 @@ namespace belfem
             mNumberOfRhsDofsPerEdge = 2 ;
             mNumberOfRhsDofsPerFace = 2 ;
 
-            // create the TS function
+            // create the TS function todo: tell if we want to use bernstein
             mEdgeFunctionTS = new EF_LINE3() ;
             mHt.set_size( 3 );
             mC.set_size( 1, 6 );
@@ -124,7 +126,9 @@ namespace belfem
 
             mX.set_size( 5 );
             mY.set_size( 5 );
+            mT.set_size( 5, 9, 0.0 );
 
+            mK.set_size( 5, 5 );
         }
 
 //------------------------------------------------------------------------------
@@ -494,6 +498,7 @@ namespace belfem
 
             // get node coords, needed to compute geometry Jacobian
 
+            const Matrix< real > & tXi = mGroup->integration_points() ;
 
             // the B-Matrix
             Matrix< real > & tK = mGroup->work_K() ;
@@ -505,8 +510,6 @@ namespace belfem
             tM.fill( 0.0 );
 
 
-
-
             // collect node coords, needed below and to compo
             aElement->master()->get_node_coors( mGroup->work_Xm() );
             aElement->slave()->get_node_coors( mGroup->work_Xs() );
@@ -514,56 +517,151 @@ namespace belfem
             uint tNumNodesPerAir   = aElement->master()->element()->number_of_nodes() ;
             uint tNumNodesPerFerro = aElement->slave()->element()->number_of_nodes() ;
 
-#ifdef BELFEM_FERROAIR_LAMBDA
-
-            const Vector< real > & tn = this->normal_straight_2d( aElement );
 
             Matrix< real > & tBm = mGroup->work_B() ;
             Matrix< real > & tBs = mGroup->work_C() ;
 
-            uint p =  tNumNodesPerAir + tNumNodesPerFerro ;
+
+
+
+            uint p =  aElement->master()->number_of_dofs() + aElement->slave()->number_of_dofs() ;
             uint q = p + 1 ;
+            uint r = q + 1 ;
+            uint s = r + 1 ;
+
+            // normal of air side
+            const Vector< real > & tn = this->normal_straight_2d( aElement );
+
+            Vector< real > tAz( mNumberOfNodesPerSlave );
+            this->collect_node_data( aElement->slave(), "az", tAz );
+
+            Vector< real > & tPhi = mPsi ;
+            this->collect_node_data( aElement->master(), "phi", tPhi );
+
+            real tValue ;
+
+            const Material * tFerro = aElement->slave()->material() ;
 
             for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
             {
-                tBm = inv( tMaster->dNdXi( k ) * mGroup->work_Xm() ) * tMaster->dNdXi( k );
-                tBs = inv( tSlave->dNdXi( k ) * mGroup->work_Xs() ) * tSlave->dNdXi( k );
 
-                real tOmega = tW( k ) * mGroup->work_det_J() ;
-
-                for( uint i = 0 ; i<tNumNodesPerAir; ++i )
-                {
-                    tK( p, i ) +=
-                            (   tn( 0 ) * tBm( 0,  i )
-                             +  tn( 1 ) * tBm( 1, i ) ) * tOmega ;
-                    tK( q, i ) +=
-                               (   tn( 0 ) * tBm( 1,  i )
-                                -  tn( 1 ) * tBm( 0, i ) ) * tOmega ;
-                }
-                for( uint j=0; j<tNumNodesPerFerro; ++j )
-                {
-                    tK( p, j + tNumNodesPerFerro ) +=
-                               (   tn( 0 ) * tBs( 1,  j )
-                                -  tn( 1 ) * tBs( 0, j ) ) * tOmega ;
-                    tK( q, j + tNumNodesPerFerro ) -=
-                            (   tn( 0 ) * tBs( 0,  j )
-                                -  tn( 1 ) * tBs( 1, j ) ) * tOmega ;
-                }
-            }
-
-            tM = tK + trans( tK );
-            aRHS.fill( 0 );
-
-#else
-            Matrix< real > & tB = mGroup->work_B() ;
-            for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
-            {
-                // normal of air side
-                const Vector< real > & tn = this->normal_curved_2d( aElement, k );
                 real tOmega = tW( k ) * mGroup->work_det_J();
 
+                tBm = inv( tMaster->dNdXi( k ) * mGroup->work_Xm()) * tMaster->dNdXi( k );
+
+
+#ifdef BELFEM_FERROAIR_ENRICHED
+                const Vector< real > & tNm = tMaster->phi( k );
+                const Vector< real > & tNs = tSlave->phi( k );
+
+                tBs = inv( tSlave->dNdXi( k ) * mGroup->work_Xs()) * tSlave->dNdXi( k );
+
+
+
+
+                real bsx = 0 ;
+                real bsy = 0 ;
+
+                for ( uint i = 0; i < tNumNodesPerFerro ; ++i )
+                {
+                    bsx += tBs( 1, i ) * tAz( i );
+                    bsy -= tBs( 0, i ) * tAz( i );
+                }
+
+                // magnetic resistivity
+                real tNu = aElement->slave()->material()->nu_s( std::sqrt( bsx*bsx + bsy*bsy) ) ;
+
+                // begin debug printf
+                /*if( aElement->id() == 330 ||  aElement->id() == 200 )
+                {
+
+                    real hmx = 0 ;
+                    real hmy = 0 ;
+                    real bmx = 0 ;
+                    real bmy = 0 ;
+
+                    for ( uint j = 0; j < tNumNodesPerAir ; ++j )
+                    {
+                        hmx -= tBm( 0, j ) * tPhi( j );
+                        hmy -= tBm( 1, j ) * tPhi( j );
+                    }
+                    bmx = constant::mu0 * hmx ;
+                    bmy = constant::mu0 * hmy ;
+
+                    real hsx = tNu * bsx ;
+                    real hsy = tNu * bsy ;
+
+                    std::cout << aElement->id()  << " " << k << " bx: " << bsx/ bmx << " hy : " << hsy / hmy << " | " << constant::nu0 / tNu << " | " << mGroup->work_det_J() << std::endl;
+                }*/
+
+
+                // lambda multiplicators
+                real tPsi0 = mEdgeFunctionTS->E( k )( 0, 0 ) ;
+                real tPsi1 = mEdgeFunctionTS->E( k )( 0, 1 ) ;
+
+                // in-plane condition: h != h
+                for ( uint j = 0; j < tNumNodesPerAir ; ++j )
+                {
+                    tValue = tOmega * ( tn( 1 ) * tBm( 0, j ) - tn( 0 ) * tBm( 1, j ) );
+                    tK( p, j ) += tPsi0 * tValue ;
+                    tK( j, p ) += tPsi0 * tValue ;
+                    tK( q, j ) += tPsi1 * tValue ;
+                    tK( j, q ) += tPsi1 * tValue ;
+                }
+                for( uint i = 0; i<tNumNodesPerFerro ; ++i )
+                {
+                    tValue = tNu * tOmega * ( tn( 0 ) * tBs( 0, i ) + tn( 1 ) * tBs( 1, i ) );
+                    tK( p, i +tNumNodesPerAir  ) += tPsi0 * tValue ;
+                    tK( i+tNumNodesPerAir, p ) += tPsi0 * tValue ;
+                    tK( q, i +tNumNodesPerAir  ) += tPsi1 * tValue ;
+                    tK( i+tNumNodesPerAir, q ) += tPsi1 * tValue ;
+                }
+
+                // normal condition : b != b
+                /*for ( uint j = 0; j < tNumNodesPerAir ; ++j )
+                {
+                    tValue = tOmega * ( tn( 0 ) * tBm( 0, j ) + tn( 1 ) * tBm( 1, j ) );
+                    tK( r, j ) += tPsi0 * tValue ;
+                    tK( j, r ) += tPsi0 * tValue ;
+                    tK( s, j ) += tPsi1 * tValue ;
+                    tK( j, s ) += tPsi1 * tValue ;
+                }
+
+                for( uint i = 0; i<tNumNodesPerFerro ; ++i )
+                {
+                    tValue = constant::nu0 * tOmega * ( tn( 0 ) * tBs( 1, i ) - tn( 1 ) * tBs( 0, i ) );
+                    tK( r, i +tNumNodesPerAir  ) += tPsi0 * tValue ;
+                    tK( i+tNumNodesPerAir, r ) += tPsi0 * tValue ;
+                    tK( s, i +tNumNodesPerAir  ) += tPsi1 * tValue ;
+                    tK( i+tNumNodesPerAir, s ) += tPsi1 * tValue ;
+                }*/
+
+                // flux condition
+                /*for ( uint i = 0; i < tNumNodesPerAir ; ++i)
+                {
+                    for( uint j = 0; j<tNumNodesPerFerro ; ++j )
+                    {
+                        tValue = tOmega *  tNm( i ) * ( tn( 0 ) * tBs( 1, j ) - tn( 1 ) * tBs( 0, j ) );
+                        tK( i, j+tNumNodesPerAir ) += tValue ;
+                    }
+                }*/
+
+                // contributions to stiffness
+                for ( uint j = 0; j < tNumNodesPerAir ; ++j )
+                {
+                    for ( uint i = 0; i < tNumNodesPerFerro; ++i )
+                    {
+                        real tValue =  tOmega * tNs( i ) *
+                                      ( tn( 1 ) * tBm( 0, j ) - tn( 0 ) * tBm( 1, j ));
+
+                        tK( i + tNumNodesPerAir, j ) -= tValue ; // *= this->timestep() ;
+                        tM( j, i + tNumNodesPerAir ) += tValue ; ///this->timestep() ; // <-- why?
+                    }
+                }
+
+
+#else
                 const Vector< real > & tN = tSlave->phi( k );
-                tB = inv( tMaster->dNdXi( k ) * mGroup->work_Xm()) * tMaster->dNdXi( k );
 
                 // contributions to stiffness
                 for ( uint j = 0; j < tNumNodesPerAir ; ++j )
@@ -571,19 +669,25 @@ namespace belfem
                     for ( uint i = 0; i < tNumNodesPerFerro; ++i )
                     {
                         tK( i+tNumNodesPerAir, j ) += tOmega * tN( i ) *
-                                                          ( tn( 1 ) * tB( 0, j ) - tn( 0 ) * tB( 1, j ));
+                                                          ( tn( 1 ) * tBm( 0, j ) - tn( 0 ) * tBm( 1, j ));
                     }
                 }
+#endif
             }
 
+#ifdef BELFEM_FERROAIR_ENRICHED
+            aRHS.fill( 0.0 );
+
+            aRHS = tM * this->collect_q0_aphi_2d( aElement );
+            aJacobian += tK * this->timestep() ;
+
+#else
             // todo: why not negative ?
             tM = trans( tK );
-
-
-
             aRHS = tM * this->collect_q0_aphi_2d( aElement );
             aJacobian += tK * this->timestep();
 #endif
+
         }
 
 //------------------------------------------------------------------------------

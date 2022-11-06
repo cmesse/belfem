@@ -2182,7 +2182,8 @@ namespace belfem
             this->collect_nedelec_data( aElement->master(), NedelecField::H0, aQ0 );
             uint tCount = mNumberOfEdgeDofsPerElement ;
             this->collect_node_data( aElement->slave(), "phi0", aQ0, tCount );
-            this->collect_lambda_data( aElement, "lambda0", aQ0( tCount++ ) );
+
+            //this->collect_lambda_data( aElement, "lambda", aQ0( tCount++ ) );
 
             BELFEM_ASSERT( tCount == mNumberOfDofsPerElement, "number of dofs does not match" );
 
@@ -2260,6 +2261,13 @@ namespace belfem
 
             this->collect_node_data( aElement->master(), "phi0", aQ0, tCount );
             this->collect_node_data( aElement->slave(), "az0", aQ0, tCount );
+            this->collect_lambda_data( aElement, "lambda_t00", aQ0( tCount++) );
+            this->collect_lambda_data( aElement, "lambda_t10", aQ0( tCount++) );
+            //this->collect_lambda_data( aElement, "lambda_n00", aQ0( tCount++) );
+            //this->collect_lambda_data( aElement, "lambda_n10", aQ0( tCount++) );
+            //this->collect_node_data( aElement, "alpha0", aQ0, tCount );
+
+            //this->collect_node_data( aElement, "beta0", aQ0, tCount );
 
             BELFEM_ASSERT( tCount == mNumberOfDofsPerElement, "number of dofs does not match" );
 

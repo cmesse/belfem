@@ -989,10 +989,49 @@ namespace belfem
                     }
                 }
 
+                // also consider facet only node dofs
+                for( id_t tSideSetID: aIWG->selected_sidesets() )
+                {
+                    // grab sideset pointer on mesh
+                    mesh::SideSet * tSideSet = mMesh->sideset( tSideSetID );
+
+                    // ask IWG about selected dofs
+                    const Vector< index_t > & tSelectedDofs = aIWG->dofs_per_node_on_sideset( tSideSetID, true );
+
+                    // check if any dofs are selected
+                    if( tSelectedDofs.length() > 0 )
+                    {
+                        // get the number of edges per element on this sideset
+                        uint tNumEntities = mParent->enforce_linear_interpolation() ?
+                                            mesh::number_of_corner_nodes( tSideSet->element_type() )
+                                                                                    : mesh::number_of_nodes( tSideSet->element_type() );
+
+                        // now we loop over all elements on the block and the selected number oedges
+                        for( mesh::Facet * tFacet : tSideSet->facets() )
+                        {
+                            // loop over all mesh entities on this element
+                            for( uint k=0; k<tNumEntities; ++k )
+                            {
+                                // get the temporary index of this entity
+                                index_t tIndex = tEntityMap( tFacet->node( k )->id() );
+
+                                // grab the corresponding bitset
+                                Bitset< BELFEM_MAX_DOFTYPES > & tBitset = tDofFlags( tIndex );
+
+                                // flip the bits that represent the selected dofs
+                                for( index_t d : tSelectedDofs )
+                                {
+                                    tBitset.set( d );
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // also consider ghost dofs
                 for( id_t tSideSetID: aIWG->ghost_sidesets() )
                 {
-                    // grab block pointer on mesh
+                    // grab sideset pointer on mesh
                     mesh::SideSet * tSideSet = mMesh->sideset( tSideSetID );
 
                     // ask IWG about selected dofs

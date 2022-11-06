@@ -44,7 +44,8 @@ namespace belfem
                 // set the number of nodes per element
                 mNumberOfNodesPerElement = mesh::number_of_nodes( mElementType );
 
-                mIntegrationData = new IntegrationData( mElementType );
+                mIntegrationData = new IntegrationData( mElementType,
+                                                        mParent->iwg()->interpolation_type() );
 
                 mIntegrationData->populate( aParent->sideset_integration_order(),
                                             aParent->integration_scheme() );
@@ -95,7 +96,8 @@ namespace belfem
                 // set the number of nodes per element
                 mNumberOfNodesPerElement = mesh::number_of_nodes( mElementType );
 
-                mIntegrationData = new IntegrationData( mElementType );
+                mIntegrationData = new IntegrationData( mElementType,
+                                                        mParent->iwg()->interpolation_type() );
 
                 mIntegrationData->populate( aParent->sideset_integration_order(),
                                             aParent->integration_scheme() );
@@ -491,7 +493,8 @@ namespace belfem
                 mMasterIntegration.set_size( tNumFacets, nullptr );
                 for( uint f=0; f<tNumFacets; ++f )
                 {
-                    mMasterIntegration( f ) = new IntegrationData( mMasterType );
+                    mMasterIntegration( f ) = new IntegrationData( mMasterType,
+                                                                   mParent->iwg()->interpolation_type() );
                     mMasterIntegration( f )->populate_for_master( f,
                                                                   tIntegrationOrder,
                                                                mParent->integration_scheme() );
@@ -505,7 +508,8 @@ namespace belfem
 
                     for( uint f=0; f<3; ++f )
                     {
-                        mSlaveIntegration( f ) = new IntegrationData( mSlaveType );
+                        mSlaveIntegration( f ) = new IntegrationData( mSlaveType,
+                                                                      mParent->iwg()->interpolation_type() );
                         mSlaveIntegration( f )->populate_for_slave_tri( f,
                                                                         tIntegrationOrder,
                                                                   mParent->integration_scheme() );
@@ -519,7 +523,8 @@ namespace belfem
                     {
                         for( uint orientation=0; orientation<3; ++orientation )
                         {
-                            mSlaveIntegration( tCount ) = new IntegrationData( mSlaveType );
+                            mSlaveIntegration( tCount ) = new IntegrationData( mSlaveType,
+                                                                               mParent->iwg()->interpolation_type() );
                             mSlaveIntegration( tCount++ )->populate_for_slave_tet( face,
                                                                                   orientation,
                                                                                   mParent->sideset_integration_order(),

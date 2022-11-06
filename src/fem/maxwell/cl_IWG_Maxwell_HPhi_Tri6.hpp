@@ -79,6 +79,11 @@ namespace belfem
             Vector< real >  mX ;
             Vector< real >  mY ;
 
+            // transformation matrix
+            Matrix< real > mT ;
+
+            Matrix< real > mK ;
+
 //------------------------------------------------------------------------------
         public:
 //------------------------------------------------------------------------------

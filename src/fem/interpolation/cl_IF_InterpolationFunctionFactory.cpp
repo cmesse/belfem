@@ -33,11 +33,43 @@
 
 #include "cl_IF_BEAM.hpp"
 #include "cl_IF_PLATE.hpp"
+#include "cl_IFB_LINE3.hpp"
+#include "cl_IFB_TRI6.hpp"
 
 namespace belfem
 {
     namespace fem
     {
+
+//------------------------------------------------------------------------------
+
+        InterpolationFunction *
+        InterpolationFunctionFactory::create_function(
+                const ElementType & aElementType,
+                const InterpolationType aType )
+        {
+            switch ( aType )
+            {
+                case( InterpolationType::LAGRANGE ) :
+                {
+                    return this->create_lagrange_function( aElementType );
+                }
+                case( InterpolationType::BERNSTEIN ) :
+                {
+                    return this->create_bernstein_function( aElementType );
+                }
+                case( InterpolationType::HERMITE ) :
+                {
+                    return this->create_hermite_function( aElementType );
+                }
+                default:
+                {
+                    BELFEM_ERROR( false, "unknown interpolation funciton type");
+                    return nullptr ;
+                }
+            }
+        }
+
 //------------------------------------------------------------------------------
 
         InterpolationFunction *
@@ -141,10 +173,41 @@ namespace belfem
                 }
             }
         }
+
+        InterpolationFunction *
+        InterpolationFunctionFactory::create_bernstein_function( const ElementType & aElementType )
+        {
+            switch( aElementType )
+            {
+                case ( ElementType::LINE2 ) :
+                {
+                    return new InterpolationFunctionTemplate<GeometryType::LINE, InterpolationType::LAGRANGE, 1, 2 >();
+                }
+                case ( ElementType::LINE3 ) :
+                {
+                    return new InterpolationFunctionTemplate<GeometryType::LINE, InterpolationType::BERNSTEIN, 1, 3 >();
+                }
+                case( ElementType::TRI3 ):
+                {
+                    return new InterpolationFunctionTemplate<GeometryType::TRI, InterpolationType::LAGRANGE, 2, 3 >();
+                }
+                case( ElementType::TRI6 ):
+                {
+                    return new InterpolationFunctionTemplate<GeometryType::TRI, InterpolationType::BERNSTEIN, 2, 6 >();
+                }
+                default :
+                {
+                    BELFEM_ERROR( false,
+                                  "no lagrange function available for selected ElementType" );
+                    return nullptr;
+                }
+            }
+        }
+
 //------------------------------------------------------------------------------
 
         InterpolationFunction *
-        create_hermite_function( const ElementType & aElementType )
+        InterpolationFunctionFactory::create_hermite_function( const ElementType & aElementType )
         {
             switch( aElementType )
             {

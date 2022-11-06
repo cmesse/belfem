@@ -80,6 +80,7 @@ namespace belfem
     {
         LAGRANGE,
         HERMITE,
+        BERNSTEIN,
         UNEFINED
     };
 
@@ -87,13 +88,13 @@ namespace belfem
 
     enum class EntityType
     {
-        NODE,
-        FACET, // used for lambda dofs, field is not saved
-        ELEMENT,
-        EDGE, // only used for DOFS, field is not saved in exodus
-        FACE, // only used for DOFS, field is not saved in exodus
-        CELL, // only used for DOFS, same as Element, but field is not saved
-        UNDEFINED
+        NODE      = 0,
+        EDGE      = 1, // only used for DOFS, field is not saved in exodus
+        FACE      = 2, // only used for DOFS, field is not saved in exodus
+        CELL      = 3, // only used for DOFS, same as Element, but field is not saved
+        FACET     = 4, // used for lambda dofs, field is not saved
+        ELEMENT   = 5,
+        UNDEFINED = 6
     };
 
 //------------------------------------------------------------------------------

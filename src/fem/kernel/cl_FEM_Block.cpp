@@ -40,7 +40,8 @@ namespace belfem
                                               aBlock->id(), aNumberOfElements ),
             mBlock( aBlock )
         {
-            mIntegrationData = new IntegrationData( aBlock->element_type() );
+            mIntegrationData = new IntegrationData( aBlock->element_type(),
+                                                    mParent->iwg()->interpolation_type() );
 
             this->set_integration_order( aParent->block_integration_order() );
             this->initialize_elements();

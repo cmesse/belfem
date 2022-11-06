@@ -276,7 +276,7 @@ namespace belfem
          * Secant Permeability
          */
         virtual real
-        nu_s( const real aH=0, const real aT=BELFEM_TREF ) const;
+        nu_s( const real aB=0, const real aT=BELFEM_TREF ) const;
 
 //----------------------------------------------------------------------------
 

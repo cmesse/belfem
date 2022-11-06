@@ -17,7 +17,7 @@
 #include "commtools.hpp"
 #include "cl_Material.hpp"
 #include "fn_entity_type.hpp"
-
+#include "fn_sum.hpp"
 
 namespace belfem
 {
@@ -697,12 +697,12 @@ namespace belfem
                 }
                 else if( aSideSet->domain_type() == DomainType::InterfaceFmAir ) // exists only in h-phi
                 {
-#ifdef BELFEM_FERROAIR_LAMBDA
-
-
-                    // todo: also make this for 3D
+#ifdef BELFEM_FERROAIR_ENRICHED
+                    // todo: also make this work for 3D --> move function to specific IWG
                     return mesh::number_of_nodes( aSideSet->master_type() )
-                        + mesh::number_of_nodes( aSideSet->slave_type() ) + 2 ;
+                         + mesh::number_of_nodes( aSideSet->slave_type() )  + 2 ;
+                         //+ mesh::number_of_nodes( aSideSet->element_type() );
+
 #else
                     if( mNumberOfDerivativeDimensions == 2 )
                     {
@@ -1613,6 +1613,94 @@ namespace belfem
                     mSideSetDofs( tCount++ ) = mSideSetDofs( mSideSetIndices( mGhostSideSetMaster ) );
                 }
             }
+
+            mSideSetOnlyDofs.set_size( aNumSideSets, nullptr );
+            tCount = 0 ;
+            for( uint s=0; s<aNumSideSets; ++s )
+            {
+                mSideSetOnlyDofs( tCount++ ) = new DofTable();
+            }
+        }
+
+//---------------------------------------------------------------------------------
+
+        void
+        IWG::count_sideset_dofs_per_sideset(
+                Vector< index_t >             & aDofsPerSideSet,
+                DofTable                      * aDofTable,
+                Vector< uint >                & aCount,
+                Bitset< BELFEM_MAX_DOFTYPES > & aBitset,
+                const bool                      aUseBitset )
+        {
+            // grab vectors
+            Vector< index_t > & tDofsPerNode = aDofTable->Node ;
+            Vector< index_t > & tDofsPerEdge = aDofTable->Edge ;
+            Vector< index_t > & tDofsPerFace = aDofTable->Face ;
+            Vector< index_t > & tDofsPerCell = aDofTable->Cell ;
+            Vector< index_t > & tLambdaDofs  = aDofTable->Lambda ;
+
+            // allocate memory
+            tDofsPerNode.set_size( aCount( static_cast< uint >( EntityType::NODE ) ) );
+            tDofsPerEdge.set_size( aCount( static_cast< uint >( EntityType::EDGE ) ) );
+            tDofsPerFace.set_size( aCount( static_cast< uint >( EntityType::FACE ) ) );
+            tDofsPerCell.set_size( aCount( static_cast< uint >( EntityType::CELL) ) );
+            tLambdaDofs.set_size(  aCount( static_cast< uint >( EntityType::FACET ) ) );
+
+            // reset counter
+            aCount.fill( 0 );
+
+            // loop over all dofs
+            for( index_t tDofNum : aDofsPerSideSet )
+            {
+                // check for flag
+                if( aBitset.test( tDofNum ) && aUseBitset )
+                {
+                    continue;
+                }
+
+                // get the label of the dof
+                const string & tDofLabel = mDofLabels( tDofNum );
+
+                // get the Entity Type
+                EntityType tEntityType =  entity_type( tDofLabel );
+
+                // get the type number of the dof
+                uint tDofType = mDofMap( tDofLabel );
+
+                // check what it is
+                switch ( tEntityType )
+                {
+                    case( EntityType::NODE ) :
+                    {
+                        tDofsPerNode( aCount( static_cast< uint >( EntityType::NODE ) )++ ) = tDofType ;
+                        break ;
+                    }
+                    case( EntityType::EDGE ) :
+                    {
+                        tDofsPerEdge( aCount( static_cast< uint >( EntityType::EDGE ) )++ ) = tDofType ;
+                        break ;
+                    }
+                    case( EntityType::FACE ) :
+                    {
+                        tDofsPerFace( aCount( static_cast< uint >( EntityType::FACE ) )++ ) = tDofType ;
+                        break ;
+                    }
+                    case( EntityType::CELL ) :
+                    {
+                        tDofsPerCell( aCount( static_cast< uint >( EntityType::CELL ) )++ ) = tDofType ;
+                        break ;
+                    }
+                    case( EntityType::FACET ) : // lambda dof
+                    {
+                        tLambdaDofs( aCount( static_cast< uint >( EntityType::FACET ) )++ ) = tDofType ;
+                        break ;
+                    }
+                    default:
+                    {
+                        BELFEM_ERROR( false, "Unknown Entity Type");
+                    }
+                }
+            }
         }
 
 //------------------------------------------------------------------------------
@@ -1759,17 +1847,38 @@ namespace belfem
         {
             // #reindex
 
+
+
+            // the following information is needed for enrichment on sidesets
+            Bitset< BELFEM_MAX_DOFTYPES > tBlockDofs ;
+
+            // flag all dofs that sit on blocks
+            uint tNumBlocks = mDofsPerBlock.size() ;
+
+            for( uint b=0; b<tNumBlocks; ++b )
+            {
+               Vector< index_t > & tDofs = mDofsPerBlock( b ) ;
+               for( index_t d : tDofs )
+               {
+                   tBlockDofs.set( d );
+               }
+            }
+
             // counter for all types
             Vector< uint > tCount( 5 );
 
-            // get number of blocks
+            // counter for sideset only types
+            Vector< uint > tSideSetOnlyCount( 5 );
+
+            // get number of sidesets
             uint tNumSideSets = mDofsPerSideSet.size() ;
 
-            // loop over all blocks
+            // loop over all sidesets
             for( uint s=0; s<tNumSideSets; ++s )
             {
-                // reset counter
+                // reset counters
                 tCount.fill( 0 );
+                tSideSetOnlyCount.fill( 0 ) ;
 
                 Vector< index_t > & tDofsPerSideSet = mDofsPerSideSet( s );
 
@@ -1779,104 +1888,31 @@ namespace belfem
                     // get the Entity Type
                     EntityType tEntityType = ( EntityType ) mDofEntityTypes( tDofNum ) ;
 
-                    // check what it is
-                    switch ( tEntityType )
+                    // convert entity type to position
+                    uint tType = static_cast< uint >( tEntityType );
+
+
+                    ++tCount( tType );
+
+                    if ( ! tBlockDofs.test( tDofNum ) )
                     {
-                        case( EntityType::NODE ) :
-                        {
-                            ++tCount( 0 );
-                            break ;
-                        }
-                        case( EntityType::EDGE ) :
-                        {
-                            ++tCount( 1 );
-                            break ;
-                        }
-                        case( EntityType::FACE ) :
-                        {
-                            ++tCount( 2 );
-                            break ;
-                        }
-                        case( EntityType::CELL ) :
-                        {
-                            ++tCount( 3 );
-                            break ;
-                        }
-                        case( EntityType::FACET ) : // lambda dof
-                        {
-                            ++tCount( 4 );
-                            break ;
-                        }
-                        default:
-                        {
-                            BELFEM_ERROR( false, "Unknown Entity Type");
-                        }
+                        ++tSideSetOnlyCount( tType );
                     }
                 }
 
-                // grab vectors
-                Vector< index_t > & tDofsPerNode = mSideSetDofs( s )->Node ;
-                Vector< index_t > & tDofsPerEdge = mSideSetDofs( s )->Edge ;
-                Vector< index_t > & tDofsPerFace = mSideSetDofs( s )->Face ;
-                Vector< index_t > & tDofsPerCell = mSideSetDofs( s )->Cell ;
-                Vector< index_t > & tLambdaDofs  = mSideSetDofs( s )->Lambda ;
+                // find out what dof is linked to what entity type
+                this->count_sideset_dofs_per_sideset( tDofsPerSideSet,
+                                                      mSideSetDofs( s ),
+                                                      tCount,
+                                                      tBlockDofs,
+                                                      false );
 
-                // allocate memory
-                tDofsPerNode.set_size( tCount( 0 ) );
-                tDofsPerEdge.set_size( tCount( 1 ) );
-                tDofsPerFace.set_size( tCount( 2 ) );
-                tDofsPerCell.set_size( tCount( 3 ) );
-                tLambdaDofs.set_size( tCount( 4 ) );
-
-                // reset counter
-                tCount.fill( 0 );
-
-                // loop over all dofs
-                for( uint tDofNum : tDofsPerSideSet )
-                {
-                    // get the label of the dof
-                    const string & tDofLabel = mDofLabels( tDofNum );
-
-                    // get the Entity Type
-                    EntityType tEntityType =  entity_type( tDofLabel );
-
-                    // get the type number of the dof
-                    uint tDofType = mDofMap( tDofLabel );
-
-                    // check what it is
-                    switch ( tEntityType )
-                    {
-                        case( EntityType::NODE ) :
-                        {
-                            tDofsPerNode( tCount( 0 )++ ) = tDofType ;
-                            break ;
-                        }
-                        case( EntityType::EDGE ) :
-                        {
-                            tDofsPerEdge( tCount( 1 )++ ) = tDofType ;
-                            break ;
-                        }
-                        case( EntityType::FACE ) :
-                        {
-                            tDofsPerFace( tCount( 2 )++ ) = tDofType ;
-                            break ;
-                        }
-                        case( EntityType::CELL ) :
-                        {
-                            tDofsPerCell( tCount( 3 )++ ) = tDofType ;
-                            break ;
-                        }
-                        case( EntityType::FACET ) : // lambda dof
-                        {
-                            tLambdaDofs( tCount( 4 )++ ) = tDofType ;
-                            break ;
-                        }
-                        default:
-                        {
-                            BELFEM_ERROR( false, "Unknown Entity Type");
-                        }
-                    }
-                }
+                // now we do the same with SideSetOnlyDofs
+                this->count_sideset_dofs_per_sideset( tDofsPerSideSet,
+                                                      mSideSetOnlyDofs( s ),
+                                                      tSideSetOnlyCount,
+                                                      tBlockDofs,
+                                                      true );
             }
         }
 
@@ -2051,6 +2087,12 @@ namespace belfem
                 }
             }
             mSideSetDofs.clear();
+
+            for( DofTable * tDofTable : mSideSetOnlyDofs )
+            {
+                delete tDofTable ;
+            }
+            mSideSetOnlyDofs.clear() ;
         }
 
 //------------------------------------------------------------------------------

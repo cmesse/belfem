@@ -221,13 +221,53 @@ namespace belfem
         {
             BoundaryCondition::link_bearing( aDofManager, aBearingID );
 
-            // check if this is a h-phi formulation
-            mIsHPhi = is_maxwell_hphi( aDofManager->iwg()->type() ) ;
 
-            if( mNodes.size() == 0 )
+
+            if ( mNodes.size() == 0 )
             {
                 return;
             }
+
+            Cell< string > tAllDofs = { "phi", "ax", "ay", "az" };
+
+            mFixedDofs.clear() ;
+            mDofFields.clear() ;
+            mIsHPhi = is_maxwell_hphi( aDofManager->iwg()->type());
+
+            if ( mImposing == BoundaryConditionImposing::Dirichlet )
+            {
+
+                uint tCount = 0;
+
+                for ( string & tDofLabel: tAllDofs )
+                {
+                    // get the type id of phi
+                    uint tType = aDofManager->iwg()->doftype( tDofLabel );
+
+                    // check if dof exists in IWG
+                    if ( tType != BELFEM_UINT_MAX)
+                    {
+                        mDofFields.push( tDofLabel );
+
+                        // compute dof ID
+                        id_t tID = aDofManager->calculate_dof_id( mNodes( 0 ), tType );
+
+                        if ( aDofManager->dof_exists( tID ))
+                        {
+                            // get dof
+                            Dof * tDof = aDofManager->dof( tID );
+                            tDof->fix( 0.0 );
+                            std::cout << comm_rank() << " fix node " << mNodes( 0 )->id() << " " << tDofLabel << std::endl ;
+                            mFixedDofs.push( tDof );
+                        }
+                    }
+                }
+            }
+
+
+
+             /*
+             // check if this is a h-phi formulation
 
             if( mIsHPhi )
             {
@@ -339,7 +379,7 @@ namespace belfem
                         }
                     }
                 }
-            }
+            } */
         }
 
 
