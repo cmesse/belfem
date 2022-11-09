@@ -653,6 +653,25 @@ namespace belfem
     void
     Mesh::connect_elements_to_elements()
     {
+        index_t tCount = 0 ;
+
+        Matrix< index_t > tFacetsPerElement( 6, mElements.size(), 0 );
+        Vector< uint > tNumFacetsPerElement( mElements.size(), 0 );
+
+        // count facets per element, since some elements are only connected via facets
+        for( mesh::Facet * tFacet : mFacets )
+        {
+            if( tFacet->has_master()  )
+            {
+                tFacetsPerElement( tNumFacetsPerElement( tFacet->master()->index() )++, tFacet->master()->index() ) = tCount ;
+            }
+            if( tFacet->has_slave() )
+            {
+                tFacetsPerElement( tNumFacetsPerElement( tFacet->slave()->index() )++, tFacet->slave()->index() ) = tCount ;
+            }
+            tFacet->set_index( tCount++ );
+        }
+
         Vector< index_t > tIndices;
 
         // count elements per element
@@ -664,10 +683,10 @@ namespace belfem
             int tNumDim = mesh::dimension( tElement->type() );
 
             // get id of this element
-            const id_t & tID = tElement->id();
+            const id_t tID = tElement->id();
 
             // count space needed for index vector
-            index_t tCount = 0;
+            tCount = 0 ;
 
             // loop over all nodes and count connected elements
             for( uint k=0; k<tN; ++k )
@@ -686,11 +705,26 @@ namespace belfem
                 }
             }
 
+            for( uint f=0; f<tNumFacetsPerElement( tElement->index()) ; ++f )
+            {
+                // get facet
+                mesh::Facet * tFacet = mFacets( tFacetsPerElement( f, tElement->index() ) );
+
+                if( tFacet->has_master() )
+                {
+                    ++tCount ;
+                }
+                if( tFacet->has_slave() )
+                {
+                    ++tCount ;
+                }
+            }
+
             // allocate index vector
             tIndices.set_size( tCount, tID );
 
             // reset counter
-            tCount = 0;
+            tCount = 0 ;
 
             // loop over all nodes and count connected elements
             for( uint k=0; k<tN; ++k )
@@ -707,6 +741,22 @@ namespace belfem
                     {
                         tIndices( tCount++ ) = tNode->element( e )->index();
                     }
+                }
+            }
+
+            // check connections that are only over facets
+            for( index_t f=0; f<tNumFacetsPerElement( tElement->index() ) ; ++f )
+            {
+                // get facet
+                mesh::Facet * tFacet = mFacets( tFacetsPerElement( f, tElement->index() ) );
+
+                if( tFacet->has_master()  )
+                {
+                    tIndices( tCount++ ) = tFacet->master()->index() ;
+                }
+                if( tFacet->has_slave() )
+                {
+                    tIndices( tCount++ ) = tFacet->slave()->index() ;
                 }
             }
 

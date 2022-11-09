@@ -90,6 +90,14 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
+            compute_jacobian_and_rhs_fmfm(
+                    Element        * aElement,
+                    Matrix< real > & aJacobian,
+                    Vector< real > & aRHS );
+
+//------------------------------------------------------------------------------
+
+            void
             compute_jacobian_and_rhs_fmair(
                     Element        * aElement,
                     Matrix< real > & aJacobian,
@@ -243,6 +251,17 @@ namespace belfem
                 Vector< real > & aRHS )
         {
             IWG_Maxwell::compute_jacobian_and_rhs_cut( aElement, aJacobian, aRHS );
+        }
+
+//-----------------------------------------------------------------------------
+
+        inline void
+        IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_fmfm(
+                Element        * aElement,
+                Matrix< real > & aJacobian,
+                Vector< real > & aRHS )
+        {
+            this->compute_interface_aa_tri3( aElement, aJacobian, aRHS );
         }
 
 //------------------------------------------------------------------------------

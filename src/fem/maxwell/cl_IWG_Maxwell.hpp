@@ -6,7 +6,7 @@
 #define BELFEM_CL_IWG_MAXWELL_HPP
 // #define BELFEM_FERROAIR_ENRICHED --> moved to IWG
 
-#define BELFEM_FERRO_LINEAR
+//#define BELFEM_FERRO_LINEAR
 
 #define BELFEM_FERRO_HPHIA // use a-formulation in ferro for h-phi
 
@@ -343,6 +343,22 @@ namespace belfem
                     Element        * aElement,
                     Matrix< real > & aM,
                     Matrix< real > & aK );
+
+//------------------------------------------------------------------------------
+
+            void
+            compute_interface_aa_tri3(
+                    Element        * aElement,
+                    Matrix< real > & aJacobian,
+                    Vector< real > & aRHS );
+
+//------------------------------------------------------------------------------
+
+            void
+            compute_interface_aa_tri6(
+                    Element        * aElement,
+                    Matrix< real > & aJacobian,
+                    Vector< real > & aRHS );
 
 //------------------------------------------------------------------------------
 

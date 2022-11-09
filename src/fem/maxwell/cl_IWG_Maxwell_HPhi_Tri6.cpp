@@ -41,8 +41,8 @@ namespace belfem
             //mFields.InterfaceScFm = { "lambda_n0", "lambda_n1"  };
 
 #ifdef BELFEM_FERROAIR_ENRICHED
-            // mFields.InterfaceFmAir = { "lambda_t0", "lambda_t1", "lambda_n0", "lambda_n1" };
-            mFields.InterfaceFmAir = { "lambda_t0", "lambda_t1" };
+            mFields.InterfaceFmAir = { "lambda_t0", "lambda_t1", "lambda_n0", "lambda_n1" };
+            //mFields.InterfaceFmAir = { "lambda_t0", "lambda_t1" };
 
 #endif
 
@@ -50,11 +50,15 @@ namespace belfem
 
             mFields.SymmetryAir = { "lambda_n0", "lambda_n1" };
             mFields.AntiSymmetryAir = { "lambda_n0", "lambda_n1" };
+
+            mFields.InterfaceFmFm = { "_lambda" };
+
 #ifdef BELFEM_FERRO_HPHIA
             mFields.Ferro = { "az" };
 #ifdef BELFEM_FERRO_LINEAR
             mFields.SymmetryFerro = { "lambda" };
             mFields.AntiSymmetryFerro = { "lambda" };
+
 #else
             mFields.SymmetryFerro = { "lambda_n0", "lambda_n1" };
             mFields.AntiSymmetryFerro = { "lambda_n0", "lambda_n1" };
@@ -177,6 +181,12 @@ namespace belfem
                 {
                     mFunJacobian =
                             & IWG_Maxwell_HPhi_Tri6::compute_jacobian_and_rhs_scfm ;
+                    break ;
+                }
+                case( DomainType::InterfaceFmFm ) :
+                {
+                    mFunJacobian =
+                            & IWG_Maxwell_HPhi_Tri6::compute_jacobian_and_rhs_fmfm ;
                     break ;
                 }
                 case( DomainType::InterfaceFmAir ) :
@@ -618,7 +628,7 @@ namespace belfem
                 }
 
                 // normal condition : b != b
-                /*for ( uint j = 0; j < tNumNodesPerAir ; ++j )
+                for ( uint j = 0; j < tNumNodesPerAir ; ++j )
                 {
                     tValue = tOmega * ( tn( 0 ) * tBm( 0, j ) + tn( 1 ) * tBm( 1, j ) );
                     tK( r, j ) += tPsi0 * tValue ;
@@ -634,7 +644,7 @@ namespace belfem
                     tK( i+tNumNodesPerAir, r ) += tPsi0 * tValue ;
                     tK( s, i +tNumNodesPerAir  ) += tPsi1 * tValue ;
                     tK( i+tNumNodesPerAir, s ) += tPsi1 * tValue ;
-                }*/
+                }
 
                 // flux condition
                 /*for ( uint i = 0; i < tNumNodesPerAir ; ++i)
@@ -654,39 +664,31 @@ namespace belfem
                         real tValue =  tOmega * tNs( i ) *
                                       ( tn( 1 ) * tBm( 0, j ) - tn( 0 ) * tBm( 1, j ));
 
-                        tK( i + tNumNodesPerAir, j ) -= tValue ; // *= this->timestep() ;
-                        tM( j, i + tNumNodesPerAir ) += tValue ; ///this->timestep() ; // <-- why?
+                        tK( i + tNumNodesPerAir, j ) -= tValue ;
+                        tM( j, i + tNumNodesPerAir ) += tValue ;
                     }
                 }
 
 
 #else
-                const Vector< real > & tN = tSlave->phi( k );
+                const Vector< real > & tNs = tSlave->phi( k );
 
-                // contributions to stiffness
                 for ( uint j = 0; j < tNumNodesPerAir ; ++j )
                 {
                     for ( uint i = 0; i < tNumNodesPerFerro; ++i )
                     {
-                        tK( i+tNumNodesPerAir, j ) += tOmega * tN( i ) *
-                                                          ( tn( 1 ) * tBm( 0, j ) - tn( 0 ) * tBm( 1, j ));
+                        real tValue =  tOmega * tNs( i ) *
+                                      ( tn( 1 ) * tBm( 0, j ) - tn( 0 ) * tBm( 1, j ));
+
+                        tK( i + tNumNodesPerAir, j ) -= tValue ;
+                        tM( j, i + tNumNodesPerAir ) += tValue ;
                     }
                 }
 #endif
             }
 
-#ifdef BELFEM_FERROAIR_ENRICHED
-            aRHS.fill( 0.0 );
-
             aRHS = tM * this->collect_q0_aphi_2d( aElement );
             aJacobian += tK * this->timestep() ;
-
-#else
-            // todo: why not negative ?
-            tM = trans( tK );
-            aRHS = tM * this->collect_q0_aphi_2d( aElement );
-            aJacobian += tK * this->timestep();
-#endif
 
         }
 
@@ -1214,15 +1216,6 @@ namespace belfem
 
                     Vector< real > tHm( tBm * tPhiM );
                     Vector< real > tHs( tBs * tPhiS );
-
-
-                    //std::cout << "check M " << tHm( 0 ) << " " <<
-                    //      mE( 0 ) * tHt( 0 )
-                    //    + mE( 1 ) *  tHt( 1 ) << std::endl ;
-                    //std::cout << "check S " << tHs( 0 ) << " " << mE( 0 ) *  tHt( 4 ) +  mE( 1 ) *  tHt( 5 ) << std::endl ;
-
-
-
 
                     this->compute_layer_mass( l, mE( 0 ), mE( 1 ), tMlayer );
 

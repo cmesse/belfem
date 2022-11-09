@@ -158,6 +158,14 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
+            compute_jacobian_and_rhs_fmfm(
+                    Element        * aElement,
+                    Matrix< real > & aJacobian,
+                    Vector< real > & aRHS ) ;
+
+//------------------------------------------------------------------------------
+
+            void
             compute_jacobian_and_rhs_fmair(
                     Element        * aElement,
                     Matrix< real > & aJacobian,
@@ -344,13 +352,35 @@ namespace belfem
             BELFEM_ASSERT( static_cast< DomainType >( aElement->slave()->element()->physical_tag() ) == DomainType::Ferro,
                            "Master element of facet %lu must be of DomainType::Ferro", ( long unsigned int ) aElement->id() );
 
+
+#ifdef BELFEM_FERRO_LINEAR
             this->compute_interface_ha_tri6_tri3( aElement, aJacobian, mGroup->work_K() );
+#else
+            this->compute_interface_ha_tri6( aElement, aJacobian, mGroup->work_K() );
+#endif
 
             // compute RHS
             aRHS = aJacobian * this->collect_q0_ha_2d( aElement );
 
             // compone matrices
             aJacobian += mGroup->work_K() * this->timestep() ;
+        }
+//------------------------------------------------------------------------------
+
+
+        inline void
+        IWG_Maxwell_HPhi_Tri6::compute_jacobian_and_rhs_fmfm(
+                Element        * aElement,
+                Matrix< real > & aJacobian,
+                Vector< real > & aRHS )
+        {
+
+#ifdef BELFEM_FERRO_LINEAR
+            this->compute_interface_aa_tri3( aElement, aJacobian, aRHS );
+#else
+            this->compute_interface_aa_tri6( aElement, aJacobian, aRHS );
+#endif
+
         }
 
 //------------------------------------------------------------------------------

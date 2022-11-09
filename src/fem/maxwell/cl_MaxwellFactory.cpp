@@ -1387,8 +1387,8 @@ namespace belfem
             // write flags to parameters
             mParameters->enforce_linear( tFlags );
 
-            // mParameters->set_sideset_integration_orders( 7 );
-            // mParameters->set_block_integration_orders( 7 );
+            mParameters->set_sideset_integration_orders( 9 );
+            mParameters->set_block_integration_orders( 9 );
 
             if( comm_rank() == 0 )
             {
@@ -1835,11 +1835,6 @@ namespace belfem
 
                 IWG_Maxwell * tIWG = new IWG_Maxwell_L2_Current( tType, mAlphaJ );
 
-                if( mUseBernstein )
-                {
-                    tIWG->set_interpolation_type( InterpolationType::BERNSTEIN );
-                }
-
                 // set the blocks of the IWG
                 tIWG->set_blocks( tBlocks, tTypes );
 
@@ -1921,9 +1916,9 @@ namespace belfem
             uint tConductorCount = 0 ;
             uint tCutCount = 0 ;
 
-            for(  DomainType tType : mBlockTypes )
+            for(  uint b=0; b<mBlockTypes.size(); ++b )
             {
-                switch( tType )
+                switch( mBlockTypes( b ) )
                 {
                     case( DomainType::Air ) :
                     case( DomainType::Coil ) :
@@ -2014,27 +2009,28 @@ namespace belfem
             // crate ferro projector
             if( tFerroCount > 0 )
             {
-                // create the iwg
-                IWG_Maxwell * tIWG = new IWG_Maxwell_L2_Magfield(
-                        this->element_type( tFerroBlocks( 0 )),
-                        tMode,
-                        mAlphaB );
-
-                if( mUseBernstein )
+                for( uint b : tFerroBlocks )
                 {
-                    tIWG->set_interpolation_type( InterpolationType::BERNSTEIN );
+
+                    // create the iwg
+                    IWG_Maxwell * tIWG = new IWG_Maxwell_L2_Magfield( this->element_type( b ),
+                            tMode,
+                            mAlphaB );
+
+
+                    Vector< id_t > tBlocks( 1,b );
+                    Cell< DomainType > tTypes( 1, DomainType::Ferro ) ;
+
+                    // set the blocks of the IWG
+                    tIWG->set_blocks( tBlocks, tTypes );
+
+                    // add iwg to kernel
+                    this->add_postprocessor_to_kernel( tIWG );
+
+                    // fix group types of IWG
+                    tIWG->update_group_types();
+
                 }
-
-                Cell< DomainType > tTypes( tFerroBlocks.length(), DomainType::Ferro );
-
-                // set the blocks of the IWG
-                tIWG->set_blocks( tFerroBlocks, tTypes );
-
-                // add iwg to kernel
-                this->add_postprocessor_to_kernel( tIWG );
-
-                // fix group types of IWG
-                tIWG->update_group_types();
             }
 
             // create conducting projector
@@ -2222,13 +2218,18 @@ namespace belfem
             {
                 this->write_block_phystags_to_mesh();
                 this->fix_facet_masters() ;
+                // with the blocks in place, we can also create the materials
+                this->create_materials() ;
+
                 this->create_interfaces();
                 this->create_symmetries( false ) ;
                 this->create_symmetries( true ) ;
                 this->write_sideset_phystags_to_mesh();
             }
             else
-            {
+            {   // with the blocks in place, we can also create the materials
+                this->create_materials() ;
+
                 this->create_interfaces();
                 this->create_symmetries( false ) ;
                 this->create_symmetries( true ) ;
@@ -2238,7 +2239,7 @@ namespace belfem
             this->create_layers() ;
 
             // with the blocks in place, we can also create the materials
-            this->create_materials() ;
+            //this->create_materials() ;
             this->select_bcs_and_cuts() ;
             this->select_sidesets() ;
         }
@@ -2666,6 +2667,28 @@ namespace belfem
                 // count interfaces
                 uint tCount = 0 ;
 
+                // in order to duplicate nodes on ferro-ferro interfaces,
+                // we must find out which material is connected to which block
+                // actually we want to do this later also in link_materials
+                // but we need to do a preliminary check here
+
+                // create a preliminary map
+                Map< id_t, Material * > tMaterialMap ;
+
+                for( DomainGroup * tGroup : mBlocks )
+                {
+                    if( tGroup->type() == DomainType::Ferro )
+                    {
+                        // grab the material
+                        Material * tMaterial = mMaterialMap( tGroup->label() ) ;
+
+                        for ( id_t tID: tGroup->groups() )
+                        {
+                            tMaterialMap[ tID ] = tMaterial ;
+                        }
+                    }
+                }
+
                 // loop over all sidesets
                 for( mesh::SideSet * tSideSet : mMesh->sidesets() )
                 {
@@ -2691,6 +2714,30 @@ namespace belfem
                             {
                                 ++tCount ;
                             }
+                            // check if this interface connects two different ferro materials
+                            else if( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Ferro )
+                            {
+                                // get material from master
+                                Material * tMasterMaterial = tMaterialMap( tFacet->master()->geometry_tag() ) ;
+                                Material * tSlaveMaterial = tMaterialMap( tFacet->slave()->geometry_tag() );
+
+                                bool tConstantFlag =
+                                        tMasterMaterial->permeability_law() == PermeabilityLaw::Constant
+                                        &&  tSlaveMaterial->permeability_law() == PermeabilityLaw::Constant ;
+
+                                bool tEqualMuFlag = tMasterMaterial->nu_s() == tSlaveMaterial ->nu_s();
+
+                                // check if material is  the same
+                                if( tMasterMaterial->label() != tSlaveMaterial->label() )
+                                {
+                                    // check if the materials have at least the same mu
+                                    if( ! ( tConstantFlag && tEqualMuFlag ) )
+                                    {
+                                        ++tCount ;
+                                    }
+                                }
+                            }
+                        }
 #elif BELFEM_FERROAIR_ENRICHED
                             // check if this sideset is an interface
                             if ( ( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Air )
@@ -2707,7 +2754,6 @@ namespace belfem
                                 ++tCount ;
                             }
 #endif
-                        }
                     }
                 }
 
@@ -2761,6 +2807,37 @@ namespace belfem
                                 tSlaveBlockIDs( tCount )  = tFacet->slave()->geometry_tag() ;
                                 tSideSetTypes( tCount++ ) = static_cast< uint >( DomainType::InterfaceFmAir );
                             }
+                            else if ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Ferro )
+                            {
+                                tSideSetIDs( tCount )     = tSideSet->id();
+                                tMasterBlockIDs( tCount ) = tFacet->master()->geometry_tag() ;
+                                tSlaveBlockIDs( tCount )  = tFacet->slave()->geometry_tag() ;
+                                tSideSetTypes( tCount++ ) = static_cast< uint >( DomainType::InterfaceFmFm );
+                            }
+                            // check if this interface connects two different ferro materials
+                            else if( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Ferro )
+                            {
+                                // get material from master
+                                Material * tMasterMaterial = tMaterialMap( tFacet->master()->geometry_tag() ) ;
+                                Material * tSlaveMaterial = tMaterialMap( tFacet->slave()->geometry_tag() );
+
+                                bool tConstantFlag =
+                                        tMasterMaterial->permeability_law() == PermeabilityLaw::Constant
+                                        &&  tSlaveMaterial->permeability_law() == PermeabilityLaw::Constant ;
+
+                                bool tEqualMuFlag = tMasterMaterial->nu_s() == tSlaveMaterial ->nu_s();
+
+                                // check if material is  the same
+                                if( tMasterMaterial->label() != tSlaveMaterial->label() )
+                                {
+                                    // check if the materials have at least the same mu
+                                    if( ! ( tConstantFlag && tEqualMuFlag ) )
+                                    {
+                                        ++tCount ;
+                                    }
+                                }
+                            }
+
 #elif BELFEM_FERROAIR_ENRICHED
                             else if ( tMasterType == DomainType::Air && tSlaveType == DomainType::Ferro )
                             {
@@ -3120,16 +3197,35 @@ namespace belfem
                 {
                     // create scissors
                     tScissors = new mesh::Scissors( mMesh, tAirBlocks );
+
                     // add thin sheets
                     for ( DomainGroup * tTape: mTapes )
                     {
-                        tScissors->cut( tTape->groups(), tTape->minus(), tTape->plus(), true );
+                        tScissors->cut( tTape->groups(),
+                                        tTape->minus(),
+                                        tTape->plus(),
+                                        mesh::CutType::ThinShell );
                     }
 
 
+                    // add ferro-ferro cuts
+                    for( DomainGroup *  tInterface : mInterfaces )
+                    {
+                        if( tInterface->type() == DomainType::InterfaceFmFm )
+                        {
+                            tScissors->cut( tInterface->groups()( 0 ),
+                                            tInterface->master_block_id(),
+                                            tInterface->slave_block_id(),
+                                            mesh::CutType::FerroInterface );
+                        }
+                    }
+
                     for ( DomainGroup * tCut: mCuts )
                     {
-                        tScissors->cut( tCut->groups(), tCut->minus(), tCut->plus());
+                        tScissors->cut( tCut->groups(),
+                                        tCut->minus(),
+                                        tCut->plus(),
+                                        mesh::CutType::Cohomology );
                     }
 
                     // finalize cuts
@@ -3253,7 +3349,7 @@ namespace belfem
                 if( gComm.rank() == 0 )
                 {
                     // refresh cut map
-                    tScissors->collect_cut_data();
+                    tScissors->collect_cut_data( mesh::CutType::Cohomology );
 
                     const Matrix< id_t > & tCutData = tScissors->cut_data() ;
 

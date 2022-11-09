@@ -48,6 +48,10 @@ namespace belfem
                     {
                         Dofs.push( tDof );
                     }
+                    for( const string & tDof : InterfaceFmFm )
+                    {
+                        Dofs.push( tDof );
+                    }
                     for( const string & tDof : InterfaceFmAir )
                     {
                         Dofs.push( tDof );
@@ -142,6 +146,7 @@ namespace belfem
                         Dofs.push( tDof );
                         InterfaceScFm.push( tDof );
                         InterfaceFmAir.push( tDof );
+                        InterfaceFmFm.push( tDof );
                         SymmetryFerro.push( tDof );
                         AntiSymmetryFerro.push( tDof );
                         BoundaryFerro.push( tDof );
@@ -193,6 +198,7 @@ namespace belfem
 
                     aIWG->unique_and_rearrange( ThinShell );
                     aIWG->unique_and_rearrange( InterfaceScFm );
+                    aIWG->unique_and_rearrange( InterfaceFmFm );
                     aIWG->unique_and_rearrange( InterfaceScAir );
                     aIWG->unique_and_rearrange( InterfaceFmAir );
 
@@ -249,6 +255,10 @@ namespace belfem
                         else if ( tDof == "face_h" )
                         {
                             NonDof.push("face_h0");
+                        }
+                        else if ( tDof.c_str()[ 0 ] == '_' )
+                        {
+                            Hidden.push( tDof );
                         }
                     }
 
@@ -388,6 +398,13 @@ namespace belfem
                         {
                             this->create_doftable(
                                     InterfaceFmAir,
+                                    aSideSetDofs( k ) );
+                            break ;
+                        }
+                        case( DomainType::InterfaceFmFm ) :
+                        {
+                            this->create_doftable(
+                                    InterfaceFmFm,
                                     aSideSetDofs( k ) );
                             break ;
                         }

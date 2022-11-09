@@ -349,7 +349,6 @@ int main( int    argc,
        if ( tKernel->is_master() )
        {
            gLog.message( 1, "    timestep completed in %4.2f seconds", ( float ) tTimer.stop() * 0.001 );
-           tMagfield->print_worst_dof();
        }
 
 

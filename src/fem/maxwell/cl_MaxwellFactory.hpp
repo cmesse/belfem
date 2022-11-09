@@ -122,6 +122,7 @@ namespace belfem
             Map< string, DomainGroup * > mCutMap ;
 
             Cell< DomainGroup * >        mSideSets ;
+            Cell< DomainGroup * >        mFerroFerroInterface ;
 
             Cell< DomainGroup * >        mTapes ;
 

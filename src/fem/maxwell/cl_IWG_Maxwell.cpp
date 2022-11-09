@@ -264,6 +264,7 @@ namespace belfem
                 case( DomainType::InterfaceScAir ) :
                 case( DomainType::InterfaceScFm )  :
                 case( DomainType::InterfaceFmAir ) :
+                case( DomainType::InterfaceFmFm ) :
                 {
                     mNumberOfNodesPerMaster = mesh::number_of_nodes( aGroup->master_type() );
                     mNumberOfNodesPerElement  = mNumberOfNodesPerMaster ;
@@ -2261,13 +2262,16 @@ namespace belfem
 
             this->collect_node_data( aElement->master(), "phi0", aQ0, tCount );
             this->collect_node_data( aElement->slave(), "az0", aQ0, tCount );
+
+#ifdef BELFEM_FERROAIR_ENRICHED
             this->collect_lambda_data( aElement, "lambda_t00", aQ0( tCount++) );
             this->collect_lambda_data( aElement, "lambda_t10", aQ0( tCount++) );
-            //this->collect_lambda_data( aElement, "lambda_n00", aQ0( tCount++) );
-            //this->collect_lambda_data( aElement, "lambda_n10", aQ0( tCount++) );
+            this->collect_lambda_data( aElement, "lambda_n00", aQ0( tCount++) );
+            this->collect_lambda_data( aElement, "lambda_n10", aQ0( tCount++) );
             //this->collect_node_data( aElement, "alpha0", aQ0, tCount );
 
             //this->collect_node_data( aElement, "beta0", aQ0, tCount );
+#endif
 
             BELFEM_ASSERT( tCount == mNumberOfDofsPerElement, "number of dofs does not match" );
 
@@ -2335,6 +2339,164 @@ namespace belfem
 
             aK *= mGroup->work_det_J() ;
             aM = -trans( aK );
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        IWG_Maxwell::compute_interface_aa_tri3(
+                Element        * aElement,
+                Matrix< real > & aJacobian,
+                Vector< real > & aRHS)
+        {
+            // make sure that the facet is correctly oriented
+            BELFEM_ASSERT( static_cast< DomainType >( aElement->master()->element()->physical_tag() ) == DomainType::Ferro,
+                           "Master element of facet %lu must be of DomainType::Ferro", ( long unsigned int ) aElement->id() );
+
+            BELFEM_ASSERT( static_cast< DomainType >( aElement->slave()->element()->physical_tag() ) == DomainType::Ferro,
+                           "Master element of facet %lu must be of DomainType::Ferro", ( long unsigned int ) aElement->id() );
+
+
+            aJacobian.fill( 0.0 );
+
+            // Master Side
+            switch( aElement->facet()->master_index() )
+            {
+                case( 0 ) :
+                {
+                    aJacobian( 6, 0 ) = 1 ;
+                    aJacobian( 7, 1 ) = 1 ;
+                    break ;
+                }
+                case( 1 ) :
+                {
+                    aJacobian( 6, 1 ) = 1 ;
+                    aJacobian( 7, 2 ) = 1 ;
+                    break ;
+                }
+                case( 2 ) :
+                {
+                    aJacobian( 6, 2 ) = 1 ;
+                    aJacobian( 7, 0 ) = 1 ;
+                    break ;
+                }
+                default:
+                {
+                    BELFEM_ERROR( false, "invalid facet index" );
+                }
+            }
+
+            // Slave Side
+            switch( aElement->facet()->slave_index() )
+            {
+                case( 0 ) :
+                {
+                    aJacobian( 6, 4 ) = -1 ;
+                    aJacobian( 7, 3 ) = -1 ;
+                    break ;
+                }
+                case( 1 ) :
+                {
+                    aJacobian( 6, 5 ) = -1 ;
+                    aJacobian( 7, 4 ) = -1 ;
+                    break ;
+                }
+                case( 2 ) :
+                {
+                    aJacobian( 6, 3 ) = -1 ;
+                    aJacobian( 7, 5 ) = -1 ;
+                    break ;
+                }
+                default:
+                {
+                    BELFEM_ERROR( false, "invalid facet index" );
+                }
+            }
+
+            aJacobian.matrix_data() += trans( aJacobian );
+            aRHS.fill( 0 );
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        IWG_Maxwell::compute_interface_aa_tri6(
+                Element        * aElement,
+                Matrix< real > & aJacobian,
+                Vector< real > & aRHS )
+        {
+            // make sure that the facet is correctly oriented
+            BELFEM_ASSERT( static_cast< DomainType >( aElement->master()->element()->physical_tag() ) == DomainType::Ferro,
+                           "Master element of facet %lu must be of DomainType::Ferro", ( long unsigned int ) aElement->id() );
+
+            BELFEM_ASSERT( static_cast< DomainType >( aElement->slave()->element()->physical_tag() ) == DomainType::Ferro,
+                           "Master element of facet %lu must be of DomainType::Ferro", ( long unsigned int ) aElement->id() );
+
+
+            aJacobian.fill( 0.0 );
+
+            // Master Side
+            switch( aElement->facet()->master_index() )
+            {
+                case( 0 ) :
+                {
+                    aJacobian( 12, 0 ) = 1 ;
+                    aJacobian( 13, 1 ) = 1 ;
+                    aJacobian( 14, 3 ) = 1 ;
+                    break ;
+                }
+                case( 1 ) :
+                {
+                    aJacobian( 12, 1 ) = 1 ;
+                    aJacobian( 13, 4 ) = 1 ;
+                    aJacobian( 14, 2 ) = 1 ;
+                    break ;
+                }
+                case( 2 ) :
+                {
+                    aJacobian( 12, 2 ) = 1 ;
+                    aJacobian( 13, 5 ) = 1 ;
+                    aJacobian( 14, 0 ) = 1 ;
+                    break ;
+                }
+                default:
+                {
+                    BELFEM_ERROR( false, "invalid facet index" );
+                }
+            }
+
+            // Slave Side
+            switch( aElement->facet()->slave_index() )
+            {
+                case( 0 ) :
+                {
+                    aJacobian( 12, 7 ) = -1 ;
+                    aJacobian( 13, 6 ) = -1 ;
+                    aJacobian( 14, 9 ) = -1 ;
+                    break ;
+                }
+                case( 1 ) :
+                {
+                    aJacobian( 12, 8 ) = -1 ;
+                    aJacobian( 13, 10 ) = -1 ;
+                    aJacobian( 14, 7 ) = -1 ;
+                    break ;
+                }
+                case( 2 ) :
+                {
+                    aJacobian( 12, 6 ) = -1 ;
+                    aJacobian( 13, 8 ) = -1 ;
+                    aJacobian( 14, 11 ) = -1 ;
+                    break ;
+                }
+                default:
+                {
+                    BELFEM_ERROR( false, "invalid facet index" );
+                }
+            }
+
+            aJacobian.matrix_data() += trans( aJacobian );
+            aRHS.fill( 0 );
         }
 
 //------------------------------------------------------------------------------

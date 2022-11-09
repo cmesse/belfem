@@ -15,12 +15,20 @@ namespace belfem
 {
     namespace mesh
     {
+        enum class CutType
+        {
+            Cohomology     = 0,
+            ThinShell      = 1,
+            FerroInterface = 2,
+            UNDEFINED      = 3
+        };
+
         namespace scissors
         {
             class CutData
             {
                 const id_t mID ;
-                const bool mIsTape ;
+                const CutType mType ;
 
                 // vector contains sideset id, plus side and minus side
                 Cell< Vector< id_t > > mData ;
@@ -33,19 +41,19 @@ namespace belfem
                          const id_t aSideSetID,
                          const id_t aPlusBlock,
                          const id_t aMinusBlock,
-                         const bool aIsTape );
+                         const CutType aType );
 
                 CutData( const id_t aCutID,
                          const Vector< id_t > & aSideSetIDs,
                          const id_t aPlusBlock,
                          const id_t aMinusBlock,
-                         const bool aIsTape );
+                         const CutType aType );
 
                 CutData( const id_t aCutID,
                          const Vector< id_t > & aSideSetIDs,
                          const Vector< id_t > & aPlusBlocks,
                          const Vector< id_t > & aMinusBlocks,
-                         const bool aIsTape );
+                         const CutType aType );
 
 //------------------------------------------------------------------------------
 
@@ -58,8 +66,8 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-                bool
-                is_tape() const;
+                CutType
+                type() const;
 
 //------------------------------------------------------------------------------
 
@@ -85,10 +93,10 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            inline bool
-            CutData::is_tape() const
+            inline CutType
+            CutData::type() const
             {
-                return mIsTape ;
+                return mType  ;
             }
 
 //------------------------------------------------------------------------------
@@ -131,12 +139,13 @@ namespace belfem
 
             index_t mNumberOfCuts = 0 ;
             index_t mNumberOfTapes = 0 ;
-
+            index_t mNumberOfInterfaces = 0 ;
             Cell< scissors::CutData * > mCutsAndTapes ;
 
             // flattened dataset
             Matrix< id_t > mTapeData ;
             Matrix< id_t > mCutData ;
+            Matrix< id_t > mInterfaceData ;
 
             index_t mNumberOfNodes = 0 ;
             index_t mNumberOfFacets = 0 ;
@@ -172,6 +181,9 @@ namespace belfem
             //! sidesets on the original mesh that become cuts
             Cell< SideSet * > mCutSideSets ;
 
+            //! sidesets on the original mesh that become interfaces
+            Cell< SideSet * > mInterfaceSideSets ;
+
             //! lookup table for number of nodes to be crated
             //! rows: num tapes, cols: num cuts
             const Matrix< uint > mLookup =  { { 0, 1, 1 }, { 1, 1, 1 }, { 1, 2, 3 } } ;
@@ -203,7 +215,7 @@ namespace belfem
             cut( const id_t aSidesetID,
                  const id_t aPlusBlock,
                  const id_t aMinusBlock,
-                 const bool aIsTape=false );
+                 const CutType aType );
 
 //------------------------------------------------------------------------------
 
@@ -211,7 +223,7 @@ namespace belfem
             cut( const Vector< id_t > & aSidesetIDs,
                  const id_t aPlusBlock,
                  const id_t aMinusBlock,
-                 const bool aIsTape=false );
+                 const CutType aType );
 
 //------------------------------------------------------------------------------
 
@@ -219,7 +231,7 @@ namespace belfem
             cut( const Vector< id_t > & aSidesetIDs,
                  const Vector< id_t > & aMinusBlocks,
                  const Vector< id_t > & aPlusBlocks,
-                 const bool aIsTape=false );
+                 const CutType aType );
 
 //------------------------------------------------------------------------------
 
@@ -239,7 +251,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
-            collect_cut_data( const bool aTapeMode = false );
+            collect_cut_data( const CutType aType );
 
 //------------------------------------------------------------------------------
         private:
@@ -330,6 +342,13 @@ namespace belfem
 
             uint
             inside_node( const ElementType aElementType );
+
+//------------------------------------------------------------------------------
+
+            void
+            count_cut( const CutType aType );
+
+//------------------------------------------------------------------------------
 
 //------------------------------------------------------------------------------
         };

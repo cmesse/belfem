@@ -695,12 +695,28 @@ namespace belfem
                                     * tNumberOfDofsPerFace ) ;
                     }
                 }
+                else if ( aSideSet->domain_type() == DomainType::InterfaceFmFm )
+                {
+                    if( mNumberOfDerivativeDimensions == 2 )
+                    {
+                        return    mesh::number_of_nodes( aSideSet->master_type() )
+                                + mesh::number_of_nodes( aSideSet->slave_type() )
+                                + mesh::number_of_nodes( aSideSet->element_type() );
+
+                    }
+                    else
+                    {
+                        return ( mesh::number_of_nodes( aSideSet->master_type() )
+                          + mesh::number_of_nodes( aSideSet->slave_type() )
+                          + mesh::number_of_nodes( aSideSet->element_type() ) )* 3 ;
+                    }
+                }
                 else if( aSideSet->domain_type() == DomainType::InterfaceFmAir ) // exists only in h-phi
                 {
 #ifdef BELFEM_FERROAIR_ENRICHED
                     // todo: also make this work for 3D --> move function to specific IWG
                     return mesh::number_of_nodes( aSideSet->master_type() )
-                         + mesh::number_of_nodes( aSideSet->slave_type() )  + 2 ;
+                         + mesh::number_of_nodes( aSideSet->slave_type() )  + 4 ;
                          //+ mesh::number_of_nodes( aSideSet->element_type() );
 
 #else

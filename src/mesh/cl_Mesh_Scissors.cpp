@@ -27,9 +27,9 @@ namespace belfem
                      const id_t aSideSetID,
                      const id_t aPlusBlock,
                      const id_t aMinusBlock,
-                     const bool aIsTape  ) :
+                     const CutType aType  ) :
                          mID( aCutID ),
-                         mIsTape( aIsTape )
+                         mType( aType )
             {
                 Vector< id_t > tData( 3 );
                 tData( 0 ) = aSideSetID ;
@@ -45,9 +45,9 @@ namespace belfem
                     const Vector< id_t > & aSideSetIDs,
                     const id_t aPlusBlock,
                     const id_t aMinusBlock,
-                    const bool aIsTape  ) :
+                    const CutType aType  ) :
                          mID( aCutID ),
-                         mIsTape( aIsTape )
+                         mType( aType )
             {
                 Vector< id_t > tData( 3, 0 );
                 tData( 1 ) = aPlusBlock ;
@@ -68,9 +68,9 @@ namespace belfem
                      const Vector< id_t > & aSideSetIDs,
                      const Vector< id_t > & aPlusBlocks,
                      const Vector< id_t > & aMinusBlocks,
-                     const bool aIsTape ):
+                     const CutType aType ):
                      mID( aCutID ),
-                     mIsTape( aIsTape )
+                     mType( aType )
             {
                 BELFEM_ASSERT( aSideSetIDs.length() == aPlusBlocks.length(),
                               "Length of PlusBlocks does not match ( is %u, expect %u )",
@@ -138,7 +138,7 @@ namespace belfem
                 const id_t aSidesetID,
                 const id_t aPlusBlock,
                 const id_t aMinusBlock,
-                const bool aIsTape )
+                const CutType aType )
         {
             if( mMyRank == mMesh->master() )
             {
@@ -147,16 +147,9 @@ namespace belfem
                         aSidesetID,
                         aPlusBlock,
                         aMinusBlock,
-                        aIsTape ) );
+                        aType ) );
 
-                if( aIsTape )
-                {
-                    ++mNumberOfTapes;
-                }
-                else
-                {
-                    ++mNumberOfCuts;
-                }
+                this->count_cut( aType );
             }
         }
 
@@ -166,7 +159,7 @@ namespace belfem
         Scissors::cut( const Vector< id_t > & aSidesetIDs,
              const id_t aPlusBlock,
              const id_t aMinusBlock,
-             const bool aIsTape )
+             const CutType aType )
         {
             if( mMyRank == mMesh->master() )
             {
@@ -175,16 +168,9 @@ namespace belfem
                         aSidesetIDs,
                         aPlusBlock,
                         aMinusBlock,
-                        aIsTape ) );
+                        aType ) );
 
-                if( aIsTape )
-                {
-                    ++mNumberOfTapes;
-                }
-                else
-                {
-                    ++mNumberOfCuts;
-                }
+                this->count_cut( aType );
             }
         }
 
@@ -194,7 +180,7 @@ namespace belfem
         Scissors::cut( const Vector< id_t > & aSidesetIDs,
              const Vector< id_t > & aMinusBlocks,
              const Vector< id_t > & aPlusBlocks,
-             const bool aIsTape )
+             const CutType aType )
         {
             if( mMyRank == mMesh->master() )
             {
@@ -203,17 +189,11 @@ namespace belfem
                         aSidesetIDs,
                         aPlusBlocks,
                         aMinusBlocks,
-                        aIsTape ) );
+                        aType ));
 
-                if( aIsTape )
-                {
-                    ++mNumberOfTapes;
-                }
-                else
-                {
-                    ++mNumberOfCuts;
-                }
+                this->count_cut( aType );
             }
+
         }
 
 
@@ -320,28 +300,29 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        Scissors::collect_cut_data( const bool aTapeMode )
+        Scissors::collect_cut_data( const CutType aType )
         {
-
             // count total cuts
             index_t tCount = 0 ;
             for( scissors::CutData * tCut : mCutsAndTapes )
             {
-                if ( tCut->is_tape() == aTapeMode )
+                if ( tCut->type() == aType )
                 {
                     tCount += tCut->num_sidesets();
                 }
             }
 
             // flatten table
-            Matrix< id_t > & tData = aTapeMode ? mTapeData : mCutData ;
+            Matrix< id_t > & tData = aType == CutType::Cohomology ? mCutData :
+                                     aType == CutType::ThinShell ? mTapeData :
+                                     mInterfaceData ;
 
             tData.set_size( 4, tCount );
             tCount = 0 ;
 
             for( scissors::CutData * tCut : mCutsAndTapes )
             {
-                if ( tCut->is_tape() == aTapeMode )
+                if ( tCut->type() == aType )
                 {
                     index_t tNumSideSets = tCut->num_sidesets();
                     for ( index_t s = 0; s < tNumSideSets; ++s )
@@ -479,19 +460,34 @@ namespace belfem
             index_t tS = 0 ;
             index_t tC = 0 ;
             index_t tT = 0 ;
+            index_t tI = 0 ;
 
             // count sidesets
             for ( scissors::CutData * tCutData : mCutsAndTapes )
             {
                 tS += tCutData->num_sidesets() ;
 
-                if( tCutData->is_tape() )
+                switch ( tCutData->type() )
                 {
-                    tT += tCutData->num_sidesets() ;
-                }
-                else
-                {
-                    tC += tCutData->num_sidesets() ;
+                    case( CutType::Cohomology ) :
+                    {
+                        ++tC ;
+                        break ;
+                    }
+                    case( CutType::ThinShell ) :
+                    {
+                        ++tT ;
+                        break ;
+                    }
+                    case( CutType::FerroInterface ) :
+                    {
+                        ++tI ;
+                        break ;
+                    }
+                    default :
+                    {
+                        BELFEM_ERROR( false, "unknown cut type");
+                    }
                 }
             }
 
@@ -499,32 +495,43 @@ namespace belfem
             mAllSideSets.set_size( tS, nullptr );
             mTapeSideSets.set_size( tT, nullptr );
             mCutSideSets.set_size( tC, nullptr );
-
+            mInterfaceSideSets.set_size( tI, nullptr );
             // reset counters
             tS = 0 ;
             tT = 0 ;
             tC = 0 ;
+            tI = 0 ;
+
             for ( scissors::CutData * tCutData : mCutsAndTapes )
             {
                 for( uint s = 0 ; s<tCutData->num_sidesets() ; ++s )
                 {
                     // get sideset
                     mAllSideSets( tS++ ) = mMesh->sideset( tCutData->data( s )( 0 ) );
-                }
-                if( tCutData->is_tape() )
-                {
-                    for( uint s = 0 ; s<tCutData->num_sidesets() ; ++s )
+
+                    switch ( tCutData->type() )
                     {
-                        // get sideset
-                        mTapeSideSets( tT++ ) = mMesh->sideset( tCutData->data( s )( 0 ) );
-                    }
-                }
-                else
-                {
-                    for( uint s = 0 ; s<tCutData->num_sidesets() ; ++s )
-                    {
-                        // get sideset
-                        mCutSideSets( tC++ ) = mMesh->sideset( tCutData->data( s )( 0 ) );
+                        case ( CutType::Cohomology ) :
+                        {
+                            // get sideset
+                            mCutSideSets( tC++ ) = mMesh->sideset( tCutData->data( s )( 0 ));
+                            break;
+                        }
+                        case ( CutType::ThinShell ) :
+                        {
+                            // get sideset
+                            mTapeSideSets( tT++ ) = mMesh->sideset( tCutData->data( s )( 0 ));
+                            break;
+                        }
+                        case ( CutType::FerroInterface ) :
+                        {
+                            mInterfaceSideSets( tI++ ) = mMesh->sideset( tCutData->data( s )( 0 ));
+                            break;
+                        }
+                        default :
+                        {
+                            BELFEM_ERROR( false, "unknown cut type" );
+                        }
                     }
                 }
             }
@@ -654,6 +661,7 @@ namespace belfem
         {
             mNumTapesPerNode.set_size( mNumberOfNodes, 0 );
             mNumCutsPerNode.set_size( mNumberOfNodes, 0 );
+
             mNodeCounter.set_size( mNumberOfNodes );
 
             // count cuts
@@ -692,6 +700,24 @@ namespace belfem
                 mNumTapesPerNode += mNodeCounter ;
             }
 
+            // count interfaces
+            for( SideSet * tSideSet : mInterfaceSideSets )
+            {
+                mNodeCounter.fill( 0 );
+                for( Facet * tFacet : tSideSet->facets() )
+                {
+                    uint tNumNodes = tFacet->number_of_nodes() ;
+                    for( uint k=0; k< tNumNodes; ++k )
+                    {
+                        if( tFacet->node( k )->is_flagged() )
+                        {
+                            mNodeCounter( tFacet->node( k )->index() ) = 1;
+                        }
+                    }
+                }
+                mNumCutsPerNode += mNodeCounter ;
+            }
+
             // list of plus blocks per node
             mPlusBlocksTable.set_size( mNumberOfNodes, {} );
 
@@ -718,7 +744,7 @@ namespace belfem
                         {
                             if( tFacet->node( k )->is_flagged() )
                             {
-                                mNodeCounter( tFacet->node( k )->index()) = 1;
+                                mNodeCounter( tFacet->node( k )->index() ) = 1;
                             }
                         }
                     }
@@ -898,7 +924,7 @@ namespace belfem
             index_t tSideSetCount = 0 ;
             for ( scissors::CutData * tCutData : mCutsAndTapes )
             {
-                if ( !tCutData->is_tape() )
+                if ( tCutData->type() == mesh::CutType::Cohomology )
                 {
                     tSideSetCount += tCutData->num_sidesets() ;
                 }
@@ -908,7 +934,7 @@ namespace belfem
 
             for ( scissors::CutData * tCutData : mCutsAndTapes )
             {
-                if( ! tCutData->is_tape() )
+                if ( tCutData->type() == mesh::CutType::Cohomology )
                 {
                     index_t tNumSideSets = tCutData->num_sidesets();
 
@@ -1106,6 +1132,34 @@ namespace belfem
             }
         }
 
+//------------------------------------------------------------------------------
+
+        void
+        Scissors::count_cut( const CutType aType )
+        {
+            switch ( aType )
+            {
+                case ( CutType::Cohomology ) :
+                {
+                    ++mNumberOfCuts;
+                    break ;
+                }
+                case( CutType::ThinShell ) :
+                {
+                    ++mNumberOfTapes ;
+                    break ;
+                }
+                case( CutType::FerroInterface ) :
+                {
+                    ++mNumberOfInterfaces ;
+                    break ;
+                }
+                default:
+                {
+                    BELFEM_ERROR( false, "unknown cut type");
+                }
+            }
+        }
 
 //------------------------------------------------------------------------------
 

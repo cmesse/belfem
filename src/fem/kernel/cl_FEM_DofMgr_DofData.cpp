@@ -231,6 +231,7 @@ namespace belfem
                         // only do something if this is not the master proc
                         if ( tProc != mMyRank )
                         {
+
                             // collect dof entities
                             this->count_dofs_for_proc( tProc,
                                                        tNodeDofIDs,
@@ -1188,6 +1189,47 @@ namespace belfem
 
                                     // set the proc bitset
                                     tBitset.set( tElement->owner() );
+                                }
+                            }
+                        }
+                    }
+                }
+
+                for( id_t tSideSetID : aIWG->selected_sidesets() )
+                {
+                    // grab sideset on mesh
+                    mesh::SideSet * tSideSet = mMesh->sideset( tSideSetID );
+
+                    // grab the DOFs for this entity
+                    const Vector< index_t > & tSelectedDofs = aIWG->dofs_per_node_on_sideset( tSideSetID, true );
+
+
+                    if ( tSelectedDofs.length() > 0 )
+                    {
+                        // get the number of nodes per element on this block.
+                        // We must check if linearity is enforced
+                        uint tNumEntities = mParams->enforce_linear() ?
+                                            mesh::number_of_corner_nodes( tSideSet->element_type()) :
+                                            mesh::number_of_nodes( tSideSet->element_type());
+
+
+                        // loop over all elements on this block
+                        for ( mesh::Facet * tFacet: tSideSet->facets())
+                        {
+                            // loop over all entities on this element
+                            for ( uint k = 0; k < tNumEntities; ++k )
+                            {
+                                // loop over all selected dofs
+                                for ( index_t d: tSelectedDofs )
+                                {
+                                    // compute the unique dof ID
+                                    luint tID = tFacet->node( k )->id() * BELFEM_MAX_DOFTYPES + d;
+
+                                    // grab the corresponding bitset
+                                    Bitset< BELFEM_MAX_NUMPROCS > & tBitset = aProcFlags( tDofMap( tID ));
+
+                                    // set the proc bitset
+                                    tBitset.set( tFacet->owner());
                                 }
                             }
                         }

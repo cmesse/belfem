@@ -107,6 +107,12 @@ namespace belfem
                             & IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_scfm ;
                     break ;
                 }
+                case( DomainType::InterfaceFmFm ) :
+                {
+                    mFunJacobian =
+                            & IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_fmfm ;
+                    break ;
+                }
                 case( DomainType::InterfaceFmAir ) :
                 {
                     mFunJacobian =

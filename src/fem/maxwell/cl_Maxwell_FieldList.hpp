@@ -91,6 +91,8 @@ namespace belfem
                 //! dofs along superconductor-ferro-interface
                 Cell< string > InterfaceScFm ;
 
+                Cell< string > InterfaceFmFm ;
+
                 Cell< string > InterfaceFmAir ;
 
                 Cell< string > InterfaceThinShell ;

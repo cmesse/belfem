@@ -150,6 +150,22 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             /**
+             * flag all nodes that belong to this facet
+             */
+            void
+            flag_master_and_slave_nodes();
+
+//------------------------------------------------------------------------------
+
+            /**
+             * flag all nodes that belong to this facet
+             */
+            void
+            flag_master_and_slave_corner_nodes();
+
+//------------------------------------------------------------------------------
+
+            /**
              * flag corner nodes nodes that belong to this facet
              */
             void
@@ -350,6 +366,36 @@ namespace belfem
         Facet::flag_nodes()
         {
             mElement->flag_nodes();
+        }
+
+//------------------------------------------------------------------------------
+
+        inline void
+        Facet::flag_master_and_slave_nodes()
+        {
+            if( this->has_master() )
+            {
+                mMaster->flag_nodes() ;
+            }
+            if( this->has_slave() )
+            {
+                mSlave->flag_nodes() ;
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        inline void
+        Facet::flag_master_and_slave_corner_nodes()
+        {
+            if( this->has_master() )
+            {
+                mMaster->flag_corner_nodes() ;
+            }
+            if( this->has_slave() )
+            {
+                mSlave->flag_corner_nodes() ;
+            }
         }
 
 //------------------------------------------------------------------------------

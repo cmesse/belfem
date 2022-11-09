@@ -17,7 +17,7 @@
 
 #define BELFEM_MAX_DOFTYPES  32
 #define BELFEM_MAX_NUMPROCS  128
-#define BELFEM_FERROAIR_ENRICHED
+//#define BELFEM_FERROAIR_ENRICHED
 
 namespace belfem
 {
@@ -456,6 +456,11 @@ namespace belfem
 
             uint
             number_of_dofs_per_node( const id_t aBlockID ) const ;
+
+//------------------------------------------------------------------------------
+
+            uint
+            number_of_dofs_per_node_on_sideset( const id_t aSideSetID ) const ;
 
 //------------------------------------------------------------------------------
 
@@ -1315,7 +1320,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        inline index_t
+        inline uint
         IWG::number_of_dofs_per_node( const id_t aBlockID ) const
         {
             return mBlockDofs( mBlockIndices( aBlockID ) )->Node.length() ;
@@ -1323,7 +1328,15 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        inline index_t
+        inline uint
+        IWG::number_of_dofs_per_node_on_sideset( const id_t aSideSetID ) const
+        {
+            return mSideSetDofs( mSideSetIndices( aSideSetID ) )->Node.length() ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline uint
         IWG::number_of_dofs_per_edge( const id_t aBlockID ) const
         {
             return mBlockDofs( mBlockIndices( aBlockID ) )->Edge.length() * mEdgeDofMultiplicity ;
@@ -1331,7 +1344,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        inline index_t
+        inline uint
         IWG::number_of_dofs_per_face( const id_t aBlockID ) const
         {
             return mBlockDofs( mBlockIndices( aBlockID ) )->Face.length() * mFaceDofMultiplicity ;
@@ -1339,7 +1352,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        inline index_t
+        inline uint
         IWG::number_of_dofs_per_cell( const id_t aBlockID ) const
         {
             return mBlockDofs( mBlockIndices( aBlockID ) )->Cell.length() * mCellDofMultiplicity ;
