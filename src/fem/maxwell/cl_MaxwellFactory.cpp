@@ -620,6 +620,8 @@ namespace belfem
                     }
                 }
 
+                std::cout << "flag a " << mTapeMaterialLabels.size() << std::endl ;
+
                 // check if tape materials are defined
                 if( mTapeMaterialLabels.size() > 0 )
                 {
@@ -2218,7 +2220,11 @@ namespace belfem
             {
                 this->write_block_phystags_to_mesh();
                 this->fix_facet_masters() ;
-                // with the blocks in place, we can also create the materials
+
+                // crate the layers of the tape
+                this->create_layers() ;
+
+                // with the blocks and layers in place, we can also create the materials
                 this->create_materials() ;
 
                 this->create_interfaces();
@@ -2227,19 +2233,14 @@ namespace belfem
                 this->write_sideset_phystags_to_mesh();
             }
             else
-            {   // with the blocks in place, we can also create the materials
+            {
+                this->create_layers() ;
                 this->create_materials() ;
-
                 this->create_interfaces();
                 this->create_symmetries( false ) ;
                 this->create_symmetries( true ) ;
             }
 
-            // crate the layers of the tape
-            this->create_layers() ;
-
-            // with the blocks in place, we can also create the materials
-            //this->create_materials() ;
             this->select_bcs_and_cuts() ;
             this->select_sidesets() ;
         }

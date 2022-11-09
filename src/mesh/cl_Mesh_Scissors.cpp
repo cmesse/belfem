@@ -471,17 +471,17 @@ namespace belfem
                 {
                     case( CutType::Cohomology ) :
                     {
-                        ++tC ;
+                        tC += tCutData->num_sidesets() ;
                         break ;
                     }
                     case( CutType::ThinShell ) :
                     {
-                        ++tT ;
+                        tT += tCutData->num_sidesets() ;
                         break ;
                     }
                     case( CutType::FerroInterface ) :
                     {
-                        ++tI ;
+                        tI += tCutData->num_sidesets() ;
                         break ;
                     }
                     default :
