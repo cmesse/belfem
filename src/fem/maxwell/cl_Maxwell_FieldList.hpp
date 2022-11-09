@@ -95,7 +95,7 @@ namespace belfem
 
                 Cell< string > InterfaceFmAir ;
 
-                Cell< string > InterfaceThinShell ;
+                // Cell< string > InterfaceThinShell ;
 
                 Cell< string > SymmetryAir ;
                 Cell< string > SymmetryFerro ;

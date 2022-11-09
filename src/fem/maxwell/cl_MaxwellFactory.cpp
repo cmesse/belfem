@@ -620,8 +620,6 @@ namespace belfem
                     }
                 }
 
-                std::cout << "flag a " << mTapeMaterialLabels.size() << std::endl ;
-
                 // check if tape materials are defined
                 if( mTapeMaterialLabels.size() > 0 )
                 {

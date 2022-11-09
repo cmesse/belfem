@@ -368,6 +368,7 @@ namespace belfem
             link_dofs_thin_shell_master_and_slave(
                     DofManager  * aDofManager,
                     Cell< mesh::Facet * > & aLayers ,
+                    const Vector< index_t > & aFacetNodeDofTypes,
                     const Vector< index_t > & aMasterNodeDofTypes,
                     const Vector< index_t > & aSlaveNodeDofTypes,
                     const Vector< index_t > & aThinShellEdgeDofTypes,

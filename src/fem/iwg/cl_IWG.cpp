@@ -676,10 +676,16 @@ namespace belfem
                 {
                     uint tNumberOfDofsPerEdge = mSideSetDofs( tIndex )->Edge.length() * mEdgeDofMultiplicity ;
                     uint tNumberOfDofsPerFace = mSideSetDofs( tIndex )->Face.length() * mFaceDofMultiplicity ;
+
+
                     uint tNumberOfVolumeDofs  = ( mesh::number_of_nodes( aSideSet->slave_type() ) +
-                                                   mesh::number_of_nodes( aSideSet->master_type() ) ) *
-                                                   mSideSetDofs( tIndex )->Node.length() ;
-                    uint tNumberOfDofsPerFacet =  mSideSetDofs( tIndex )->Lambda.length() ;
+                                                   mesh::number_of_nodes( aSideSet->master_type() ) ) ;
+
+
+                    uint tNumberOfDofsPerFacet =
+                            mSideSetDofs( tIndex )->Lambda.length()
+                            + mesh::number_of_nodes( aSideSet->element_type() ) * mSideSetOnlyDofs( tIndex )->Node.length() ;
+
 
                     if ( tNumberOfDofsPerEdge == 0 && tNumberOfDofsPerFace == 0 )
                     {

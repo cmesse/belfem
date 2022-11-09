@@ -978,6 +978,9 @@ namespace belfem
             const Vector< index_t > & tShellFaceDofTypes = aDofManager->mesh()->number_of_dimensions() == 2 ?
                     tEmpty : aDofManager->iwg()->dofs_per_face_on_sideset( mParent->id() );
             const Vector< index_t > & tLambdaDofTypes    = aDofManager->iwg()->lambda_dofs( mParent->id() );
+            const Vector< index_t > & tFacetOnlyNodeDofTypes = aDofManager->iwg()->dofs_per_node_on_sideset(
+                    mParent->id(),
+                                                                                                             true );
 
             if( tShellEdgeDofTypes.length() > 0 )
             {
@@ -991,6 +994,7 @@ namespace belfem
                     this->link_dofs_thin_shell_master_and_slave(
                             aDofManager,
                             aLayers,
+                            tFacetOnlyNodeDofTypes,
                             tMasterNodeDofTypes,
                             tSlaveNodeDofTypes,
                             tShellEdgeDofTypes,
@@ -1021,6 +1025,7 @@ namespace belfem
         Element::link_dofs_thin_shell_master_and_slave(
                 DofManager  * aDofManager,
                 Cell< mesh::Facet * > & aLayers ,
+                const Vector< index_t > & aFacetNodeDofTypes,
                 const Vector< index_t > & aMasterNodeDofTypes,
                 const Vector< index_t > & aSlaveNodeDofTypes,
                 const Vector< index_t > & aThinShellEdgeDofTypes,
@@ -1037,6 +1042,10 @@ namespace belfem
                     mSlave->element()->number_of_corner_nodes() :
                     mSlave->element()->number_of_nodes();
 
+            index_t tNumberOfNodesOnFacet =
+                    aDofManager->enforce_linear_interpolation() ?
+                    mElement->number_of_corner_nodes() :
+                    mElement->number_of_nodes();
 
             uint tNumberOfLayers = aLayers.size() ;
 
@@ -1044,6 +1053,7 @@ namespace belfem
             mNumberOfDofs =
                       tNumberOfNodesOnMaster * aMasterNodeDofTypes.length()
                     + tNumberOfNodesOnSlave  * aSlaveNodeDofTypes.length()
+                    + tNumberOfNodesOnFacet * aFacetNodeDofTypes.length()
                     + tNumberOfLayers * (
                     + mElement->number_of_edges() * aDofManager->iwg()->edge_multiplicity() * aThinShellEdgeDofTypes.length()
                     + mElement->number_of_faces() * aDofManager->iwg()->face_multiplicity() * aThinShellFaceDofTypes.length() )
@@ -1060,10 +1070,19 @@ namespace belfem
                 // link node dofs on master
                 this->link_node_dofs( aDofManager, aMasterNodeDofTypes, mMaster->element(), tNumberOfNodesOnMaster,
                                       tCount );
+            }
+            if( aSlaveNodeDofTypes.length() > 0 )
+            {
 
                 // link node dofs on slave
                 this->link_node_dofs( aDofManager, aSlaveNodeDofTypes, mSlave->element(), tNumberOfNodesOnSlave,
                                       tCount );
+            }
+            if( aFacetNodeDofTypes.length() > 0 )
+            {
+                // link node dofs on slave
+                this->link_node_dofs( aDofManager, aFacetNodeDofTypes, mElement, tNumberOfNodesOnFacet,
+                        tCount );
             }
 
             this->link_edge_dofs_thin_shell( aDofManager, aThinShellEdgeDofTypes, aLayers,  tCount );

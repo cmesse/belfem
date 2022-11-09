@@ -895,9 +895,6 @@ namespace belfem
             //aElement->master()->element()->print() ;
             //aElement->slave()->element()->print() ;
 
-            this->print_dofs( aElement );
-            exit( 0 );
-
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // main containers
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

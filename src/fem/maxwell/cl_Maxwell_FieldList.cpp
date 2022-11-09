@@ -197,6 +197,8 @@ namespace belfem
                     aIWG->unique_and_rearrange( Dofs, true );
 
                     aIWG->unique_and_rearrange( ThinShell );
+
+
                     aIWG->unique_and_rearrange( InterfaceScFm );
                     aIWG->unique_and_rearrange( InterfaceFmFm );
                     aIWG->unique_and_rearrange( InterfaceScAir );
@@ -243,11 +245,6 @@ namespace belfem
                             Hidden.push( "az0");
                             FerroLast.push( "az0" );
                         }
-                        else if ( tDof == "phi" )
-                        {
-                            NonDof.push("phi0");
-                            Hidden.push( "phi0");
-                        }
                         else if ( tDof == "edge_h" )
                         {
                             NonDof.push("edge_h0");
@@ -256,7 +253,14 @@ namespace belfem
                         {
                             NonDof.push("face_h0");
                         }
-                        else if ( tDof.c_str()[ 0 ] == '_' )
+                        else
+                        {
+                            string tOld = tDof + "0" ;
+                            NonDof.push(tOld );
+                            Hidden.push( tOld );
+                        }
+
+                        if ( tDof.c_str()[ 0 ] == '_' )
                         {
                             Hidden.push( tDof );
                         }
