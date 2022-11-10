@@ -1593,12 +1593,6 @@ namespace belfem
             // for thin shells
             tMaxwell->set_thin_shell_link_mode( SideSetDofLinkMode::MasterAndSlave );
 
-            // set bernstein flag
-            if( mUseBernstein )
-            {
-                tMaxwell->set_interpolation_type( InterpolationType::BERNSTEIN );
-            }
-
             mKernel->add_equation( tMaxwell );
 
             // create dof manager for magnetic field
@@ -2282,12 +2276,6 @@ namespace belfem
                     mInputFile.section("maxwell")->get_string("formulation") );
             bool tIsHPhi = ( tKey == "h-phi" || tKey == "h-φ" || tKey == "h-Φ" ) ;
 
-            // set the bernstein flag
-            if( mInputFile.section("maxwell")->key_exists( "bernstein" ) )
-            {
-                mUseBernstein = mInputFile.section("maxwell")->get_bool("bernstein");
-            }
-
             // loop over all sidesets
             for( index_t s=0; s<tNumSideSets; ++s )
             {
@@ -2692,52 +2680,50 @@ namespace belfem
                 for( mesh::SideSet * tSideSet : mMesh->sidesets() )
                 {
                     // make sure that sideset is not empty
-                    if( tSideSet->number_of_facets() > 0 )
+                    if ( tSideSet->number_of_facets() > 0 )
                     {
                         // get first facet
                         mesh::Facet * tFacet = tSideSet->facet_by_index( 0 );
 
                         // make sure that it has a slave
-                        if( tFacet->has_slave() )
+                        if ( tFacet->has_slave())
                         {
                             DomainType tMasterType
-                                = static_cast< DomainType >( tFacet->master()->physical_tag() );
+                                    = static_cast< DomainType >( tFacet->master()->physical_tag());
 
                             DomainType tSlaveType
-                                = static_cast< DomainType >( tFacet->slave()->physical_tag() );
-#ifdef BELFEM_FERRO_HPHIA
+                                    = static_cast< DomainType >( tFacet->slave()->physical_tag());
                             // check if this sideset is an interface
-                            if ( ( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Air )
-                               ||( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Ferro )
-                               ||( tMasterType == DomainType::Air  && tSlaveType == DomainType::Ferro ) )
+                            if (( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Air )
+                                || ( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Ferro )
+                                || ( tMasterType == DomainType::Air && tSlaveType == DomainType::Ferro ))
                             {
-                                ++tCount ;
+                                ++tCount;
                             }
-                            // check if this interface connects two different ferro materials
-                            else if( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Ferro )
+                                // check if this interface connects two different ferro materials
+                            else if ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Ferro )
                             {
                                 // get material from master
-                                Material * tMasterMaterial = tMaterialMap( tFacet->master()->geometry_tag() ) ;
-                                Material * tSlaveMaterial = tMaterialMap( tFacet->slave()->geometry_tag() );
+                                Material * tMasterMaterial = tMaterialMap( tFacet->master()->geometry_tag());
+                                Material * tSlaveMaterial = tMaterialMap( tFacet->slave()->geometry_tag());
 
                                 bool tConstantFlag =
                                         tMasterMaterial->permeability_law() == PermeabilityLaw::Constant
-                                        &&  tSlaveMaterial->permeability_law() == PermeabilityLaw::Constant ;
+                                        && tSlaveMaterial->permeability_law() == PermeabilityLaw::Constant;
 
-                                bool tEqualMuFlag = tMasterMaterial->nu_s() == tSlaveMaterial ->nu_s();
+                                bool tEqualMuFlag = tMasterMaterial->nu_s() == tSlaveMaterial->nu_s();
 
                                 // check if material is  the same
-                                if( tMasterMaterial->label() != tSlaveMaterial->label() )
+                                if ( tMasterMaterial->label() != tSlaveMaterial->label())
                                 {
                                     // check if the materials have at least the same mu
-                                    if( ! ( tConstantFlag && tEqualMuFlag ) )
+                                    if ( !( tConstantFlag && tEqualMuFlag ))
                                     {
-                                        ++tCount ;
+                                        ++tCount;
                                     }
                                 }
                             }
-                        }
-#elif BELFEM_FERROAIR_ENRICHED
+#ifdef BELFEM_FERROAIR_ENRICHED
                             // check if this sideset is an interface
                             if ( ( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Air )
                                ||( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Ferro )
@@ -2747,20 +2733,21 @@ namespace belfem
                             }
 #else
                             // check if this sideset is an interface
-                            if ( ( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Air )
-                               ||( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Ferro ) )
+                            if (( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Air )
+                                || ( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Ferro ))
                             {
-                                ++tCount ;
+                                ++tCount;
                             }
 #endif
-                    }
-                }
+                        }
 
-                // allocate memory
-                tSideSetIDs.set_size( tCount );
-                tMasterBlockIDs.set_size( tCount );
-                tSlaveBlockIDs.set_size( tCount );
-                tSideSetTypes.set_size( tCount );
+                        // allocate memory
+                        tSideSetIDs.set_size( tCount );
+                        tMasterBlockIDs.set_size( tCount );
+                        tSlaveBlockIDs.set_size( tCount );
+                        tSideSetTypes.set_size( tCount );
+                    } // end  tSideSet->number_of_facets() > -
+                } // end loop over all sidesets
 
                 // reset counter
                 tCount = 0 ;
@@ -2778,77 +2765,76 @@ namespace belfem
                         if( tFacet->has_slave() )
                         {
                             DomainType tMasterType
-                                    = static_cast< DomainType >( tFacet->master()->physical_tag() );
+                                    = static_cast< DomainType >( tFacet->master()->physical_tag());
 
                             DomainType tSlaveType
-                                    = static_cast< DomainType >( tFacet->slave()->physical_tag() );
+                                    = static_cast< DomainType >( tFacet->slave()->physical_tag());
 
                             // check if this sideset is an interface
                             if ( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Air )
                             {
-                                tSideSetIDs( tCount )     = tSideSet->id();
-                                tMasterBlockIDs( tCount ) = tFacet->master()->geometry_tag() ;
-                                tSlaveBlockIDs( tCount )  = tFacet->slave()->geometry_tag() ;
+                                tSideSetIDs( tCount ) = tSideSet->id();
+                                tMasterBlockIDs( tCount ) = tFacet->master()->geometry_tag();
+                                tSlaveBlockIDs( tCount ) = tFacet->slave()->geometry_tag();
                                 tSideSetTypes( tCount++ ) = static_cast< uint >( DomainType::InterfaceScAir );
                             }
                             else if ( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Ferro )
                             {
-                                tSideSetIDs( tCount )     = tSideSet->id();
-                                tMasterBlockIDs( tCount ) = tFacet->master()->geometry_tag() ;
-                                tSlaveBlockIDs( tCount )  = tFacet->slave()->geometry_tag() ;
+                                tSideSetIDs( tCount ) = tSideSet->id();
+                                tMasterBlockIDs( tCount ) = tFacet->master()->geometry_tag();
+                                tSlaveBlockIDs( tCount ) = tFacet->slave()->geometry_tag();
                                 tSideSetTypes( tCount++ ) = static_cast< uint >( DomainType::InterfaceScFm );
                             }
-#ifdef BELFEM_FERRO_HPHIA
                             else if ( tMasterType == DomainType::Air && tSlaveType == DomainType::Ferro )
                             {
-                                tSideSetIDs( tCount )     = tSideSet->id();
-                                tMasterBlockIDs( tCount ) = tFacet->master()->geometry_tag() ;
-                                tSlaveBlockIDs( tCount )  = tFacet->slave()->geometry_tag() ;
+                                tSideSetIDs( tCount ) = tSideSet->id();
+                                tMasterBlockIDs( tCount ) = tFacet->master()->geometry_tag();
+                                tSlaveBlockIDs( tCount ) = tFacet->slave()->geometry_tag();
                                 tSideSetTypes( tCount++ ) = static_cast< uint >( DomainType::InterfaceFmAir );
                             }
                             else if ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Ferro )
                             {
-                                tSideSetIDs( tCount )     = tSideSet->id();
-                                tMasterBlockIDs( tCount ) = tFacet->master()->geometry_tag() ;
-                                tSlaveBlockIDs( tCount )  = tFacet->slave()->geometry_tag() ;
+                                tSideSetIDs( tCount ) = tSideSet->id();
+                                tMasterBlockIDs( tCount ) = tFacet->master()->geometry_tag();
+                                tSlaveBlockIDs( tCount ) = tFacet->slave()->geometry_tag();
                                 tSideSetTypes( tCount++ ) = static_cast< uint >( DomainType::InterfaceFmFm );
                             }
-                            // check if this interface connects two different ferro materials
-                            else if( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Ferro )
+                                // check if this interface connects two different ferro materials
+                            else if ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Ferro )
                             {
                                 // get material from master
-                                Material * tMasterMaterial = tMaterialMap( tFacet->master()->geometry_tag() ) ;
-                                Material * tSlaveMaterial = tMaterialMap( tFacet->slave()->geometry_tag() );
+                                Material * tMasterMaterial = tMaterialMap( tFacet->master()->geometry_tag());
+                                Material * tSlaveMaterial = tMaterialMap( tFacet->slave()->geometry_tag());
 
                                 bool tConstantFlag =
                                         tMasterMaterial->permeability_law() == PermeabilityLaw::Constant
-                                        &&  tSlaveMaterial->permeability_law() == PermeabilityLaw::Constant ;
+                                        && tSlaveMaterial->permeability_law() == PermeabilityLaw::Constant;
 
-                                bool tEqualMuFlag = tMasterMaterial->nu_s() == tSlaveMaterial ->nu_s();
+                                bool tEqualMuFlag = tMasterMaterial->nu_s() == tSlaveMaterial->nu_s();
 
                                 // check if material is  the same
-                                if( tMasterMaterial->label() != tSlaveMaterial->label() )
+                                if ( tMasterMaterial->label() != tSlaveMaterial->label())
                                 {
                                     // check if the materials have at least the same mu
-                                    if( ! ( tConstantFlag && tEqualMuFlag ) )
+                                    if ( !( tConstantFlag && tEqualMuFlag ))
                                     {
-                                        ++tCount ;
+                                        ++tCount;
                                     }
                                 }
                             }
 
-#elif BELFEM_FERROAIR_ENRICHED
+#ifdef BELFEM_FERROAIR_ENRICHED
                             else if ( tMasterType == DomainType::Air && tSlaveType == DomainType::Ferro )
                             {
-                                tSideSetIDs( tCount )     = tSideSet->id();
-                                tMasterBlockIDs( tCount ) = tFacet->master()->geometry_tag() ;
-                                tSlaveBlockIDs( tCount )  = tFacet->slave()->geometry_tag() ;
+                                tSideSetIDs( tCount ) = tSideSet->id();
+                                tMasterBlockIDs( tCount ) = tFacet->master()->geometry_tag();
+                                tSlaveBlockIDs( tCount ) = tFacet->slave()->geometry_tag();
                                 tSideSetTypes( tCount++ ) = static_cast< uint >( DomainType::InterfaceFmAir );
                             }
 #endif
-                        }
-                    }
-                }
+                        }// end facet has slave
+                    } // end tSideSet->number_of_facets()
+                } // end loop over all sidesets
                 comm_barrier() ;
                 send_same( mCommTable, tSideSetIDs );
                 send_same( mCommTable, tMasterBlockIDs );

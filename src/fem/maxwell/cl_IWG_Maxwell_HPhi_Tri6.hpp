@@ -328,13 +328,8 @@ namespace belfem
             Matrix< real > & aJacobian,
             Vector< real > & aRHS )
         {
-#ifdef BELFEM_FERRO_HPHIA
             IWG_Maxwell::compute_jacobian_and_rhs_ferro(
                     aElement, aJacobian, aRHS );
-#else
-            IWG_Maxwell::compute_jacobian_and_rhs_ferro_phi_higher_order(
-                    aElement, aJacobian, aRHS );
-#endif
         }
 
 //------------------------------------------------------------------------------

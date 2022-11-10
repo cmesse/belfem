@@ -146,9 +146,6 @@ namespace belfem
             //! flag telling if linear field is enforced for maxwell
             bool mEnforceLinear = false ;
 
-            //! flag telling if bernstein interpolations are used for maxwell
-            bool mUseBernstein = false ;
-
             //! flag telling if J-Field is computed
             bool mHaveJ = false ;
 

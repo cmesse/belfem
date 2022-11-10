@@ -209,24 +209,15 @@ namespace belfem
                 }
                 case( DomainType::SymmetryFerro ) :
                 {
-#ifdef BELFEM_FERRO_HPHIA
+
                     mFunJacobian =
                             &IWG_Maxwell_HPhi_Tri6::compute_jacobian_and_rhs_symmetry_ferro ;
-#else
-                    mFunJacobian =
-                            &IWG_Maxwell_HPhi_Tri6::compute_jacobian_and_rhs_symmetry_air ;
-#endif
-                    break;
+               break;
                 }
                 case( DomainType::AntiSymmetryFerro ) :
                 {
-#ifdef BELFEM_FERRO_HPHIA
                     mFunJacobian =
                             & IWG_Maxwell_HPhi_Tri6::compute_jacobian_and_rhs_antisymmetry_ferro ;
-#else
-                    mFunJacobian =
-                            & IWG_Maxwell_HPhi_Tri6::compute_jacobian_and_rhs_antisymmetry_air ;
-#endif
                     break ;
                 }
                 case( DomainType::Boundary ) :

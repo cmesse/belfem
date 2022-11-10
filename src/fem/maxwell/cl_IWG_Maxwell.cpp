@@ -2113,64 +2113,6 @@ namespace belfem
             // compute right hand side
             aRHS = aJacobian * mGroup->work_phi() ;
         }
-//------------------------------------------------------------------------------
-
-        void
-        IWG_Maxwell::compute_jacobian_and_rhs_ferro_phi_higher_order(
-                Element        * aElement,
-                Matrix< real > & aJacobian,
-                Vector< real > & aRHS )
-        {
-            // link edge function with element
-            mEdgeFunction->link( aElement, false, true, false );
-
-            Vector< real > & tPhi0 = mGroup->work_psi() ;
-            Vector< real > & tPhi = mGroup->work_phi() ;
-
-            // grab node data from last timestep
-            this->collect_node_data( aElement,
-                                     "phi0",
-                                     mGroup->work_psi() );
-
-            // grab node data from last timestep
-            this->collect_node_data( aElement,
-                                     "phi",
-                                     mGroup->work_phi() );
-
-            // get integration weights
-            const Vector< real > & tW = mGroup->integration_weights() ;
-
-            Matrix< real > & tM = aJacobian ;
-            Matrix< real > & tK = mGroup->work_K() ;
-
-            tM.fill( 0 );
-            tK.fill( 0 );
-
-            // todo: we should use another element field.
-            Vector< real > & tField = mMesh->field_data( "elementJJc");
-
-            for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
-            {
-                // get gradient operator matrix
-                const Matrix< real > & tB = mEdgeFunction->B( k );
-
-                // compute B
-                real th0  = norm( tB * tPhi0 ) ;
-                real th1  = norm( tB * tPhi ) ;
-
-                real tmu0 = mMaterial->mu_s( th0  );
-                real tmu1 = mMaterial->mu_s( th1 );
-
-                real tVal = tW( k ) * mEdgeFunction->abs_det_J() ;
-
-                // integrate mass matrix
-                tM += tVal * tmu1 * trans( tB ) * tB ;
-                tK += tVal * ( ( tmu1 - tmu0) / mDeltaTime ) * trans( tB ) * tB ;
-            }
-
-            aRHS = tM * tPhi0 ;
-            tM += mDeltaTime * tK ;
-        }
 
 //------------------------------------------------------------------------------
 

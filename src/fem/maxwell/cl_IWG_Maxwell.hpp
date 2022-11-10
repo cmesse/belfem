@@ -8,8 +8,6 @@
 
 //#define BELFEM_FERRO_LINEAR
 
-#define BELFEM_FERRO_HPHIA // use a-formulation in ferro for h-phi
-
 #include "typedefs.hpp"
 #include "assert.hpp"
 #include "cl_Vector.hpp"
@@ -404,14 +402,6 @@ namespace belfem
 
             void
             compute_jacobian_and_rhs_air_phi_higher_order(
-                    Element        * aElement,
-                    Matrix< real > & aJacobian,
-                    Vector< real > & aRHS ) ;
-
-//------------------------------------------------------------------------------
-
-            void
-            compute_jacobian_and_rhs_ferro_phi_higher_order(
                     Element        * aElement,
                     Matrix< real > & aJacobian,
                     Vector< real > & aRHS ) ;
