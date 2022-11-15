@@ -162,6 +162,7 @@ namespace belfem
             mN.set_size( mNumberOfIntegrationPoints,
                          Matrix< real >( 1, tNumberOfNodes ) );
 
+
             // evaluate shape function
             for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
             {

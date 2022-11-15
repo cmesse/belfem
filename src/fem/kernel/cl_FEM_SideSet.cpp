@@ -47,6 +47,7 @@ namespace belfem
                 mIntegrationData = new IntegrationData( mElementType,
                                                         mParent->iwg()->interpolation_type() );
 
+
                 mIntegrationData->populate( aParent->sideset_integration_order(),
                                             aParent->integration_scheme() );
 
@@ -99,8 +100,11 @@ namespace belfem
                 mIntegrationData = new IntegrationData( mElementType,
                                                         mParent->iwg()->interpolation_type() );
 
-                mIntegrationData->populate( aParent->sideset_integration_order(),
-                                            aParent->integration_scheme() );
+                // todo : #changescheme
+                //mIntegrationData->populate( aParent->sideset_integration_order(),
+                //                            aParent->integration_scheme() );
+                mIntegrationData->populate( aParent->sideset_integration_order(), IntegrationScheme::LOBATTO );
+
 
                 this->assume_isogeometry();
                 this->initialize_elements( aFacets );

@@ -92,7 +92,7 @@ namespace belfem
                     const NedelecField   aNedelecField,
                      Vector< real > & aNedelecData ) ;
 
-            // link to function that cuputes superconducting matrices
+            // link to function that computes superconducting matrices
             void
             ( IWG_Maxwell::*mComputeScMatrices )
             (       Element        * aElement,

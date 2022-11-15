@@ -476,9 +476,15 @@ namespace belfem
                     {
                         int tN = ceil( 0.5 * ( aOrder + 3 ));
                         aWeights.set_size( tN );
-                        aPoints.set_size( tN, 1 );
+                        aPoints.set_size( 1, tN );
+                        Vector< real > tPoints( tN );
 
-                        intpoints_lobatto( &tN, aWeights.data(), aPoints.data());
+                        intpoints_lobatto( &tN, aWeights.data(), tPoints.data() );
+                        for( uint k=0; k<tN; ++k )
+                        {
+                            aPoints( 0, k ) = tPoints( k );
+                        }
+
                         break;
                     }
                     default :

@@ -2420,35 +2420,35 @@ namespace belfem
                 case( 0 ) :
                 {
                     mNormal2D( 0 ) =
-                             aElement->element()->node( 1 )->y()
-                            -aElement->element()->node( 0 )->y();
+                             aElement->master()->element()->node( 1 )->y()
+                            -aElement->master()->element()->node( 0 )->y();
 
                     mNormal2D( 1 ) =
-                            aElement->element()->node( 0 )->x()
-                            -aElement->element()->node( 1 )->x();
+                            aElement->master()->element()->node( 0 )->x()
+                            -aElement->master()->element()->node( 1 )->x();
 
                     break;
                 }
                 case( 1 ) :
                 {
                     mNormal2D( 0 ) =
-                            aElement->element()->node( 2 )->y()
-                            -aElement->element()->node( 1 )->y();
+                            aElement->master()->element()->node( 2 )->y()
+                            -aElement->master()->element()->node( 1 )->y();
 
                     mNormal2D( 1 ) =
-                            aElement->element()->node( 1 )->x()
-                            -aElement->element()->node( 2 )->x();
+                            aElement->master()->element()->node( 1 )->x()
+                            -aElement->master()->element()->node( 2 )->x();
                     break;
                 }
                 case( 2 ) :
                 {
                     mNormal2D( 0 ) =
-                            aElement->element()->node( 0 )->y()
-                            -aElement->element()->node( 2 )->y();
+                            aElement->master()->element()->node( 0 )->y()
+                            -aElement->master()->element()->node( 2 )->y();
 
                     mNormal2D( 1 ) =
-                            aElement->element()->node( 2 )->x()
-                            -aElement->element()->node( 0 )->x();
+                            aElement->master()->element()->node( 2 )->x()
+                            -aElement->master()->element()->node( 0 )->x();
                     break;
                 }
                 default :

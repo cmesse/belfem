@@ -1005,6 +1005,8 @@ namespace belfem
 
             //real tIz = 0.0 ;
 
+            //std::cout << "El " << aElement->id() << std::endl ;
+
             // loop over all integration points
             for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
             {
@@ -1097,17 +1099,22 @@ namespace belfem
                 // DEBUG printout
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-                /*Matrix< real > & tX = mGroup->work_X() ;
+                Matrix< real > & tX = mGroup->work_X() ;
                 this->collect_node_coords( aElement, tX );
 
                 this->collect_edge_data_from_layer( aElement, "edge_h", 0, tHt );
+                real xi = mGroup->integration_points()( 0 , k );
 
+                real x = 0.5*(1.0-xi)*tX( 0, 0 ) + 0.5*(1+xi)*tX(1,0) ;
+                real y = 0.5*(1.0-xi)*tX( 0, 1 ) + 0.5*(1+xi)*tX(1,1) ;
 
-                std::cout << "el " << aElement->id() << " k " << k
-                    << " x= " <<mE( 0 ) * tX( 0, 0 ) + mE( 1 ) * tX( 1, 0  )
-                    << " y= " <<mE( 0 ) * tX( 0,  1) + mE( 1 ) * tX( 1, 1  )
-                    << " m " << tHtm << " " <<  mE( 0 ) * tHt( 0 ) + mE( 1 ) * tHt( 1 )
-                    << " s " << tHts << " " <<  mE( 0 ) * tHt( 4 ) + mE( 1 ) * tHt( 5 )
+                // std::cout << x << ", " << tHtm << ", " << tHts << std::endl ;
+
+                /*std::cout << "    " << k
+                    << " x= " << x
+                    << " y= " << y
+                    << " m " << tHtm*constant::mu0 << " " //<<  mE( 0 ) * tHt( 0 ) + mE( 1 ) * tHt( 1 )
+                    << " s " << tHts*constant::mu0 << " " << tHtm-tHts //<< " " <<  mE( 0 ) * tHt( 4 ) + mE( 1 ) * tHt( 5 )
                     << std::endl ; */
 
 #ifdef HPHI_TRI6_LAMBDAN
@@ -1267,14 +1274,17 @@ namespace belfem
             for( uint l=0; l<mNumberOfThinShellLayers; ++l )
             {
                 // compute the field index
-                index_t tIndex = mGhostElementMap(
-                        aElement->id() * mGroup->number_of_thin_shell_layers() + l )->index();
+                const mesh::Element * tGhost =  mGhostElementMap(
+                        aElement->id() * mGroup->number_of_thin_shell_layers() + l );
+
+                index_t tIndex =tGhost->index() ;
+
                 mMesh->field_data( "elementJ" )( tIndex )   = mLayerData( 0, l );
                 mMesh->field_data( "elementEJ" )( tIndex )  = mLayerData( 1, l );
                 mMesh->field_data( "elementJJc" )( tIndex ) = mLayerData( 2, l );
                 mMesh->field_data( "elementRho" )( tIndex ) = mLayerData( 3, l );
 
-                // std::cout << "check " << aElement->id() << " " << tJz * tLength * mGroup->thin_shell_thickness( l ) << " " << mLayerData( 2, l ) << std::endl ;
+                // std::cout << "avg " << tGhost->id() << " "<< tIndex << " " << mLayerData( 2, l ) << std::endl ;
             }
 
         }
@@ -1472,10 +1482,12 @@ namespace belfem
                 mdRhody( k, aIntPoint ) = ( mSigma( 3)-mSigma( 2 ) ) / ( tdeta * tThickness ) ;
                 mJz( k, aIntPoint ) = tJz ;
 
-                // std::cout << "    " << k << " j " << tJz << std::endl ;
-
                 tJc = tMaterial->j_crit( tT, tB , tAlpha );
                 mJc( k, aIntPoint ) = tJc ;
+
+
+                // if( k == 2 ) std::cout << "    j/jc " << aIntPoint << " " << k << " : " << tJz/tJc << std::endl ;
+
 
                 //real tdJzdx = dot( mdCdx, aHt );
                 //real tdJzdy = dot( mdCdy , aHt ); // <-- is  this wrong?
