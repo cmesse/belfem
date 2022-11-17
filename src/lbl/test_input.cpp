@@ -305,6 +305,8 @@ int main( int    argc,
                }*/
            }
 
+           tFormulation->compute_thin_shell_error_2d();
+
            tMagfield->compute_jacobian_and_rhs();
 
            // synchronize ej because we need this for the quench

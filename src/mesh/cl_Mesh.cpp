@@ -423,9 +423,12 @@ namespace belfem
         // loop over all elements
         for( mesh::Facet * tFacet: mFacets )
         {
-            for( uint k=0; k<tFacet->element()->number_of_nodes(); ++k )
+            if( tFacet->is_flagged() )
             {
-                tFacet->element()->node( k )->increment_facet_counter();
+                for ( uint k = 0; k < tFacet->element()->number_of_nodes(); ++k )
+                {
+                    tFacet->element()->node( k )->increment_facet_counter();
+                }
             }
         }
 
@@ -437,9 +440,12 @@ namespace belfem
 
         for( mesh::Facet * tFacet: mFacets )
         {
-            for( uint k=0; k<tFacet->element()->number_of_nodes(); ++k )
+            if( tFacet->is_flagged() )
             {
-                tFacet->element()->node( k )->add_facet( tFacet );
+                for ( uint k = 0; k < tFacet->element()->number_of_nodes(); ++k )
+                {
+                    tFacet->element()->node( k )->add_facet( tFacet );
+                }
             }
         }
     }
@@ -1427,6 +1433,13 @@ namespace belfem
                 if( ! mFacetsAreLinked )
                 {
                     this->connect_facets_to_elements();
+                }
+
+                // make sure that all facets are flagged
+                // this is needed for the node to facets stem to work
+                for( mesh::Facet * tFacet : mFacets )
+                {
+                    tFacet->flag() ;
                 }
 
                 this->connect_nodes_to_facets();

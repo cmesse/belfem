@@ -39,12 +39,10 @@ namespace belfem
             // Facet in mesh, if this is a side element
             mesh::Facet  * mFacet = nullptr ;
 
-            // index on
-            // actual element on mesh
+            // index of element on mesh
             mesh::Element * mElement;
 
             // contains the dofs that are connected to this element
-            // Cell< Dof * >  mDOFs;
             Dof ** mDOFs = nullptr ;
             uint mNumberOfDofs = 0 ;
 

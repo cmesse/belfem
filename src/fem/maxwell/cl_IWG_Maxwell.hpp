@@ -81,6 +81,9 @@ namespace belfem
 
             Vector< real > mQ0cut = { 0, 0, 0 };
 
+            // this vector is needed for the error estimation in the thin shell mode
+            Vector< uint > mNumShellsPerNode ;
+
 //------------------------------------------------------------------------------
         private:
 //------------------------------------------------------------------------------
@@ -221,6 +224,19 @@ namespace belfem
               */
              void
              set_magfield_bc_type( const id_t aSideSetID, const MagfieldBcType aType );
+
+//------------------------------------------------------------------------------
+
+            /**
+              * called by factory to support error estimator
+              */
+            Vector< uint > &
+            num_shells_per_node() ;
+
+//------------------------------------------------------------------------------
+
+            void
+            compute_thin_shell_error_2d();
 
 //------------------------------------------------------------------------------
         protected:
@@ -877,6 +893,14 @@ namespace belfem
             return mGroup->slave_integration(
                     aElement->facet()->slave_index() * 3
                 + aElement->facet()->orientation_on_slave()  );
+        }
+
+//------------------------------------------------------------------------------
+
+        inline Vector< uint > &
+        IWG_Maxwell::num_shells_per_node()
+        {
+            return mNumShellsPerNode ;
         }
 
 //------------------------------------------------------------------------------

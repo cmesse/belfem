@@ -1653,6 +1653,7 @@ namespace belfem
             this->set_domain_types();
 
             mMagneticField->fix_node_dofs_on_ghost_sidesets() ;
+            this->count_thin_shells_per_node() ;
 
             comm_barrier() ;
         }
@@ -3230,7 +3231,7 @@ namespace belfem
 
                         for ( DomainGroup * tTape: mTapes )
                         {
-                            tTapeRoller.add_sidesets( tTape->groups());
+                            tTapeRoller.add_sidesets( tTape->groups() );
                             tTapeRoller.add_master_blocks( tTape->master() );
                         }
 
@@ -4044,6 +4045,80 @@ namespace belfem
             // recreate mesh
             mMesh->unfinalize() ;
             mMesh->finalize() ;
+        }
+
+// ----------------------------------------------------------------------------
+
+        void
+        MaxwellFactory::count_thin_shells_per_node()
+        {
+            // get the container
+            Vector< uint > & tNumShellsPerNode =
+                    static_cast< IWG_Maxwell * >( mMagneticField->iwg() )
+                    ->num_shells_per_node() ;
+
+            if( mKernel->is_master() )
+            {
+                mMesh->unflag_all_facets() ;
+
+                for ( DomainGroup * tTape: mTapes )
+                {
+                    for( id_t tID : tTape->groups() )
+                    {
+                        mMesh->sideset( tID )->flag_all_facets() ;
+                    }
+                }
+                tNumShellsPerNode.set_size( mMesh->number_of_nodes(), 0 );
+
+                for( mesh::Facet * tFacet : mMesh->facets() )
+                {
+                    if( tFacet->is_flagged() )
+                    {
+                        // add facet to node counter
+                        for( uint k=0 ; k<tFacet->number_of_nodes(); ++k )
+                        {
+                            ++tNumShellsPerNode( tFacet->node( k )->index() );
+                        }
+                    }
+                }
+
+                Cell< Vector< uint > > tAllData( mKernel->number_of_procs(), {} );
+
+                // populate container
+                for( uint p=1; p<mKernel->number_of_procs(); ++p )
+                {
+                    // get the comm table
+                    const Vector< index_t > & tIndices = mKernel->node_table( p );
+
+                    // get the dataset
+                    Vector< uint > & tData = tAllData( p );
+
+                    // allocate memory for data
+                    tData.set_size( mKernel->mesh()->number_of_nodes() );
+
+                    // initialize counter
+                    index_t tCount = 0 ;
+
+                    // populate data
+                    for( index_t k : tIndices )
+                    {
+                        tData( tCount++ ) = tNumShellsPerNode( k );
+                    }
+                }
+
+                // wait for other procs
+                comm_barrier() ;
+
+                send( mKernel->comm_table(), tAllData );
+
+            }
+            else
+            {
+                // wait for master
+                comm_barrier() ;
+
+                receive( mKernel->master(), tNumShellsPerNode );
+            }
         }
 
 // -----------------------------------------------------------------------------

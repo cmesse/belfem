@@ -79,6 +79,7 @@ namespace belfem
             mFields.MagneticFieldDensity     =  { "bx", "by", "bz" };
             mFields.CurrentDensity = {  "jz" };
             mFields.CurrentBC = { "lambda_I" };
+            mFields.NonDof = { "_hm", "_hs", "lambda_error" };
             mFields.Ghost = { "elementEJ", "elementJ", "elementJJc", "elementRho" };
 
             mEdgeDofMultiplicity = 2 ;
@@ -1007,6 +1008,10 @@ namespace belfem
 
             //std::cout << "El " << aElement->id() << std::endl ;
 
+            //std::cout << "check " << aElement->facet()->node( 0 )->number_of_facets() << " "
+            //    << aElement->facet()->node( 1 )->number_of_facets() << std::endl ;
+            //exit( 0 );
+
             // loop over all integration points
             for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
             {
@@ -1098,24 +1103,24 @@ namespace belfem
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                 // DEBUG printout
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                /*
+                  Matrix< real > & tX = mGroup->work_X() ;
+                  this->collect_node_coords( aElement, tX );
 
-                Matrix< real > & tX = mGroup->work_X() ;
-                this->collect_node_coords( aElement, tX );
-
-                this->collect_edge_data_from_layer( aElement, "edge_h", 0, tHt );
+                  this->collect_edge_data_from_layer( aElement, "edge_h", 0, tHt );
                 real xi = mGroup->integration_points()( 0 , k );
 
-                real x = 0.5*(1.0-xi)*tX( 0, 0 ) + 0.5*(1+xi)*tX(1,0) ;
-                real y = 0.5*(1.0-xi)*tX( 0, 1 ) + 0.5*(1+xi)*tX(1,1) ;
+                  real x = 0.5*(1.0-xi)*tX( 0, 0 ) + 0.5*(1+xi)*tX(1,0) ;
+                  real y = 0.5*(1.0-xi)*tX( 0, 1 ) + 0.5*(1+xi)*tX(1,1) ;
 
-                // std::cout << x << ", " << tHtm << ", " << tHts << std::endl ;
+                  // std::cout << x << ", " << tHtm << ", " << tHts << std::endl ;
 
-                /*std::cout << "    " << k
-                    << " x= " << x
-                    << " y= " << y
-                    << " m " << tHtm*constant::mu0 << " " //<<  mE( 0 ) * tHt( 0 ) + mE( 1 ) * tHt( 1 )
-                    << " s " << tHts*constant::mu0 << " " << tHtm-tHts //<< " " <<  mE( 0 ) * tHt( 4 ) + mE( 1 ) * tHt( 5 )
-                    << std::endl ; */
+                  std::cout << "    " << k
+                      << " x= " << x
+                      << " y= " << y
+                      << " m " << tHtm*constant::mu0 << " " //<<  mE( 0 ) * tHt( 0 ) + mE( 1 ) * tHt( 1 )
+                      << " s " << tHts*constant::mu0 << " " << tHtm-tHts //<< " " <<  mE( 0 ) * tHt( 4 ) + mE( 1 ) * tHt( 5 )
+                      << std::endl ; */
 
 #ifdef HPHI_TRI6_LAMBDAN
                 q = mNumberOfDofsPerElement - 2 ;
@@ -1581,7 +1586,12 @@ namespace belfem
             real tDetJ = 0.25 * ( aXLength * aYLength ) ;
             real tR = 0.0 ;
 
+            real tErr ;
+            this->collect_lambda_data( aElement, "lambda_error", tErr );
+
             // real tC = 25000 ; // for single tape
+            //real tC = std::pow( this->tau() * tErr, 2 );
+
             real tC = this->tau() ;
 
             for( uint l=0; l<mNumberOfIntegrationPoints; ++l )
