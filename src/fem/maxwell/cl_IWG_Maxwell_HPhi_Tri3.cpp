@@ -317,63 +317,49 @@ namespace belfem
             const IntegrationData * tMaster =  mGroup->master_integration(
                     aElement->facet()->master_index() ) ;
 
+            const IntegrationData * tSlave =  mGroup->slave_integration(
+                    aElement->facet()->slave_index() ) ;
+
             // compute Jacobian and B-function for air
             this->collect_node_coords( aElement->master(), mGroup->work_Xm() );
             this->collect_node_coords( aElement->slave(), mGroup->work_Xs() );
 
-            mGroup->work_B() = inv( tMaster->dNdXi( 0 ) * mGroup->work_Xm() )
-                    * tMaster->dNdXi( 0 );
+
 
                   Matrix< real > & tM    = aJacobian ;
                   Matrix< real > & tK    = mGroup->work_K();
             const Vector< real > & tn    = this->normal_straight_2d( aElement );
-            const Matrix< real > & tB    = mGroup->work_B() ;
-                  Vector< real > & tnxB  = mGroup->work_sigma() ;
+            Matrix< real > & tBm    = mGroup->work_B() ;
+
 
             // again, we use a mathematical trick since n and B are constant
+            tBm = inv( tMaster->dNdXi( 0 ) * mGroup->work_Xm() )
+                               * tMaster->dNdXi( 0 );
 
-            crossmat( tn, tB, tnxB );
-            tnxB *= -mGroup->work_det_J()  ; // flip sign, because n should point out of ferro
+            const Vector< real > & tW = mGroup->integration_weights() ;
 
-            tM.fill( 0.0 );
-            switch( aElement->facet()->master_index() )
+            tK.fill( 0 );
+            tM.fill( 0 );
+
+            for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
             {
-                case( 0 ) :
+                const Vector< real > & tNs = tSlave->phi( k );
+                real tOmega = tW( k ) * mGroup->work_det_J();
+
+                for ( uint j = 0; j < 3; ++j )
                 {
-                    tM( 3, 0 ) = tnxB( 0 );
-                    tM( 4, 0 ) = tnxB( 1 );
-                    tM( 5, 0 ) = tnxB( 2 );
-                    tM( 3, 1 ) = tnxB( 0 );
-                    tM( 4, 1 ) = tnxB( 1 );
-                    tM( 5, 1 ) = tnxB( 2 );
-                    break ;
+                    for ( uint i = 0; i < 3; ++i )
+                    {
+                        real tValue = tOmega * tNs( i ) *
+                                      ( tn( 1 ) * tBm( 0, j )
+                                      - tn( 0 ) * tBm( 1, j ));
+
+                        tK( i + 3, j ) -= tValue;
+                        tM( j, i + 3 ) += tValue;
+                    }
                 }
-                case( 1 ) :
-                {
-                    tM( 3, 1 ) = tnxB( 0 );
-                    tM( 4, 1 ) = tnxB( 1 );
-                    tM( 5, 1 ) = tnxB( 2 );
-                    tM( 3, 2 ) = tnxB( 0 );
-                    tM( 4, 2 ) = tnxB( 1 );
-                    tM( 5, 2 ) = tnxB( 2 );
-                    break ;
-                }
-                case( 2 ) :
-                {
-                    tM( 3, 0 ) = tnxB( 0 );
-                    tM( 4, 0 ) = tnxB( 1 );
-                    tM( 5, 0 ) = tnxB( 2 );
-                    tM( 3, 2 ) = tnxB( 0 );
-                    tM( 4, 2 ) = tnxB( 1 );
-                    tM( 5, 2 ) = tnxB( 2 );
-                    break ;
-                }
-                default :
-                {
-                    BELFEM_ERROR( false, "Invalid Facet index");
-                };
+
             }
-            tK = -trans( tM );
             aRHS = tM * this->collect_q0_aphi_2d( aElement );
             aJacobian += tK * this->timestep() ;
         }
