@@ -13,7 +13,8 @@ namespace belfem
     {
         class IWG_Maxwell_HPhi_Tri3 : public IWG_Maxwell
         {
-            // link to function
+
+            //! link to function
             void
             ( IWG_Maxwell_HPhi_Tri3::*mFunJacobian )
             (       Element        * aElement,
@@ -167,6 +168,17 @@ namespace belfem
                                      const Vector < real > & aHt,
                                      const real              aHn,
                                      Matrix< real > & aK );
+
+//------------------------------------------------------------------------------
+
+            void
+            compute_thinshell_interface(
+                    const bool aMaster,
+                    Element * aElement,
+                    const uint aLayer,
+                    const Vector < real > & aHt,
+                    const real              aHn,
+                    Matrix< real > & aL );
 
 //------------------------------------------------------------------------------
 

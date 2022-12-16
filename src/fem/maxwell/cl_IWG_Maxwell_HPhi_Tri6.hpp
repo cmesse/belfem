@@ -53,6 +53,7 @@ namespace belfem
 
             //Matrix< real > mArho ;
             //Vector< real > mBrho ;
+            Matrix< real > mNxi ;
             Vector< real > mCrho ;
             Matrix< real > mRho ;
             Matrix< real > mdRhodx ;
@@ -60,7 +61,9 @@ namespace belfem
             Matrix< real > mJz ;
             Matrix< real > mJc ;
             Vector< int >  mPivot ;
-            Matrix< real > mL ;
+            Matrix< real > mL ; // obsolete
+            Matrix< real > mLm ;
+            Matrix< real > mLs ;
 
             Vector< real > mN ;
             Vector< real > mdNdeta ;
@@ -72,6 +75,10 @@ namespace belfem
 
 
             Vector< real >  mXi ;
+
+            Vector< real >  mXi0 ;
+            Vector< real >  mXi1 ;
+
             Vector< real >  mEta ;
             Vector< real >  mPhi ;
             Vector< real >  mPsi ;
@@ -80,7 +87,8 @@ namespace belfem
             Vector< real >  mY ;
 
             // transformation matrix
-            Matrix< real > mT ;
+            Matrix< real > mTm ;
+            Matrix< real > mTs ;
 
             Matrix< real > mK ;
 
@@ -249,6 +257,18 @@ namespace belfem
                     const real adHndx,
                     const real aXLength,
                     Matrix< real > & aK );
+
+//------------------------------------------------------------------------------
+
+            void
+            compute_thinshell_interface(
+                    Element * aElement,
+                    const bool aMaster,
+                    const uint aLayer,
+                    const uint aIntPoint,
+                    const real aE0,
+                    const real aE1,
+                    Matrix< real > & aL );
 
 //------------------------------------------------------------------------------
 

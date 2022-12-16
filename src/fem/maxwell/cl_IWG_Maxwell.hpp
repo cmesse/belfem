@@ -7,6 +7,7 @@
 // #define BELFEM_FERROAIR_ENRICHED --> moved to IWG
 
 //#define BELFEM_FERRO_LINEAR
+#define BELFEM_FERRO_HPHIA // todo: remove this
 
 #include "typedefs.hpp"
 #include "assert.hpp"

@@ -220,9 +220,16 @@ int main( int    argc,
    //    tMesh->save( tOutFile );
    //}
     //tMesh->save( tOutFile );
+    uint tTimeLoopCSV = 1 ;
+
    while( tTime < tMaxTime )
    {
-       if( tTimeLoop++ >= 2 )
+       if( tTimeLoopCSV++ >= 100 )
+       {
+           tTimeLoopCSV = 1 ;
+       }
+
+       if( tTimeLoop++ >= 1000 )
        {
            // save backup
 	       /*string tString = sprint("%s.%04u", tBackupFile.c_str(), ( unsigned int ) tTimeCount );
@@ -230,16 +237,27 @@ int main( int    argc,
            // save backup
            tFormulation->save( tString ); */
 
-	       // save mesh
+           tMagfield->postprocess() ;
+
+           if( tComputeNormB )
+           {
+               compute_normb( tMagfield, false );
+           }
+
+
+           // save mesh
            real tOldTime = tTime;
            tTime *= 1000.0;
            tMesh->save( tOutFile );
            tTime = tOldTime;
            tTimeLoop = 1;
+           tTimeLoopCSV = 1 ;
        }
 
-       real tOmegaP = tTime == 0 ? 0.1 : tNonlinear.picardOmega ;
+       real tOmegaP = tTime == 0 ? 0.5 : tNonlinear.picardOmega ;
        real tOmegaN = tTime == 0 ? 0.1 : tNonlinear.newtonOmega ;
+       //real tOmegaP = tNonlinear.picardOmega ;
+       //real tOmegaN = tNonlinear.newtonOmega ;
 
        // increment timestep
        tTime += tDeltaTime;
@@ -305,7 +323,7 @@ int main( int    argc,
                }*/
            }
 
-           tFormulation->compute_thin_shell_error_2d();
+           //tFormulation->compute_thin_shell_error_2d();
 
            tMagfield->compute_jacobian_and_rhs();
 
@@ -355,133 +373,138 @@ int main( int    argc,
 
 
        // todo: move into postprocess routine
-       if( comm_rank() == 0 )
+       if( tTimeLoopCSV == 1 )
        {
-           real tEI = 0 ;
-           real tI = 0 ;
-           mesh::Pipette tPipette ;
-
-           Vector< real > & tEJel = tMesh->field_data( "elementEJ");
-           Vector< real > & tJel = tMesh->field_data( "elementJ");
-           Vector< real > & tJJcel = tMesh->field_data( "elementJJc");
-           Vector< real > & tRhoel = tMesh->field_data( "elementRho");
-
-           string tTimeString = sprint("%04u", tTimeCount ) ;
-
-          /* std::ofstream tTimeFile ;
-           tTimeFile.open( "time.csv", std::ios_base::app);
-           tTimeFile << tTimeCount << "," << tTime << std::endl ;
-           tTimeFile.close() ; */
-
-
-           // compute the rcond function
-           real tK = 0 ;
-           real tR = 0 ;
-           if( tMagfield->solver()->type() == SolverType::MUMPS )
+           if ( comm_rank() == 0 )
            {
-               real tC0 = tMagfield->solver()->wrapper()->get_cond0();
-               real tC1 = tMagfield->solver()->wrapper()->get_cond1();
-               tK = tC0 > tC1 ? tC0 : tC1;
+               real tEI = 0;
+               real tI = 0;
+               mesh::Pipette tPipette;
 
-               // Sofia's truncation function
-               tR = tK / ( 1 - tK * BELFEM_EPS ) * 2.0 * BELFEM_EPS;
-           }
+               Vector< real > & tEJel = tMesh->field_data( "elementEJ" );
+               Vector< real > & tJel = tMesh->field_data( "elementJ" );
+               Vector< real > & tJJcel = tMesh->field_data( "elementJJc" );
+               Vector< real > & tRhoel = tMesh->field_data( "elementRho" );
+
+               string tTimeString = sprint( "%04u", tTimeCount );
+
+               /* std::ofstream tTimeFile ;
+                tTimeFile.open( "time.csv", std::ios_base::app);
+                tTimeFile << tTimeCount << "," << tTime << std::endl ;
+                tTimeFile.close() ; */
 
 
-           for( id_t tID : tMesh->ghost_block_ids() )
-           {
-               string tFileName = "tape_" +  std::to_string( tID ) + "_" + tTimeString + ".csv";
-
-               std::ofstream tTapeFile ;
-               tTapeFile.open( tFileName, std::ios_base::app);
-               ////tTapeFile << "t=" << tTime << ", " << std::endl ;
-
-               tPipette.set_element_type( tMesh->block( tID )->element_type() );
-               tTapeFile << "x,v,jjc,e*j,rho" << std::endl ;
-
-               for( mesh::Element * tElement : tMesh->block( tID )->elements() )
+               // compute the rcond function
+               real tK = 0;
+               real tR = 0;
+               if ( tMagfield->solver()->type() == SolverType::MUMPS )
                {
-                    real tV = tPipette.measure( tElement );
-                    tEI += tEJel( tElement->index() ) * tV ;
-                    tI  += tJel( tElement->index() ) * tV ;
-                    tTapeFile << 0.5*(tElement->node( 0 )->x()+tElement->node( 1 )->x()) << "," << tV << "," << tJJcel( tElement->index() ) << "," << tEJel( tElement->index() )<< "," << tRhoel( tElement->index() ) << std::endl ;
+                   real tC0 = tMagfield->solver()->wrapper()->get_cond0();
+                   real tC1 = tMagfield->solver()->wrapper()->get_cond1();
+                   tK = tC0 > tC1 ? tC0 : tC1;
+
+                   // Sofia's truncation function
+                   tR = tK / ( 1 - tK * BELFEM_EPS ) * 2.0 * BELFEM_EPS;
                }
-               tTapeFile.close() ;
 
-           }
 
-           for( fem::Block * tBlock : tMagfield->blocks() )
-           {
-               if( tBlock->domain_type() == DomainType::Conductor && tBlock->element_type() == ElementType::TRI6 )
+               for ( id_t tID: tMesh->ghost_block_ids())
                {
+                   string tFileName = "tape_" + std::to_string( tID ) + "_" + tTimeString + ".csv";
 
-                   tFormulation->link_to_group( tBlock );
+                   std::ofstream tTapeFile;
+                   tTapeFile.open( tFileName, std::ios_base::app );
+                   ////tTapeFile << "t=" << tTime << ", " << std::endl ;
 
-                   // get elements
-                   Cell< fem::Element * > & tElements = tBlock->elements() ;
+                   tPipette.set_element_type( tMesh->block( tID )->element_type());
+                   tTapeFile << "x,v,jjc,e*j,rho" << std::endl;
 
-                   for( fem::Element * tElement : tElements )
+                   for ( mesh::Element * tElement: tMesh->block( tID )->elements())
                    {
-                       tI += tFormulation->compute_element_current( tElement );
+                       real tV = tPipette.measure( tElement );
+                       tEI += tEJel( tElement->index()) * tV;
+                       tI += tJel( tElement->index()) * tV;
+                       tTapeFile << 0.5 * ( tElement->node( 0 )->x() + tElement->node( 1 )->x()) << "," << tV << ","
+                                 << tJJcel( tElement->index()) << "," << tEJel( tElement->index()) << ","
+                                 << tRhoel( tElement->index()) << std::endl;
+                   }
+                   tTapeFile.close();
+
+               }
+
+               for ( fem::Block * tBlock: tMagfield->blocks())
+               {
+                   if ( tBlock->domain_type() == DomainType::Conductor && tBlock->element_type() == ElementType::TRI6 )
+                   {
+
+                       tFormulation->link_to_group( tBlock );
+
+                       // get elements
+                       Cell< fem::Element * > & tElements = tBlock->elements();
+
+                       for ( fem::Element * tElement: tElements )
+                       {
+                           tI += tFormulation->compute_element_current( tElement );
+                       }
                    }
                }
-           }
-           tMagfield->synchronize_fields( {"elementJ"} );
-           Vector< real > tAllI( comm_size(), 0.0 );
-           receive( tKernel->comm_table(), tAllI );
-           tAllI( 0 ) = 0 ;
+               tMagfield->synchronize_fields( { "elementJ" } );
+               Vector< real > tAllI( comm_size(), 0.0 );
+               receive( tKernel->comm_table(), tAllI );
+               tAllI( 0 ) = 0;
 
-           tI += sum( tAllI );
+               tI += sum( tAllI );
 
 
-           //std::cout << "-----" << std::endl ;
-          // std::cout  <<  tTime << ", " << tI << ", " << tEI << std::endl ;
+               //std::cout << "-----" << std::endl ;
+               // std::cout  <<  tTime << ", " << tI << ", " << tEI << std::endl ;
 
-           std::ofstream tCSV ;
-           tCSV.open( "acloss.csv", std::ios_base::app);
-           tCSV <<  tTime << ", " << tI << ", " << tEI << ", " << std::log10(tK) << ", " << std::log10(tR) << std::endl ;
-           tCSV.close() ;
+               std::ofstream tCSV;
+               tCSV.open( "acloss.csv", std::ios_base::app );
+               tCSV << tTime << ", " << tI << ", " << tEI << ", " << std::log10( tK ) << ", " << std::log10( tR )
+                    << std::endl;
+               tCSV.close();
 
-           if( tMagfield->solver()->type() == SolverType::MUMPS )
-           {
-               std::cout << "    cond: " << tK << " " << tR << std::endl;
-           }
-       }
-       else
-       {
-           real tI = 0.0 ;
-
-           for( fem::Block * tBlock : tMagfield->blocks() )
-           {
-               if( tBlock->domain_type() == DomainType::Conductor && tBlock->element_type() == ElementType::TRI6 )
+               if ( tMagfield->solver()->type() == SolverType::MUMPS )
                {
-
-                   tFormulation->link_to_group( tBlock );
-
-                   // get elements
-                   Cell< fem::Element * > & tElements = tBlock->elements() ;
-
-                   for( fem::Element * tElement : tElements )
-                   {
-                       tI += tFormulation->compute_element_current( tElement );
-                   }
+                   std::cout << "    cond: " << tK << " " << tR << std::endl;
                }
            }
-           tMagfield->synchronize_fields( {"elementJ"} );
+           else
+           {
+               real tI = 0.0;
 
-           send( 0, tI );
+               for ( fem::Block * tBlock: tMagfield->blocks())
+               {
+                   if ( tBlock->domain_type() == DomainType::Conductor && tBlock->element_type() == ElementType::TRI6 )
+                   {
+
+                       tFormulation->link_to_group( tBlock );
+
+                       // get elements
+                       Cell< fem::Element * > & tElements = tBlock->elements();
+
+                       for ( fem::Element * tElement: tElements )
+                       {
+                           tI += tFormulation->compute_element_current( tElement );
+                       }
+                   }
+               }
+               tMagfield->synchronize_fields( { "elementJ" } );
+
+               send( 0, tI );
 
 
+           }
        }
-
 
        //fem::compute_element_current_thinshell_tri3( tMagfield );
-       tMagfield->postprocess() ;
+       //tMagfield->postprocess() ;
 
-       if( tComputeNormB )
-       {
-           compute_normb( tMagfield, false );
-       }
+       //if( tComputeNormB )
+       //{
+       //    compute_normb( tMagfield, false );
+       //}
 
        //tMesh->save( "test.exo");
 
@@ -490,6 +513,14 @@ int main( int    argc,
 
        comm_barrier() ;
    }
+
+    //fem::compute_element_current_thinshell_tri3( tMagfield );
+    tMagfield->postprocess() ;
+
+    if( tComputeNormB )
+    {
+        compute_normb( tMagfield, false );
+    }
 
     tMesh->save( tOutFile );
 

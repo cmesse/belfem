@@ -16,7 +16,8 @@
 #include "fn_max.hpp"
 #include "fn_det.hpp"
 #include "cl_IF_InterpolationFunction.hpp"
-#define HPHI_TRI6_LAMBDAN
+
+// #define HPHI_TRI6_LAMBDAN
 
 namespace belfem
 {
@@ -79,7 +80,7 @@ namespace belfem
             mFields.MagneticFieldDensity     =  { "bx", "by", "bz" };
             mFields.CurrentDensity = {  "jz" };
             mFields.CurrentBC = { "lambda_I" };
-            mFields.NonDof = { "_hm", "_hs", "lambda_error" };
+            mFields.NonDof = { "_jjc", "lambda_error" };
             mFields.Ghost = { "elementEJ", "elementJ", "elementJJc", "elementRho" };
 
             mEdgeDofMultiplicity = 2 ;
@@ -105,8 +106,8 @@ namespace belfem
             mRho.set_size( 16, 16 );
             mJz.set_size( 16, 16 );
             mJc.set_size( 16, 16 );
-            mdRhodx.set_size( 16, 16 );
-            mdRhody.set_size( 16, 16 );
+            //mdRhodx.set_size( 16, 16 );
+            //mdRhody.set_size( 16, 16 );
             mAHn.set_size( 2, 2 );
             mBHn.set_size( 2 );
             mPivot.set_size( 2 );
@@ -131,9 +132,15 @@ namespace belfem
 
             mX.set_size( 5 );
             mY.set_size( 5 );
-            mT.set_size( 5, 9, 0.0 );
+
 
             mK.set_size( 5, 5 );
+
+            mLm.set_size( 6, 6 );
+            mLs.set_size( 6, 6 );
+            mXi0.set_size( 2 );
+            mXi1.set_size( 2 );
+
         }
 
 //------------------------------------------------------------------------------
@@ -967,6 +974,12 @@ namespace belfem
             // stiffness matrix for individual layer
             Matrix< real > & tKlayer = mGroup->work_L();
 
+            // interface matrix, happens to be 6x6 as well
+            Matrix< real > & tLm = mGroup->work_M();
+
+            // interface matrix, happens to be 6x6 as well
+            Matrix< real > & tLs = mGroup->work_L();
+
             //Matrix< real > & tJ = mGroup->work_J();
             //Matrix< real > & tG = mGroup->work_G();
             //Matrix< real > & tH = mGroup->work_H();
@@ -1011,6 +1024,12 @@ namespace belfem
             //std::cout << "check " << aElement->facet()->node( 0 )->number_of_facets() << " "
             //    << aElement->facet()->node( 1 )->number_of_facets() << std::endl ;
             //exit( 0 );
+
+            // interface matrices
+            mLm.fill( 0.0 );
+            mLs.fill( 0.0 );
+
+            // std::cout <<  aElement->element()->id() << " sign " << aElement->edge_direction( 0 ) << " " << aElement->element()->node( 1 )->x() - aElement->element()->node( 0 )->x() << std::endl ;
 
             // loop over all integration points
             for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
@@ -1103,19 +1122,19 @@ namespace belfem
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                 // DEBUG printout
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                /*
-                  Matrix< real > & tX = mGroup->work_X() ;
+
+                  /*Matrix< real > & tX = mGroup->work_X() ;
                   this->collect_node_coords( aElement, tX );
 
                   this->collect_edge_data_from_layer( aElement, "edge_h", 0, tHt );
-                real xi = mGroup->integration_points()( 0 , k );
+                  real xi = mGroup->integration_points()( 0 , k );
 
                   real x = 0.5*(1.0-xi)*tX( 0, 0 ) + 0.5*(1+xi)*tX(1,0) ;
                   real y = 0.5*(1.0-xi)*tX( 0, 1 ) + 0.5*(1+xi)*tX(1,1) ;
 
-                  // std::cout << x << ", " << tHtm << ", " << tHts << std::endl ;
+                   std::cout << x << ", " << tHtm << ", " << tHts << std::endl ;*/
 
-                  std::cout << "    " << k
+                  /*std::cout << "    " << k
                       << " x= " << x
                       << " y= " << y
                       << " m " << tHtm*constant::mu0 << " " //<<  mE( 0 ) * tHt( 0 ) + mE( 1 ) * tHt( 1 )
@@ -1141,33 +1160,11 @@ namespace belfem
                     }
                 }
 #else
-                /*q = mNumberOfNodesPerElement ;
-                const Vector< real > & tNm = tIntMaster->phi( k );
-                const Vector< real > & tNs = tIntSlave->phi( k );
 
-                // flux from slave to master
-                for( uint i=0; i<mNumberOfNodesPerElement; ++i )
-                {
-                    for( uint j=0; j<mNumberOfNodesPerElement; ++j )
-                    {
-                        tK( i, q + j ) -= tNm( i ) *
-                                ( tn( 0 ) * tBs( 0, j )
-                                + tn( 1 ) * tBs( 1, j ) ) * tWDetJ ;
-                    }
-                }
-
-                // flux from master to slave
-                for( uint i=0; i<mNumberOfNodesPerElement; ++i )
-                {
-                    for( uint j=0; j<mNumberOfNodesPerElement; ++j )
-                    {
-                        tK( i + q, j ) += tNs( i ) *
-                                            ( tn( 0 ) * tBm( 0, j )
-                                            + tn( 1 ) * tBm( 1, j ) ) * tWDetJ ;
-                    }
-                }*/
 #endif
             }
+
+
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // Derivative of dHn/dx, careful with the sign!
@@ -1217,8 +1214,8 @@ namespace belfem
                     // gradient operator slave
                     tBs = inv( tIntSlave->dNdXi( k ) * tXs ) * tIntSlave->dNdXi( k );
 
-                    Vector< real > tHm( tBm * tPhiM );
-                    Vector< real > tHs( tBs * tPhiS );
+                    //Vector< real > tHm( tBm * tPhiM );
+                    //Vector< real > tHs( tBs * tPhiS );
 
                     this->compute_layer_mass( l, mE( 0 ), mE( 1 ), tMlayer );
 
@@ -1234,14 +1231,26 @@ namespace belfem
                             tK( p + i, p + j ) += tValue;
                         }
                     }
+
+                    if( l == 0 )
+                    {
+                        this->compute_thinshell_interface( aElement, true, 0, k, mE( 0 ), mE( 1 ), mLm );
+                    }
+                    if( l == mNumberOfThinShellLayers-1 )
+                    {
+                        this->compute_thinshell_interface( aElement, false, l, k, mE( 0 ), mE( 1 ), mLs );
+                    }
                 }
 
 
+                /*
                 // critical current
                 const Material * tMaterial = mGroup->thin_shell_material( l );
 
                 this->compute_layer_stabilizer( aElement, tHt, tLength,
                                                 mGroup->thin_shell_thickness( l ), tMaterial->creep_expinent_minus_1(), tMlayer, tKlayer );
+
+                tKlayer.print("Klayer");
 
                 for ( uint j = 0; j < 6; ++j )
                 {
@@ -1250,7 +1259,7 @@ namespace belfem
                         tM( p + i, p + j ) += tMlayer( i, j );
                         tK( p + i, p + j ) += tKlayer( i, j );
                     }
-                }
+                }*/
 
 
                 // jump to next layer
@@ -1258,12 +1267,37 @@ namespace belfem
 
             }
 
+
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            // Jacobian and RHS
+            // compute T matrices
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+
 
             // compute the right hand side
             // const Vector< real > & tQ0 = this->collect_q0_thinshell( aElement ) ;
+            /*p = 12 ;
+            for( uint j=0 ; j<6; ++j )
+            {
+                for( uint i=0 ; i<6; ++i )
+                {
+                    tK( i,j+p ) = mLm( i, j );
+                }
+            }
+            mLs *= -1 ;
+
+            p = 8 + mNumberOfThinShellLayers * 4 ;
+            for( uint j=0 ; j<6; ++j )
+            {
+                for( uint i=0 ; i<6; ++i )
+                {
+                    tK( i+6,j+p ) = mLs( i, j );
+                }
+            }*/
+
+            //tM.print("M");
+            //tK.print("K");
+            //exit( 0 );
 
             aRHS = tM *  this->collect_q0_thinshell( aElement ) ;
 
@@ -1291,6 +1325,8 @@ namespace belfem
 
                 // std::cout << "avg " << tGhost->id() << " "<< tIndex << " " << mLayerData( 2, l ) << std::endl ;
             }
+
+
 
         }
 #ifdef BELFEM_GCC
@@ -1356,6 +1392,7 @@ namespace belfem
         }
 
 //------------------------------------------------------------------------------
+
 #ifdef BELFEM_GCC
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
@@ -1386,7 +1423,7 @@ namespace belfem
             const Vector< real > & tW = tInteg->weights() ;
 
             // get material
-            // temperature, todo: make not constant
+            // #temperature, todo: make not constant
             real tT = 12.0 ;
 
             // grab layer thickness
@@ -1411,7 +1448,7 @@ namespace belfem
 
             real xi = tXi( 0, aIntPoint );
 
-            real tdxi  = 0.001 ;
+            /*real tdxi  = 0.001 ;
             real tdeta = 0.001 ;
 
             mXi( 0 ) = xi - tdxi ;
@@ -1419,7 +1456,7 @@ namespace belfem
             mXi( 1 ) = xi ;
             mXi( 2 ) = xi ;
             mXi( 3 ) = xi ;
-            mXi( 4 ) = xi ;
+            mXi( 4 ) = xi ;*/
 
 
             // integrate over thickness
@@ -1430,11 +1467,11 @@ namespace belfem
 
                 real eta = tXi( 0, k );
 
-                mEta( 0 ) = eta ;
+                /*mEta( 0 ) = eta ;
                 mEta( 1 ) = eta ;
                 mEta( 2 ) = eta-tdeta  ;
                 mEta( 3 ) = eta+tdeta  ;
-                mEta( 4 ) = eta ;
+                mEta( 4 ) = eta ; */
 
                 real tJz = 0 ;
                 real tRho = 0 ;
@@ -1443,31 +1480,31 @@ namespace belfem
 
                 real tJc= 0 ;
 
-                // comopute rho and gradients
-                for( uint l=0; l<5; ++l )
-                {
-                    xi = mXi( l );
-                    eta = mEta( l );
+                // compute rho and gradients
+                //for( uint l=0; l<5; ++l )
+               // {
+                //    xi = mXi( l );
+                //    eta = mEta( l );
 
-                    real tE0 = 0.5 * ( 1 - 3 * xi );
-                    real tE1 = 0.5 * ( 1 + 3 * xi );
+                    //real tE0 = 0.5 * ( 1 - 3 * xi );
+                    //real tE1 = 0.5 * ( 1 + 3 * xi );
                     mPhi( 0 ) = eta - 0.5;
                     mPhi( 1 ) = -2 * eta;
                     mPhi( 2 ) = eta + 0.5;
 
                     // curl operator
-                    mC( 0, 0 ) = tE0 * mPhi( 0 );
-                    mC( 0, 1 ) = tE1 * mPhi( 0 );
-                    mC( 0, 2 ) = tE0 * mPhi( 1 );
-                    mC( 0, 3 ) = tE1 * mPhi( 1 );
-                    mC( 0, 4 ) = tE0 * mPhi( 2 );
-                    mC( 0, 5 ) = tE1 * mPhi( 2 );
+                    mC( 0, 0 ) = aE0 * mPhi( 0 );
+                    mC( 0, 1 ) = aE1 * mPhi( 0 );
+                    mC( 0, 2 ) = aE0 * mPhi( 1 );
+                    mC( 0, 3 ) = aE1 * mPhi( 1 );
+                    mC( 0, 4 ) = aE0 * mPhi( 2 );
+                    mC( 0, 5 ) = aE1 * mPhi( 2 );
                     mC /= tDetJ;
 
                     // edge-wise components of H
-                    mHt( 0 ) = tE0 * aHt( 0 ) + tE1 * aHt( 1 ) ; // field on master side
-                    mHt( 1 ) = tE0 * aHt( 4 ) + tE1 * aHt( 5 ) ; // field on slave side
-                    mHt( 2 ) = tE0 * aHt( 2 ) + tE1 * aHt( 3 ) ; // middle field
+                    mHt( 0 ) = aE0 * aHt( 0 ) + aE1 * aHt( 1 ) ; // field on master side
+                    mHt( 1 ) = aE0 * aHt( 4 ) + aE1 * aHt( 5 ) ; // field on slave side
+                    mHt( 2 ) = aE0 * aHt( 2 ) + aE1 * aHt( 3 ) ; // middle field
 
                     // mHt.print("Ht");
                     // current : tHt derived along thickness
@@ -1478,13 +1515,13 @@ namespace belfem
                     tB *= constant::mu0 ;
 
                     tRho = tMaterial->rho_el( tJz, tT, tB, tAlpha );
-                    mSigma( l ) = tRho ;
-                }
+                    // bmSigma( l ) = tRho ;
+               // }
 
                 // remember values
                 mRho( k, aIntPoint ) = tRho ;
-                mdRhodx( k, aIntPoint ) = ( mSigma( 0 )-mSigma( 1 ) ) / ( tdxi * aXLength )  ;
-                mdRhody( k, aIntPoint ) = ( mSigma( 3)-mSigma( 2 ) ) / ( tdeta * tThickness ) ;
+                //mdRhodx( k, aIntPoint ) = ( mSigma( 0 )-mSigma( 1 ) ) / ( tdxi * aXLength )  ;
+                //mdRhody( k, aIntPoint ) = ( mSigma( 3)-mSigma( 2 ) ) / ( tdeta * tThickness ) ;
                 mJz( k, aIntPoint ) = tJz ;
 
                 tJc = tMaterial->j_crit( tT, tB , tAlpha );
@@ -1508,10 +1545,6 @@ namespace belfem
 
                 // resistivity
                 //real tRho = std::max( tMaterial->rho_el( tJz, tT, constant::mu0 * std::sqrt( tHt*tHt + aHn*aHn )  ), BELFEM_EPS );
-
-                // remember values
-                mRho( k, aIntPoint ) = tRho ;
-
                 // todo: #hack
                 /*if( std::abs( tJz ) > BELFEM_EPSILON )
                 {
@@ -1550,6 +1583,69 @@ namespace belfem
             mLayerData( 1, aLayer ) += tW( aIntPoint ) * tEJ_el ;
             mLayerData( 2, aLayer ) += tW( aIntPoint ) * tJJc_el ;
             mLayerData( 3, aLayer ) += tW( aIntPoint ) * tRho_el ;
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        IWG_Maxwell_HPhi_Tri6::compute_thinshell_interface(
+                Element * aElement,
+                const bool aMaster,
+                const uint aLayer,
+                const uint aIntPoint,
+                const real aE0,
+                const real aE1,
+                Matrix< real > & aL )
+        {
+            const Matrix < real > & tNxi = aMaster ?
+                    mGroup->master_integration( aElement->facet()->master_index() )->dNdXi( aIntPoint ) :
+                    mGroup->slave_integration( aElement->facet()->slave_index() )->dNdXi( aIntPoint );
+
+            const Matrix< real > & tX = aMaster ? mGroup->work_Xm() : mGroup->work_Xs() ;
+
+            Matrix< real > & tB = mGroup->work_B() ;
+
+            tB = inv( tNxi * tX ) * tNxi ;
+            // precompute data for curl operator
+            const real eta = aMaster ? -1.0 : 1.0 ;
+
+            // the row in the lookup table
+            const uint   r = aMaster ? 0 : mNumberOfIntegrationPoints-1 ;
+
+            // grab layer thickness
+            const real tThickness = mGroup->thin_shell_thickness( aLayer );
+
+            // scaling parameter
+            real tDetJ = tThickness * 0.5 ;
+
+            // integration weights
+            const Vector< real > & tW = mGroup->thinshell_integration()->weights() ;
+
+            mPhi( 0 ) = eta - 0.5;
+            mPhi( 1 ) = -2 * eta;
+            mPhi( 2 ) = eta + 0.5;
+
+            // curl operator
+            mC( 0, 0 ) = aE0 * mPhi( 0 );
+            mC( 0, 1 ) = aE1 * mPhi( 0 );
+            mC( 0, 2 ) = aE0 * mPhi( 1 );
+            mC( 0, 3 ) = aE1 * mPhi( 1 );
+            mC( 0, 4 ) = aE0 * mPhi( 2 );
+            mC( 0, 5 ) = aE1 * mPhi( 2 );
+            mC /= tDetJ;
+
+            real tVal = tW( aIntPoint ) * mRho( r, aIntPoint ) * mGroup->work_det_J() ;
+
+
+            for( uint j=0; j<6; ++j )
+            {
+                for( uint i=0; i<6; ++i )
+                {
+                    aL( i, j ) -= tVal * ( mNormal2D( 1 ) * tB( 0, i )
+                            - mNormal2D( 0 ) * tB( 1, i ) ) * mC( 0, j );
+                }
+            }
+
         }
 
 //------------------------------------------------------------------------------
@@ -1593,6 +1689,9 @@ namespace belfem
             //real tC = std::pow( this->tau() * tErr, 2 );
 
             real tC = this->tau() ;
+
+            //real tC =   tErr  * this->tau() ; /// aXLength ;
+
 
             for( uint l=0; l<mNumberOfIntegrationPoints; ++l )
             {

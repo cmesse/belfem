@@ -2004,7 +2004,7 @@ namespace belfem
             // crate ferro projector
             if( tFerroCount > 0 )
             {
-                for( uint b : tFerroBlocks )
+                /*for( uint b : tFerroBlocks )
                 {
 
                     // create the iwg
@@ -2025,7 +2025,21 @@ namespace belfem
                     // fix group types of IWG
                     tIWG->update_group_types();
 
-                }
+                }*/
+                // create the iwg
+                IWG_Maxwell * tIWG = new IWG_Maxwell_L2_Magfield( this->element_type( tFerroBlocks( 0 ) ),
+                                                                  tMode,
+                                                                  mAlphaB );
+                Cell< DomainType > tTypes( tFerroBlocks.length(), DomainType::Ferro ) ;
+
+                // set the blocks of the IWG
+                tIWG->set_blocks( tFerroBlocks, tTypes );
+
+                // add iwg to kernel
+                this->add_postprocessor_to_kernel( tIWG );
+
+                // fix group types of IWG
+                tIWG->update_group_types();
             }
 
             // create conducting projector
@@ -2701,8 +2715,9 @@ namespace belfem
                             {
                                 ++tCount;
                             }
-                                // check if this interface connects two different ferro materials
-                            else if ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Ferro )
+
+                            // check if this interface connects two different ferro materials
+                            /*else if ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Ferro )
                             {
                                 // get material from master
                                 Material * tMasterMaterial = tMaterialMap( tFacet->master()->geometry_tag());
@@ -2723,7 +2738,7 @@ namespace belfem
                                         ++tCount;
                                     }
                                 }
-                            }
+                            }*/
 #ifdef BELFEM_FERROAIR_ENRICHED
                             // check if this sideset is an interface
                             if ( ( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Air )
@@ -2793,15 +2808,10 @@ namespace belfem
                                 tSlaveBlockIDs( tCount ) = tFacet->slave()->geometry_tag();
                                 tSideSetTypes( tCount++ ) = static_cast< uint >( DomainType::InterfaceFmAir );
                             }
-                            else if ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Ferro )
-                            {
-                                tSideSetIDs( tCount ) = tSideSet->id();
-                                tMasterBlockIDs( tCount ) = tFacet->master()->geometry_tag();
-                                tSlaveBlockIDs( tCount ) = tFacet->slave()->geometry_tag();
-                                tSideSetTypes( tCount++ ) = static_cast< uint >( DomainType::InterfaceFmFm );
-                            }
-                                // check if this interface connects two different ferro materials
-                            else if ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Ferro )
+
+
+                            // check if this interface connects two different ferro materials
+                            /*else if ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Ferro )
                             {
                                 // get material from master
                                 Material * tMasterMaterial = tMaterialMap( tFacet->master()->geometry_tag());
@@ -2819,10 +2829,13 @@ namespace belfem
                                     // check if the materials have at least the same mu
                                     if ( !( tConstantFlag && tEqualMuFlag ))
                                     {
-                                        ++tCount;
+                                        tSideSetIDs( tCount ) = tSideSet->id();
+                                        tMasterBlockIDs( tCount ) = tFacet->master()->geometry_tag();
+                                        tSlaveBlockIDs( tCount ) = tFacet->slave()->geometry_tag();
+                                        tSideSetTypes( tCount++ ) = static_cast< uint >( DomainType::InterfaceFmFm );
                                     }
                                 }
-                            }
+                            }*/
 
 #ifdef BELFEM_FERROAIR_ENRICHED
                             else if ( tMasterType == DomainType::Air && tSlaveType == DomainType::Ferro )

@@ -103,7 +103,8 @@ namespace belfem
                 // todo : #changescheme
                 //mIntegrationData->populate( aParent->sideset_integration_order(),
                 //                            aParent->integration_scheme() );
-                mIntegrationData->populate( aParent->sideset_integration_order(), IntegrationScheme::LOBATTO );
+                mIntegrationData->populate( aParent->sideset_integration_order(),
+                                            IntegrationScheme::LOBATTO );
 
 
                 this->assume_isogeometry();

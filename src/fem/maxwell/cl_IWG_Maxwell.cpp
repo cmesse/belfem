@@ -360,7 +360,7 @@ namespace belfem
                     uint tN = tOrder == 2 ? 6 : 2 ;
 
                     aGroup->work_G().set_size( 3, 2, 0.0 ); // layer mass
-                    //aGroup->work_H().set_size( 5, 5, 0.0 ); // layer stiffness
+                    aGroup->work_H().set_size( mNumberOfNodesPerElement, tN, 0.0 ); // layer stiffness
 
                     aGroup->work_M().set_size( tN, tN, 0.0 );
                     aGroup->work_L().set_size( tN, tN, 0.0 );
@@ -3295,7 +3295,7 @@ namespace belfem
             aJacobian( 3, 1 ) = aJacobian( 1, 3 ) ;
             aJacobian( 3, 2 ) = aJacobian( 2, 3 ) ;
 
-            aJacobian *= 2.0 ;
+            aJacobian *= 2.0 * mGroup->work_det_J();
         }
 
 //------------------------------------------------------------------------------
@@ -3498,223 +3498,246 @@ namespace belfem
         IWG_Maxwell::compute_thin_shell_error_2d()
         {
 
-
-            Vector< real > & tHm = mMesh->field_data( "_hm" );
-            Vector< real > & tHs = mMesh->field_data( "_hs" );
-            Vector< real > tH( 2 );
-
-            tHm.fill( 0 );
-            tHs.fill( 0 );
-
-
-
+            // collect sidesets
+            Cell< SideSet * > tSideSets ;
             for( mesh::SideSet * s : mMesh->sidesets() )
             {
-                if( mField->sideset_exists( s->id() ) )
-                {
-                    if( mField->sideset( s->id() )->domain_type() == DomainType::ThinShell )
-                    {
-                        // grab sideset
-                        SideSet * tSideSet = mField->sideset( s->id() );
-
-                        // link to sideset
-                        this->link_to_group( tSideSet );
-
-
-                        Matrix< real > & tBm = mGroup->work_B();
-                        Matrix< real > & tBs = mGroup->work_B();
-                        Vector< real > tPhiM( mesh::number_of_nodes( tSideSet->master_type() ) );
-                        Vector< real > tPhiS( mesh::number_of_nodes( tSideSet->slave_type() ) );
-
-                        Vector<  uint > tPoints( 2 );
-                        tPoints( 0 ) = 0 ;
-                        tPoints( 1 ) = mNumberOfIntegrationPoints - 1 ;
-
-                        // loop over all facets
-                        for( Element * tElement : tSideSet->elements() )
-                        {
-                            BELFEM_ASSERT( mGroup->integration_points() ( 0, 0 ) == -1.0 , "we need Lobatto points for the error estimation!" );
-
-                            const IntegrationData * tMaster = mGroup->master_integration(
-                                    tElement->facet()->master_index() ) ;
-
-                            const IntegrationData * tSlave = mGroup->slave_integration(
-                                    tElement->facet()->slave_index() ) ;
-
-                            this->collect_node_coords( tElement->master(), mGroup->work_Xm() );
-                            this->collect_node_coords( tElement->slave(), mGroup->work_Xs() );
-
-                            this->collect_node_data( tElement->master(), "phi", tPhiM );
-                            this->collect_node_data( tElement->slave(), "phi", tPhiS );
-
-                            for( uint k=0; k<tElement->element()->number_of_corner_nodes(); ++k )
-                            {
-                                // element normal
-                                const Vector< real > & tn = tElement->facet()->is_curved() ?
-                                        this->normal_curved_2d( tElement, k ) : this->normal_straight_2d( tElement );
-
-                                // master side
-                                tBm = inv( tMaster->dNdXi( tPoints( k ) ) * mGroup->work_Xm() ) * tMaster->dNdXi( tPoints( k ) );
-
-                                // compute h-vector
-                                tH = tBm * tPhiM ;
-
-                                // compute in-plane component
-                                tHm( tElement->facet()->node( k )->index() ) += tn( 1 ) * tH( 0 ) - tn( 0 ) * tH( 1 );
-
-                                // slave side
-                                tBs = inv( tSlave->dNdXi( tPoints( k ) ) * mGroup->work_Xs() ) * tSlave->dNdXi( tPoints( k ) );
-
-                                // compute h-vector
-                                tH = tBs * tPhiS ;
-
-                                // compute in-plane component
-                                tHs( tElement->facet()->node( k )->index() ) += tn( 1 ) * tH( 0 ) - tn( 0 ) * tH( 1 );
-                            }
-                        }
-                    }
-                }
-            }
-
-
-            comm_barrier() ;
-
-            if( mField->is_master() )
-            {
-                Cell< Vector< real > > tAllMaster ;
-                receive( mField->parent()->comm_table(), tAllMaster );
-
-                Cell< Vector< real > > tAllSlave ;
-                receive( mField->parent()->comm_table(), tAllSlave );
-
-                for( proc_t p=1; p<mField->parent()->number_of_procs() ; ++p )
-                {
-                    // get commtable
-                    const Vector< index_t > tCommTable = mField->parent()->node_table( p );
-
-                    Vector< real > & tMaster = tAllMaster( p );
-                    Vector< real > & tSlave = tAllSlave( p );
-
-                    index_t tNumNodes = tCommTable.length() ;
-
-                    for( index_t k=0; k<tNumNodes; ++k )
-                    {
-                        tHm( tCommTable( k ) ) += tMaster( k );
-                        tHs( tCommTable( k ) ) += tSlave( k );
-                    }
-                }
-
-                index_t tNumNodes = mMesh->number_of_nodes() ;
-                for( index_t k=0; k<tNumNodes; ++k )
-                {
-                    if( mNumShellsPerNode( k ) > 1 )
-                    {
-                        tHm( k ) /= mNumShellsPerNode( k ) ;
-                        tHs( k ) /= mNumShellsPerNode( k );
-                    }
-                }
-            }
-            else
-            {
-                send( mField->parent()->master(), tHm );
-                send( mField->parent()->master(), tHs );
-            }
-
-            mField->distribute_fields( { "_hm", "_hs" } );
-
-            Vector< real > & tError = mMesh->field_data( "lambda_error" ) ;
-
-            for( mesh::SideSet * s : mMesh->sidesets() )
-            {
-                if ( mField->sideset_exists( s->id()))
+                if ( mField->sideset_exists( s->id()) && s->number_of_facets() > 0 )
                 {
                     if ( mField->sideset( s->id())->domain_type() == DomainType::ThinShell )
                     {
                         // grab sideset
-                        SideSet * tSideSet = mField->sideset( s->id());
-
-                        // link to sideset
-                        this->link_to_group( tSideSet );
-
-                        Vector< uint > tPoints( 2 );
-                        tPoints( 0 ) = 0;
-                        tPoints( 1 ) = mNumberOfIntegrationPoints - 1;
-
-                        Matrix< real > & tBm = mGroup->work_B();
-                        Matrix< real > & tBs = mGroup->work_B();
-
-                        Vector< real > tPhiM( mesh::number_of_nodes( tSideSet->master_type()));
-                        Vector< real > tPhiS( mesh::number_of_nodes( tSideSet->slave_type()));
-
-
-                        // loop over all facets
-                        for ( Element * tElement: tSideSet->elements())
-                        {
-
-                            const IntegrationData * tMaster = mGroup->master_integration(
-                                    tElement->facet()->master_index());
-
-                            const IntegrationData * tSlave = mGroup->slave_integration(
-                                    tElement->facet()->slave_index());
-
-                            this->collect_node_coords( tElement->master(), mGroup->work_Xm());
-                            this->collect_node_coords( tElement->slave(), mGroup->work_Xs());
-
-                            this->collect_node_data( tElement->master(), "phi", tPhiM );
-                            this->collect_node_data( tElement->slave(), "phi", tPhiS );
-
-                            real tErr = 0 ;
-
-                            Vector<  uint > tPoints( 2 );
-                            tPoints( 0 ) = 0 ;
-                            tPoints( 1 ) = mNumberOfIntegrationPoints - 1 ;
-
-
-                            for( uint k=0; k<tElement->element()->number_of_corner_nodes(); ++k )
-                            {
-                                // element normal
-                                const Vector< real > & tn = tElement->facet()->is_curved() ?
-                                                            this->normal_curved_2d( tElement, k ) : this->normal_straight_2d( tElement );
-
-
-                                real thm = tHm( tElement->element()->node( k )->index() );
-                                real ths = tHs( tElement->element()->node( k )->index() );
-
-                                if( std::abs( thm ) > BELFEM_EPSILON )
-                                {
-                                    // master side
-                                    tBm = inv( tMaster->dNdXi( tPoints( k )) * mGroup->work_Xm()) *
-                                          tMaster->dNdXi( tPoints( k ));
-
-                                    // compute h-vector
-                                    tH = tBm * tPhiM;
-
-                                    real tEps = ( tn( 1 ) * tH( 0 ) - tn( 0 ) * tH( 1 ) -thm ) / thm;
-
-                                    tErr += tEps * tEps;
-                                }
-
-                                if( std::abs( ths ) > BELFEM_EPSILON )
-                                {
-                                    // slave side
-                                    tBs = inv( tSlave->dNdXi( tPoints( k )) * mGroup->work_Xs()) *
-                                          tSlave->dNdXi( tPoints( k ));
-
-                                    // compute h-vector
-                                    tH = tBs * tPhiS;
-
-                                    // compute in-plane component
-                                    real tEps = ( tn( 1 ) * tH( 0 ) - tn( 0 ) * tH( 1 ) -ths) / ths;
-
-                                    tErr += tEps * tEps;
-                                }
-                            }
-
-                            tError( tElement->facet()->index() ) = tErr ;
-                        }
+                        tSideSets.push( mField->sideset( s->id()));
                     }
                 }
             }
+
+            if ( tSideSets.size() == 0 ) return;
+
+            this->link_to_group( tSideSets( 0 ) );
+
+            if( mNumberOfThinShellLayers == 0 ) return;
+
+            // find superconducting layer
+            uint tLayer = BELFEM_UINT_MAX ;
+            for( uint l=0; l<mNumberOfThinShellLayers; ++l )
+            {
+                // grab material
+                const Material * tMaterial = tSideSets( 0 )->thin_shell_material( l );
+
+                // # temperature
+                if( tMaterial->j_crit( 12.0, 0, 0 ) != 0 )
+                {
+                    tLayer = l ;
+                    break;
+                }
+            }
+            if ( tLayer == BELFEM_UINT_MAX ) return;
+
+            Vector< real > & tJJc = mMesh->field_data( "_jjc" );
+            tJJc.fill( 0.0 );
+            Vector< real > & tError = mMesh->field_data( "lambda_error" ) ;
+
+            for( uint loop = 0; loop<2; ++loop )
+            {
+                bool tSwitch = loop == 0 ;
+
+                // loop over all sidesets
+                for( SideSet * tSideSet : tSideSets )
+                {
+                    // link to sideset
+                    this->link_to_group( tSideSet );
+
+                    BELFEM_ASSERT( mGroup->integration_points()( 0, 0 ) == -1.0,
+                                   "we need Lobatto points for the error estimation!" );
+
+                    Matrix< real > & tBm = mGroup->work_B();
+                    Matrix< real > & tBs = mGroup->work_B();
+                    // Vector< real > tPhiM( mesh::number_of_nodes( tSideSet->master_type() ) );
+                    // Vector< real > tPhiS( mesh::number_of_nodes( tSideSet->slave_type() ) );
+                    Vector< real > & tPhi = mGroup->work_phi();
+
+                    Vector< real > tEdgedofs( 6 );
+                    Vector< uint > tPoints( 2 );
+                    Vector< real > tE( 2 );
+                    Vector< real > tC( 6 ); // curl operator
+                    Vector< real > tH;
+                    real tHt;
+                    real tHn;
+                    real tB;
+                    real tJz;
+                    real tJc;
+                    real tAngle;
+
+                    tPoints( 0 ) = 0;
+                    tPoints( 1 ) = mNumberOfIntegrationPoints - 1;
+
+                    const real tThickness = mGroup->thin_shell_thickness( tLayer );
+                    const Material * tMaterial = tSideSets( 0 )->thin_shell_material( tLayer );
+
+
+
+                    // loop over all elements
+                    for ( Element * tElement: tSideSet->elements())
+                    {
+
+                        const IntegrationData * tIntMaster = mGroup->master_integration(
+                                tElement->facet()->master_index());
+
+                        const IntegrationData * tIntSlave = mGroup->slave_integration(
+                                tElement->facet()->slave_index());
+
+                        this->collect_node_coords( tElement->master(), mGroup->work_Xm());
+                        this->collect_node_coords( tElement->slave(), mGroup->work_Xs());
+
+                        this->collect_node_data( tElement->master(), "phi", tPhi );
+
+                        this->collect_edge_data_from_layer( tElement, "edge_h", tLayer, tEdgedofs );
+
+                        // compute element length
+                        /*real tLength = 0 ;
+                        for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
+                        {
+                            const Vector< real > & tn = this->normal_curved_2d( tElement, k );
+                            tLength += mGroup->integration_weights()( k ) * mGroup->work_det_J() ;
+                        }*/
+
+                        real tErr = 0;
+                        real te = 0.0 ;
+                        real tCount = 0.0 ;
+
+                        for ( uint k: tPoints )
+                        {
+                            // element normal
+                            const Vector< real > & tn = tElement->element()->is_curved() ? this->normal_curved_2d(
+                                    tElement, k ) : this->normal_straight_2d( tElement );
+
+                            // evaluate points for edge function
+                            tE( 0 ) = mEdgeFunctionTS->E( k )( 0, 0 );
+                            tE( 1 ) = mEdgeFunctionTS->E( k )( 0, 1 );
+
+                            // gradient operator master
+                            tBm = inv( tIntMaster->dNdXi( k ) * mGroup->work_Xm()) * tIntMaster->dNdXi( k );
+
+                            // field on master side
+                            tH = -tBm.matrix_data() * tPhi.vector_data();
+
+                            // curl operator
+                            mGroup->work_det_J();
+
+                            // normal component
+                            tHn = tn( 0 ) * tH( 0 ) + tn( 1 ) * tH( 1 );
+
+                            // in-plane component in the middle of the superconducting layer
+                            tHt = tE( 0 ) * tEdgedofs( 2 ) + tE( 1 ) * tEdgedofs( 3 );
+
+                            // magnitude of h
+                            tB = std::sqrt( tHn * tHn + tHt * tHt );
+
+                            // angle
+                            tAngle = tB < BELFEM_EPSILON ? 0 : std::abs( std::asin( tHt / tB ));
+
+                            // magnetic field
+                            tB *= constant::mu0;
+
+                            // curl operator
+                            tC( 0 ) = -0.5 * tE( 0 );
+                            tC( 1 ) = -0.5 * tE( 1 );
+                            tC( 2 ) = 0.;
+                            tC( 3 ) = 0.;
+                            tC( 4 ) = 0.5 * tE( 0 );
+                            tC( 5 ) = 0.5 * tE( 0 );
+                            tC /= 0.5 * tThickness ;
+
+                            // current at this point
+                            tJz = std::abs( dot( tC, tEdgedofs ) );
+
+                            // critical current at this point #temperature
+                            tJc = tMaterial->j_crit( 12.0, tB, tAngle );
+
+                            // resistivity
+                            //real tRho = tMaterial->rho_el( tJz, 12.0, tB, tAngle );
+                            // real te = tRho * tJz ;
+
+                            if ( tSwitch )
+                            {
+                                if ( k == 0 )
+                                {
+                                    tJJc( tElement->element()->node( 0 )->index()) += tJz / tJc;
+                                }
+                                else
+                                {
+                                    tJJc( tElement->element()->node( 1 )->index()) += tJz / tJc;
+                                }
+                            }
+                            else
+                            {
+                                real tjjc = k == 0 ?
+                                            tJJc( tElement->element()->node( 0 )->index()) :
+                                            tJJc( tElement->element()->node( 1 )->index());
+
+                                real tEps = tjjc < 1e-6 ? 0.0 : std::erf( 2.0 * ( std::abs( tJz / tJc - tjjc ) / tjjc ) ) * std::pow( std::max( tjjc, 1.0 ), 2 ) ;
+
+                                if( std::abs( tEps ) > 1e-4 )
+                                {
+                                    tErr += tEps * tEps;
+                                    tCount += 1;
+                                }
+                            }
+                        }
+
+                        tError( tElement->facet()->index()) = tCount > 0 ? std::sqrt( tErr ) / tCount : 0.0 ;
+
+                        // std::cout << tElement->id() << " " << tJz / tJc << " " << std::sqrt( tErr ) << std::endl;
+
+                    } // end loop over all elements
+                } // end loop over all sidesets
+
+                if( tSwitch )
+                {
+                    // wait
+                    comm_barrier() ;
+
+                    if( mField->is_master() )
+                    {
+                        Cell< Vector< real > > tAllData ;
+                        receive( mField->parent()->comm_table(), tAllData );
+
+                        for( proc_t p=1; p<mField->parent()->number_of_procs() ; ++p )
+                        {
+                            // get commtable
+                            const Vector< index_t > tCommTable = mField->parent()->node_table( p );
+
+                            Vector< real > & tData = tAllData( p );
+
+                            index_t tNumNodes = tCommTable.length() ;
+
+                            for( index_t k=0; k<tNumNodes; ++k )
+                            {
+                                tJJc( tCommTable( k ) ) += tData( k );
+                            }
+                        }
+
+                        index_t tNumNodes = mMesh->number_of_nodes() ;
+                        for( index_t k=0; k<tNumNodes; ++k )
+                        {
+                            if( mNumShellsPerNode( k ) > 1 )
+                            {
+                                tJJc( k ) /= mNumShellsPerNode( k ) ;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        send( mField->parent()->master(), tJJc );
+                    }
+
+                    mField->distribute_fields( { "_jjc" } );
+
+                }
+
+            }
+
         }
 
 //------------------------------------------------------------------------------
