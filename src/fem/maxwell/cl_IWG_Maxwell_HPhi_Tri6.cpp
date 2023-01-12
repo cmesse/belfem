@@ -507,7 +507,7 @@ namespace belfem
 
             // get node coords, needed to compute geometry Jacobian
 
-            const Matrix< real > & tXi = mGroup->integration_points() ;
+//            const Matrix< real > & tXi = mGroup->integration_points() ;
 
             // the B-Matrix
             Matrix< real > & tK = mGroup->work_K() ;
@@ -528,15 +528,12 @@ namespace belfem
 
 
             Matrix< real > & tBm = mGroup->work_B() ;
-            Matrix< real > & tBs = mGroup->work_C() ;
+            // Matrix< real > & tBs = mGroup->work_C() ;
 
-
-
-
-            uint p =  aElement->master()->number_of_dofs() + aElement->slave()->number_of_dofs() ;
-            uint q = p + 1 ;
-            uint r = q + 1 ;
-            uint s = r + 1 ;
+            // uint p =  aElement->master()->number_of_dofs() + aElement->slave()->number_of_dofs() ;
+            //uint q = p + 1 ;
+            //uint r = q + 1 ;
+            //uint s = r + 1 ;
 
             // normal of air side
             const Vector< real > & tn = this->normal_straight_2d( aElement );
@@ -547,9 +544,9 @@ namespace belfem
             Vector< real > & tPhi = mPsi ;
             this->collect_node_data( aElement->master(), "phi", tPhi );
 
-            real tValue ;
+            //real tValue ;
 
-            const Material * tFerro = aElement->slave()->material() ;
+            //const Material * tFerro = aElement->slave()->material() ;
 
             for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
             {

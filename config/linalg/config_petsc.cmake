@@ -5,13 +5,12 @@ if( USE_PETSC )
         message(FATAL_ERROR "Turn of MPI if you want to link against PETSC" )
     endif()
 
-    # test if PETSC environent variable was set
+    # test if PETSC environment variable was set
     if( DEFINED ENV{PETSC_DIR} )
 
         if( DEFINED ENV{PETSC_ARCH} )
-            list( APPEND BELFEM_INCLUDES "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/include" )
             list( APPEND BELFEM_INCLUDES "$ENV{PETSC_DIR}/include" )
-            list( APPEND BELFEM_RPATH $ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib )
+            list( APPEND BELFEM_RPATH $ENV{PETSC_DIR}/lib )
             if( APPLE )
                 list( APPEND BELFEM_RPATH /opt/X11/lib )
             endif()

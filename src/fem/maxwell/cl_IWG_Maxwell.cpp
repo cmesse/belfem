@@ -352,6 +352,10 @@ namespace belfem
                     aGroup->work_phi().set_size( mNumberOfNodesPerElement );
                     aGroup->work_psi().set_size( mNumberOfNodesPerElement );
 
+                    aGroup->work_sigma().set_size( mNumberOfNodesPerElement );
+                    aGroup->work_tau().set_size( mNumberOfNodesPerElement );
+                    aGroup->work_chi().set_size( mEdgeDofMultiplicity * mesh::number_of_nodes( aGroup->element_type() ) );
+
                     // the geometry jacobian for the master and slave elements
                     aGroup->work_J().set_size( mNumberOfDimensions, mNumberOfDimensions );
 
@@ -364,18 +368,6 @@ namespace belfem
 
                     aGroup->work_M().set_size( tN, tN, 0.0 );
                     aGroup->work_L().set_size( tN, tN, 0.0 );
-
-                    // data for edge dofs
-                    aGroup->work_sigma().set_size( tN , 0.0 ) ;
-
-                    // todo: add face dofs for 3D
-                    if( mNumberOfDofsPerFace > 0 && mMesh->number_of_dimensions() == 3 )
-                    {
-                        aGroup->work_tau().set_size( 2  * mFaceDofMultiplicity * mNumberOfDofsPerFace, 0.0 );
-                    }
-
-                    // data for temperatures
-                    //aGroup->work_tau().set_size( this->number_of_ghost_sidesets(), 0.0 );
 
                     aGroup->work_nedelec().set_size( mNumberOfDofsPerElement );
 
@@ -3552,7 +3544,7 @@ namespace belfem
                                    "we need Lobatto points for the error estimation!" );
 
                     Matrix< real > & tBm = mGroup->work_B();
-                    Matrix< real > & tBs = mGroup->work_B();
+                    //Matrix< real > & tBs = mGroup->work_B();
                     // Vector< real > tPhiM( mesh::number_of_nodes( tSideSet->master_type() ) );
                     // Vector< real > tPhiS( mesh::number_of_nodes( tSideSet->slave_type() ) );
                     Vector< real > & tPhi = mGroup->work_phi();
@@ -3584,8 +3576,8 @@ namespace belfem
                         const IntegrationData * tIntMaster = mGroup->master_integration(
                                 tElement->facet()->master_index());
 
-                        const IntegrationData * tIntSlave = mGroup->slave_integration(
-                                tElement->facet()->slave_index());
+                        //const IntegrationData * tIntSlave = mGroup->slave_integration(
+                        //        tElement->facet()->slave_index());
 
                         this->collect_node_coords( tElement->master(), mGroup->work_Xm());
                         this->collect_node_coords( tElement->slave(), mGroup->work_Xs());
@@ -3603,7 +3595,7 @@ namespace belfem
                         }*/
 
                         real tErr = 0;
-                        real te = 0.0 ;
+                        //real te = 0.0 ;
                         real tCount = 0.0 ;
 
                         for ( uint k: tPoints )

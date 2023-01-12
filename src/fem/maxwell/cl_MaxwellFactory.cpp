@@ -2085,7 +2085,7 @@ namespace belfem
                 }
 
                 // add iwg to kernel
-                DofManager * tProjector = this->add_postprocessor_to_kernel( tIWG );
+                this->add_postprocessor_to_kernel( tIWG );
 
                 // fix group types of IWG
                 tIWG->update_group_types();
@@ -2463,7 +2463,7 @@ namespace belfem
 
 
             uint tNumZeros = ( uint ) std::log10( mMesh->number_of_blocks() );
-            tNumZeros < 1 ? 1 : tNumZeros ;
+            tNumZeros = tNumZeros < 1 ? 1 : tNumZeros ;
 
             string tFormat = "%0" + std::to_string( tNumZeros ) + "u_%s" ;
 
@@ -2919,7 +2919,6 @@ namespace belfem
             Vector< uint > tMasterTypes ;
 
             Cell< DomainGroup * > & tRawSymmetries = aAntiFlag ? mRawAntiSymmetries : mRawSymmetries ;
-            Cell< DomainGroup * > & tSymmetries = aAntiFlag ? mAntiSymmetries : mSymmetries ;
 
             const DomainType tAirType = aAntiFlag ?
                     DomainType::AntiSymmetryAir
@@ -3573,7 +3572,6 @@ namespace belfem
                 tIntegrator.maxtime() = tBmax ;
                 Vector< real > tY( 1 , tHn );
 
-                uint tn2 = 0 ;
                 Cell< real > tB3 ;
                 Cell< real > tH3 ;
                 while ( ( uint ) tIntegrator.step( tX, tY ) < 2 )
@@ -3698,8 +3696,6 @@ namespace belfem
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                 // Step 7 : create the spline
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-                tn2 = tn0 + tn1 ;
 
                 // help matrix for spline
                 SpMatrix tHelpMatrix;
@@ -3907,7 +3903,6 @@ namespace belfem
                 } // end ferro block
             } // end loop over all blocks
 
-            index_t tNumFacets = mMesh->number_of_facets() ;
             Cell< mesh::Facet * > & tMeshFacets = mMesh->facets() ;
 
             for( mesh::SideSet * tSideSet : mMesh->sidesets() )
@@ -4098,7 +4093,7 @@ namespace belfem
                 Cell< Vector< uint > > tAllData( mKernel->number_of_procs(), {} );
 
                 // populate container
-                for( uint p=1; p<mKernel->number_of_procs(); ++p )
+                for( proc_t p=1; p<mKernel->number_of_procs(); ++p )
                 {
                     // get the comm table
                     const Vector< index_t > & tIndices = mKernel->node_table( p );

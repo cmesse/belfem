@@ -224,12 +224,12 @@ int main( int    argc,
 
    while( tTime < tMaxTime )
    {
-       if( tTimeLoopCSV++ >= 100 )
+       if( tTimeLoopCSV++ >= 1 )
        {
            tTimeLoopCSV = 1 ;
        }
 
-       if( tTimeLoop++ >= 1000 )
+       if( tTimeLoop++ >= 100 )
        {
            // save backup
 	       /*string tString = sprint("%s.%04u", tBackupFile.c_str(), ( unsigned int ) tTimeCount );
@@ -252,6 +252,10 @@ int main( int    argc,
            tTime = tOldTime;
            tTimeLoop = 1;
            tTimeLoopCSV = 1 ;
+
+
+           // save backup
+           tFormulation->save( tBackupFile );
        }
 
        real tOmegaP = tTime == 0 ? 0.5 : tNonlinear.picardOmega ;
@@ -508,8 +512,6 @@ int main( int    argc,
 
        //tMesh->save( "test.exo");
 
-       // save backup
-       tFormulation->save( tBackupFile );
 
        comm_barrier() ;
    }

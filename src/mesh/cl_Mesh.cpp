@@ -661,8 +661,26 @@ namespace belfem
     {
         index_t tCount = 0 ;
 
-        Matrix< index_t > tFacetsPerElement( 6, mElements.size(), 0 );
         Vector< uint > tNumFacetsPerElement( mElements.size(), 0 );
+
+        // count facets per element, since some elements are only connected via facets
+        for( mesh::Facet * tFacet : mFacets )
+        {
+            if( tFacet->has_master()  )
+            {
+                tNumFacetsPerElement( tFacet->master()->index())++;
+            }
+            if( tFacet->has_slave() )
+            {
+                tNumFacetsPerElement( tFacet->slave()->index())++;
+            }
+        }
+
+        // allocate memory
+        Matrix< index_t > tFacetsPerElement( max(tNumFacetsPerElement), mElements.size(), 0 );
+
+        // reset counter
+        tNumFacetsPerElement.fill( 0 );
 
         // count facets per element, since some elements are only connected via facets
         for( mesh::Facet * tFacet : mFacets )

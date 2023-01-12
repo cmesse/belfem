@@ -44,9 +44,16 @@ namespace belfem
                 // set the number of nodes per element
                 mNumberOfNodesPerElement = mesh::number_of_nodes( mElementType );
 
-                mIntegrationData = new IntegrationData( mElementType,
-                                                        mParent->iwg()->interpolation_type() );
-
+                if( mParent->iwg() == NULL )
+                {
+                    mIntegrationData = new IntegrationData( mElementType,
+                                                            InterpolationType::LAGRANGE );
+                }
+                else
+                {
+                    mIntegrationData = new IntegrationData( mElementType,
+                                                            mParent->iwg()->interpolation_type());
+                }
 
                 mIntegrationData->populate( aParent->sideset_integration_order(),
                                             aParent->integration_scheme() );

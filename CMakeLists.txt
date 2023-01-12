@@ -44,6 +44,7 @@ option( USE_MAXWELL "Use Maxwell Modules" ON )
 option( USE_GASMODELS "Build Gas Library" OFF )
 option( USE_STRUMPACK "Link against STRUMPACK" OFF )
 option( USE_STRUMPACK_CUDA "Link against STRUMPACK with CUDA" OFF )
+option( USE_STRUMPACK_ZFP "Link against STRUMPACK with ZFP" ON )
 
 # -------------------------------------------------------------------------
 # Global Parameters

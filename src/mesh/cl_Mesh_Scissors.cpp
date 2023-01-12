@@ -1019,7 +1019,15 @@ namespace belfem
                                     }
                                     else
                                     {
-                                        BELFEM_ERROR( false, "Error while creating cut on Sideset %lu", ( long unsigned int ) tSideSet->id() );
+                                        BELFEM_ERROR( false, "Error while creating cut on Sideset %lu \n (Facet %lu, master %lu is tagged %u, slave %lu is tagged %u, bul looking for tag %u)",
+                                                      ( long unsigned int ) tSideSet->id(),
+                                                      ( long unsigned int ) tFacet->id(),
+                                                      ( long unsigned int ) tFacet->master()->id(),
+                                                      ( unsigned int ) tFacet->master()->geometry_tag(),
+                                                      ( long unsigned int ) tFacet->slave()->id(),
+                                                      ( unsigned int ) tFacet->slave()->geometry_tag(),
+                                                      ( unsigned int ) tPlus
+                                                      );
                                     }
 
                                     // we need this information for the dof linking (todo, can be done prettier)

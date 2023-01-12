@@ -12,7 +12,7 @@
 #include "fn_cross.hpp"
 
 
-//#define HPHI_TRI3_LAMBDAN
+#define HPHI_TRI3_LAMBDAN
 
 namespace belfem
 {
@@ -491,6 +491,13 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+// todo: deleteme
+#ifdef BELFEM_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#endif
+
         void
         IWG_Maxwell_HPhi_Tri3::compute_jacobian_and_rhs_thinshell(
                 Element        * aElement,
@@ -507,28 +514,29 @@ namespace belfem
             // stiffness matrix
             Matrix< real > & tK = mGroup->work_K() ;
 
-            // the sign of the edge, in this case, we use the physical tag
-            //const real tSign = aElement->element()->physical_tag() == 1 ? 1.0 : -1.0 ;
-
-            BELFEM_ASSERT( aElement->element()->physical_tag() == 1 ? 1.0 : -1.0 == ( aElement->edge_direction( 0 ) ? 1.0 : -1.0 ) ,
-                           "Invalid Edge Direction for Element %lu",
-                           ( long unsigned int ) aElement->id() );
-
-            // container for gradient operator
-            Matrix< real > & tBm = mGroup->work_B() ;
-            Matrix< real > & tBs = mGroup->work_D() ;
-
             // coordinates for master
             Matrix< real > & tXm = mGroup->work_Xm() ;
 
             // coordinates for slave
             Matrix< real > & tXs = mGroup->work_Xs() ;
 
-            // expression cross( n, B )
-            Vector< real > tPhi = mGroup->work_phi() ;
+            // container for gradient operator master element
+            Matrix< real > & tBm = mGroup->work_B() ;
 
-            // expression cross( n, B )
-            Vector< real > tnxB = mGroup->work_psi() ;
+            // container for gradient operator slave element
+            Matrix< real > & tBs = mGroup->work_D() ;
+
+            // container for dofs on master
+            Vector< real > & tPhiM = mGroup->work_phi() ;
+
+            // container for dofs on slave
+            Vector< real > & tPhiS = mGroup->work_psi() ;
+
+            // container for L-Matrix on master
+            Vector< real > & tLm = mGroup->work_sigma() ;
+
+            // container for L-Matrix on slave
+            Vector< real > & tLs = mGroup->work_tau() ;
 
             // mass matrix for individual layer
             Matrix< real > & tMlayer = mGroup->work_M() ;
@@ -536,20 +544,20 @@ namespace belfem
             // stiffness matrix for individual layer
             Matrix< real > & tKlayer = mGroup->work_L() ;
 
-            // data for magnetic field (H-data)
-            Vector< real > & tHt = mGroup->work_sigma() ;
+            // container for edge values
+            Vector< real > & tHt = mGroup->work_chi() ;
 
-            // stiffness matrix
-            Matrix< real > & tA = tK;
+            // the sign of the edge, in this case, we use the physical tag
+            //const real tSign = aElement->element()->physical_tag() == 1 ? 1.0 : -1.0 ;
 
-            // additional indices
-            uint p ;
-            uint q ;
+            BELFEM_ASSERT(       aElement->element()->physical_tag() == 1 ? 1.0 : -1.0
+                            == ( aElement->edge_direction( 0 ) ? 1.0 : -1.0 ) ,
+                           "Invalid Edge Direction for Element %lu",
+                           ( long unsigned int ) aElement->id() );
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // reset matrices
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
             tM.fill( 0.0 );
             tK.fill( 0.0 );
             aRHS.fill( 0.0 );
@@ -560,7 +568,6 @@ namespace belfem
 
             // compute the normal
             const Vector< real > & tn = this->normal_straight_2d( aElement );
-
 
             // compute the element length
             const real tElementLength = mGroup->work_det_J() + mGroup->work_det_J();
@@ -582,44 +589,76 @@ namespace belfem
             BELFEM_ASSERT( tMaster->weights().length() == mNumberOfIntegrationPoints, "number of integraiton points on master does not match" );
             BELFEM_ASSERT( tSlave->weights().length() == mNumberOfIntegrationPoints, "number of integraiton points on slave does not match" );
 
-            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            // gradient operator master
-            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
             // gradient operators
             tBm = inv( tMaster->dNdXi( 0 ) * tXm ) * tMaster->dNdXi( 0 ) ;
-            tBs = inv( tSlave->dNdXi( 0 ) * tXs ) * tSlave->dNdXi( 0 ) ;
+            tBs = inv( tSlave->dNdXi( 0 ) * tXs )  * tSlave->dNdXi( 0 ) ;
 
-            this->collect_node_data( aElement->slave(), "phi", tPhi );
-            real tHn  = -0.5 * dot( tn.vector_data(), tBs * tPhi );
-
-            // get phi field
-            this->collect_node_data( aElement->master(), "phi", tPhi );
-
-            // compute normal field (needed for material properties in stiffness matrix)
-            tHn  -= 0.5 * dot( tn.vector_data(), tBm * tPhi );
+            // L-Operator ( computes nxB )
+            crossmat( tn, tBm, tLm );
+            crossmat( tn, tBs, tLs );
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            // contribution for mass and stiffness matrix
+            // interface conditions for H
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+            // pointer to row
+            uint p = 7 + mNumberOfThinShellLayers ;
+
+            // add interface conditions for master
+            tLm *= tElementLength ;
+
+            for( uint k = 0; k<3; ++k )
+            {
+                tK( p, k ) = tLm( k );
+                tK( k, p ) = tLm( k );
+            }
+            tK( 6 , p ) = -tElementLength ;
+            tK( p , 6 ) = -tElementLength ;
+
+            //add interface conditions for slave
+            uint q = p-1;
+            ++p ;
+            tLs *= tElementLength ;
+            for( uint k = 0; k<3; ++k )
+            {
+                tK( p, k+3 ) = tLs( k );
+                tK( k+3, p ) = tLs( k );
+            }
+            tK( q , p ) = -tElementLength ;
+            tK( p , q ) = -tElementLength ;
+
+            // collect dofs from master
+            this->collect_node_data( aElement->master(), "phi", tPhiM );
+
+            // collect dofs from slave
+            this->collect_node_data( aElement->slave(), "phi", tPhiS );
+
+            // compute the normal fields ( should be the same )
+            real tHnm =  dot( tn.vector_data(), tBm*tPhiM );
+            real tHns =  dot( tn.vector_data(), tBs*tPhiS );
+            real tHn = 0.5 * ( tHnm + tHns );
+
+            if(  aElement->id() == 72 )
+            {
+                std::cout << "check H : " << " " << tHnm << " " << tHns << std::endl;
+            }
+
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            // mass and stiffness for the edge elements
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 
             tMlayer( 0, 0 ) = 2.0 ;
             tMlayer( 1, 0 ) = 1.0 ;
             tMlayer( 0, 1 ) = 1.0 ;
             tMlayer( 1, 1 ) = 2.0 ;
-            tMlayer *= constant::mu0 / 6.0 ;
+            tMlayer *= constant::mu0 * tElementLength / 6.0 ;
 
-            // need thicknesses here
-            p = 2 * mNumberOfNodesPerElement ;
+            // reset pointer ;
+            p = 6 ;
 
-            // loop over all layers
-            for( uint l=0; l<mNumberOfThinShellLayers; ++l )
+            for ( uint l=0; l<mNumberOfThinShellLayers; ++l )
             {
-
-                this->collect_edge_data_from_layer( aElement, "edge_h", l, tHt );
-
-                //Vector< real > tH( 2 );
-                //tH = tBm * tPhi ;
 
                 // get thickness of thin shell
                 real t = mGroup->thin_shell_thickness( l );
@@ -629,74 +668,20 @@ namespace belfem
                 tM(p,p+1)   += tMlayer(0,1) * t ;
                 tM(p+1,p+1) += tMlayer(1,1) * t ;
 
+                this->collect_edge_data_from_layer( aElement, "edge_h", l, tHt );
+
                 this->compute_layer_stiffness( aElement, l, tHt, tHn,tKlayer );
-                tK(p,p)     += tKlayer(0,0) ;
-                tK(p+1,p)   += tKlayer(1,0) ;
-                tK(p,p+1)   += tKlayer(0,1) ;
-                tK(p+1,p+1) += tKlayer(1,1) ;
 
-                ++p ;
-
-            }
-
-
-            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            // lambda-condition for master element, air side
-            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-
-
-#ifdef HPHI_TRI3_LAMBDAN
-            q = aRHS.length() - 3 ;
-#else
-            q = aRHS.length() - 2 ;
-#endif
-            // compute the B-Matrix ( is constant for linear elements )
-            crossmat( tn, tBm, tnxB );
-
-
-            // get the column
-            p = 0 ;
-
-            for( uint i=0; i<mNumberOfNodesPerElement; ++i )
-            {
-                tA( p, q ) = tnxB( i ) ;
-                tA( q, p ) = tnxB( i ) ;
-                ++p ;
-            }
-
-
-            // next column
-            q += 1 ;
-
-            crossmat( tn, tBs, tnxB );
-            // loop over all nodes
-            for( uint i=0; i<mNumberOfNodesPerElement; ++i )
-            {
-                tA( p, q ) = tnxB( i ) ;
-                tA( q, p ) = tnxB( i ) ;
+                tK(p,p)     += tKlayer(0,0 ) ;
+                tK(p+1,p)   += tKlayer(1,0 ) ;
+                tK(p,p+1)   += tKlayer(0,1 ) ;
+                tK(p+1,p+1) += tKlayer(1,1 ) ;
                 ++p ;
             }
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            // lambda-condition for master element, sheet side
+            // interface
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            q-= 1 ;
-
-            tA( p, q ) = 1.0 ;
-            tA( q, p ) = 1.0 ;
-
-            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            // lambda-condition for slave element, sheet side
-            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#ifdef HPHI_TRI3_LAMBDAN
-            p = aRHS.length() - 4 ;
-#else
-            p = aRHS.length() - 3 ;
-#endif
-            q+= 1 ;
-            tA( p, q ) = 1.0 ;
-            tA( q, p ) = 1.0 ;
 
 #ifdef HPHI_TRI3_LAMBDAN
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -709,90 +694,69 @@ namespace belfem
             // normal component master
             for( uint i=0; i<mNumberOfNodesPerElement; ++i )
             {
-                tA( p, q )  =  (
-                            tn( 0 ) * tBm( 0, i )
-                          + tn( 1 ) * tBm( 1, i ) );
-                tA( q, p ) = tA( p, q ) ;
+                tK( p, q )  =  (
+                        tn( 0 ) * tBm( 0, i )
+                        + tn( 1 ) * tBm( 1, i ) );
+                tK( q, p ) = tK( p, q ) ;
                 ++q ;
             }
 
             // normal component slave
             for( uint i=0; i<mNumberOfNodesPerElement; ++i )
             {
-                tA( p, q )  =  -(
+                tK( p, q )  =  -(
                         tn( 0 ) * tBs( 0, i )
-                      + tn( 1 ) * tBs( 1, i ) ) ;
-                tA( q, p ) = tA( p, q ) ;
+                        + tn( 1 ) * tBs( 1, i ) ) ;
+                tK( q, p ) = tK( p, q ) ;
                 ++q ;
             }
+#else
+            /*p = 6 ;
+            // recover resistivity from master side
+            real tRho = mMesh->field_data( "elementRho")( mGhostElementMap( aElement->id()
+                                        *  mNumberOfThinShellLayers )->index()  );
 
-#endif
-            /*const IntegrationData * tIntMaster = mGroup->master_integration( aElement->facet()->master_index() );
-            const IntegrationData * tIntSlave = mGroup->slave_integration( aElement->facet()->slave_index() );
 
-            const Vector< real > & tW = mGroup->integration_weights();
 
-            for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+            // get thickness from first layer
+            real t = mGroup->thin_shell_thickness( 0 );
+
+            for( uint k = 0; k<3; ++k )
             {
-                for( uint i=0; i<mNumberOfNodesPerElement; ++i )
-                {
-                    q = mNumberOfNodesPerElement ;
-                    for ( uint j = 0; j < mNumberOfNodesPerElement; ++j )
-                    {
-                        tM( i, q ) += tW( k ) * tIntMaster->N( k )( 0, i )
-                                      * ( tn( 0 ) * tBs( 0, j )
-                                          + tn( 1 ) * tBs( 1, j )) * 0.5 * tElementLength ;
-                        ++q ;
-                    }
+                real tValue = tLm( k ) * tRho / t ;
+                tK( k, p )   =    tValue ;
+                tK( k, p+1 ) =   -tValue ;
+            }
 
-                }
-                p = mNumberOfNodesPerElement ;
-                for( uint i=0; i<mNumberOfNodesPerElement; ++i )
-                {
-                    for ( uint j = 0; j < mNumberOfNodesPerElement; ++j )
-                    {
-                        tM( p, j ) -= tW( k ) * tIntSlave->N( k )( 0, i )
-                                      * ( tn( 0 ) * tBm( 0, j )
-                                          + tn( 1 ) * tBm( 1, j )) * 0.5 * tElementLength ;
-                    }
-                    ++p ;
-                }
+            // recover resistivity from slave side
+            tRho = mMesh->field_data( "elementRho")( mGhostElementMap( aElement->id()
+                                        *  mNumberOfThinShellLayers
+                                         + mNumberOfThinShellLayers  - 1 )->index()  );
+
+            t = mGroup->thin_shell_thickness( mNumberOfThinShellLayers-1 );
+
+            p = 6 + mNumberOfThinShellLayers - 1 ;
+
+            for( uint k = 0; k<3; ++k )
+            {
+                real tValue = tLs( k ) * tRho / t ;
+                tK( k+3, p )   =  -tValue ;
+                tK( k+3, p+1 ) =   tValue ;
             }*/
-
-            // interface matrix
-            Matrix< real > & tL = mGroup->work_H() ;
-            this->collect_edge_data_from_layer( aElement, "edge_h", 0, tHt );
-            this->compute_thinshell_interface( true, aElement, 0, tHt, tHn,tL );
-            p = 6 ;
-            for( uint j=0; j<2; ++j )
-            {
-                for( uint i=0; i<3; ++i )
-                {
-                    tK( i, j+p) = tL( i, j );
-                }
-            }
-            this->collect_edge_data_from_layer( aElement, "edge_h", mNumberOfThinShellLayers-1, tHt );
-            this->compute_thinshell_interface( false, aElement, mNumberOfThinShellLayers-1, tHt, tHn,tL );
-            p = 5 + mNumberOfThinShellLayers ;
-            for( uint j=0; j<2; ++j )
-            {
-                for( uint i=0; i<3; ++i )
-                {
-                    tK( i+3, j+p ) = tL( i, j );
-                }
-            }
-
-            // scale mass matrix with element length
-            // ( thus simplifying an integral over constant)
-            tM *= tElementLength ;
-            tK *= tElementLength ;
+#endif
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            // finish up
+            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
             // compute the right hand side
             aRHS += tM *  this->collect_q0_thinshell( aElement ) ;
 
             // finalize the Jacobian
-            aJacobian += mDeltaTime * mGroup->work_K() ;
+            aJacobian += mDeltaTime * tK  ;
+
         }
+
+
 
 //------------------------------------------------------------------------------
 
@@ -804,17 +768,18 @@ namespace belfem
                 const real aHn,
                 Matrix< real > & aK )
         {
-            // reset matrix
-            aK.fill( 0.0 );
+
+            // todo: compute #temperature
+            real tT = 10.0 ;
+
+            // grab layer thickness
+            const real tLayerThickness = mGroup->thin_shell_thickness( aLayer );
+
+            // compute the element length
+            const real tElementLength = mGroup->work_det_J() + mGroup->work_det_J();
 
             // grab material
             const Material * tMaterial = mGroup->thin_shell_material( aLayer );
-
-            // grab layer thickness
-            const real tThickness = mGroup->thin_shell_thickness( aLayer );
-
-            // for the curl-Operator
-            Matrix< real > & tC = mGroup->work_C();
 
             // integration data
             const IntegrationData * tInteg = mGroup->thinshell_integration();
@@ -823,136 +788,58 @@ namespace belfem
             const Vector< real > & tW = tInteg->weights() ;
             uint tNumIntpoints = tW.length() ;
 
-            // geometry Jacobian
-            real tJ = 0.5 * tThickness ;
-
-            // magnetic field
-            real tH ;
-
-            // todo: compute #temperature
-            real tT = 10.0 ;
+            real tRho = 0. ;
 
             // current density is constant for linear element
-            real tJz = (  aHt( 1 ) - aHt( 0 ) )  / tThickness ;
+            real tJz = (  aHt( 0 ) - aHt( 1 ) )  / tLayerThickness ;
 
-            // curl operator is constant for linear element
-            tC = tInteg->dNdXi( 0 ) ;
-            tC /= tJ ;
-            real tHt ;
-
-            // value for ac losses
-            real tEJ = 0.0 ;
+            // value for ac losses for postprocessing
             real tJJc = 0.0 ;
+
+            // loop over all integration points and compute average rho
             for( uint k=0; k<tNumIntpoints; ++k )
             {
-                // get shape function
+                // compute in-plane component of H
+                real tHt = dot( tInteg->phi( k ), aHt );
 
-                const Matrix< real > & tN = tInteg->N( k );
+                // norm of H
+                real tH = std::sqrt( tHt*tHt + aHn*aHn ) ;
 
-                // in-plane component
-                tHt = tN( 0, 0 ) * aHt( 0 ) + tN( 0, 1 ) * aHt( 1 );
-
-                // field angle and B-Field
-                tH = std::sqrt( tHt*tHt + aHn*aHn ) ;
+                // field angle towards the normal
                 real tAlpha = tH < BELFEM_EPSILON ? 0 : std::abs( std::asin( tHt / tH ) );
 
-                //real tRho = std::min( tMaterial->rho_el( tJz, tT, tB ) + 1e-12 , 1e-3 );
-                real tRho = std::max( tMaterial->rho_el( tJz, tT, constant::mu0*tH, tAlpha ), BELFEM_EPS );
+                // add contribution to rho
+                tRho += tW( k ) * tMaterial->rho_el( tJz, tT, constant::mu0 * tH, tAlpha );
 
-
-                aK += ( tW( k ) * tRho ) * trans( tC ) * tC ;
-
-                // std::cout << k << " " << tMaterial->label() << " B=" << tB << " J=" << tJz << " rho " << tRho << std::endl ;
-
-                tEJ += tW( k ) * tRho ;
                 tJJc += tW( k ) * tJz / tMaterial->j_crit( tT, constant::mu0*tH, tAlpha );
             }
 
-            // scale the value of the stiffness matrix
-            aK  *= tJ ;
-
-            // compute element length and scale the value of EJ to the cross section
-            tEJ *= tJz * tJz * 0.5 ;
+            // scale rho and J/Jc, because sum w = 2
+            tRho *= 0.5 ;
             tJJc *= 0.5 ;
 
-            // compute the field index
-            index_t tIndex = mGhostElementMap( aElement->id()
-                    *  mGroup->number_of_thin_shell_layers() + aLayer )->index() ;
+            // assemble the stiffness
+            real tValue = tRho * tElementLength / tLayerThickness ;
 
-            mMesh->field_data( "elementEJ")( tIndex ) = tEJ ;
+            aK( 0, 0 ) =  tValue ;
+            aK( 1, 0 ) = -tValue ;
+            aK( 0, 1 ) = -tValue ;
+            aK( 1, 1 ) =  tValue ;
+
+            // compute the field index for postprocessing
+            index_t tIndex = mGhostElementMap( aElement->id()
+                               *  mGroup->number_of_thin_shell_layers() + aLayer )->index() ;
+
+            mMesh->field_data( "elementEJ")( tIndex ) = tRho * tJz * tJz ;
             mMesh->field_data( "elementJ")( tIndex )  = tJz ;
             mMesh->field_data( "elementJJc")( tIndex )  = tJJc ;
+            mMesh->field_data( "elementRho")( tIndex )  = tRho ;
+
         }
 
-
-//------------------------------------------------------------------------------
-
-        void
-        IWG_Maxwell_HPhi_Tri3::compute_thinshell_interface(
-                const bool aMaster,
-                Element * aElement,
-                const uint aLayer,
-                const Vector < real > & aHt,
-                const real              aHn,
-                Matrix< real > & aL )
-        {
-            // grab material
-            const Material * tMaterial = mGroup->thin_shell_material( aLayer );
-
-            // grab layer thickness
-            const real tThickness = mGroup->thin_shell_thickness( aLayer );
-
-            // for the curl-Operator
-            Matrix< real > & tC = mGroup->work_C();
-
-            // integration data
-            const IntegrationData * tInteg = mGroup->thinshell_integration();
-
-            // normal vector
-            const Vector< real > & tN = mNormal2D ;
-
-            // geometry Jacobian
-            real tJ = 0.5 * tThickness ;
-
-            // todo: compute #temperature
-            real tT = 10.0 ;
-
-            // current density is constant for linear element
-            real tJz = (  aHt( 1 ) - aHt( 0 ) )  / tThickness ;
-
-            // curl operator is constant for linear element
-            tC = tInteg->dNdXi( 0 ) ;
-            tC /= tJ ;
-
-            // container for gradient operator, this has already been computed
-            const Matrix< real > & tB = aMaster ? mGroup->work_B() : mGroup->work_D() ;
-
-            // in-plane component
-            const real tHt = aMaster ? aHt( 0 ) : aHt( 1 );
-
-            // field angle and B-Field
-            real tH = std::sqrt( tHt*tHt + aHn*aHn ) ;
-            real tAlpha = tH < BELFEM_EPSILON ? 0 : std::abs( std::asin( tHt / tH ) );
-
-            // resistivity
-            real tRho = std::max( tMaterial->rho_el( tJz, tT, constant::mu0*tH, tAlpha ), BELFEM_EPS );
-
-            for( uint j=0; j<2; ++j )
-            {
-                for( uint i=0; i<3; ++i )
-                {
-                    // note, the we multiply this with the element length later on
-                    aL( i, j ) = tRho *
-                            ( tN( 1 ) * tB( 0, i )
-                            - tN( 0 ) * tB( 1, i ) ) * tC( 0, j ) ;
-                }
-            }
-
-            if( aMaster )
-            {
-                aL *= -1. ;
-            }
-        }
+#ifdef BELFEM_GCC
+#pragma GCC diagnostic pop
+#endif
 
 //------------------------------------------------------------------------------
 

@@ -62,6 +62,7 @@ int main( int    argc,
     // now we grab the first field of the kernel
     Field * tField = tKernel.field( 0 );
 
+
     // and link it with the equation object
     tField->set_integrated_weak_governing_equation( &tIWG );
 
@@ -81,6 +82,7 @@ int main( int    argc,
 #else
     tField->set_solver( gDefaultSolver );
 #endif
+
     // select the material
     tField->block( 26 )->set_material( MaterialType::Copper ); // 26
 

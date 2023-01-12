@@ -171,17 +171,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            void
-            compute_thinshell_interface(
-                    const bool aMaster,
-                    Element * aElement,
-                    const uint aLayer,
-                    const Vector < real > & aHt,
-                    const real              aHn,
-                    Matrix< real > & aL );
-
-//------------------------------------------------------------------------------
-
             const Vector< real > &
             collect_q0_thinshell( Element * aElement );
 

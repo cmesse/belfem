@@ -237,8 +237,6 @@ namespace belfem
             if ( mImposing == BoundaryConditionImposing::Dirichlet )
             {
 
-                uint tCount = 0;
-
                 for ( string & tDofLabel: tAllDofs )
                 {
                     // get the type id of phi

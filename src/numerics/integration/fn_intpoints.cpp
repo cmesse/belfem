@@ -480,7 +480,7 @@ namespace belfem
                         Vector< real > tPoints( tN );
 
                         intpoints_lobatto( &tN, aWeights.data(), tPoints.data() );
-                        for( uint k=0; k<tN; ++k )
+                        for( int k=0; k<tN; ++k )
                         {
                             aPoints( 0, k ) = tPoints( k );
                         }

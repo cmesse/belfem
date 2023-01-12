@@ -421,10 +421,8 @@ namespace belfem
         {
 
             real tF = 1 ;
-            //real tdF ;
             uint tCount = 0 ;
-            real aMu ;
-            // real tdNu ;
+
 
             real tB ;
             real tB0 = constant::mu0 * aH ;
