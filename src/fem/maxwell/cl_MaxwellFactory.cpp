@@ -252,8 +252,8 @@ namespace belfem
         string
         MaxwellFactory::backupfile() const
         {
-            return mInputFile.section("output")->key_exists("backupfile") ?
-                   mInputFile.section("output")->get_string("backupfile") :
+            return mInputFile.section("output")->key_exists("backupFile") ?
+                   mInputFile.section("output")->get_string("backupFile") :
                    "memdump.hdf5" ;
         }
 
@@ -274,6 +274,26 @@ namespace belfem
         MaxwellFactory::maxtime() const
         {
             return mInputFile.section("timestepping")->get_value("maxtime", "s").first ;
+        }
+
+//------------------------------------------------------------------------------
+
+        uint
+        MaxwellFactory::meshdump() const
+        {
+            return mInputFile.section("output")->key_exists("meshDump") ?
+                   mInputFile.section("output")->get_int( "meshDump") :
+                   1 ;
+        }
+
+//------------------------------------------------------------------------------
+
+        uint
+        MaxwellFactory::csvdump() const
+        {
+            return mInputFile.section("output")->key_exists("csvDump") ?
+                   mInputFile.section("output")->get_int( "csvDump") :
+                   1 ;
         }
 
 
@@ -1536,6 +1556,9 @@ namespace belfem
                 }
             }
 
+            // we need to make this list unique again, since side sets can be united to cuts
+            unique( mSideSetIDs );
+
             // wait for other procs
             comm_barrier();
 
@@ -1937,9 +1960,10 @@ namespace belfem
                     }
                 }
             }
-            for(  DomainType tType : mSideSetTypes )
+
+            for( uint s=0; s<mSideSetIDs.length(); ++s )
             {
-                if( tType == DomainType::Cut )
+                if( mSideSetTypes( s ) == DomainType::Cut )
                 {
                     ++tCutCount ;
                 }
@@ -2083,6 +2107,7 @@ namespace belfem
                     Cell< DomainType > tCutTypes( tCuts.length(), DomainType::Cut );
                     tIWG->set_sidesets( tCuts, tCutTypes );
                 }
+
 
                 // add iwg to kernel
                 this->add_postprocessor_to_kernel( tIWG );
@@ -2708,6 +2733,7 @@ namespace belfem
 
                             DomainType tSlaveType
                                     = static_cast< DomainType >( tFacet->slave()->physical_tag());
+
                             // check if this sideset is an interface
                             if (( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Air )
                                 || ( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Ferro )
@@ -2746,13 +2772,6 @@ namespace belfem
                                ||( tMasterType == DomainType::Air  && tSlaveType == DomainType::Ferro ) )
                             {
                                 ++tCount ;
-                            }
-#else
-                            // check if this sideset is an interface
-                            if (( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Air )
-                                || ( tMasterType == DomainType::Conductor && tSlaveType == DomainType::Ferro ))
-                            {
-                                ++tCount;
                             }
 #endif
                         }
@@ -2895,7 +2914,10 @@ namespace belfem
                 // flag all interfaces
                 for( DomainGroup * tInterface : mInterfaces )
                 {
-                    tInterface->flag();
+                    if( tInterface->type() != DomainType::UNDEFINED )
+                    {
+                        tInterface->flag() ;
+                    }
                 }
             }
 
@@ -3441,7 +3463,6 @@ namespace belfem
                     if ( !tSideSetTypeMap.key_exists( tID ) )
                     {
                         tSideSetTypeMap[ tID ] = tGroup->type();
-
                     }
                     mSideSetIDs( tCount++ ) = tID ;
                 }

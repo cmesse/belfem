@@ -16,6 +16,8 @@
 #include "fn_sum.hpp"
 
 //#include "fn_FEM_compute_element_current_thinshell.hpp"
+#include "cl_MaxwellJob.hpp" // delete me
+
 #include "cl_Pipette.hpp"
 #include "fn_rcond.hpp"
 #ifdef BELFEM_GCC
@@ -59,58 +61,9 @@ int main( int    argc,
     // flag telling if we compute the norm of b
     bool tComputeNormB      = tFactory->compute_normb() ;
 
-    /*tMesh->unflag_all_nodes();
-    tMesh->block( 1 )->flag_nodes();
-    for( mesh::Node * tNode : tMesh->nodes() )
-    {
-        if( tNode->is_flagged() )
-        {
-            real tX = tNode->x() ;
-            real tY = tNode->y() ;
-            tNode->set_coords( tX, tY, 0.001 );
-        }
-    }
-
-    tMesh->unflag_all_nodes();
-    tMesh->block( 2 )->flag_nodes();
-    for( mesh::Node * tNode : tMesh->nodes() )
-    {
-        if( tNode->is_flagged() )
-        {
-            real tX = tNode->x() ;
-            real tY = tNode->y() ;
-            tNode->set_coords( tX, tY, 0.00066 );
-        }
-    }
-
-    tMesh->unflag_all_nodes();
-    tMesh->block( 3 )->flag_nodes();
-    for( mesh::Node * tNode : tMesh->nodes() )
-    {
-        if( tNode->is_flagged() )
-        {
-            real tX = tNode->x() ;
-            real tY = tNode->y() ;
-            tNode->set_coords( tX, tY, -0.00066 );
-        }
-    }
-
-
-    tMesh->unflag_all_nodes();
-    tMesh->block( 4 )->flag_nodes();
-    for( mesh::Node * tNode : tMesh->nodes() )
-    {
-        if( tNode->is_flagged() )
-        {
-            real tX = tNode->x() ;
-            real tY = tNode->y() ;
-            tNode->set_coords( tX, tY, -0.001 );
-        }
-    }
-    tMesh->save( "mesh.vtk"); */
-
     // get the kernel
     Kernel * tKernel = tFactory->kernel() ;
+
 
     // get the magnetic field
     DofManager * tMagfield = tFactory->magnetic_field() ;
@@ -164,27 +117,6 @@ int main( int    argc,
         tTimeCount = 0 ;
     }
 
-    // begin delete me
-    /* real tDz = 0 ;
-
-    for( id_t b=1; b<9; ++b )
-    {
-        tDz += 0.005 ;
-        tMesh->unflag_all_nodes();
-        tMesh->block( b )->flag_nodes();
-        for ( mesh::Node * tNode: tMesh->nodes())
-        {
-            if ( tNode->is_flagged())
-            {
-                tNode->set_coords( tNode->x(), tNode->y(), tDz );
-            }
-        }
-    }
-
-    tMesh->save( "test.vtk");
-
-    //exit( 0 ); */
-
     // end delete me
    const real tDeltaTime = tFormulation->timestep();
    real & tTime = tMesh->time_stamp() ;
@@ -220,22 +152,39 @@ int main( int    argc,
    //    tMesh->save( tOutFile );
    //}
     //tMesh->save( tOutFile );
-    uint tTimeLoopCSV = 1 ;
+   uint tTimeLoopCSV = 1 ;
+
+   const uint tMeshDump = tFactory->meshdump() ;
+   const uint tCsvDump  = tFactory->csvdump() ;
 
    while( tTime < tMaxTime )
    {
-       if( tTimeLoopCSV++ >= 1 )
+       if( tTimeLoopCSV++ >= tCsvDump )
        {
            tTimeLoopCSV = 1 ;
        }
 
-       if( tTimeLoop++ >= 100 )
+       if( tTimeLoop++ >= tMeshDump )
        {
            // save backup
 	       /*string tString = sprint("%s.%04u", tBackupFile.c_str(), ( unsigned int ) tTimeCount );
 
            // save backup
            tFormulation->save( tString ); */
+
+           // save backup
+           tFormulation->save( tBackupFile );
+
+           // todo: move this somewhere else
+           if( tMesh->number_of_dimensions() == 3 )
+           {
+               tMagfield->synchronize_fields( { "elementJx", "elementJy", "elementJz", "elementEJ", "elementJJc", "elementRho" } );
+           }
+           else
+           {
+               tMagfield->synchronize_fields( { "elementJz", "elementEJ", "elementJJc", "elementRho" } );
+           }
+
 
            tMagfield->postprocess() ;
 
@@ -244,18 +193,12 @@ int main( int    argc,
                compute_normb( tMagfield, false );
            }
 
-
            // save mesh
            real tOldTime = tTime;
            tTime *= 1000.0;
            tMesh->save( tOutFile );
            tTime = tOldTime;
            tTimeLoop = 1;
-           tTimeLoopCSV = 1 ;
-
-
-           // save backup
-           tFormulation->save( tBackupFile );
        }
 
        real tOmegaP = tTime == 0 ? 0.5 : tNonlinear.picardOmega ;
@@ -333,7 +276,7 @@ int main( int    argc,
 
            // synchronize ej because we need this for the quench
            tMagfield->collect_field("elementEJ");
-           tMagfield->collect_field( "elementJ");
+           tMagfield->collect_field( "elementJz");
 
            tMagfield->solve();
 
@@ -386,7 +329,7 @@ int main( int    argc,
                mesh::Pipette tPipette;
 
                Vector< real > & tEJel = tMesh->field_data( "elementEJ" );
-               Vector< real > & tJel = tMesh->field_data( "elementJ" );
+               Vector< real > & tJel = tMesh->field_data( "elementJz" );
                Vector< real > & tJJcel = tMesh->field_data( "elementJJc" );
                Vector< real > & tRhoel = tMesh->field_data( "elementRho" );
 
@@ -452,7 +395,7 @@ int main( int    argc,
                        }
                    }
                }
-               tMagfield->synchronize_fields( { "elementJ" } );
+               tMagfield->synchronize_fields( { "elementJz" } );
                Vector< real > tAllI( comm_size(), 0.0 );
                receive( tKernel->comm_table(), tAllI );
                tAllI( 0 ) = 0;
@@ -494,7 +437,7 @@ int main( int    argc,
                        }
                    }
                }
-               tMagfield->synchronize_fields( { "elementJ" } );
+               tMagfield->synchronize_fields( { "elementJz" } );
 
                send( 0, tI );
 

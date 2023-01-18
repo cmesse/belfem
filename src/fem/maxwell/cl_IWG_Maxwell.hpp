@@ -85,6 +85,9 @@ namespace belfem
             // this vector is needed for the error estimation in the thin shell mode
             Vector< uint > mNumShellsPerNode ;
 
+            Vector< real > mWorkCurrent = { 0, 0, 0 };
+            Vector< real > mWorkCurrentK = { 0, 0, 0 };
+
 //------------------------------------------------------------------------------
         private:
 //------------------------------------------------------------------------------
@@ -118,6 +121,13 @@ namespace belfem
             Cell < string > mNedelecFields = { "edge_h", "edge_h0", "shell_edge_h", "shell_edge_h0" };
             Cell < string > mFaceFields = { "face_h", "face_h0", "face_edge_h", "face_edge_h0" };
 
+
+            // current evaluation
+            real
+            ( IWG_Maxwell::*mComputeCurrent )(
+                    Element * aElement,
+                    const uint aIndex
+                    );
 
 //------------------------------------------------------------------------------
         public:
@@ -163,6 +173,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            // todo: remove this!
             virtual real
             compute_element_current( Element * aElement );
 
@@ -547,6 +558,16 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
+            write_element_data_to_mesh(
+                    Element * aElement,
+                    const real aJ,
+                    const real aJJcrit,
+                    const real aRho,
+                    const real aEJ );
+
+//------------------------------------------------------------------------------
+
+            void
             sc_matrices_const_higher_order(
                     Element * aElement,
                     Matrix< real > & aM,
@@ -627,6 +648,31 @@ namespace belfem
 
             const IntegrationData *
             integration_data_tet( Element * aElement );
+
+//------------------------------------------------------------------------------
+
+            real
+            compute_current( Element * aElement, const uint aIndex=0 );
+
+//------------------------------------------------------------------------------
+
+            real
+            compute_current_2d_first_order( Element * aElement, const uint aIndex );
+
+//------------------------------------------------------------------------------
+
+            real
+            compute_current_3d_first_order( Element * aElement, const uint aIndex );
+
+//------------------------------------------------------------------------------
+
+            real
+            compute_current_2d_higher_order( Element * aElement, const uint aIndex );
+
+//------------------------------------------------------------------------------
+
+            real
+            compute_current_3d_higher_order( Element * aElement, const uint aIndex );
 
 //------------------------------------------------------------------------------
         };
@@ -902,6 +948,93 @@ namespace belfem
         IWG_Maxwell::num_shells_per_node()
         {
             return mNumShellsPerNode ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline real
+        IWG_Maxwell::compute_current( Element * aElement, const uint aIndex )
+        {
+            return ( this->*mComputeCurrent ) ( aElement, aIndex );
+        }
+
+//------------------------------------------------------------------------------
+
+        inline real
+        IWG_Maxwell::compute_current_2d_first_order( Element * aElement, const uint aIndex  )
+        {
+            real aJz = dot( mEdgeFunction->C( aIndex ).row( 0 ), mGroup->work_nedelec() );
+            mMesh->field_data( "elementJz")( aElement->element()->index() )  = aJz ;
+
+            return aJz ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline real
+        IWG_Maxwell::compute_current_3d_first_order( Element * aElement, const uint aIndex  )
+        {
+            mWorkCurrent = mEdgeFunction->C( aIndex ).row( 0 ) * mGroup->work_nedelec();
+
+            mMesh->field_data( "elementJx" )( aElement->element()->index()) = mWorkCurrent( 0 );
+            mMesh->field_data( "elementJy" )( aElement->element()->index()) = mWorkCurrent( 1 );
+            mMesh->field_data( "elementJz" )( aElement->element()->index()) = mWorkCurrent( 2 );
+
+            return norm( mWorkCurrent );
+        }
+
+//------------------------------------------------------------------------------
+
+        inline real
+        IWG_Maxwell::compute_current_2d_higher_order( Element * aElement, const uint aIndex  )
+        {
+            mWorkCurrentK( 2 ) = dot( mEdgeFunction->C( aIndex ).row( 0 ), mGroup->work_nedelec() );
+
+            if( aIndex == 0 )
+            {
+                mWorkCurrent( 2 ) = mGroup->integration_weights()( aIndex ) * mWorkCurrentK( 2 ) ;
+            }
+            else if( aIndex == mNumberOfIntegrationPoints )
+            {
+                mWorkCurrent( 2 ) += mGroup->integration_weights()( aIndex ) * mWorkCurrentK( 2 ) ;
+                mWorkCurrent( 2 ) /= mEdgeFunction->sum_w() ;
+
+                mMesh->field_data( "elementJz")( aElement->element()->index() )  = mWorkCurrent( 2 ) ;
+            }
+            else
+            {
+                mWorkCurrent( 2 ) += mGroup->integration_weights()( aIndex ) * mWorkCurrentK( 2 ) ;
+            }
+
+            return mWorkCurrent( 2 );
+        }
+
+//------------------------------------------------------------------------------
+
+        inline real
+        IWG_Maxwell::compute_current_3d_higher_order( Element * aElement, const uint aIndex  )
+        {
+            mWorkCurrentK = mEdgeFunction->C( aIndex ).row( 0 ) * mGroup->work_nedelec() * mGroup->integration_weights()( aIndex );
+
+            if( aIndex == 0 )
+            {
+                mWorkCurrent = mGroup->integration_weights()( aIndex ) * mWorkCurrentK ;
+            }
+            else if( aIndex == mNumberOfIntegrationPoints )
+            {
+                mWorkCurrent +=  mGroup->integration_weights()( aIndex ) * mWorkCurrentK ;
+                mWorkCurrent /= mEdgeFunction->sum_w() ;
+
+                mMesh->field_data( "elementJx")( aElement->element()->index() )  = mWorkCurrent( 0 ) ;
+                mMesh->field_data( "elementJy")( aElement->element()->index() )  = mWorkCurrent( 1 ) ;
+                mMesh->field_data( "elementJz")( aElement->element()->index() )  = mWorkCurrent( 2 ) ;
+            }
+            else
+            {
+                mWorkCurrent +=  mGroup->integration_weights()( aIndex ) * mWorkCurrentK ;
+            }
+
+            return norm( mWorkCurrentK );
         }
 
 //------------------------------------------------------------------------------

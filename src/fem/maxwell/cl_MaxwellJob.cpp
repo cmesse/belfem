@@ -242,7 +242,6 @@ namespace belfem
             tFile.load_data( "M_sc", tM );
             tJ = tM + mEquation->timestep() * tK ;
 
-
             // compare results
             aResult( 0 ) = r2( tJacobian, tJ );
 

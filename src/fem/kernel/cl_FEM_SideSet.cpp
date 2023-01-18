@@ -107,11 +107,10 @@ namespace belfem
                 mIntegrationData = new IntegrationData( mElementType,
                                                         mParent->iwg()->interpolation_type() );
 
-                // todo : #changescheme
-                //mIntegrationData->populate( aParent->sideset_integration_order(),
-                //                            aParent->integration_scheme() );
+                // todo : #changescheme #lobatto
                 mIntegrationData->populate( aParent->sideset_integration_order(),
-                                            IntegrationScheme::LOBATTO );
+                                            aParent->integration_scheme() );
+
 
 
                 this->assume_isogeometry();

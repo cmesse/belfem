@@ -1302,6 +1302,7 @@ namespace belfem
         // allocate facet container
         mConnectors.set_size( tCount, nullptr );
 
+
         // reset facet counter
         tCount = 0;
 

@@ -98,6 +98,10 @@ namespace belfem
         ( const real aJ, const real aT, const real aB, const real aAngle ) const;
 
         real
+        ( MaxwellMaterial::*mFunRhoJcrit )
+                ( const real aJ, const real aJc, const real aT, const real aB, const real aAngle ) const;
+
+        real
         ( MaxwellMaterial::*mFunJcrit )
                 (  const real aT, const real aB, const real aAngle ) const;
 
@@ -255,6 +259,16 @@ namespace belfem
         creep_expinent_minus_1() const ;
 
 //----------------------------------------------------------------------------
+
+        void
+        compute_jcrit_and_rho( real & aJcrit,
+                                                real & aRho,
+                                                const real aJ=0,
+                                                const real aT=0,
+                                                const real aB=0,
+                                                const real aAngle=0 ) const ;
+
+//----------------------------------------------------------------------------
     private:
 //----------------------------------------------------------------------------
 
@@ -312,6 +326,16 @@ namespace belfem
 
         real
         rho_el_spline_t( const real aJ, const real aT=BELFEM_TREF, const real aB=0, const real aAngle=0   ) const ;
+//----------------------------------------------------------------------------
+
+        real
+        rho_el_jc_const ( const real aJ, const real aJc, const real aT=BELFEM_TREF, const real aB=0, const real aAngle=0 ) const ;
+
+        real
+        rho_el_jc_powerlaw( const real aJ, const real aJc, const real aT=BELFEM_TREF, const real aB=0, const real aAngle=0) const ;
+
+        real
+        rho_el_jc_spline_t( const real aJ, const real aJc, const real aT=BELFEM_TREF, const real aB=0, const real aAngle=0 ) const ;
 
 //---------------------------------------------------------------------------
     };
@@ -357,13 +381,50 @@ namespace belfem
 
 //----------------------------------------------------------------------------
 
+        inline void
+        MaxwellMaterial::compute_jcrit_and_rho( real & aJcrit,
+                               real & aRho,
+                               const real aJ,
+                               const real aT,
+                               const real aB,
+                               const real aAngle ) const
+        {
+            aJcrit =  ( this->*mFunJcrit )( aT, aB, aAngle );
+            aRho = ( this->*mFunRhoJcrit )( aJ, aJcrit, aT, aB, aAngle );
+        }
+
+//----------------------------------------------------------------------------
+
         inline real
         MaxwellMaterial::rho_el_powerlaw( const real aJ, const real aT, const real aB, const real aAngle ) const
         {
             real tJc = ( this->*mFunJcrit )( aT, aB, aAngle );
-            real tNm1 = ( this->*mFunMm1 )( aT, aB );
 
-            return  std::min( ( mEc / tJc ) * std::pow( aJ / ( tJc + BELFEM_EPSILON ), tNm1 ) , mRhoMax );
+            return  std::min( ( mEc / tJc ) * std::pow( aJ / ( tJc + BELFEM_EPSILON ), ( this->*mFunMm1 )( aT, aB ) ) , mRhoMax );
+        }
+
+//----------------------------------------------------------------------------
+
+        inline real
+        MaxwellMaterial::rho_el_jc_const ( const real aJ, const real aJc, const real aT, const real aB, const real aAngle ) const
+        {
+            return mRhoc ;
+        }
+
+//----------------------------------------------------------------------------
+
+        inline real
+        MaxwellMaterial::rho_el_jc_powerlaw( const real aJ, const real aJc, const real aT, const real aB, const real aAngle ) const
+        {
+            return  std::min( ( mEc / aJc ) * std::pow( aJ / ( aJc + BELFEM_EPSILON ), ( this->*mFunMm1 )( aT, aB ) ) , mRhoMax );
+        }
+
+//----------------------------------------------------------------------------
+
+        inline real
+        MaxwellMaterial::rho_el_jc_spline_t( const real aJ, const real aJc, const real aT, const real aB, const real aAngle ) const
+        {
+            return  mRhoSpline->eval( aT );
         }
 
 //----------------------------------------------------------------------------

@@ -23,16 +23,17 @@ if ( USE_GASMODELS )
             mesh
             integration
             ode
+            materials
             interpolation
+            integration
             edgeinterpolation
             gastables
             gasmodels
             iwg
-            maxwell
-            materials
             kernel
             postproc
-            integration )
+            maxwell
+             )
 else()
     set ( LIBLIST
             sparse
@@ -40,14 +41,14 @@ else()
             mesh
             integration
             ode
+            materials
             interpolation
+            integration
             edgeinterpolation
             iwg
-            maxwell
-            materials
             kernel
             postproc
-            integration )
+            maxwell )
 endif()
 
 
@@ -58,14 +59,14 @@ endif()
 
 
 
-set( EXECNAME petsctst )
-set( MAIN petsctst.cpp)
-include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
+#set( EXECNAME petsctst )
+#set( MAIN petsctst.cpp)
+#include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
 
 #set( EXECNAME test_cut )
 #set( MAIN test_cut.cpp)
 #include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
 
-set( EXECNAME test_input )
-set( MAIN test_input.cpp)
+set( EXECNAME hphirun )
+set( MAIN hphirun.cpp)
 include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )

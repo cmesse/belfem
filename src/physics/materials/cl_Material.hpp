@@ -262,9 +262,17 @@ namespace belfem
         virtual
         real rho_el ( const real aJ=0, const real aT=0, const real aB=0, const real aAngle=0 ) const ;
 
-        // electric resistance
+        // critical current
         virtual
         real j_crit( const real aT=0, const real aB=0, const real aAngle=0 ) const ;
+
+        virtual void
+        compute_jcrit_and_rho( real & aJcrit,
+                               real & aRho,
+                               const real aJ=0,
+                               const real aT=0,
+                               const real aB=0,
+                               const real aAngle=0 ) const ;
 
         // the n-1 value
         virtual

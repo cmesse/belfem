@@ -228,6 +228,12 @@ namespace belfem
             real
             maxtime() const ;
 
+            uint
+            meshdump() const ;
+
+            uint
+            csvdump() const ;
+
             NonlinearSettings
             nonlinear_settings() ;
 

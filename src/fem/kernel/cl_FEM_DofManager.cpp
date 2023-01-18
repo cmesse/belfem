@@ -937,6 +937,7 @@ namespace belfem
         void
         DofManager::postprocess()
         {
+
             for ( DofManager * tProjector : mPostprocessors )
             {
                 //tProjector->compute_jacobian();

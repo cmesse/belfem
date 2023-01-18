@@ -49,7 +49,7 @@ namespace belfem
             mFields.MagneticFieldDensity     = { "bx", "by", "bz" };
             mFields.CurrentDensity = {  "jz" };
             mFields.CurrentBC = { "lambda_I" };
-            mFields.Ghost = { "elementEJ", "elementJ", "elementJJc", "elementRho" };
+            mFields.Ghost = { "elementEJ", "elementJz", "elementJJc", "elementRho" };
 
             mEdgeDofMultiplicity = 1 ;
             mFaceDofMultiplicity = 0 ;
@@ -241,7 +241,6 @@ namespace belfem
 
             // scaling parameter
             real tScale = mGroup->work_det_J() * constant::mu0 * this->timestep() ;
-
             for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
             {
                 const Matrix< real > & tE = mEdgeFunction->E( k );
@@ -297,6 +296,7 @@ namespace belfem
             aJacobian( 3, 6 ) = tNxB( 0 );
             aJacobian( 4, 6 ) = tNxB( 1 );
             aJacobian( 5, 6 ) = tNxB( 2 );
+
          }
 
 //------------------------------------------------------------------------------
@@ -638,10 +638,10 @@ namespace belfem
             real tHns =  dot( tn.vector_data(), tBs*tPhiS );
             real tHn = 0.5 * ( tHnm + tHns );
 
-            if(  aElement->id() == 72 )
-            {
-                std::cout << "check H : " << " " << tHnm << " " << tHns << std::endl;
-            }
+            //if(  aElement->id() == 72 )
+            //{
+            //    std::cout << "check H : " << " " << tHnm << " " << tHns << std::endl;
+           // }
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             // mass and stiffness for the edge elements
@@ -831,7 +831,7 @@ namespace belfem
                                *  mGroup->number_of_thin_shell_layers() + aLayer )->index() ;
 
             mMesh->field_data( "elementEJ")( tIndex ) = tRho * tJz * tJz ;
-            mMesh->field_data( "elementJ")( tIndex )  = tJz ;
+            mMesh->field_data( "elementJz")( tIndex )  = tJz ;
             mMesh->field_data( "elementJJc")( tIndex )  = tJJc ;
             mMesh->field_data( "elementRho")( tIndex )  = tRho ;
 

@@ -18,7 +18,7 @@
 #include "cl_FEM_DofManager.hpp"
 #include "fn_crossmat.hpp"
 #include "cl_FEM_Kernel.hpp"
-
+#include "fn_sum.hpp"
 
 namespace belfem
 {
@@ -215,7 +215,7 @@ namespace belfem
                 case(  DomainType::Conductor ) :
                 {
                     // allocate container for node data, used for temperature
-                    aGroup->work_tau().set_size( mNumberOfNodesPerElement );
+                    aGroup->work_theta().set_size( mNumberOfNodesPerElement );
 
                     // allocate container for edge data
                     aGroup->work_nedelec().set_size( mNumberOfRhsEdgeDofsPerElement );
@@ -226,7 +226,6 @@ namespace belfem
                     // stiffness matrix
                     aGroup->work_K().set_size( mNumberOfDofsPerElement,
                                                mNumberOfDofsPerElement, 0.0 );
-
                     break ;
                 }
                 case( DomainType::Air ) :
@@ -640,8 +639,19 @@ namespace belfem
                         "superconductor material %s requires constant permeability",
                         tMat->label().c_str() );
 
+
+
                 if( aGroup->element_type() == ElementType::TRI3 || aGroup->element_type() == ElementType::TET4 )
                 {
+                    if( mMesh->number_of_dimensions() == 2 )
+                    {
+                        mComputeCurrent = & IWG_Maxwell::compute_current_2d_first_order ;
+                    }
+                    else
+                    {
+                        mComputeCurrent = & IWG_Maxwell::compute_current_3d_first_order ;
+                    }
+
                     switch ( tMat->resistivity_law() )
                     {
                         case( belfem::ResistivityLaw::Constant ) :
@@ -693,6 +703,15 @@ namespace belfem
                 }
                 else if( aGroup->element_type() == ElementType::TRI6 || aGroup->element_type() == ElementType::TET10 )
                 {
+                    if( mMesh->number_of_dimensions() == 2 )
+                    {
+                        mComputeCurrent = & IWG_Maxwell::compute_current_2d_higher_order ;
+                    }
+                    else
+                    {
+                        mComputeCurrent = & IWG_Maxwell::compute_current_3d_higher_order ;
+                    }
+
                     switch ( tMat->resistivity_law() )
                     {
                         case( belfem::ResistivityLaw::Constant ) :
@@ -799,6 +818,23 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
+        IWG_Maxwell::write_element_data_to_mesh(
+                Element * aElement,
+                const real aJ,
+                const real aJJcrit,
+                const real aRho,
+                const real aEJ )
+        {
+            // get field index of element
+            const index_t tIndex = aElement->element()->index();
+
+            mMesh->field_data( "elementEJ")( tIndex ) = aEJ ;
+            mMesh->field_data( "elementJJc")( tIndex )  = aJJcrit ;
+            mMesh->field_data( "elementRho")( tIndex )  = aRho ;
+        }
+
+//------------------------------------------------------------------------------
+        void
         IWG_Maxwell::sc_matrices_const_first_order(
                 Element * aElement,
                 Matrix< real > & aM,
@@ -829,12 +865,32 @@ namespace belfem
             // get operator for curl function
             const Matrix< real > & tC = mEdgeFunction->C();
 
+            // grab edge data
+            this->collect_nedelec_data( aElement,
+                                        NedelecField::H,
+                                        mGroup->work_nedelec() );
+
+            real tJ   = this->compute_current( aElement );
+            real tJc = 0 ;
+            real tRho = 0 ;
+            tMat->compute_jcrit_and_rho( tJc,
+                                         tRho,
+                                         tJ,
+                                         BELFEM_QUIET_NAN,
+                                         BELFEM_QUIET_NAN,
+                                         BELFEM_QUIET_NAN );
+
+
+
+            this->write_element_data_to_mesh( aElement, tJ, tJ/tJc, tRho, tRho * tJ * tJ );
+
+
             // compute contribution for stiffness matrix
-            aK = ( mEdgeFunction->sum_w() * mEdgeFunction->abs_det_J() * tMat->rho_el() )
+            aK = ( mEdgeFunction->sum_w() * mEdgeFunction->abs_det_J() * tRho )
                   * trans( tC ) * tC ;
 
             // scale mass matrix
-            aM *= constant::mu0 * tMat->mu_r() * mEdgeFunction->abs_det_J() ;
+            aM *= constant::mu0 * tMat->mu_r() * mEdgeFunction->abs_det_J() ;;
         }
 
 //------------------------------------------------------------------------------
@@ -878,10 +934,23 @@ namespace belfem
             // get operator for curl function
             const Matrix< real > & tC = mEdgeFunction->C( );
 
+            real tJ   = this->compute_current( aElement );
+            real tRho = 0 ;
+            real tJc = 0 ;
+            tMat->compute_jcrit_and_rho( tJc,
+                                         tRho,
+                                         tJ,
+                                         BELFEM_QUIET_NAN,
+                                         BELFEM_QUIET_NAN,
+                                         BELFEM_QUIET_NAN );
+
+            this->write_element_data_to_mesh( aElement, tJ, tJ/tJc, tRho, tRho * tJ * tJ );
+
             // compute stiffness matrix
             aK = ( mEdgeFunction->sum_w() * mEdgeFunction->abs_det_J()
-                    * tMat->rho_el( norm( tC * mGroup->work_nedelec() ) ) )
+                    * tRho )
                     * trans( tC ) * tC ;
+
         }
 
 //------------------------------------------------------------------------------
@@ -910,14 +979,20 @@ namespace belfem
                                         mGroup->work_nedelec() );
 
             // grab temperature data
-            this->collect_node_data( aElement, "T", mGroup->work_tau() );
+            this->collect_node_data( aElement, "T", mGroup->work_theta() );
 
 
             // get operator for curl function
             const Matrix< real > & tC = mEdgeFunction->C();
 
-            real tK = 0.0 ;
-            real tJ = norm( tC * mGroup->work_nedelec() ) ; // current density
+
+            real tJ = this->compute_current( aElement );
+
+            real tRho = 0.0 ;
+            real tJJc = 0.0 ;
+
+            real trho = 0 ;
+            real tjc = 0 ;
 
             // loop over all integration points
             for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
@@ -928,17 +1003,35 @@ namespace belfem
                 // compute contribution for mass matrix
                 aM += tW( k ) * trans( tE ) * tE ;
 
+                // Temperature
+                real tT = dot( mGroup->n( k ), mGroup->work_theta() ) ;
+
+                // compute material data
+                tMat->compute_jcrit_and_rho( tjc,
+                                             trho,
+                                             tJ,
+                                             tT,
+                                             BELFEM_QUIET_NAN,
+                                             BELFEM_QUIET_NAN );
+
+                tJJc += tW( k ) * tJ / tjc ;
+
                 // compute contribution for stiffness matrix
-                tK += tW( k ) * tMat->rho_el(
-                        tJ,             // current density
-                        dot( mGroup->n( k ), mGroup->work_tau() ) ); // temperature
+                tRho += tW( k ) * trho ;
             }
 
             // compute stiffness matrix
-            aK = ( tK * mEdgeFunction->abs_det_J() ) * trans( tC ) * tC ;
+            aK = ( tRho * mEdgeFunction->abs_det_J() ) * trans( tC ) * tC ;
 
             // scale mass matrix
             aM *=  constant::mu0 * tMat->mu_r() * mEdgeFunction->abs_det_J() ;
+
+            // scale results
+            tRho /= mEdgeFunction->sum_w();
+            tJJc /= mEdgeFunction->sum_w() ;
+
+            // write element data to mesh
+            this->write_element_data_to_mesh( aElement, tJ, tJJc, tRho, tRho * tJ * tJ );
         }
 
 //------------------------------------------------------------------------------
@@ -972,11 +1065,14 @@ namespace belfem
             // get operator for curl function
             const Matrix< real > & tC = mEdgeFunction->C( 0 );
 
-            // help parameter for stiffness
-            real tK = 0.0 ;
+            real tJ = this->compute_current( aElement );
 
-            // compute current
-            real tJ = norm( tC * mGroup->work_nedelec() ) ;
+            real tRho = 0.0 ;
+            real tJJc = 0.0 ;
+
+            // help parameter for stiffness
+            real trho = 0 ;
+            real tjc = 0 ;
 
             // loop over all integration points
             for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
@@ -987,18 +1083,35 @@ namespace belfem
                 // compute contribution for mass matrix
                 aM += tW( k ) * trans( tE ) * tE ;
 
-                // compute contribution for stiffness matrix
-                tK += tW( k ) * tMat->rho_el(
-                        tJ,   //current density
-                        0, // temperature
-                        tMu * norm( tE * mGroup->work_nedelec() ) ) ;
+
+                real tB = tMu * norm( tE * mGroup->work_nedelec() ) ;
+
+                // compute material data
+                tMat->compute_jcrit_and_rho( tjc,
+                                            trho,
+                                            tJ,
+                                            BELFEM_QUIET_NAN,
+                                            tB,
+                                            BELFEM_QUIET_NAN );
+
+                tJJc += tW( k ) * tJ / tjc ;
+
+                tRho += tW( k ) * trho ;
+
             }
 
             // compute stiffness matrix
-            aK = ( tK * mEdgeFunction->abs_det_J() ) * trans( tC ) * tC ;
+            aK = ( tRho * mEdgeFunction->abs_det_J() ) * trans( tC ) * tC ;
 
             // scale mass matrix
             aM *= tMu * mEdgeFunction->abs_det_J() ;
+
+            // scale results
+            tRho /= mEdgeFunction->sum_w();
+            tJJc /= mEdgeFunction->sum_w() ;
+
+            // write element data to mesh
+            this->write_element_data_to_mesh( aElement, tJ, tJJc, tRho, tRho * tJ * tJ );
         }
 
 //------------------------------------------------------------------------------
@@ -1027,7 +1140,7 @@ namespace belfem
                                         mGroup->work_nedelec() );
 
             // grab temperature data
-            this->collect_node_data( aElement, "T", mGroup->work_tau() );
+            this->collect_node_data( aElement, "T", mGroup->work_theta() );
 
             // permeability constant
             const real tMu = constant::mu0 * tMat->mu_r();
@@ -1037,10 +1150,15 @@ namespace belfem
             const Matrix< real > & tC = mEdgeFunction->C();
 
             // current density
-            real tJ = norm( tC * mGroup->work_nedelec() );
+            real tJ = this->compute_current( aElement );
 
             // help parameter for stiffness
-            real tK = 0.0 ;
+            real tRho = 0.0 ;
+            real tJJc  = 0.0 ;
+
+            // help parameter for stiffness
+            real trho = 0 ;
+            real tjc = 0 ;
 
             // loop over all integration points
             for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
@@ -1051,18 +1169,38 @@ namespace belfem
                 // compute contribution for mass matrix
                 aM += tW( k ) * trans( tE ) * tE  ;
 
-                // compute contribution for stiffness matrix
-                tK += tW( k ) * tMat->rho_el(
-                                tJ,             // current density
-                                dot( mGroup->n( k ), mGroup->work_tau() ),   // temperature
-                                tMu * norm( tE * mGroup->work_nedelec() ) )   ;   // magnetic flux density
+                // temperature
+                real tT = dot( mGroup->n( k ), mGroup->work_theta() ) ;
+
+                // magnetic field
+                real tB = tMu * norm( tE * mGroup->work_nedelec() );
+
+                // compute material data
+                tMat->compute_jcrit_and_rho(
+                        tjc,
+                        trho,
+                        tJ,
+                        tT,
+                        tB,
+                        BELFEM_QUIET_NAN );
+
+                tJJc += tW( k ) * tJ/tjc ;
+
+                tRho += tW( k ) * trho ;
             }
 
             // compute stiffness matrix
-            aK = ( tK * mEdgeFunction->abs_det_J() ) * trans( tC ) * tC ;
+            aK = ( tRho * mEdgeFunction->abs_det_J() ) * trans( tC ) * tC ;
 
             // scale stiffness matrix
             aM *=  tMu * mEdgeFunction->abs_det_J() ;
+
+            // scale results
+            tRho /= mEdgeFunction->sum_w();
+            tJJc /= mEdgeFunction->sum_w() ;
+
+            // write element data to mesh
+            this->write_element_data_to_mesh( aElement, tJ, tJJc, tRho, tRho * tJ * tJ );
         }
 //------------------------------------------------------------------------------
 
@@ -1085,13 +1223,20 @@ namespace belfem
             const Material * tMat = mGroup->material() ;
 
             // grab temperature data
-            this->collect_node_data( aElement, "T", mGroup->work_tau() );
+            this->collect_node_data( aElement, "T", mGroup->work_theta() );
 
             // get operator for curl function
             const Matrix< real > & tC = mEdgeFunction->C();
 
-            // help constant for stiffness
-            real tK = 0.0 ;
+            // help parameter for stiffness
+            real tRho = 0.0 ;
+            real tJJc  = 0.0 ;
+
+            // help parameter for stiffness
+            real trho = 0 ;
+            real tjc = 0 ;
+
+            real tJ = this->compute_current( aElement );
 
             // loop over all integration points
             for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
@@ -1102,17 +1247,35 @@ namespace belfem
                 // compute contribution for mass matrix
                 aM += tW( k ) * trans( tE ) * tE ;
 
-                // compute contribution for stiffness matrix
-                tK += tW( k ) * tMat->rho_el(
-                        BELFEM_QUIET_NAN,             // current density
-                        dot( mGroup->n( k ), mGroup->work_tau() ) ); // temperature
+                real tT = dot( mGroup->n( k ), mGroup->work_theta() ) ;
+
+                // compute material data
+                tMat->compute_jcrit_and_rho(
+                        tjc,
+                        trho,
+                        tJ,
+                        tT,
+                    BELFEM_QUIET_NAN,
+                    BELFEM_QUIET_NAN );
+
+                tJJc += tW( k ) * tJ / tjc ;
+
+                tRho += tW( k ) * trho ;
             }
 
             // compute stiffness matrix
-            aK = ( tK * mEdgeFunction->abs_det_J() ) * trans( tC ) * tC ;
+            aK = ( tRho * mEdgeFunction->abs_det_J() ) * trans( tC ) * tC ;
 
             // scale mass matrix
             aM *=  constant::mu0 * tMat->mu_r() * mEdgeFunction->abs_det_J() ;
+
+
+            // scale results
+            tRho /= mEdgeFunction->sum_w();
+            tJJc /= mEdgeFunction->sum_w() ;
+
+            // write element data to mesh
+            this->write_element_data_to_mesh( aElement, tJ, tJJc, tRho, tRho * tJ * tJ );
         }
 
 //-----------------------------------------------------------------------------
@@ -1143,10 +1306,17 @@ namespace belfem
             // get operator for curl function
             const Matrix< real > & tC = mEdgeFunction->C();
 
-            // help constant for stiffness
-            real tK = 0.0 ;
+            // help parameter for stiffness
+            real tRho = 0.0 ;
+            real tJJc  = 0.0 ;
+
+            // help parameter for stiffness
+            real trho = 0 ;
+            real tjc = 0 ;
 
             real tMu = constant::mu0 * tMat->mu_r() ;
+
+            real tJ = this->compute_current( aElement );
 
             // loop over all integration points
             for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
@@ -1157,19 +1327,35 @@ namespace belfem
                 // compute contribution for mass matrix
                 aM += tW( k ) * trans( tE ) * tE ;
 
-                // compute contribution for stiffness matrix
-                tK += tW( k ) * tMat->rho_el(
-                        BELFEM_QUIET_NAN,             // current density
-                        BELFEM_QUIET_NAN, // temperature
-                        tMu * norm( tE * mGroup->work_nedelec() )
-                ); // temperature
+                // compute material data
+                tMat->compute_jcrit_and_rho(
+                        tjc,
+                        trho,
+                        tJ,
+                        BELFEM_QUIET_NAN,
+                        tMu * norm( tE * mGroup->work_nedelec() ),
+                        BELFEM_QUIET_NAN );
+
+                tJJc += tW( k ) * tJ / tjc ;
+
+                tRho += tW( k ) * trho ;
+
             }
 
             // compute stiffness matrix
-            aK = ( tK * mEdgeFunction->abs_det_J() ) * trans( tC ) * tC ;
+            aK = ( tRho * mEdgeFunction->abs_det_J() ) * trans( tC ) * tC ;
 
             // scale mass matrix
             aM *=  tMu * mEdgeFunction->abs_det_J() ;
+
+
+            // scale results
+            tRho /= mEdgeFunction->sum_w();
+            tJJc /= mEdgeFunction->sum_w() ;
+
+            // write element data to mesh
+            this->write_element_data_to_mesh( aElement, tJ, tJJc, tRho, tRho * tJ * tJ );
+
         }
 
 //-----------------------------------------------------------------------------
@@ -1193,7 +1379,7 @@ namespace belfem
             const Material * tMat = mGroup->material() ;
 
             // grab temperature data
-            this->collect_node_data( aElement, "T", mGroup->work_tau() );
+            this->collect_node_data( aElement, "T", mGroup->work_theta() );
 
             // grab edge data
             this->collect_nedelec_data( aElement,
@@ -1203,8 +1389,15 @@ namespace belfem
             // get operator for curl function
             const Matrix< real > & tC = mEdgeFunction->C();
 
-            // help constant for stiffness
-            real tK = 0.0 ;
+            // help parameter for stiffness
+            real tRho = 0.0 ;
+            real tJJc  = 0.0 ;
+
+            // help parameter for stiffness
+            real trho = 0 ;
+            real tjc = 0 ;
+
+            real tJ = this->compute_current( aElement );
 
             real tMu = constant::mu0 * tMat->mu_r() ;
 
@@ -1218,18 +1411,32 @@ namespace belfem
                 aM += tW( k ) * trans( tE ) * tE ;
 
                 // compute contribution for stiffness matrix
-                tK += tW( k ) * tMat->rho_el(
-                        BELFEM_QUIET_NAN,             // current density
-                        dot( mGroup->n( k ), mGroup->work_tau() ),
-                        tMu * norm( tE * mGroup->work_nedelec() )
-                        ); // temperature
+                // compute material data
+                tMat->compute_jcrit_and_rho(
+                        tjc,
+                        trho,
+                        tJ,
+                        dot( mGroup->n( k ), mGroup->work_theta() ),
+                        tMu * norm( tE * mGroup->work_nedelec() ) ,
+                                BELFEM_QUIET_NAN );
+
+                tJJc += tW( k ) * tJ / tjc ;
+
+                tRho += tW( k ) * trho ;
             }
 
             // compute stiffness matrix
-            aK = ( tK * mEdgeFunction->abs_det_J() ) * trans( tC ) * tC ;
+            aK = ( tRho * mEdgeFunction->abs_det_J() ) * trans( tC ) * tC ;
 
             // scale mass matrix
             aM *=  tMu * mEdgeFunction->abs_det_J() ;
+
+            // scale results
+            tRho /= mEdgeFunction->sum_w();
+            tJJc /= mEdgeFunction->sum_w() ;
+
+            // write element data to mesh
+            this->write_element_data_to_mesh( aElement, tJ, tJJc, tRho, tRho * tJ * tJ );
         }
 
 //------------------------------------------------------------------------------
@@ -1253,6 +1460,8 @@ namespace belfem
             // grab material
             const Material * tMat = mGroup->material() ;
 
+            real tJ = 0.0 ;
+
             if( aElement->element()->is_curved() )
             {
                 // loop over all integration points
@@ -1264,6 +1473,9 @@ namespace belfem
 
                     // get operator for curl function
                     const Matrix< real > & tC = mEdgeFunction->C( k );
+
+                    // for display of element-wise current
+                    tJ += tW( k ) * this->compute_current( aElement, k );
 
                     // compute contribution for mass matrix
                     aM += ( tW( k ) * mEdgeFunction->abs_det_J() ) * trans( tE ) * tE ;
@@ -1290,6 +1502,9 @@ namespace belfem
                     // get operator for curl function
                     const Matrix< real > & tC = mEdgeFunction->C( k );
 
+                    // for display of element-wise current
+                    tJ += tW( k ) * this->compute_current( aElement, k );
+
                     // compute contribution for mass matrix
                     aM += tW( k ) * trans( tE ) * tE ;
 
@@ -1303,6 +1518,15 @@ namespace belfem
                 // scale stiffness matrix
                 aM *= constant::mu0 * tMat->mu_r() * mEdgeFunction->abs_det_J() ;
             }
+
+            tJ /= mEdgeFunction->sum_w() ;
+
+            this->write_element_data_to_mesh(
+                    aElement,
+                    tJ,
+                    tMat->j_crit(),
+                    tMat->rho_el(),
+                    tMat->rho_el() * tJ * tJ );
         }
 
 //------------------------------------------------------------------------------
@@ -1331,6 +1555,15 @@ namespace belfem
                                         NedelecField::H,
                                         mGroup->work_nedelec() );
 
+            real tJ = 0.0 ;
+            real tRho = 0.0 ;
+            real tJJc = 0.0 ;
+            real tEJ = 0.0 ;
+
+            real tj = 0 ;
+            real trho = 0 ;
+            real tjc = 0 ;
+
             if( aElement->element()->is_curved() )
             {
                 // loop over all integration points
@@ -1342,12 +1575,35 @@ namespace belfem
                     // get operator for curl function
                     const Matrix< real > & tC = mEdgeFunction->C( k );
 
+                    // compute the current at this integration point
+                    tj = this->compute_current( aElement, k );
+
+                    // compute material properties
+                    tMat->compute_jcrit_and_rho(
+                            tjc,
+                            trho,
+                            tj,
+                            BELFEM_QUIET_NAN,
+                            BELFEM_QUIET_NAN,
+                            BELFEM_QUIET_NAN );
+
+                    // add current to integral value
+                    tJ += tW( k ) * tj ;
+
+                    // add critical current to integral value
+                    tJJc += tW( k ) *tj / tjc ;
+
+                    // add resistivity to integral value
+                    tRho += tW( k ) * trho ;
+
+                    // add heat losses to integral value
+                    tEJ += tW( k ) * trho * tj * tj ;
+
                     // compute contribution for mass matrix
                     aM += ( tW( k ) * mEdgeFunction->abs_det_J() ) * trans( tE ) * tE  ;
 
                     // compute contribution for stiffness matrix
-                    aK += ( tW( k ) * mEdgeFunction->abs_det_J()
-                            * tMat->rho_el( norm( tC * mGroup->work_nedelec() ) ) )
+                    aK += ( tW( k ) * mEdgeFunction->abs_det_J() * trho )
                             * trans( tC ) * tC ;
                 }
 
@@ -1365,11 +1621,35 @@ namespace belfem
                     // get operator for curl function
                     const Matrix< real > & tC = mEdgeFunction->C( k );
 
+                    // compute the current at this integration point
+                    tj = this->compute_current( aElement, k );
+
+                    // compute material properties
+                    tMat->compute_jcrit_and_rho(
+                            tjc,
+                            trho,
+                            tj,
+                            BELFEM_QUIET_NAN,
+                            BELFEM_QUIET_NAN,
+                            BELFEM_QUIET_NAN );
+
+                    // add current to integral value
+                    tJ += tW( k ) * tj ;
+
+                    // add critical current to integral value
+                    tJJc += tW( k ) *tj / tjc ;
+
+                    // add resistivity to integral value
+                    tRho += tW( k ) * trho ;
+
+                    // add heat losses to integral value
+                    tEJ += tW( k ) * trho * tj * tj ;
+
                     // compute contribution for mass matrix
                     aM += tW( k ) * trans( tE ) * tE  ;
 
                     // compute contribution for stiffness matrix
-                    aK += ( tW( k ) * tMat->rho_el( norm( tC * mGroup->work_nedelec() ) ) )
+                    aK += ( tW( k ) * trho )
                             * trans( tC ) * tC  ;
                 }
 
@@ -1377,6 +1657,15 @@ namespace belfem
                 aM *= constant::mu0 * tMat->mu_r() * mEdgeFunction->abs_det_J() ;
                 aK *= mEdgeFunction->abs_det_J() ;
             }
+
+            // scale element averages
+            tJ /= mEdgeFunction->sum_w() ;
+            tJJc /= mEdgeFunction->sum_w() ;
+            tRho /= mEdgeFunction->sum_w();
+            tEJ /= mEdgeFunction->sum_w();
+
+            // write element averages to mesh
+            this->write_element_data_to_mesh( aElement, tJ, tJJc, tRho, tEJ );
         }
 
 //------------------------------------------------------------------------------
@@ -1406,7 +1695,16 @@ namespace belfem
                                         mGroup->work_nedelec() );
 
             // grab temperature data
-            this->collect_node_data( aElement, "T", mGroup->work_tau() );
+            this->collect_node_data( aElement, "T", mGroup->work_theta() );
+
+            real tJ = 0.0 ;
+            real tRho = 0.0 ;
+            real tJJc = 0.0 ;
+            real tEJ = 0.0 ;
+
+            real tj = 0 ;
+            real trho = 0 ;
+            real tjc = 0 ;
 
             if( aElement->element()->is_curved() )
             {
@@ -1419,14 +1717,37 @@ namespace belfem
                     // get operator for curl function
                     const Matrix< real > & tC = mEdgeFunction->C( k );
 
+                    // compute the current at this integration point
+                    tj = this->compute_current( aElement, k );
+
+                    // compute material properties
+                    tMat->compute_jcrit_and_rho(
+                            tjc,
+                            trho,
+                            tj,
+                            dot( mGroup->n( k ), mGroup->work_theta() ),
+                            BELFEM_QUIET_NAN,
+                            BELFEM_QUIET_NAN );
+
+
+                    // add current to integral value
+                    tJ += tW( k ) * tj ;
+
+                    // add critical current to integral value
+                    tJJc += tW( k ) * tj / tjc ;
+
+                    // add resistivity to integral value
+                    tRho += tW( k ) * trho ;
+
+                    // add heat losses to integral value
+                    tEJ += tW( k ) * trho * tj * tj ;
+
+
                     // compute contribution for mass matrix
                     aM += ( tW( k ) * mEdgeFunction->abs_det_J() ) * trans( tE ) * tE ;
 
                     // compute contribution for stiffness matrix
-                    aK += ( tW( k ) * mEdgeFunction->abs_det_J()
-                            * tMat->rho_el(
-                                    norm( tC * mGroup->work_nedelec() ),             // current density
-                                    dot( mGroup->n( k ), mGroup->work_tau() ) ) ) // temperature
+                    aK += ( tW( k ) * mEdgeFunction->abs_det_J() * trho )
                                     * trans( tC ) * tC  ;
                 }
 
@@ -1444,21 +1765,52 @@ namespace belfem
                     // get operator for curl function
                     const Matrix< real > & tC = mEdgeFunction->C( k );
 
+                    // compute the current at this integration point
+                    tj = this->compute_current( aElement, k );
+
+                    // compute material properties
+                    tMat->compute_jcrit_and_rho(
+                            tjc,
+                            trho,
+                            tj,
+                            dot( mGroup->n( k ), mGroup->work_theta() ),
+                            BELFEM_QUIET_NAN,
+                            BELFEM_QUIET_NAN );
+
+                    // add current to integral value
+                    tJ += tW( k ) * tj ;
+
+                    // add critical current to integral value
+                    tJJc += tW( k ) * tj / tjc ;
+
+                    // add resistivity to integral value
+                    tRho += tW( k ) * trho ;
+
+                    // add heat losses to integral value
+                    tEJ += tW( k ) * trho * tj * tj ;
+
+
                     // compute contribution for mass matrix
                     aM += tW( k ) * trans( tE ) * tE ;
 
                     // compute contribution for stiffness matrix
-                    aK += ( tW( k )
-                            * tMat->rho_el(
-                                    norm( tC * mGroup->work_nedelec() ),             // current density
-                                    dot( mGroup->n( k ), mGroup->work_tau() ) ) ) // temperature
-                                            * trans( tC ) * tC  ;
+                    aK += ( tW( k ) * trho )
+                            * trans( tC ) * tC  ;
                 }
 
                 // scale mass matrix
                 aM *=  constant::mu0 * tMat->mu_r() * mEdgeFunction->abs_det_J() ;
                 aK *= mEdgeFunction->abs_det_J() ;
             }
+
+            // scale element averages
+            tJ /= mEdgeFunction->sum_w() ;
+            tJJc /= mEdgeFunction->sum_w() ;
+            tRho /= mEdgeFunction->sum_w();
+            tEJ /= mEdgeFunction->sum_w();
+
+            // write element averages to mesh
+            this->write_element_data_to_mesh( aElement, tJ, tJJc, tRho, tEJ );
         }
 
 //------------------------------------------------------------------------------
@@ -1490,6 +1842,15 @@ namespace belfem
             // permeability constant
             const real tMu = constant::mu0 * tMat->mu_r();
 
+            real tJ = 0.0 ;
+            real tRho = 0.0 ;
+            real tJJc = 0.0 ;
+            real tEJ = 0.0 ;
+
+            real tj = 0 ;
+            real trho = 0 ;
+            real tjc = 0 ;
+
             if( aElement->element()->is_curved() )
             {
                 // loop over all integration points
@@ -1501,15 +1862,35 @@ namespace belfem
                     // get operator for curl function
                     const Matrix< real > & tC = mEdgeFunction->C( k );
 
+                    // compute the current at this integration point
+                    tj = this->compute_current( aElement, k );
+
+                    // compute material properties
+                    tMat->compute_jcrit_and_rho(
+                            tjc,
+                            trho,
+                            tj,
+                            BELFEM_QUIET_NAN,
+                            tMu * norm( tE * mGroup->work_nedelec() ),
+                            BELFEM_QUIET_NAN );
+
+                    // add current to integral value
+                    tJ += tW( k ) * tj ;
+
+                    // add critical current to integral value
+                    tJJc += tW( k ) * tj / tjc ;
+
+                    // add resistivity to integral value
+                    tRho += tW( k ) * trho ;
+
+                    // add heat losses to integral value
+                    tEJ += tW( k ) * trho * tj * tj ;
+
                     // compute contribution for mass matrix
                     aM += ( tW( k ) * mEdgeFunction->abs_det_J() ) * trans( tE ) * tE  ;
 
                     // compute contribution for stiffness matrix
-                    aK += ( tW( k ) * mEdgeFunction->abs_det_J()
-                            * tMat->rho_el(
-                                    norm( tC * mGroup->work_nedelec() ),   //current density
-                                    0, // temperature
-                                    tMu * norm( tE * mGroup->work_nedelec() ) ) ) // magnetic flux density
+                    aK += ( tW( k ) * trho * mEdgeFunction->abs_det_J() )
                                     * trans( tC )  * tC  ;
                 }
 
@@ -1527,20 +1908,48 @@ namespace belfem
                     // get operator for curl function
                     const Matrix< real > & tC = mEdgeFunction->C( k );
 
+                    // compute material properties
+                    tMat->compute_jcrit_and_rho(
+                            tjc,
+                            trho,
+                            tj,
+                            BELFEM_QUIET_NAN,
+                            tMu * norm( tE * mGroup->work_nedelec() ),
+                            BELFEM_QUIET_NAN );
+
+                    // add current to integral value
+                    tJ += tW( k ) * tj ;
+
+                    // add critical current to integral value
+                    tJJc += tW( k ) * tj / tjc ;
+
+                    // add resistivity to integral value
+                    tRho += tW( k ) * trho ;
+
+                    // add heat losses to integral value
+                    tEJ += tW( k ) * trho * tj * tj ;
+
+
                     // compute contribution for mass matrix
                     aM += tW( k ) * trans( tE ) * tE  ;
 
                     // compute contribution for stiffness matrix
-                    aK += ( tW( k ) * tMat->rho_el(
-                                    norm( tC * mGroup->work_nedelec() ),   //current density
-                                    0, // temperature
-                                    tMu * norm( tE * mGroup->work_nedelec() ) ) ) // magnetic flux density
+                    aK += ( tW( k ) * trho )
                                             * trans( tC )  * tC  ;
                 }
 
                 aM *= tMu * mEdgeFunction->abs_det_J() ;
                 aK *= mEdgeFunction->abs_det_J() ;
             }
+
+            // scale element averages
+            tJ /= mEdgeFunction->sum_w() ;
+            tJJc /= mEdgeFunction->sum_w() ;
+            tRho /= mEdgeFunction->sum_w();
+            tEJ /= mEdgeFunction->sum_w();
+
+            // write element averages to mesh
+            this->write_element_data_to_mesh( aElement, tJ, tJJc, tRho, tEJ );
         }
 
 //------------------------------------------------------------------------------
@@ -1570,10 +1979,19 @@ namespace belfem
                                         mGroup->work_nedelec() );
 
             // grab temperature data
-            this->collect_node_data( aElement, "T", mGroup->work_tau() );
+            this->collect_node_data( aElement, "T", mGroup->work_theta() );
 
             // permeability constant
             const real tMu = constant::mu0 * tMat->mu_r();
+
+            real tJ = 0.0 ;
+            real tRho = 0.0 ;
+            real tJJc = 0.0 ;
+            real tEJ = 0.0 ;
+
+            real tj = 0 ;
+            real trho = 0 ;
+            real tjc = 0 ;
 
             if( aElement->element()->is_curved() )
             {
@@ -1586,15 +2004,36 @@ namespace belfem
                     // get operator for curl function
                     const Matrix< real > & tC = mEdgeFunction->C( k );
 
+                    // compute the current at this integration point
+                    tj = this->compute_current( aElement, k );
+
+                    // compute material properties
+                    tMat->compute_jcrit_and_rho(
+                            tjc,
+                            trho,
+                            tj,
+                            dot( mGroup->n( k ), mGroup->work_theta() ),
+                            tMu * norm( tE * mGroup->work_nedelec() ),
+                            BELFEM_QUIET_NAN );
+
+                    // add current to integral value
+                    tJ += tW( k ) * tj ;
+
+                    // add critical current to integral value
+                    tJJc += tW( k ) * tj / tjc ;
+
+                    // add resistivity to integral value
+                    tRho += tW( k ) * trho ;
+
+                    // add heat losses to integral value
+                    tEJ += tW( k ) * trho * tj * tj ;
+
+
                     // compute contribution for mass matrix
                     aM += ( tW( k ) * mEdgeFunction->abs_det_J() ) * trans( tE ) * tE ;
 
                     // compute contribution for stiffness matrix
-                    aK += ( tW( k ) * mEdgeFunction->abs_det_J()
-                            * tMat->rho_el(
-                                    norm( tC * mGroup->work_nedelec() ),             // current density
-                                    dot( mGroup->n( k ), mGroup->work_tau() ),   // temperature
-                                    tMu * norm( tE * mGroup->work_nedelec() ) )  )     // magnetic flux density
+                    aK += ( tW( k ) * mEdgeFunction->abs_det_J() * trho  )     // magnetic flux density
                                     *  trans( tC ) * tC  ;
                 }
 
@@ -1612,15 +2051,35 @@ namespace belfem
                     // get operator for curl function
                     const Matrix< real > & tC = mEdgeFunction->C( k );
 
+                    // compute the current at this integration point
+                    tj = this->compute_current( aElement, k );
+
+                    // compute material properties
+                    tMat->compute_jcrit_and_rho(
+                            tjc,
+                            trho,
+                            tj,
+                            dot( mGroup->n( k ), mGroup->work_theta() ),
+                            tMu * norm( tE * mGroup->work_nedelec() ),
+                            BELFEM_QUIET_NAN );
+
+                    // add current to integral value
+                    tJ += tW( k ) * tj ;
+
+                    // add critical current to integral value
+                    tJJc += tW( k ) * tj / tjc ;
+
+                    // add resistivity to integral value
+                    tRho += tW( k ) * trho ;
+
+                    // add heat losses to integral value
+                    tEJ += tW( k ) * trho * tj * tj ;
+
                     // compute contribution for mass matrix
                     aM += tW( k ) * trans( tE ) * tE ;
 
                     // compute contribution for stiffness matrix
-                    aK += ( tW( k )
-                            * tMat->rho_el(
-                                    norm( tC * mGroup->work_nedelec() ),             // current density
-                                    dot( mGroup->n( k ), mGroup->work_tau() ),   // temperature
-                                    tMu * norm( tE * mGroup->work_nedelec() ) )  )     // magnetic flux density
+                    aK += ( tW( k ) * trho )
                            *  trans( tC ) * tC  ;
                 }
 
@@ -1630,6 +2089,15 @@ namespace belfem
                 // scale stiffness matrix
                 aK *= mEdgeFunction->abs_det_J() ;
             }
+
+            // scale element averages
+            tJ /= mEdgeFunction->sum_w() ;
+            tJJc /= mEdgeFunction->sum_w() ;
+            tRho /= mEdgeFunction->sum_w();
+            tEJ /= mEdgeFunction->sum_w();
+
+            // write element averages to mesh
+            this->write_element_data_to_mesh( aElement, tJ, tJJc, tRho, tEJ );
         }
 
 //------------------------------------------------------------------------------
@@ -1654,7 +2122,16 @@ namespace belfem
             const Material * tMat = mGroup->material() ;
 
             // grab temperature data
-            this->collect_node_data( aElement, "T", mGroup->work_tau() );
+            this->collect_node_data( aElement, "T", mGroup->work_theta() );
+
+            real tJ = 0.0 ;
+            real tRho = 0.0 ;
+            real tJJc = 0.0 ;
+            real tEJ = 0.0 ;
+
+            real tj = 0 ;
+            real trho = 0 ;
+            real tjc = 0 ;
 
             if( aElement->element()->is_curved() )
             {
@@ -1667,13 +2144,35 @@ namespace belfem
                     // get operator for curl function
                     const Matrix< real > & tC = mEdgeFunction->C( k );
 
+                    // compute the current at this integration point
+                    tj = this->compute_current( aElement, k );
+
+                    // compute material properties
+                    tMat->compute_jcrit_and_rho(
+                            tjc,
+                            trho,
+                            tj,
+                            dot( mGroup->n( k ), mGroup->work_theta() ),
+                            BELFEM_QUIET_NAN,
+                            BELFEM_QUIET_NAN );
+
+                    // add current to integral value
+                    tJ += tW( k ) * tj ;
+
+                    // add critical current to integral value
+                    tJJc += tW( k ) * tj / tjc ;
+
+                    // add resistivity to integral value
+                    tRho += tW( k ) * trho ;
+
+                    // add heat losses to integral value
+                    tEJ += tW( k ) * trho * tj * tj ;
+
                     // compute contribution for mass matrix
                     aM += ( tW( k ) * mEdgeFunction->abs_det_J() ) * trans( tE ) * tE ;
 
                     // compute contribution for stiffness matrix
-                    aK += ( tW( k ) * mEdgeFunction->abs_det_J()
-                            * tMat->rho_el( BELFEM_QUIET_NAN,             // current density
-                                    dot( mGroup->n( k ), mGroup->work_tau() ) ) ) // temperature
+                    aK += ( tW( k ) * mEdgeFunction->abs_det_J()* tRho )
                                             * trans( tC ) * tC  ;
                 }
 
@@ -1691,21 +2190,50 @@ namespace belfem
                     // get operator for curl function
                     const Matrix< real > & tC = mEdgeFunction->C( k );
 
+                    // compute the current at this integration point
+                    tj = this->compute_current( aElement, k );
+
+                    // compute material properties
+                    tMat->compute_jcrit_and_rho(
+                            tjc,
+                            trho,
+                            tj,
+                            dot( mGroup->n( k ), mGroup->work_theta() ),
+                            BELFEM_QUIET_NAN,
+                            BELFEM_QUIET_NAN );
+
+                    // add current to integral value
+                    tJ += tW( k ) * tj ;
+
+                    // add critical current to integral value
+                    tJJc += tW( k ) * tj / tjc ;
+
+                    // add resistivity to integral value
+                    tRho += tW( k ) * trho ;
+
+                    // add heat losses to integral value
+                    tEJ += tW( k ) * trho * tj * tj ;
+
                     // compute contribution for mass matrix
                     aM += tW( k ) * trans( tE ) * tE ;
 
                     // compute contribution for stiffness matrix
-                    aK += ( tW( k )
-                            * tMat->rho_el(
-                                    BELFEM_QUIET_NAN,             // current density
-                                    dot( mGroup->n( k ), mGroup->work_tau() ) ) ) // temperature
-                                            * trans( tC ) * tC  ;
+                    aK += ( tW( k )  * tRho ) * trans( tC ) * tC ;
                 }
 
                 // scale mass matrix
                 aM *= constant::mu0 * tMat->mu_r() * mEdgeFunction->abs_det_J() ;
                 aK *= mEdgeFunction->abs_det_J() ;
             }
+
+            // scale element averages
+            tJ /= mEdgeFunction->sum_w() ;
+            tJJc /= mEdgeFunction->sum_w() ;
+            tRho /= mEdgeFunction->sum_w();
+            tEJ /= mEdgeFunction->sum_w();
+
+            // write element averages to mesh
+            this->write_element_data_to_mesh( aElement, tJ, tJJc, tRho, tEJ );
         }
 //------------------------------------------------------------------------------
 
@@ -1735,6 +2263,15 @@ namespace belfem
 
             real tMu = constant::mu0 * tMat->mu_r();
 
+            real tJ = 0.0 ;
+            real tRho = 0.0 ;
+            real tJJc = 0.0 ;
+            real tEJ = 0.0 ;
+
+            real tj = 0 ;
+            real trho = 0 ;
+            real tjc = 0 ;
+
             if( aElement->element()->is_curved() )
             {
                 // loop over all integration points
@@ -1746,15 +2283,35 @@ namespace belfem
                     // get operator for curl function
                     const Matrix< real > & tC = mEdgeFunction->C( k );
 
+                    // compute the current at this integration point
+                    tj = this->compute_current( aElement, k );
+
+                    // compute material properties
+                    tMat->compute_jcrit_and_rho(
+                            tjc,
+                            trho,
+                            tj,
+                            BELFEM_QUIET_NAN,
+                            tMu * norm( tE * mGroup->work_nedelec() ),
+                            BELFEM_QUIET_NAN );
+
+                    // add current to integral value
+                    tJ += tW( k ) * tj ;
+
+                    // add critical current to integral value
+                    tJJc += tW( k ) * tj / tjc ;
+
+                    // add resistivity to integral value
+                    tRho += tW( k ) * trho ;
+
+                    // add heat losses to integral value
+                    tEJ += tW( k ) * trho * tj * tj ;
+
                     // compute contribution for mass matrix
                     aM += ( tW( k ) * mEdgeFunction->abs_det_J() ) * trans( tE ) * tE ;
 
                     // compute contribution for stiffness matrix
-                    aK += ( tW( k ) * mEdgeFunction->abs_det_J()
-                            * tMat->rho_el( BELFEM_QUIET_NAN,             // current density
-                                            BELFEM_QUIET_NAN, // temperature
-                                            tMu * norm( tE * mGroup->work_nedelec()  ) // b-field
-                    ) )
+                    aK += ( tW( k ) * mEdgeFunction->abs_det_J() * trho )
                           * trans( tC ) * tC  ;
                 }
 
@@ -1772,15 +2329,35 @@ namespace belfem
                     // get operator for curl function
                     const Matrix< real > & tC = mEdgeFunction->C( k );
 
+                    // compute the current at this integration point
+                    tj = this->compute_current( aElement, k );
+
+                    // compute material properties
+                    tMat->compute_jcrit_and_rho(
+                            tjc,
+                            trho,
+                            tj,
+                            BELFEM_QUIET_NAN,
+                            tMu * norm( tE * mGroup->work_nedelec() ),
+                            BELFEM_QUIET_NAN );
+
+                    // add current to integral value
+                    tJ += tW( k ) * tj ;
+
+                    // add critical current to integral value
+                    tJJc += tW( k ) * tj / tjc ;
+
+                    // add resistivity to integral value
+                    tRho += tW( k ) * trho ;
+
+                    // add heat losses to integral value
+                    tEJ += tW( k ) * trho * tj * tj ;
+
                     // compute contribution for mass matrix
                     aM += tW( k ) * trans( tE ) * tE ;
 
                     // compute contribution for stiffness matrix
-                    aK += ( tW( k )
-                            * tMat->rho_el(
-                            BELFEM_QUIET_NAN,             // current density
-                            BELFEM_QUIET_NAN,
-                            tMu * norm( tE * mGroup->work_nedelec() ) ) ) // temperature
+                    aK += ( tW( k ) * trho )
                           * trans( tC ) * tC  ;
                 }
 
@@ -1788,6 +2365,15 @@ namespace belfem
                 aM *=  tMu * mEdgeFunction->abs_det_J() ;
                 aK *= mEdgeFunction->abs_det_J() ;
             }
+
+            // scale element averages
+            tJ /= mEdgeFunction->sum_w() ;
+            tJJc /= mEdgeFunction->sum_w() ;
+            tRho /= mEdgeFunction->sum_w();
+            tEJ /= mEdgeFunction->sum_w();
+
+            // write element averages to mesh
+            this->write_element_data_to_mesh( aElement, tJ, tJJc, tRho, tEJ );
         }
 
 //------------------------------------------------------------------------------
@@ -1812,7 +2398,7 @@ namespace belfem
             const Material * tMat = mGroup->material() ;
 
             // grab temperature data
-            this->collect_node_data( aElement, "T", mGroup->work_tau() );
+            this->collect_node_data( aElement, "T", mGroup->work_theta() );
 
             // grab edge data
             this->collect_nedelec_data( aElement,
@@ -1820,6 +2406,15 @@ namespace belfem
                                         mGroup->work_nedelec() );
 
             real tMu = constant::mu0 * tMat->mu_r();
+
+            real tJ = 0.0 ;
+            real tRho = 0.0 ;
+            real tJJc = 0.0 ;
+            real tEJ = 0.0 ;
+
+            real tj = 0 ;
+            real trho = 0 ;
+            real tjc = 0 ;
 
             if( aElement->element()->is_curved() )
             {
@@ -1832,15 +2427,32 @@ namespace belfem
                     // get operator for curl function
                     const Matrix< real > & tC = mEdgeFunction->C( k );
 
+                    // compute material properties
+                    tMat->compute_jcrit_and_rho(
+                            tjc,
+                            trho,
+                            tj,
+                            dot( mGroup->n( k ), mGroup->work_theta() ),
+                            tMu * norm( tE * mGroup->work_nedelec() ),
+                            BELFEM_QUIET_NAN );
+
+                    // add current to integral value
+                    tJ += tW( k ) * tj ;
+
+                    // add critical current to integral value
+                    tJJc += tW( k ) * tj / tjc ;
+
+                    // add resistivity to integral value
+                    tRho += tW( k ) * trho ;
+
+                    // add heat losses to integral value
+                    tEJ += tW( k ) * trho * tj * tj ;
+
                     // compute contribution for mass matrix
                     aM += ( tW( k ) * mEdgeFunction->abs_det_J() ) * trans( tE ) * tE ;
 
                     // compute contribution for stiffness matrix
-                    aK += ( tW( k ) * mEdgeFunction->abs_det_J()
-                            * tMat->rho_el( BELFEM_QUIET_NAN,             // current density
-                                            dot( mGroup->n( k ), mGroup->work_tau() ), // temperature
-                                            tMu * norm( tE * mGroup->work_nedelec()  ) // b-field
-                                            ) )
+                    aK += ( tW( k ) * mEdgeFunction->abs_det_J() * trho )
                           * trans( tC ) * tC  ;
                 }
 
@@ -1858,15 +2470,32 @@ namespace belfem
                     // get operator for curl function
                     const Matrix< real > & tC = mEdgeFunction->C( k );
 
+                    // compute material properties
+                    tMat->compute_jcrit_and_rho(
+                            tjc,
+                            trho,
+                            tj,
+                            dot( mGroup->n( k ), mGroup->work_theta() ),
+                            tMu * norm( tE * mGroup->work_nedelec() ),
+                            BELFEM_QUIET_NAN );
+
+                    // add current to integral value
+                    tJ += tW( k ) * tj ;
+
+                    // add critical current to integral value
+                    tJJc += tW( k ) * tj / tjc ;
+
+                    // add resistivity to integral value
+                    tRho += tW( k ) * trho ;
+
+                    // add heat losses to integral value
+                    tEJ += tW( k ) * trho * tj * tj ;
+
                     // compute contribution for mass matrix
                     aM += tW( k ) * trans( tE ) * tE ;
 
                     // compute contribution for stiffness matrix
-                    aK += ( tW( k )
-                            * tMat->rho_el(
-                            BELFEM_QUIET_NAN,             // current density
-                            dot( mGroup->n( k ), mGroup->work_tau() ),
-                            tMu * norm( tE * mGroup->work_nedelec() ) ) ) // temperature
+                    aK += ( tW( k ) * trho )
                           * trans( tC ) * tC  ;
                 }
 
@@ -1874,6 +2503,15 @@ namespace belfem
                 aM *=  tMu * mEdgeFunction->abs_det_J() ;
                 aK *= mEdgeFunction->abs_det_J() ;
             }
+
+            // scale element averages
+            tJ /= mEdgeFunction->sum_w() ;
+            tJJc /= mEdgeFunction->sum_w() ;
+            tRho /= mEdgeFunction->sum_w();
+            tEJ /= mEdgeFunction->sum_w();
+
+            // write element averages to mesh
+            this->write_element_data_to_mesh( aElement, tJ, tJJc, tRho, tEJ );
         }
 
 //------------------------------------------------------------------------------

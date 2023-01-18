@@ -55,6 +55,7 @@ else()
             iwg
             kernel
             maxwell
+            kernel
             postproc
             integration )
 endif()

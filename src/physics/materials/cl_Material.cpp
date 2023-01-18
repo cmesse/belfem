@@ -268,8 +268,24 @@ namespace belfem
     real
     Material::j_crit( const real aT, const real aB, const real aAngle ) const
     {
-        return  0 ;
+        return  BELFEM_REAL_MAX ;
     }
+
+//----------------------------------------------------------------------------
+
+    void
+    Material::compute_jcrit_and_rho(
+                           real & aJcrit,
+                           real & aRho,
+                           const real aJ,
+                           const real aT,
+                           const real aB,
+                           const real aAngle ) const
+    {
+        aJcrit = BELFEM_REAL_MAX ;
+        aRho = this->rho_el( aJ, aT, aB, aAngle );
+    }
+
 //----------------------------------------------------------------------------
 
     real

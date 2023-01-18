@@ -921,16 +921,16 @@ namespace belfem
 
             ElementFactory tFactory ;
 
-            index_t tSideSetCount = 0 ;
+            index_t tCutCount = 0 ;
             for ( scissors::CutData * tCutData : mCutsAndTapes )
             {
                 if ( tCutData->type() == mesh::CutType::Cohomology )
                 {
-                    tSideSetCount += tCutData->num_sidesets() ;
+                    ++tCutCount ;
                 }
             }
-            mConnectorSetIDs.set_size( tSideSetCount, 0 );
-            tSideSetCount = 0 ;
+            mConnectorSetIDs.set_size( tCutCount, 0 );
+            tCutCount = 0 ;
 
             for ( scissors::CutData * tCutData : mCutsAndTapes )
             {
@@ -970,7 +970,6 @@ namespace belfem
                     // create new cut
                     SideSet * tCut = new SideSet( tCutData->id(), tCount );
 
-                    //SideSet * tCut = new SideSet( 10, tCount );
                     Cell< Facet * > & tConnectors = tCut->facets() ;
 
                     // reset counter
@@ -978,7 +977,6 @@ namespace belfem
 
                     for ( index_t s = 0; s < tNumSideSets; ++s )
                     {
-
                         // get the sideset
                         SideSet * tSideSet = mMesh->sideset( tCutData->data( s )( 0 ) ) ;
 
@@ -1041,13 +1039,14 @@ namespace belfem
                         }
 
                         mSideSetToCutIDs[ tSideSet->id() ] = tCut->id() ;
-
-                        // remember ID of new block
-                        mConnectorSetIDs( tSideSetCount++ ) = tCut->id() ;
-
-                        // add cut to mesh
-                        mMesh->cuts().push( tCut );
                     }
+
+                    // remember ID of new block
+                    mConnectorSetIDs( tCutCount++ ) = tCut->id() ;
+
+                    // add cut to mesh
+                    mMesh->cuts().push( tCut );
+
                 }
             }
         }

@@ -990,7 +990,6 @@ namespace belfem
                     }
                 }
 
-                // also consider facet only node dofs
                 for( id_t tSideSetID: aIWG->selected_sidesets() )
                 {
                     // grab sideset pointer on mesh
@@ -2263,6 +2262,7 @@ namespace belfem
 
                 // unflag all entities on the mesh
                 mMesh->unflag_all_facets() ;
+                mMesh->unflag_all_connectors() ;
 
                 // we remember the ID of reach entity
                 Vector< id_t > tEntityIDs ;
@@ -2336,12 +2336,13 @@ namespace belfem
                     // ask IWG about selected dofs
                     const Vector< index_t > & tSelectedDofs = aIWG->lambda_dofs( tSideSetID );
 
+
                     // check if any dofs are selected
                     if( tSelectedDofs.length() > 0 )
                     {
                         for( mesh::Facet * tFacet : tSideSet->facets() )
                         {
-                            // get the temporary index of this entity
+                             // get the temporary index of this entity
                             index_t tIndex = tEntityMap( tFacet->id() );
 
                             // grab the corresponding bitset
@@ -2371,7 +2372,7 @@ namespace belfem
                     // count the dofs
                     aDofCount += tBitset.count() ;
                 }
-                
+
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
                 // Step 5: populate the containers for the entity ids,
                 //         the dof types and the used procs
@@ -2434,6 +2435,7 @@ namespace belfem
                         }
                     }
                 }
+
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                 // Step 6: determine which dofs are visible on which proc
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - -

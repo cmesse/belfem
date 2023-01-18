@@ -130,6 +130,8 @@ namespace belfem
             Vector< real > mWorkgamma; // special purpose vector, assign by iwg child
             Matrix< real > mWorkGamma; // special purpose matrix, assign by iwg child
 
+            Vector< real > mWorktheta; // special purpose vector, assign by iwg child
+
             Vector< real > mWorkNedelec; // special purpose vector for edge data
 
             // pointer to material ( owned by kernel )
@@ -465,6 +467,9 @@ namespace belfem
 
             Vector< real > &
             work_gamma();
+
+            Vector< real > &
+            work_theta();
 
             Matrix< real > &
             work_Gamma();
@@ -1156,7 +1161,13 @@ namespace belfem
         {
             return mWorkgamma;
         }
+//------------------------------------------------------------------------------
 
+        inline Vector< real > &
+        Group::work_theta()
+        {
+            return mWorktheta;
+        }
 //------------------------------------------------------------------------------
 
         inline Matrix< real > &

@@ -81,7 +81,7 @@ namespace belfem
             mFields.CurrentDensity = {  "jz" };
             mFields.CurrentBC = { "lambda_I" };
             mFields.NonDof = { "_jjc", "lambda_error" };
-            mFields.Ghost = { "elementEJ", "elementJ", "elementJJc", "elementRho" };
+            mFields.Ghost = { "elementEJ", "elementJz", "elementJJc", "elementRho" };
 
             mEdgeDofMultiplicity = 2 ;
             mFaceDofMultiplicity = 2 ;
@@ -1315,7 +1315,7 @@ namespace belfem
 
                 index_t tIndex =tGhost->index() ;
 
-                mMesh->field_data( "elementJ" )( tIndex )   = mLayerData( 0, l );
+                mMesh->field_data( "elementJz" )( tIndex )   = mLayerData( 0, l );
                 mMesh->field_data( "elementEJ" )( tIndex )  = mLayerData( 1, l );
                 mMesh->field_data( "elementJJc" )( tIndex ) = mLayerData( 2, l );
                 mMesh->field_data( "elementRho" )( tIndex ) = mLayerData( 3, l );
@@ -1910,7 +1910,7 @@ namespace belfem
                 tV += tW( k ) *  mEdgeFunction->abs_det_J();
             }
 
-            mMesh->field_data( "elementJ")( aElement->element()->index() ) = aI / tV ;
+            mMesh->field_data( "elementJz")( aElement->element()->index() ) = aI / tV ;
 
             return aI ;
         }

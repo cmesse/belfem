@@ -65,8 +65,10 @@ namespace belfem
     MaxwellMaterial::set_rho_el_const( const real aRhoEl )
     {
         mResistivityLaw = ResistivityLaw::Constant ;
-
-        mFunRho = & MaxwellMaterial::rho_el_const ;
+        mFunJcrit = & MaxwellMaterial::j_crit_const ;
+        mFunMm1   = & MaxwellMaterial::nm1_const ;
+        mFunRho   = & MaxwellMaterial::rho_el_const ;
+        mFunRhoJcrit = & MaxwellMaterial::rho_el_jc_const ;
         this->reset_parameters();
         mRhoc = aRhoEl ;
     }
@@ -81,6 +83,7 @@ namespace belfem
         this->reset_parameters();
 
         mFunRho   = & MaxwellMaterial::rho_el_powerlaw ;
+        mFunRhoJcrit = & MaxwellMaterial::rho_el_jc_powerlaw ;
         mFunJcrit = & MaxwellMaterial::j_crit_const ;
         mFunMm1   = & MaxwellMaterial::nm1_const ;
 
@@ -103,6 +106,7 @@ namespace belfem
         mResistivityLaw = ResistivityLaw::DependJB ;
 
         mFunRho   = & MaxwellMaterial::rho_el_powerlaw ;
+        mFunRhoJcrit = & MaxwellMaterial::rho_el_jc_powerlaw ;
         mFunJcrit = & MaxwellMaterial::j_crit_b ;
         mFunMm1   = & MaxwellMaterial::nm1_b ;
 
@@ -127,6 +131,7 @@ namespace belfem
     {
         mResistivityLaw = ResistivityLaw::DependJT ;
         mFunRho   = & MaxwellMaterial::rho_el_powerlaw ;
+        mFunRhoJcrit = & MaxwellMaterial::rho_el_jc_powerlaw ;
         mFunJcrit = & MaxwellMaterial::j_crit_t ;
         mFunMm1   = & MaxwellMaterial::nm1_t ;
 
@@ -156,6 +161,7 @@ namespace belfem
     {
         mResistivityLaw = ResistivityLaw::DependJBT ;
         mFunRho   = & MaxwellMaterial::rho_el_powerlaw ;
+        mFunRhoJcrit = & MaxwellMaterial::rho_el_jc_powerlaw ;
         mFunJcrit = & MaxwellMaterial::j_crit_bt ;
         mFunMm1   = & MaxwellMaterial::nm1_bt ;
 
@@ -184,6 +190,7 @@ namespace belfem
         }
         mJcData = new Database( aDatabase, aDataset );
         mFunJcrit = & MaxwellMaterial::j_crit_database ;
+
         mResistivityLaw = ResistivityLaw::DependJBT ;
     }
 
@@ -228,6 +235,7 @@ namespace belfem
         mRhoSpline = aSpline ;
         mResistivityLaw = ResistivityLaw::DependT ;
         mFunRho = & MaxwellMaterial::rho_el_spline_t ;
+        mFunRhoJcrit = & MaxwellMaterial::rho_el_jc_spline_t ;
 
         mFunJcrit = & MaxwellMaterial::j_crit_const ;
         mJc = 0 ;
