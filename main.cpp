@@ -24,9 +24,7 @@ int main( int    argc,
 
     print_banner();
 
-    Matrix <uint > tA = { { 0, 1, 1 }, { 1, 1, 1 }, { 1, 2, 3 } } ;
-
-    tA.print("A");
+    std::cout << "eps " << BELFEM_EPS << std::endl ;
 
     // close communicator
     return gComm.finalize();

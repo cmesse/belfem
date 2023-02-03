@@ -31,8 +31,6 @@ int main( int    argc,
 
     string tLabel = tArguments.data( 1 ) ;
 
-
-
     // get material enum
     MaterialType tMaterialType =  string_to_material_type( tArguments.data( 1 ) ) ;
 
@@ -62,7 +60,7 @@ int main( int    argc,
         }
 
 
-       Vector< real > tT = {
+       /*Vector< real > tT = {
                 4.0,
                 7.5,
                 10.0,
@@ -102,10 +100,10 @@ int main( int    argc,
                 2400.0,
                 2600.0,
                 2800.0,
-                3000.0 };
+                3000.0 }; */
 
 
-        // Vector< real > tT = linspace( 4.0, 300.0, 297 );
+        Vector< real > tT = linspace( 4.0, 300.0, 297 );
               
         // scan material list
         uint n = tT.length();
@@ -125,6 +123,14 @@ int main( int    argc,
         tCase += tMatierial->has_electric_resistivity() ? 4 : 0;
         tCase += tMatierial->has_thermal() ? 8 : 0;
 
+        // magnetic field
+        real tB = 0.0 ;
+
+        // check if a b-field was given
+        if( tArguments.data().size() > 3 )
+        {
+            tB = std::stod( tArguments.data( 3 ) ) ;
+        }
 
         switch ( tCase )
         {
@@ -189,7 +195,7 @@ int main( int    argc,
 
                     printf( " %6.0f %10.3f\n",
                             tT( k ),
-                            1e9 * tMatierial->rho_el( 0.0, tT( k ), 0.0 ));
+                            1e9 * tMatierial->rho_el( 0.0, tT( k ), tB ));
                 }
                 break;
             }
@@ -204,7 +210,7 @@ int main( int    argc,
                 {
                     printf( " %6.0f %10.3f %10.3f\n",
                             tT( k ),
-                            1e9 * tMatierial->rho_el( 0.0, tT( k ), 0.0 ),
+                            1e9 * tMatierial->rho_el( 0.0, tT( k ), tB ),
                             1e6 * tMatierial->alpha( tT( k )));
                 }
                 break;
@@ -221,7 +227,7 @@ int main( int    argc,
 
                     printf( " %6.0f %10.3f %8.4f %10.3f\n",
                             tT( k ),
-                            1e9 * tMatierial->rho_el( 0.0, tT( k ), 0.0 ),
+                            1e9 * tMatierial->rho_el( 0.0, tT( k ), tB ),
                             1e-9 * tMatierial->E( tT( k )),
                             tMatierial->nu( tT( k )));
                 }
@@ -238,7 +244,7 @@ int main( int    argc,
                 {
                     printf( " %6.0f %10.3f %8.4f %10.3f %10.3f\n",
                             tT( k ),
-                            1e9 * tMatierial->rho_el( 0.0, tT( k ), 0.0 ),
+                            1e9 * tMatierial->rho_el( 0.0, tT( k ), tB ),
                             1e-9 * tMatierial->E( tT( k )),
                             tMatierial->nu( tT( k )),
                             1e6 * tMatierial->alpha( tT( k )));
@@ -334,7 +340,7 @@ int main( int    argc,
                             tT( k ),
                             tMatierial->c( tT( k )),
                             tMatierial->lambda( tT( k )),
-                            tMatierial->rho_el( 0.0, tT( k ), 0.0 ) * 1e9
+                            tMatierial->rho_el( 0.0, tT( k ), tB ) * 1e9
                     );
                 }
                 break;
@@ -356,7 +362,7 @@ int main( int    argc,
                             tT( k ),
                             tMatierial->c( tT( k )),
                             tMatierial->lambda( tT( k )),
-                            1e9 * tMatierial->rho_el( 0.0, tT( k ), 0.0 ),
+                            1e9 * tMatierial->rho_el( 0.0, tT( k ), tB ),
                             1e-9 * tMatierial->E( tT( k )),
                             tMatierial->nu( tT( k )));
                 }
@@ -374,7 +380,7 @@ int main( int    argc,
                             tT( k ),
                             tMatierial->c( tT( k )),
                             tMatierial->lambda( tT( k )),
-                            1e9 * tMatierial->rho_el( 0.0, tT( k ), 0.0 ),
+                            1e9 * tMatierial->rho_el( 0.0, tT( k ), tB ),
                             1e-9 * tMatierial->E( tT( k )),
                             tMatierial->nu( tT( k )),
                             1e6 * tMatierial->alpha( tT( k )));

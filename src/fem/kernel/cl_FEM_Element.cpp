@@ -229,11 +229,11 @@ namespace belfem
 
             if ( mElement->has_edges() && tNumberOfEdgesPerElement > 0 )
             {
-                // link element with dofs
-                if ( tNumberOfDofsPerEdge > 0 && tNumberOfEdgesPerElement > 0 )
-                {
-                    this->compute_edge_directions();
+                this->compute_edge_directions();
 
+                // link element with dofs
+                if ( tNumberOfDofsPerEdge > 0  )
+                {
                     // link element to edge dofs
                     for ( uint k = 0; k < tNumberOfEdgesPerElement; ++k )
                     {
