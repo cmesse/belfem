@@ -307,7 +307,6 @@ namespace belfem
                              ( unsigned int ) tWords.size()-3-tNumTags,
                              ( unsigned int ) tNumNodes );
 
-
                 // create an element
                 Element * tElement = tFactory.create_lagrange_element( tType, tID );
 
@@ -583,6 +582,15 @@ namespace belfem
                                  ( unsigned int ) tID,
                                  ( unsigned int ) tWords.size()-1,
                                  ( unsigned int ) tNumNodes );
+
+                    // catch special case for vertex
+                    if( tType == ElementType::VERTEX )
+                    {
+                        BELFEM_ERROR( tNumElements == 1, "Don't understand input file." );
+
+                        // we want to use the GeometryTag as Entity ID
+                        tID = tGeometryTag ;
+                    }
 
                     // create an element
                     Element * tElement = tFactory.create_lagrange_element( tType, tID );

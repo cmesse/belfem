@@ -1556,8 +1556,33 @@ namespace belfem
                 }
             }
 
+            // create temporary map to make sure that defined sidets remain
+            // consistent after sorting with unique
+            Map< id_t, DomainType > tSideSetMap ;
+            uint tCount = 0 ;
+            for( id_t s : mSideSetIDs )
+            {
+                if ( ! tSideSetMap.key_exists( s ) )
+                {
+                    tSideSetMap[ s ] = mSideSetTypes( tCount );
+                }
+                ++tCount ;
+            }
+
             // we need to make this list unique again, since side sets can be united to cuts
             unique( mSideSetIDs );
+
+            // reset type container
+            mSideSetTypes.set_size( mSideSetIDs.length(), DomainType::UNDEFINED );
+
+            // reset the counter
+            tCount = 0 ;
+
+            // repopulate type list
+            for( id_t s : mSideSetIDs )
+            {
+                mSideSetTypes( tCount++ ) = tSideSetMap( s );
+            }
 
             // wait for other procs
             comm_barrier();
