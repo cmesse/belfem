@@ -659,6 +659,12 @@ namespace belfem
     void
     Mesh::connect_elements_to_elements()
     {
+        // exit the function if there are no elements on this mesh
+        if( mElements.size() == 0 )
+        {
+            return ;
+        }
+
         index_t tCount = 0 ;
 
         Vector< uint > tNumFacetsPerElement( mElements.size(), 0 );

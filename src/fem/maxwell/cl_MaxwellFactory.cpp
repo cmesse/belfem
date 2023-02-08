@@ -894,6 +894,20 @@ namespace belfem
                         real tM = BELFEM_QUIET_NAN;
                         aMaterial->set_nu_s( this->read_bhfile( tPath, tUnitB, tUnitH, tMaxB, tM ) );
                         aMaterial->set_m0( tM );
+
+                        real tB = 0.0 ;
+                        while( tB < 10 )
+                        {
+                            real tNu = aMaterial->nu_s( tB ) ;
+                            real tH = tNu * tB ;
+
+                            real tMu = aMaterial->mu_s( tH );
+
+                            std::cout << tB << " " << tH << " " << tMu * tH << std::endl ;
+
+                            tB += 0.1 ;
+                        }
+                        exit( 0 );
                     }
                     else
                     {
@@ -3602,6 +3616,7 @@ namespace belfem
                 td2HdB2n = 2 * tC( 0 );
                 tHn = polyval( tC, tBn );
 
+                std::cout << "check " << tdHdBn << " " << constant::nu0 << std::endl ;
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                 // Step 3 : extrapolate curve
@@ -3654,7 +3669,7 @@ namespace belfem
                 for( uint k=0; k<tn1; ++k )
                 {
                     tB2( tCount ) = tB3( k );
-                    tH2( tCount ) =tH3( k ) ;
+                    tH2( tCount ) = tH3( k ) ;
                     ++tCount ;
                 }
 
@@ -3749,7 +3764,6 @@ namespace belfem
 
                 Cell< Spline * > aSplines( 2 , nullptr );
                 return new Spline( tB, tY, tHelpMatrix, 0, 0, 0  );
-
             }
             else
             {

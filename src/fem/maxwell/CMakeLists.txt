@@ -12,6 +12,7 @@ set( SOURCES
         cl_MaxwellJob.cpp
         cl_FEM_MaxwellBoundaryConditionCurrent.cpp
         cl_FEM_MaxwellBoundaryConditionMagfield.cpp
+        cl_Maxwell_ThermalMeshExtractor.cpp
         cl_MaxwellFactory.cpp
         fn_FEM_compute_brandt.cpp
         fn_FEM_compute_normb.cpp

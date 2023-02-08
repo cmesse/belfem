@@ -90,7 +90,7 @@ namespace belfem
         // todo: delete from here
         // contains list of original ids ( row 0 ) vs duplicates (row 1)
         // written by scissors if cut is performed
-        Map< id_t, mesh::Node * > mNodeTapeCutMap ;
+        //Map< id_t, mesh::Node * > mNodeTapeCutMap ;
 
         // contains a list of cloned facets vs originals (for tapes)
         Matrix< id_t > mTapeFacetTable ;

@@ -12,7 +12,7 @@
 #include "fn_cross.hpp"
 
 
-#define HPHI_TRI3_LAMBDAN
+//#define HPHI_TRI3_LAMBDAN
 
 namespace belfem
 {
