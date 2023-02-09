@@ -87,8 +87,6 @@ namespace belfem
                 // make sidesets unique
                 unique( mSelectedSideSets );
 
-
-
                 mMesh->unflag_everything();
 
                 // determine max ids for mesh entities
@@ -360,7 +358,8 @@ namespace belfem
                 Element * tFacet1 = tLayer1( e );
 
                 // create a new element
-                Element * tElement = tFactory.create_lagrange_element( ElementType::PENTA6, ++mMaxElementID );
+                Element * tElement = tFactory.create_lagrange_element(
+                        ElementType::PENTA6, ++mMaxElementID );
 
                 // link nodes
                 tElement->insert_node( tFacet0->node( 0 ), 0 );
@@ -409,7 +408,8 @@ namespace belfem
                 Element * tFacet2 = tLayer2( e );
 
                 // create a new element
-                Element * tElement = tFactory.create_lagrange_element( ElementType::PENTA18, ++mMaxElementID );
+                Element * tElement = tFactory.create_lagrange_element(
+                        ElementType::PENTA18, ++mMaxElementID );
 
                 // link nodes
                 tElement->insert_node( tFacet0->node( 0 ),  0 );
@@ -434,6 +434,14 @@ namespace belfem
                 // add element to Container
                 tElements( e ) = tElement ;
             }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        TapeRoller::merge_tape_blocks()
+        {
+
         }
 
 //------------------------------------------------------------------------------
@@ -799,21 +807,35 @@ namespace belfem
                 mMesh->sideset( tID )->flag_all_nodes();
             }
 
+            Cell< Node * > & tNodes = mMesh->nodes();
+
+
             // count nodes
             index_t tCount = 0;
-
-            Cell< Node * > & tNodes = mMesh->nodes();
 
             // reset the map
             mNodeMap.clear();
 
-            // the node map is needed to assign the nodes correctly
-            // with the new tapes
+            // also flag originals
             for ( Node * tNode: tNodes )
             {
                 if ( tNode->is_flagged() )
                 {
-                    mNodeMap[ tNode->id() ] = tCount++;
+                    if( tNode->id() != tNode->original()->id() )
+                    {
+                        tNode->unflag() ;
+                        tNode->original()->flag() ;
+                    }
+                }
+            }
+
+            // the node map is needed to assign the nodes correctly
+            // with the new tapes. We only use original nodes, not cut duplicates
+            for ( Node * tNode: tNodes )
+            {
+                if ( tNode->is_flagged() )
+                {
+                    ++tCount ;
                 }
             }
 
@@ -824,7 +846,12 @@ namespace belfem
             {
                 if ( tNode->is_flagged() )
                 {
-                   mNodeIDs( tCount++ ) = tNode->id() ;
+                    mNodeMap[ tNode->id() ] = tCount ;
+                    for( uint d=0; d<tNode->number_of_duplicates(); ++d )
+                    {
+                        mNodeMap[ tNode->duplicate( d )->id() ] = tCount ;
+                    }
+                    mNodeIDs( tCount++ ) = tNode->id() ;
                 }
             }
 
@@ -843,9 +870,8 @@ namespace belfem
                 // loop over all nodes
                 for ( Node * tNode: tNodes )
                 {
-                    if ( tNode->is_flagged())
+                    if ( tNode->is_flagged() )
                     {
-                        // crate the new node
                         // create a new node
                         tLayerNodes( tCount++ ) = new Node(
                                 ++mMaxNodeId,
@@ -933,7 +959,6 @@ namespace belfem
                     // number of nodes per element type
                     uint tNumNodes = number_of_nodes( tType );
 
-
                     // loop over all facets
                     for ( Facet * tFacet: tFacets )
                     {
@@ -946,7 +971,8 @@ namespace belfem
                         // link the nodes
                         for ( uint k = 0; k < tNumNodes; ++k )
                         {
-                            tClone->insert_node( tLayerNodes( mNodeMap( tElement->node( k )->id())), k );
+
+                            tClone->insert_node( tLayerNodes( mNodeMap( tElement->node( k )->id() ) ), k );
                         }
 
                         tLayerElements( tCount++ ) = tClone;
@@ -1077,7 +1103,7 @@ namespace belfem
 
                             tClone->set_id( ++mMaxEdgeId );
 
-                            tClone->allocate_node_container( tEdge->number_of_nodes());
+                            tClone->allocate_node_container( tEdge->number_of_nodes() );
 
                             // link nodes
                             for ( uint k = 0; k < tEdge->number_of_nodes(); ++k )

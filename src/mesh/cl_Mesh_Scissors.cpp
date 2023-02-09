@@ -790,6 +790,8 @@ namespace belfem
 
             for( Node * tNode : mOriginalNodes )
             {
+
+
                 // identify the number of duplicated that are to be created
                 uint tN = mNodeCounter( tNode->index() ) ;
 
@@ -814,7 +816,7 @@ namespace belfem
                 // link duplicates with original and others
                 for ( uint d = 0; d < tN; ++d )
                 {
-                   Node * tDuplicate = tNode->duplicate(  d );
+                    Node * tDuplicate = tNode->duplicate(  d );
 
                     tDuplicate->allocate_duplicate_container( tN );
 
@@ -826,6 +828,7 @@ namespace belfem
                         }
                     }
                 }
+
             }
 
             BELFEM_ASSERT( tCount == mDuplicateNodes.size(),

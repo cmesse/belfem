@@ -111,8 +111,6 @@ namespace belfem
                 Vector< real > & tNormalX = aMesh->field_data( "SurfaceNormalsx" );
                 Vector< real > & tNormalY = aMesh->field_data( "SurfaceNormalsy" );
 
-                index_t tNumberOfNodes = aMesh->number_of_nodes() ;
-
                 aMesh->unflag_all_nodes() ;
 
                 // create the interpolation function factory
@@ -299,19 +297,29 @@ namespace belfem
 
                 real tNorm ;
 
+                index_t tIndex = 0 ;
+
                 // loop over all nodes on mesh
-                for( index_t k=0; k<tNumberOfNodes; ++k )
+                for(  mesh::Node * tNode : tNodes )
                 {
-                    if( tNodes( k )->is_flagged() )
+                    if( tNode->is_flagged() )
                     {
                         // compute normal
                         tNorm = std::sqrt(
-                                  tNormalX( k ) * tNormalX( k )
-                                + tNormalY( k ) * tNormalY( k ) );
+                                tNormalX( tIndex ) * tNormalX( tIndex )
+                                + tNormalY( tIndex ) * tNormalY( tIndex ) );
 
-                        tNormalX( k ) /= tNorm ;
-                        tNormalY( k ) /= tNorm ;
+                        tNormalX( tIndex ) /= tNorm ;
+                        tNormalY( tIndex ) /= tNorm ;
+
+                        if( tNode->number_of_duplicates() > 0 )
+                        {
+                            index_t tOrgIndex = tNode->original()->index() ;
+                            tNormalX( tOrgIndex ) = tNormalX( tIndex );
+                            tNormalY( tOrgIndex ) = tNormalY( tIndex );
+                        }
                     }
+                    ++tIndex ;
                 }
             }
 
@@ -330,8 +338,6 @@ namespace belfem
                 Vector< real > & tNormalX = aMesh->field_data( "SurfaceNormalsx" );
                 Vector< real > & tNormalY = aMesh->field_data( "SurfaceNormalsy" );
                 Vector< real > & tNormalZ = aMesh->field_data( "SurfaceNormalsz" );
-
-                index_t tNumberOfNodes = aMesh->number_of_nodes() ;
 
                 // create the interpolation function factory
                 fem::InterpolationFunctionFactory tFactory;
@@ -435,19 +441,30 @@ namespace belfem
                 real tNorm ;
 
                 // loop over all nodes on mesh
-                for( index_t k=0; k<tNumberOfNodes; ++k )
+                index_t tIndex = 0 ;
+
+                // loop over all nodes on mesh
+                for(  mesh::Node * tNode : tNodes )
                 {
-                    if( tNodes( k )->is_flagged() )
+                    if( tNodes( tIndex )->is_flagged() )
                     {
                         // compute normal
                         tNorm = std::sqrt(
-                                  tNormalX( k )*tNormalX( k )
-                                + tNormalY( k )*tNormalY( k )
-                                + tNormalZ( k )*tNormalZ( k ) );
+                                  tNormalX( tIndex )*tNormalX( tIndex )
+                                + tNormalY( tIndex )*tNormalY( tIndex )
+                                + tNormalZ( tIndex )*tNormalZ( tIndex ) );
 
-                        tNormalX( k ) /= tNorm ;
-                        tNormalY( k ) /= tNorm ;
-                        tNormalZ( k ) /= tNorm ;
+                        tNormalX( tIndex ) /= tNorm ;
+                        tNormalY( tIndex ) /= tNorm ;
+                        tNormalZ( tIndex ) /= tNorm ;
+
+                        if( tNode->number_of_duplicates() > 0 )
+                        {
+                            index_t tOrgIndex = tNode->original()->index() ;
+                            tNormalX( tOrgIndex ) = tNormalX( tIndex );
+                            tNormalY( tOrgIndex ) = tNormalY( tIndex );
+                            tNormalZ( tOrgIndex ) = tNormalZ( tIndex );
+                        }
                     }
                 }
             }

@@ -31,6 +31,11 @@ namespace belfem
 
         Node::~Node()
         {
+            if( mDuplicates != nullptr )
+            {
+                delete[] mDuplicates;
+                mNumberOfDuplicates = 0;
+            }
             this->delete_containers();
         }
 
@@ -61,6 +66,34 @@ namespace belfem
             mCoords[ 0 ] = aX;
             mCoords[ 1 ] = aY;
             mCoords[ 2 ] = aZ;
+        }
+
+
+//------------------------------------------------------------------------------
+
+        Node *
+        Node::original()
+        {
+            if( mNumberOfDuplicates == 0 )
+            {
+                return this ;
+            }
+            else
+            {
+                // this might look slow, but we don't call this
+                // very often, and we save one pointer!
+                id_t tID = this->id() ;
+                uint tIndex = 0 ;
+                for( uint d=0; d<mNumberOfDuplicates; ++d )
+                {
+                    if( mDuplicates[ d ]->id() < tID )
+                    {
+                        tID = mDuplicates[ d ]->id() ;
+                        tIndex = d ;
+                    }
+                }
+                return mDuplicates[ tIndex ];
+            }
         }
 
 //------------------------------------------------------------------------------

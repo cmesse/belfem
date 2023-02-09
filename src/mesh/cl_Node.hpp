@@ -23,6 +23,10 @@ namespace belfem
             // coordinates of this vector
             real mCoords[ 3 ];
 
+            // container for duplicates
+            Node **mDuplicates = nullptr ;
+            uint mNumberOfDuplicates = 0 ;
+
 //------------------------------------------------------------------------------
         public:
 //------------------------------------------------------------------------------
@@ -81,7 +85,7 @@ namespace belfem
             set_coords( const real aX, const real aY, const real & aZ  );
 
             void
-            allocate_duplicate_container( const uint aNumberOfDuplicates );
+            allocate_duplicate_container( const uint aSize );
 
             void
             add_duplicate( Node * aNode );
@@ -101,6 +105,14 @@ namespace belfem
              */
              Node *
              duplicate( const uint aIndex );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * returns the original of this node
+             */
+            Node *
+            original();
 
 //------------------------------------------------------------------------------
         };
@@ -160,7 +172,7 @@ namespace belfem
         inline uint
         Node::number_of_duplicates() const
         {
-            return this->number_of_vertices() ;
+            return mNumberOfDuplicates ;
         }
 
 //------------------------------------------------------------------------------
@@ -171,14 +183,24 @@ namespace belfem
         inline Node *
         Node::duplicate( const uint aIndex )
         {
-            return reinterpret_cast< Node * >( this->vertex( aIndex ) );
+            BELFEM_ASSERT( aIndex < mNumberOfDuplicates,
+                           "Duplicate Index %d out of bounds, which must be less than %d",
+                           ( int ) aIndex,
+                           ( int ) mNumberOfDuplicates );
+
+            return mDuplicates[ aIndex ];
         }
+
 //------------------------------------------------------------------------------
 
         inline void
-        Node::allocate_duplicate_container( const uint aNumberOfDuplicates )
+        Node::allocate_duplicate_container( const uint aSize )
         {
-            this->init_vertex_container( aNumberOfDuplicates );
+            if ( aSize > 0 )
+            {
+                mDuplicates = new Node * [ aSize ];
+            }
+            mNumberOfDuplicates = 0;
         }
 
 //------------------------------------------------------------------------------
@@ -186,7 +208,7 @@ namespace belfem
         inline void
         Node::add_duplicate( Node * aNode )
         {
-            this->insert_vertex( aNode );
+            mDuplicates[ mNumberOfDuplicates++ ] = aNode ;
         }
 
 //------------------------------------------------------------------------------
