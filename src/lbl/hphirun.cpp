@@ -90,6 +90,10 @@ int main( int    argc,
     // get the nonlinear settings
     NonlinearSettings tNonlinear = tFactory->nonlinear_settings() ;
 
+
+    const uint tMeshDump = tFactory->meshdump() ;
+    const uint tCsvDump  = tFactory->csvdump() ;
+
     // delete the factory
     delete tFactory ;
 
@@ -99,6 +103,8 @@ int main( int    argc,
     // check if we have to load a field from HDF5
     tMagfield->initialize() ; // must be called before loading mesh data
 
+    // initialize the temperature field
+    tMesh->field_data("elementT").fill( 10.0 );
 
     //tFormulation->set_nan_values() ;
 
@@ -153,9 +159,6 @@ int main( int    argc,
    //}
     //tMesh->save( tOutFile );
    uint tTimeLoopCSV = 1 ;
-
-   const uint tMeshDump = tFactory->meshdump() ;
-   const uint tCsvDump  = tFactory->csvdump() ;
 
    while( tTime < tMaxTime )
    {

@@ -27,13 +27,20 @@ namespace belfem
         Mesh *
         ThermalMeshExtractor::create_mesh()
         {
-            if( mInputMesh.number_of_dimensions() == 2 )
+            if( comm_rank() == 0 )
             {
-                return this->create_2d_mesh() ;
+                if ( mInputMesh.number_of_dimensions() == 2 )
+                {
+                    return this->create_2d_mesh();
+                }
+                else
+                {
+                    return this->create_3d_mesh();
+                }
             }
             else
             {
-                return this->create_3d_mesh() ;
+                return new Mesh( mInputMesh.number_of_dimensions(), mInputMesh.master() );
             }
         }
 
@@ -46,30 +53,17 @@ namespace belfem
             Mesh * aMesh = new Mesh( mInputMesh.number_of_dimensions(),
                                      mInputMesh.master() ) ;
 
-            if( comm_rank() == 0 )
-            {
-                // create the nodes
-                this->create_nodes( aMesh );
+            // create the nodes
+            this->create_nodes( aMesh );
 
-                // compute the volumes
-                this->compute_element_volumes( aMesh );
+            // compute the volumes
+            this->compute_element_volumes( aMesh );
 
-                // create resistor objects
-                this->create_resistors( aMesh );
+            // create resistor objects
+            this->create_resistors( aMesh );
 
-                // finalize the mesh
-                aMesh->finalize() ;
-            }
-            else
-            {
-                /*
-                 * to do list:
-                 *
-                 * distribute element volumes
-                 * set element proc ownerships
-                 */
-                BELFEM_ERROR( false, "parallel not implemented yet");
-            }
+            // finalize the mesh
+            aMesh->finalize() ;
 
             return aMesh ;
         }

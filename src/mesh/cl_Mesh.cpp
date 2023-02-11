@@ -2039,6 +2039,7 @@ namespace belfem
     void
     Mesh::set_node_owners()
     {
+        this->unflag_all_nodes() ;
         this->unflag_all_facets();
         this->unflag_all_connectors();
 
@@ -2050,43 +2051,47 @@ namespace belfem
             tNode->set_owner( mNumberOfPartitions );
         }
 
-        index_t tCount = 1 ;
-
-        while( tCount > 0 )
+        // flag nodes that are duplicates
+        for ( mesh::Node * tNode: mNodes )
         {
-            tCount = 0;
+            if( tNode->number_of_duplicates() > 0 )
+            {
+                if( tNode->id() != tNode->original()->id() )
+                {
+                    tNode->flag() ;
+                }
+            }
+        }
 
-            // loop over all nodes
-            for ( mesh::Node * tNode: mNodes )
+        // loop over all nodes
+        for ( mesh::Node * tNode: mNodes )
+        {
+            if ( ! tNode->is_flagged() ) // only for nodes that are not duplicates
             {
                 proc_t tOwner = mNumberOfPartitions;
 
-                // grab nodes and duplicates
-                tNodes.set_size( tNode->number_of_duplicates()+1, nullptr );
-                uint c = 0 ;
-                tNodes( c++ ) = tNode ;
+                // loop over all elements of this node
+                for ( uint e = 0; e < tNode->number_of_elements(); ++e )
+                {
+                    tOwner = ( tNode->element( e )->owner() < tOwner ) ?
+                             tNode->element( e )->owner() : tOwner;
+                }
+
                 for( uint d=0; d<tNode->number_of_duplicates(); ++d )
                 {
-                    tNodes( c++ ) = tNode->duplicate( d );
-                }
+                    mesh::Node * tDuplicate = tNode->duplicate( d ) ;
 
-                for ( mesh::Node * tN: tNodes )
-                {
-                    // loop over all elements of this node
-                    for ( uint e = 0; e < tN->number_of_elements(); ++e )
+                    for ( uint e = 0; e < tDuplicate->number_of_elements(); ++e )
                     {
-                        tOwner = ( tN->element( e )->owner() < tOwner ) ?
-                                 tN->element( e )->owner() : tOwner;
+                        tOwner = ( tDuplicate->element( e )->owner() < tOwner ) ?
+                                   tDuplicate->element( e )->owner() : tOwner;
                     }
                 }
 
-                for ( mesh::Node * tN: tNodes )
+                tNode->set_owner( tOwner );
+                for( uint d=0; d<tNode->number_of_duplicates(); ++d )
                 {
-                    if( tN->owner() > tOwner )
-                    {
-                        tN->set_owner( tOwner );
-                        ++tCount ;
-                    }
+                    tNode->duplicate( d )->set_owner( tOwner );
                 }
             }
         }

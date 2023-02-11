@@ -65,64 +65,82 @@ namespace belfem
             // partition the mesh if in parallel mode
             if ( mNumberOfProcs > 1 && mMyRank == mMesh->master() )
             {
-
-                if( mParams->selected_blocks().length() > 0 )
+                if ( mParams->auto_partition() )
                 {
-                    mMesh->partition( mNumberOfProcs, mParams->selected_blocks() );
-
-                    mMesh->unflag_all_elements() ;
-                    mMesh->unflag_all_facets() ;
-                    if ( mMesh->ghost_block_ids().length() > 0 )
+                    if ( mParams->selected_blocks().length() > 0 )
                     {
-                        mMesh->partition( mNumberOfProcs, mMesh->ghost_block_ids(), true, false );
+                        mMesh->partition( mNumberOfProcs, mParams->selected_blocks());
 
-                        // get Elements on first ghost block
-                        Cell< mesh::Element * > & tElements = mMesh->block( mMesh->ghost_block_ids()( 0 ))->elements();
-
-                        // loop over all thin shell sidesets
-                        for ( id_t tID: mMesh->ghost_sideset_ids())
+                        mMesh->unflag_all_elements();
+                        mMesh->unflag_all_facets();
+                        uint tNumGhostBlocks = mMesh->ghost_block_ids().length() ;
+                        if (tNumGhostBlocks  > 0 )
                         {
-                            // grab facets
-                            Cell< mesh::Facet * > & tFacets = mMesh->sideset( tID )->facets();
+                            mMesh->partition( mNumberOfProcs, { mMesh->ghost_block_ids()(0)}, true, false );
 
-                            index_t tCount = 0;
+
+                            Cell< mesh::Element * > & tGhostElements =  mMesh->block(
+                                    mMesh->ghost_block_ids()( 0 ))->elements() ;
+
+                            index_t tNumElems = tGhostElements.size() ;
+
+
+                            for( uint b=1; b<tNumGhostBlocks; ++b )
+                            {
+                                Cell< mesh::Element * > & tElements = mMesh->block(
+                                        mMesh->ghost_block_ids()( b))->elements();
+
+                                for( index_t e=0; e<tNumElems; ++e )
+                                {
+                                    tElements( e )->set_owner( tGhostElements( e )->owner() );
+                                }
+                            }
+
+                            // loop over all thin shell sidesets
+                            for ( id_t tID: mMesh->ghost_sideset_ids())
+                            {
+                                // grab facets
+                                Cell< mesh::Facet * > & tFacets = mMesh->sideset( tID )->facets();
+
+                                index_t tCount = 0;
+                                for ( mesh::Facet * tFacet: tFacets )
+                                {
+                                    // get owner
+                                    proc_t tOwner = tGhostElements( tCount++ )->owner();
+
+                                    tFacet->set_owner( tOwner );
+                                    tFacet->master()->set_owner( tOwner );
+                                    tFacet->slave()->set_owner( tOwner );
+                                    tFacet->master()->flag();
+                                    tFacet->slave()->flag();
+                                    tFacet->flag();
+                                }
+                            }
+
+                            // now we need to fix the ownerships of the original facets
+                            // that describe the thin shell, but are not part of the ghost
+                            // block
+
+                            // grab all facet on mesh
+                            Cell< mesh::Facet * > & tFacets = mMesh->facets();
+
+                            // and now let's make sure that the ownerships are correct
                             for ( mesh::Facet * tFacet: tFacets )
                             {
-                                // get owner
-                                proc_t tOwner = tElements( tCount++ )->owner();
-
-                                tFacet->set_owner( tOwner );
-                                tFacet->master()->set_owner( tOwner );
-                                tFacet->slave()->set_owner( tOwner );
-                                tFacet->master()->flag();
-                                tFacet->slave()->flag();
-                                tFacet->flag();
-                            }
-                        }
-
-                        // now we need to fix the ownerships of the original facets
-                        // that describe the thin shell, but are not part of the ghost
-                        // block
-
-                        // grab all facet on mesh
-                        Cell< mesh::Facet * > & tFacets = mMesh->facets();
-
-                        // and now let's make sure that the ownerships are correct
-                        for ( mesh::Facet * tFacet: tFacets )
-                        {
-                            if ( !tFacet->is_flagged() )
-                            {
-                                if ( tFacet->has_master() )
+                                if ( !tFacet->is_flagged())
                                 {
-                                    tFacet->set_owner( tFacet->master()->owner() );
+                                    if ( tFacet->has_master())
+                                    {
+                                        tFacet->set_owner( tFacet->master()->owner());
+                                    }
                                 }
                             }
                         }
                     }
-                }
-                else
-                {
-                    mMesh->partition( mNumberOfProcs );
+                    else
+                    {
+                        mMesh->partition( mNumberOfProcs );
+                    }
                 }
 
                 // this->fix_ownerships();
@@ -140,7 +158,6 @@ namespace belfem
                 mFacetTable.set_size( mNumberOfProcs, {} );
                 mConnectorTable.set_size( mNumberOfProcs, {} );
             }
-
 
             this->distribute_mesh() ;
 
@@ -374,6 +391,7 @@ namespace belfem
                 {
                     this->receive_submesh();
                 }
+
             }
 
             // tidy up memory
@@ -540,54 +558,72 @@ namespace belfem
                 }
             }
 
-            // send mesh dimension
-            uint tDimension = mMesh->number_of_dimensions();
-            send( aTarget, tDimension );
+            Vector< index_t > tNumEntities( 8 );
+            tNumEntities( 0 ) = mMesh->number_of_dimensions() ;
+            tNumEntities( 1 ) = mMesh->number_of_nodes() ;
+            tNumEntities( 2 ) = mMesh->number_of_elements() ;
+            tNumEntities( 3 ) = mMesh->number_of_edges() ;
+            tNumEntities( 4 ) = mMesh->number_of_faces() ;
+            tNumEntities( 5 ) = mMesh->number_of_facets() ;
+            tNumEntities( 6 ) = mMesh->number_of_connectors() ;
+            tNumEntities( 7 ) = mMesh->vertices().size() ;
+
+
+            send( aTarget, tNumEntities );
+
 
             this->send_nodes( aTarget );
             this->send_elements( aTarget );
-            this->send_edges( aTarget );
-            this->send_faces( aTarget );
-            this->send_facets( aTarget, false );
 
+            if ( tNumEntities( 3 ) > 0 ) this->send_edges( aTarget );
+            if ( tNumEntities( 4 ) > 0 ) this->send_faces( aTarget );
+            if ( tNumEntities( 5 ) > 0 ) this->send_facets( aTarget, false );
+            if ( tNumEntities( 6 ) > 0 ) this->send_facets( aTarget, true );
 
-            // send connectors
-            this->send_facets( aTarget, true );
-
-
-            mMesh->unflag_all_nodes();
-
-            // only flag nodes that belong to the target
-            for ( mesh::Element * tElement : tElements )
+            if( tNumEntities( 7 ) > 0 )
             {
-                if( tElement->is_flagged() && tElement->owner() == aTarget )
+                // get ref to all vertices on mesh
+                Cell< mesh::Element * > & tVertices = mMesh->vertices();
+
+                if ( tVertices.size() > 0 )
                 {
-                    // flag all nodes
-                    tElement->flag_nodes();
+                    mMesh->unflag_all_nodes();
+
+                    // only flag nodes that belong to the target
+                    for ( mesh::Element * tElement: tElements )
+                    {
+                        if ( tElement->is_flagged() && tElement->owner() == aTarget )
+                        {
+                            // flag all nodes
+                            tElement->flag_nodes();
+                        }
+                    }
+
+
+                    // flag used vertices
+                    for ( mesh::Element * tVertex: tVertices )
+                    {
+                        if ( tVertex->node( 0 )->is_flagged())
+                        {
+                            tVertex->flag();
+                        }
+                    }
                 }
+
+                this->send_vertices( aTarget );
             }
 
-            // get ref to all vertices on mesh
-            Cell< mesh::Element * > & tVertices = mMesh->vertices();
-
-            // flag used vertices
-            for( mesh::Element * tVertex : tVertices )
+            if( tNumEntities( 3 ) > 0 )
             {
-                if( tVertex->node( 0 )->is_flagged() )
-                {
-                    tVertex->flag();
-                }
+                // we can't send const data with the current version of
+                // the MPI wrapper
+                Vector< id_t > tNedelecBlocks( mMesh->nedelec_blocks());
+                Vector< id_t > tNedelecSideSets( mMesh->nedelec_sidesets());
+
+                // send nedelec data
+                send( aTarget, tNedelecBlocks );
+                send( aTarget, tNedelecSideSets );
             }
-            this->send_vertices( aTarget );
-
-            // we can't send const data with the current version of
-            // the MPI wrapper
-            Vector< id_t > tNedelecBlocks( mMesh->nedelec_blocks() );
-            Vector< id_t > tNedelecSideSets( mMesh->nedelec_sidesets() );
-
-            // send nedelec data
-            send( aTarget, tNedelecBlocks );
-            send( aTarget, tNedelecSideSets );
 
             mMesh->distribute_ghost_sidesets( aTarget, mMyRank );
         }
@@ -598,15 +634,17 @@ namespace belfem
         Kernel::receive_submesh()
         {
             // receive dimension
-            uint tDimension = 0 ;
-            receive( mMasterRank, tDimension );
 
+            Vector< index_t > tNumEntities( 8 );
+            receive( mMasterRank, tNumEntities );
+
+            uint tDimension = tNumEntities( 0 );
 
             // create a submesh
             mSubMesh = new Mesh( tDimension, mMyRank );
 
             // flag telling that this mesh is linked to a kernel
-            mSubMesh->set_kernel_flag() ;
+            mSubMesh->set_kernel_flag();
 
             // get nodes
             this->receive_nodes();
@@ -614,38 +652,46 @@ namespace belfem
             // get elements
             this->receive_elements();
 
-            this->receive_edges() ;
+            if ( tNumEntities( 3 ) > 0 ) this->receive_edges();
 
-            this->receive_faces() ;
+            if ( tNumEntities( 4 ) > 0 ) this->receive_faces();
 
             // get facets
-            this->receive_facets( false );
+            if ( tNumEntities( 5 ) > 0 ) this->receive_facets( false );
 
             // get connectors
-            this->receive_facets( true );
+            if ( tNumEntities( 6 ) > 0 ) this->receive_facets( true );
 
-            mSubMesh->set_facets_are_linked_flag() ;
+            mSubMesh->set_facets_are_linked_flag();
 
-            this->receive_vertices();
+            if ( tNumEntities( 7 ) > 0 ) this->receive_vertices();
 
             // blocks that contain edge elements
-            Vector< id_t > tNedelecBlocks ;
-            receive( mMasterRank, tNedelecBlocks );
-
+            Vector< id_t > tNedelecBlocks;
             // sidesets that contain edge elements
-            Vector< id_t > tNedelecSideSets ;
-            receive( mMasterRank, tNedelecSideSets );
+            Vector< id_t > tNedelecSideSets;
+
+            if ( tNumEntities( 3 ) > 0 )
+            {
+                receive( mMasterRank, tNedelecBlocks );
+                receive( mMasterRank, tNedelecSideSets );
+            }
 
             mSubMesh->set_number_of_partitions( mNumberOfProcs ) ;
 
             mSubMesh->finalize();
 
-            // collect elements with edge data
-            Cell< mesh::Element * > tElements ;
-            this->collect_elements( tNedelecBlocks, tNedelecSideSets, tElements );
+            if( tNumEntities( 3 ) > 0 )
+            {
+                // collect elements with edge data
+                Cell< mesh::Element * > tElements;
 
-            mSubMesh->finalize_edges( tElements );
-            mSubMesh->finalize_faces() ;
+                this->collect_elements( tNedelecBlocks, tNedelecSideSets, tElements );
+
+                mSubMesh->finalize_edges( tElements );
+            }
+
+            if( tNumEntities( 4 ) > 0 ) mSubMesh->finalize_faces() ;
 
             mSubMesh->distribute_ghost_sidesets( mMyRank, this->master() );
 
@@ -1415,7 +1461,6 @@ namespace belfem
 
             // send number of vertices
             send( aTarget, tVertexCount );
-
             if ( tVertexCount > 0 )
             {
                 // containers

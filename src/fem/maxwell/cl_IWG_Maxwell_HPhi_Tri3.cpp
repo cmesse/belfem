@@ -49,7 +49,7 @@ namespace belfem
             mFields.MagneticFieldDensity     = { "bx", "by", "bz" };
             mFields.CurrentDensity = {  "jz" };
             mFields.CurrentBC = { "lambda_I" };
-            mFields.Ghost = { "elementEJ", "elementJz", "elementJJc", "elementRho" };
+            mFields.Ghost = { "elementEJ", "elementJz", "elementJJc", "elementRho", "elementB", "elementT" };
 
             mEdgeDofMultiplicity = 1 ;
             mFaceDofMultiplicity = 0 ;
@@ -769,8 +769,11 @@ namespace belfem
                 Matrix< real > & aK )
         {
 
-            // todo: compute #temperature
-            real tT = 10.0 ;
+            // compute the field index for postprocessing
+            index_t tIndex = mGhostElementMap( aElement->id()
+                                               *  mGroup->number_of_thin_shell_layers() + aLayer )->index() ;
+
+            real tT = mMesh->field_data( "elementT")( tIndex );
 
             // grab layer thickness
             const real tLayerThickness = mGroup->thin_shell_thickness( aLayer );
@@ -796,6 +799,9 @@ namespace belfem
             // value for ac losses for postprocessing
             real tJJc = 0.0 ;
 
+            // magnetic flux density
+            real tBavg = 0.0 ;
+
             // loop over all integration points and compute average rho
             for( uint k=0; k<tNumIntpoints; ++k )
             {
@@ -805,18 +811,25 @@ namespace belfem
                 // norm of H
                 real tH = std::sqrt( tHt*tHt + aHn*aHn ) ;
 
+                // for magnetic field
+                real tB = constant::mu0 * tH ;
+
+                // for averaged field
+                tBavg += tW( k ) * tB ;
+
                 // field angle towards the normal
                 real tAlpha = tH < BELFEM_EPSILON ? 0 : std::abs( std::asin( tHt / tH ) );
 
                 // add contribution to rho
-                tRho += tW( k ) * tMaterial->rho_el( tJz, tT, constant::mu0 * tH, tAlpha );
+                tRho += tW( k ) * tMaterial->rho_el( tJz, tT, tB, tAlpha );
 
-                tJJc += tW( k ) * tJz / tMaterial->j_crit( tT, constant::mu0*tH, tAlpha );
+                tJJc += tW( k ) * tJz / tMaterial->j_crit( tT, tB, tAlpha );
             }
 
             // scale rho and J/Jc, because sum w = 2
-            tRho *= 0.5 ;
-            tJJc *= 0.5 ;
+            tBavg *= 0.5 ;
+            tRho  *= 0.5 ;
+            tJJc  *= 0.5 ;
 
             // assemble the stiffness
             real tValue = tRho * tElementLength / tLayerThickness ;
@@ -826,14 +839,12 @@ namespace belfem
             aK( 0, 1 ) = -tValue ;
             aK( 1, 1 ) =  tValue ;
 
-            // compute the field index for postprocessing
-            index_t tIndex = mGhostElementMap( aElement->id()
-                               *  mGroup->number_of_thin_shell_layers() + aLayer )->index() ;
 
             mMesh->field_data( "elementEJ")( tIndex ) = tRho * tJz * tJz ;
             mMesh->field_data( "elementJz")( tIndex )  = tJz ;
             mMesh->field_data( "elementJJc")( tIndex )  = tJJc ;
             mMesh->field_data( "elementRho")( tIndex )  = tRho ;
+            mMesh->field_data( "elementB")( tIndex ) = tBavg ;
 
         }
 

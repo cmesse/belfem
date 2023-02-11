@@ -50,6 +50,9 @@ namespace belfem
             // flags telling if one field is enforced as linear
             Vector< uint > mEnforceLinear = { 0 };
 
+            // flag telling if we use metis to create the partitioning
+            bool mAutoPartition = true ;
+
 //------------------------------------------------------------------------------
         public:
 //------------------------------------------------------------------------------
@@ -229,6 +232,16 @@ namespace belfem
             integration_scheme() const ;
 
 //------------------------------------------------------------------------------
+
+            bool
+            auto_partition() const ;
+
+//------------------------------------------------------------------------------
+
+            void
+            set_auto_partition( const bool aFlag );
+
+//------------------------------------------------------------------------------
         private:
 //------------------------------------------------------------------------------
             
@@ -347,6 +360,14 @@ namespace belfem
         KernelParameters::integration_scheme() const
         {
             return mIntegrationScheme ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline bool
+        KernelParameters::auto_partition() const
+        {
+            return mAutoPartition ;
         }
 
 //------------------------------------------------------------------------------

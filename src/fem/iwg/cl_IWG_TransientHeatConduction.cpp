@@ -28,7 +28,7 @@ namespace belfem
             // T0 is the temperature from the last timestep
             this->add_fields( { "T0" } );
 
-            // set default value foe euler method
+            // set default value for euler method
             this->set_euler_method( EulerMethod::BackwardImplicit );
         }
 

@@ -8,6 +8,8 @@ set( SOURCES
         cl_IWG_Maxwell_HPhi_Tri6.cpp
         cl_IWG_Maxwell_L2_Current.cpp
         cl_IWG_Maxwell_L2_Magfield.cpp
+        cl_IWG_Maxwell_Thermal2D.cpp
+        cl_MaxwellMeshSynch.cpp
         cl_MaxwellMaterial.cpp
         cl_MaxwellJob.cpp
         cl_FEM_MaxwellBoundaryConditionCurrent.cpp

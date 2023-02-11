@@ -15,11 +15,10 @@
 #include "fn_sum.hpp"
 #include "cl_Maxwell_ThermalMeshExtractor.hpp"
 
-//#include "fn_FEM_compute_element_current_thinshell.hpp"
-#include "cl_MaxwellJob.hpp" // delete me
 
-#include "cl_Pipette.hpp"
-#include "fn_rcond.hpp"
+#include "cl_MaxwellMeshSynch.hpp"
+#include "cl_IWG_Maxwell_Thermal2D.hpp"
+
 #ifdef BELFEM_GCC
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
@@ -48,15 +47,15 @@ int main( int    argc,
     // initialize job
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+
     // read the input file
     InputFile tInputFile( "input.txt" );
-
 
     // create a new factory
     MaxwellFactory * tFactory = new MaxwellFactory( tInputFile );
 
     // get the mesh
-    Mesh * tInMesh = tFactory->mesh();
+    Mesh * tMesh = tFactory->mesh();
 
     // get the kernel
     Kernel * tKernel = tFactory->kernel() ;
@@ -68,23 +67,59 @@ int main( int    argc,
     // get the formulation
     IWG_Maxwell * tFormulation = reinterpret_cast< IWG_Maxwell * >( tMagfield->iwg() );
 
-
     // create the mesh extractor
-    ThermalMeshExtractor tExtractor( tInMesh, tFormulation->ghost_blocks() );
+    ThermalMeshExtractor tExtractor( tMesh, tFormulation->ghost_blocks() );
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Initialize temperature problem
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 
     // create the output mesh
-    Mesh * tOutMesh = tExtractor.create_mesh() ;
+    Mesh * tThermalMesh = tExtractor.create_mesh() ;
+
+    comm_barrier() ;
+
+    MaxwellMeshSynch tSynch( tMesh, tThermalMesh );
+
+    KernelParameters * tThermalParams = new KernelParameters( tThermalMesh );
+    tThermalParams->set_auto_partition( false );
+
+    Kernel * tThermalKernel = new Kernel( tThermalParams );
+    tThermalKernel->claim_parameter_ownership();
+    comm_barrier() ;
+    tSynch.initialize_tables() ;
+
+    tMagfield->initialize() ;
+    IWG * tFourier = new IWG_Maxwell_Thermal2D ;
+    tFourier->select_block( 1 );
+    DofManager * tThermal = tThermalKernel->create_field( tFourier );
+
+
+    tFourier->initialize() ;
+
+    // tSynch.maxwell_to_thermal() ;
+
 
     // save the mesh
-    tOutMesh->save( "outmesh.vtk");
+    if( comm_rank() == 0 )
+    {
+        tThermalMesh->save( "outmesh.vtk");
+    }
+
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // tidy up
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+    delete tThermalKernel ;
+    // delete tFourier ;
+
     delete tKernel ;
-    delete tInMesh ;
-    delete tOutMesh ;
+    delete tMesh ;
+
+    delete tThermalKernel ;
+    delete tThermalMesh ;
 
     // close communicator
     return gComm.finalize();

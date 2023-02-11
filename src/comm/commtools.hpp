@@ -350,7 +350,7 @@ namespace belfem
                        & tRequest );
 
             // wait until receive is complete
-             MPI_Wait( &tRequest, &tStatus );
+            MPI_Wait( &tRequest, &tStatus );
         }
 #endif
     }
