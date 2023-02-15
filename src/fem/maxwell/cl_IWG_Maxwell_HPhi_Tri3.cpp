@@ -218,7 +218,7 @@ namespace belfem
             const IntegrationData * tNodeFunction = this->interface_data( aElement );
 
             // get integration weights
-            const Vector< real > & tW = mGroup->integration_weights() ;
+            //const Vector< real > & tW = mGroup->integration_weights() ;
 
             // crossed expressions
             Matrix< real > & tB = mGroup->work_B() ;
@@ -241,7 +241,7 @@ namespace belfem
 
             // scaling parameter
             real tScale = mGroup->work_det_J() * constant::mu0 * this->timestep() ;
-            for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+            /*for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
             {
                 const Matrix< real > & tE = mEdgeFunction->E( k );
                 const Vector< real > & tN = tNodeFunction->phi( k );
@@ -267,7 +267,8 @@ namespace belfem
                 {
                     tK( i+3, j ) *= tScale ;
                 }
-            }
+            }*/
+
 
             // compute the B-Matrix ( is constant for linear elements )
             tB =  inv( tNodeFunction->dNdXi( 0 ) * mGroup->work_Xs()  )
@@ -811,19 +812,17 @@ namespace belfem
                 // norm of H
                 real tH = std::sqrt( tHt*tHt + aHn*aHn ) ;
 
-                // for magnetic field
-                real tB = constant::mu0 * tH ;
-
-                // for averaged field
-                tBavg += tW( k ) * tB ;
-
                 // field angle towards the normal
                 real tAlpha = tH < BELFEM_EPSILON ? 0 : std::abs( std::asin( tHt / tH ) );
+
+                real tB = tH * constant::mu0 ;
 
                 // add contribution to rho
                 tRho += tW( k ) * tMaterial->rho_el( tJz, tT, tB, tAlpha );
 
                 tJJc += tW( k ) * tJz / tMaterial->j_crit( tT, tB, tAlpha );
+
+                tBavg += tW( k ) * tB ;
             }
 
             // scale rho and J/Jc, because sum w = 2
@@ -839,12 +838,11 @@ namespace belfem
             aK( 0, 1 ) = -tValue ;
             aK( 1, 1 ) =  tValue ;
 
-
-            mMesh->field_data( "elementEJ")( tIndex ) = tRho * tJz * tJz ;
-            mMesh->field_data( "elementJz")( tIndex )  = tJz ;
+            mMesh->field_data( "elementEJ")( tIndex )   = tRho * tJz * tJz ;
+            mMesh->field_data( "elementJz")( tIndex )   = tJz ;
             mMesh->field_data( "elementJJc")( tIndex )  = tJJc ;
             mMesh->field_data( "elementRho")( tIndex )  = tRho ;
-            mMesh->field_data( "elementB")( tIndex ) = tBavg ;
+            mMesh->field_data( "elementB")( tIndex )    = tBavg ;
 
         }
 

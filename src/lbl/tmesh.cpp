@@ -15,6 +15,8 @@
 #include "fn_sum.hpp"
 #include "cl_Maxwell_ThermalMeshExtractor.hpp"
 
+//#include "fn_FEM_compute_element_current_thinshell.hpp"
+#include "cl_MaxwellJob.hpp" // delete me
 
 #include "cl_MaxwellMeshSynch.hpp"
 #include "cl_IWG_Maxwell_Thermal2D.hpp"
@@ -47,15 +49,17 @@ int main( int    argc,
     // initialize job
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-
     // read the input file
     InputFile tInputFile( "input.txt" );
+
 
     // create a new factory
     MaxwellFactory * tFactory = new MaxwellFactory( tInputFile );
 
     // get the mesh
     Mesh * tMesh = tFactory->mesh();
+
+    tMesh->create_field( "ElementT").fill( 10.0 );
 
     // get the kernel
     Kernel * tKernel = tFactory->kernel() ;
@@ -66,6 +70,7 @@ int main( int    argc,
 
     // get the formulation
     IWG_Maxwell * tFormulation = reinterpret_cast< IWG_Maxwell * >( tMagfield->iwg() );
+
 
     // create the mesh extractor
     ThermalMeshExtractor tExtractor( tMesh, tFormulation->ghost_blocks() );
@@ -87,19 +92,35 @@ int main( int    argc,
 
     Kernel * tThermalKernel = new Kernel( tThermalParams );
     tThermalKernel->claim_parameter_ownership();
+    tThermalKernel->mesh()->create_field( "T").fill( 10.0 );
+
     comm_barrier() ;
     tSynch.initialize_tables() ;
 
     tMagfield->initialize() ;
-    IWG * tFourier = new IWG_Maxwell_Thermal2D ;
+    IWG_Maxwell_Thermal2D * tFourier = new IWG_Maxwell_Thermal2D( ) ;
     tFourier->select_block( 1 );
     DofManager * tThermal = tThermalKernel->create_field( tFourier );
+
+    tFourier->set_material_table( tFactory->tape_materials() );
+    tFourier->compute_geometry_data( tKernel->mesh(),
+                                     tThermalKernel->mesh(),
+                                     tFactory->tape_thicknesses() );
+
 
 
     tFourier->initialize() ;
 
-    // tSynch.maxwell_to_thermal() ;
+    tThermal->set_solver( SolverType::UMFPACK );
+    tThermal->initialize() ;
 
+    tThermalMesh->unflag_all_nodes() ;
+    tSynch.maxwell_to_thermal() ;
+    tThermal->compute_jacobian_and_rhs();
+
+    tThermal->solve() ;
+
+    //
 
     // save the mesh
     if( comm_rank() == 0 )
@@ -118,7 +139,7 @@ int main( int    argc,
     delete tKernel ;
     delete tMesh ;
 
-    delete tThermalKernel ;
+
     delete tThermalMesh ;
 
     // close communicator

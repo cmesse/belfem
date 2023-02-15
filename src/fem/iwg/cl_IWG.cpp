@@ -1766,7 +1766,6 @@ namespace belfem
 
                 Vector< index_t > & tDofsPerBlock = mDofsPerBlock( b );
 
-
                 // loop over all dofs
                 for( uint tDofNum : tDofsPerBlock )
                 {

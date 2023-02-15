@@ -296,7 +296,7 @@ namespace belfem
             select_blocks( const Vector< id_t > & aBlockIDs );
 
             void
-            select_block( const id_t aBlockIDs );
+            select_block( const id_t aBlockID );
 
 //------------------------------------------------------------------------------
 

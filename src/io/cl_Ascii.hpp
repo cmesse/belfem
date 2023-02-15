@@ -31,7 +31,8 @@ namespace belfem
     public:
 //------------------------------------------------------------------------------
 
-        Ascii( const string & aPath, const enum FileMode & aMode );
+        Ascii( const string        & aPath,
+               const enum FileMode & aMode );
 
 //------------------------------------------------------------------------------
 
@@ -70,7 +71,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        load_buffer();
+        load_buffer( const bool aParallelMode );
 
 //------------------------------------------------------------------------------
     };

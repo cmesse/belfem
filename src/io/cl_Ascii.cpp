@@ -8,6 +8,8 @@
 #include "cl_Ascii.hpp"
 #include "assert.hpp"
 #include "stringtools.hpp"
+#include "commtools.hpp"
+#include "cl_Vector.hpp"
 
 namespace belfem
 {
@@ -31,8 +33,13 @@ namespace belfem
         {
             case( FileMode::OPEN_RDONLY ) :
             {
-                this->load_buffer();
+                this->load_buffer( false );
                 break;
+            }
+            case( FileMode::OPEN_RDONLY_PARALLEL ) :
+            {
+                this->load_buffer( true );
+                break ;
             }
             case( FileMode::NEW ) :
             {
@@ -128,38 +135,67 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     void
-    Ascii::load_buffer()
+    Ascii::load_buffer( const bool aParallelMode )
     {
         // tidy up buffer
         mBuffer.clear();
 
-        // make sure that file exists
-        BELFEM_ERROR( file_exists( mPath ),
-            "File %s does not exist.",
-            mPath.c_str() );
+        proc_t tMyRank   = comm_rank() ;
 
-        // open file
-        std::ifstream tFile( mPath );
-
-        // test if file can be opened
-        if( tFile )
+        if( tMyRank == 0 || ( ! aParallelMode ) )
         {
-            // temporary container for string
-            string tLine;
+            // make sure that file exists
+            BELFEM_ERROR( file_exists( mPath ),
+                          "File %s does not exist.",
+                          mPath.c_str());
 
-            while ( std::getline( tFile, tLine ) )
+            // open file
+            std::ifstream tFile( mPath );
+
+            // test if file can be opened
+            if ( tFile )
             {
-                mBuffer.push( tLine );
+                // temporary container for string
+                string tLine;
+
+                while ( std::getline( tFile, tLine ))
+                {
+                    mBuffer.push( tLine );
+                }
+
+                // close file
+                tFile.close();
+            }
+            else
+            {
+                BELFEM_ERROR( false, "Someting went wrong while opening file\n %s",
+                              mPath.c_str());
             }
 
-            // close file
-            tFile.close();
+            proc_t tCommSize = comm_size() ;
+
+            if( tCommSize > 1 && aParallelMode )
+            {
+                Vector< proc_t > tCommList( tCommSize - 1 );
+                for ( proc_t p = 1; p < tCommSize; ++p )
+                {
+                    tCommList( p - 1 ) = p;
+                }
+                comm_barrier();
+                send( tCommList, mBuffer );
+            }
         }
         else
         {
-            BELFEM_ERROR( false, "Someting went wrong while opening file\n %s",
-                    mPath.c_str() );
+            comm_barrier() ;
+            receive( 0, mBuffer );
         }
+
+        if( aParallelMode )
+        {
+            comm_barrier() ;
+        }
+
     }
 
 //------------------------------------------------------------------------------

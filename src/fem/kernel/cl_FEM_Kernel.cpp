@@ -65,7 +65,7 @@ namespace belfem
             // partition the mesh if in parallel mode
             if ( mNumberOfProcs > 1 && mMyRank == mMesh->master() )
             {
-                if ( mParams->auto_partition() )
+                if( mParams->auto_partition() )
                 {
                     if ( mParams->selected_blocks().length() > 0 )
                     {
@@ -73,28 +73,16 @@ namespace belfem
 
                         mMesh->unflag_all_elements();
                         mMesh->unflag_all_facets();
-                        uint tNumGhostBlocks = mMesh->ghost_block_ids().length() ;
-                        if (tNumGhostBlocks  > 0 )
+                        if ( mMesh->ghost_block_ids().length() > 0 )
                         {
-                            mMesh->partition( mNumberOfProcs, { mMesh->ghost_block_ids()(0)}, true, false );
+                            mMesh->partition( mNumberOfProcs, mMesh->ghost_block_ids(), true, false );
+
+                            Cell< mesh::Element * > & tLayer0 = mMesh->block( mMesh->ghost_block_ids()( 0 ) )->elements() ;
+
+                            index_t tNumElemsPerLayer = tLayer0.size();
 
 
-                            Cell< mesh::Element * > & tGhostElements =  mMesh->block(
-                                    mMesh->ghost_block_ids()( 0 ))->elements() ;
-
-                            index_t tNumElems = tGhostElements.size() ;
-
-
-                            for( uint b=1; b<tNumGhostBlocks; ++b )
-                            {
-                                Cell< mesh::Element * > & tElements = mMesh->block(
-                                        mMesh->ghost_block_ids()( b))->elements();
-
-                                for( index_t e=0; e<tNumElems; ++e )
-                                {
-                                    tElements( e )->set_owner( tGhostElements( e )->owner() );
-                                }
-                            }
+                            Vector< proc_t > tOwners( tNumElemsPerLayer, mNumberOfProcs );
 
                             // loop over all thin shell sidesets
                             for ( id_t tID: mMesh->ghost_sideset_ids())
@@ -106,7 +94,8 @@ namespace belfem
                                 for ( mesh::Facet * tFacet: tFacets )
                                 {
                                     // get owner
-                                    proc_t tOwner = tGhostElements( tCount++ )->owner();
+                                    proc_t tOwner = tLayer0( tCount )->owner();
+                                    tOwners( tCount++ ) = tOwner ;
 
                                     tFacet->set_owner( tOwner );
                                     tFacet->master()->set_owner( tOwner );
@@ -114,6 +103,19 @@ namespace belfem
                                     tFacet->master()->flag();
                                     tFacet->slave()->flag();
                                     tFacet->flag();
+                                }
+                            }
+
+                            // fix ownership of other layers
+                            uint tNumLayers = mMesh->ghost_block_ids().length() ;
+                            for( uint l=1; l<tNumLayers; ++l )
+                            {
+                                Cell< mesh::Element * > & tLayer
+                                    = mMesh->block( mMesh->ghost_block_ids()( l ) )->elements() ;
+                                index_t tCount = 0;
+                                for( mesh::Element * tElement : tLayer )
+                                {
+                                    tElement->set_owner( tOwners( tCount++ ) );
                                 }
                             }
 
@@ -143,7 +145,6 @@ namespace belfem
                     }
                 }
 
-                // this->fix_ownerships();
                 // allocate memory for node table
                 mNodeTable.set_size( mNumberOfProcs, {} );
                 mElementTable.set_size( mNumberOfProcs, {} );
@@ -158,6 +159,7 @@ namespace belfem
                 mFacetTable.set_size( mNumberOfProcs, {} );
                 mConnectorTable.set_size( mNumberOfProcs, {} );
             }
+
 
             this->distribute_mesh() ;
 
@@ -391,13 +393,10 @@ namespace belfem
                 {
                     this->receive_submesh();
                 }
-
             }
 
             // tidy up memory
             this->delete_maps();
-
-
         }
 
 //------------------------------------------------------------------------------
@@ -634,7 +633,6 @@ namespace belfem
         Kernel::receive_submesh()
         {
             // receive dimension
-
             Vector< index_t > tNumEntities( 8 );
             receive( mMasterRank, tNumEntities );
 
@@ -1461,6 +1459,7 @@ namespace belfem
 
             // send number of vertices
             send( aTarget, tVertexCount );
+
             if ( tVertexCount > 0 )
             {
                 // containers

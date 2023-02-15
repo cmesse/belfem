@@ -20,6 +20,7 @@ namespace belfem
     {
         NEW,
         OPEN_RDONLY,
+        OPEN_RDONLY_PARALLEL,
         OPEN_RDWR
     };
 

@@ -248,6 +248,16 @@ namespace belfem
             compute_normb() const;
 
 //------------------------------------------------------------------------------
+
+            Cell< Material * > &
+            tape_materials();
+
+//------------------------------------------------------------------------------
+
+            const Vector< real > &
+            tape_thicknesses();
+
+//------------------------------------------------------------------------------
         private:
 //------------------------------------------------------------------------------
 
@@ -525,6 +535,22 @@ namespace belfem
         MaxwellFactory::compute_normb() const
         {
             return mComputeNormB && mHaveB ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline Cell< Material * > &
+        MaxwellFactory::tape_materials()
+        {
+            return mTapeMaterials ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline const Vector< real > &
+        MaxwellFactory::tape_thicknesses()
+        {
+            return mTapeThicknesses ;
         }
 
 //------------------------------------------------------------------------------

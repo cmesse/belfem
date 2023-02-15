@@ -47,7 +47,7 @@ namespace belfem
             }
             case ( SolverType::STRUMPACK ) :
             {
-#ifdef BELFEM_MUMPS
+#ifdef BELFEM_STRUMPACK
                 mWrapper = new solver::STRUMPACK();
 #else
                 BELFEM_ERROR( false,

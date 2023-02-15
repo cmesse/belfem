@@ -5,6 +5,7 @@
 #ifndef BELFEM_COMMTOOLS_HPP
 #define BELFEM_COMMTOOLS_HPP
 #include <limits>
+#include <string>
 #include "typedefs.hpp"
 #include "assert.hpp"
 #include "cl_Vector.hpp"
@@ -198,9 +199,6 @@ namespace belfem
     {
 #ifdef BELFEM_MPI
 
-        // get total number of procs
-        proc_t tCommSize = gComm.size();
-
         // get size of communication list
         uint tListSize = aCommunicationList.length();
 
@@ -209,6 +207,9 @@ namespace belfem
 
         if( tListSize > 0 )
         {
+            // get total number of procs
+            proc_t tCommSize = gComm.size();
+
             // get my id
             proc_t tMyRank = gComm.rank();
 
@@ -318,6 +319,23 @@ namespace belfem
         }
 #endif
     }
+//------------------------------------------------------------------------------
+
+    /*
+     * send a string to other procs
+     */
+     void
+     send( const Vector< proc_t >    & aTargets,
+                 Cell< std::string > & aData );
+
+//------------------------------------------------------------------------------
+
+    /*
+     * receive a list of strings from other proc
+     */
+     void
+     receive( const proc_t          aSource,
+              Cell< std::string > & aData );
 
 //------------------------------------------------------------------------------
 

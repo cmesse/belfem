@@ -5,23 +5,41 @@
 #ifndef BELFEM_CL_IWG_MAXWELL_THERMAL2D_HPP
 #define BELFEM_CL_IWG_MAXWELL_THERMAL2D_HPP
 
-#include "cl_IWG.hpp"
+#include "cl_IWG_Timestep.hpp"
+#include "cl_Material.hpp"
 
 namespace belfem
 {
     namespace fem
     {
-        class IWG_Maxwell_Thermal2D : public IWG
+        class IWG_Maxwell_Thermal2D : public IWG_Timestep
         {
+            Cell< Material * > mMaterials ;
+            Vector< real >     mTapeThickness ;
+            Vector< real >     mLength ;
+            Vector< uint >     mLayer ;
+
 //------------------------------------------------------------------------------
         public:
 //------------------------------------------------------------------------------
 
-            IWG_Maxwell_Thermal2D( const uint aNumberOfDimensions=1 );
+            IWG_Maxwell_Thermal2D();
 
 //------------------------------------------------------------------------------
 
-            ~IWG_Maxwell_Thermal2D() = default;
+            ~IWG_Maxwell_Thermal2D();
+
+//------------------------------------------------------------------------------
+
+            void
+            set_material_table( Cell< Material * > & aTapeMaterials );
+
+//------------------------------------------------------------------------------
+
+            void
+            compute_geometry_data( Mesh * aMaxwellMesh,
+                                   Mesh * aThermalMesh,
+                                   const Vector< real > & aTapeThicknesses );
 
 //------------------------------------------------------------------------------
 
@@ -33,6 +51,10 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            void
+            allocate_work_matrices( Group * aGroup ) ;
+
+//------------------------------------------------------------------------------
         };
     }
 }
