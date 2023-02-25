@@ -1062,17 +1062,41 @@ namespace belfem
                     // get section
                     const input::Section * tSection = mInputFile.section( "maxwell")->section( "tape" );
 
-                    uint tNumLayers = tSection->num_keys();
+		    uint tNumLayers = tSection->end() - tSection->start() ;
+
                     mTapeThicknesses.set_size( tNumLayers );
 
-                    for ( uint l = 0; l < tNumLayers; ++l )
-                    {
-                        // get label
-                        const string & tKey = tSection->key( l );
-                        mTapeThicknesses( l ) = tSection->get_value( tKey, "m" ).first;
+		    uint tCount = 0 ;
 
-                        mTapeMaterialLabels.push( tKey  );
-                    }
+		    for ( uint l = tSection->start() ; l < tSection->end(); ++l)
+                    {
+                        // get line
+			const string & tLine = mInputFile.line( l );
+
+			// get label
+			uint f = tLine.find( ':' );
+			const string tLabel = clean_string( tLine.substr( 0, f ) );
+                        
+			// get entry
+			const string tEntry = clean_string( tLine.substr( f+1, tLine.find(';')-f-1 ));
+
+			// get value of entry
+			uint s = tEntry.find(' ');
+			real tValue = std::stod( tEntry.substr( 0, s ) );
+			
+			// get unit
+			string tUnit = tEntry.substr(s+1);
+
+			// make sure that unit is correct
+                        value tScale = unit_to_si( tUnit );
+                        BELFEM_ERROR( check_unit( tScale, "m" ), "invalid unit, expect m or equivalent" );
+
+			// scale the value and write it into vector
+                        mTapeThicknesses( tCount++ ) = tValue * tScale.first ;
+
+                        // add label to list
+			mTapeMaterialLabels.push( tLabel  );
+		    }
                 }
             }
         }

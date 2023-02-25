@@ -277,20 +277,25 @@ namespace belfem
 
                 if( mTimeStep < 10 )
                 {
-                    tFilePath = sprint("%s.000%1u", aFilePath.c_str(), ( unsigned int ) mTimeStep );
+                    tFilePath = sprint("%s.0000%1u", aFilePath.c_str(), ( unsigned int ) mTimeStep );
                 }
                 else if ( mTimeStep < 100 )
                 {
-                    tFilePath = sprint("%s.00%2u", aFilePath.c_str(), ( unsigned int )  mTimeStep );
+                    tFilePath = sprint("%s.000%2u", aFilePath.c_str(), ( unsigned int )  mTimeStep );
                 }
                 else if ( mTimeStep < 1000 )
                 {
-                    tFilePath = sprint("%s.0%3u", aFilePath.c_str(), ( unsigned int )  mTimeStep );
+                    tFilePath = sprint("%s.00%3u", aFilePath.c_str(), ( unsigned int )  mTimeStep );
                 }
-                else
+                else if ( mTimeStep < 10000 )
                 {
-                    tFilePath = sprint("%s.%4u", aFilePath.c_str(), ( unsigned int ) mTimeStep );
+                    tFilePath = sprint("%s.0%4u", aFilePath.c_str(), ( unsigned int ) mTimeStep );
                 }
+		else
+		{
+
+                    tFilePath = sprint("%s.%5u", aFilePath.c_str(), ( unsigned int ) mTimeStep );
+		}
 
                 // write mesh to file
                 tWriter.save( tFilePath );
