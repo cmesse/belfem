@@ -1465,6 +1465,7 @@ namespace belfem
                 BELFEM_ERROR( tIWG != nullptr, "no equation was set" );
 
                 Cell< mesh::Field * > tFields;
+
                 this->collect_fields( tFields );
 
                 if ( mKernel->is_master() )

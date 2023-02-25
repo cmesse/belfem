@@ -14,6 +14,7 @@
 #include "cl_Profiler.hpp"
 #include "fn_FEM_compute_normb.hpp"
 #include "fn_sum.hpp"
+#include "fn_max.hpp"
 
 //#include "fn_FEM_compute_element_current_thinshell.hpp"
 #include "cl_MaxwellJob.hpp" // delete me
@@ -56,13 +57,13 @@ int main( int    argc,
     MaxwellFactory * tFactory = new MaxwellFactory( tInputFile );
 
     // get the mesh
-    Mesh * tMesh = tFactory->mesh() ;
+    Mesh * tMesh = tFactory->magnetic_mesh() ;
 
     // flag telling if we compute the norm of b
     bool tComputeNormB      = tFactory->compute_normb() ;
 
     // get the kernel
-    Kernel * tKernel = tFactory->kernel() ;
+    Kernel * tKernel = tFactory->magnetic_kernel() ;
 
 
     // get the magnetic field
@@ -88,11 +89,36 @@ int main( int    argc,
     const real tMaxTime = tFactory->maxtime() ;
 
     // get the nonlinear settings
-    NonlinearSettings tNonlinear = tFactory->nonlinear_settings() ;
+    NonlinearSettings tNonlinMagnetic = tFactory->nonlinear_settings() ;
 
     const uint tMeshDump = tFactory->meshdump() ;
     const uint tCsvDump  = tFactory->csvdump() ;
 
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    //  thermal stuff
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    // check if thermal field exists
+    const bool tHaveThermal = tFactory->have_thermal() ;
+
+    Kernel * tThermalKernel = tFactory->thermal_kernel() ;
+    Mesh   * tThermalMesh   = tFactory->thermal_mesh() ;
+    MaxwellMeshSynch * tSynch = tFactory->thermal_synch() ;
+    DofManager * tThermalField = tFactory->thermal_field() ;
+    IWG_Timestep * tFourier = tFactory->fourier() ;
+
+    NonlinearSettings tNonlinThermal = tHaveThermal ?
+                tFactory->nonlinear_settings( MaxwellFieldType::THERMAL )
+            : tNonlinMagnetic ;
+
+    if( tHaveThermal )
+    {
+
+
+        tFourier->set_algorithm( SolverAlgorithm::NewtonRaphson );
+
+    }
     // delete the factory
     delete tFactory ;
 
@@ -102,6 +128,10 @@ int main( int    argc,
     // check if we have to load a field from HDF5
     tMagfield->initialize() ; // must be called before loading mesh data
 
+    if( tHaveThermal )
+    {
+        tThermalField->initialize() ;
+    }
 
     //tFormulation->set_nan_values() ;
 
@@ -113,6 +143,10 @@ int main( int    argc,
         if ( tStatus == 1 )
         {
             tTimeCount = 0 ;
+        }
+        else if ( tHaveThermal )
+        {
+            tSynch->magnetic_to_thermal_T() ;
         }
     }
     else
@@ -161,6 +195,11 @@ int main( int    argc,
 
    while( tTime < tMaxTime )
    {
+       if( tHaveThermal )
+       {
+           tFourier->shift_fields() ;
+       }
+
        if( tTimeLoopCSV++ >= tCsvDump )
        {
            tTimeLoopCSV = 1 ;
@@ -203,10 +242,10 @@ int main( int    argc,
            tTimeLoop = 1;
        }
 
-       real tOmegaP = tTime == 0 ? 0.5 : tNonlinear.picardOmega ;
-       real tOmegaN = tTime == 0 ? 0.1 : tNonlinear.newtonOmega ;
-       //real tOmegaP = tNonlinear.picardOmega ;
-       //real tOmegaN = tNonlinear.newtonOmega ;
+       real tOmegaP = tTime == 0 ? 0.5 : tNonlinMagnetic.picardOmega ;
+       real tOmegaN = tTime == 0 ? 0.1 : tNonlinMagnetic.newtonOmega ;
+       //real tOmegaP = tNonlinMagnetic.picardOmega ;
+       //real tOmegaN = tNonlinMagnetic.newtonOmega ;
 
        // increment timestep
        tTime += tDeltaTime;
@@ -218,11 +257,19 @@ int main( int    argc,
        tFormulation->shift_fields();
        tFormulation->compute_boundary_conditions( tTime );
 
+       if( tHaveThermal )
+       {
+           tFourier->shift_fields() ;
+       }
+
        uint tIter = 0;
 
        // residual
        real tEpsilon = BELFEM_REAL_MAX;
        real tEpsilon0 ;
+
+       real tEpsilonT = 0 ;
+
 
        if ( tKernel->is_master() )
        {
@@ -238,9 +285,24 @@ int main( int    argc,
        //index_t tCountN = 0 ;
 
 
-       while ( tEpsilon > tNonlinear.newtonEpsilon || tIter < tNonlinear.minIter )
+       while ( tEpsilon > tNonlinMagnetic.newtonEpsilon || tIter < tNonlinMagnetic.minIter || tEpsilonT > tNonlinThermal.newtonEpsilon )
        {
-           if ( tEpsilon > tNonlinear.picardEpsilon )
+           if( tHaveThermal )
+           {
+               if( tEpsilonT > tNonlinThermal.picardEpsilon )
+               {
+                   tFourier->set_algorithm( SolverAlgorithm::Picard );
+                   tFourier->set_omega( tNonlinThermal.picardOmega );
+               }
+               else
+               {
+                   tFourier->set_algorithm( SolverAlgorithm::NewtonRaphson );
+                   tFourier->set_omega( tNonlinThermal.newtonOmega );
+               }
+           }
+
+
+           if ( tEpsilon > tNonlinMagnetic.picardEpsilon )
            {
                tFormulation->set_algorithm( SolverAlgorithm::Picard );
                tFormulation->set_omega( tOmegaP );
@@ -285,15 +347,37 @@ int main( int    argc,
            tEpsilon0 = tEpsilon ;
            tEpsilon = tMagfield->residual( tIter++ );
 
+           if( tHaveThermal )
+           {
+               tSynch->magnetic_to_thermal_b_and_ej() ;
+               tThermalField->compute_jacobian_and_rhs();
+               tThermalField->solve() ;
+               tEpsilonT = tThermalField->residual( tIter++ );
+               tSynch->thermal_to_magnetic_T() ;
+           }
+
+
            if ( tKernel->is_master() )
            {
                string tAlgLabel = tFormulation->algorithm() == SolverAlgorithm::Picard ? " P " : " NR";
+               if( tHaveThermal )
+               {
+                   real tTmax = max( tThermalMesh->field_data( "T") );
 
-               std::cout << "    iteration:  " << tIter << tAlgLabel << " omega " << tFormulation->omega()
-                         << " log10(epsilon): " << std::round( std::log10( tEpsilon ) * 100 ) * 0.01 << std::endl;
+                   std::cout << "    iteration:  " << tIter << tAlgLabel << " omega " << tFormulation->omega()
+                             << " log10(epsilon): " << std::round( std::log10( tEpsilon ) * 100 ) * 0.01
+                           << " log10(epsilonT): " << std::round( std::log10( tEpsilonT ) * 100 ) * 0.01
+                           << " Tmax: " << tTmax
+                           << std::endl;
+               }
+               else
+               {
+                   std::cout << "    iteration:  " << tIter << tAlgLabel << " omega " << tFormulation->omega()
+                             << " log10(epsilon): " << std::round( std::log10( tEpsilon ) * 100 ) * 0.01 << std::endl;
+               }
            }
 
-           if( tIter > tNonlinear.maxIter )
+           if( tIter > tNonlinMagnetic.maxIter )
            {
                if ( tKernel->is_master() )
                {
@@ -304,7 +388,7 @@ int main( int    argc,
                break ;
            }
            else if ( (  std::abs( std::log10( tEpsilon ) - std::log10( tEpsilon0 ) ) < 1e-4 ) &&
-           ( tEpsilon > tNonlinear.newtonEpsilon ) )
+           ( tEpsilon > tNonlinMagnetic.newtonEpsilon ) )
            {
                if ( tKernel->is_master() )
                {
@@ -474,6 +558,13 @@ int main( int    argc,
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // tidy up
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    if( tHaveThermal )
+    {
+        delete tSynch ;
+        delete tThermalKernel ;
+        delete tThermalMesh ;
+    }
 
     delete tKernel ;
     delete tMesh ;

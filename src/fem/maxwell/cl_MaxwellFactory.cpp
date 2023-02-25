@@ -41,6 +41,8 @@
 
 #include "fn_Mesh_compute_surface_normals.hpp"
 #include "cl_Element_Factory.hpp"
+#include "cl_Maxwell_ThermalMeshExtractor.hpp"
+#include "cl_IWG_Maxwell_Thermal2D.hpp"
 
 namespace belfem
 {
@@ -51,75 +53,20 @@ namespace belfem
         MaxwellFactory::MaxwellFactory( const InputFile & aInputFile )  :
             IwgFactory( this->load_mesh( aInputFile ) ),
             mInputFile( aInputFile ),
-            mParameters( new KernelParameters( this->mesh() ) )
+            mMagneticParameters( new KernelParameters( this->magnetic_mesh() ) )
         {
-            // create communication table
-            this->create_commtable();
-
-            this->create_domain_groups();
-            this->select_blocks();
-
-            this->read_formulation();
-
-#ifdef BELFEM_FERRO_HPHIA
-#ifdef BELFEM_FERRO_LINEAR
-            if( mFormulation == IwgType::MAXWELL_HPHI_TRI6 )
-            {
-                if( comm_rank() == 0 )
-                {
-                    this->reduce_order_of_ferro_blocks_tri6();
-                }
-                comm_barrier() ;
-            }
-#endif
-#endif
-            // create the edges for this mesh
-            mMesh->create_edges( false, mNedelecBlocks, mNedelecSideSets ) ;
-
-
-            // check if this is a higher order mesh
-            if( mMesh->max_element_order() > 1 )
-            {
-                // create faces
-                mMesh->create_faces( false, mNedelecBlocks, mNedelecSideSets ) ;
-            }
-
-
-            // read the timestepping information
-            this->read_timestep() ;
-
-            this->create_bcs() ;
-
-            // define which blocks and sidesets are used and what they
-            // represent
-            this->create_topology();
-
-            // Dirichlet bcs do not need elements. We remove those
-            this->blacklist_dirichlet_sidesets();
-
-            this->create_kernel();
-
-            // build the iwg and the dof manager for the magnetic fields
-            this->create_magnetic_field();
-
-            // add postprocessors to magnetic field
-            if( mHaveJ )
-            {
-                this->create_current_projector();
-            }
-            if( mHaveB )
-            {
-                this->create_magfield_projector() ;
-            }
+            this->create_magnetic() ;
+            this->create_thermal() ;
+            
         }
 
 //------------------------------------------------------------------------------
 
         MaxwellFactory::~MaxwellFactory()
         {
-            if( mOwnKernel )
+            if( mOwnMagneticKernel )
             {
-                delete mKernel ;
+                delete mMagneticKernel ;
             }
 
             if( mOwnBoundaryConditions )
@@ -187,10 +134,196 @@ namespace belfem
                 delete tGroup ;
             }
 
-            if ( mOwnMesh )
+            if ( mOwnMagneticMesh )
             {
                 delete mMesh ;
             }
+            if( mHaveThermal )
+            {
+                if( mOwnThermalKernel )
+                {
+                    delete mThermalKernel ;
+                }
+                if( mOwnThermalMeshSynch )
+                {
+                    delete mThermalMeshSynch ;
+                }
+                if ( mOwnThermalMesh )
+                {
+                    delete mThermalMesh;
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+
+        void
+        MaxwellFactory::create_magnetic()
+        {
+            // create communication table
+            this->create_commtable();
+
+            this->create_domain_groups();
+            this->select_blocks();
+
+            this->read_formulation();
+
+#ifdef BELFEM_FERRO_HPHIA
+#ifdef BELFEM_FERRO_LINEAR
+            if( mFormulation == IwgType::MAXWELL_HPHI_TRI6 )
+            {
+                if( comm_rank() == 0 )
+                {
+                    this->reduce_order_of_ferro_blocks_tri6();
+                }
+                comm_barrier() ;
+            }
+#endif
+#endif
+            // create the edges for this mesh
+            mMesh->create_edges( false, mNedelecBlocks, mNedelecSideSets ) ;
+
+
+            // check if this is a higher order mesh
+            if( mMesh->max_element_order() > 1 )
+            {
+                // create faces
+                mMesh->create_faces( false, mNedelecBlocks, mNedelecSideSets ) ;
+            }
+
+
+            // read the timestepping information
+            this->read_timestep() ;
+
+            this->create_bcs() ;
+
+            // define which blocks and sidesets are used and what they
+            // represent
+            this->create_topology();
+
+            // Dirichlet bcs do not need elements. We remove those
+            this->blacklist_dirichlet_sidesets();
+
+            this->create_kernel();
+
+            // build the iwg and the dof manager for the magnetic fields
+            this->create_magnetic_field();
+
+            // add postprocessors to magnetic field
+            if( mHaveJ )
+            {
+                this->create_current_projector();
+            }
+            if( mHaveB )
+            {
+                this->create_magfield_projector() ;
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        MaxwellFactory::create_thermal()
+        {
+            // check if thermal field exists in input
+            if( mInputFile.section_exists("thermal") )
+            {
+
+                // check if initial temperature was given
+                if ( mInputFile.section( "thermal" )->key_exists( "Tinit" ))
+                {
+                    // read initial temperature
+                    mTinit = mInputFile.section( "thermal" )->get_value( "Tinit", "K" ).first;
+                }
+            }
+
+            // create temperature field and initialize values
+            Vector< real > & tT = mMagneticKernel->mesh()->field_exists( "elementT") ?
+                                  mMagneticKernel->mesh()->field_data( "elementT") :
+                                  mMagneticKernel->mesh()->create_field( "elementT", EntityType::ELEMENT );
+
+            tT.fill( mTinit );
+
+            if( ! mInputFile.section_exists("thermal") )
+            {
+                return ;
+            }
+            if( ! mInputFile.section("thermal")->section_exists("solver") )
+            {
+                return ;
+            }
+
+            mHaveThermal = true ;
+
+            // create the mesh extractor
+            ThermalMeshExtractor tExtractor( mMesh );
+
+            // create the mesh
+            mThermalMesh = tExtractor.create_mesh() ;
+
+            // wait for other procs
+            comm_barrier() ;
+
+            // create kernel parameter object
+            mThermalParameters = new KernelParameters( mThermalMesh );
+
+            // set this to use the distribution given by the magnetic mesh
+            mThermalParameters->set_auto_partition( false ) ;
+
+            // create the thermal kernel
+            mThermalKernel = new Kernel( mThermalParameters );
+
+            // tell thermal kernel to take care of parameter deletion
+            mThermalKernel->claim_parameter_ownership();
+
+            // wait for other procs
+            comm_barrier() ;
+
+            // create the equation
+            if( mThermalKernel->mesh()->number_of_dimensions() == 2 )
+            {
+                // create the equation
+                mFourier = new IWG_Maxwell_Thermal2D();
+
+                IWG_Maxwell_Thermal2D * tFourier = reinterpret_cast<  IWG_Maxwell_Thermal2D * >( mFourier );
+
+                mFourier->select_block( 1 );
+
+                // create the DOF manager
+                mThermalField = mThermalKernel->create_field( mFourier );
+
+                // link materials to equation
+                tFourier->set_material_table( this->tape_materials() );
+
+                // compute geometry information
+                tFourier->compute_geometry_data( mMagneticKernel->mesh(),
+                                                 mThermalKernel->mesh(),
+                                                 this->tape_thicknesses() );
+
+
+            }
+            else
+            {
+                BELFEM_ERROR( false, "3D mesh not implemented!") ;
+            }
+
+
+            // set the solver of this field based on the input
+            this->set_solver( mThermalField,
+                              mInputFile.section("thermal")
+                                      ->section("solver")->section("linear") );
+
+
+            // create the synch object
+            mThermalMeshSynch = new MaxwellMeshSynch( mMagneticKernel, mThermalKernel );
+
+            // initialize snych object
+            mThermalMeshSynch->initialize_tables() ;
+
+            mThermalKernel->mesh()->create_field( "T").fill( mTinit );
+
+
         }
 
 //------------------------------------------------------------------------------
@@ -308,12 +441,6 @@ namespace belfem
             uint tElementOrder = mMesh->max_element_order() ;
             comm_barrier() ;
             broadcast( 0, tElementOrder );
-
-            // read the tau parameter
-            if( mInputFile.section( "maxwell")->section("solver")->section("nonlinear")->key_exists("stabilize") )
-            {
-                mTau = mInputFile.section("maxwell")->section("solver")->section("nonlinear")->get_real( "stabilize");
-            }
 
             // get string from input file
             string tKey = string_to_lower(
@@ -1419,10 +1546,10 @@ namespace belfem
             }
 
             // write flags to parameters
-            mParameters->enforce_linear( tFlags );
+            mMagneticParameters->enforce_linear( tFlags );
 
-            mParameters->set_sideset_integration_orders( 9 );
-            mParameters->set_block_integration_orders( 9 );
+            mMagneticParameters->set_sideset_integration_orders( 9 );
+            mMagneticParameters->set_block_integration_orders( 9 );
 
             if( comm_rank() == 0 )
             {
@@ -1445,14 +1572,14 @@ namespace belfem
                         tSelectedBlocks( tCount++ ) = tID;
                     }
                 }
-                mParameters->select_blocks( tSelectedBlocks );
+                mMagneticParameters->select_blocks( tSelectedBlocks );
             }
 
             // create the kernel
-            mKernel = new Kernel( mParameters );
+            mMagneticKernel = new Kernel( mMagneticParameters );
 
             // claim parameter ownership
-            mKernel->claim_parameter_ownership( true );
+            mMagneticKernel->claim_parameter_ownership( true );
         }
 
 //------------------------------------------------------------------------------
@@ -1488,7 +1615,7 @@ namespace belfem
             if( mTapeMaterialLabels.size() > 0 )
             {
                 // loop over all sidesets on the mesh
-                for( mesh::SideSet * tMeshSideSet : mKernel->mesh()->sidesets() )
+                for( mesh::SideSet * tMeshSideSet : mMagneticKernel->mesh()->sidesets() )
                 {
                     // check if sideset exists on dof manager
                     if( aDofManager->sideset_exists( tMeshSideSet->id() ) )
@@ -1602,7 +1729,7 @@ namespace belfem
             comm_barrier();
 
             // flag curved elements on kernel mesh
-            mKernel->mesh()->flag_curved_elements() ;
+            mMagneticKernel->mesh()->flag_curved_elements() ;
 
             // wait for other procs
             comm_barrier();
@@ -1644,7 +1771,7 @@ namespace belfem
                 tMaxwell->set_ghost_blocks( mGhostBlocks );
 
                 // the maps associates the sideset facets with the index in the ghost block
-                tMaxwell->create_ghost_map( mKernel->mesh(), mThinShellSideSets, mKernel->comm_table() );
+                tMaxwell->create_ghost_map( mMagneticKernel->mesh(), mThinShellSideSets, mMagneticKernel->comm_table() );
             }
 
             for ( BoundaryCondition * tBC: mBoundaryConditions )
@@ -1655,10 +1782,10 @@ namespace belfem
             // for thin shells
             tMaxwell->set_thin_shell_link_mode( SideSetDofLinkMode::MasterAndSlave );
 
-            mKernel->add_equation( tMaxwell );
+            mMagneticKernel->add_equation( tMaxwell );
 
             // create dof manager for magnetic field
-            mMagneticField = mKernel->create_field( tMaxwell );
+            mMagneticField = mMagneticKernel->create_field( tMaxwell );
 
             // create data arrays on mesh
            // mMagneticField->create_fields( tMaxwell );
@@ -1671,10 +1798,6 @@ namespace belfem
 
             // set timestepping info
             tMaxwell->set_timestep( mTimeStep );
-
-
-            // set the tau parameter for stabilization
-            tMaxwell->set_tau( mTau );
 
             // todo, must be always theta=1
             BELFEM_ERROR( mTheta = 1.0 , "must use Euler Implicit here!");
@@ -1816,10 +1939,29 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         NonlinearSettings
-        MaxwellFactory::nonlinear_settings()
+        MaxwellFactory::nonlinear_settings( const MaxwellFieldType aFieldType )
         {
+            string tFieldType ;
+            switch ( aFieldType )
+            {
+                case( MaxwellFieldType::MAGNETIC ) :
+                {
+                    tFieldType = "maxwell";
+                    break ;
+                }
+                case( MaxwellFieldType::THERMAL ) :
+                {
+                    tFieldType = "thermal" ;
+                    break ;
+                }
+                default:
+                {
+                    BELFEM_ERROR( false, "unkown field type") ;
+                }
+            }
+
             // get key
-            const input::Section * tSection = mInputFile.section("maxwell")->section("solver")->section("nonlinear");
+            const input::Section * tSection = mInputFile.section( tFieldType )->section("solver")->section("nonlinear");
 
             uint tMinIter = tSection->key_exists( "miniter") ? tSection->get_int("miniter") : 3 ;
             uint tMaxIter = tSection->key_exists( "maxiter") ? tSection->get_int("maxiter") : 100 ;
@@ -1841,9 +1983,6 @@ namespace belfem
             real tPicardEpsilon = tSection->section_exists("picard") ?
                                 tSection->section("picard")->key_exists("epsilon") ?
                                 tSection->section("picard")->get_real("epsilon") : tNewtonEpsilon : tNewtonEpsilon ;
-
-
-
 
 
             NonlinearSettings aData(
@@ -2163,14 +2302,14 @@ namespace belfem
         {
             uint tVal = 0;
             // check element types
-            if ( mKernel->is_master())
+            if ( mMagneticKernel->is_master())
             {
                 tVal = ( uint ) mMesh->block( aBlockID )->element_type();
-                send( mKernel->comm_table(), tVal );
+                send( mMagneticKernel->comm_table(), tVal );
             }
             else
             {
-                receive( mKernel->master(), tVal );
+                receive( mMagneticKernel->master(), tVal );
             }
             return ( ElementType ) tVal;
         }
@@ -2237,10 +2376,10 @@ namespace belfem
         MaxwellFactory::add_postprocessor_to_kernel( IWG_Maxwell * aEquation )
         {
             // add equation to kernel
-            mKernel->add_equation( aEquation );
+            mMagneticKernel->add_equation( aEquation );
 
             // create dof projector
-            DofManager * aProjector = mKernel->create_field( aEquation );
+            DofManager * aProjector = mMagneticKernel->create_field( aEquation );
 
             // link field with materials
             this->link_materials( aProjector );
@@ -4125,7 +4264,7 @@ namespace belfem
                     static_cast< IWG_Maxwell * >( mMagneticField->iwg() )
                     ->num_shells_per_node() ;
 
-            if( mKernel->is_master() )
+            if( mMagneticKernel->is_master() )
             {
                 mMesh->unflag_all_facets() ;
 
@@ -4150,19 +4289,19 @@ namespace belfem
                     }
                 }
 
-                Cell< Vector< uint > > tAllData( mKernel->number_of_procs(), {} );
+                Cell< Vector< uint > > tAllData( mMagneticKernel->number_of_procs(), {} );
 
                 // populate container
-                for( proc_t p=1; p<mKernel->number_of_procs(); ++p )
+                for( proc_t p=1; p<mMagneticKernel->number_of_procs(); ++p )
                 {
                     // get the comm table
-                    const Vector< index_t > & tIndices = mKernel->node_table( p );
+                    const Vector< index_t > & tIndices = mMagneticKernel->node_table( p );
 
                     // get the dataset
                     Vector< uint > & tData = tAllData( p );
 
                     // allocate memory for data
-                    tData.set_size( mKernel->mesh()->number_of_nodes() );
+                    tData.set_size( mMagneticKernel->mesh()->number_of_nodes() );
 
                     // initialize counter
                     index_t tCount = 0 ;
@@ -4177,7 +4316,7 @@ namespace belfem
                 // wait for other procs
                 comm_barrier() ;
 
-                send( mKernel->comm_table(), tAllData );
+                send( mMagneticKernel->comm_table(), tAllData );
 
             }
             else
@@ -4185,7 +4324,7 @@ namespace belfem
                 // wait for master
                 comm_barrier() ;
 
-                receive( mKernel->master(), tNumShellsPerNode );
+                receive( mMagneticKernel->master(), tNumShellsPerNode );
             }
         }
 

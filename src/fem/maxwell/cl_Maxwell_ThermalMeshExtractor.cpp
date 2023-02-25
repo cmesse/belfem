@@ -15,9 +15,9 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         ThermalMeshExtractor::ThermalMeshExtractor(
-                Mesh * aInputMesh, const Vector< id_t > & aGhostBlockIDs ) :
+                Mesh * aInputMesh ) :
                 mInputMesh( * aInputMesh ),
-                mGhostBlockIDs( aGhostBlockIDs )
+                mGhostBlockIDs( aInputMesh->ghost_block_ids() )
         {
 
         }
@@ -56,14 +56,18 @@ namespace belfem
             // create the nodes
             this->create_nodes( aMesh );
 
-            // compute the volumes
-            this->compute_element_volumes( aMesh );
-
             // create resistor objects
             this->create_resistors( aMesh );
 
             // finalize the mesh
             aMesh->finalize() ;
+
+            // compute the volumes ( not needed in 2D )
+            //this->compute_element_volumes( aMesh );
+
+            // copy element ownerships from input mesh
+            // onto node ownerships from output mesh
+            this->set_ownerships( &mInputMesh, aMesh );
 
             return aMesh ;
         }
@@ -98,6 +102,9 @@ namespace belfem
 
             // reset counter
             tCount = 0 ;
+
+            //uint tNumLayers = mGhostBlockIDs.length() ;
+            //uint tCount = 0 ;
 
             // loop over all elements on original mesh
             for( id_t b: mGhostBlockIDs )
@@ -146,9 +153,6 @@ namespace belfem
 
             // create pipetter
             mesh::Pipette tPipette ;
-
-            index_t tCount = 0 ;
-
             // loop over all elements on original mesh
             for( id_t b: mGhostBlockIDs )
             {
@@ -161,7 +165,10 @@ namespace belfem
                 // loop over all elements on this block
                 for( mesh::Element * tElement : tElements )
                 {
-                    tVolumes( tCount++ ) = tPipette.measure( tElement );
+                    std::cout << tElement->id() << " " << tPipette.measure( tElement ) << std::endl ;
+
+                    tVolumes( aMesh->node( tElement->id() )->index() )
+                        = tPipette.measure( tElement );
                 }
             }
         }
@@ -327,6 +334,40 @@ namespace belfem
             // add the block to the mesh
             aMesh->blocks().set_size( 1, nullptr );
             aMesh->blocks()( 0 ) = tBlock ;
+        }
+
+//-----------------------------------------------------------------------------
+
+        void
+        ThermalMeshExtractor::set_ownerships(  Mesh * aInputMesh,  Mesh * aOutputMesh )
+        {
+            if( comm_rank() == 0 )
+            {
+                Cell< mesh::Node * > & tNodes = aOutputMesh->nodes();
+
+                // get node owners from input mesh
+                for ( mesh::Node * tNode: tNodes )
+                {
+                    tNode->set_owner( aInputMesh->element( tNode->id())->owner());
+                }
+
+                // generate element owners
+                Cell< mesh::Element * > & tElements = aOutputMesh->elements();
+                proc_t tNumProcs = comm_size();
+                for ( mesh::Element * tElement: tElements )
+                {
+                    proc_t tOwner = tNumProcs;
+                    for ( uint k = 0; k < tElement->number_of_nodes(); ++k )
+                    {
+                        if ( tElement->node( k )->owner() < tOwner )
+                        {
+                            tOwner = tElement->node( k )->owner();
+                        }
+                        tElement->set_owner( tOwner );
+                    }
+                }
+            }
+            comm_barrier();
         }
 
 //-----------------------------------------------------------------------------

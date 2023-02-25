@@ -1,6 +1,7 @@
 //
 // Created by christian on 2/9/23.
 //
+#include "commtools.hpp"
 #include "cl_IWG_Maxwell_Thermal2D.hpp"
 #include "cl_FEM_Element.hpp"
 #include "cl_FEM_Group.hpp"
@@ -15,7 +16,8 @@ namespace belfem
                 IWG_Timestep( IwgType::TransientHeatConduction,
                      IwgMode::Iterative,
                      SymmetryMode::PositiveDefiniteSymmetric,
-                     DofMode::AllBlocksEqual )
+                     DofMode::AllBlocksEqual ),
+                     mMyRank( comm_rank() )
         {
             mNumberOfDofsPerNode = 1 ;
             mNumberOfDerivativeDimensions = 1 ;
@@ -96,15 +98,29 @@ namespace belfem
                 Matrix< real > & aJacobian,
                 Vector< real > & aRHS )
         {
-            this->print_dofs( aElement );
-
+            // mass matrix
             Matrix< real > & tM  = aJacobian ;
-            Matrix< real > & tK  = mGroup->work_K() ;
-            Vector< real > & tT  = mGroup->work_phi() ;
-            Vector< real > & tT0 = mGroup->work_psi() ;
-            Vector< real > & tB  = mGroup->work_tau() ;
-            Vector< real > & tQ  = mGroup->work_chi() ;
 
+            // stiffness matrix
+            Matrix< real > & tK  = mGroup->work_K() ;
+
+            // degrees of freedom
+            Vector< real > & tT  = mGroup->work_phi() ;
+            this->collect_node_data( aElement, "T", tT );
+
+            // degrees of freedom at last timestep
+            Vector< real > & tT0 = mGroup->work_psi() ;
+            this->collect_node_data( aElement, "T0", tT0 );
+
+            // magnetic flux density
+            Vector< real > & tB  = mGroup->work_tau() ;
+            this->collect_node_data( aElement, "b", tB );
+
+            // heat load
+            Vector< real > & tQ  = mGroup->work_chi() ;
+            this->collect_node_data( aElement, "ej", tQ );
+
+            // grab nodes of element
             mesh::Node * tNodeA = aElement->element()->node( 0 ) ;
             mesh::Node * tNodeB = aElement->element()->node( 1 );
 
@@ -116,21 +132,23 @@ namespace belfem
             Material * tMatA = mMaterials( tLayerA );
             Material * tMatB = mMaterials( tLayerB );
 
-            this->collect_node_data( aElement, "T", tT );
-            this->collect_node_data( aElement, "T0", tT0 );
-            this->collect_node_data( aElement, "b", tB );
-            this->collect_node_data( aElement, "ej", tQ );
-
-            std::cout << tNodeA->is_flagged() << " " << tNodeA->owner() << std::endl ;
+           // std::cout << "dof : " << aElement->dof( 0 )->value() << " " << aElement->dof( 1 )->value() << std::endl ;
 
             // lumped mass part for node 0
-            if( ( ! tNodeA->is_flagged() ) && tNodeA->owner() == gComm.rank() )
+            if( ( ! tNodeA->is_flagged() ) && tNodeA->owner() == mMyRank )
             {
                 // volume
                 real tV = mTapeThickness( tLayerA ) * mLength( tNodeA->index() );
 
+
                 // contribution to lumped mass
                 tM( 0, 0 ) = tV * tMatA->rho() * tMatA->c( tT( 0 ) ) ;
+
+                //std::cout << "n : " << tNodeA->id() <<
+                //          " V: " << tV <<
+                //          " T: " << tT( 0 ) <<
+                //          " rho: " <<  tMatA->rho() <<
+                //          " cp:"  << tMatA->c( tT( 0 ) ) << std::endl ;
 
                 // contribution to heat flux
                 aRHS( 0 ) = tV * tQ( 0 );
@@ -147,10 +165,10 @@ namespace belfem
             tM( 0, 1 ) = 0.0 ;
 
             // lumped mass part for node 1
-            if( ( ! tNodeB->is_flagged() ) && tNodeB->owner() == gComm.rank() )
+            if( ( ! tNodeB->is_flagged() ) && tNodeB->owner() == mMyRank )
             {
                 // volume
-                real tV = mTapeThickness( tLayerA ) * mLength( tNodeA->index() );
+                real tV = mTapeThickness( tLayerB ) * mLength( tNodeB->index() );
 
                 // contribution to lumped mass
                 tM( 1, 1 ) = tV * tMatB->rho() * tMatB->c( tT( 1 ) ) ;
@@ -159,6 +177,14 @@ namespace belfem
                 aRHS( 1 ) = tV * tQ( 1 );
 
                 tNodeB->flag() ;
+
+
+                //std::cout << "n : " << tNodeB->id() <<
+                //          " V: " << tV <<
+                //          " T: " << tT( 1 ) <<
+                //          " rho: " <<  tMatB->rho() <<
+                //          " cp:"  << tMatB->c( tT( 1 ) ) << std::endl ;
+
             }
             else
             {
@@ -169,18 +195,26 @@ namespace belfem
             real tLa ;
             real tLb ;
             real tS ;
-            real tKa = tMatA->lambda( tT( 0 ), tB( 0 ) );
-            real tKb = tMatB->lambda( tT( 1 ), tB( 1 ) );
+            //real tKa = std::max( tMatA->lambda( tT( 0 ), tB( 0 ) ), BELFEM_EPSILON );
+            //real tKb = std::max( tMatB->lambda( tT( 1 ), tB( 1 )  ), BELFEM_EPSILON );
+            real tKa = tMatA->lambda( tT( 0 ), tB( 0 ) ) ;
+            real tKb = tMatB->lambda( tT( 1 ), tB( 1 )  ) ;
+
+            //std::cout << "el : " << aElement->id() <<
+            //    " T: " << tT( 0 ) << " " << tT( 1 ) <<
+            //    " B: " <<  tB( 0 )  << " " << tB( 1 ) <<
+            //    " k:"  << tKa << " " << tKb << " " << std::endl ;
 
             if( tLayerA == tLayerB )
             {
+                // horizontal connector
                 tLa = 0.5 * mLength( tNodeA->index() );
                 tLb = 0.5 * mLength( tNodeB->index() );
                 tS = mTapeThickness( tLayerA );
-
             }
             else
             {
+                // vertical connector
                 tLa = 0.5 * mTapeThickness( tLayerA );
                 tLb = 0.5 * mTapeThickness( tLayerB );
                 tS = mLength( tNodeA->index() );
@@ -192,17 +226,10 @@ namespace belfem
             tK( 0, 1 ) = -tValue ;
             tK( 1, 1 ) =  tValue ;
 
-            tM.print("M");
-            tK.print("K");
 
             aRHS *= mDeltaTime ;
             aRHS += tM * tT0 ;
             aJacobian += mDeltaTime * tK ;
-
-            aJacobian.print("J");
-            aRHS.print("RHS");
-
-            exit( 0 );
         }
 
 //------------------------------------------------------------------------------
@@ -215,6 +242,14 @@ namespace belfem
             aGroup->work_psi().set_size( 2 );
             aGroup->work_tau().set_size( 2 );
             aGroup->work_chi().set_size( 2 );
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        IWG_Maxwell_Thermal2D::shift_fields()
+        {
+            mMesh->field_data( "T0" ) = mMesh->field_data( "T");
         }
 
 //------------------------------------------------------------------------------

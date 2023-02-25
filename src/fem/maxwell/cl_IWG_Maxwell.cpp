@@ -2690,6 +2690,7 @@ namespace belfem
             Matrix< real > & aJacobian,
             Vector< real > & aRHS )
         {
+
             // link edge function with element
             mEdgeFunction->link( aElement, false, true, false );
 

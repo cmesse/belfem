@@ -14,6 +14,8 @@ namespace belfem
     {
         class IWG_Maxwell_Thermal2D : public IWG_Timestep
         {
+            const proc_t       mMyRank ;
+
             Cell< Material * > mMaterials ;
             Vector< real >     mTapeThickness ;
             Vector< real >     mLength ;
@@ -53,6 +55,11 @@ namespace belfem
 
             void
             allocate_work_matrices( Group * aGroup ) ;
+
+//------------------------------------------------------------------------------
+
+            void
+            shift_fields();
 
 //------------------------------------------------------------------------------
         };

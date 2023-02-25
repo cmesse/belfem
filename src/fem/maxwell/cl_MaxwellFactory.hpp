@@ -15,6 +15,7 @@
 #include "cl_MaxwellMaterial.hpp"
 #include "cl_FEM_MaxwellBoundaryConditionCurrent.hpp"
 #include "cl_FEM_MaxwellBoundaryConditionMagfield.hpp"
+#include "cl_MaxwellMeshSynch.hpp"
 
 namespace belfem
 {
@@ -22,6 +23,13 @@ namespace belfem
 
     namespace fem
     {
+        enum class MaxwellFieldType
+        {
+            MAGNETIC  = 0,
+            THERMAL   = 1,
+            UNDEFINED = 2
+        };
+
 //------------------------------------------------------------------------------
 
         struct NonlinearSettings
@@ -57,17 +65,17 @@ namespace belfem
             const InputFile & mInputFile  ;
 
             // parameter object
-            KernelParameters * mParameters = nullptr ;
+            KernelParameters * mMagneticParameters = nullptr ;
 
-            // kernel object
-            Kernel *           mKernel = nullptr ;
+            // kernel object for maxwell
+            Kernel *           mMagneticKernel = nullptr ;
 
             // flag telling if we own the mesh
             // (unset if create_mesh() was called )
-            bool mOwnMesh = true ;
+            bool mOwnMagneticMesh = true ;
 
             //! flag telling if we own the kernel object
-            bool mOwnKernel = true ;
+            bool mOwnMagneticKernel = true ;
 
             //! flag telling of we own the boundary conditions
             bool mOwnBoundaryConditions = true ;
@@ -171,7 +179,8 @@ namespace belfem
             bool mComputeNormB = false ;
 
             DofManager * mMagneticField = nullptr ;
-            // DofManager * mThermalField  = nullptr ;
+
+            DofManager * mThermalField  = nullptr ;
 
             Map< id_t, id_t > mSideSetToCutMap ;
 
@@ -185,8 +194,22 @@ namespace belfem
             //! maximum block id of original mesh
             id_t mMaxBlockID = gNoID ;
 
-            //! setting for stabilization parameter
-            real mTau = 0 ;
+            //! default temperature in K
+            real mTinit = 10.0 ;
+
+
+            bool mOwnThermalMesh = true ;
+            Mesh * mThermalMesh = nullptr ;
+
+            bool mOwnThermalMeshSynch = true ;
+            MaxwellMeshSynch * mThermalMeshSynch = nullptr ;
+
+            bool mOwnThermalKernel = true ;
+
+            // kernel object for thermal
+            KernelParameters * mThermalParameters = nullptr ;
+            Kernel *           mThermalKernel = nullptr ;
+            IWG_Timestep *     mFourier = nullptr ;
 
 //------------------------------------------------------------------------------
         public:
@@ -199,17 +222,41 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             Mesh *
-            mesh() ;
+            magnetic_mesh() ;
 
             KernelParameters *
-            parameters() ;
+            magnetic_parameters() ;
 
             Kernel *
-            kernel() ;
+            magnetic_kernel() ;
 
             DofManager *
             magnetic_field() ;
 
+//------------------------------------------------------------------------------
+
+            bool
+            have_thermal() const ;
+
+            Mesh *
+            thermal_mesh() ;
+
+            KernelParameters *
+            thermal_parameters() ;
+
+            Kernel *
+            thermal_kernel() ;
+
+            DofManager *
+            thermal_field() ;
+
+            MaxwellMeshSynch *
+            thermal_synch() ;
+
+            IWG_Timestep *
+            fourier() ;
+
+//------------------------------------------------------------------------------
             /**
              * return the name of the exodus file
              */
@@ -235,7 +282,7 @@ namespace belfem
             csvdump() const ;
 
             NonlinearSettings
-            nonlinear_settings() ;
+            nonlinear_settings( const MaxwellFieldType aFieldType = MaxwellFieldType::MAGNETIC ) ;
 
 //------------------------------------------------------------------------------
 
@@ -259,6 +306,16 @@ namespace belfem
 
 //------------------------------------------------------------------------------
         private:
+//------------------------------------------------------------------------------
+
+            void
+            create_magnetic();
+
+//------------------------------------------------------------------------------
+
+            void
+            create_thermal();
+
 //------------------------------------------------------------------------------
 
             /**
@@ -488,29 +545,76 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline Mesh *
-        MaxwellFactory::mesh()
+        MaxwellFactory::magnetic_mesh()
         {
-            mOwnMesh = false ;
+            mOwnMagneticMesh = false ;
             return mMesh ;
         }
 
 //------------------------------------------------------------------------------
 
+        inline bool
+        MaxwellFactory::have_thermal() const
+        {
+            return mHaveThermal ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline Mesh *
+        MaxwellFactory::thermal_mesh()
+        {
+            mOwnThermalMesh = false ;
+            return mThermalMesh ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline MaxwellMeshSynch *
+        MaxwellFactory::thermal_synch()
+        {
+            mOwnThermalMeshSynch = false ;
+            return mThermalMeshSynch ;
+        }
+
+
+//------------------------------------------------------------------------------
+
         inline KernelParameters *
-        MaxwellFactory::parameters()
+        MaxwellFactory::magnetic_parameters()
         {
             // if this is called, it's the user's responsibility to destroy
-            mKernel->claim_parameter_ownership( false );
-            return mParameters ;
+            mMagneticKernel->claim_parameter_ownership( false );
+            return mMagneticParameters ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline KernelParameters *
+        MaxwellFactory::thermal_parameters()
+        {
+            // if this is called, it's the user's responsibility to destroy
+            mThermalKernel->claim_parameter_ownership( false );
+            return mThermalParameters ;
         }
 
 //------------------------------------------------------------------------------
 
         inline Kernel *
-        MaxwellFactory::kernel()
+        MaxwellFactory::magnetic_kernel()
         {
-            mOwnKernel = false ;
-            return mKernel ;
+            mOwnMagneticKernel = false ;
+            return mMagneticKernel ;
+        }
+
+
+//------------------------------------------------------------------------------
+
+        inline Kernel *
+        MaxwellFactory::thermal_kernel()
+        {
+            mOwnThermalKernel = false ;
+            return mThermalKernel ;
         }
 
 //------------------------------------------------------------------------------
@@ -519,6 +623,22 @@ namespace belfem
         MaxwellFactory::magnetic_field()
         {
             return mMagneticField ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline DofManager *
+        MaxwellFactory::thermal_field()
+        {
+            return mThermalField ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline IWG_Timestep *
+        MaxwellFactory::fourier()
+        {
+            return mFourier ;
         }
 
 //------------------------------------------------------------------------------

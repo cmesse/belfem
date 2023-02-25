@@ -28,7 +28,7 @@ namespace belfem
         public:
 //------------------------------------------------------------------------------
 
-            ThermalMeshExtractor( Mesh * aInputMesh, const Vector< id_t > & aGhostBlockIDs );
+            ThermalMeshExtractor( Mesh * aInputMesh );
 
 //-----------------------------------------------------------------------------
 
@@ -61,6 +61,11 @@ namespace belfem
 
             void
             create_resistors( Mesh * aMesh );
+
+//-----------------------------------------------------------------------------
+
+            void
+            set_ownerships(  Mesh * aInputMesh,  Mesh * aOutputMesh );
 
 //-----------------------------------------------------------------------------
 

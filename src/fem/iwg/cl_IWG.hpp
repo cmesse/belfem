@@ -74,6 +74,7 @@ namespace belfem
             real mPsi       = 1.0 ;
 
             // penalty factor for tape smoothing
+            // todo: remove this!
             real mTau       = 0.0 ;
 
             // flag telling if we have been initialized

@@ -28,19 +28,12 @@
 #include "cl_Maxwell_FieldList.hpp"
 
 #include "meshtools.hpp"
+#include "en_FEM_NedelecField.hpp"
 
 namespace belfem
 {
     namespace fem
     {
-        enum class NedelecField
-        {
-            H         = 0 ,
-            H0        = 1 ,
-            TSH       = 2 ,
-            TSH0      = 3 ,
-            UNDEFINED = 4
-        };
 
 //------------------------------------------------------------------------------
 

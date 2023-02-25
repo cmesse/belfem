@@ -57,12 +57,12 @@ int main( int    argc,
     MaxwellFactory * tFactory = new MaxwellFactory( tInputFile );
 
     // get the mesh
-    Mesh * tMesh = tFactory->mesh();
+    Mesh * tMesh = tFactory->magnetic_mesh();
 
-    tMesh->create_field( "ElementT").fill( 10.0 );
+    tMesh->create_field( "elementT").fill( 10.0 );
 
     // get the kernel
-    Kernel * tKernel = tFactory->kernel() ;
+    Kernel * tKernel = tFactory->magnetic_kernel() ;
 
 
     // get the magnetic field
@@ -73,12 +73,11 @@ int main( int    argc,
 
 
     // create the mesh extractor
-    ThermalMeshExtractor tExtractor( tMesh, tFormulation->ghost_blocks() );
+    ThermalMeshExtractor tExtractor( tMesh );
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Initialize temperature problem
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
 
     // create the output mesh
     Mesh * tThermalMesh = tExtractor.create_mesh() ;
@@ -114,13 +113,15 @@ int main( int    argc,
     tThermal->set_solver( SolverType::UMFPACK );
     tThermal->initialize() ;
 
-    tThermalMesh->unflag_all_nodes() ;
-    tSynch.maxwell_to_thermal() ;
+
+    tSynch.magnetic_to_thermal_b_and_ej()
+
     tThermal->compute_jacobian_and_rhs();
 
     tThermal->solve() ;
 
-    //
+    tSynch.thermal_to_magnetic_T() ;
+
 
     // save the mesh
     if( comm_rank() == 0 )

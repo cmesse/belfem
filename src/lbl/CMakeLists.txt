@@ -74,3 +74,7 @@ include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
 set( EXECNAME tmesh )
 set( MAIN tmesh.cpp)
 include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
+
+set( EXECNAME newmat )
+set( MAIN newmat.cpp)
+include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )

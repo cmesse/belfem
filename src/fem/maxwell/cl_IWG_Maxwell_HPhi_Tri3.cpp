@@ -774,7 +774,12 @@ namespace belfem
             index_t tIndex = mGhostElementMap( aElement->id()
                                                *  mGroup->number_of_thin_shell_layers() + aLayer )->index() ;
 
+            id_t tID = mGhostElementMap( aElement->id()
+                                               *  mGroup->number_of_thin_shell_layers() + aLayer )->id() ;
+
             real tT = mMesh->field_data( "elementT")( tIndex );
+
+            // std::cout << "maxwell :: " << aElement->id() << " " << tID << " " << tIndex << " " << aLayer << " " << tT << std::endl ;
 
             // grab layer thickness
             const real tLayerThickness = mGroup->thin_shell_thickness( aLayer );

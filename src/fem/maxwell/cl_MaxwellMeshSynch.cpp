@@ -2,135 +2,133 @@
 // Created by christian on 2/9/23.
 //
 #include "commtools.hpp"
+#include "cl_IWG_Timestep.hpp"
 #include "cl_MaxwellMeshSynch.hpp"
 
 namespace belfem
 {
+    namespace fem
+    {
 //----------------------------------------------------------------------------
 
-    MaxwellMeshSynch::MaxwellMeshSynch( Mesh * aMaxwellMesh, Mesh * aThermalMesh ) :
-        mRank( comm_rank() ),
-        mMaxwellMesh( * aMaxwellMesh ),
-        mThermalMesh( * aThermalMesh )
-    {
-        if( mRank == 0 )
+        MaxwellMeshSynch::MaxwellMeshSynch( Kernel * aMagneticKernel, Kernel * aThermalKernel ) :
+                mRank( comm_rank()),
+                mMagneticKernel( *aMagneticKernel ),
+                mThermalKernel( *aThermalKernel ),
+                mMagneticMesh( * aMagneticKernel->mesh() ),
+                mThermalMesh( * aThermalKernel->mesh() )
         {
-            this->set_ownerships() ;
+
         }
-        comm_barrier() ;
-    }
-
-//----------------------------------------------------------------------------
-
-    void
-    MaxwellMeshSynch::initialize_tables()
-    {
-        // initialize table
-        mTable.set_size(
-                mThermalMesh.number_of_nodes(), gNoIndex );
-
-        // loop over all nodes on thermal mesh, knowing that the IDs are
-        // identical to the IDs of the ghost elements on the maxwell mess
-        for ( mesh::Node * tNode: mThermalMesh.nodes() )
-        {
-            mTable( tNode->index() )
-                    = mMaxwellMesh.element( tNode->id() )->index();
-        }
-
-        comm_barrier() ;
-    }
 
 //----------------------------------------------------------------------------
 
-    void
-    MaxwellMeshSynch::set_ownerships()
-    {
-
-
-        Cell < mesh::Node * >    & tNodes = mThermalMesh.nodes() ;
-
-        // get node owners from other mesh
-        for( mesh::Node * tNode : tNodes )
+        void
+        MaxwellMeshSynch::initialize_tables()
         {
-            tNode->set_owner(
-                    mMaxwellMesh.element( tNode->id())->owner() );
-        }
+            // initialize table
+            mTable.set_size(
+                    mThermalMesh.number_of_nodes(), gNoIndex );
 
-        // generate element owners
-        Cell < mesh::Element * > & tElements = mThermalMesh.elements() ;
-        proc_t tNumProcs = comm_size() ;
-        for( mesh::Element * tElement : tElements )
-        {
-            proc_t tOwner = tNumProcs ;
-            for( uint k=0; k<tElement->number_of_nodes(); ++k )
+            // loop over all nodes on thermal mesh, knowing that the IDs are
+            // identical to the IDs of the ghost elements on the maxwell mess
+            for ( mesh::Node * tNode: mThermalMesh.nodes())
             {
-                if( tElement->node( k )->owner() < tOwner )
-                {
-                    tOwner = tElement->node( k )->owner();
-                }
-                tElement->set_owner( tOwner );
+                mTable( tNode->index())
+                        = mMagneticMesh.element( tNode->id())->index();
             }
-        }
 
-    }
+            comm_barrier();
+        }
 
 //----------------------------------------------------------------------------
 
-    void
-    MaxwellMeshSynch::maxwell_to_thermal()
-    {
-        // grab field on maxwell mesh
-        Vector< real > & mElementEJ = mMaxwellMesh.field_data("elementEJ") ;
-
-        // grab field on thermal mesh
-        Vector< real > & mNodeEJ    = mThermalMesh.field_data("ej");
-
-
-        index_t tNodeIndex = 0 ;
-
-        for( index_t tElementIndex : mTable )
+        void
+        MaxwellMeshSynch::magnetic_to_thermal_b_and_ej()
         {
-            mNodeEJ( tNodeIndex++ ) = mElementEJ( tElementIndex );
+            // grab field on maxwell mesh
+            Vector< real > & mElementEJ = mMagneticMesh.field_data( "elementEJ" );
+
+            // grab field on thermal mesh
+            Vector< real > & mNodeEJ = mThermalMesh.field_data( "ej" );
+
+
+            index_t tNodeIndex = 0;
+
+            for ( index_t tElementIndex: mTable )
+            {
+                mNodeEJ( tNodeIndex++ ) = mElementEJ( tElementIndex );
+            }
+
+            // reset index
+            tNodeIndex = 0;
+
+            // grab field on maxwell mesh
+            Vector< real > & mElementB = mMagneticMesh.field_data( "elementB" );
+
+            // grab field on thermal mesh
+            Vector< real > & mNodeB = mThermalMesh.field_data( "b" );
+
+            for ( index_t tElementIndex: mTable )
+            {
+                mNodeB( tNodeIndex++ ) = mElementB( tElementIndex );
+            }
+
+            // unflag all nodes on thermal mesh
+            mThermalKernel.mesh()->unflag_all_nodes();
+            comm_barrier();
+
+            // synch time step
+            IWG_Timestep * tMaxwell = reinterpret_cast< IWG_Timestep * >( mMagneticKernel.dofmgr( 0 )->iwg() );
+            IWG_Timestep * tFourier = reinterpret_cast< IWG_Timestep * >( mThermalKernel.dofmgr( 0 )->iwg() );
+            tFourier->set_timestep( tMaxwell->timestep() );
+
         }
-
-        // reset index
-        tNodeIndex = 0 ;
-
-        // grab field on maxwell mesh
-        Vector< real > & mElementB = mMaxwellMesh.field_data("elementB") ;
-
-        // grab field on thermal mesh
-        Vector< real > & mNodeB    = mThermalMesh.field_data("b");
-
-        for( index_t tElementIndex : mTable )
-        {
-            mNodeB( tNodeIndex++ ) = mElementB( tElementIndex );
-        }
-
-        comm_barrier() ;
-    }
 
 //---------------------------------------------------------------------------
 
-    void
-    MaxwellMeshSynch::thermal_to_maxwell()
-    {
-        // grab field on maxwell mesh
-        Vector< real > & mElementT = mMaxwellMesh.field_data("elementT") ;
-
-        // grab field on thermal mesh
-        Vector< real > & mNodeT   = mThermalMesh.field_data("T");
-
-        index_t tNodeIndex = 0 ;
-
-        for( index_t tElementIndex : mTable )
+        void
+        MaxwellMeshSynch::thermal_to_magnetic_T()
         {
-            mElementT( tElementIndex ) = mNodeT( tNodeIndex++) ;
+            // grab field on maxwell mesh
+            Vector< real > & mElementT = mMagneticMesh.field_data( "elementT" );
+
+            // grab field on thermal mesh
+            Vector< real > & mNodeT = mThermalMesh.field_data( "T" );
+
+            index_t tNodeIndex = 0;
+
+            for ( index_t tElementIndex: mTable )
+            {
+                // std::cout << "copy " << tElementIndex << " " << mNodeT( tNodeIndex ) << std::endl ;
+
+                mElementT( tElementIndex ) = mNodeT( tNodeIndex++ );
+            }
+
+            comm_barrier();
         }
 
-        comm_barrier() ;
-    }
+//---------------------------------------------------------------------------
 
+        void
+        MaxwellMeshSynch::magnetic_to_thermal_T()
+        {
+            // grab field on maxwell mesh
+            Vector< real > & mElementT = mMagneticMesh.field_data( "elementT" );
+
+            // grab field on thermal mesh
+            Vector< real > & mNodeT = mThermalMesh.field_data( "T" );
+
+            index_t tNodeIndex = 0;
+
+            for ( index_t tElementIndex: mTable )
+            {
+                mNodeT( tNodeIndex++ ) = mElementT( tElementIndex ) ;
+            }
+
+            comm_barrier();
+        }
 
 //----------------------------------------------------------------------------
+    }
 }

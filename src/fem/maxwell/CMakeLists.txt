@@ -4,6 +4,7 @@ set( SOURCES
         cl_BhExtrapolationOde.cpp
         cl_Maxwell_FieldList.cpp
         cl_IWG_Maxwell.cpp
+        cl_IWG_Maxwell_2D.cpp
         cl_IWG_Maxwell_HPhi_Tri3.cpp
         cl_IWG_Maxwell_HPhi_Tri6.cpp
         cl_IWG_Maxwell_L2_Current.cpp
