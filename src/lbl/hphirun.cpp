@@ -344,20 +344,19 @@ int main( int    argc,
 
            tMagfield->solve();
 
-           tEpsilon0 = tEpsilon ;
-           tEpsilon = tMagfield->residual( tIter++ );
-
            if( tHaveThermal )
            {
                tSynch->magnetic_to_thermal_b_and_ej() ;
                tThermalField->compute_jacobian_and_rhs();
                tThermalField->solve() ;
-               tEpsilonT = tThermalField->residual( tIter++ );
+               tEpsilonT = tThermalField->residual( tIter );
                tSynch->thermal_to_magnetic_T() ;
            }
 
+           tEpsilon0 = tEpsilon ;
+           tEpsilon = tMagfield->residual( tIter++ );
 
-           if ( tKernel->is_master() )
+	   if ( tKernel->is_master() )
            {
                string tAlgLabel = tFormulation->algorithm() == SolverAlgorithm::Picard ? " P " : " NR";
                if( tHaveThermal )
