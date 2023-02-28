@@ -56,8 +56,9 @@ namespace belfem
             mMagneticParameters( new KernelParameters( this->magnetic_mesh() ) )
         {
             this->create_magnetic() ;
+            comm_barrier() ;
             this->create_thermal() ;
-            
+            comm_barrier() ;
         }
 
 //------------------------------------------------------------------------------
@@ -253,6 +254,9 @@ namespace belfem
             {
                 return ;
             }
+            // wait for other procs
+            comm_barrier() ;
+
 
             mHaveThermal = true ;
 
@@ -307,7 +311,6 @@ namespace belfem
             {
                 BELFEM_ERROR( false, "3D mesh not implemented!") ;
             }
-
 
             // set the solver of this field based on the input
             this->set_solver( mThermalField,
@@ -2689,10 +2692,24 @@ namespace belfem
             }
 
 
-            uint tNumZeros = ( uint ) std::log10( mMesh->number_of_blocks() );
-            tNumZeros = tNumZeros < 1 ? 1 : tNumZeros ;
+            string tFormat ;
 
-            string tFormat = "%0" + std::to_string( tNumZeros ) + "u_%s" ;
+            if( mMesh->number_of_sidesets() < 10 )
+            {
+                tFormat = "%u_%s" ;
+            }
+            else if ( mMesh->number_of_sidesets() < 100 )
+            {
+                tFormat = "%02u_%s" ;
+            }
+            else if ( mMesh->number_of_sidesets() < 1000 )
+            {
+                tFormat = "%03u_%s" ;
+            }
+            else
+            {
+                tFormat = "%04u_%s" ;
+            }
 
             for( mesh::Block * tBlock : mMesh->blocks() )
             {
@@ -2732,16 +2749,29 @@ namespace belfem
         void
         MaxwellFactory::write_sideset_phystags_to_mesh()
         {
+
+            string tFormat ;
+
+            if( mMesh->number_of_sidesets() < 10 )
+            {
+                tFormat = "%u_%s" ;
+            }
+            else if ( mMesh->number_of_sidesets() < 100 )
+            {
+                tFormat = "%02u_%s" ;
+            }
+            else if ( mMesh->number_of_sidesets() < 1000 )
+            {
+                tFormat = "%03u_%s" ;
+            }
+            else
+            {
+                tFormat = "%04u_%s" ;
+            }
+
             for( mesh::SideSet * tSideSet : mMesh->sidesets() )
             {
-                // generate new default label for sideset
-                std::ostringstream tLabel ;
-                if( mMesh->number_of_sidesets() > 9 && tSideSet->id() < 10 )
-                {
-                    tLabel << "0" ;
-                }
-                tLabel << tSideSet->id() << "_SideSet";
-                tSideSet->label() = tLabel.str() ;
+                tSideSet->label() = sprint( tFormat.c_str(), ( uint ) tSideSet->id(), "SideSet" );
             }
 
             for( uint s=0; s<3; ++s )
@@ -2769,21 +2799,17 @@ namespace belfem
                             }
 
                             // generate new label for sideset
-                            std::ostringstream tLabel;
-                            if ( mMesh->number_of_sidesets() > 9 && tSideSet->id() < 10 )
+                            if ( string_to_lower( tGroup->label()) ==
+                                string_to_lower( to_string( tGroup->type())))
                             {
-                                tLabel << "0";
-                            }
-                            tLabel << tSideSet->id() << "_";
-                            if ( string_to_lower( tGroup->label()) == string_to_lower( to_string( tGroup->type())))
-                            {
-                                tLabel << to_string( tGroup->type());
+                                tSideSet->label() = sprint( tFormat.c_str(), ( uint ) tSideSet->id(),
+                                                            to_string( tGroup->type()).c_str() );
                             }
                             else
                             {
-                                tLabel << to_string( tGroup->type()) << "_" << tGroup->label();
+                                tSideSet->label() = sprint( tFormat.c_str(), ( uint ) tSideSet->id(),
+                                                            tGroup->label().c_str() );
                             }
-                            tSideSet->label() = tLabel.str();
                         }
                     }
                 }
@@ -3978,6 +4004,25 @@ namespace belfem
             // set the names of the sidesets
             unsigned int tNumLayers = mTapeThicknesses.length();
 
+            string tFormat ;
+
+            if( tNumLayers < 10 )
+            {
+                tFormat = "layer_%u_%s_%uu" ;
+            }
+            else if ( tNumLayers < 100 )
+            {
+                tFormat = "layer_%02u_%s_%uu" ;
+            }
+            else if ( tNumLayers < 1000 )
+            {
+                tFormat = "layer_%03u_%s_%uu" ;
+            }
+            else
+            {
+                tFormat = "layer_%04u_%s_%uu" ;
+            }
+
             for( unsigned int k=0; k<tNumLayers; ++k )
             {
                 // grab Block
@@ -3985,7 +4030,7 @@ namespace belfem
 
                 // create layer name
                 tBlock->label() =
-                sprint( "Layer_%u_%s_%uu",
+                sprint( tFormat.c_str(),
                          k + 1,
                          mTapeMaterialLabels( k  ).c_str() ,
                          ( unsigned int ) std::ceil( mTapeThicknesses( k ) *1e6 ) );

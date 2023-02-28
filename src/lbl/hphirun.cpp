@@ -363,16 +363,16 @@ int main( int    argc,
                {
                    real tTmax = max( tThermalMesh->field_data( "T") );
 
-                   std::cout << "    iteration:  " << tIter << tAlgLabel << " omega " << tFormulation->omega()
-                             << " log10(epsilon): " << std::round( std::log10( tEpsilon ) * 100 ) * 0.01
-                           << " log10(epsilonT): " << std::round( std::log10( tEpsilonT ) * 100 ) * 0.01
+                   std::cout << "    it:  " << tIter << tAlgLabel << " omega " << tFormulation->omega()
+                             << " log10(eps): " << std::round( std::log10( tEpsilon ) * 100 ) * 0.01
+                           << " log10(epsT): " << std::round( std::log10( tEpsilonT ) * 100 ) * 0.01
                            << " Tmax: " << tTmax
                            << std::endl;
                }
                else
                {
-                   std::cout << "    iteration:  " << tIter << tAlgLabel << " omega " << tFormulation->omega()
-                             << " log10(epsilon): " << std::round( std::log10( tEpsilon ) * 100 ) * 0.01 << std::endl;
+                   std::cout << "    it:  " << tIter << tAlgLabel << " omega " << tFormulation->omega()
+                             << " log10(eps): " << std::round( std::log10( tEpsilon ) * 100 ) * 0.01 << std::endl;
                }
            }
 

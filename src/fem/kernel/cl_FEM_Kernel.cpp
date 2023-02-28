@@ -160,7 +160,6 @@ namespace belfem
                 mConnectorTable.set_size( mNumberOfProcs, {} );
             }
 
-
             this->distribute_mesh() ;
 
             if( aLegacyMode )

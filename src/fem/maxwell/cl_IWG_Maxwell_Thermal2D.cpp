@@ -65,28 +65,105 @@ namespace belfem
             mLayer.set_size( aThermalMesh->number_of_nodes(), BELFEM_UINT_MAX );
             mLength.set_size( aThermalMesh->number_of_nodes(), BELFEM_QUIET_NAN );
 
-            uint l = 0 ;
-
-            for( id_t b : aMaxwellMesh->ghost_block_ids() )
+            if( mMyRank == 0 )
             {
-                Cell< mesh::Element * > & tElements
-                    = aMaxwellMesh->block( b )->elements() ;
+                uint l = 0;
 
-                for( mesh::Element * tElement : tElements )
+                for ( id_t b: aMaxwellMesh->ghost_block_ids())
                 {
-                    // get index of corresponding node on thermal mesh
-                    index_t tIndex = aThermalMesh->node( tElement->id() )->index() ;
+                    Cell< mesh::Element * > & tElements
+                            = aMaxwellMesh->block( b )->elements();
 
-                    mLayer( tIndex ) = l ;
+                    for ( mesh::Element * tElement: tElements )
+                    {
+                        // get index of corresponding node on thermal mesh
+                        index_t tIndex = aThermalMesh->node( tElement->id())->index();
 
-                    // compute length of element
-                    real tdX = tElement->node( 1 )->x() - tElement->node( 0 )->x() ;
-                    real tdY = tElement->node( 1 )->y() - tElement->node( 0 )->y() ;
+                        mLayer( tIndex ) = l;
 
-                    // write element length into container
-                    mLength( tIndex ) = std::sqrt( tdX * tdX + tdY * tdY );
+                        // compute length of element
+                        real tdX = tElement->node( 1 )->x() - tElement->node( 0 )->x();
+                        real tdY = tElement->node( 1 )->y() - tElement->node( 0 )->y();
+
+                        // write element length into container
+                        mLength( tIndex ) = std::sqrt( tdX * tdX + tdY * tdY );
+                    }
+                    ++l;
                 }
-                ++l ;
+
+
+
+                // create comm list
+                proc_t tNumProcs = comm_size() ;
+
+                // cancel if this is just one proc
+                if( tNumProcs < 2 ) return;
+
+                Vector< proc_t > tCommList( tNumProcs-1 );
+                index_t tCount = 0 ;
+                for( proc_t p=0; p<tNumProcs; ++p )
+                {
+                    if( p != mMyRank )
+                    {
+                        tCommList( tCount++ ) = p ;
+                    }
+                }
+
+                comm_barrier() ;
+
+                // request list
+                Cell< Vector< id_t > > tAllRequest( tNumProcs-1, {} ) ;
+
+                // length list
+                Cell< Vector< real > > tAllLength( tNumProcs-1, {} ) ;
+
+                // layer list
+                Cell< Vector< uint > > tAllLayer( tNumProcs-1, {} ) ;
+
+                receive( tCommList, tAllRequest );
+
+                for( proc_t p=0; p<tNumProcs-1; ++p )
+                {
+                    Vector< id_t > & tRequest = tAllRequest( p );
+                    Vector< real > & tLength  = tAllLength( p );
+                    Vector< uint > & tLayer   = tAllLayer( p );
+
+                    // reset counter
+                    tCount = 0 ;
+
+                    tLength.set_size( tRequest.length() );
+                    tLayer.set_size( tRequest.length() );
+
+                    for( id_t tID : tRequest )
+                    {
+                        index_t tIndex = aThermalMesh->node( tID )->index();
+                        tLength( tCount ) = mLength( tIndex );
+                        tLayer( tCount++ ) = mLayer( tIndex );
+                    }
+                }
+
+                send( tCommList, tAllLength );
+                send( tCommList, tAllLayer );
+            }
+            else
+            {
+                Cell< mesh::Node * > & tNodes = aThermalMesh->nodes() ;
+
+                // create request list
+                Vector< id_t > tRequest( aThermalMesh->number_of_nodes() );
+
+                index_t tCount = 0 ;
+
+                for( mesh::Node * tNode : tNodes )
+                {
+                    tRequest( tCount++ ) = tNode->id() ;
+                }
+
+                comm_barrier() ;
+
+                send( 0, tRequest );
+                receive( 0, mLength );
+                receive( 0, mLayer );
             }
         }
 

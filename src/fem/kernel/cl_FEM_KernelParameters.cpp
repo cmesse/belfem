@@ -28,7 +28,6 @@ namespace belfem
             mMyRank( comm_rank() ),
             mMesh( aMesh )
         {
-
             this->init_defaults();
         }
         
@@ -38,6 +37,7 @@ namespace belfem
         KernelParameters::init_defaults()
         {
             mNumberOfProcs = comm_size();
+
             if( mMesh->master() == mMyRank )
             {
                 // allocate the id container
@@ -61,7 +61,6 @@ namespace belfem
                     mBlockIndices( b ) = b;
                 }
             }
-
         }
 
 //------------------------------------------------------------------------------
