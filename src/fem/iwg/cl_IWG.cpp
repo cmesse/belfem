@@ -1277,6 +1277,10 @@ namespace belfem
                 aGroup->work_X().set_size( mNumberOfNodesPerElement,
                                            mNumberOfSpatialDimensions  );
             }
+
+            aGroup->work_geo().set_size( 32, 0.0 );
+            aGroup->work_normal().set_size( mMesh->number_of_dimensions() );
+
         }
 
 //------------------------------------------------------------------------------
@@ -2519,7 +2523,7 @@ namespace belfem
                 }
             }
 
-            // if this edge was straignt, this would be the length of this side
+            // if this edge was straight, this would be the length of this side
             mGroup->work_det_J() = std::sqrt(
                     mNormal2D( 0 )* mNormal2D( 0 )
                      + mNormal2D( 1 )* mNormal2D( 1 ) );

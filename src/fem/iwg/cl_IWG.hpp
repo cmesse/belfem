@@ -1144,6 +1144,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             /**
+             * todo: delete
              * computes the normal of the facet.
              * @param aElement
              * @param aIndex
@@ -1154,6 +1155,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
             /**
+             * todo: delete
              * computes the normal of the facet.
              * We assume that the coordinates of the master element
              * have been collected in mGroup->work_Xm();

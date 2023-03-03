@@ -24,6 +24,7 @@ set( SOURCES
         cl_FEM_KernelParameters.cpp
         cl_FEM_Kernel.cpp
         cl_FEM_DomainGroup.cpp
+        FEM_geometrytools.cpp
         )
 
 include_directories( ${BELFEM_SOURCE_DIR}/physics )

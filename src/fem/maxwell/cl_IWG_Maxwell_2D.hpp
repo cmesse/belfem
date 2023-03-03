@@ -21,19 +21,28 @@
 //#include "cl_FEM_BoundaryCondition.hpp"
 //#include "en_FEM_MagfieldBcType.hpp"
 #include "cl_EF_EdgeFunction.hpp"
-//#include "cl_Maxwell_FieldList.hpp"
+#include "cl_Maxwell_FieldList.hpp"
 
 namespace belfem
 {
     namespace fem
     {
-        class IWG_Maxwell_2D //: public IWG_Timestep
+        class IWG_Maxwell_2D : public IWG_Timestep
         {
+            //! contains the number of spatial dimensions
+            const uint mNumberOfDimensions;
+
+            //! flag telling if this IWG uses edge dofs
+            const bool mUseEdges;
+
+            //! list with dofs per entity
+            maxwell::FieldList mFields ;
+
             // delete me
-            Group * mGroup = nullptr ;
+           // Group * mGroup = nullptr ;
 
             //! the edge shape function
-            EdgeFunction * mEdgeFunction = nullptr ;
+           //  EdgeFunction * mEdgeFunction = nullptr ;
 
             void
             ( IWG_Maxwell_2D::*mFunComputeMatrices )
@@ -54,20 +63,22 @@ namespace belfem
         public:
 //------------------------------------------------------------------------------
 
-            IWG_Maxwell_2D() = default;
+            IWG_Maxwell_2D(
+                    const IwgType aType,
+                    const IwgMode aMode,
+                    const SymmetryMode aSymmetryMode,
+                    const SideSetDofLinkMode aSideSetDofLinkMode,
+                    const bool         aUseEdges );
 
             ~IWG_Maxwell_2D() = default;
 
 //------------------------------------------------------------------------------
-        private:
+
+            void
+            allocate_work_matrices( Group * aGroup ) ;
+
 //------------------------------------------------------------------------------
-
-            /*
-             * help function, computes the inverse of the jacobian matrix
-             */
-            const Matrix< real > &
-            inv_J_tri3( Element * aElement );
-
+        private:
 //------------------------------------------------------------------------------
 
             /*
@@ -78,16 +89,83 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            real
+            abs_det_J();
+
+//------------------------------------------------------------------------------
+
             void
-            vol_phi_faraday_tri3( Element * aElement,
+            vol_phi_gauss_tri3_mu0( Element * aElement,
+                                      Matrix< real > & aM,
+                                      Matrix< real > & aK,
+                                      Vector< real > & aF );
+
+//------------------------------------------------------------------------------
+
+            void
+            vol_phi_gauss_tri3_mut( Element * aElement,
+                                Matrix< real > & aM,
+                                Matrix< real > & aK,
+                                Vector< real > & aF );
+
+//------------------------------------------------------------------------------
+
+            void
+            vol_phi_faraday_tri3_mu0( Element * aElement,
                                   Matrix< real > & aM,
                                   Matrix< real > & aK,
                                   Vector< real > & aF );
 
+//------------------------------------------------------------------------------
+
+            void
+            vol_phi_faraday_tri3_mut( Element * aElement,
+                                      Matrix< real > & aM,
+                                      Matrix< real > & aK,
+                                      Vector< real > & aF );
 
 //------------------------------------------------------------------------------
-        };
 
+            void
+            vol_phi_gauss_tri6_mu0( Element * aElement,
+                                      Matrix< real > & aM,
+                                      Matrix< real > & aK,
+                                      Vector< real > & aF );
+
+//------------------------------------------------------------------------------
+
+            void
+            vol_phi_gauss_tri6_mut( Element * aElement,
+                                    Matrix< real > & aM,
+                                    Matrix< real > & aK,
+                                    Vector< real > & aF );
+
+//------------------------------------------------------------------------------
+
+            void
+            vol_phi_faraday_tri6_mu0( Element * aElement,
+                                      Matrix< real > & aM,
+                                      Matrix< real > & aK,
+                                      Vector< real > & aF );
+
+//------------------------------------------------------------------------------
+
+            void
+            vol_phi_faraday_tri6_mut( Element * aElement,
+                                      Matrix< real > & aM,
+                                      Matrix< real > & aK,
+                                      Vector< real > & aF );
+
+//------------------------------------------------------------------------------
+
+
+//------------------------------------------------------------------------------
+
+        };
+//------------------------------------------------------------------------------
+
+        inline real
+        abs_det_J();
 //------------------------------------------------------------------------------
     } /* end namespace fem */
 } /* end namespace belfem */

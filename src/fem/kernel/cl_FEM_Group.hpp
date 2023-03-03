@@ -134,6 +134,10 @@ namespace belfem
 
             Vector< real > mWorkNedelec; // special purpose vector for edge data
 
+            Vector< real > mWorkgeo ; // vector for calculation of geometry Jacobian
+
+            Vector< real > mWorkNormal ;
+
             // pointer to material ( owned by kernel )
             Material * mMaterial = nullptr;
 
@@ -503,6 +507,12 @@ namespace belfem
 
             Vector< real > &
             work_nedelec();
+
+            Vector< real > &
+            work_geo();
+
+            Vector< real > &
+            work_normal();
 
 //------------------------------------------------------------------------------
 // matrices for linear elasticity
@@ -1356,6 +1366,22 @@ namespace belfem
         Group::activate( bool aFlag )
         {
             mIsActive = aFlag ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline Vector< real > &
+        Group:: work_geo()
+        {
+            return mWorkgeo ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline Vector< real > &
+        Group:: work_normal()
+        {
+            return mWorkNormal ;
         }
 
 //------------------------------------------------------------------------------
