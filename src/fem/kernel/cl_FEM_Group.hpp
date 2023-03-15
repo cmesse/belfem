@@ -245,6 +245,14 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             /**
+             * expose the integration data
+             */
+             const IntegrationData *
+             integration() ;
+
+//------------------------------------------------------------------------------
+
+            /**
              * expose integration weights
              */
             const Vector< real > &
@@ -438,6 +446,14 @@ namespace belfem
              */
             real &
             work_det_J();
+//------------------------------------------------------------------------------
+
+            /**
+             * returns the absolute value of det(J)
+             * @return
+             */
+            real
+            dx() const ;
 
 //------------------------------------------------------------------------------
 
@@ -844,6 +860,13 @@ namespace belfem
         {
             return mElements;
         }
+//------------------------------------------------------------------------------
+
+        inline const IntegrationData *
+        Group::integration()
+        {
+            return mIntegrationData ;
+        }
 
 //------------------------------------------------------------------------------
 
@@ -1005,10 +1028,19 @@ namespace belfem
         {
             return mWorkinvJ;
         }
+
 //------------------------------------------------------------------------------
 
         inline real &
         Group::work_det_J()
+        {
+            return mWorkDetJ ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline real
+        Group::dx() const
         {
             return mWorkDetJ ;
         }

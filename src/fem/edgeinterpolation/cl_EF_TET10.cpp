@@ -1041,7 +1041,7 @@ namespace belfem
         EF_TET10::compute_face_functions( const uint aIndex )
         {
             // - - - - - - - - - - - - - - - - - - -
-            // FACE 0 xi->eta->tau
+            // FACE 0 xi->eta->tau # change to eta->zeta->tau
             // - - - - - - - - - - - - - - - - - - -
 
             // xi
@@ -1060,7 +1060,7 @@ namespace belfem
             mF( 2, 2 ) = -mF( 2, 0 ) - mF( 2, 1 );
 
             // - - - - - - - - - - - - - - - - - - -
-            // FACE 1 eta->zeta->tau
+            // FACE 1 eta->zeta->tau # change xi->eta->tau
             // - - - - - - - - - - - - - - - - - - -
 
             // eta
@@ -1079,7 +1079,7 @@ namespace belfem
             mF( 2, 5 ) = -mF( 2, 3 ) - mF( 2, 4 );
 
             // - - - - - - - - - - - - - - - - - - -
-            // FACE 2 zeta->xi->tau
+            // FACE 2 zeta->xi->tau # change to eta->xi->tau
             // - - - - - - - - - - - - - - - - - - -
 
             // zeta
@@ -1098,7 +1098,7 @@ namespace belfem
             mF( 2, 8 ) = -mF( 2, 6 ) - mF( 2, 7 );
 
             // - - - - - - - - - - - - - - - - - - -
-            // FACE 3 xi->zeta->eta
+            // FACE 3 xi->zeta->eta # change to xi->eta->zeta
             // - - - - - - - - - - - - - - - - - - -
 
             // xi

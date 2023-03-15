@@ -878,6 +878,52 @@ namespace belfem
         }
 
 //------------------------------------------------------------------------------
+
+        inline herr_t
+        open_group( const std::string & aLabel,  hid_t aParent )
+        {
+#ifdef BELFEM_HDF5
+            if ( hdf5::group_exists( aParent, aLabel ) )
+            {
+                // add backslash to label
+                std::string tLabel = "/" + aLabel;
+
+                return H5Gopen2(
+                        aParent,
+                        tLabel.c_str(),
+                        H5P_DEFAULT );
+            }
+            else
+            {
+                BELFEM_ERROR( false,
+                              "Group %s does not exist.",
+                              aLabel.c_str() );
+
+                return -1;
+            }
+#else
+            return 0 ;
+#endif
+        }
+
+//------------------------------------------------------------------------------
+
+        inline herr_t
+        close_group( hid_t aGroup )
+        {
+#ifdef BELFEM_HDF5
+            return H5Gclose( aGroup );
+#else
+            return 0 ;
+#endif
+        }
+
+//------------------------------------------------------------------------------
+
+        string
+        create_tree( const Cell< string > & aTree, const string & aLabel );
+
+//------------------------------------------------------------------------------
     } /* namespace hdf5 */
 } /* namespace belfem */
 

@@ -7,6 +7,7 @@
 
 
 #include "cl_Vector.hpp"
+#include "cl_Matrix.hpp"
 
 #include "fn_sum.hpp"
 #include "fn_norm.hpp"

@@ -222,32 +222,32 @@ namespace belfem
         const Matrix< real > &
         EF_TET4::E( const uint aIndex )
         {
-            // edge 0
+            // edge 0 : xi -> zeta
             mE( 0, 0 ) = mS[ 0 ] * ( mG( 0, aIndex ) * mNablaEta[ 0 ] - mH( 0, aIndex ) * mNablaXi[ 0 ] );
             mE( 1, 0 ) = mS[ 0 ] * ( mG( 0, aIndex ) * mNablaEta[ 1 ] - mH( 0, aIndex ) * mNablaXi[ 1 ] );
             mE( 2, 0 ) = mS[ 0 ] * ( mG( 0, aIndex ) * mNablaEta[ 2 ] - mH( 0, aIndex ) * mNablaXi[ 2 ] );
 
-            // edge 1
+            // edge 1 : zeta -> eta
             mE( 0, 1 ) = mS[ 1 ] * ( mG( 1, aIndex ) * mNablaZeta[ 0 ] - mH( 1, aIndex ) * mNablaEta[ 0 ] );
             mE( 1, 1 ) = mS[ 1 ] * ( mG( 1, aIndex ) * mNablaZeta[ 1 ] - mH( 1, aIndex ) * mNablaEta[ 1 ] );
             mE( 2, 1 ) = mS[ 1 ] * ( mG( 1, aIndex ) * mNablaZeta[ 2 ] - mH( 1, aIndex ) * mNablaEta[ 2 ] );
 
-            // edge 2
+            // edge 2 : eta -> xi
             mE( 0, 2 ) = mS[ 2 ] * ( mG( 2, aIndex ) * mNablaXi[ 0 ] - mH( 2, aIndex ) * mNablaZeta[ 0 ] );
             mE( 1, 2 ) = mS[ 2 ] * ( mG( 2, aIndex ) * mNablaXi[ 1 ] - mH( 2, aIndex ) * mNablaZeta[ 1 ] );
             mE( 2, 2 ) = mS[ 2 ] * ( mG( 2, aIndex ) * mNablaXi[ 2 ] - mH( 2, aIndex ) * mNablaZeta[ 2 ] );
 
-            // edge 3
+            // edge 3 : xi -> tau
             mE( 0, 3 ) = mS[ 3 ] * ( mG( 3, aIndex ) * mNablaTau[ 0 ] - mH( 3, aIndex ) * mNablaXi[ 0 ] );
             mE( 1, 3 ) = mS[ 3 ] * ( mG( 3, aIndex ) * mNablaTau[ 1 ] - mH( 3, aIndex ) * mNablaXi[ 1 ] );
             mE( 2, 3 ) = mS[ 3 ] * ( mG( 3, aIndex ) * mNablaTau[ 2 ] - mH( 3, aIndex ) * mNablaXi[ 2 ] );
 
-            // edge 4
+            // edge 4 : zeta -> tau
             mE( 0, 4 ) = mS[ 4 ] * ( mG( 4, aIndex ) * mNablaTau[ 0 ] - mH( 4, aIndex ) * mNablaEta[ 0 ] );
             mE( 1, 4 ) = mS[ 4 ] * ( mG( 4, aIndex ) * mNablaTau[ 1 ] - mH( 4, aIndex ) * mNablaEta[ 1 ] );
             mE( 2, 4 ) = mS[ 4 ] * ( mG( 4, aIndex ) * mNablaTau[ 2 ] - mH( 4, aIndex ) * mNablaEta[ 2 ] );
 
-            // edge 5
+            // edge 5 : eta -> tau
             mE( 0, 5 ) = mS[ 5 ] * ( mG( 5, aIndex ) * mNablaTau[ 0 ] - mH( 5, aIndex ) * mNablaZeta[ 0 ] );
             mE( 1, 5 ) = mS[ 5 ] * ( mG( 5, aIndex ) * mNablaTau[ 1 ] - mH( 5, aIndex ) * mNablaZeta[ 1 ] );
             mE( 2, 5 ) = mS[ 5 ] * ( mG( 5, aIndex ) * mNablaTau[ 2 ] - mH( 5, aIndex ) * mNablaZeta[ 2 ] );

@@ -87,14 +87,47 @@ namespace belfem
                           Vector< real >  & aWeights,
                           Matrix< real >  & aPoints )
     {
-        // classic is only different from gauss with respect to
-        // quad and hex elements
-        IntegrationScheme tIntegrationScheme =
-                aIntegrationScheme == IntegrationScheme::GAUSSCLASSIC ?
-                IntegrationScheme::GAUSS : aIntegrationScheme;
+
+        IntegrationScheme tIntegrationScheme = aIntegrationScheme ;
+
+        // gauss classic is only different from gauss with respect to
+        // quad and hex elements, otherwise we reset to normal gauss
+        if ( aIntegrationScheme == IntegrationScheme::GAUSSCLASSIC )
+        {
+            if( ( aGeometryType == GeometryType::QUAD ) || ( aGeometryType == GeometryType::HEX ) )
+            {
+                tIntegrationScheme = IntegrationScheme::GAUSSCLASSIC ;
+            }
+            else
+            {
+                tIntegrationScheme = IntegrationScheme::GAUSS ;
+            }
+        }
 
         switch ( tIntegrationScheme )
         {
+            case( IntegrationScheme::GAUSSCLASSIC ) :
+            {
+                switch ( aGeometryType )
+                {
+                    case ( GeometryType::QUAD ) :
+                    {
+                        integration::gauss_quad( aOrder, aWeights, aPoints );
+                        break;
+                    }
+                    case ( GeometryType::HEX ) :
+                    {
+                        integration::gauss_hex( aOrder, aWeights, aPoints );
+                        break;
+                    }
+                    default :
+                    {
+                        BELFEM_ERROR( false, "Invalid geometry type" );
+                        break;
+                    }
+                }
+                break ;
+            }
             case ( IntegrationScheme::GAUSS ):
             {
                 switch ( aGeometryType )
@@ -106,363 +139,347 @@ namespace belfem
                     }
                     case ( GeometryType::QUAD ) :
                     {
-                        if ( aIntegrationScheme == IntegrationScheme::GAUSSCLASSIC )
+                        switch ( aOrder )
                         {
-                            integration::gauss_quad( aOrder, aWeights, aPoints );
-                            break;
-                        }
-                        else
-                        {
-                            switch ( aOrder )
+                            case ( 4 ) :
+                            case ( 5 ) :
                             {
-                                case ( 4 ) :
-                                case ( 5 ) :
-                                {
-                                    integration::gauss_quad8( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 6 ) :
-                                case ( 7 ) :
-                                {
-                                    integration::gauss_quad12( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 8 ) :
-                                case ( 9 ) :
-                                {
-                                    integration::gauss_quad20( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 10 ) :
-                                case ( 11 ) :
-                                {
-                                    integration::gauss_quad28( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 12 ) :
-                                case ( 13 ) :
-                                {
-                                    integration::gauss_quad37( aWeights, aPoints );
-                                    break;
-                                }
-                                default :
-                                {
-                                    integration::gauss_quad( aOrder, aWeights, aPoints );
-                                    break;
-                                }
+                                integration::gauss_quad8( aWeights, aPoints );
+                                break;
                             }
-                            break;
+                            case ( 6 ) :
+                            case ( 7 ) :
+                            {
+                                integration::gauss_quad12( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 8 ) :
+                            case ( 9 ) :
+                            {
+                                integration::gauss_quad20( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 10 ) :
+                            case ( 11 ) :
+                            {
+                                integration::gauss_quad28( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 12 ) :
+                            case ( 13 ) :
+                            {
+                                integration::gauss_quad37( aWeights, aPoints );
+                                break;
+                            }
+                            default :
+                            {
+                                integration::gauss_quad( aOrder, aWeights, aPoints );
+                                break;
+                            }
                         }
+                        break;
+                    }
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                        case ( GeometryType::HEX ) :
+                    case ( GeometryType::HEX ) :
+                    {
+                        switch ( aOrder )
                         {
-                            if ( aIntegrationScheme == IntegrationScheme::GAUSSCLASSIC )
+                            case ( 3 ) :
+                            {
+                                integration::gauss_hex6( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 4 ) :
+                            case ( 5 ) :
+                            {
+                                integration::gauss_hex14( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 6 ) :
+                            case ( 7 ) :
+                            {
+                                integration::gauss_hex34( aWeights, aPoints );
+                                break;
+                            }
+                            default:
                             {
                                 integration::gauss_hex( aOrder, aWeights, aPoints );
                                 break;
                             }
-                            else
-                            {
-                                switch ( aOrder )
-                                {
-                                    case ( 3 ) :
-                                    {
-                                        integration::gauss_hex6( aWeights, aPoints );
-                                        break;
-                                    }
-                                    case ( 4 ) :
-                                    case ( 5 ) :
-                                    {
-                                        integration::gauss_hex14( aWeights, aPoints );
-                                        break;
-                                    }
-                                    case ( 6 ) :
-                                    case ( 7 ) :
-                                    {
-                                        integration::gauss_hex34( aWeights, aPoints );
-                                        break;
-                                    }
-                                    default:
-                                    {
-                                        integration::gauss_hex( aOrder, aWeights, aPoints );
-                                        break;
-                                    }
-                                }
-                            }
-                            break;
                         }
+                    }
+                    break;
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                        case ( GeometryType::TRI ) :
-                        {
-                            switch ( aOrder )
-                            {
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                                case ( 0 ) :
-                                case ( 1 ) :
-                                {
-                                    integration::gauss_tri1( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 2 ) :
-                                {
-                                    integration::gauss_tri3( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 3 ) :
-                                {
-                                    integration::gauss_tri4( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 4 ) :
-                                case ( 5 ) :
-                                {
-                                    integration::gauss_tri7( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 6 ) :
-                                    integration::gauss_tri12( aWeights, aPoints );
-                                    break;
-                                case ( 7 ) :
-                                {
-                                    integration::gauss_tri15( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 8 ) :
-                                {
-                                    integration::gauss_tri16( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 9 ) :
-                                {
-                                    integration::gauss_tri19( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 10 ) :
-                                {
-                                    integration::gauss_tri25( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 11 ) :
-                                {
-                                    integration::gauss_tri28( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 12 ) :
-                                {
-                                    integration::gauss_tri33( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 13 ) :
-                                {
-                                    integration::gauss_tri37( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 14 ) :
-                                {
-                                    integration::gauss_tri42( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 15 ) :
-                                {
-                                    integration::gauss_tri49( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 16 ) :
-                                {
-                                    integration::gauss_tri55( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 17 ) :
-                                {
-                                    integration::gauss_tri60( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 18 ) :
-                                {
-                                    integration::gauss_tri67( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 19 ) :
-                                {
-                                    integration::gauss_tri73( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 20 ) :
-                                {
-                                    integration::gauss_tri79( aWeights, aPoints );
-                                    break;
-                                }
-                                default:
-                                {
-                                    BELFEM_ERROR( false, "Invalid Order for GeometryType::TRI" );
-                                    break;
-                                }
-                            }
-                            break;
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                        } // end geometry type tri;
-                        case ( GeometryType::PENTA ) :
+                    case ( GeometryType::TRI ) :
+                    {
+                        switch ( aOrder )
                         {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                            switch ( aOrder )
+                            case ( 0 ) :
+                            case ( 1 ) :
                             {
-                                case ( 0 ) :
-                                case ( 1 ) :
-                                {
-                                    integration::gauss_penta1( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 2 ) :
-                                {
-                                    integration::gauss_penta5( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 3 ) :
-                                {
-                                    integration::gauss_penta8( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 4 ) :
-                                {
-                                    integration::gauss_penta11( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 5 ) :
-                                {
-                                    integration::gauss_penta16( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 6 ) :
-                                {
-                                    integration::gauss_penta29( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 7 ) :
-                                {
-                                    integration::gauss_penta40( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 8 ) :
-                                {
-                                    integration::gauss_penta50( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 9 ) :
-                                {
-                                    integration::gauss_penta71( aWeights, aPoints );
-                                    break;
-                                }
-                                default:
-                                {
-                                    BELFEM_ERROR( false, "Invalid Order for GeometryType::TRI" );
-                                    break;
-                                }
+                                integration::gauss_tri1( aWeights, aPoints );
+                                break;
                             }
+                            case ( 2 ) :
+                            {
+                                integration::gauss_tri3( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 3 ) :
+                            {
+                                integration::gauss_tri4( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 4 ) :
+                            case ( 5 ) :
+                            {
+                                integration::gauss_tri7( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 6 ) :
+                                integration::gauss_tri12( aWeights, aPoints );
+                                break;
+                            case ( 7 ) :
+                            {
+                                integration::gauss_tri15( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 8 ) :
+                            {
+                                integration::gauss_tri16( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 9 ) :
+                            {
+                                integration::gauss_tri19( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 10 ) :
+                            {
+                                integration::gauss_tri25( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 11 ) :
+                            {
+                                integration::gauss_tri28( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 12 ) :
+                            {
+                                integration::gauss_tri33( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 13 ) :
+                            {
+                                integration::gauss_tri37( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 14 ) :
+                            {
+                                integration::gauss_tri42( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 15 ) :
+                            {
+                                integration::gauss_tri49( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 16 ) :
+                            {
+                                integration::gauss_tri55( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 17 ) :
+                            {
+                                integration::gauss_tri60( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 18 ) :
+                            {
+                                integration::gauss_tri67( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 19 ) :
+                            {
+                                integration::gauss_tri73( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 20 ) :
+                            {
+                                integration::gauss_tri79( aWeights, aPoints );
+                                break;
+                            }
+                            default:
+                            {
+                                BELFEM_ERROR( false, "Invalid Order for GeometryType::TRI" );
+                                break;
+                            }
+                        }
+                        break;
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    } // end geometry type tri;
+                    case ( GeometryType::PENTA ) :
+                    {
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                        switch ( aOrder )
+                        {
+                            case ( 0 ) :
+                            case ( 1 ) :
+                            {
+                                integration::gauss_penta1( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 2 ) :
+                            {
+                                integration::gauss_penta5( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 3 ) :
+                            {
+                                integration::gauss_penta8( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 4 ) :
+                            {
+                                integration::gauss_penta11( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 5 ) :
+                            {
+                                integration::gauss_penta16( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 6 ) :
+                            {
+                                integration::gauss_penta29( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 7 ) :
+                            {
+                                integration::gauss_penta40( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 8 ) :
+                            {
+                                integration::gauss_penta50( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 9 ) :
+                            {
+                                integration::gauss_penta71( aWeights, aPoints );
+                                break;
+                            }
+                            default:
+                            {
+                                BELFEM_ERROR( false, "Invalid Order for GeometryType::TRI" );
+                                break;
+                            }
+                        }
 
-                            // apparently, the weights need to be scaled like this
-                            // so that the volume is correct.
-                            aWeights /= 2.2;
+                        // apparently, the weights need to be scaled like this
+                        // so that the volume is correct.
+                        aWeights /= 2.2;
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                            break;
-                        }
+                        break;
+                    }
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                        case ( GeometryType::TET ) :
+                    case ( GeometryType::TET ) :
+                    {
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                        switch ( aOrder )
                         {
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                            switch ( aOrder )
+                            case ( 0 ) :
+                            case ( 1 ) :
                             {
-                                case ( 0 ) :
-                                case ( 1 ) :
-                                {
-                                    integration::gauss_tet1( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 2 ) :
-                                {
-                                    integration::gauss_tet4( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 3 ) :
-                                {
-                                    integration::gauss_tet5( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 4 ) :
-                                {
-                                    integration::gauss_tet11( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 5 ) :
-                                {
-                                    // Keast
-                                    integration::gauss_tet15( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 6 ) :
-                                {
-                                    // Keast
-                                    integration::gauss_tet24( aWeights, aPoints );
-                                    // Shunn and Ham
-                                    // integration::gauss_tet24( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 7 ) :
-                                {
-                                    // Keast
-                                    //integration::gauss_tet31( aWeights, aPoints );
-                                    // Shunn and Ham
-                                    integration::gauss_tet35( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 8 ) :
-                                    // Witherden and Vincent
-                                    integration::gauss_tet46( aWeights, aPoints );
-                                    break;
-                                case ( 9 ) :
-                                {
-                                    // Shunn and Ham
-                                    integration::gauss_tet56( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 10 ) :
-                                {
-                                    // Witherden and Vincent
-                                    integration::gauss_tet81( aWeights, aPoints );
-                                    break;
-                                }
-                                case ( 11 ) :
-                                {
-                                    // Vioreanu and Rokhlin :
-                                    integration::gauss_tet165( aWeights, aPoints );
-                                    break;
-                                }
-                                case( 12 ) :
-                                case( 13 ) :
-                                {
-                                    // Vioreanu and Rokhlin :
-                                    integration::gauss_tet220( aWeights, aPoints );
-                                    break;
-                                }
-                                case( 14 ) :
-                                {
-                                    // Zhang, Cui and Liu :
-                                    integration::gauss_tet236( aWeights, aPoints );
-                                    break;
-                                }
-                                default:
-                                {
-                                    BELFEM_ERROR( false, "Invalid Order for GeometryType::TET" );
-                                    break;
-                                }
+                                integration::gauss_tet1( aWeights, aPoints );
+                                break;
                             }
-                            break;
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                        } // end geometry type tet;
-                        default :
-                        {
-                            BELFEM_ERROR( false, "Invalid geometry type" );
-                            break;
+                            case ( 2 ) :
+                            {
+                                integration::gauss_tet4( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 3 ) :
+                            {
+                                integration::gauss_tet5( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 4 ) :
+                            {
+                                integration::gauss_tet11( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 5 ) :
+                            {
+                                // Keast
+                                integration::gauss_tet15( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 6 ) :
+                            {
+                                // Keast
+                                integration::gauss_tet24( aWeights, aPoints );
+                                // Shunn and Ham
+                                // integration::gauss_tet24( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 7 ) :
+                            {
+                                // Keast
+                                //integration::gauss_tet31( aWeights, aPoints );
+                                // Shunn and Ham
+                                integration::gauss_tet35( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 8 ) :
+                                // Witherden and Vincent
+                                integration::gauss_tet46( aWeights, aPoints );
+                                break;
+                            case ( 9 ) :
+                            {
+                                // Shunn and Ham
+                                integration::gauss_tet56( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 10 ) :
+                            {
+                                // Witherden and Vincent
+                                integration::gauss_tet81( aWeights, aPoints );
+                                break;
+                            }
+                            case ( 11 ) :
+                            {
+                                // Vioreanu and Rokhlin :
+                                integration::gauss_tet165( aWeights, aPoints );
+                                break;
+                            }
+                            case( 12 ) :
+                            case( 13 ) :
+                            {
+                                // Vioreanu and Rokhlin :
+                                integration::gauss_tet220( aWeights, aPoints );
+                                break;
+                            }
+                            case( 14 ) :
+                            {
+                                // Zhang, Cui and Liu :
+                                integration::gauss_tet236( aWeights, aPoints );
+                                break;
+                            }
+                            default:
+                            {
+                                BELFEM_ERROR( false, "Invalid Order for GeometryType::TET" );
+                                break;
+                            }
                         }
+                        break;
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    } // end geometry type tet;
+                    default :
+                    {
+                        BELFEM_ERROR( false, "Invalid geometry type" );
+                        break;
                     }
                 }
                 break ;
@@ -495,7 +512,6 @@ namespace belfem
                 }
                 break;
             }
-
             default :
             {
                 BELFEM_ERROR( false, "Invalid integration type" );

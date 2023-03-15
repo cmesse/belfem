@@ -146,6 +146,9 @@ namespace belfem
             vol_phi_faraday_tri6_mu0( Element * aElement,
                                       Matrix< real > & aM,
                                       Matrix< real > & aK,
+                                      Vector< real > & aF )t * aElement,
+                                      Matrix< real > & aM,
+                                      Matrix< real > & aK,
                                       Vector< real > & aF );
 
 //------------------------------------------------------------------------------

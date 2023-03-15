@@ -83,6 +83,16 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            /*
+             *  a constructor with an empty parent, just used for tests
+             */
+            SideSet( const ElementType aElementType,
+                     const ElementType aMasterType,
+                     const ElementType aSlaveType,
+                     const GroupType aGroupType = GroupType::SIDESET  );
+
+//------------------------------------------------------------------------------
+
             virtual ~SideSet();
 
 //------------------------------------------------------------------------------
@@ -229,7 +239,12 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
-            initialize_lookup_tables();
+            initialize_lookup_tables( const uint aIntegrationOrder );
+
+//------------------------------------------------------------------------------
+
+            void
+            initialize_work_matrices();
 
 //------------------------------------------------------------------------------
     };

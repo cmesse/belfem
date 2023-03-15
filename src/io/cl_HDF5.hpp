@@ -13,6 +13,8 @@
 
 #include "cl_Vector.hpp"
 #include "cl_Matrix.hpp"
+#include "cl_Cell.hpp"
+
 //------------------------------------------------------------------------------
 
 namespace belfem
@@ -38,6 +40,9 @@ namespace belfem
 
         // flag telling if file is open
         bool   mFileIsOpen;
+
+        Cell< string > mTreeLabels ;
+        Cell< hid_t  > mTree ;
 
 //------------------------------------------------------------------------------
     public:
@@ -87,12 +92,27 @@ namespace belfem
          * select a dataset
          */
          hid_t
-         select_group( const string & aLabel, const hid_t aParent=-1 );
+         select_group( const string & aLabel );
 
 //------------------------------------------------------------------------------
 
         void
         close_active_group();
+
+//------------------------------------------------------------------------------
+
+        void
+        close_tree();
+
+//------------------------------------------------------------------------------
+
+        hid_t
+        active_group() const;
+
+//------------------------------------------------------------------------------
+
+        const string &
+        tree() const ;
 
 //------------------------------------------------------------------------------
 // Save Strings

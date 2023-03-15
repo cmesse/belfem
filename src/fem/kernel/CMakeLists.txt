@@ -24,7 +24,7 @@ set( SOURCES
         cl_FEM_KernelParameters.cpp
         cl_FEM_Kernel.cpp
         cl_FEM_DomainGroup.cpp
-        FEM_geometrytools.cpp
+        FEM_geometry.cpp
         )
 
 include_directories( ${BELFEM_SOURCE_DIR}/physics )
@@ -90,4 +90,8 @@ if( USE_EXAMPLES )
     set( EXECNAME transientheat )
     set( MAIN transientheat.cpp)
     include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
+
+    #set( EXECNAME test_geometry )
+    #set( MAIN test_geometry.cpp)
+    #include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
 endif()

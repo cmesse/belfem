@@ -9,6 +9,7 @@
 #include "cl_Matrix.hpp"
 #include "cl_SpMatrix.hpp"
 #include "fn_rcond.hpp"
+
 using namespace belfem;
 
 Communicator gComm;

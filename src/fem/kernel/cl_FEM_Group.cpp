@@ -133,6 +133,11 @@ namespace belfem
         void
         Group::link_material_functions()
         {
+            if( mParent == nullptr )
+            {
+                return;
+            }
+
             uint tNumDim = mParent->mesh()->number_of_dimensions();
 
             if ( tNumDim == 2 )

@@ -7,6 +7,7 @@
 #include "fn_intpoints_auto_integration_order.hpp"
 #include "fn_IF_initialize_integration_points.hpp"
 #include "meshtools.hpp"
+#include "fn_reverse.hpp"
 
 namespace belfem
 {
@@ -38,27 +39,27 @@ namespace belfem
             {
                 case( GeometryType::TRI  ) :
                 {
-                    facetintpoints::intpoints_tri( aSideIndex, aWeights, aPoints, tIntegrationOrder );
+                    facetintpoints::intpoints_tri( aSideIndex, aWeights, aPoints, tIntegrationOrder, aIntegrationScheme );
                     break;
                 }
                 case( GeometryType::QUAD ) :
                 {
-                    facetintpoints::intpoints_quad( aSideIndex, aWeights, aPoints, tIntegrationOrder );
+                    facetintpoints::intpoints_quad( aSideIndex, aWeights, aPoints, tIntegrationOrder, aIntegrationScheme  );
                     break ;
                 }
                 case( GeometryType::TET ) :
                 {
-                    facetintpoints::intpoints_tet( aSideIndex, aWeights, aPoints, tIntegrationOrder );
+                    facetintpoints::intpoints_tet( aSideIndex, aWeights, aPoints, tIntegrationOrder, aIntegrationScheme  );
                     break ;
                 }
                 case( GeometryType::PENTA ) :
                 {
-                    facetintpoints::intpoints_penta( aSideIndex, aWeights, aPoints, tIntegrationOrder );
+                    facetintpoints::intpoints_penta( aSideIndex, aWeights, aPoints, tIntegrationOrder, aIntegrationScheme  );
                     break ;
                 }
                 case( GeometryType::HEX ) :
                 {
-                    facetintpoints::intpoints_hex( aSideIndex, aWeights, aPoints, tIntegrationOrder );
+                    facetintpoints::intpoints_hex( aSideIndex, aWeights, aPoints, tIntegrationOrder, aIntegrationScheme  );
                     break ;
                 }
                 default:
@@ -186,23 +187,31 @@ namespace belfem
                 }
                 case ( 2 ) :
                 {
-                    // xi
-                    aPoints.set_row( 0, tPoints.row( 0 ));
+                    int n = aWeights.length() - 1 ;
+                    uint c = 0 ;
+                    for( int k = n ; k >= 0; k--)
+                    {
+                        // xi
+                        aPoints( 0, c ) = tPoints( 0, k );
 
-                    // eta
-                    tPoints.fill( 1.0 );
-                    aPoints.set_row( 1, tPoints.row( 0 ));
-
+                        // eta
+                        aPoints( 1, c++ ) = 1.0 ;
+                    }
                     break;
                 }
                 case ( 3 ) :
                 {
-                    // eta
-                    aPoints.set_row( 1, tPoints.row( 0 ));
 
-                    // xi
-                    tPoints.fill( -1.0 );
-                    aPoints.set_row( 0, tPoints.row( 0 ));
+                    int n = aWeights.length() - 1 ;
+                    uint c = 0 ;
+                    for( int k = n ; k >= 0; k--)
+                    {
+                        // xi
+                        aPoints( 0, c ) =  -1.0 ;
+
+                        // eta
+                        aPoints( 1, c++ ) = tPoints( 0, k );
+                    }
 
                     break;
                 }
@@ -243,33 +252,36 @@ namespace belfem
                     // xi
                     aPoints.set_row( 0, tPoints.row( 0 ) );
 
-                    // eta
-                    aPoints.set_row( 1, tPoints.row( 1 ) );
+                    // eta = 0
 
                     // zeta = 0
+                    aPoints.set_row( 2, tPoints.row( 1 ) );
+
                     break ;
                 }
                 case( 1 ) :
                 {
                     // xi = 0
 
-                    // eta
-                    aPoints.set_row( 1, tPoints.row( 0 ) );
-
                     // zeta
-                    aPoints.set_row( 2, tPoints.row( 1 ) );
+                    aPoints.set_row( 2, tPoints.row( 0 ) );
+
+                    // eta
+                    aPoints.set_row( 1, tPoints.row( 1 ) );
+
+
 
                     break ;
                 }
                 case( 2 ) :
                 {
+                    // eta
+                    aPoints.set_row( 1, tPoints.row( 0 ) );
+
                     // xi
                     aPoints.set_row( 0, tPoints.row( 1 ) );
 
-                    // eta = 0
-
-                    // zeta
-                    aPoints.set_row( 2, tPoints.row( 0 ) );
+                    // zeta = 0
 
                     break ;
                 }
@@ -280,13 +292,13 @@ namespace belfem
                     aPoints.set_row( 0, tPoints.row( 0 ) );
 
                     // eta
-                    for( uint k=0; k<tNumPoints; ++k )
-                    {
-                        aPoints( 1, k ) = 1.0 - tPoints( 0, k ) - tPoints( 1, k );
-                    }
+                    aPoints.set_row( 1, tPoints.row( 1 ) );
 
                     // zeta
-                    aPoints.set_row( 2, tPoints.row( 1 ) );
+                    for( uint k=0; k<tNumPoints; ++k )
+                    {
+                        aPoints( 2, k ) = 1.0 - tPoints( 0, k ) - tPoints( 1, k );
+                    }
 
                     break ;
                 }

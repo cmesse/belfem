@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 #include "cl_Communicator.hpp"
 #include "cl_Logger.hpp"
+#include "cl_HDF5.hpp"
 
 belfem::Communicator gComm;
 belfem::Logger       gLog( 5 );

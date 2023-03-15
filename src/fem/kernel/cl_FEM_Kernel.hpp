@@ -420,6 +420,11 @@ namespace belfem
                     const Vector< id_t >    & aSideSetIDs,
                     Cell< mesh::Element * > & aElements );
 
+//------------------------------------------------------------------------------
+
+            // make sure that all elements have positive volume
+            void
+            compute_element_volumes();
 
 //------------------------------------------------------------------------------
         };

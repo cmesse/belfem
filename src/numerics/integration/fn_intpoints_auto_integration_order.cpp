@@ -31,6 +31,14 @@ namespace belfem
             {
                 return 10;
             }
+            case( InterpolationOrder::QUARTIC ) :
+            {
+                return 13 ;
+            }
+            case( InterpolationOrder::QUINTIC ) :
+            {
+                return 16 ;
+            }
             default:
             {
                 BELFEM_ERROR( false,

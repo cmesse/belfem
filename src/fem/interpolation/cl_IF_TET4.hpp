@@ -49,12 +49,12 @@ namespace belfem
             aXiHat( 2, 0 ) = 0.0;
 
             aXiHat( 0, 1 ) = 0.0;
-            aXiHat( 1, 1 ) = 1.0;
-            aXiHat( 2, 1 ) = 0.0;
+            aXiHat( 1, 1 ) = 0.0;
+            aXiHat( 2, 1 ) = 1.0;
 
             aXiHat( 0, 2 ) = 0.0;
-            aXiHat( 1, 2 ) = 0.0;
-            aXiHat( 2, 2 ) = 1.0;
+            aXiHat( 1, 2 ) = 1.0;
+            aXiHat( 2, 2 ) = 0.0;
 
             aXiHat( 0, 3 ) = 0.0;
             aXiHat( 1, 3 ) = 0.0;
@@ -98,12 +98,12 @@ namespace belfem
             adNdXi( 2, 0 ) = 0.0;
 
             adNdXi( 0, 1 ) = 0.0;
-            adNdXi( 1, 1 ) = 1.0;
-            adNdXi( 2, 1 ) = 0.0;
+            adNdXi( 1, 1 ) = 0.0;
+            adNdXi( 2, 1 ) = 1.0;
 
             adNdXi( 0, 2 ) = 0.0;
-            adNdXi( 1, 2 ) = 0.0;
-            adNdXi( 2, 2 ) = 1.0;
+            adNdXi( 1, 2 ) = 1.0;
+            adNdXi( 2, 2 ) = 0.0;
 
             adNdXi( 0, 3 ) = -1.0;
             adNdXi( 1, 3 ) = -1.0;

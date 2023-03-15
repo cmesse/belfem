@@ -13,6 +13,7 @@
 #include "banner.hpp"
 #include "cl_Communicator.hpp"
 #include "assert.hpp"
+#include "filetools.hpp"
 
 // Externally Defined Global Communicator
 extern belfem::Communicator gComm;
@@ -101,6 +102,43 @@ namespace belfem
         }
     }
 
+//------------------------------------------------------------------------------
+
+    std::string
+    os_string()
+    {
+        // get os type
+        std::string tUname( uname() );
+
+        if( tUname == "Darwin" )
+        {
+            std::string tName = clean_string( exec( "sw_vers | grep ProductName | cut -d: -f2") );
+            std::string tVersion = clean_string( exec( "sw_vers | grep ProductVersion | cut -d: -f2") );
+            std::string tBuild = clean_string( exec( "sw_vers | grep BuildVersion | cut -d: -f2") );
+            return tName + " " + tVersion + " " + tBuild ;
+        }
+        else if ( tUname == "Linux" )
+        {
+            if ( file_exists( "/etc/system-release" ))
+            {
+                std::string tLabel = exec( "cat /etc/system-release | cut -d'(' -f 1 " ) ;
+                return clean_string( search_and_replace( tLabel, "release", "" ) );
+            }
+            else if ( exec( "which lsb_release" ).size() > 0 )
+            {
+                return clean_string( exec( "lsb_release -d | grep Description | cut -d: -f2" ) );
+            }
+            else
+            {
+                return tUname ;
+            }
+        }
+        else
+        {
+            return tUname ;
+        }
+    }
+
 //-----------------------------------------------------------------------------
 
 #ifdef BELFEM_GCC
@@ -154,12 +192,15 @@ namespace belfem
 #endif
 
             // Who?
-            std::fprintf( stdout, "    User/Host     : %s at %s ( %s %s / %s )\n",
+            std::fprintf( stdout, "    User/Host     : %s @ %s \n",
                           exec( "whoami").c_str(),
-                          exec( "uname -n").c_str(),
-                          exec( "uname -s").c_str(),
-                          exec( "uname -r").c_str(),
+                          exec( "hostname").c_str() );
+
+            // operating system
+            std::fprintf( stdout, "    System        : %s ( %s ) \n",
+                                  os_string().c_str(),
                           exec( "uname -m").c_str() );
+
 
             std::string tCpuInfo = cpu_info();
 

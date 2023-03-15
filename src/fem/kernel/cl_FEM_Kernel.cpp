@@ -17,6 +17,9 @@
 #include "cl_IwgFactory.hpp"
 #include "cl_FEM_DofManager.hpp"
 
+#include "cl_Pipette.hpp"
+#include "fn_sum.hpp"
+
 namespace belfem
 {
     namespace fem
@@ -161,6 +164,10 @@ namespace belfem
             }
 
             this->distribute_mesh() ;
+
+            // shouldn't be neccessary since we check the gmsh input
+            // but we do it anyways to be safe
+            this->compute_element_volumes();
 
             if( aLegacyMode )
             {
@@ -2645,6 +2652,65 @@ namespace belfem
                         aElements( tCount++ ) = tFacet->element() ;
                     }
                 }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        Kernel::compute_element_volumes()
+        {
+            // create a new field on the mesh
+            Vector< real > & tVolumes = mMesh->create_field( "_Volumes",
+                                                             EntityType::ELEMENT ) ;
+
+            mesh::Pipette  tPip ;
+
+            index_t tCount = 0 ;
+
+            // loop over all blocks
+            for( mesh::Block * tBlock : mMesh->blocks() )
+            {
+                // set the element type
+                tPip.set_element_type( tBlock->element_type() );
+
+                // grab the elements
+                Cell< mesh::Element * > & tElements = tBlock->elements() ;
+
+                for( mesh::Element * tElement : tElements )
+                {
+                    // check if this proc owns the element
+                    if( tElement->owner() == mMyRank )
+                    {
+                        // compute the element volume
+                        tVolumes( tElement->index() ) = tPip.measure( tElement );
+
+                        // increment negative counter
+                        if( tVolumes( tElement->index() ) < 0 )
+                        {
+                            ++tCount ;
+                        }
+                    }
+                }
+            }
+
+            comm_barrier() ;
+
+            if( mMyRank == 0 )
+            {
+                Vector< index_t > tAllCount( mNumberOfProcs, 0 );
+                receive( mCommTable, tAllCount, tCount );
+
+                tCount = sum( tAllCount );
+
+                BELFEM_ERROR(  tCount == 0, "Detected %lu elements with negative volume on mesh",
+                               ( long unsigned int ) tCount );
+
+            }
+            else
+            {
+                // send my counter to master
+                send( 0, tCount );
             }
         }
 

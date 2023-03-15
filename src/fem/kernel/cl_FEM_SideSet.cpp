@@ -104,21 +104,41 @@ namespace belfem
                 // set the number of nodes per element
                 mNumberOfNodesPerElement = mesh::number_of_nodes( mElementType );
 
-                mIntegrationData = new IntegrationData( mElementType,
-                                                        mParent->iwg()->interpolation_type() );
-
-                // todo : #changescheme #lobatto
-                mIntegrationData->populate( aParent->sideset_integration_order(),
-                                            aParent->integration_scheme() );
-
-
 
                 this->assume_isogeometry();
                 this->initialize_elements( aFacets );
                 this->collect_nodes( aFacets );
                 this->create_element_map();
-                this->initialize_lookup_tables();
+
+                uint tOrder = 0 ;
+                if( aParent != nullptr )
+                {
+                    tOrder = aParent->sideset_integration_order() ;
+                }
+                this->initialize_lookup_tables( tOrder );
+                this->initialize_work_matrices();
             }
+        }
+
+//------------------------------------------------------------------------------
+
+        SideSet::SideSet( const ElementType aElementType,
+                 const ElementType aMasterType,
+                 const ElementType aSlaveType,
+                 const GroupType aGroupType  ) :
+                Group( nullptr, aGroupType, aElementType, 0, 0 ),
+                mMasterType( aMasterType ),
+                mSlaveType( aSlaveType )
+        {
+            // set the number of nodes per element
+            mNumberOfNodesPerElement = mesh::number_of_nodes( mElementType );
+
+
+            // initialize lookup tables for integration of master and slave
+            this->initialize_lookup_tables( 0 ) ;
+
+
+            this->initialize_work_matrices();
         }
 
 //------------------------------------------------------------------------------
@@ -482,36 +502,59 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        SideSet::initialize_lookup_tables()
+        SideSet::initialize_lookup_tables( const uint aIntegrationOrder )
+
         {
             // determine integration order
-            uint tIntegrationOrder = mParent->sideset_integration_order() ;
+            uint tIntegrationOrder = aIntegrationOrder ;
+            InterpolationType tType = mParent == nullptr ? InterpolationType::LAGRANGE : mParent->iwg()->interpolation_type();
+            IntegrationScheme tScheme = mParent == nullptr ? IntegrationScheme::GAUSSCLASSIC : mParent->integration_scheme() ;
 
-            // this line is to make sure that master and slave have the same integration order,
-            // even if not set by dof manager.
-            if(   mMasterType != ElementType::UNDEFINED && mSlaveType != ElementType::UNDEFINED
-                && mMasterType != ElementType::EMPTY && mSlaveType != ElementType::EMPTY
-                && tIntegrationOrder == 0 )
+
+            bool tHaveMaster =  mMasterType != ElementType::UNDEFINED && mMasterType != ElementType::EMPTY ;
+            bool tHaveSlave =   mSlaveType != ElementType::UNDEFINED && mSlaveType != ElementType::EMPTY ;
+
+            // check if we use auto setting
+            if( tIntegrationOrder == 0 )
             {
-                tIntegrationOrder = std::max(
-                        auto_integration_order( mMasterType ),
-                        auto_integration_order( mSlaveType ) );
+                // auto define integration order
+                tIntegrationOrder = auto_integration_order( mElementType );
+
+                if( tHaveMaster )
+                {
+                    tIntegrationOrder = std::max(
+                            tIntegrationOrder,
+                            auto_integration_order( mMasterType ) );
+                }
+
+                if( tHaveSlave )
+                {
+                    tIntegrationOrder = std::max(
+                            tIntegrationOrder,
+                            auto_integration_order( mSlaveType ) );
+                }
             }
 
-            if( mMasterType != ElementType::UNDEFINED && mMasterType != ElementType::EMPTY )
+            // note that the integration data is not populated!
+            mIntegrationData = new IntegrationData( mElementType );
+
+            // populate main integration data
+            mIntegrationData->populate( tIntegrationOrder, tScheme );
+
+            if( tHaveMaster )
             {
                 uint tNumFacets = mesh::number_of_facets( mMasterType );
                 mMasterIntegration.set_size( tNumFacets, nullptr );
                 for( uint f=0; f<tNumFacets; ++f )
                 {
                     mMasterIntegration( f ) = new IntegrationData( mMasterType,
-                                                                   mParent->iwg()->interpolation_type() );
+                                                                   tType );
                     mMasterIntegration( f )->populate_for_master( f,
                                                                   tIntegrationOrder,
-                                                               mParent->integration_scheme() );
+                                                                  tScheme );
                 }
             }
-            if( mSlaveType != ElementType::UNDEFINED && mSlaveType != ElementType::EMPTY )
+            if( tHaveSlave )
             {
                 if( mesh::geometry_type( mSlaveType ) == GeometryType::TRI )
                 {
@@ -520,10 +563,10 @@ namespace belfem
                     for( uint f=0; f<3; ++f )
                     {
                         mSlaveIntegration( f ) = new IntegrationData( mSlaveType,
-                                                                      mParent->iwg()->interpolation_type() );
+                                                                      tType );
                         mSlaveIntegration( f )->populate_for_slave_tri( f,
                                                                         tIntegrationOrder,
-                                                                  mParent->integration_scheme() );
+                                                                        tScheme );
                     }
                 }
                 else if ( mesh::geometry_type( mSlaveType ) == GeometryType::TET )
@@ -534,12 +577,11 @@ namespace belfem
                     {
                         for( uint orientation=0; orientation<3; ++orientation )
                         {
-                            mSlaveIntegration( tCount ) = new IntegrationData( mSlaveType,
-                                                                               mParent->iwg()->interpolation_type() );
+                            mSlaveIntegration( tCount ) = new IntegrationData( mSlaveType, tType );
                             mSlaveIntegration( tCount++ )->populate_for_slave_tet( face,
                                                                                   orientation,
-                                                                                  mParent->sideset_integration_order(),
-                                                                                  mParent->integration_scheme() );
+                                                                                   tIntegrationOrder,
+                                                                                   tScheme );
                         }
                     }
                 }
@@ -547,6 +589,48 @@ namespace belfem
                 // otherwise, we don't do anything, since the sidesets
                 // for pentas and hexes would have to be defined separately
             }
+
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        SideSet::initialize_work_matrices()
+        {
+            uint tNumDim = 0 ;
+
+            if(    mMasterType != ElementType::UNDEFINED
+                && mMasterType != ElementType::EMPTY )
+            {
+                tNumDim = mesh::dimension( mMasterType );
+
+                this->work_Xm().set_size( mesh::number_of_nodes( mMasterType ), tNumDim );
+                this->work_normal().set_size( tNumDim );
+
+            }
+
+            if(       mSlaveType != ElementType::UNDEFINED
+                   && mSlaveType != ElementType::EMPTY )
+            {
+                if( tNumDim == 0 )
+                {
+                    tNumDim = mesh::dimension( mSlaveType );
+                }
+                this->work_Xs().set_size( mesh::number_of_nodes( mSlaveType ), tNumDim );
+
+            }
+
+            if(          mElementType != ElementType::UNDEFINED
+                      && mElementType != ElementType::EMPTY )
+            {
+                if( tNumDim == 0 )
+                {
+                    tNumDim = mesh::dimension( mElementType ) + 1 ;
+                }
+                this->work_X().set_size( mesh::number_of_nodes( mElementType ), tNumDim );
+                this->work_J().set_size( tNumDim, tNumDim );
+            }
+
         }
 
  //------------------------------------------------------------------------------

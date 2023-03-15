@@ -6,6 +6,7 @@
 #include "typedefs.hpp"
 #include "cl_Cell.hpp"
 #include "cl_Vector.hpp"
+#include "cl_Matrix.hpp"
 #include "fn_r2.hpp"
 #include "cl_Graph_Vertex.hpp"
 #define protected public

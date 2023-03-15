@@ -1,9 +1,9 @@
 //
-// Created by Christian Messe on 2019-01-23.
+// Created by christian on 3/12/23.
 //
 
-#ifndef BELFEM_FN_NORM_HPP
-#define BELFEM_FN_NORM_HPP
+#ifndef BELFEM_FN_REVERSE_HPP
+#define BELFEM_FN_REVERSE_HPP
 
 #include "cl_Vector.hpp"
 
@@ -14,31 +14,34 @@ namespace belfem
 #ifdef BELFEM_ARMADILLO
     template< typename ET >
     auto
-    norm( ET &  aA )
-        ->decltype( arma::norm( aA, 2 ) )
+    reverse( ET &  aA )
+        ->decltype( arma::reverse( aA ) )
     {
-        return arma::norm( aA, 2 );
+        return arma::reverse( aA );
     }
+
 #elif  BELFEM_BLAZE
     template< typename ET >
     auto
-    norm( ET &  aA )
-        ->decltype( blaze::norm( aA ) )
+    reverse( ET &  aA )
+        ->decltype( blaze::reverse( aA ) )
     {
-        return blaze::norm( aA );
+        return blaze::reverse( aA );
     }
 #endif
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     template< typename T >
     auto
-    norm( const Vector< T > & aA )
-        -> decltype( norm( aA.vector_data() ) )
+    reverse( const Vector< T > & aA )
+    -> decltype( reverse( aA.vector_data() ) )
     {
-        return norm( aA.vector_data() );
+        return reverse( aA.vector_data() );
     }
 
 //------------------------------------------------------------------------------
 
 }
-#endif //BELFEM_FN_NORM_HPP
+
+#endif //BELFEM_FN_REVERSE_HPP

@@ -194,31 +194,37 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     hid_t
-    HDF5::select_group(  const string & aLabel, const hid_t aParent )
+    HDF5::select_group(  const string & aLabel )
     {
 #ifdef BELFEM_HDF5
 
-        hid_t tTarget = ( aParent == -1 ) ? ( mFile ) : ( aParent ) ;
+        hid_t tParent = mTree.size() == 0  ? ( mFile ) : mActiveGroup ;
 
-        if ( hdf5::group_exists( tTarget, aLabel ) )
+        string tLabel = hdf5::create_tree( mTreeLabels, aLabel );
+
+        if ( hdf5::group_exists( mFile, tLabel ) )
         {
-            // add backslash to label
-            std::string tLabel = "/" + aLabel;
-
             // check if any group is open
-            if( mActiveGroup != mFile )
+            if( mActiveGroup != mFile &&
+                mActiveGroupLabel.find( tLabel ) == mActiveGroupLabel.length() )
             {
+                // remove last item of tree
+                mTreeLabels.pop() ;
+
                 // close active group
-                H5Gclose( mActiveGroup );
+                H5Gclose( mTree.pop() );
             }
 
             mActiveGroup = H5Gopen2(
-                    tTarget,
+                    tParent,
                     tLabel.c_str(),
                     H5P_DEFAULT );
 
+            mTreeLabels.push( aLabel );
+            mTree.push( mActiveGroup );
+
             // remember label
-            mActiveGroupLabel = aLabel;
+            mActiveGroupLabel = tLabel;
 
             return mActiveGroup;
         }
@@ -226,7 +232,7 @@ namespace belfem
         {
             BELFEM_ERROR( false,
                        "Group %s does not exist in file %s",
-                       aLabel.c_str(),
+                       tLabel.c_str(),
                        mPath.c_str() );
 
             return -1;
@@ -243,16 +249,63 @@ namespace belfem
     HDF5::close_active_group()
     {
 #ifdef BELFEM_HDF5
-        if( mActiveGroup != mFile )
+        if( mActiveGroup == mFile )
+        {
+            return ;
+        }
+
+        if( mTree.size() > 1 )
         {
             // close active group
-            H5Gclose( mActiveGroup );
+            H5Gclose(  mTree.pop() );
+
+            // remove last label from tree
+            mTreeLabels.pop() ;
+
+            mActiveGroup = mTree( mTree.size() - 1 );
+
+            string tLastLabel = mTreeLabels.pop() ;
+            mActiveGroupLabel = hdf5::create_tree( mTreeLabels, tLastLabel );
+            mTreeLabels.push( tLastLabel );
         }
+        else
+        {
+            H5Gclose( mActiveGroup );
+            mTree.clear() ;
+            mTreeLabels.clear() ;
+            mActiveGroupLabel = "/";
+            mActiveGroup = mFile ;
+        }
+
 #endif
-        mActiveGroup = mFile;
-        mActiveGroupLabel = "";
     }
 
+//------------------------------------------------------------------------------
+
+    void
+    HDF5::close_tree()
+    {
+#ifdef BELFEM_HDF5
+        if( mActiveGroup == mFile )
+        {
+            return ;
+        }
+
+        uint tNumGroups = mTree.size() ;
+        for( uint g=0; g<tNumGroups; ++g )
+        {
+            // close active group
+            H5Gclose(  mTree.pop() );
+        }
+
+        // tidy up
+        mTree.clear() ;
+        mTreeLabels.clear() ;
+        mActiveGroupLabel = "/";
+        mActiveGroup = mFile ;
+
+#endif
+    }
 //------------------------------------------------------------------------------
 // Save Strings
 //------------------------------------------------------------------------------
@@ -697,6 +750,22 @@ namespace belfem
                 aArray,
                 aMemorySize,
                 mStatus );
+    }
+
+//------------------------------------------------------------------------------
+
+    hid_t
+    HDF5::active_group() const
+    {
+        return mActiveGroup ;
+    }
+
+//------------------------------------------------------------------------------
+
+    const string &
+    HDF5::tree() const
+    {
+        return mActiveGroupLabel;
     }
 
 //------------------------------------------------------------------------------

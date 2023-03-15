@@ -35,6 +35,13 @@ namespace belfem
                 delete mIntegrationData ;
                 mIntegrationData = nullptr ;
             }
+
+            if( mIntegrationDataLinear != nullptr )
+            {
+                delete mIntegrationDataLinear ;
+                mIntegrationDataLinear = nullptr ;
+            }
+
             if( mHaveW )
             {
                 free( mW );
@@ -59,6 +66,7 @@ namespace belfem
             mNumDim = 0 ;
             mNumNodes = 0 ;
             mNumIntPoints = 0 ;
+            mNumIntPointsLinear = 0 ;
         }
 
 //-----------------------------------------------------------------------------
@@ -79,6 +87,7 @@ namespace belfem
             mIntegrationData = new belfem::fem::IntegrationData( aType ) ;
             mIntegrationData->populate(  mesh::interpolation_order_numeric( aType ) );
             mNumIntPoints = mIntegrationData->weights().length() ;
+
 
             mNodeCoordsFacet.set_size( mNumNodes, 3 );
             mNodeCoords.set_size( mNumNodes, mNumDim );
@@ -109,13 +118,19 @@ namespace belfem
                 }
                 case( GeometryType::PENTA ) :
                 {
-                    mW = ( real * ) malloc( 30 * sizeof( real ) );
-                    mHaveW = true ;
+                    mNodeCoordsLinear.set_size( 6, 3 );
+                    mIntegrationDataLinear = new belfem::fem::IntegrationData( ElementType::PENTA6 ) ;
+                    mIntegrationDataLinear->populate(  2 );
+                    mNumIntPointsLinear = mIntegrationDataLinear->weights().length() ;
                     mVolumeFunctionLinear = & Pipette::measure_penta6 ;
                     break ;
                 }
                 case( GeometryType::HEX ) :
                 {
+                    mNodeCoordsLinear.set_size( 8, 3 );
+                    mIntegrationDataLinear = new belfem::fem::IntegrationData( ElementType::HEX8 ) ;
+                    mIntegrationDataLinear->populate(  2 );
+                    mNumIntPointsLinear = mIntegrationDataLinear->weights().length() ;
                     mVolumeFunctionLinear = & Pipette::measure_hex8 ;
                     break ;
                 }
@@ -130,7 +145,6 @@ namespace belfem
                 case( ElementType::TRI3 ) :
                 {
                     mVolumeFunction  = & Pipette::measure_tri3 ;
-                    // overwrite, using simpler function
                     mSurfaceFunction = & Pipette::measure_linear_tri ;
                     break ;
                 }
@@ -148,6 +162,12 @@ namespace belfem
                 case( ElementType::PENTA6 ) :
                 {
                     mVolumeFunction = & Pipette::measure_penta6 ;
+                    mSurfaceFunction = nullptr ;
+                    break ;
+                }
+                case( ElementType::HEX8 ) :
+                {
+                    mVolumeFunction = & Pipette::measure_hex8 ;
                     mSurfaceFunction = nullptr ;
                     break ;
                 }
@@ -205,7 +225,7 @@ namespace belfem
             mY[ 2 ] = aElement->node( 2 )->y() ;
 
             // compute the value
-            return 0.5*std::abs((mX[1]-mX[0])*(mY[2]-mY[1])-(mY[1]-mY[0])*(mX[2]-mX[1]));
+            return 0.5*((mX[1]-mX[0])*(mY[2]-mY[1])-(mY[1]-mY[0])*(mX[2]-mX[1]));
         }
 
 //------------------------------------------------------------------------------
@@ -225,7 +245,7 @@ namespace belfem
             mY[ 3 ] = aElement->node( 3 )->y() ;
 
             // compute the value
-            return  0.5*std::abs((mY[1]-mY[3])*(mX[0]-mX[2])
+            return  0.5*((mY[1]-mY[3])*(mX[0]-mX[2])
                                   +(mY[0]-mY[2])*(mX[3]-mX[1]));
         }
 
@@ -254,15 +274,15 @@ namespace belfem
             mW[ 0 ] = mX[ 0 ] - mX[ 3 ];
             mW[ 1 ] = mY[ 0 ] - mY[ 3 ];
             mW[ 2 ] = mZ[ 0 ] - mZ[ 3 ];
-            mW[ 3 ] = mX[ 1 ] - mX[ 3 ];
-            mW[ 4 ] = mY[ 1 ] - mY[ 3 ];
-            mW[ 5 ] = mZ[ 1 ] - mZ[ 3 ];
-            mW[ 6 ] = mX[ 2 ] - mX[ 3 ];
-            mW[ 7 ] = mY[ 2 ] - mY[ 3 ];
-            mW[ 8 ] = mZ[ 2 ] - mZ[ 3 ];
+            mW[ 3 ] = mX[ 2 ] - mX[ 3 ];
+            mW[ 4 ] = mY[ 2 ] - mY[ 3 ];
+            mW[ 5 ] = mZ[ 2 ] - mZ[ 3 ];
+            mW[ 6 ] = mX[ 1 ] - mX[ 3 ];
+            mW[ 7 ] = mY[ 1 ] - mY[ 3 ];
+            mW[ 8 ] = mZ[ 1 ] - mZ[ 3 ];
 
             // compute the determinant
-            return std::abs(
+            return (
                       mW[ 0 ]*(mW[ 4 ]*mW[ 8 ] - mW[ 5 ]*mW[ 7 ])
                     + mW[ 1 ]*(mW[ 5 ]*mW[ 6 ] - mW[ 3 ]*mW[ 8 ])
                     + mW[ 2 ]*(mW[ 3 ]*mW[ 7 ] - mW[ 4 ]*mW[ 6 ]) )/6. ;
@@ -273,76 +293,41 @@ namespace belfem
         real
         Pipette::measure_penta6( const Element * aElement )
         {
-            // collect the node coordinates
-            mX[ 0 ] = aElement->node( 0 )->x() ;
-            mX[ 1 ] = aElement->node( 1 )->x() ;
-            mX[ 2 ] = aElement->node( 2 )->x() ;
-            mX[ 3 ] = aElement->node( 3 )->x() ;
-            mX[ 4 ] = aElement->node( 4 )->x() ;
-            mX[ 5 ] = aElement->node( 5 )->x() ;
+            // copy the node coordinates of the element
+            mNodeCoordsLinear( 0, 0 ) = aElement->node( 0 )->x() ;
+            mNodeCoordsLinear( 1, 0 ) = aElement->node( 1 )->x() ;
+            mNodeCoordsLinear( 2, 0 ) = aElement->node( 2 )->x() ;
+            mNodeCoordsLinear( 3, 0 ) = aElement->node( 3 )->x() ;
+            mNodeCoordsLinear( 4, 0 ) = aElement->node( 4 )->x() ;
+            mNodeCoordsLinear( 5, 0 ) = aElement->node( 5 )->x() ;
 
-            mY[ 0 ] = aElement->node( 0 )->y() ;
-            mY[ 1 ] = aElement->node( 1 )->y() ;
-            mY[ 2 ] = aElement->node( 2 )->y() ;
-            mY[ 3 ] = aElement->node( 3 )->y() ;
-            mY[ 4 ] = aElement->node( 4 )->y() ;
-            mY[ 5 ] = aElement->node( 5 )->y() ;
+            mNodeCoordsLinear( 0, 1 ) = aElement->node( 0 )->y() ;
+            mNodeCoordsLinear( 1, 1 ) = aElement->node( 1 )->y() ;
+            mNodeCoordsLinear( 2, 1 ) = aElement->node( 2 )->y() ;
+            mNodeCoordsLinear( 3, 1 ) = aElement->node( 3 )->y() ;
+            mNodeCoordsLinear( 4, 1 ) = aElement->node( 4 )->y() ;
+            mNodeCoordsLinear( 5, 1 ) = aElement->node( 5 )->y() ;
 
-            mZ[ 0 ] = aElement->node( 0 )->z() ;
-            mZ[ 1 ] = aElement->node( 1 )->z() ;
-            mZ[ 2 ] = aElement->node( 2 )->z() ;
-            mZ[ 3 ] = aElement->node( 3 )->z() ;
-            mZ[ 4 ] = aElement->node( 4 )->z() ;
-            mZ[ 5 ] = aElement->node( 5 )->z() ;
+            mNodeCoordsLinear( 0, 2 ) = aElement->node( 0 )->z() ;
+            mNodeCoordsLinear( 1, 2 ) = aElement->node( 1 )->z() ;
+            mNodeCoordsLinear( 2, 2 ) = aElement->node( 2 )->z() ;
+            mNodeCoordsLinear( 3, 2 ) = aElement->node( 3 )->z() ;
+            mNodeCoordsLinear( 4, 2 ) = aElement->node( 4 )->z() ;
+            mNodeCoordsLinear( 5, 2 ) = aElement->node( 5 )->z() ;
+            // get integration weights
+            const Vector< real > & tW = mIntegrationDataLinear->weights() ;
 
-            // Work Vector
-            mW[  0 ] = mX[ 1 ] * mY[ 0 ];
-            mW[  1 ] = mX[ 2 ] * mY[ 0 ];
-            mW[  2 ] = mX[ 3 ] * mY[ 0 ];
-            mW[  3 ] = mX[ 4 ] * mY[ 0 ];
-            mW[  4 ] = mX[ 5 ] * mY[ 0 ];
-            mW[  5 ] = mX[ 0 ] * mY[ 1 ];
-            mW[  6 ] = mX[ 2 ] * mY[ 1 ];
-            mW[  7 ] = mX[ 3 ] * mY[ 1 ];
-            mW[  8 ] = mX[ 4 ] * mY[ 1 ];
-            mW[  9 ] = mX[ 5 ] * mY[ 1 ];
-            mW[ 10 ] = mX[ 0 ] * mY[ 2 ];
-            mW[ 11 ] = mX[ 1 ] * mY[ 2 ];
-            mW[ 12 ] = mX[ 3 ] * mY[ 2 ];
-            mW[ 13 ] = mX[ 4 ] * mY[ 2 ];
-            //mW[ 14 ] = mX[ 5 ] * mY[ 2 ];
-            mW[ 15 ] = mX[ 0 ] * mY[ 3 ];
-            mW[ 16 ] = mX[ 1 ] * mY[ 3 ];
-            mW[ 17 ] = mX[ 2 ] * mY[ 3 ];
-            mW[ 18 ] = mX[ 4 ] * mY[ 3 ];
-            mW[ 19 ] = mX[ 5 ] * mY[ 3 ];
-            mW[ 20 ] = mX[ 0 ] * mY[ 4 ];
-            mW[ 21 ] = mX[ 1 ] * mY[ 4 ];
-            mW[ 22 ] = mX[ 2 ] * mY[ 4 ];
-            mW[ 23 ] = mX[ 3 ] * mY[ 4 ];
-            mW[ 24 ] = mX[ 5 ] * mY[ 4 ];
-            mW[ 25 ] = mX[ 0 ] * mY[ 5 ];
-            mW[ 26 ] = mX[ 1 ] * mY[ 5 ];
-            //mW[ 27 ] = mX[ 2 ] * mY[ 5 ];
-            mW[ 28 ] = mX[ 3 ] * mY[ 5 ];
-            mW[ 29 ] = mX[ 4 ] * mY[ 5 ];
+            // the domain
+            real aOmega = 0.0 ;
 
-            return std::abs(
-                     (mZ[3]-mZ[5])*(mW[5]-mW[0]+2.*(mW[21]-mW[8]))
-                    +(mZ[2]-mZ[0])*(mW[23]-mW[18]-2.*(mW[21]-mW[8]))
-                    +(mZ[4]-mZ[0])*(mW[17]-mW[12]+2.*(mW[11]-mW[6]))
-                    +(mZ[3]-mZ[1])*(mW[4]-mW[25]+2.*(mW[29]-mW[24]))
-                    +(mZ[5]-mZ[1])*(mW[20]-mW[3]+2.*(mW[23]-mW[18]))
-                    +(mZ[2]-mZ[4])*(mW[20]-mW[3]+2.*(mW[0]-mW[5]))
-                    +2.*mZ[1]*(mW[10]-mW[13]+mW[22]-mW[1])
-                    +2.*mZ[4]*(mW[26]-mW[16]+mW[7]-mW[28]+mW[19]-mW[9])
-                    +(mZ[0]+mZ[3])*(mW[9]-mW[26]+mW[13]-mW[22])
-                    +(mZ[2]+mZ[3])*(mW[20]-mW[3])
-                    +(mZ[0]+mZ[5])*(mW[16]-mW[7])
-                    +(mZ[3]+mZ[4])*(mW[1]-mW[10])
-                    +(mZ[1]+mZ[0])*(mW[28]-mW[19])
-                    +(mZ[1]-mZ[2]+mZ[4]-mZ[5])*(mW[2]-mW[15])
-                    +(mZ[4]-mZ[2]-mZ[1]-mZ[5])*(mW[20]-mW[3]) )/12.0 ;
+            for( uint k=0; k<mNumIntPointsLinear; ++k )
+            {
+                aOmega += tW( k ) *
+                          std::abs( det( mIntegrationDataLinear->dNdXi( k ) * mNodeCoordsLinear ) );
+
+            }
+
+            return aOmega ;
         }
 
 //------------------------------------------------------------------------------
@@ -350,55 +335,48 @@ namespace belfem
         real
         Pipette::measure_hex8( const Element * aElement )
         {
-            mX[ 0 ] = aElement->node( 0 )->x() ;
-            mX[ 1 ] = aElement->node( 1 )->x() ;
-            mX[ 2 ] = aElement->node( 2 )->x() ;
-            mX[ 3 ] = aElement->node( 3 )->x() ;
-            mX[ 4 ] = aElement->node( 4 )->x() ;
-            mX[ 5 ] = aElement->node( 5 )->x() ;
-            mX[ 6 ] = aElement->node( 6 )->x() ;
-            mX[ 7 ] = aElement->node( 7 )->x() ;
+            // copy the node coordinates of the element
+            mNodeCoordsLinear( 0, 0 ) = aElement->node( 0 )->x() ;
+            mNodeCoordsLinear( 1, 0 ) = aElement->node( 1 )->x() ;
+            mNodeCoordsLinear( 2, 0 ) = aElement->node( 2 )->x() ;
+            mNodeCoordsLinear( 3, 0 ) = aElement->node( 3 )->x() ;
+            mNodeCoordsLinear( 4, 0 ) = aElement->node( 4 )->x() ;
+            mNodeCoordsLinear( 5, 0 ) = aElement->node( 5 )->x() ;
+            mNodeCoordsLinear( 6, 0 ) = aElement->node( 6 )->x() ;
+            mNodeCoordsLinear( 7, 0 ) = aElement->node( 7 )->x() ;
 
-            mY[ 0 ] = aElement->node( 0 )->y() ;
-            mY[ 1 ] = aElement->node( 1 )->y() ;
-            mY[ 2 ] = aElement->node( 2 )->y() ;
-            mY[ 3 ] = aElement->node( 3 )->y() ;
-            mY[ 4 ] = aElement->node( 4 )->y() ;
-            mY[ 5 ] = aElement->node( 5 )->y() ;
-            mY[ 6 ] = aElement->node( 6 )->y() ;
-            mY[ 7 ] = aElement->node( 7 )->y() ;
+            mNodeCoordsLinear( 0, 1 ) = aElement->node( 0 )->y() ;
+            mNodeCoordsLinear( 1, 1 ) = aElement->node( 1 )->y() ;
+            mNodeCoordsLinear( 2, 1 ) = aElement->node( 2 )->y() ;
+            mNodeCoordsLinear( 3, 1 ) = aElement->node( 3 )->y() ;
+            mNodeCoordsLinear( 4, 1 ) = aElement->node( 4 )->y() ;
+            mNodeCoordsLinear( 5, 1 ) = aElement->node( 5 )->y() ;
+            mNodeCoordsLinear( 6, 1 ) = aElement->node( 6 )->y() ;
+            mNodeCoordsLinear( 7, 1 ) = aElement->node( 7 )->y() ;
 
-            mZ[ 0 ] = aElement->node( 0 )->z() ;
-            mZ[ 1 ] = aElement->node( 1 )->z() ;
-            mZ[ 2 ] = aElement->node( 2 )->z() ;
-            mZ[ 3 ] = aElement->node( 3 )->z() ;
-            mZ[ 4 ] = aElement->node( 4 )->z() ;
-            mZ[ 5 ] = aElement->node( 5 )->z() ;
-            mZ[ 6 ] = aElement->node( 6 )->z() ;
-            mZ[ 7 ] = aElement->node( 7 )->z() ;
+            mNodeCoordsLinear( 0, 2 ) = aElement->node( 0 )->z() ;
+            mNodeCoordsLinear( 1, 2 ) = aElement->node( 1 )->z() ;
+            mNodeCoordsLinear( 2, 2 ) = aElement->node( 2 )->z() ;
+            mNodeCoordsLinear( 3, 2 ) = aElement->node( 3 )->z() ;
+            mNodeCoordsLinear( 4, 2 ) = aElement->node( 4 )->z() ;
+            mNodeCoordsLinear( 5, 2 ) = aElement->node( 5 )->z() ;
+            mNodeCoordsLinear( 6, 2 ) = aElement->node( 6 )->z() ;
+            mNodeCoordsLinear( 7, 2 ) = aElement->node( 7 )->z() ;
 
-            // compute the value
-            return 0.5 * std::abs(
-            (mZ[1]+mZ[2]-mZ[4]-mZ[7])*(mX[0]*mY[3]-mX[3]*mY[0]+mX[6]*mY[5]-mX[5]*mY[6])
-            +(mZ[4]+mZ[0]-mZ[2]-mZ[6])*(mX[1]*mY[5]-mX[5]*mY[1]+mX[7]*mY[3]-mX[3]*mY[7])
-            +(mZ[5]+mZ[6]-mZ[3]-mZ[0])*(mX[1]*mY[2]-mX[2]*mY[1]+mX[7]*mY[4]-mX[4]*mY[7])
-            +(mZ[6]+mZ[7]-mZ[1]-mZ[0])*(mX[2]*mY[3]-mX[3]*mY[2]+mX[4]*mY[5]-mX[5]*mY[4])
-            +(mZ[4]+mZ[5]-mZ[2]-mZ[3])*(mX[0]*mY[1]-mX[1]*mY[0])
-            +(mZ[3]+mZ[7]-mZ[1]-mZ[5])*(mX[0]*mY[4]-mX[4]*mY[0])
-            +(mZ[1]+mZ[5]-mZ[3]-mZ[7])*(mX[2]*mY[6]-mX[6]*mY[2])
-            +(mZ[4]+mZ[5]-mZ[2]-mZ[3])*(mX[6]*mY[7]-mX[7]*mY[6])
-            +(mZ[1]-mZ[3])*(mX[0]*mY[2]-mX[2]*mY[0])
-            +(mZ[4]-mZ[1])*(mX[0]*mY[5]-mX[5]*mY[0])
-            +(mZ[3]-mZ[4])*(mX[0]*mY[7]-mX[7]*mY[0])
-            +(mZ[0]-mZ[5])*(mX[1]*mY[4]-mX[4]*mY[1])
-            +(mZ[5]-mZ[2])*(mX[1]*mY[6]-mX[6]*mY[1])
-            +(mZ[1]-mZ[6])*(mX[2]*mY[5]-mX[5]*mY[2])
-            +(mZ[6]-mZ[3])*(mX[2]*mY[7]-mX[7]*mY[2])
-            +(mZ[7]-mZ[0])*(mX[3]*mY[4]-mX[4]*mY[3])
-            +(mZ[2]-mZ[7])*(mX[3]*mY[6]-mX[6]*mY[3])
-            +(mZ[7]-mZ[5])*(mX[4]*mY[6]-mX[6]*mY[4])
-            +(mZ[4]-mZ[6])*(mX[5]*mY[7]-mX[7]*mY[5])
-            +(mZ[0]-mZ[2])*(mX[3]*mY[1]-mY[3]*mX[1]));
+            // get integration weights
+            const Vector< real > & tW = mIntegrationDataLinear->weights() ;
+
+            // the domain
+            real aOmega = 0.0 ;
+
+            for( uint k=0; k<mNumIntPointsLinear; ++k )
+            {
+                aOmega += tW( k ) *
+                          ( det( mIntegrationDataLinear->dNdXi( k ) * mNodeCoordsLinear ) );
+
+            }
+
+            return aOmega ;
         }
 
 //------------------------------------------------------------------------------
@@ -424,7 +402,7 @@ namespace belfem
             for( uint k=0; k<mNumIntPoints; ++k )
             {
                 aOmega += tW( k ) *
-                        std::abs( det( mIntegrationData->dNdXi( k ) * mNodeCoords ) );
+                        ( det( mIntegrationData->dNdXi( k ) * mNodeCoords ) );
 
             }
 

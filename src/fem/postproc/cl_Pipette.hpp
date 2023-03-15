@@ -28,6 +28,7 @@ namespace belfem
             uint mNumDim = 0 ;
             uint mNumNodes = 0 ;
             uint mNumIntPoints = 0 ;
+            uint mNumIntPointsLinear = 0 ;
             bool mHaveW = false ;
 
             real * mW = nullptr ;
@@ -36,9 +37,13 @@ namespace belfem
             real * mZ = nullptr ;
 
             Matrix< real > mNodeCoords ;
+            Matrix< real > mNodeCoordsLinear ;
             Matrix< real > mNodeCoordsFacet ;
 
             belfem::fem::IntegrationData * mIntegrationData = nullptr ;
+
+            // only used for hex and penta
+            belfem::fem::IntegrationData * mIntegrationDataLinear = nullptr ;
 
             real
             ( Pipette::*mVolumeFunction )( const Element * aElement );
@@ -48,6 +53,7 @@ namespace belfem
 
             real
             ( Pipette::*mSurfaceFunction )( const Facet * aFacet );
+
 
 //------------------------------------------------------------------------------
         public:

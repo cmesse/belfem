@@ -273,5 +273,22 @@ namespace belfem
         }
 
 //------------------------------------------------------------------------------
+
+        string
+        create_tree( const Cell< string > & aTree, const string & aLabel )
+        {
+            string aOut = "/" ;
+
+            uint n = aTree.size() ;
+
+            for ( uint k=0; k<n; ++k )
+            {
+                aOut += aTree( k ) + "/" ;
+            }
+            aOut += aLabel ;
+            return aOut ;
+        }
+
+//------------------------------------------------------------------------------
     } /* namespace hdf5 */
 } /* namespace belfem */
