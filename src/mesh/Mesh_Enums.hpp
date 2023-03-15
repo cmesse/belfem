@@ -119,6 +119,52 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     inline std::string
+    to_string( const GeometryType aGeometryType )
+    {
+        switch( aGeometryType )
+        {
+            case ( GeometryType::VERTEX ) :
+            {
+                return "vertex";
+            }
+            case ( GeometryType::LINE ) :
+            {
+                return "line";
+            }
+            case ( GeometryType::TRI ) :
+            {
+                return "tri";
+            }
+            case ( GeometryType::QUAD ) :
+            {
+                return "quad";
+            }
+            case ( GeometryType::TET ) :
+            {
+                return "tet";
+            }
+            case ( GeometryType::PYRA ) :
+            {
+                return "pyra";
+            }
+            case ( GeometryType::PENTA ) :
+            {
+                return "penta";
+            }
+            case ( GeometryType::HEX ) :
+            {
+                return "hex";
+            }
+            default :
+            {
+                return "unknown";
+            }
+        }
+    }
+
+//------------------------------------------------------------------------------
+
+    inline std::string
     to_string( const ElementType aElementType )
     {
         switch( aElementType )

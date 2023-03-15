@@ -8,6 +8,7 @@
 
 #include "fn_norm.hpp"
 #include "fn_dot.hpp"
+#include "cl_Mesh.hpp"
 
 namespace belfem
 {
@@ -673,6 +674,201 @@ namespace belfem
                 // all ok
                 return true ;
             }
+
+//------------------------------------------------------------------------------
+
+            void
+            test_element_set_orientation( Mesh * aMesh,
+                                         mesh::Element * aElement,
+                    const Matrix< index_t > & aOrientation,
+                    const uint aPermutation )
+            {
+                aMesh->unfinalize() ;
+
+                // get number of nodes for this element
+                uint tNumNodes = mesh::number_of_nodes( aElement->type() );
+                uint tNumFacets = mesh::number_of_facets( aElement->type() );
+
+                // link element data
+                for( uint k=0; k<tNumNodes; ++k )
+                {
+                    aElement->insert_node( aMesh->nodes()( aOrientation( k, aPermutation ) ) , k );
+                }
+
+
+
+                // link facets
+                for( uint f=0; f<tNumFacets; ++f )
+                {
+                    // grab element
+                    mesh::Element * tElement = aMesh->sidesets()(f)->facets()(0)->element();
+                    uint tNumNodesPerFacet = mesh::number_of_nodes( mesh::element_type_of_facet( aElement->type(), f ) );
+
+                    // container for nodes
+                    Cell< mesh::Node * > tNodes( tNumNodesPerFacet, nullptr );
+
+                    // grab nodes
+                    aElement->get_nodes_of_facet( f, tNodes );
+
+                    // set nodes
+                    for( uint k=0; k<tNumNodesPerFacet; ++k )
+                    {
+                        tElement->insert_node( tNodes( k ), k );
+                    }
+                }
+                aMesh->unset_facets_are_linked_flag() ;
+                aMesh->finalize() ;
+
+            }
+
+//------------------------------------------------------------------------------
+
+            Mesh *
+            test_create_mesh( HDF5 * aDatabase,
+                              const ElementType aType ,
+                              Matrix< index_t > & aOrientations )
+            {
+                // open the tree in the database
+                aDatabase->select_group( "orientations" );
+                aDatabase->select_group( to_string( mesh::geometry_type( aType ) ) );
+
+
+                uint tNumDim = mesh::dimension( aType );
+
+                // create the mesh
+                Mesh * aMesh = new Mesh( tNumDim, 0 , true  );
+
+
+                // - - - - - - - - - - - - - - - - - - - - - - - - - -
+                // create the nodes
+                // - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+                // load the node coordinates
+                Matrix< real > tX ;
+                aDatabase->load_data( "Nodes", tX );
+
+                // number of nodes on mesh
+                index_t tNumNodes = tX.n_rows() ;
+
+                // grab the node container on the mesh
+                Cell< mesh::Node * > & tNodes = aMesh->nodes() ;
+                tNodes.set_size( tNumNodes, nullptr ) ;
+
+                if ( tX.n_cols() == 2 )
+                {
+                    for( index_t k=0; k<tNumNodes; ++k )
+                    {
+                        tNodes( k ) = new mesh::Node( k+1,
+                                                      tX( k, 0 ),
+                                                      tX( k, 1 ) );
+                    }
+
+                }
+                else if ( tX.n_cols() == 3 )
+                {
+                    for( index_t k=0; k<tNumNodes; ++k )
+                    {
+                        tNodes( k ) = new mesh::Node( k+1,
+                                                      tX( k, 0 ),
+                                                      tX( k, 1 ) ,
+                                                      tX( k, 2 ) );
+                    }
+                }
+
+                // - - - - - - - - - - - - - - - - - - - - - - - - - -
+                // create the center element
+                // - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+                id_t tID = 0 ;
+
+                // the factory
+                mesh::ElementFactory tFactory ;
+
+                mesh::Element * tElement = nullptr ;
+
+                // number of nodes per element
+                tNumNodes = mesh::number_of_nodes( aType );
+
+                aDatabase->load_data( "Orientations", aOrientations );
+
+                // center block
+                mesh::Block * tBlock1 = new mesh::Block( 1, 1 );
+
+                tElement = tFactory.create_lagrange_element( aType, ++tID );
+
+
+                tBlock1->elements()( 0 ) = tElement ;
+
+                aMesh->blocks().push( tBlock1 );
+
+                // - - - - - - - - - - - - - - - - - - - - - - - - - -
+                // create the sideset
+                // - - - - - - - - - - - - - - - - - - - - - - - - - -
+                uint tNumFacets = mesh::number_of_facets( aType );
+                tID += tNumFacets ;
+
+                for( uint f=0; f<tNumFacets; ++f )
+                {
+                    mesh::SideSet * tSideSet = new mesh::SideSet( f+3, 1 );
+                    ElementType tType = mesh::element_type_of_facet( aType, f );
+
+                    mesh::Element * tFacet = tFactory.create_lagrange_element( tType,
+                                                                               ++tID );
+
+                    // create element
+                    tSideSet->facets()(0 ) = new mesh::Facet( tFacet );
+
+
+                    aMesh->sidesets().push( tSideSet );
+                }
+
+
+                // - - - - - - - - - - - - - - - - - - - - - - - - - -
+                // create the neighbors
+                // - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+                tID = 1 ;
+                Matrix< index_t > tNeighbors ;
+
+                // load neighbor data
+                aDatabase->load_data( "Neighbors", tNeighbors );
+                tNeighbors.print("tNeighbors");
+
+                // close the database
+                aDatabase->close_tree() ;
+
+                // number of elements
+                index_t tNumElems = tNeighbors.n_rows() ;
+
+                mesh::Block * tBlock2 = new mesh::Block( 2, tNumElems );
+
+                tNumNodes = mesh::number_of_nodes( aType );
+
+
+                // set the elements
+                for( index_t e=0; e<tNumElems; ++e )
+                {
+                    // create a new element
+                    tElement = tFactory.create_lagrange_element( aType, ++tID );
+
+                    // link element
+
+                    // link element data
+                    for( uint k=0; k<tNumNodes; ++k )
+                    {
+                       tElement->insert_node( tNodes( tNeighbors( e, k )  ) , k );
+                    }
+
+                    tBlock2->elements()( e ) = tElement ;
+                }
+                aMesh->blocks().push( tBlock2 );
+
+                // set first orientation
+                test_element_set_orientation( aMesh, tElement, aOrientations, 0 );
+
+                return aMesh ;
+            }
+
 //------------------------------------------------------------------------------
         }
     }

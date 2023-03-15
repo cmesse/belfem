@@ -36,6 +36,43 @@ EXPECT_NEAR( const real aA, const real aB, const real aEpsilon )
     return aCheck ;
 }
 
+//------------------------------------------------------------------------------
+
+void
+test_tri3( HDF5 * gDatabase )
+{
+
+    Matrix< index_t > aOrientations ;
+
+    // load mesh
+    Mesh * tMesh = geometry::test_create_mesh( gDatabase,
+                                               ElementType::TRI3,
+                                               aOrientations );
+
+    // save mesh
+    tMesh->save( "/tmp/mesh.exo" );
+
+    uint f = 0 ;
+    mesh::Facet * tFacet = tMesh->element( 1 )->facet( f );
+
+    IntegrationData * tSurface = new IntegrationData( tFacet->element()->type() );
+    tSurface->populate( 0 );
+
+    IntegrationData * tMaster = new IntegrationData( tFacet->master()->type() );
+    tMaster->populate_for_master( f, 0 );
+
+    IntegrationData * tSlave = new IntegrationData( ElementType::TRI3 );
+    tSlave->populate_for_slave_tri( f, 0 );
+
+
+    delete tSurface ;
+    delete tMaster ;
+    delete tSlave ;
+    
+    // delete mesh
+    delete tMesh ;
+}
+
 
 //------------------------------------------------------------------------------
 
@@ -53,6 +90,8 @@ int main( int    argc,
 
     // load the file
     HDF5 tFile( tPath, FileMode::OPEN_RDONLY );
+
+    test_tri3( & tFile );
 
     tFile.close() ;
 

@@ -703,6 +703,15 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
+         * a reader may call this function to tell the mesh that the faces
+         * have been linked already, no need to do this in finalize() again.
+         */
+        void
+        unset_facets_are_linked_flag();
+
+//------------------------------------------------------------------------------
+
+        /**
          * return the ID of the proc that owns this mesh
          */
         const proc_t &
@@ -1268,6 +1277,14 @@ namespace belfem
     Mesh::set_facets_are_linked_flag()
     {
         mFacetsAreLinked = true;
+    }
+
+//------------------------------------------------------------------------------
+
+    inline void
+    Mesh::unset_facets_are_linked_flag()
+    {
+        mFacetsAreLinked = false ;
     }
 
 //------------------------------------------------------------------------------

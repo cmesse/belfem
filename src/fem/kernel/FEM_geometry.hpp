@@ -10,6 +10,7 @@
 #include "cl_Matrix.hpp"
 #include "cl_FEM_Element.hpp"
 #include "cl_FEM_Group.hpp"
+#include "cl_HDF5.hpp"
 
 namespace belfem
 {
@@ -119,6 +120,20 @@ namespace belfem
             test_intpoints( Group * aGroup,
                             const Matrix< real > & aPoints,
                             const Vector< real > & aWeights );
+//------------------------------------------------------------------------------
+
+            void
+            test_element_set_orientation( Mesh * aMesh,
+                                          mesh::Element * aElement,
+                                          const Matrix< index_t > & aOrientation,
+                                          const uint aPermutation );
+
+//------------------------------------------------------------------------------
+
+            Mesh *
+            test_create_mesh( HDF5 * aDatabase,
+                                         const ElementType aType ,
+                                         Matrix< index_t > & aOrientations );
 
 //------------------------------------------------------------------------------
         }
