@@ -485,7 +485,7 @@ namespace belfem
             uint tCount = 0 ;
 
 
-            real tB ;
+            real tB = constant::mu0 * aH ;
             real tB0 = constant::mu0 * aH ;
             real tF0 = this->nu_s( tB0 ) * tB0 - aH ;
             real tB1 = mBmax ;

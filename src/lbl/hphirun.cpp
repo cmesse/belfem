@@ -32,6 +32,71 @@ using namespace fem ;
 Communicator gComm;
 Logger       gLog( 3 );
 
+real
+compute_criteria( Mesh * aMesh , const id_t aBlockID )
+{
+    // make sure that we don't run this with MPO in
+    BELFEM_ERROR( comm_rank() == 0 , "This fuction is not made for parallel yet" );
+
+    // grab field
+    Vector< real > & tField = aMesh->field_exists( "Checkerboard" ) ?
+                              aMesh->field_data( "Checkerboard") :
+                              aMesh->create_field("Checkerboard", EntityType::ELEMENT );
+
+    // grab jjc data
+    const Vector< real > & tJJc = aMesh->field_data("elementJJc" );
+
+    // reset data
+    tField.fill( 0.0 );
+
+    // grab elements from selected block
+    Cell< mesh::Element * > & tElements = aMesh->block( aBlockID )->elements() ;
+
+    index_t tCount = 0 ;
+    real tSum = 0.0 ;
+
+    // loop over all elements on selected block
+    for( mesh::Element * tElement : tElements )
+    {
+        // get number of neigbors for this element
+        uint tNumNeighbors = tElement->number_of_elements() ;
+
+        // approximate value by averaging neighbor values
+        real tApprox = 0 ;
+
+        // loop over all element neighbors
+        for( uint e = 0; e<tNumNeighbors; ++e )
+        {
+            // grab field data and add to value
+            tApprox += tJJc( tElement->element( e )->index() );
+        }
+
+        // get value for this element
+        real tValue = tJJc( tElement-> index() );
+
+        // compute local average of field
+        //real tAverage = ( tValue + tApprox ) / ( tNumNeighbors + 1 );
+
+        // approximated value
+        tApprox /= tNumNeighbors ;
+
+        if( tApprox < BELFEM_EPSILON )
+        {
+            real tCriterion = std::abs( ( tValue - tApprox ) / tApprox );
+
+            // save the value into the field
+            tField( tElement->index() )  = tCriterion ;
+
+            tSum += tCriterion * tCriterion ;
+            ++tCount ;
+        }
+
+    }
+
+    return std::sqrt( tSum / tCount );
+
+}
+
 //------------------------------------------------------------------------------
 
 int main( int    argc,
@@ -191,8 +256,6 @@ int main( int    argc,
     //tMesh->save( tOutFile );
    uint tTimeLoopCSV = 1 ;
 
-
-
    while( tTime < tMaxTime )
    {
        if( tHaveThermal )
@@ -284,6 +347,8 @@ int main( int    argc,
        //index_t tCountP = 0 ;
        //index_t tCountN = 0 ;
 
+       //real tMaxRelax = tOmegaN; //initial relaxation factor (delete me)
+
 
        while ( tEpsilon > tNonlinMagnetic.newtonEpsilon || tIter < tNonlinMagnetic.minIter || tEpsilonT > tNonlinThermal.newtonEpsilon )
        {
@@ -307,6 +372,7 @@ int main( int    argc,
                tFormulation->set_algorithm( SolverAlgorithm::Picard );
                tFormulation->set_omega( tOmegaP );
 
+
                /*if( tCountP++ > 0 )
                {
                        tOmegaP *= std::max(std::min( std::pow( tEpsilon0 / tEpsilon, 0.25 ), 1.05 ), 0.5 );
@@ -323,6 +389,7 @@ int main( int    argc,
                //tFormulation->set_algorithm( SolverAlgorithm::Picard );
                tFormulation->set_algorithm( SolverAlgorithm::NewtonRaphson );
                tFormulation->set_omega( tOmegaN );
+
                /*if( tCountN++ > 1 )
                {
                    tOmegaN *= std::max(std::min( std::pow( tEpsilon0 / tEpsilon, 0.25 ), 1.05 ), 0.5 );
@@ -356,8 +423,132 @@ int main( int    argc,
            tEpsilon0 = tEpsilon ;
            tEpsilon = tMagfield->residual( tIter++ );
 
-	   if ( tKernel->is_master() )
+           if (tEpsilon0 < tEpsilon)
            {
+               if ( tEpsilon > tNonlinMagnetic.picardEpsilon )
+               {
+                   tOmegaP=std::max(0.5*tOmegaP, 0.005);
+               }
+               else
+               {
+                   tOmegaN=std::max(0.5*tOmegaN, 0.005);
+               }
+           }
+           else if (tEpsilon0 > tEpsilon)
+           {
+               if ( tEpsilon > tNonlinMagnetic.picardEpsilon )
+               {
+                   tOmegaP=std::min(tOmegaP/0.75, 1.0);
+               }
+               else
+               {
+                   tOmegaN=std::min(tOmegaN/0.75, 1.0);
+               }
+           }
+
+           /*// delete me (Fujiwara method, does not work for now...)
+
+           int tcpt = 0;
+           bool toutLoop = false;
+           real tresMin = tEpsilon;
+           real teta = 1.0;
+           while (!toutLoop && tcpt <= 1)
+           {
+               tcpt+=1;
+               teta = pow(2,-tcpt);
+               tFormulation->set_omega( teta );
+               tMagfield->compute_jacobian_and_rhs();
+               tMagfield->solve();
+               if (tMagfield->residual( tIter ) >= tresMin)
+               {
+                   toutLoop = true;
+                   teta = pow(2,-(tcpt-1));
+               }
+               else
+               {
+                   tresMin = tMagfield->residual( tIter );
+               }
+
+           }
+
+           tFormulation->set_omega( teta );
+           tMagfield->compute_jacobian_and_rhs();
+           tMagfield->solve();
+           tEpsilon = tresMin;*/
+
+           // delete me (algorithm to find the optimal relaxation factor)
+           /*bool taugRel = true;
+           bool tdimRes = false;
+           real tresMin = tEpsilon0;
+           real tetaMax = 0.001; //initial relaxation factor (delete me)
+           real tetaOK = tetaMax;
+           const real tetaMin = 0.0001;
+           bool toutLoop = false;
+           const real tgold = (1+ sqrt(5))/2;
+           //const real gold = 1.1;
+
+           while (!toutLoop)
+           {
+               //std::cout << "etaMax = " << tetaMax <<std::endl;
+              if (taugRel)
+              {
+                  tetaMax = std::min(tgold*tetaMax, tMaxRelax);
+                  tFormulation->set_omega( tetaMax );
+                  tMagfield->compute_jacobian_and_rhs();
+                  tMagfield->solve();
+                  if (tMagfield->residual( tIter ) < tresMin)
+                  {
+                      tdimRes = true;
+                      if (tetaMax == tMaxRelax)
+                      {
+                          toutLoop = true;
+                      }
+                      else
+                      {
+                          tetaOK = tetaMax;
+                          tresMin = tMagfield->residual( tIter );
+                      }
+                  }
+                  else
+                  {
+                      if (tdimRes)
+                      {
+                          tetaMax = tetaOK;
+                          toutLoop = true;
+                      }
+                      else
+                      {
+                          taugRel = false;
+                      }
+                  }
+              }
+              else
+              {
+                  tetaMax = std::max(tetaMax/tgold, tetaMin);
+                  tFormulation->set_omega( tetaMax );
+                  tMagfield->compute_jacobian_and_rhs();
+                  tMagfield->solve();
+                  if (tMagfield->residual( tIter ) < tresMin)
+                  {
+                      toutLoop = true;
+                  }
+                  else if (tetaMax == tetaMin)
+                  {
+                      std::cout << "Local Minimum found" << std::endl;
+                      toutLoop = true;
+                  }
+              }
+           }
+           tFormulation->set_omega( tetaMax );
+           tMagfield->compute_jacobian_and_rhs();
+           tMagfield->solve();
+           tOmegaN = tetaMax;
+           tEpsilon = tMagfield->residual( tIter );*/
+
+           if ( tKernel->is_master() )
+           {
+
+
                string tAlgLabel = tFormulation->algorithm() == SolverAlgorithm::Picard ? " P " : " NR";
                if( tHaveThermal )
                {
@@ -496,6 +687,10 @@ int main( int    argc,
                tCSV << tTime << ", " << tI << ", " << tEI << ", " << std::log10( tK ) << ", " << std::log10( tR )
                     << std::endl;
                tCSV.close();
+
+               // test new checkerboarding criteria
+               real tCrit = compute_criteria( tMesh, 1 );
+               std::cout << "    checkerboard criterion : " << tCrit << std::endl ;
 
                if ( tMagfield->solver()->type() == SolverType::MUMPS )
                {

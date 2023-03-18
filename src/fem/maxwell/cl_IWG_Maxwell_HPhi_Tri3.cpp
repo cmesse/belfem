@@ -218,7 +218,7 @@ namespace belfem
             const IntegrationData * tNodeFunction = this->interface_data( aElement );
 
             // get integration weights
-            //const Vector< real > & tW = mGroup->integration_weights() ;
+            const Vector< real > & tW = mGroup->integration_weights() ;
 
             // crossed expressions
             Matrix< real > & tB = mGroup->work_B() ;
@@ -241,15 +241,15 @@ namespace belfem
 
             // scaling parameter
             real tScale = mGroup->work_det_J() * constant::mu0 * this->timestep() ;
-            /*for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+            for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
             {
-                const Matrix< real > & tE = mEdgeFunction->E( k );
-                const Vector< real > & tN = tNodeFunction->phi( k );
+                //const Matrix< real > & tE = mEdgeFunction->E( k );
+                //const Vector< real > & tN = tNodeFunction->phi( k );
 
                 tIntE += tW( k ) * mEdgeFunction->E( k );
 
                 // perpendicular coupling
-                for( uint i=0; i<3; ++i )
+                /*for( uint i=0; i<3; ++i )
                 {
                     for( uint j=0; j<3; ++j )
                     {
@@ -257,11 +257,11 @@ namespace belfem
                                 ( tn( 0 ) * tE( 0, j )
                                 + tn( 1 ) * tE( 1, j ) );
                     }
-                }
+                }*/
             }
 
             // scale perpendicular coupling
-            for( uint i=0; i<3; ++i )
+            /*for( uint i=0; i<3; ++i )
             {
                 for( uint j=0; j<3; ++j )
                 {

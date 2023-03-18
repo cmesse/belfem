@@ -3467,15 +3467,15 @@ namespace belfem
             this->collect_lambda_data( aElement, "lambda0", mQ0cut( tCount++ );
             aRHS += aJacobian * mQ0cut ; */
 
-            //std::cout << "check I " << aElement->id() << " " << aRHS( 2 ) << std::endl ;
+           //  std::cout << "check I " << aElement->id() << " " << aRHS( 2 ) << std::endl ;
 
 
 
             // compute residual vector
-            //aRHS *= mDeltaTime ;
+            aRHS *= mDeltaTime ;
 
             //  finalize Jacobian ( M + delta_t * theta * K )
-            //aJacobian *= mDeltaTime  ;
+            aJacobian *=  mDeltaTime ;
 
         }
 

@@ -219,6 +219,9 @@ namespace belfem
                     BELFEM_ERROR( false, "Invalid index for facet" );
                 }
             }
+
+            // now we can return the normal
+            return aN ;
         }
 
 //------------------------------------------------------------------------------

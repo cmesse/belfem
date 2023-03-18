@@ -10,6 +10,7 @@
 #include "cl_Map.hpp"
 #include "cl_Vector.hpp"
 #include "en_FEM_DomainType.hpp"
+#include "en_FEM_MagfieldBcType.hpp"
 
 namespace belfem
 {

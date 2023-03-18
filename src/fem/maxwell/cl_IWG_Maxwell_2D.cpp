@@ -412,9 +412,9 @@ namespace belfem
                 {
                     tB = tinvJ * mGroup->dNdXi( k );
 
-                    real tMu0 = mGroup->material()->mu_s( std::abs( dot( tB, mGroup->work_psi() ) ) );
+                    //real tMu0 = mGroup->material()->mu_s( std::abs( dot( tB, mGroup->work_psi() ) ) );
                     real tMu1 = mGroup->material()->mu_s( std::abs( dot( tB, mGroup->work_phi() ) ) );
-                    real tdMudt = ( tMu1 - tMu0 ) / mDeltaTime ;
+                    //real tdMudt = ( tMu1 - tMu0 ) / mDeltaTime ;
 
                     // contribution to mass matrix
                     aM += ( tW( k ) * tMu1 ) * trans( tB ) * tB  ;
