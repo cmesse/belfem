@@ -1006,7 +1006,7 @@ namespace belfem
                                 if( tNode->is_flagged() )
                                 {
                                     // create a new element
-                                    Element * tElement = tFactory.create_lagrange_element( ElementType::LINE2, ++mMaxElementID );
+                                    Element * tElement = tFactory.create_element( ElementType::LINE2, ++mMaxElementID );
 
                                     if( tFacet->master()->geometry_tag() == tPlus )
                                     {

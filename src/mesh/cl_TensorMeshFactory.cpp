@@ -125,7 +125,7 @@ namespace belfem
             for ( index_t i=0; i<tNumElemsI; ++i )
             {
                 // create element
-                mesh::Element * tElement = tFactory.create_lagrange_element( ElementType::QUAD4, tCount + 1 );
+                mesh::Element * tElement = tFactory.create_element( ElementType::QUAD4, tCount + 1 );
 
                 // link element with nodes
                 tElement->insert_node( tNodes( tOff + i ), 0 );
@@ -205,7 +205,7 @@ namespace belfem
             for ( index_t i=0; i<tNumElemsI; ++i )
             {
                 // create element
-                mesh::Element * tElement = tFactory.create_lagrange_element( ElementType::QUAD9, tCount + 1 );
+                mesh::Element * tElement = tFactory.create_element( ElementType::QUAD9, tCount + 1 );
 
                 // link element with nodes
                 tElement->insert_node( tNodes( tOff + 2*i ), 0 );
@@ -307,7 +307,7 @@ namespace belfem
                 for ( index_t i=0; i<tNumElemsI; ++i )
                 {
                     // create element
-                    mesh::Element * tElement = tFactory.create_lagrange_element( ElementType::HEX8,
+                    mesh::Element * tElement = tFactory.create_element( ElementType::HEX8,
                                                                                  tCount + 1 );
 
                     // compute offset
@@ -413,7 +413,7 @@ namespace belfem
                 for ( index_t i=0; i<tNumElemsI; ++i )
                 {
                     // create element
-                    mesh::Element * tElement = tFactory.create_lagrange_element( ElementType::HEX27,
+                    mesh::Element * tElement = tFactory.create_element( ElementType::HEX27,
                                                                                  tCount + 1 );
 
                     // compute offset

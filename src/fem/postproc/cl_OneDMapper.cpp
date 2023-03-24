@@ -170,7 +170,7 @@ namespace belfem
         // create the elements
         for ( index_t e = 0; e < tNumElements; ++e )
         {
-            mesh::Element * tElement = tFactory.create_lagrange_element( mElementType, e + 1 );
+            mesh::Element * tElement = tFactory.create_element( mElementType, e + 1 );
 
             tElement->set_index( e );
 

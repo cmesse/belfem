@@ -21,16 +21,19 @@ namespace belfem
                 Matrix <real> & aPoints )
         {
             // source : 10.1002/nme.1620070316
-            aPoints.set_size( 2, 3 );
+            aPoints.set_size( 3, 3 );
 
             aPoints( 0, 0 ) = 4.0;
             aPoints( 1, 0 ) = 1.0;
+            aPoints( 2, 0 ) = 1.0;
 
             aPoints( 0, 1 ) = 1.0;
             aPoints( 1, 1 ) = 4.0;
+            aPoints( 2, 1 ) = 1.0;
 
             aPoints( 0, 2 ) = 1.0;
             aPoints( 1, 2 ) = 1.0;
+            aPoints( 2, 2 ) = 4.0;
 
             aPoints /= 6.0;
 

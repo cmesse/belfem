@@ -264,7 +264,7 @@ namespace belfem
                 Element * tFacet1 = tLayer1( e );
 
                 // create a new element
-                Element * tElement = tFactory.create_lagrange_element( ElementType::QUAD4, ++mMaxElementID );
+                Element * tElement = tFactory.create_element( ElementType::QUAD4, ++mMaxElementID );
 
                 // link nodes
 
@@ -311,7 +311,7 @@ namespace belfem
                 Element * tFacet2 = tLayer2( e );
 
                 // create a new element
-                Element * tElement = tFactory.create_lagrange_element( ElementType::QUAD9, ++mMaxElementID );
+                Element * tElement = tFactory.create_element( ElementType::QUAD9, ++mMaxElementID );
 
                 // link nodes
                 tElement->insert_node( tFacet0->node( 0 ), 0 );
@@ -358,7 +358,7 @@ namespace belfem
                 Element * tFacet1 = tLayer1( e );
 
                 // create a new element
-                Element * tElement = tFactory.create_lagrange_element(
+                Element * tElement = tFactory.create_element(
                         ElementType::PENTA6, ++mMaxElementID );
 
                 // link nodes
@@ -408,7 +408,7 @@ namespace belfem
                 Element * tFacet2 = tLayer2( e );
 
                 // create a new element
-                Element * tElement = tFactory.create_lagrange_element(
+                Element * tElement = tFactory.create_element(
                         ElementType::PENTA18, ++mMaxElementID );
 
                 // link nodes
@@ -966,7 +966,7 @@ namespace belfem
                         Element * tElement = tFacet->element();
 
                         // create a new element
-                        Element * tClone = tFactory.create_lagrange_element( tType, ++mMaxElementID );
+                        Element * tClone = tFactory.create_element( tType, ++mMaxElementID );
 
                         // link the nodes
                         for ( uint k = 0; k < tNumNodes; ++k )

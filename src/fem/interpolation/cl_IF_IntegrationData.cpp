@@ -85,6 +85,7 @@ namespace belfem
             this->evaluate_function();
 
         }
+
 //------------------------------------------------------------------------------
 
         void
@@ -129,7 +130,7 @@ namespace belfem
          */
         void
         IntegrationData::populate_for_slave_tet(
-                const uint aFaceIndex,
+                const uint aSlaveIndex,
                 const uint aOrientation,
                 const uint aIntegrationOrder,
                 const IntegrationScheme aScheme )
@@ -139,7 +140,7 @@ namespace belfem
                     auto_integration_order( mElementType ) : aIntegrationOrder ;
 
             facetintpoints::intpoints_tet(
-                    aFaceIndex,
+                    aSlaveIndex,
                     aOrientation,
                     mWeights,
                     mPoints,
@@ -149,6 +150,29 @@ namespace belfem
             this->evaluate_function();
         }
 
+//------------------------------------------------------------------------------
+
+        void
+        IntegrationData::populate_for_slave_hex(
+                const uint aSlaveIndex,
+                const uint aOrientation,
+                const uint aIntegrationOrder,
+                const IntegrationScheme aScheme )
+        {
+            // compute integration order
+            uint tIntegrationOrder = aIntegrationOrder == 0 ?
+                                     auto_integration_order( mElementType ) : aIntegrationOrder ;
+
+            facetintpoints::intpoints_hex(
+                    aSlaveIndex,
+                    aOrientation,
+                    mWeights,
+                    mPoints,
+                    tIntegrationOrder,
+                    aScheme );
+
+            this->evaluate_function();
+        }
 
 //------------------------------------------------------------------------------
 

@@ -572,14 +572,16 @@ namespace belfem
                 else if ( mesh::geometry_type( mSlaveType ) == GeometryType::TET )
                 {
                     mSlaveIntegration.set_size( 12, nullptr );
-                    uint tCount = 0 ;
-                    for( uint face=0; face<4; ++face )
+                    uint tCount = 0;
+
+                    // equation: case = s*3 + o
+                    for ( uint s = 0; s < 4; ++s )
                     {
-                        for( uint orientation=0; orientation<3; ++orientation )
+                        for ( uint o = 0; o < 3; ++o )
                         {
                             mSlaveIntegration( tCount ) = new IntegrationData( mSlaveType, tType );
-                            mSlaveIntegration( tCount++ )->populate_for_slave_tet( face,
-                                                                                  orientation,
+                            mSlaveIntegration( tCount++ )->populate_for_slave_tet( s,
+                                                                                   o,
                                                                                    tIntegrationOrder,
                                                                                    tScheme );
                         }

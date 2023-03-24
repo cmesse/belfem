@@ -148,7 +148,6 @@ namespace belfem
             Matrix< id_t > mInterfaceData ;
 
             index_t mNumberOfNodes = 0 ;
-            index_t mNumberOfFacets = 0 ;
 
 
             // list of connector sidesets

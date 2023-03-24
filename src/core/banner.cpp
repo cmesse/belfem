@@ -173,7 +173,7 @@ namespace belfem
                 std::fprintf( stdout, "\n\n");
             }
 
-            std::fprintf( stdout, "    Copyright (c) 2022 The Regents of the University of California,\n");
+            std::fprintf( stdout, "    Copyright (c) 2023 The Regents of the University of California,\n");
             std::fprintf( stdout, "    through Lawrence Berkeley National Laboratory (subject to receipt,\n");
             std::fprintf( stdout, "    of any required approvals from the U.S. Dept. of Energy).\n");
             std::fprintf( stdout, "    All rights reserved.\n\n");

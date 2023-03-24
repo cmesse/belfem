@@ -6,6 +6,7 @@
 #include "typedefs.hpp"
 #include "cl_Vector.hpp"
 #include "cl_Matrix.hpp"
+#include "fn_sum.hpp"
 
 namespace belfem
 {
@@ -26,10 +27,10 @@ namespace belfem
                 Vector< real > & aWeights,
                 Matrix< real > & aPoints )
         {
-            aPoints.set_size( 2, 37 );
+            aPoints.set_size( 3, 37 );
 
-            aPoints( 0, 0 ) = 0.3333333333333333;
-            aPoints( 1, 0 ) = 0.3333333333333333;
+            aPoints( 0, 0 ) = 1./3.;
+            aPoints( 1, 0 ) = 1./3.;
 
             aPoints( 0, 1 ) = 0.4961358947410461;
             aPoints( 1, 1 ) = 0.4961358947410461;
@@ -139,6 +140,13 @@ namespace belfem
             aPoints( 0, 36 ) = 0.021966344206529244;
             aPoints( 1, 36 ) = 0.8512338800096335;
 
+            for( uint k=0; k<37; ++k )
+            {
+                aPoints( 2, k ) =  1.0
+                                   - aPoints( 0, k )
+                                   - aPoints( 1, k );
+            }
+
             aWeights.set_size( 37 );
 
             aWeights( 0 ) = 0.02581132333214541;
@@ -178,6 +186,9 @@ namespace belfem
             aWeights( 34 ) = 0.00906274932310044;
             aWeights( 35 ) = 0.018605980228630768;
             aWeights( 36 ) = 0.007696536341891089;
+
+            aWeights( 0 )  = 0.0;
+            aWeights( 0 )  = 0.5 - sum( aWeights );
         }
 
 // ----------------------------------------------------------------------------

@@ -4144,7 +4144,7 @@ namespace belfem
                         }
 
                         // create a new element
-                        mesh::Element * tNewElement = tFactory.create_lagrange_element( ElementType::TRI3, tOldElement->id() );
+                        mesh::Element * tNewElement = tFactory.create_element( ElementType::TRI3, tOldElement->id() );
 
                         // copy some data
                         tNewElement->set_block_id( tOldElement->block_id() );
@@ -4236,7 +4236,7 @@ namespace belfem
                     if ( tDeleteMidnode )
                     {
                         // create a new facet
-                        mesh::Element * tElement = tFactory.create_lagrange_element( ElementType::LINE2,
+                        mesh::Element * tElement = tFactory.create_element( ElementType::LINE2,
                                                                                      tOldFacet->id());
                         tElement->insert_node( tOldFacet->element()->node( 0 ), 0 );
                         tElement->insert_node( tOldFacet->element()->node( 1 ), 1 );

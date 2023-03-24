@@ -8,6 +8,7 @@
 #include "typedefs.hpp"
 #include "cl_Vector.hpp"
 #include "cl_Matrix.hpp"
+#include "fn_sum.hpp"
 
 namespace belfem
 {
@@ -23,7 +24,7 @@ namespace belfem
 
             // source Keast: 10.1016/0045-7825(86)90059-9
 
-            aPoints.set_size( 3, 31 );
+            aPoints.set_size( 4, 31 );
 
             real tAlpha1 = 0.0782131923303186549;
             real tBeta1  = 1.0 - 3.0*tAlpha1;
@@ -165,6 +166,14 @@ namespace belfem
             aPoints( 1, 30 ) = tBeta5;
             aPoints( 2, 30 ) = tAlpha5;
 
+            for( uint k=0; k<31; ++k )
+            {
+                aPoints( 3, k ) =  1.0
+                                   - aPoints( 0, k )
+                                   - aPoints( 1, k )
+                                   - aPoints( 2, k );
+            }
+
             aWeights.set_size( 31 );
 
             aWeights(  0 ) =  0.0182642234661087939;
@@ -204,6 +213,9 @@ namespace belfem
             aWeights( 28 ) =  0.0275573192239850917;
             aWeights( 29 ) =  0.0275573192239850917;
             aWeights( 30 ) =  0.0275573192239850917;
+
+            aWeights( 0 ) = 0.0;
+            aWeights( 0 ) = 1./6. - sum( aWeights );
         }
 
 // ----------------------------------------------------------------------------

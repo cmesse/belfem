@@ -931,7 +931,7 @@ namespace belfem
         for( mesh::Element * tInElement : tInElements )
         {
             // create the factory
-            mesh::Element * tElement = tFactory.create_lagrange_element(
+            mesh::Element * tElement = tFactory.create_element(
                     this->upgrade_type( tInElement->type() ),
                     tInElement->id() );
 
@@ -1181,7 +1181,7 @@ namespace belfem
                     mesh::Element * tInElement = tInFacet->element();
 
 
-                    mesh::Element * tElement = tFactory.create_lagrange_element(
+                    mesh::Element * tElement = tFactory.create_element(
                             this->upgrade_type( tInElement->type() ),
                             tInElement->id() );
 

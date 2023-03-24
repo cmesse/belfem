@@ -120,20 +120,13 @@ namespace belfem
             test_intpoints( Group * aGroup,
                             const Matrix< real > & aPoints,
                             const Vector< real > & aWeights );
-//------------------------------------------------------------------------------
-
-            void
-            test_element_set_orientation( Mesh * aMesh,
-                                          mesh::Element * aElement,
-                                          const Matrix< index_t > & aOrientation,
-                                          const uint aPermutation );
 
 //------------------------------------------------------------------------------
 
             Mesh *
             test_create_mesh( HDF5 * aDatabase,
                                          const ElementType aType ,
-                                         Matrix< index_t > & aOrientations );
+                                         const uint aPermutation );
 
 //------------------------------------------------------------------------------
         }

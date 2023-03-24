@@ -120,7 +120,7 @@ test_tri3()
 
     mesh::ElementFactory tFactory ;
 
-    Element * tElement = tFactory.create_lagrange_element( tType, 1 );
+    Element * tElement = tFactory.create_element( tType, 1 );
     tElement->insert_node( tA, 0 );
     tElement->insert_node( tB, 1 );
     tElement->insert_node( tC, 2 );
@@ -162,7 +162,7 @@ test_quad4()
 
     mesh::ElementFactory tFactory ;
 
-    Element * tElement = tFactory.create_lagrange_element( tType, 1 );
+    Element * tElement = tFactory.create_element( tType, 1 );
     tElement->insert_node( tA, 0 );
     tElement->insert_node( tB, 1 );
     tElement->insert_node( tC, 2 );
@@ -202,7 +202,7 @@ test_tet4()
 
     mesh::ElementFactory tFactory ;
 
-    Element * tElement = tFactory.create_lagrange_element( tType, 1 );
+    Element * tElement = tFactory.create_element( tType, 1 );
     tElement->insert_node( tA, 0 );
     tElement->insert_node( tB, 1 );
     tElement->insert_node( tC, 2 );
@@ -286,7 +286,7 @@ test_penta6()
 
     mesh::ElementFactory tFactory ;
 
-    Element * tElement = tFactory.create_lagrange_element( tType, 1 );
+    Element * tElement = tFactory.create_element( tType, 1 );
     tElement->insert_node( tA, 0 );
     tElement->insert_node( tB, 1 );
     tElement->insert_node( tC, 2 );
@@ -338,7 +338,7 @@ test_hex8()
 
     mesh::ElementFactory tFactory ;
 
-    Element * tElement = tFactory.create_lagrange_element( tType, 1 );
+    Element * tElement = tFactory.create_element( tType, 1 );
     tElement->insert_node( tA, 0 );
     tElement->insert_node( tB, 1 );
     tElement->insert_node( tC, 2 );

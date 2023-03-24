@@ -321,7 +321,7 @@ namespace belfem
                 index_t tA = ( tID - tB ) / tNumNodes ;
 
                 // create the element
-                mesh::Element * tElement = tFactory.create_lagrange_element( ElementType::LINE2, tCount+1 );
+                mesh::Element * tElement = tFactory.create_element( ElementType::LINE2, tCount+1 );
 
                 // connect element with nodes
                 tElement->insert_node( tNodes( tA ), 0 );

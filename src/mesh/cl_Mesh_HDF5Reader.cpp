@@ -187,7 +187,7 @@ namespace belfem
                 {
                     // create the new element
                     Element * tElement
-                        = tFactory.create_lagrange_element( tElementType, tIDs( e ) );
+                        = tFactory.create_element( tElementType, tIDs( e ) );
 
                     // link element with nodes
                     for( uint k=0; k<tNumNodesPerElement; ++k )
@@ -294,7 +294,7 @@ namespace belfem
                     Element * tMaster = tElements( tElementIndex( f ) );
 
                     // create the Background Element
-                    Element * tElement = tFactory.create_lagrange_element(
+                    Element * tElement = tFactory.create_element(
                             element_type_of_facet(
                                     tMaster->type(),
                                     tFacetIndex( f ) ), tIDs( f ) );
@@ -385,7 +385,7 @@ namespace belfem
                 for( index_t k=0; k<tNumberOfVertices; ++k )
                 {
                     // create a new vertex
-                    Element * tVertex = tFactory.create_lagrange_element( ElementType::VERTEX, tIDs( k ) );
+                    Element * tVertex = tFactory.create_element( ElementType::VERTEX, tIDs( k ) );
 
                     // set the node
                     tVertex->insert_node( tNodes( tIndices( k ) ), 0 );

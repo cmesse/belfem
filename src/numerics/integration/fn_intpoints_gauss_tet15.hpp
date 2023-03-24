@@ -31,7 +31,7 @@ namespace belfem
             real tAlpha3 = 0.0665501535736642813;
             real tBeta3 = 0.5 - tAlpha3;
 
-            aPoints.set_size( 3, 15 );
+            aPoints.set_size( 4, 15 );
 
             aPoints( 0, 0 ) = 0.25;
             aPoints( 1, 0 ) = 0.25;
@@ -94,6 +94,14 @@ namespace belfem
             aPoints( 1, 14 ) = tBeta3;
             aPoints( 2, 14 ) = tAlpha3;
 
+            for( uint k=0; k<15; ++k )
+            {
+                aPoints( 3, k ) =  1.0
+                                   - aPoints( 0, k )
+                                   - aPoints( 1, k )
+                                   - aPoints( 2, k );
+            }
+
             aWeights.set_size( 15 );
 
             aWeights(  0 ) = 0.0302836780970891856;
@@ -114,6 +122,9 @@ namespace belfem
             aWeights( 12 ) = 0.0109491415613864534;
             aWeights( 13 ) = 0.0109491415613864534;
             aWeights( 14 ) = 0.0109491415613864534;
+
+            aWeights( 0 ) = 0.0 ;
+            aWeights( 0 ) = 1./6. - sum( aWeights );
         }
 
 // ----------------------------------------------------------------------------

@@ -416,7 +416,7 @@ namespace belfem
             mesh::Block * tScBlock = new mesh::Block( 1,  0 );
             tBlocks.push( tScBlock );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TRI3 , tID++ );
+            tElement = tFactory.create_element( ElementType::TRI3 , tID++ );
             tElement->insert_node( tNodes(  3 ), 0 );
             tElement->insert_node( tNodes(  5 ), 1 );
             tElement->insert_node( tNodes(  6 ), 2 );
@@ -426,7 +426,7 @@ namespace belfem
             mesh::Block * tFerroBlock = new mesh::Block( 2,  0 );
             tBlocks.push( tFerroBlock );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TRI3 , tID++ );
+            tElement = tFactory.create_element( ElementType::TRI3 , tID++ );
             tElement->insert_node( tNodes(  6 ), 0 );
             tElement->insert_node( tNodes(  5 ), 1 );
             tElement->insert_node( tNodes(  0 ), 2 );
@@ -436,13 +436,13 @@ namespace belfem
             mesh::Block * tCoilBlock = new mesh::Block( 3,  0 );
             tBlocks.push( tCoilBlock );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TRI3 , tID++ );
+            tElement = tFactory.create_element( ElementType::TRI3 , tID++ );
             tElement->insert_node( tNodes(  6 ), 0 );
             tElement->insert_node( tNodes(  1 ), 1 );
             tElement->insert_node( tNodes(  4 ), 2 );
             tCoilBlock->elements().push( tElement );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TRI3 , tID++ );
+            tElement = tFactory.create_element( ElementType::TRI3 , tID++ );
             tElement->insert_node( tNodes(  6 ), 0 );
             tElement->insert_node( tNodes(  4 ), 1 );
             tElement->insert_node( tNodes(  2 ), 2 );
@@ -452,13 +452,13 @@ namespace belfem
             mesh::Block * tAirBlock = new mesh::Block( 4,  0 );
             tBlocks.push( tAirBlock );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TRI3 , tID++ );
+            tElement = tFactory.create_element( ElementType::TRI3 , tID++ );
             tElement->insert_node( tNodes(  3 ), 0 );
             tElement->insert_node( tNodes(  6 ), 1 );
             tElement->insert_node( tNodes(  2 ), 2 );
             tAirBlock->elements().push( tElement );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TRI3 , tID++ );
+            tElement = tFactory.create_element( ElementType::TRI3 , tID++ );
             tElement->insert_node( tNodes(  1 ), 0 );
             tElement->insert_node( tNodes(  6 ), 1 );
             tElement->insert_node( tNodes(  0 ), 2 );
@@ -472,7 +472,7 @@ namespace belfem
             mesh::SideSet * tScAir = new mesh::SideSet( 1, 0 );
             tSideSets.push( tScAir );
 
-            tElement = tFactory.create_lagrange_element( ElementType::LINE2 , tID++ );
+            tElement = tFactory.create_element( ElementType::LINE2 , tID++ );
             tElement->insert_node( tNodes( 6 ), 0 );
             tElement->insert_node( tNodes( 3 ), 1 );
             tScAir->facets().push( new mesh::Facet( tElement ) );
@@ -481,7 +481,7 @@ namespace belfem
             mesh::SideSet * tScFerro = new mesh::SideSet( 2, 0 );
             tSideSets.push( tScFerro );
 
-            tElement = tFactory.create_lagrange_element( ElementType::LINE2 , tID++  );
+            tElement = tFactory.create_element( ElementType::LINE2 , tID++  );
             tElement->insert_node( tNodes( 5 ), 0 );
             tElement->insert_node( tNodes( 6 ), 1 );
             tScFerro->facets().push( new mesh::Facet( tElement ) );
@@ -491,7 +491,7 @@ namespace belfem
             mesh::SideSet * tFerroAir = new mesh::SideSet( 3, 0 );
             tSideSets.push( tFerroAir );
 
-            tElement = tFactory.create_lagrange_element( ElementType::LINE2 , tID++ );
+            tElement = tFactory.create_element( ElementType::LINE2 , tID++ );
             tElement->insert_node( tNodes( 0 ), 0 );
             tElement->insert_node( tNodes( 6 ), 1 );
             tFerroAir->facets().push( new mesh::Facet( tElement ) );
@@ -553,7 +553,7 @@ namespace belfem
             mesh::Block * tScBlock = new mesh::Block( 1,  0 );
             tBlocks.push( tScBlock );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TRI6 , tID++ );
+            tElement = tFactory.create_element( ElementType::TRI6 , tID++ );
             tElement->insert_node( tNodes(   3 ), 0 );
             tElement->insert_node( tNodes(   5 ), 1 );
             tElement->insert_node( tNodes(   6 ), 2 );
@@ -566,7 +566,7 @@ namespace belfem
             mesh::Block * tFerroBlock = new mesh::Block( 2,  0 );
             tBlocks.push( tFerroBlock );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TRI6 , tID++ );
+            tElement = tFactory.create_element( ElementType::TRI6 , tID++ );
             tElement->insert_node( tNodes(   6 ), 0 );
             tElement->insert_node( tNodes(   5 ), 1 );
             tElement->insert_node( tNodes(   0 ), 2 );
@@ -579,7 +579,7 @@ namespace belfem
             mesh::Block * tCoilBlock = new mesh::Block( 3,  0 );
             tBlocks.push( tCoilBlock );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TRI6 , tID++ );
+            tElement = tFactory.create_element( ElementType::TRI6 , tID++ );
             tElement->insert_node( tNodes(   6 ), 0 );
             tElement->insert_node( tNodes(   1 ), 1 );
             tElement->insert_node( tNodes(   4 ), 2 );
@@ -588,7 +588,7 @@ namespace belfem
             tElement->insert_node( tNodes(  18 ), 5 );
             tCoilBlock->elements().push( tElement );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TRI6 , tID++ );
+            tElement = tFactory.create_element( ElementType::TRI6 , tID++ );
             tElement->insert_node( tNodes(   6 ), 0 );
             tElement->insert_node( tNodes(   4 ), 1 );
             tElement->insert_node( tNodes(   2 ), 2 );
@@ -601,7 +601,7 @@ namespace belfem
             mesh::Block * tAirBlock = new mesh::Block( 4,  0 );
             tBlocks.push( tAirBlock );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TRI6 , tID++ );
+            tElement = tFactory.create_element( ElementType::TRI6 , tID++ );
             tElement->insert_node( tNodes(   3 ), 0 );
             tElement->insert_node( tNodes(   6 ), 1 );
             tElement->insert_node( tNodes(   2 ), 2 );
@@ -610,7 +610,7 @@ namespace belfem
             tElement->insert_node( tNodes(  10 ), 5 );
             tAirBlock->elements().push( tElement );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TRI6 , tID++ );
+            tElement = tFactory.create_element( ElementType::TRI6 , tID++ );
             tElement->insert_node( tNodes(   1 ), 0 );
             tElement->insert_node( tNodes(   6 ), 1 );
             tElement->insert_node( tNodes(   0 ), 2 );
@@ -627,7 +627,7 @@ namespace belfem
             mesh::SideSet * tScAir = new mesh::SideSet( 1, 0 );
             tSideSets.push( tScAir );
 
-            tElement = tFactory.create_lagrange_element( ElementType::LINE3 , tID++  );
+            tElement = tFactory.create_element( ElementType::LINE3 , tID++  );
             tElement->insert_node( tNodes(  6 ), 0 );
             tElement->insert_node( tNodes(  3 ), 1 );
             tElement->insert_node( tNodes( 16 ), 2 );
@@ -637,7 +637,7 @@ namespace belfem
             mesh::SideSet * tScFerro = new mesh::SideSet( 2, 0 );
             tSideSets.push( tScFerro );
 
-            tElement = tFactory.create_lagrange_element( ElementType::LINE3 , tID++  );
+            tElement = tFactory.create_element( ElementType::LINE3 , tID++  );
             tElement->insert_node( tNodes(  5 ), 0 );
             tElement->insert_node( tNodes(  6 ), 1 );
             tElement->insert_node( tNodes( 17 ), 2 );
@@ -648,7 +648,7 @@ namespace belfem
             mesh::SideSet * tFerroAir = new mesh::SideSet( 3, 0 );
             tSideSets.push( tFerroAir );
 
-            tElement = tFactory.create_lagrange_element( ElementType::LINE3 , tID++  );
+            tElement = tFactory.create_element( ElementType::LINE3 , tID++  );
             tElement->insert_node( tNodes(  0 ), 0 );
             tElement->insert_node( tNodes(  6 ), 1 );
             tElement->insert_node( tNodes( 13 ), 2 );
@@ -706,7 +706,7 @@ namespace belfem
             mesh::Block * tScBlock = new mesh::Block( 1,  0 );
             tBlocks.push( tScBlock );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TET4 , tID++ );
+            tElement = tFactory.create_element( ElementType::TET4 , tID++ );
             tElement->insert_node( tNodes(   3 ), 0 );
             tElement->insert_node( tNodes(   5 ), 1 );
             tElement->insert_node( tNodes(   6 ), 2 );
@@ -717,7 +717,7 @@ namespace belfem
             mesh::Block * tFeBlock = new mesh::Block( 2,  0 );
             tBlocks.push( tFeBlock );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TET4 , tID++ );
+            tElement = tFactory.create_element( ElementType::TET4 , tID++ );
             tElement->insert_node( tNodes(   0 ), 0 );
             tElement->insert_node( tNodes(   6 ), 1 );
             tElement->insert_node( tNodes(   5 ), 2 );
@@ -728,14 +728,14 @@ namespace belfem
             mesh::Block * tCoilBlock = new mesh::Block( 3,  0 );
             tBlocks.push( tCoilBlock );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TET4 , tID++ );
+            tElement = tFactory.create_element( ElementType::TET4 , tID++ );
             tElement->insert_node( tNodes(   6 ), 0 );
             tElement->insert_node( tNodes(   1 ), 1 );
             tElement->insert_node( tNodes(   4 ), 2 );
             tElement->insert_node( tNodes(   7 ), 3 );
             tCoilBlock->elements().push( tElement );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TET4 , tID++ );
+            tElement = tFactory.create_element( ElementType::TET4 , tID++ );
             tElement->insert_node( tNodes(   6 ), 0 );
             tElement->insert_node( tNodes(   4 ), 1 );
             tElement->insert_node( tNodes(   2 ), 2 );
@@ -746,14 +746,14 @@ namespace belfem
             mesh::Block * tAirBlock = new mesh::Block( 4,  0 );
             tBlocks.push( tAirBlock );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TET4 , tID++ );
+            tElement = tFactory.create_element( ElementType::TET4 , tID++ );
             tElement->insert_node( tNodes(   3 ), 0 );
             tElement->insert_node( tNodes(   6 ), 1 );
             tElement->insert_node( tNodes(   2 ), 2 );
             tElement->insert_node( tNodes(   7 ), 3 );
             tAirBlock->elements().push( tElement );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TET4 , tID++ );
+            tElement = tFactory.create_element( ElementType::TET4 , tID++ );
             tElement->insert_node( tNodes(   0 ), 0 );
             tElement->insert_node( tNodes(   1 ), 1 );
             tElement->insert_node( tNodes(   6 ), 2 );
@@ -766,7 +766,7 @@ namespace belfem
             mesh::SideSet * tScAir = new mesh::SideSet( 1, 0 );
             tSideSets.push( tScAir );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TRI3 , tID++ );
+            tElement = tFactory.create_element( ElementType::TRI3 , tID++ );
             tElement->insert_node( tNodes( 6 ), 0 );
             tElement->insert_node( tNodes( 3 ), 1 );
             tElement->insert_node( tNodes( 7 ), 2 );
@@ -776,7 +776,7 @@ namespace belfem
             mesh::SideSet * tScFerro = new mesh::SideSet( 2, 0 );
             tSideSets.push( tScFerro );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TRI3 , tID++  );
+            tElement = tFactory.create_element( ElementType::TRI3 , tID++  );
             tElement->insert_node( tNodes( 5 ), 0 );
             tElement->insert_node( tNodes( 6 ), 1 );
             tElement->insert_node( tNodes( 7 ), 2 );
@@ -787,7 +787,7 @@ namespace belfem
             mesh::SideSet * tFerroAir = new mesh::SideSet( 3, 0 );
             tSideSets.push( tFerroAir );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TRI3 , tID++ );
+            tElement = tFactory.create_element( ElementType::TRI3 , tID++ );
             tElement->insert_node( tNodes( 0 ), 0 );
             tElement->insert_node( tNodes( 6 ), 1 );
             tElement->insert_node( tNodes( 7 ), 2 );
@@ -860,7 +860,7 @@ namespace belfem
             mesh::Block * tScBlock = new mesh::Block( 1,  0 );
             tBlocks.push( tScBlock );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TET10 , tID++ );
+            tElement = tFactory.create_element( ElementType::TET10 , tID++ );
             tElement->insert_node( tNodes(    3 ), 0 );
             tElement->insert_node( tNodes(    5 ), 1 );
             tElement->insert_node( tNodes(    6 ), 2 );
@@ -877,7 +877,7 @@ namespace belfem
             mesh::Block * tFeBlock = new mesh::Block( 2,  0 );
             tBlocks.push( tFeBlock );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TET10 , tID++ );
+            tElement = tFactory.create_element( ElementType::TET10 , tID++ );
             tElement->insert_node( tNodes(    0 ), 0 );
             tElement->insert_node( tNodes(    6 ), 1 );
             tElement->insert_node( tNodes(    5 ), 2 );
@@ -895,7 +895,7 @@ namespace belfem
             mesh::Block * tCoilBlock = new mesh::Block( 3,  0 );
             tBlocks.push( tCoilBlock );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TET10 , tID++ );
+            tElement = tFactory.create_element( ElementType::TET10 , tID++ );
             tElement->insert_node( tNodes(    6 ), 0 );
             tElement->insert_node( tNodes(    1 ), 1 );
             tElement->insert_node( tNodes(    4 ), 2 );
@@ -909,7 +909,7 @@ namespace belfem
 
             tCoilBlock->elements().push( tElement );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TET10 , tID++ );
+            tElement = tFactory.create_element( ElementType::TET10 , tID++ );
             tElement->insert_node( tNodes(    6 ), 0 );
             tElement->insert_node( tNodes(    4 ), 1 );
             tElement->insert_node( tNodes(    2 ), 2 );
@@ -927,7 +927,7 @@ namespace belfem
             mesh::Block * tAirBlock = new mesh::Block( 4,  0 );
             tBlocks.push( tAirBlock );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TET10 , tID++ );
+            tElement = tFactory.create_element( ElementType::TET10 , tID++ );
             tElement->insert_node( tNodes(    3 ), 0 );
             tElement->insert_node( tNodes(    6 ), 1 );
             tElement->insert_node( tNodes(    2 ), 2 );
@@ -940,7 +940,7 @@ namespace belfem
             tElement->insert_node( tNodes(   21 ), 9 );
             tAirBlock->elements().push( tElement );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TET10 , tID++ );
+            tElement = tFactory.create_element( ElementType::TET10 , tID++ );
             tElement->insert_node( tNodes(    0 ), 0 );
             tElement->insert_node( tNodes(    1 ), 1 );
             tElement->insert_node( tNodes(    6 ), 2 );
@@ -960,7 +960,7 @@ namespace belfem
             mesh::SideSet * tScAir = new mesh::SideSet( 1, 0 );
             tSideSets.push( tScAir );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TRI6 , tID++ );
+            tElement = tFactory.create_element( ElementType::TRI6 , tID++ );
             tElement->insert_node( tNodes( 6 ), 0 );
             tElement->insert_node( tNodes( 3 ), 1 );
             tElement->insert_node( tNodes( 7 ), 2 );
@@ -974,7 +974,7 @@ namespace belfem
             mesh::SideSet * tScFerro = new mesh::SideSet( 2, 0 );
             tSideSets.push( tScFerro );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TRI6 , tID++  );
+            tElement = tFactory.create_element( ElementType::TRI6 , tID++  );
             tElement->insert_node( tNodes( 5 ), 0 );
             tElement->insert_node( tNodes( 6 ), 1 );
             tElement->insert_node( tNodes( 7 ), 2 );
@@ -988,7 +988,7 @@ namespace belfem
             mesh::SideSet * tFerroAir = new mesh::SideSet( 3, 0 );
             tSideSets.push( tFerroAir );
 
-            tElement = tFactory.create_lagrange_element( ElementType::TRI6 , tID++ );
+            tElement = tFactory.create_element( ElementType::TRI6 , tID++ );
             tElement->insert_node( tNodes( 0 ), 0 );
             tElement->insert_node( tNodes( 6 ), 1 );
             tElement->insert_node( tNodes( 7 ), 2 );

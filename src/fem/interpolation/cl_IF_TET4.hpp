@@ -77,8 +77,8 @@ namespace belfem
             aN.set_size( 1, 4 );
 
             aN( 0, 0 ) = xi;
-            aN( 0, 1 ) = eta;
-            aN( 0, 2 ) = zeta;
+            aN( 0, 1 ) = zeta;
+            aN( 0, 2 ) = eta;
             aN( 0, 3 ) = 1.0 - xi - eta - zeta;
         }
 

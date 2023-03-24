@@ -36,7 +36,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         Element *
-        ElementFactory::create_lagrange_element(
+        ElementFactory::create_element(
                 const ElementType & aType, const id_t & aID ) const
         {
             // create an element pointer

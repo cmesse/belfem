@@ -178,7 +178,7 @@ namespace belfem
             mMesh = new Mesh( mNumberOfDimensions, 0 );
 
             this->create_nodes();
-            this->create_lagrange_elements();
+            this->create_elements();
             mMesh->finalize();
             this->create_global_variables();
         }
@@ -238,7 +238,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        Mapper::create_lagrange_elements()
+        Mapper::create_elements()
         {
             // container of nodes on the mesh
             Cell< mesh::Node * > & tNodes = mMesh->nodes() ;
@@ -265,7 +265,7 @@ namespace belfem
                 for ( index_t I = 0; I < mNumberOfElementsPerDimension( 0 ); ++I )
                 {
                     // create a new element
-                    mesh::Element * tElement = tFactory.create_lagrange_element(
+                    mesh::Element * tElement = tFactory.create_element(
                             tType,
                             tCount++ );
 
@@ -296,7 +296,7 @@ namespace belfem
                     for ( index_t i = 0; i < mNumberOfElementsPerDimension( 0 ); ++i )
                     {
                         // create a new element
-                        mesh::Element * tElement = tFactory.create_lagrange_element(
+                        mesh::Element * tElement = tFactory.create_element(
                                 tType,
                                 tCount++ );
                         // link element with nodes
@@ -329,7 +329,7 @@ namespace belfem
                         for ( index_t i = 0; i < mNumberOfElementsPerDimension( 0 ); ++i )
                         {
                             // create a new element
-                            mesh::Element * tElement = tFactory.create_lagrange_element(
+                            mesh::Element * tElement = tFactory.create_element(
                                     tType,
                                     tCount++ );
 

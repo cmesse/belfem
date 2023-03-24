@@ -66,7 +66,21 @@ namespace belfem
              */
             void
             intpoints_tet(
-                    const uint       aSideIndex,
+                    const uint       aSlaveIndex,
+                    const uint       aOrientation,
+                    Vector< real > & aWeights,
+                    Matrix< real > & aPoints,
+                    const uint       aIntegrationOrder,
+                    const IntegrationScheme  aIntegrationScheme=IntegrationScheme::GAUSS );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * special function for slave side
+             */
+            void
+            intpoints_hex(
+                    const uint       aSlaveIndex,
                     const uint       aOrientation,
                     Vector< real > & aWeights,
                     Matrix< real > & aPoints,

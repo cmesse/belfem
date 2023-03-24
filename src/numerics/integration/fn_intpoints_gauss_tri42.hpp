@@ -26,7 +26,7 @@ namespace belfem
                 Vector< real > & aWeights,
                 Matrix< real > & aPoints )
         {
-            aPoints.set_size( 2, 42 );
+            aPoints.set_size( 3, 42 );
 
             aPoints( 0, 0 ) = 0.41764471934045394;
             aPoints( 1, 0 ) = 0.41764471934045394;
@@ -153,6 +153,13 @@ namespace belfem
 
             aPoints( 0, 41 ) = 0.001268330932872076;
             aPoints( 1, 41 ) = 0.8797571713701712;
+
+            for( uint k=0; k<42; ++k )
+            {
+                aPoints( 2, k ) =  1.0
+                                   - aPoints( 0, k )
+                                   - aPoints( 1, k );
+            }
 
             aWeights.set_size( 42 );
 

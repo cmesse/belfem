@@ -22,7 +22,7 @@ namespace belfem
         {
             real tBeta = 1.0 / 6.0;
 
-            aPoints.set_size( 3, 5 );
+            aPoints.set_size( 4, 5 );
 
             aPoints( 0, 0 ) = 0.25;
             aPoints( 1, 0 ) = 0.25;
@@ -44,6 +44,14 @@ namespace belfem
             aPoints( 1, 4 ) = tBeta;
             aPoints( 2, 4 ) = tBeta;;
 
+            for( uint k=0; k<5; ++k )
+            {
+                aPoints( 3, k ) =  1.0
+                                   - aPoints( 0, k )
+                                   - aPoints( 1, k )
+                                   - aPoints( 2, k );
+            }
+
             aWeights.set_size( 5 );
 
 
@@ -52,6 +60,7 @@ namespace belfem
             aWeights( 2 ) = 0.075;
             aWeights( 3 ) = 0.075;
             aWeights( 4 ) = 0.075;
+
         }
 // ----------------------------------------------------------------------------
     } /* namespace integration */

@@ -12,6 +12,7 @@
 #include "Mesh_Enums.hpp"
 #include "en_IntegrationScheme.hpp"
 #include "cl_IF_InterpolationFunction.hpp"
+#include "cl_Facet.hpp"
 
 namespace belfem
 {
@@ -63,7 +64,7 @@ namespace belfem
              */
             void
             populate_for_master(
-                    const uint aCaseIndex,
+                    const uint aSideSetIndex,
                     const uint aIntegrationOrder,
                     const IntegrationScheme aScheme = IntegrationScheme::GAUSS );
 
@@ -85,11 +86,22 @@ namespace belfem
              */
             void
             populate_for_slave_tet(
-                    const uint aFaceIndex,
+                    const uint aSlaveIndex,
                     const uint aOrientation,
                     const uint aIntegrationOrder,
                     const IntegrationScheme aScheme = IntegrationScheme::GAUSS );
 
+//------------------------------------------------------------------------------
+
+            /**
+             * special function for popularization if this is a sideset
+             */
+            void
+            populate_for_slave_hex(
+                    const uint aSlaveIndex,
+                    const uint aOrientation,
+                    const uint aIntegrationOrder,
+                    const IntegrationScheme aScheme = IntegrationScheme::GAUSS );
 //------------------------------------------------------------------------------
 
             /**

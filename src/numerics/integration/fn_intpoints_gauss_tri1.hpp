@@ -20,7 +20,7 @@ namespace belfem
                 Vector <real> & aWeights,
                 Matrix <real> & aPoints )
         {
-            aPoints.set_size( 2, 1, 1.0 / 3.0 );
+            aPoints.set_size( 3, 1, 1.0 / 3.0 );
             aWeights.set_size( 1, 0.5 );
         }
 

@@ -28,7 +28,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             Element *
-            create_lagrange_element(
+            create_element(
                     const ElementType & aType,
                     const id_t & aID ) const;
 

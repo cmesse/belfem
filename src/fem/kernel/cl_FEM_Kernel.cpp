@@ -1577,7 +1577,7 @@ namespace belfem
                     for ( index_t e = 0; e < tNumberOfElements; ++e )
                     {
                         // create a new element
-                        mesh::Element * tElement = tFactory.create_lagrange_element(
+                        mesh::Element * tElement = tFactory.create_element(
                                 tElementType, tIDs( e ));
 
                         // set tags
@@ -1660,7 +1660,7 @@ namespace belfem
                 for ( index_t e = 0; e < tNumberOfVertices; ++e )
                 {
                     // create a new element
-                    mesh::Element * tVertex = tFactory.create_lagrange_element(
+                    mesh::Element * tVertex = tFactory.create_element(
                             ElementType::VERTEX, tIDs( e ));
 
                     // set tags
@@ -2089,7 +2089,7 @@ namespace belfem
                         {
                             // create a new element
                             mesh::Element * tElement =
-                                    tFactory.create_lagrange_element( ElementType::LINE2, tIDs( f ) );
+                                    tFactory.create_element( ElementType::LINE2, tIDs( f ) );
 
                             tElement->insert_node( mNodeMap( tMasteIDs( f ) ), 0 );
                             tElement->insert_node( mNodeMap( tSlaveIDs( f ) ), 1 );
@@ -2125,7 +2125,7 @@ namespace belfem
 
                             // create a new element
                             mesh::Element * tElement =
-                                    tFactory.create_lagrange_element( mesh::element_type_of_facet(
+                                    tFactory.create_element( mesh::element_type_of_facet(
                                             tMaster->type(), tMasterIndices( f )), tIDs( f ));
 
                             // note: this is nice but fails if we introduce thin shells

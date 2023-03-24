@@ -243,63 +243,37 @@ namespace belfem
 
             // allocate memory
             uint tNumPoints = aWeights.length() ;
-            aPoints.set_size( 3, tNumPoints, 0.0 );
+            aPoints.set_size( 4, tNumPoints, 0.0 );
 
             switch( aSideIndex )
             {
                 case( 0 ) :
                 {
-                    // xi
                     aPoints.set_row( 0, tPoints.row( 0 ) );
-
-                    // eta = 0
-
-                    // zeta = 0
                     aPoints.set_row( 2, tPoints.row( 1 ) );
-
+                    aPoints.set_row( 3, tPoints.row( 2 ) );
                     break ;
                 }
                 case( 1 ) :
                 {
-                    // xi = 0
-
-                    // zeta
                     aPoints.set_row( 2, tPoints.row( 0 ) );
-
-                    // eta
                     aPoints.set_row( 1, tPoints.row( 1 ) );
-
-
-
+                    aPoints.set_row( 3, tPoints.row( 2 ) );
                     break ;
                 }
                 case( 2 ) :
                 {
-                    // eta
-                    aPoints.set_row( 1, tPoints.row( 0 ) );
-
-                    // xi
-                    aPoints.set_row( 0, tPoints.row( 1 ) );
-
-                    // zeta = 0
-
+                    aPoints.set_row( 0, tPoints.row( 0 ) );
+                    aPoints.set_row( 3, tPoints.row( 1 ) );
+                    aPoints.set_row( 1, tPoints.row( 2 ) );
                     break ;
                 }
 
                 case( 3 ) :
                 {
-                    // xi
                     aPoints.set_row( 0, tPoints.row( 0 ) );
-
-                    // eta
                     aPoints.set_row( 1, tPoints.row( 1 ) );
-
-                    // zeta
-                    for( uint k=0; k<tNumPoints; ++k )
-                    {
-                        aPoints( 2, k ) = 1.0 - tPoints( 0, k ) - tPoints( 1, k );
-                    }
-
+                    aPoints.set_row( 2, tPoints.row( 2 ) );
                     break ;
                 }
                 default:
@@ -313,7 +287,7 @@ namespace belfem
 
         void
         facetintpoints::intpoints_tet(
-                const uint       aSideIndex,
+                const uint       aSlaveIndex,
                 const uint       aOrientation,
                 Vector< real > & aWeights,
                 Matrix< real > & aPoints,
@@ -330,42 +304,63 @@ namespace belfem
 
             // allocate memory
             uint tNumPoints = aWeights.length() ;
-            aPoints.set_size( 3, tNumPoints, 0.0 );
+
+            aPoints.set_size( 4, tNumPoints, 0.0 );
 
             // compute the case index
-            uint tCase = aSideIndex* 3 + aOrientation ;
+            uint tCase = aSlaveIndex * 3 + aOrientation ;
 
             // the magic orientation indices
-            const Matrix< uint > tIndex{ { 1, 2, 3, 0, 0, 0, 3, 1, 2, 1, 2, 3 },
-                                         { 3, 1, 2, 1, 2, 3, 0, 0, 0, 2, 3, 1 },
-                                         { 0, 0, 0, 3, 1, 2, 1, 2, 3, 3, 1, 2 } };
+            const Matrix< uint > tIndex{ { 0, 2, 3, 2, 1, 3, 0, 3, 1, 0, 1, 2 },
+                                         { 3, 0, 2, 3, 2, 1, 1, 0, 3, 2, 0, 1 },
+                                         { 2, 3, 0, 1, 3, 2, 3, 1, 0, 1, 2, 0 },
+                                         { 1, 1, 1, 0, 0, 0, 2, 2, 2, 3, 3, 3 } };
 
-            // loop over all coordinates
-            for( uint i=0;i<3; ++i )
-            {
-                // checl case index
-                if( tIndex( i, tCase ) == 1 )
-                {
-                    for( uint k=0; k<tNumPoints; ++k )
-                    {
-                        aPoints( i, k ) = tPoints( 0, k );
-                    }
-                }
-                else if( tIndex( i, tCase ) == 2 )
-                {
-                    for( uint k=0; k<tNumPoints; ++k )
-                    {
-                        aPoints( i, k ) = tPoints( 1, k );
-                    }
-                }
-                else if( tIndex( i, tCase ) == 3 )
-                {
-                    for( uint k=0; k<tNumPoints; ++k )
-                    {
-                        aPoints( i, k ) = 1.0 - tPoints( 0, k ) - tPoints( 1, k );
-                    }
-                }
-            }
+            // set the integration points
+            aPoints.set_row( tIndex( 0, tCase ), tPoints.row( 0 ) );
+            aPoints.set_row( tIndex( 1, tCase ), tPoints.row( 1 ) );
+            aPoints.set_row( tIndex( 2, tCase ), tPoints.row( 2 ) );
+
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        facetintpoints::intpoints_hex(
+                const uint       aSlaveIndex,
+                const uint       aOrientation,
+                Vector< real > & aWeights,
+                Matrix< real > & aPoints,
+                const uint       aIntegrationOrder,
+                const IntegrationScheme  aIntegrationScheme )
+        {
+            Matrix< real > tPoints;
+            initialize_integration_points(
+                    GeometryType::TRI,
+                    aWeights,
+                    tPoints,
+                    aIntegrationOrder,
+                    aIntegrationScheme );
+
+            // allocate memory
+            uint tNumPoints = aWeights.length() ;
+
+            aPoints.set_size( 4, tNumPoints, 0.0 );
+
+            // compute the case index
+            uint tCase = aSlaveIndex * 3 + aOrientation ;
+
+            // the magic orientation indices
+            const Matrix< uint > tIndex{ { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+                                         { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+                                         { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } };
+
+            std::cout << aSlaveIndex << " " << aOrientation << " " << tCase << std::endl ;
+
+            // set the integration points
+            aPoints.set_row( tIndex( 0, tCase ), tPoints.row( 0 ) );
+            aPoints.set_row( tIndex( 1, tCase ), tPoints.row( 1 ) );
+            aPoints.set_row( tIndex( 2, tCase ), tPoints.row( 2 ) );
 
         }
 

@@ -308,7 +308,7 @@ namespace belfem
                              ( unsigned int ) tNumNodes );
 
                 // create an element
-                Element * tElement = tFactory.create_lagrange_element( tType, tID );
+                Element * tElement = tFactory.create_element( tType, tID );
 
                 // set the physical tag of the element
                 tElement->set_physical_tag( std::stoi( tWords( 3 ) ) );
@@ -593,7 +593,7 @@ namespace belfem
                     }
 
                     // create an element
-                    Element * tElement = tFactory.create_lagrange_element( tType, tID );
+                    Element * tElement = tFactory.create_element( tType, tID );
 
                     // add nodes
                     for( uint i=0; i < tNumNodes; ++i )
