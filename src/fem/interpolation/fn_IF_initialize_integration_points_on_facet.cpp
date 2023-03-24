@@ -345,15 +345,15 @@ namespace belfem
             // allocate memory
             uint tNumPoints = aWeights.length() ;
 
-            aPoints.set_size( 4, tNumPoints, 0.0 );
+            aPoints.set_size( 3, tNumPoints );
 
             // compute the case index
             uint tCase = aSlaveIndex * 3 + aOrientation ;
 
             // the magic orientation indices
-            const Matrix< uint > tIndex{ { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-                                         { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-                                         { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } };
+            const Matrix< int >  tIndex{ { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },   // xi
+                                         { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },   // eta
+                                         { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } }; // one
 
             std::cout << aSlaveIndex << " " << aOrientation << " " << tCase << std::endl ;
 
@@ -362,6 +362,7 @@ namespace belfem
             aPoints.set_row( tIndex( 1, tCase ), tPoints.row( 1 ) );
             aPoints.set_row( tIndex( 2, tCase ), tPoints.row( 2 ) );
 
+            exit( 0 );
         }
 
 //------------------------------------------------------------------------------

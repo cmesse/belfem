@@ -59,10 +59,10 @@ namespace belfem
                 }
                 case( 3 ):
                 {
-                    aNodes( 0 ) = mNodes[ 4 ];
-                    aNodes( 1 ) = mNodes[ 7 ];
-                    aNodes( 2 ) = mNodes[ 3 ];
-                    aNodes( 3 ) = mNodes[ 0 ];
+                    aNodes( 0 ) = mNodes[ 0 ];
+                    aNodes( 1 ) = mNodes[ 4 ];
+                    aNodes( 2 ) = mNodes[ 7 ];
+                    aNodes( 3 ) = mNodes[ 3 ];
                     break;
                 }
                 case( 4 ):
@@ -226,10 +226,10 @@ namespace belfem
                 }
                 case( 3 ):
                 {
-                    aEdges( 0 ) = mEdges[ 11 ];
-                    aEdges( 1 ) = mEdges[  7 ];
-                    aEdges( 2 ) = mEdges[  3 ];
-                    aEdges( 3 ) = mEdges[  4 ];
+                    aEdges( 0 ) = mEdges[  4 ];
+                    aEdges( 1 ) = mEdges[ 11 ];
+                    aEdges( 2 ) = mEdges[  7 ];
+                    aEdges( 3 ) = mEdges[  3 ];
                     break;
                 }
                 case( 4 ):

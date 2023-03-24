@@ -96,6 +96,8 @@ test_interface( HDF5 * aDatabase , ElementType aType )
                                                    aType,
                                                    p );
 
+        tMesh->save( "/tmp/mesh.exo");
+
         for( uint f=0; f<tNumFacets; ++f )
         {
             mesh::Facet * tFacet = tMesh->facets()( f );
@@ -185,6 +187,10 @@ test_interface( HDF5 * aDatabase , ElementType aType )
                 tQ( 0 ) = dot(  tMaster->phi( k ).vector_data(), tXm.col( 0 )  );
                 tQ( 1 ) = dot(  tMaster->phi( k ).vector_data(), tXm.col( 1 )  );
                 tQ( 2 ) = dot(  tMaster->phi( k ).vector_data(), tXm.col( 2 )  );
+                if( norm( tP - tQ ) > 1e-12 )
+                {
+                    return false ;
+                }
             }
 
             for( uint k=0; k<tSurface->number_of_integration_points(); ++k )
@@ -192,16 +198,15 @@ test_interface( HDF5 * aDatabase , ElementType aType )
                 tR( 0 ) = dot(  tSlave->phi( k ).vector_data(), tXs.col( 0 )  );
                 tR( 1 ) = dot(  tSlave->phi( k ).vector_data(), tXs.col( 1 )  );
                 tR( 2 ) = dot(  tSlave->phi( k ).vector_data(), tXs.col( 2 )  );
+
+                if ( norm( tP - tR ) > 1e-12 )
+                {
+                    return false ;
+                }
             }
 
-            if( norm( tP - tQ ) > 1e-12 )
-            {
-                return false ;
-            }
-            else if ( norm( tP - tR ) > 1e-12 )
-            {
-                return false ;
-            }
+
+
 
             delete tSurface ;
             delete tMaster ;
