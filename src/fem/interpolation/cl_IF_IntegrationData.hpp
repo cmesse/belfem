@@ -46,6 +46,8 @@ namespace belfem
                              const InterpolationType aType = InterpolationType::LAGRANGE,
                              InterpolationFunction * aShapeFunction = nullptr );
 
+//------------------------------------------------------------------------------
+
             ~IntegrationData();
 
 //------------------------------------------------------------------------------
@@ -63,10 +65,9 @@ namespace belfem
              * special function for popularization if this is a sideset
              */
             void
-            populate_for_master(
-                    const uint aSideSetIndex,
-                    const uint aIntegrationOrder,
-                    const IntegrationScheme aScheme = IntegrationScheme::GAUSS );
+            populate_for_master( const uint aMasterIndex,
+                                 const uint aIntegrationOrder=0,
+                                 const IntegrationScheme aScheme = IntegrationScheme::GAUSS );
 
 //------------------------------------------------------------------------------
 
@@ -74,34 +75,12 @@ namespace belfem
              * special function for popularization if this is a sideset
              */
             void
-            populate_for_slave_tri(
-                    const uint aFaceIndex,
-                    const uint aIntegrationOrder,
-                    const IntegrationScheme aScheme = IntegrationScheme::GAUSS );
+            populate_for_slave( const uint aSlaveIndex,
+                                const uint aOrientation=0,
+                                const uint aIntegrationOrder=0,
+                                const IntegrationScheme aScheme = IntegrationScheme::GAUSS  );
 
-//------------------------------------------------------------------------------
 
-            /**
-             * special function for popularization if this is a sideset
-             */
-            void
-            populate_for_slave_tet(
-                    const uint aSlaveIndex,
-                    const uint aOrientation,
-                    const uint aIntegrationOrder,
-                    const IntegrationScheme aScheme = IntegrationScheme::GAUSS );
-
-//------------------------------------------------------------------------------
-
-            /**
-             * special function for popularization if this is a sideset
-             */
-            void
-            populate_for_slave_hex(
-                    const uint aSlaveIndex,
-                    const uint aOrientation,
-                    const uint aIntegrationOrder,
-                    const IntegrationScheme aScheme = IntegrationScheme::GAUSS );
 //------------------------------------------------------------------------------
 
             /**
@@ -184,6 +163,43 @@ namespace belfem
 
 //------------------------------------------------------------------------------
         private :
+//------------------------------------------------------------------------------
+
+
+//------------------------------------------------------------------------------
+
+            /**
+             * special function for popularization if this is a sideset
+             */
+            void
+            populate_for_slave_tri( const uint aFaceIndex,
+                                    const uint aIntegrationOrder,
+                                    const IntegrationScheme aScheme  );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * special function for popularization if this is a sideset
+             */
+            void
+            populate_for_slave_tet(
+                    const uint aSlaveIndex,
+                    const uint aOrientation,
+                    const uint aIntegrationOrder,
+                    const IntegrationScheme aScheme );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * special function for popularization if this is a sideset
+             */
+            void
+            populate_for_slave_hex(
+                    const uint aSlaveIndex,
+                    const uint aOrientation,
+                    const uint aIntegrationOrder,
+                    const IntegrationScheme aScheme );
+
 //------------------------------------------------------------------------------
 
             void

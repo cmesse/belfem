@@ -57,37 +57,18 @@ EXPECT_TRUE( const bool aBool )
 bool
 test_interface( HDF5 * aDatabase , ElementType aType )
 {
+    // number of facets per element
+    uint tNumFacets = mesh::number_of_facets( aType );
+
+    // number of permutations
     uint tNumPermutations = 0 ;
-    switch (  mesh::geometry_type( aType )  )
+    for( uint f=0; f<tNumFacets; ++f )
     {
-        case( GeometryType::TRI ):
-        {
-            tNumPermutations = 3 ;
-            break;
-        }
-        case( GeometryType::QUAD ):
-        {
-            tNumPermutations = 4 ;
-            break;
-        }
-        case( GeometryType::TET ):
-        {
-            tNumPermutations = 12 ;
-            break;
-        }
-        case( GeometryType::HEX ):
-        {
-            tNumPermutations = 24 ;
-            break;
-        }
-        default:
-        {
-            BELFEM_ERROR( false, "unsupported geometry type");
-        }
+        tNumPermutations += mesh::number_of_orientations( aType, f );
     }
 
-
-    uint tNumFacets = mesh::number_of_facets( aType );
+    uint tOrder = auto_integration_order( aType );
+    tOrder = 7 ;
 
     for( uint p=0; p<tNumPermutations; ++p )
     {
@@ -103,44 +84,20 @@ test_interface( HDF5 * aDatabase , ElementType aType )
             mesh::Facet * tFacet = tMesh->facets()( f );
 
             IntegrationData * tSurface = new IntegrationData( tFacet->element()->type() );
-            tSurface->populate( 0 );
+            tSurface->populate( tOrder );
 
             IntegrationData * tMaster = new IntegrationData( tFacet->master()->type() );
-            tMaster->populate_for_master( tFacet->master_index(), 0 );
+            tMaster->populate_for_master( tFacet->master_index(), tOrder );
 
             IntegrationData * tSlave = new IntegrationData( tFacet->slave()->type() );
-
-            switch (  mesh::geometry_type( aType )  )
-            {
-                case( GeometryType::TRI ):
-                case( GeometryType::QUAD ) :
-                {
-                    tSlave->populate_for_slave_tri( tFacet->slave_index(), 0 );
-                    break;
-                }
-                case( GeometryType::TET ) :
-                {
-                    tSlave->populate_for_slave_tet( tFacet->slave_index(),
-                                                    tFacet->orientation_on_slave(),
-                                                    0 );
-                    break ;
-                }
-                case( GeometryType::HEX ) :
-                {
-                    tSlave->populate_for_slave_hex( tFacet->slave_index(),
-                                                    tFacet->orientation_on_slave(),
-                                                    0 );
-                    break ;
-                }
-                default:
-                {
-                    BELFEM_ERROR( false, "unsupported geometry type");
-                }
-            }
+            tSlave->populate_for_slave( tFacet->slave_index(),
+                                        tFacet->orientation_on_slave(),
+                                        tOrder );
 
             // surface
             uint tNumNodesFacet = tFacet->number_of_nodes() ;
             Matrix< real > tX( tNumNodesFacet, 3 );
+
 
             // collect surface nodes
             for( uint k=0; k<tFacet->number_of_nodes(); ++k )
@@ -149,7 +106,6 @@ test_interface( HDF5 * aDatabase , ElementType aType )
                 tX( k, 1 ) = tFacet->node( k )->y() ;
                 tX( k, 2 ) = tFacet->node( k )->z() ;
             }
-
 
             // master coords
             uint tNumNodesMaster = tFacet->master()->number_of_nodes() ;
@@ -171,33 +127,35 @@ test_interface( HDF5 * aDatabase , ElementType aType )
                 tXs( k, 2 ) = tFacet->slave()->node( k )->z() ;
             }
 
-            Vector< real > tP(3) ;
-            Vector< real > tQ(3) ;
-            Vector< real > tR(3) ;
+            Vector< real > tP(3 ) ;
+            Vector< real > tQ(3 ) ;
+            Vector< real > tR(3 ) ;
 
             for( uint k=0; k<tSurface->number_of_integration_points(); ++k )
             {
                 tP( 0 ) = dot(  tSurface->phi( k ).vector_data(), tX.col( 0 )  );
                 tP( 1 ) = dot(  tSurface->phi( k ).vector_data(), tX.col( 1 )  );
                 tP( 2 ) = dot(  tSurface->phi( k ).vector_data(), tX.col( 2 )  );
-            }
 
-            for( uint k=0; k<tSurface->number_of_integration_points(); ++k )
-            {
                 tQ( 0 ) = dot(  tMaster->phi( k ).vector_data(), tXm.col( 0 )  );
                 tQ( 1 ) = dot(  tMaster->phi( k ).vector_data(), tXm.col( 1 )  );
                 tQ( 2 ) = dot(  tMaster->phi( k ).vector_data(), tXm.col( 2 )  );
+
+                tR( 0 ) = dot(  tSlave->phi( k ).vector_data(), tXs.col( 0 )  );
+                tR( 1 ) = dot(  tSlave->phi( k ).vector_data(), tXs.col( 1 )  );
+                tR( 2 ) = dot(  tSlave->phi( k ).vector_data(), tXs.col( 2 )  );
+
+
+
+                //tP.print( "P" );
+                //tQ.print( "Q" );
+                //tR.print( "R" );
+
+
                 if( norm( tP - tQ ) > 1e-12 )
                 {
                     return false ;
                 }
-            }
-
-            for( uint k=0; k<tSurface->number_of_integration_points(); ++k )
-            {
-                tR( 0 ) = dot(  tSlave->phi( k ).vector_data(), tXs.col( 0 )  );
-                tR( 1 ) = dot(  tSlave->phi( k ).vector_data(), tXs.col( 1 )  );
-                tR( 2 ) = dot(  tSlave->phi( k ).vector_data(), tXs.col( 2 )  );
 
                 if ( norm( tP - tR ) > 1e-12 )
                 {
@@ -242,7 +200,9 @@ int main( int    argc,
     //EXPECT_TRUE( test_interface( & tFile, ElementType::QUAD9 ) );
     //EXPECT_TRUE( test_interface( & tFile, ElementType::TET4 ) );
     //EXPECT_TRUE( test_interface( & tFile, ElementType::TET10 ) );
-    test_interface( & tFile, ElementType::HEX8 );
+    //EXPECT_TRUE(  test_interface( & tFile, ElementType::HEX8 ) );
+    //EXPECT_TRUE(  test_interface( & tFile, ElementType::HEX20 ) );
+    //EXPECT_TRUE(  test_interface( & tFile, ElementType::HEX27 ) );
 
     tFile.close() ;
 

@@ -686,6 +686,46 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        uint
+        number_of_orientations( const ElementType aElementType,
+                                const uint        aFacetNumber )
+        {
+            switch ( mesh::geometry_type( aElementType ) )
+            {
+                case( GeometryType::TRI ):
+                case( GeometryType::QUAD ):
+                {
+                    return 1 ;
+                }
+                case( GeometryType::TET ):
+                {
+                    return 3 ;
+                }
+                case( GeometryType::PENTA ):
+                {
+                    if( aFacetNumber < 3 )
+                    {
+                        return  4 ;
+                    }
+                    else
+                    {
+                        return  3 ;
+                    }
+                }
+                case( GeometryType::HEX ):
+                {
+                    return 4 ;
+                }
+                default:
+                {
+                    BELFEM_ERROR( false, "unsupported geometry type");
+                    return 0 ;
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
         double
         length_scale_factor( const std::string  aUnitLabel )
         {

@@ -33,7 +33,7 @@ namespace belfem
 
             void
             intpoints_tri(
-                    const uint       aSideIndex,
+                    const uint       aMasterIndex,
                     Vector< real > & aWeights,
                     Matrix< real > & aPoints,
                     const uint       aIntegrationOrder,
@@ -43,7 +43,7 @@ namespace belfem
 
             void
             intpoints_quad(
-                    const uint       aSideIndex,
+                    const uint       aMasterIndex,
                     Vector< real > & aWeights,
                     Matrix< real > & aPoints,
                     const uint       aIntegrationOrder,
@@ -53,35 +53,7 @@ namespace belfem
 
             void
             intpoints_tet(
-                    const uint       aSideIndex,
-                    Vector< real > & aWeights,
-                    Matrix< real > & aPoints,
-                    const uint       aIntegrationOrder,
-                    const IntegrationScheme  aIntegrationScheme=IntegrationScheme::GAUSS );
-
-//------------------------------------------------------------------------------
-
-            /**
-             * special function for slave side
-             */
-            void
-            intpoints_tet(
-                    const uint       aSlaveIndex,
-                    const uint       aOrientation,
-                    Vector< real > & aWeights,
-                    Matrix< real > & aPoints,
-                    const uint       aIntegrationOrder,
-                    const IntegrationScheme  aIntegrationScheme=IntegrationScheme::GAUSS );
-
-//------------------------------------------------------------------------------
-
-            /**
-             * special function for slave side
-             */
-            void
-            intpoints_hex(
-                    const uint       aSlaveIndex,
-                    const uint       aOrientation,
+                    const uint       aMasterIndex,
                     Vector< real > & aWeights,
                     Matrix< real > & aPoints,
                     const uint       aIntegrationOrder,
@@ -91,7 +63,7 @@ namespace belfem
 
             void
             intpoints_penta(
-                    const uint       aSideIndex,
+                    const uint       aMasterIndex,
                     Vector< real > & aWeights,
                     Matrix< real > & aPoints,
                     const uint       aIntegrationOrder,
@@ -101,11 +73,40 @@ namespace belfem
 
             void
             intpoints_hex(
-                    const uint       aSideIndex,
+                    const uint       aMasterIndex,
                     Vector< real > & aWeights,
                     Matrix< real > & aPoints,
                     const uint       aIntegrationOrder,
                     const IntegrationScheme  aIntegrationScheme=IntegrationScheme::GAUSS );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * special function for slave side
+             */
+            void
+            intpoints_tet(
+                    const uint       aSlaveIndex,
+                    const uint       aOrientation,
+                    Vector< real > & aWeights,
+                    Matrix< real > & aPoints,
+                    const uint       aIntegrationOrder,
+                    const IntegrationScheme  aIntegrationScheme=IntegrationScheme::GAUSS );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * special function for slave side
+             */
+            void
+            intpoints_hex(
+                    const uint       aSlaveIndex,
+                    const uint       aOrientation,
+                    Vector< real > & aWeights,
+                    Matrix< real > & aPoints,
+                    const uint       aIntegrationOrder,
+                    const IntegrationScheme  aIntegrationScheme=IntegrationScheme::GAUSS );
+
 
 //------------------------------------------------------------------------------
         }

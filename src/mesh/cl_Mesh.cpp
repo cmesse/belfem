@@ -463,9 +463,13 @@ namespace belfem
         // loop over all facets
         for ( mesh::Facet * tFacet : mFacets )
         {
+
+            // get number of nodes from this facet
+            uint tNumNodes = tFacet->element()->number_of_corner_nodes();
+
             // count max size of candidates
             uint tCount = 0;
-            for ( uint k = 0; k < tFacet->number_of_nodes(); ++k )
+            for ( uint k = 0; k < tNumNodes; ++k )
             {
                 mesh::Node * tNode = tFacet->node( k );
 
@@ -479,7 +483,7 @@ namespace belfem
             tCount = 0;
 
             // populate candidates
-            for ( uint k = 0; k < tFacet->number_of_nodes(); ++k )
+            for ( uint k = 0; k < tNumNodes; ++k )
             {
                 mesh::Node * tNode = tFacet->node( k );
 
@@ -492,8 +496,6 @@ namespace belfem
             // make result unique
             unique( tCandidates );
 
-            // get number of nodes from this facet
-            uint tNumNodes = tFacet->number_of_nodes();
 
             // loop over all candidates
             Cell<mesh::Node *> tNodes;
@@ -516,7 +518,7 @@ namespace belfem
                     tFacet->unflag_nodes();
 
                     // get nodes from face
-                    tElement->get_nodes_of_facet( k, tNodes );
+                    tElement->get_corner_nodes_of_facet( k, tNodes );
 
                     // flag all nodes from this face
                     for ( mesh::Node * tNode: tNodes )

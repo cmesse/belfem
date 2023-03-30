@@ -549,47 +549,33 @@ namespace belfem
                 {
                     mMasterIntegration( f ) = new IntegrationData( mMasterType,
                                                                    tType );
-                    mMasterIntegration( f )->populate_for_master( f,
-                                                                  tIntegrationOrder,
-                                                                  tScheme );
+                    mMasterIntegration( f )->populate_for_master(
+                            f , tIntegrationOrder, tScheme );
                 }
             }
             if( tHaveSlave )
             {
-                if( mesh::geometry_type( mSlaveType ) == GeometryType::TRI )
-                {
-                    mSlaveIntegration.set_size( 3, nullptr );
+                // count number of permutations
+                uint tNumFacets = mesh::number_of_facets( mSlaveType );
 
-                    for( uint f=0; f<3; ++f )
-                    {
-                        mSlaveIntegration( f ) = new IntegrationData( mSlaveType,
-                                                                      tType );
-                        mSlaveIntegration( f )->populate_for_slave_tri( f,
-                                                                        tIntegrationOrder,
-                                                                        tScheme );
-                    }
-                }
-                else if ( mesh::geometry_type( mSlaveType ) == GeometryType::TET )
+                uint tNumPermutations = 0 ;
+                for( uint f=0; f<tNumFacets; ++f )
                 {
-                    mSlaveIntegration.set_size( 12, nullptr );
-                    uint tCount = 0;
-
-                    // equation: case = s*3 + o
-                    for ( uint s = 0; s < 4; ++s )
-                    {
-                        for ( uint o = 0; o < 3; ++o )
-                        {
-                            mSlaveIntegration( tCount ) = new IntegrationData( mSlaveType, tType );
-                            mSlaveIntegration( tCount++ )->populate_for_slave_tet( s,
-                                                                                   o,
-                                                                                   tIntegrationOrder,
-                                                                                   tScheme );
-                        }
-                    }
+                    tNumPermutations += mesh::number_of_orientations( mSlaveType, f );
                 }
 
-                // otherwise, we don't do anything, since the sidesets
-                // for pentas and hexes would have to be defined separately
+                mSlaveIntegration.set_size( tNumPermutations, nullptr );
+
+                uint tCount = 0 ;
+
+                for( uint f=0; f<tNumFacets; ++f )
+                {
+                    for( uint o=0; o<mesh::number_of_orientations( mSlaveType, f );  ++o )
+                    {
+                        mSlaveIntegration( tCount ) = new IntegrationData( mSlaveType,  tType );
+                        mSlaveIntegration( tCount++ )->populate_for_slave( f, o, tIntegrationOrder, tScheme );
+                    }
+                }
             }
 
         }

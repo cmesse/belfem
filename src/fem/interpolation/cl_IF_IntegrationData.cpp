@@ -56,11 +56,15 @@ namespace belfem
         void
         IntegrationData::populate( const uint aIntegrationOrder, const IntegrationScheme aScheme )
         {
+            // set integration order
+            uint tIntegrationOrder = aIntegrationOrder == 0 ?
+                                auto_integration_order( mElementType ) : aIntegrationOrder ;
+
+
             // compute the integration points
             intpoints( aScheme,
                        mesh::geometry_type( mElementType ),
-                       aIntegrationOrder == 0 ?
-                       auto_integration_order( mElementType ) : aIntegrationOrder,
+                       tIntegrationOrder,
                        mWeights,
                        mPoints );
 
@@ -71,19 +75,60 @@ namespace belfem
 
         void
         IntegrationData::populate_for_master(
-                const uint aSideSetIndex,
+                const uint aMasterIndex,
                 const uint aIntegrationOrder,
                 const IntegrationScheme aScheme )
         {
             initialize_integration_points_on_facet( mElementType,
-                                                    aSideSetIndex,
+                                                    aMasterIndex,
                                                     mWeights,
                                                     mPoints,
                                                     aIntegrationOrder,
                                                     aScheme );
 
             this->evaluate_function();
+        }
 
+//------------------------------------------------------------------------------
+
+        void
+        IntegrationData::populate_for_slave(
+                const uint aSlaveIndex,
+                const uint aOrientation,
+                const uint aIntegrationOrder,
+                const IntegrationScheme aScheme )
+        {
+            switch ( mesh::geometry_type( mElementType ) )
+            {
+                case ( GeometryType::TRI ) :
+                case ( GeometryType::QUAD ) :
+                {
+                    this->populate_for_slave_tri( aSlaveIndex,
+                                                  aIntegrationOrder,
+                                                  aScheme );
+                    break ;
+                }
+                case ( GeometryType::TET ) :
+                {
+                    this->populate_for_slave_tet( aSlaveIndex,
+                                                  aOrientation,
+                                                  aIntegrationOrder,
+                                                  aScheme );
+                    break ;
+                }
+                case( GeometryType::HEX ) :
+                {
+                    this->populate_for_slave_hex( aSlaveIndex,
+                                                   aOrientation,
+                                                   aIntegrationOrder,
+                                                   aScheme );
+                    break ;
+                }
+                default:
+                {
+                    BELFEM_ERROR( false, "Invalid Geometry Type for slave points" );
+                }
+            }
         }
 
 //------------------------------------------------------------------------------
@@ -135,16 +180,13 @@ namespace belfem
                 const uint aIntegrationOrder,
                 const IntegrationScheme aScheme )
         {
-            // compute integration order
-            uint tIntegrationOrder = aIntegrationOrder == 0 ?
-                    auto_integration_order( mElementType ) : aIntegrationOrder ;
 
             facetintpoints::intpoints_tet(
                     aSlaveIndex,
                     aOrientation,
                     mWeights,
                     mPoints,
-                    tIntegrationOrder,
+                    aIntegrationOrder,
                     aScheme );
 
             this->evaluate_function();
@@ -159,16 +201,13 @@ namespace belfem
                 const uint aIntegrationOrder,
                 const IntegrationScheme aScheme )
         {
-            // compute integration order
-            uint tIntegrationOrder = aIntegrationOrder == 0 ?
-                                     auto_integration_order( mElementType ) : aIntegrationOrder ;
 
             facetintpoints::intpoints_hex(
                     aSlaveIndex,
                     aOrientation,
                     mWeights,
                     mPoints,
-                    tIntegrationOrder,
+                    aIntegrationOrder,
                     aScheme );
 
             this->evaluate_function();

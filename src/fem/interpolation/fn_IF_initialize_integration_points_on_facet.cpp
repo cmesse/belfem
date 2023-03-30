@@ -74,7 +74,7 @@ namespace belfem
 
         void
         facetintpoints::intpoints_tri(
-                const uint  aSideIndex,
+                const uint  aMasterIndex,
                 Vector< real > & aWeights,
                 Matrix< real > & aPoints,
                 const uint  aIntegrationOrder,
@@ -99,7 +99,7 @@ namespace belfem
             // allocate memory for output
             aPoints.set_size( 2, aWeights.length() , 0.0 );
 
-            switch ( aSideIndex )
+            switch ( aMasterIndex )
             {
                 case ( 0 ) :
                 {
@@ -135,7 +135,7 @@ namespace belfem
                 }
                 default:
                 {
-                    BELFEM_ERROR( false, "Illegal side index for TRI : %u", ( unsigned int ) aSideIndex );
+                    BELFEM_ERROR( false, "Illegal side index for TRI : %u", ( unsigned int ) aMasterIndex );
                 }
             }
         }
@@ -144,7 +144,7 @@ namespace belfem
 
         void
         facetintpoints::intpoints_quad(
-                const uint       aSideIndex,
+                const uint       aMasterIndex,
                 Vector< real > & aWeights,
                 Matrix< real > & aPoints,
                 const uint       aIntegrationOrder,
@@ -162,7 +162,7 @@ namespace belfem
             // allocate memory for output
             aPoints.set_size( 2, aWeights.length() );
 
-            switch ( aSideIndex )
+            switch ( aMasterIndex )
             {
                 case ( 0 ) :
                 {
@@ -217,7 +217,7 @@ namespace belfem
                 }
                 default:
                 {
-                    BELFEM_ERROR( false, "Illegal side index for QUAD : %u", ( unsigned int ) aSideIndex );
+                    BELFEM_ERROR( false, "Illegal side index for QUAD : %u", ( unsigned int ) aMasterIndex );
                 }
             }
 
@@ -227,7 +227,7 @@ namespace belfem
 
         void
         facetintpoints::intpoints_tet(
-                const uint       aSideIndex,
+                const uint       aMasterIndex,
                 Vector< real > & aWeights,
                 Matrix< real > & aPoints,
                 const uint       aIntegrationOrder,
@@ -245,7 +245,7 @@ namespace belfem
             uint tNumPoints = aWeights.length() ;
             aPoints.set_size( 4, tNumPoints, 0.0 );
 
-            switch( aSideIndex )
+            switch( aMasterIndex )
             {
                 case( 0 ) :
                 {
@@ -278,7 +278,7 @@ namespace belfem
                 }
                 default:
                 {
-                    BELFEM_ERROR( false, "Illegal side index for TET : %u", ( unsigned int ) aSideIndex );
+                    BELFEM_ERROR( false, "Illegal side index for TET : %u", ( unsigned int ) aMasterIndex );
                 }
             }
         }
@@ -286,90 +286,8 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        facetintpoints::intpoints_tet(
-                const uint       aSlaveIndex,
-                const uint       aOrientation,
-                Vector< real > & aWeights,
-                Matrix< real > & aPoints,
-                const uint       aIntegrationOrder,
-                const IntegrationScheme  aIntegrationScheme )
-        {
-            Matrix< real > tPoints;
-            initialize_integration_points(
-                    GeometryType::TRI,
-                    aWeights,
-                    tPoints,
-                    aIntegrationOrder,
-                    aIntegrationScheme );
-
-            // allocate memory
-            uint tNumPoints = aWeights.length() ;
-
-            aPoints.set_size( 4, tNumPoints, 0.0 );
-
-            // compute the case index
-            uint tCase = aSlaveIndex * 3 + aOrientation ;
-
-            // the magic orientation indices
-            const Matrix< uint > tIndex{ { 0, 2, 3, 2, 1, 3, 0, 3, 1, 0, 1, 2 },
-                                         { 3, 0, 2, 3, 2, 1, 1, 0, 3, 2, 0, 1 },
-                                         { 2, 3, 0, 1, 3, 2, 3, 1, 0, 1, 2, 0 },
-                                         { 1, 1, 1, 0, 0, 0, 2, 2, 2, 3, 3, 3 } };
-
-            // set the integration points
-            aPoints.set_row( tIndex( 0, tCase ), tPoints.row( 0 ) );
-            aPoints.set_row( tIndex( 1, tCase ), tPoints.row( 1 ) );
-            aPoints.set_row( tIndex( 2, tCase ), tPoints.row( 2 ) );
-
-        }
-
-//------------------------------------------------------------------------------
-
-        void
-        facetintpoints::intpoints_hex(
-                const uint       aSlaveIndex,
-                const uint       aOrientation,
-                Vector< real > & aWeights,
-                Matrix< real > & aPoints,
-                const uint       aIntegrationOrder,
-                const IntegrationScheme  aIntegrationScheme )
-        {
-            Matrix< real > tPoints;
-            initialize_integration_points(
-                    GeometryType::TRI,
-                    aWeights,
-                    tPoints,
-                    aIntegrationOrder,
-                    aIntegrationScheme );
-
-            // allocate memory
-            uint tNumPoints = aWeights.length() ;
-
-            aPoints.set_size( 3, tNumPoints );
-
-            // compute the case index
-            uint tCase = aSlaveIndex * 3 + aOrientation ;
-
-            // the magic orientation indices
-            const Matrix< int >  tIndex{ { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },   // xi
-                                         { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },   // eta
-                                         { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } }; // one
-
-            std::cout << aSlaveIndex << " " << aOrientation << " " << tCase << std::endl ;
-
-            // set the integration points
-            aPoints.set_row( tIndex( 0, tCase ), tPoints.row( 0 ) );
-            aPoints.set_row( tIndex( 1, tCase ), tPoints.row( 1 ) );
-            aPoints.set_row( tIndex( 2, tCase ), tPoints.row( 2 ) );
-
-            exit( 0 );
-        }
-
-//------------------------------------------------------------------------------
-
-        void
         facetintpoints::intpoints_penta(
-                const uint       aSideIndex,
+                const uint       aMasterIndex,
                 Vector< real > & aWeights,
                 Matrix< real > & aPoints,
                 const uint       aIntegrationOrder,
@@ -387,7 +305,7 @@ namespace belfem
             // number of integration points
             uint tNumPoints ;
 
-            if( aSideIndex < 3 )
+            if( aMasterIndex < 3 )
             {
                 Matrix< real > tPoints ;
 
@@ -439,7 +357,7 @@ namespace belfem
 
             aPoints.set_size( 3, tNumPoints, 0.0 );
 
-            switch( aSideIndex )
+            switch( aMasterIndex )
             {
                 case ( 0 ) :
                 {
@@ -503,28 +421,26 @@ namespace belfem
                 }
                 default:
                 {
-                    BELFEM_ERROR( false, "Illegal side index for PENTA : %u", ( unsigned int ) aSideIndex );
+                    BELFEM_ERROR( false, "Illegal side index for PENTA : %u", ( unsigned int ) aMasterIndex );
                 }
             }
 
             // populate zeta value
             aPoints.set_row( 2, tZeta.row( 0 ) );
-
-
         }
 
 //------------------------------------------------------------------------------
 
         void
         facetintpoints::intpoints_hex(
-                const uint       aSideIndex,
+                const uint       aMasterIndex,
                 Vector< real > & aWeights,
                 Matrix< real > & aPoints,
                 const uint       aIntegrationOrder,
                 const IntegrationScheme  aIntegrationScheme )
         {
             Matrix< real > tPoints ;
-            Matrix< real > tSide ;
+
 
             // get points for quad
             initialize_integration_points(
@@ -535,102 +451,188 @@ namespace belfem
                     aIntegrationScheme );
 
             aPoints.set_size( 3, aWeights.length() ) ;
-            tSide.set_size( 1, aWeights.length() );
 
-            auto tXi = tPoints.row( 0 ) ;
+
+            auto tXi  = tPoints.row( 0 ) ;
             auto tEta = tPoints.row( 1 );
+            Matrix< real > tSide( 1, aWeights.length(), 1. );
+            auto tZeta = tSide.row( 0 );
 
-            switch( aSideIndex )
+            switch( aMasterIndex )
             {
-                case( 0 ) :
+                case ( 0 ) :
                 {
                     // xi
-                    aPoints.set_row( 0, tPoints.row( 0 ) );
+                    aPoints.set_row( 0, tXi );
 
                     // eta
-                    tSide.fill( -1.0 );
-                    aPoints.set_row( 1, tSide.row( 0 ) );
+                    tZeta *= -1 ;
+                    aPoints.set_row( 1, tZeta );
 
                     // zeta
-                    aPoints.set_row( 2, tPoints.row( 1 ) );
+                    aPoints.set_row( 2, tEta );
 
-                    break ;
+                    break;
                 }
-                case( 1 ) :
+                case ( 1 ) :
                 {
                     // xi
-                    tSide.fill( 1.0 );
-                    aPoints.set_row( 0, tSide.row( 0 ) );
+                    aPoints.set_row( 0, tZeta);
 
                     // eta
-                    aPoints.set_row( 1, tPoints.row( 0 ) );
+                    aPoints.set_row( 1, tXi );
 
                     // zeta
-                    aPoints.set_row( 2, tPoints.row( 1 ) );
+                    aPoints.set_row( 2, tEta );
 
-                    break ;
+                    break;
                 }
-                case( 2 ) :
+                case ( 2 ) :
                 {
                     // xi
-                    aPoints.set_row( 0, tPoints.row( 0 ) );
+                    tXi *= -1. ;
+                    aPoints.set_row( 0, tXi );
 
                     // eta
-                    tSide.fill( 1.0 );
-                    aPoints.set_row( 1, tSide.row( 0 ) );
+                    aPoints.set_row( 1, tZeta);
 
                     // zeta
-                    aPoints.set_row( 2, tPoints.row( 1 ) );
+                    aPoints.set_row( 2, tEta );
 
-                    break ;
+                    break;
                 }
-                case( 3 ) :
+                case ( 3 ) :
                 {
                     // xi
-                    tSide.fill( -1.0 );
-                    aPoints.set_row( 0, tSide.row( 0 ) );
-
-                    // eta
-                    aPoints.set_row( 1, tPoints.row( 0 ) );
+                    tZeta *= -1 ;
+                    aPoints.set_row( 0, tZeta);
 
                     // zeta
-                    aPoints.set_row( 2, tPoints.row( 1 ) );
+                    aPoints.set_row( 2, tXi );
 
-                    break ;
+                    // eta
+                    aPoints.set_row( 1, tEta );
+
+                    break;
                 }
-                case( 4 ) :
+                case ( 4 ) :
                 {
-                    // xi
-                    aPoints.set_row( 0, tPoints.row( 0 ) );
-
                     // eta
-                    aPoints.set_row( 1, tPoints.row( 1 ) );
+                    aPoints.set_row( 0, tEta );
+
+                    // xi
+                    aPoints.set_row( 1, tXi );
 
                     // zeta
-                    tSide.fill( -1.0 );
-                    aPoints.set_row( 2, tSide.row( 0 ) );
+                    tZeta *= -1. ;
+                    aPoints.set_row( 2, tZeta);
 
-                    break ;
+                    break;
                 }
-                case( 5 ) :
+                case ( 5 ) :
                 {
                     // xi
-                    aPoints.set_row( 0, tPoints.row( 0 ) );
+                    aPoints.set_row( 0, tXi );
 
                     // eta
-                    aPoints.set_row( 1, tPoints.row( 1 ) );
+                    aPoints.set_row( 1, tEta );
 
                     // zeta
-                    tSide.fill( 1.0 );
-                    aPoints.set_row( 2, tSide.row( 0 ) );
+                    aPoints.set_row( 2, tZeta);
 
-                    break ;
+                    break;
                 }
                 default:
                 {
-                    BELFEM_ERROR( false, "Illegal side index for HEX : %u", ( unsigned int ) aSideIndex );
+                    BELFEM_ERROR( false, "Illegal side index for HEX : %u", ( unsigned int ) aMasterIndex );
                 }
             }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        facetintpoints::intpoints_tet(
+                const uint       aSlaveIndex,
+                const uint       aOrientation,
+                Vector< real > & aWeights,
+                Matrix< real > & aPoints,
+                const uint       aIntegrationOrder,
+                const IntegrationScheme  aIntegrationScheme )
+        {
+            Matrix< real > tPoints;
+            initialize_integration_points(
+                    GeometryType::TRI,
+                    aWeights,
+                    tPoints,
+                    aIntegrationOrder,
+                    aIntegrationScheme );
+
+            // allocate memory
+            uint tNumPoints = aWeights.length() ;
+
+            aPoints.set_size( 4, tNumPoints, 0.0 );
+
+            // compute the case index
+            uint tCase = aSlaveIndex * 3 + aOrientation ;
+
+            // the magic orientation indices
+            const Matrix< uint > tIndex{ { 0, 2, 3, 2, 1, 3, 0, 3, 1, 0, 1, 2 },
+                                         { 3, 0, 2, 3, 2, 1, 1, 0, 3, 2, 0, 1 },
+                                         { 2, 3, 0, 1, 3, 2, 3, 1, 0, 1, 2, 0 },
+                                         { 1, 1, 1, 0, 0, 0, 2, 2, 2, 3, 3, 3 } };
+
+            // set the integration points
+            aPoints.set_row( tIndex( 0, tCase ), tPoints.row( 0 ) );
+            aPoints.set_row( tIndex( 1, tCase ), tPoints.row( 1 ) );
+            aPoints.set_row( tIndex( 2, tCase ), tPoints.row( 2 ) );
+
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        facetintpoints::intpoints_hex(
+                const uint       aSlaveIndex,
+                const uint       aOrientation,
+                Vector< real > & aWeights,
+                Matrix< real > & aPoints,
+                const uint       aIntegrationOrder,
+                const IntegrationScheme  aIntegrationScheme )
+        {
+
+
+            Matrix< real > tPoints;
+            initialize_integration_points(
+                    GeometryType::QUAD,
+                    aWeights,
+                    tPoints,
+                    aIntegrationOrder,
+                    aIntegrationScheme );
+
+            Vector< real > tXi  = tPoints.row( 0 );
+            Vector< real > tEta = tPoints.row( 1 );
+
+            // allocate memory
+            uint tNumPoints = aWeights.length() ;
+
+
+
+            // compute the case index
+            uint tCase = aSlaveIndex * 4 + aOrientation ;
+
+            // the magic orientation indices
+            //                              0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23
+            const Matrix< int >   tIndex{ { 3,-1,-3, 1, 3,-2,-3, 2, 3, 1,-3,-1, 2,-3,-2, 3, 1,-2,-1, 2, 2,-1,-2, 1},    // xi
+                                          { 1, 3,-1,-3, 2, 3,-2,-3,-1, 3, 1,-3, 3, 2,-3,-2, 2, 1,-2,-1, 1, 2,-1,-2} };  // eta
+            const Vector< real > tSign  = {-1,-1,-1,-1, 1, 1, 1, 1, 1, 1, 1, 1,-1,-1,-1,-1,-1,-1,-1,-1, 1, 1, 1, 1}  ;
+
+            // set the integration points
+            aPoints.set_size( 3, tNumPoints, tSign( tCase ) );
+            if( tIndex( 0, tCase ) < 0 ) tXi  *= -1. ;
+            if( tIndex( 1, tCase ) < 0 ) tEta *= -1. ;
+            aPoints.set_row( std::abs(tIndex( 0, tCase ))-1, tXi );
+            aPoints.set_row( std::abs(tIndex( 1, tCase ))-1, tEta );
         }
 
 //------------------------------------------------------------------------------

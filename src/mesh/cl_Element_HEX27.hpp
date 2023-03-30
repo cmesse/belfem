@@ -35,11 +35,11 @@ namespace belfem
             {
                 case( 0 ):
                 {
-                    aNodes( 0 ) = mNodes[ 0 ];
-                    aNodes( 1 ) = mNodes[ 1 ];
-                    aNodes( 2 ) = mNodes[ 5 ];
-                    aNodes( 3 ) = mNodes[ 4 ];
-                    aNodes( 4 ) = mNodes[ 8 ];
+                    aNodes( 0 ) = mNodes[  0 ];
+                    aNodes( 1 ) = mNodes[  1 ];
+                    aNodes( 2 ) = mNodes[  5 ];
+                    aNodes( 3 ) = mNodes[  4 ];
+                    aNodes( 4 ) = mNodes[  8 ];
                     aNodes( 5 ) = mNodes[ 13 ];
                     aNodes( 6 ) = mNodes[ 16 ];
                     aNodes( 7 ) = mNodes[ 12 ];
@@ -48,11 +48,11 @@ namespace belfem
                 }
                 case( 1 ):
                 {
-                    aNodes( 0 ) = mNodes[ 1 ];
-                    aNodes( 1 ) = mNodes[ 2 ];
-                    aNodes( 2 ) = mNodes[ 6 ];
-                    aNodes( 3 ) = mNodes[ 5 ];
-                    aNodes( 4 ) = mNodes[ 9 ];
+                    aNodes( 0 ) = mNodes[  1 ];
+                    aNodes( 1 ) = mNodes[  2 ];
+                    aNodes( 2 ) = mNodes[  6 ];
+                    aNodes( 3 ) = mNodes[  5 ];
+                    aNodes( 4 ) = mNodes[  9 ];
                     aNodes( 5 ) = mNodes[ 14 ];
                     aNodes( 6 ) = mNodes[ 17 ];
                     aNodes( 7 ) = mNodes[ 13 ];
@@ -61,10 +61,10 @@ namespace belfem
                 }
                 case( 2 ):
                 {
-                    aNodes( 0 ) = mNodes[ 2 ];
-                    aNodes( 1 ) = mNodes[ 3 ];
-                    aNodes( 2 ) = mNodes[ 7 ];
-                    aNodes( 3 ) = mNodes[ 6 ];
+                    aNodes( 0 ) = mNodes[  2 ];
+                    aNodes( 1 ) = mNodes[  3 ];
+                    aNodes( 2 ) = mNodes[  7 ];
+                    aNodes( 3 ) = mNodes[  6 ];
                     aNodes( 4 ) = mNodes[ 10 ];
                     aNodes( 5 ) = mNodes[ 15 ];
                     aNodes( 6 ) = mNodes[ 18 ];
@@ -87,23 +87,23 @@ namespace belfem
                 }
                 case( 4 ):
                 {
-                    aNodes( 0 ) = mNodes[ 0 ];
-                    aNodes( 1 ) = mNodes[ 3 ];
-                    aNodes( 2 ) = mNodes[ 2 ];
-                    aNodes( 3 ) = mNodes[ 1 ];
+                    aNodes( 0 ) = mNodes[  0 ];
+                    aNodes( 1 ) = mNodes[  3 ];
+                    aNodes( 2 ) = mNodes[  2 ];
+                    aNodes( 3 ) = mNodes[  1 ];
                     aNodes( 4 ) = mNodes[ 11 ];
                     aNodes( 5 ) = mNodes[ 10 ];
-                    aNodes( 6 ) = mNodes[ 9 ];
-                    aNodes( 7 ) = mNodes[ 8 ];
+                    aNodes( 6 ) = mNodes[  9 ];
+                    aNodes( 7 ) = mNodes[  8 ];
                     aNodes( 8 ) = mNodes[ 21 ];
                     break;
                 }
                 case( 5 ):
                 {
-                    aNodes( 0 ) = mNodes[ 4 ];
-                    aNodes( 1 ) = mNodes[ 5 ];
-                    aNodes( 2 ) = mNodes[ 6 ];
-                    aNodes( 3 ) = mNodes[ 7 ];
+                    aNodes( 0 ) = mNodes[  4 ];
+                    aNodes( 1 ) = mNodes[  5 ];
+                    aNodes( 2 ) = mNodes[  6 ];
+                    aNodes( 3 ) = mNodes[  7 ];
                     aNodes( 4 ) = mNodes[ 16 ];
                     aNodes( 5 ) = mNodes[ 17 ];
                     aNodes( 6 ) = mNodes[ 18 ];
@@ -355,6 +355,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
     } /* namespace mesh */
-} /* namespace belfem */
+} /* namespacebelfem */
 
-#endif //BELFEM_CL_ELEMENT_HEX27_HPP
+#endif //9BELFEM_CL_ELEMENT_HEX27_HPP

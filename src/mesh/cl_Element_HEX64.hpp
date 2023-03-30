@@ -108,10 +108,10 @@ namespace belfem
                     aNodes(  9 ) = mNodes[ 22 ];
                     aNodes( 10 ) = mNodes[ 11 ];
                     aNodes( 11 ) = mNodes[ 10 ];
-                    aNodes( 12 ) = mNodes[ 43 ];
-                    aNodes( 13 ) = mNodes[ 40 ];
-                    aNodes( 14 ) = mNodes[ 41 ];
-                    aNodes( 15 ) = mNodes[ 42 ];
+                    aNodes( 12 ) = mNodes[ 40 ];
+                    aNodes( 13 ) = mNodes[ 41 ];
+                    aNodes( 14 ) = mNodes[ 42 ];
+                    aNodes( 15 ) = mNodes[ 43 ];
                     break;
                 }
                 case( 4 ):

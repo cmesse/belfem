@@ -2740,7 +2740,7 @@ namespace belfem
             }
 
             aJacobian *= constant::mu0 ;
-#
+
             // compute right hand side
             aRHS = aJacobian * mGroup->work_phi() ;
         }

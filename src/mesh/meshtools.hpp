@@ -5,6 +5,7 @@
 #ifndef BELFEM_ElementTypeS_HPP
 #define BELFEM_ElementTypeS_HPP
 #include <string>
+#include "typedefs.hpp"
 #include "Mesh_Enums.hpp"
 
 namespace belfem
@@ -81,6 +82,14 @@ namespace belfem
         element_type_of_facet(
                 const ElementType  aElementType,
                 const  unsigned int  aFacetIndex );
+
+
+//------------------------------------------------------------------------------
+
+        uint
+        number_of_orientations(
+                const ElementType aElementType,
+                const uint        aFacetNumber );
 
 
 //------------------------------------------------------------------------------
