@@ -89,9 +89,6 @@ namespace belfem
                     aIntegrationOrder,
                     aIntegrationScheme );
 
-            // scale weights, because edge length is now 1
-            aWeights *= 0.5;
-
             // scale and shift points, so that 0 <= xi <= 1
             tPoints *= 0.5;
             tPoints += 0.5;
@@ -256,16 +253,16 @@ namespace belfem
                 }
                 case( 1 ) :
                 {
-                    aPoints.set_row( 2, tPoints.row( 0 ) );
                     aPoints.set_row( 1, tPoints.row( 1 ) );
+                    aPoints.set_row( 2, tPoints.row( 0 ) );
                     aPoints.set_row( 3, tPoints.row( 2 ) );
                     break ;
                 }
                 case( 2 ) :
                 {
                     aPoints.set_row( 0, tPoints.row( 0 ) );
-                    aPoints.set_row( 3, tPoints.row( 1 ) );
                     aPoints.set_row( 1, tPoints.row( 2 ) );
+                    aPoints.set_row( 3, tPoints.row( 1 ) );
                     break ;
                 }
 

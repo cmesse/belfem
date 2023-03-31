@@ -633,7 +633,7 @@ namespace belfem
             {
                 const real tEpsilon = 1E-11 ;
 
-                uint tNumSurfaces = mesh::number_of_facets( aGroup->element_type() );
+                uint tNumSurfaces = mesh::number_of_facets( aGroup->master_type() );
 
                 // check weights of main group
                 bool tBool = norm( aWeights - aGroup->integration_weights() ) > tEpsilon ;
@@ -662,6 +662,8 @@ namespace belfem
                 {
                     for( uint k=0; k<tNumPoints; ++k )
                     {
+
+
                         // point
                         if( norm( aGroup->master_integration( f )->points().col( k )
                                            - aPoints.col( tCount++) ) > tEpsilon )

@@ -13,8 +13,8 @@ set( SOURCES
         fn_normal_tet10.cpp
         fn_normal_hex8.cpp
         fn_normal_hex27.cpp
+        cl_IntegrationData_Interface.cpp
         )
-
 
 include_directories( ${BELFEM_SOURCE_DIR}/physics )
 include_directories( ${BELFEM_SOURCE_DIR}/physics/materials )

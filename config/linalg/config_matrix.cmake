@@ -4,8 +4,7 @@
 
 if ( USE_MATRIX_ARMADILLO )
     list( APPEND BELFEM_DEFS "BELFEM_ARMADILLO" )
-    #set( BELFEM_MATRIX_LIBS "-larmadillo -lsuperlu -larpack ${BELFEM_MATRIX_LIBS}")
-    set( BELFEM_MATRIX_LIBS "-larmadillo -lsuperlu ${BELFEM_MATRIX_LIBS}")
+    set( BELFEM_MATRIX_LIBS "-larmadillo -lsuperlu -larpack ${BELFEM_MATRIX_LIBS}")
     # special flags for intel
     if ( ${COMPILER_ID} EQUAL 2 )
         list( APPEND BELFEM_DEFS "ARMA_ALLOW_FAKE_GCC" )

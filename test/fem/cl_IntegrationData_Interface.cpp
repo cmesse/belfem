@@ -1,60 +1,28 @@
 //
-// Created by christian on 3/1/23.
+// Created by christian on 3/30/23.
 //
-#include "cl_Communicator.hpp"
-#include "cl_Logger.hpp"
-#include "banner.hpp"
+
+#include <gtest/gtest.h>
+#include "typedefs.hpp"
+
 #include "cl_HDF5.hpp"
 #include "cl_FEM_SideSet.hpp"
 #include "FEM_geometry.hpp"
+#include "Mesh_Enums.hpp"
 #include "fn_norm.hpp"
 #include "fn_det.hpp"
-#include "fn_dot.hpp"
 #include "fn_intpoints.hpp"
 #include "fn_intpoints_auto_integration_order.hpp"
 #include "cl_Pipette.hpp"
 #include "cl_Element_Factory.hpp"
 
+
 using namespace belfem ;
 using namespace fem ;
 using namespace geometry ;
 
-Communicator gComm;
-Logger       gLog( 5 );
+extern belfem::HDF5 * gDatabase;
 
-bool
-EXPECT_NEAR( const real aA, const real aB, const real aEpsilon )
-{
-    const bool aCheck = std::abs( aA - aB ) < aEpsilon ;
-    if( aCheck )
-    {
-        std::cout << "    pass! " << std::endl ;
-    }
-    else
-    {
-        std::cout << "    FAIL! | " << aA << " - " << aB << " | = " << std::abs( aA - aB )  <<  " > " << aEpsilon << std::endl ;
-        BELFEM_ERROR( false, "fail");
-    }
-    return aCheck ;
-}
-
-bool
-EXPECT_TRUE( const bool aBool )
-{
-    if( aBool )
-    {
-        std::cout << "    pass! " << std::endl ;
-    }
-    else
-    {
-        std::cout << "    FAIL!" << std::endl ;
-        BELFEM_ERROR( false, "fail");
-    }
-    return aBool ;
-}
-
-//------------------------------------------------------------------------------
-#
 bool
 test_interface( HDF5 * aDatabase , ElementType aType )
 {
@@ -77,8 +45,6 @@ test_interface( HDF5 * aDatabase , ElementType aType )
         Mesh * tMesh = geometry::test_create_mesh( aDatabase,
                                                    aType,
                                                    p );
-
-        tMesh->save( "/tmp/mesh.exo");
 
         for( uint f=0; f<tNumFacets; ++f )
         {
@@ -134,24 +100,20 @@ test_interface( HDF5 * aDatabase , ElementType aType )
 
             for( uint k=0; k<tSurface->number_of_integration_points(); ++k )
             {
+                // point on surface
                 tP( 0 ) = dot(  tSurface->phi( k ).vector_data(), tX.col( 0 )  );
                 tP( 1 ) = dot(  tSurface->phi( k ).vector_data(), tX.col( 1 )  );
                 tP( 2 ) = dot(  tSurface->phi( k ).vector_data(), tX.col( 2 )  );
 
+                // point on master
                 tQ( 0 ) = dot(  tMaster->phi( k ).vector_data(), tXm.col( 0 )  );
                 tQ( 1 ) = dot(  tMaster->phi( k ).vector_data(), tXm.col( 1 )  );
                 tQ( 2 ) = dot(  tMaster->phi( k ).vector_data(), tXm.col( 2 )  );
 
+                // point on slave
                 tR( 0 ) = dot(  tSlave->phi( k ).vector_data(), tXs.col( 0 )  );
                 tR( 1 ) = dot(  tSlave->phi( k ).vector_data(), tXs.col( 1 )  );
                 tR( 2 ) = dot(  tSlave->phi( k ).vector_data(), tXs.col( 2 )  );
-
-
-
-                //tP.print( "P" );
-                //tQ.print( "Q" );
-                //tR.print( "R" );
-
 
                 if( norm( tP - tQ ) > 1e-12 )
                 {
@@ -177,113 +139,42 @@ test_interface( HDF5 * aDatabase , ElementType aType )
     return true ;
 }
 
-void test_geometry( HDF5 * gDatabase )
+TEST( GEOMETRY, interface_tri3 )
 {
-// create a new group
-    Group * tGroup = new SideSet( ElementType::LINE3,
-                                  ElementType::TRI6,
-                                  ElementType::TRI6 );
-
-    // work vector for X-Coordinates
-    Matrix< real > & tX = tGroup->work_Xm() ;
-
-    // work vector for normals
-    Matrix< real  > tNormals ;
-
-    // work vector for expected value
-    Vector< real > tExpect( 2 );
-
-    // work vector for edge lengths
-    Vector< real > tEdges( 3 );
-
-    // surface
-    real tSurface ;
-
-    // load data from HDF5 file
-    gDatabase->select_group("normals" );
-    gDatabase->select_group("tri6");
-    gDatabase->load_data("Nodes", tX );
-    gDatabase->load_data( "Normals", tNormals );
-    gDatabase->load_data( "Surface", tSurface );
-    gDatabase->load_data( "Edges", tEdges );
-
-
-    // integration points
-    Matrix< real > tPoints ;
-    gDatabase->load_data( "Points", tPoints );
-
-    // integration weights
-    Vector< real > tWeights ;
-    gDatabase->load_data( "Weights", tWeights  );
-
-    // close file
-    gDatabase->close_tree();
-
-    // make sure that integration points are in correct order
-    EXPECT_TRUE( test_intpoints( tGroup, tPoints, tWeights ) );
-
-    uint tNumIntpoints = tWeights.length() ;
-
-    index_t tCount = 0 ;
-
-    // loop over all edges and comput normals and edge lengths
-    for( uint e=0; e<3; ++e )
-    {
-        // edge length
-        real tLength = 0 ;
-
-        // loop over all integration points
-        for( uint k = 0; k<tNumIntpoints; ++k )
-        {
-            const Vector< real > & tN = normal_tri( tGroup, e, k );
-
-            real tError = norm( tN - tNormals.col( tCount++ ) ) ;
-
-            EXPECT_NEAR( tError, 0 , 1E-11 );
-            tLength += tWeights( k ) * tGroup->dx() ;
-        }
-        EXPECT_NEAR( tLength , tEdges( e ) , 1E-11 );
-    }
-
-    // compute volume
-    EXPECT_NEAR( test_pipette( tGroup ) , tSurface , 1E-11 );
-
-    // delete the group
-    delete tGroup ;
+    EXPECT_TRUE( test_interface( gDatabase, ElementType::TRI3 ) ) ;
 }
 
-//------------------------------------------------------------------------------
-
-int main( int    argc,
-          char * argv[] )
+TEST( GEOMETRY, interface_tri6 )
 {
-    // create communicator
-    gComm = Communicator( argc, argv );
+    EXPECT_TRUE( test_interface( gDatabase, ElementType::TRI6 ) ) ;
+}
 
-    print_banner();
+TEST( GEOMETRY, interface_quad4 )
+{
+    EXPECT_TRUE( test_interface( gDatabase, ElementType::QUAD4 ) ) ;
+}
 
-    // todo: only test on one core
-    // todo: make path relative
-    const string tPath ="/home/christian/codes/belfem/test/fem/test_geometry.hdf5" ;
-    //const string tPath ="/Users/christian/codes/belfem_tests/geometry/test_geometry.hdf5" ;
-    // load the file
-    HDF5 tFile( tPath, FileMode::OPEN_RDONLY );
+TEST( GEOMETRY, interface_quad9 )
+{
+    EXPECT_TRUE( test_interface( gDatabase, ElementType::QUAD9 ) ) ;
+}
 
-    test_geometry( & tFile );
+TEST( GEOMETRY, interface_tet4 )
+{
+    EXPECT_TRUE( test_interface( gDatabase, ElementType::TET4 ) ) ;
+}
 
-    //EXPECT_TRUE( test_interface( & tFile, ElementType::TRI3 ) );
-    //EXPECT_TRUE( test_interface( & tFile, ElementType::TRI6 ) );
-    //EXPECT_TRUE( test_interface( & tFile, ElementType::QUAD4 ) );
-    //EXPECT_TRUE( test_interface( & tFile, ElementType::QUAD9 ) );
-    //EXPECT_TRUE( test_interface( & tFile, ElementType::TET4 ) );
-    //EXPECT_TRUE( test_interface( & tFile, ElementType::TET10 ) );
-    //EXPECT_TRUE(  test_interface( & tFile, ElementType::HEX8 ) );
-    //EXPECT_TRUE(  test_interface( & tFile, ElementType::HEX20 ) );
-    //EXPECT_TRUE(  test_interface( & tFile, ElementType::HEX27 ) );
+TEST( GEOMETRY, interface_tet10 )
+{
+    EXPECT_TRUE( test_interface( gDatabase, ElementType::TET10 ) ) ;
+}
 
-    tFile.close() ;
+TEST( GEOMETRY, interface_hex8 )
+{
+    EXPECT_TRUE( test_interface( gDatabase, ElementType::HEX8 ) ) ;
+}
 
-
-    // close communicator
-    return gComm.finalize();
+TEST( GEOMETRY, interface_hex27 )
+{
+    EXPECT_TRUE( test_interface( gDatabase, ElementType::HEX27 ) ) ;
 }
