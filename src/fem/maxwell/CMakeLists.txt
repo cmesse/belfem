@@ -42,11 +42,19 @@ set ( LIBLIST
         mesh
         integration
         interpolation
+        edgeinterpolation
         materials
         iwg
         maxwell
+        postproc
         kernel
         postproc
         )
 
 include( ${BELFEM_CONFIG_DIR}/scripts/Add_Library.cmake )
+
+if( USE_EXAMPLES )
+    set( EXECNAME test_geometrytools )
+    set( MAIN test_geometrytools.cpp)
+    include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
+endif()

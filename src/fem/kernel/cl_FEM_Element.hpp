@@ -70,6 +70,10 @@ namespace belfem
                   Block         * aParent,
                   DofManager    * aDofManager,
                   mesh::Element * aElement );
+//------------------------------------------------------------------------------
+
+          // constructor for test
+          Element( mesh::Element * aElement );
 
 //------------------------------------------------------------------------------
 
@@ -560,7 +564,7 @@ namespace belfem
         {
             for( uint e=0; e<mElement->number_of_edges(); ++e )
             {
-                aEdgeDirections[ e ] = mEdgeDirections.test( e ) ? 1.0 : -1.0 ;
+                aEdgeDirections[ e ] = mEdgeDirections.test( e ) ? -1.0 : 1.0 ;
             }
         }
 

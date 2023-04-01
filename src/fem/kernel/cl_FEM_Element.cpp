@@ -42,6 +42,16 @@ namespace belfem
             this->link_second_derivative_functions( aElement->type() );
         }
 
+
+//------------------------------------------------------------------------------
+
+        // constructor for test
+        Element::Element( mesh::Element * aElement ) :
+            mParent( nullptr ),
+            mElement( aElement )
+        {
+        }
+
 //------------------------------------------------------------------------------
 
         Element::Element(
@@ -1568,11 +1578,11 @@ namespace belfem
 
                 if ( tA == tNodes(0)->id() && tB == tNodes(1)->id() )
                 {
-                    mEdgeDirections.set( e );
+                    mEdgeDirections.reset( e );
                 }
                 else if ( tA == tNodes(1)->id() && tB == tNodes(0)->id() )
                 {
-                    mEdgeDirections.reset( e );
+                    mEdgeDirections.set( e );
                 }
                 else
                 {
@@ -1582,7 +1592,7 @@ namespace belfem
                     mesh::Node * tNodeC = tNodes( 0 );
                     mesh::Node * tNodeD = tNodes( 1 );
 
-                    // find the minumal node indices
+                    // find the minimal node indices
                     tA = tNodeA->id() ;
                     for( uint d=0; d<tNodeA->number_of_duplicates(); ++d )
                     {
@@ -1610,12 +1620,12 @@ namespace belfem
 
                     if ( tA == tC && tB == tD )
                     {
-                        mEdgeDirections.set( e );
+                        mEdgeDirections.reset( e );
                         tSuccess = true ;
                     }
                     else if ( tA == tD && tB == tC )
                     {
-                        mEdgeDirections.reset( e );
+                        mEdgeDirections.set( e );
                         tSuccess = true ;
                     }
 
@@ -1639,11 +1649,11 @@ namespace belfem
             // the information is stored on the edge elements
             if( mElement->physical_tag() == 1 )
             {
-                mEdgeDirections.set( 0 );
+                mEdgeDirections.reset( 0 );
             }
             else
             {
-                mEdgeDirections.reset( 0 );
+                mEdgeDirections.set( 0 );
             }
         }
 

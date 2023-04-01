@@ -26,7 +26,7 @@ main( int    argc,
         testing::InitGoogleTest( &argc, argv );
 
         // load the file
-        gDatabase = new belfem::HDF5( "/tmp/test_geometry.hdf5", belfem::FileMode::OPEN_RDONLY );
+        gDatabase = new belfem::HDF5( "/tmp/test_database.hdf5", belfem::FileMode::OPEN_RDONLY );
 
 
         // run the tests

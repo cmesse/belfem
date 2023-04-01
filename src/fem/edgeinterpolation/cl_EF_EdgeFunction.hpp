@@ -22,7 +22,6 @@ namespace belfem
     namespace fem
     {
         class Element ;
-        class Group ;
 
         /**
          * the edge function base class

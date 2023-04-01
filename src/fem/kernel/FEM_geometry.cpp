@@ -680,19 +680,29 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             Mesh *
-            test_create_mesh( HDF5 * aDatabase,
+            create_test_mesh( HDF5 * aDatabase,
+                              const string & aGroup,
                               const ElementType aType ,
                               const uint aPermutation )
             {
 
+                // check mode
+                bool tInterfaceMode = aGroup == "interfaces" ;
+
                 // - - - - - - - - - - - - - - - - - - - - - - - - - -
                 // load matrices from file
                 // - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-
                 // open the tree in the database
-                aDatabase->select_group( "orientations" );
-                aDatabase->select_group( to_string( mesh::geometry_type( aType ) ) );
+                aDatabase->select_group( aGroup );
+
+                if( tInterfaceMode )
+                {
+                    aDatabase->select_group( to_string( mesh::geometry_type( aType ) ) );
+                }
+                else
+                {
+                    aDatabase->select_group( to_string( aType ) );
+                }
 
 
                 // node coordinates
@@ -701,12 +711,45 @@ namespace belfem
 
                 // element topology
                 Matrix< uint > tTopology ;
-                aDatabase->load_data( "Elements", tTopology );
-                tTopology -= 1 ;
+
+                // check if topology is provided
+                if(  hdf5::dataset_exists( aDatabase->active_group(), "Elements" ) )
+                {
+                    aDatabase->load_data( "Elements", tTopology );
+                    tTopology -= 1 ;
+                }
+                else
+                {
+                    // create dummy data, assuming that we have only one element
+                    uint tNumNodes = mesh::number_of_nodes( aType );
+                    tTopology.set_size( 1, tNumNodes );
+                    for( uint k=0; k<tNumNodes; ++k )
+                    {
+                        tTopology( 0, k ) = k ;
+                    }
+                }
+
+
+
+
+
+
 
                 // orientation of first element
                 Matrix< uint > tOrientations ;
-                aDatabase->load_data( "Orientations", tOrientations );
+                if( tInterfaceMode )
+                {
+                    aDatabase->load_data( "Orientations", tOrientations );
+                }
+                else
+                {
+                    uint tNumNodes = mesh::number_of_nodes( aType );
+                    tOrientations.set_size( tNumNodes, 1 );
+                    for( uint k=0; k<tNumNodes; ++k )
+                    {
+                        tOrientations( k, 0 ) = k ;
+                    }
+                }
 
                 aDatabase->close_tree() ;
 

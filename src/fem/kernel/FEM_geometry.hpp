@@ -124,9 +124,10 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             Mesh *
-            test_create_mesh( HDF5 * aDatabase,
-                                         const ElementType aType ,
-                                         const uint aPermutation );
+            create_test_mesh( HDF5 * aDatabase,
+                              const string & aGroup,
+                              const ElementType aType ,
+                              const uint aPermutation=0 );
 
 //------------------------------------------------------------------------------
         }

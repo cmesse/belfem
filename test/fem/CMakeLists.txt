@@ -1,5 +1,5 @@
 
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/test_geometry.hdf5
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/test_database.hdf5
         DESTINATION /tmp )
 
 set( TESTNAME geometry )

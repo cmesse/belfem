@@ -42,7 +42,8 @@ test_interface( HDF5 * aDatabase , ElementType aType )
     for( uint p=0; p<tNumPermutations; ++p )
     {
         // load mesh
-        Mesh * tMesh = geometry::test_create_mesh( aDatabase,
+        Mesh * tMesh = geometry::create_test_mesh( aDatabase,
+                                                   "interfaces",
                                                    aType,
                                                    p );
 
