@@ -7,6 +7,7 @@
 
 #include "cl_SolverSTRUMPACK.hpp"
 #include "assert.hpp"
+
 // Externally Defined Global Communicator
 extern belfem::Logger gLog;
 extern belfem::Communicator gComm;

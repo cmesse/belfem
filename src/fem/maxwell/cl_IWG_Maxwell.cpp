@@ -3407,6 +3407,23 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
+        IWG_Maxwell::reset_fields()
+        {
+            // loop over all defined dofs
+            for( string tDof : mDofFields )
+            {
+                // create name for old dof
+                string tOldDof = tDof + "0" ;
+
+                // reset fields
+                mMesh->field_data( tDof ) = mMesh->field_data(tOldDof );
+            }
+        }
+
+
+//------------------------------------------------------------------------------
+
+        void
         IWG_Maxwell::update_group_types()
         {
             // loop over all blocks

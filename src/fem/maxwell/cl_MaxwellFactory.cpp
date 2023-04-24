@@ -238,7 +238,11 @@ namespace belfem
                     mTinit = mInputFile.section( "thermal" )->get_value( "Tinit", "K" ).first;
                 }
             }
+            else
+            {
+                return ;
 
+            }
             // create temperature field and initialize values
             Vector< real > & tT = mMagneticKernel->mesh()->field_exists( "elementT") ?
                                   mMagneticKernel->mesh()->field_data( "elementT") :
@@ -246,10 +250,6 @@ namespace belfem
 
             tT.fill( mTinit );
 
-            if( ! mInputFile.section_exists("thermal") )
-            {
-                return ;
-            }
             if( ! mInputFile.section("thermal")->section_exists("solver") )
             {
                 return ;
@@ -410,6 +410,16 @@ namespace belfem
         MaxwellFactory::maxtime() const
         {
             return mInputFile.section("timestepping")->get_value("maxtime", "s").first ;
+        }
+
+//------------------------------------------------------------------------------
+
+        real
+        MaxwellFactory::maxdt() const
+        {
+            return mInputFile.section("timestepping")->key_exists("timestepmax") ?
+                   mInputFile.section("timestepping")->get_value("timestepmax", "s").first :
+                   mInputFile.section("timestepping")->get_value("timestep", "s").first;
         }
 
 //------------------------------------------------------------------------------

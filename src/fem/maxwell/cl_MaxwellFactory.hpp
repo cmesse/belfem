@@ -85,6 +85,7 @@ namespace belfem
 
             // timestepping info
             real mTimeStep = BELFEM_QUIET_NAN ;
+            real mTimeStepMax = BELFEM_QUIET_NAN ;
             real mTheta    = BELFEM_QUIET_NAN ;
 
             // list of selected block ids
@@ -274,6 +275,9 @@ namespace belfem
 
             real
             maxtime() const ;
+
+            real
+            maxdt() const ;
 
             uint
             meshdump() const ;

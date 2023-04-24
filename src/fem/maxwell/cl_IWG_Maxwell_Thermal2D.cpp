@@ -266,7 +266,7 @@ namespace belfem
             else
             {
                 tM( 1, 1 ) = 0.0 ;
-                aRHS ( 0 ) = 0.0 ;
+                aRHS ( 1 ) = 0.0 ;
             }
 
             real tLa ;
@@ -327,6 +327,14 @@ namespace belfem
         IWG_Maxwell_Thermal2D::shift_fields()
         {
             mMesh->field_data( "T0" ) = mMesh->field_data( "T");
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        IWG_Maxwell_Thermal2D::reset_fields()
+        {
+            mMesh->field_data( "T" ) = mMesh->field_data( "T0");
         }
 
 //------------------------------------------------------------------------------
