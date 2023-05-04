@@ -506,13 +506,13 @@ int main( int    argc,
                     //std::cout << "Multiplication factor: " << tf << std::endl;
                     if ( tEpsilonT > tNonlinThermal.picardEpsilon )
                     {
-                        //tOmegaP=std::min(tRelaxConvMult*tOmegaP, 0.5);
+                        //tOmegaPT = tf*tOmegaPT;
                         //tOmegaPT=std::min(tf*tOmegaPT, 2.0); //allow sur-relax?
                         tOmegaPT=1.0;
                     }
                     else
                     {
-                        //tOmegaN=std::min(tRelaxConvMult*tOmegaN, 0.5);
+                        //tOmegaNT = tf*tOmegaNT;
                         //tOmegaNT=std::min(tf*tOmegaNT, 2.0); //allow sur-relax?
                         tOmegaNT=1.0;
                     }
