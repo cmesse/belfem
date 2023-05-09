@@ -29,8 +29,8 @@ namespace belfem
 
             Element *
             create_element(
-                    const ElementType & aType,
-                    const id_t & aID ) const;
+                    const ElementType aType,
+                    const id_t aID ) const;
 
 //------------------------------------------------------------------------------
         };

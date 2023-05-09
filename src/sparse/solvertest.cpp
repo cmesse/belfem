@@ -19,7 +19,7 @@
 using namespace belfem;
 
 Communicator gComm;
-Logger       gLog( 4 );
+Logger       gLog( 5 );
 
 
 int main( int    argc,
@@ -97,7 +97,7 @@ int main( int    argc,
 
     // tX *= 0.9 ;
 
-    Solver tSolver( SolverType::STRUMPACK );
+    Solver tSolver( SolverType::MUMPS );
 
     //tSolver.set_petsc( Preconditioner::LU, KrylovMethod::PREONLY, 1e-8 );
     //tSolver.set_petsc( Preconditioner::GAMG, KrylovMethod::GMRES, 1e-8 );

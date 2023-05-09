@@ -709,7 +709,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-    // send the same vector to all procs on communication lust
+    // send the same vector to all procs on communication list
     template< typename T >
     void
     distribute(

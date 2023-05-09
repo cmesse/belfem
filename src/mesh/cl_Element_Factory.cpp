@@ -37,140 +37,112 @@ namespace belfem
 
         Element *
         ElementFactory::create_element(
-                const ElementType & aType, const id_t & aID ) const
+                const ElementType aType, const id_t aID ) const
         {
-            // create an element pointer
-            Element * aElement = nullptr;
-
             switch ( aType )
             {
                 case ( ElementType::VERTEX ) :
                 {
-                    aElement = new LagrangeElement< 1, 1, 0, 0, 0 >( aID );
-                    break;
+                    return new LagrangeElement< 1, 1, 0, 0, 0 >( aID );
                 }
                 case ( ElementType::LINE2 ) :
                 {
-                    aElement = new LagrangeElement< 2, 2, 1, 0, 0 >( aID );
-                    break;
+                    return new LagrangeElement< 2, 2, 1, 0, 0 >( aID );
                 }
                 case ( ElementType::LINE3 ) :
                 {
-                    aElement = new LagrangeElement< 3, 2, 1, 0, 0 >( aID );
-                    break;
+                    return new LagrangeElement< 3, 2, 1, 0, 0 >( aID );
                 }
                 case ( ElementType::LINE4 ) :
                 {
-                    aElement = new LagrangeElement< 4, 2, 1, 0, 0 >( aID );
-                    break;
+                    return new LagrangeElement< 4, 2, 1, 0, 0 >( aID );
                 }
                 case ( ElementType::LINE5 ) :
                 {
-                    aElement = new LagrangeElement< 5, 2, 1, 0, 0 >( aID );
-                    break;
+                    return new LagrangeElement< 5, 2, 1, 0, 0 >( aID );
                 }
                 case ( ElementType::TRI3 ) :
                 {
-                    aElement = new LagrangeElement< 3, 3, 3, 3, 1 >( aID );
-                    break;
+                    return new LagrangeElement< 3, 3, 3, 3, 1 >( aID );
                 }
                 case ( ElementType::TRI6 ) :
                 {
-                    aElement = new LagrangeElement< 6, 3, 3, 3, 1 >( aID );
-                    break;
+                    return new LagrangeElement< 6, 3, 3, 3, 1 >( aID );
                 }
                 case ( ElementType::TRI10 ) :
                 {
-                    aElement = new LagrangeElement< 10, 3, 3, 3, 1 >( aID );
-                    break;
+                    return new LagrangeElement< 10, 3, 3, 3, 1 >( aID );
                 }
                 case ( ElementType::TRI15 ) :
                 {
-                    aElement = new LagrangeElement< 15, 3, 3, 3, 1 >( aID );
-                    break;
+                    return new LagrangeElement< 15, 3, 3, 3, 1 >( aID );
                 }
                 case ( ElementType::QUAD4 ) :
                 {
-                    aElement = new LagrangeElement< 4, 4, 4, 4, 1 >( aID );
-                    break;
+                    return new LagrangeElement< 4, 4, 4, 4, 1 >( aID );
                 }
                 case ( ElementType::QUAD8 ) :
                 {
-                    aElement = new LagrangeElement< 8, 4, 4, 4, 1 >( aID );
-                    break;
+                    return new LagrangeElement< 8, 4, 4, 4, 1 >( aID );
                 }
                 case ( ElementType::QUAD9 ) :
                 {
-                    aElement = new LagrangeElement< 9, 4, 4, 4, 1 >( aID );
-                    break;
+                    return new LagrangeElement< 9, 4, 4, 4, 1 >( aID );
                 }
                 case ( ElementType::QUAD16 ) :
                 {
-                    aElement = new LagrangeElement< 16, 4, 4, 4, 1 >( aID );
-                    break;
+                    return new LagrangeElement< 16, 4, 4, 4, 1 >( aID );
                 }
                 case ( ElementType::TET4 ) :
                 {
-                    aElement = new LagrangeElement< 4, 4, 6, 4, 4 >( aID );
-                    break;
+                    return new LagrangeElement< 4, 4, 6, 4, 4 >( aID );
                 }
                 case ( ElementType::TET10 ) :
                 {
-                    aElement = new LagrangeElement< 10, 4, 6, 4, 4 >( aID );
-                    break;
+                    return new LagrangeElement< 10, 4, 6, 4, 4 >( aID );
                 }
                 case ( ElementType::TET20 ) :
                 {
-                    aElement = new LagrangeElement< 20, 4, 6, 4, 4 >( aID );
-                    break;
+                    return new LagrangeElement< 20, 4, 6, 4, 4 >( aID );
                 }
                 case ( ElementType::TET35 ) :
                 {
-                    aElement = new LagrangeElement< 35, 4, 6, 4, 4 >( aID );
-                    break;
+                    return new LagrangeElement< 35, 4, 6, 4, 4 >( aID );
                 }
                 case ( ElementType::PENTA6 ) :
                 {
-                    aElement = new LagrangeElement< 6, 6, 9, 5, 5 >( aID );
-                    break;
+                    return new LagrangeElement< 6, 6, 9, 5, 5 >( aID );
                 }
                 case ( ElementType::PENTA15 ) :
                 {
-                    aElement = new LagrangeElement< 15, 6, 9, 5, 5 >( aID );
-                    break;
+                    return new LagrangeElement< 15, 6, 9, 5, 5 >( aID );
                 }
                 case ( ElementType::PENTA18 ) :
                 {
-                    aElement = new LagrangeElement< 18, 6, 9, 5, 5 >( aID );
-                    break;
+                    return new LagrangeElement< 18, 6, 9, 5, 5 >( aID );
                 }
                 case ( ElementType::HEX8 ) :
                 {
-                    aElement = new LagrangeElement< 8, 8, 12, 6, 6 >( aID );
-                    break;
+                    return new LagrangeElement< 8, 8, 12, 6, 6 >( aID );
                 }
                 case ( ElementType::HEX20 ) :
                 {
-                    aElement = new LagrangeElement< 20, 8, 12, 6, 6 >( aID );
-                    break;
+                    return new LagrangeElement< 20, 8, 12, 6, 6 >( aID );
                 }
                 case ( ElementType::HEX27 ) :
                 {
-                    aElement = new LagrangeElement< 27, 8, 12, 6, 6 >( aID );
-                    break;
+                    return new LagrangeElement< 27, 8, 12, 6, 6 >( aID );
                 }
                 case ( ElementType::HEX64 ) :
                 {
-                    aElement = new LagrangeElement< 64, 8, 12, 6, 6 >( aID );
-                    break;
+                    return new LagrangeElement< 64, 8, 12, 6, 6 >( aID );
                 }
                 default:
                 {
                     BELFEM_ERROR( false, "Unknown element type" );
+                    return nullptr ;
                 }
             }
-
-            return aElement;
         }
 
 //------------------------------------------------------------------------------

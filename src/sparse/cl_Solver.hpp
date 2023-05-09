@@ -82,6 +82,7 @@ namespace belfem
         solve(  SpMatrix       & aMatrix,
                 Vector< real > & aLHS,
                 Vector< real > & aRHS );
+
 //------------------------------------------------------------------------------
 
         /**

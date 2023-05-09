@@ -71,6 +71,7 @@ TEST( GEOMETRY, normal_tet10 )
 
     index_t tCount = 0 ;
 
+
     for( uint f=0; f<4; ++f )
     {
         real tS = 0.0 ;

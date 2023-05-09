@@ -712,7 +712,7 @@ namespace belfem
                     tLength += tPower * 2;
                     tTime -= tPower * 3;
                 }
-                else if ( tUnit == "GW" ) // what the hell is a gigawatt?
+                else if ( tUnit == "GW" ) // what the hell is a jigawatt?
                 {
                     tScale = 1e9;
                     tMass += tPower;

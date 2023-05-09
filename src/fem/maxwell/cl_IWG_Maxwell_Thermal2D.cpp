@@ -266,7 +266,7 @@ namespace belfem
             else
             {
                 tM( 1, 1 ) = 0.0 ;
-                aRHS ( 0 ) = 0.0 ;
+                aRHS ( 1 ) = 0.0 ;
             }
 
             real tLa ;

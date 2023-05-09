@@ -91,12 +91,6 @@ namespace belfem
                 const ElementType aElementType,
                 const uint        aFacetNumber );
 
-
-//------------------------------------------------------------------------------
-
-        double
-        length_scale_factor( const std::string  aUnitLabel );
-
 //------------------------------------------------------------------------------
     }
 }

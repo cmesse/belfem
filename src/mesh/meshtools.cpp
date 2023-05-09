@@ -725,43 +725,5 @@ namespace belfem
         }
 
 //------------------------------------------------------------------------------
-
-        double
-        length_scale_factor( const std::string  aUnitLabel )
-        {
-            // convert unit to lower case
-            std::string tUnit = string_to_lower( aUnitLabel );
-
-            if( tUnit == "m" )
-            {
-                return 1.0 ;
-            }
-            else if ( tUnit == "cm" )
-            {
-                return 0.01 ;
-            }
-            else if ( tUnit == "mm" )
-            {
-                return 0.001 ;
-            }
-            else if ( tUnit == "mum" )
-            {
-                return 1e-6 ;
-            }
-            else if ( ( tUnit == "in" ) ||  ( tUnit == "inch" ) )
-            {
-                return 0.0254 ;
-            }
-            else if ( ( tUnit == "ft" ) ||  ( tUnit == "feet" ) )
-            {
-                return 0.3048 ;
-            }
-            else
-            {
-                BELFEM_ERROR( false, "unknown unit: %s", aUnitLabel.c_str() );
-                return BELFEM_SIGNALING_NAN ;
-            }
-        }
-
     }
 }

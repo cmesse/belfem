@@ -132,7 +132,7 @@ void test_edge_function( HDF5 * aDatabase  , ElementType aType )
 
             tCompute = tFunction->E( k ) ;
             std::cout << "======= " << k << " ======" << std::endl ;
-            
+
             tExpect.print("Expect");
             tCompute.print("Compute");
 

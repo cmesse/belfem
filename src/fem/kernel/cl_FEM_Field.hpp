@@ -31,6 +31,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        // todo: this class is deprecated and should not be used anymore
         class Field : public DofManagerBase
         {
             // Kernel * mParent;
