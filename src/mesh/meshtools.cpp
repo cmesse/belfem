@@ -725,5 +725,79 @@ namespace belfem
         }
 
 //------------------------------------------------------------------------------
+
+        uint
+        number_of_nedelec_dofs( const ElementType aElementType )
+        {
+            switch ( aElementType )
+            {
+                case( ElementType::LINE2 ) :
+                {
+                    return 1 ;
+                }
+                case( ElementType::LINE3 ) :
+                {
+                    return 2 ;
+                }
+                case( ElementType::TRI3 ) :
+                {
+                    return 3 ;
+                }
+                case( ElementType::TRI6 ) :
+                {
+                    return 8 ;
+                }
+                case( ElementType::TRI10 ) :
+                {
+                    return 15 ;
+                }
+                case( ElementType::QUAD4 ) :
+                {
+                    return 4 ;
+                }
+                case( ElementType::QUAD8 ) :
+                case( ElementType::QUAD9 ) :
+                {
+                    return 12 ;
+                }
+                case( ElementType::TET4 ) :
+                {
+                    return 6 ;
+                }
+                case( ElementType::TET10 ) :
+                {
+                    return 20 ;
+                }
+                case( ElementType::TET20 ) :
+                {
+                    return 45 ;
+                }
+                case( ElementType::PENTA6 ) :
+                {
+                    return 9 ;
+                }
+                case( ElementType::PENTA15 ) :
+                case( ElementType::PENTA18 ) :
+                {
+                    return 36 ;
+                }
+                case( ElementType::HEX8 ) :
+                {
+                    return 12 ;
+                }
+                case( ElementType::HEX20 ) :
+                case( ElementType::HEX27 ) :
+                {
+                    return 54 ;
+                }
+                default:
+                {
+                    BELFEM_ERROR( false, "unsupported element type");
+                    return 0 ;
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
     }
 }

@@ -92,6 +92,12 @@ namespace belfem
                 const uint        aFacetNumber );
 
 //------------------------------------------------------------------------------
+
+        uint
+        number_of_nedelec_dofs( const ElementType aElementType );
+
+
+//------------------------------------------------------------------------------
     }
 }
 #endif //BELFEM_ElementTypeS_HPP

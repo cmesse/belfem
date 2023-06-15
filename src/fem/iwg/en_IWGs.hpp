@@ -12,7 +12,7 @@ namespace belfem
     enum class IwgType
     {
         SimpleDiffusion,
-        StationaryHeatConduction,   // thermal conduction, static
+        StaticHeatConduction,   // thermal conduction, static
         TransientHeatConduction,    // thermal conduction, transient
         Gradient2D,                 // computes derivatives in volume
         SurfceGradient,             // computes derivatives on surface
@@ -152,6 +152,7 @@ namespace belfem
         Picard        = 2,
         UNDEFINED     = 3
     };
+
 //------------------------------------------------------------------------------
 }
 

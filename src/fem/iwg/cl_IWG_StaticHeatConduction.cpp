@@ -2,7 +2,7 @@
 // Created by Christian Messe on 24.07.20.
 //
 
-#include "cl_IWG_StationaryHeatConduction.hpp"
+#include "cl_IWG_StaticHeatConduction.hpp"
 #include "cl_FEM_Group.hpp"
 #include "cl_FEM_Element.hpp"
 #include "cl_FEM_Field.hpp"
@@ -18,7 +18,7 @@ namespace belfem
     {
 //------------------------------------------------------------------------------
 
-        IWG_StationaryHeatConduction::IWG_StationaryHeatConduction(
+        IWG_StaticHeatConduction::IWG_StaticHeatConduction(
                 const uint aNumberOfDimensions,
                 const IwgType aType ) :
                 IWG_Timestep( aType )
@@ -44,7 +44,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        IWG_StationaryHeatConduction::compute_jacobian_and_rhs(
+        IWG_StaticHeatConduction::compute_jacobian_and_rhs(
                 Element        * aElement,
                 Matrix< real > & aJacobian,
                 Vector< real > & aRHS )
@@ -96,7 +96,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        IWG_StationaryHeatConduction::compute_alpha_boundary_condition(
+        IWG_StaticHeatConduction::compute_alpha_boundary_condition(
                 Element        * aElement,
                 Matrix< real > & aJacobian,
                 Vector< real > & aRHS )
@@ -149,7 +149,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     void
-    IWG_StationaryHeatConduction::compute_convection(
+    IWG_StaticHeatConduction::compute_convection(
             Element * aElement, Vector< real > & aConvection )
     {
         // Check input
@@ -206,7 +206,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        IWG_StationaryHeatConduction::allocate_work_matrices( Group    * aGroup )
+        IWG_StaticHeatConduction::allocate_work_matrices( Group    * aGroup )
         {
             // call function from parent
             IWG::allocate_work_matrices( aGroup );

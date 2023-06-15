@@ -23,7 +23,7 @@ namespace belfem
         IWG_TransientHeatConduction::IWG_TransientHeatConduction(
                 const uint aNumberOfDimensions,
                 const IwgType aType ) :
-                IWG_StationaryHeatConduction( aNumberOfDimensions, aType )
+                IWG_StaticHeatConduction( aNumberOfDimensions, aType )
         {
             // T0 is the temperature from the last timestep
             this->add_fields( { "T0" } );
@@ -159,7 +159,7 @@ namespace belfem
         IWG_TransientHeatConduction::allocate_work_matrices( Group    * aGroup )
         {
             // call function from parent
-            IWG_StationaryHeatConduction::allocate_work_matrices( aGroup );
+            IWG_StaticHeatConduction::allocate_work_matrices( aGroup );
 
             // change size of Psi Matrix
             aGroup->work_Psi().set_size( aGroup->number_of_nodes_per_element(),

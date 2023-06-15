@@ -2,15 +2,15 @@
 // Created by Christian Messe on 24.07.20.
 //
 
-#ifndef BELFEM_CL_IWG_STATIONARYHEATCONDUCTION_HPP
-#define BELFEM_CL_IWG_STATIONARYHEATCONDUCTION_HPP
+#ifndef BELFEM_CL_IWG_STATICHEATCONDUCTION_HPP
+#define BELFEM_CL_IWG_STATICHEATCONDUCTION_HPP
 
 #include "cl_IWG_Timestep.hpp"
 namespace belfem
 {
     namespace fem
     {
-        class IWG_StationaryHeatConduction : public IWG_Timestep
+        class IWG_StaticHeatConduction : public IWG_Timestep
         {
 //------------------------------------------------------------------------------
         public:
@@ -24,13 +24,13 @@ namespace belfem
              * @param aType usally as default, but children can override the type
              *              from their constructor
              */
-            IWG_StationaryHeatConduction (
+            IWG_StaticHeatConduction (
                     const uint    aNumberOfDimensions,
-                    const IwgType aType=IwgType::StationaryHeatConduction );
+                    const IwgType aType=IwgType::StaticHeatConduction );
 
 //------------------------------------------------------------------------------
 
-            virtual ~IWG_StationaryHeatConduction () = default;
+            virtual ~IWG_StaticHeatConduction () = default;
 
 //------------------------------------------------------------------------------
 // Functions called by Field during assembly
@@ -48,6 +48,7 @@ namespace belfem
             compute_convection(
                     Element        * aElement,
                     Vector< real > & aConvection ) ;
+
 //------------------------------------------------------------------------------
 
             virtual void
@@ -69,4 +70,4 @@ namespace belfem
     } /* end namespace fem */
 } /* end namespace belfem */
 
-#endif //BELFEM_CL_IWG_STATIONARYHEATCONDUCTION_HPP
+#endif //BELFEM_CL_IWG_STATICHEATCONDUCTION_HPP

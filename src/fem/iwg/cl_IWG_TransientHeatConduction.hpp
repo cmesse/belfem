@@ -6,7 +6,7 @@
 #define BELFEM_CL_IWG_TRANSIENTHEATCONDUCTION_HPP
 
 
-#include "cl_IWG_StationaryHeatConduction.hpp"
+#include "cl_IWG_StaticHeatConduction.hpp"
 
 #include "fn_dot.hpp"
 
@@ -15,7 +15,7 @@ namespace belfem
     namespace fem
     {
         class IWG_TransientHeatConduction :
-                public IWG_StationaryHeatConduction
+                public IWG_StaticHeatConduction
         {
 
 

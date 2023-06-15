@@ -4,7 +4,7 @@ set( SOURCES
         cl_IWG.cpp
         cl_IWG_Timestep.cpp
         cl_IWG_SimpleDiffusion.cpp
-        cl_IWG_StationaryHeatConduction.cpp
+        cl_IWG_StaticHeatConduction.cpp
         cl_IWG_TransientHeatConduction.cpp
         cl_IWG_PlaneStress.cpp
         cl_IWG_2DGradient.cpp

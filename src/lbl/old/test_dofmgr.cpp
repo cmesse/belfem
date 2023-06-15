@@ -19,7 +19,7 @@
 
 #include "fn_Mesh_compute_surface_normals.hpp"
 #include "cl_FEM_DofManager.hpp"
-#include "cl_IWG_StationaryHeatConduction.hpp"
+#include "cl_IWG_StaticHeatConduction.hpp"
 #include "cl_Bitset.hpp"
 #include "fn_FEM_mises_PlaneStress.hpp"
 //#define protected public

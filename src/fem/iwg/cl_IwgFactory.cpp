@@ -6,7 +6,7 @@
 
 #include "cl_IWG_2DGradient.hpp"
 #include "cl_IWG_SimpleDiffusion.hpp"
-#include "cl_IWG_StationaryHeatConduction.hpp"
+#include "cl_IWG_StaticHeatConduction.hpp"
 #include "cl_IWG_TransientHeatConduction.hpp"
 #include "cl_IWG_PlaneStress.hpp"
 
@@ -49,9 +49,9 @@ namespace belfem
                 {
                     return new IWG_SimpleDiffusion( mNumberOfDimensions );
                 }
-                case( IwgType::StationaryHeatConduction ) :
+                case( IwgType::StaticHeatConduction ) :
                 {
-                    return new IWG_StationaryHeatConduction( mNumberOfDimensions );
+                    return new IWG_StaticHeatConduction( mNumberOfDimensions );
                 }
                 case( IwgType::TransientHeatConduction ) :
                 {

@@ -15,7 +15,7 @@
 
 #include "cl_FEM_Kernel.hpp"
 #include "cl_FEM_KernelParameters.hpp"
-#include "cl_IWG_StationaryHeatConduction.hpp"
+#include "cl_IWG_StaticHeatConduction.hpp"
 #include "fn_norm.hpp"
 #include "fn_Mesh_compute_surface_normals.hpp"
 
@@ -57,7 +57,7 @@ int main( int    argc,
     Kernel tKernel( &tParams, true );
 
     // create the equation object
-    IWG_StationaryHeatConduction tIWG( tMesh->number_of_dimensions() );
+    IWG_StaticHeatConduction tIWG( tMesh->number_of_dimensions() );
 
     // now we grab the first field of the kernel
     Field * tField = tKernel.field( 0 );

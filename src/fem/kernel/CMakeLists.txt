@@ -4,6 +4,7 @@ set( SOURCES
         en_FEM_DomainType.cpp
         cl_FEM_Dof.cpp
         cl_FEM_Element.cpp
+        cl_FEM_Swap.cpp
         cl_FEM_Group.cpp
         cl_FEM_Block.cpp
         cl_FEM_SideSet.cpp
