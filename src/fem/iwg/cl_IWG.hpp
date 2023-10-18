@@ -41,6 +41,7 @@ namespace belfem
         class SideSet ;
         class Element;
         class BoundaryCondition ;
+        class Calculator ;
 
 //------------------------------------------------------------------------------
 
@@ -87,6 +88,8 @@ namespace belfem
         protected:
 //------------------------------------------------------------------------------
 
+
+
             bool mComputeJacobianOnBlock   = true ;
             bool mComputeJacobianOnSideset = false ;
 
@@ -101,7 +104,7 @@ namespace belfem
 
 
             //! needed for the solver
-                SymmetryMode mSymmetryMode ;
+            SymmetryMode mSymmetryMode ;
 
             //! except maxwell, most IWGs are AllBlocksEqual
             const DofMode    mDofMode ;
@@ -120,8 +123,9 @@ namespace belfem
             Mesh              * mMesh     = nullptr;
             DofManagerBase    * mField    = nullptr;
             Group             * mGroup    = nullptr;
+            Calculator        * mCalc     = nullptr ;
 
-            const Material * mMaterial = nullptr;
+            const Material    * mMaterial = nullptr;
 
 
             uint mNumberOfDofsPerNode = 0 ;
@@ -186,7 +190,7 @@ namespace belfem
             Vector< index_t > mNodesOnWettedSidesets ;
 
             // alpha is a special boundary condition for convective flow
-            bool mHasAlpha = false ;
+            bool mHasConvection = false ;
 
             // list of selected block ids
             Vector< id_t > mBlockIDs;
@@ -264,13 +268,15 @@ namespace belfem
             //! links sideset IDs with the designated types
             Map< id_t, DomainType > mSideSetSubTypes ;
 
-            // normal, if this is a 2d problem
-            Vector< real > mNormal2D = { 0., 0., };
+            //! normal, if this is a 2d problem, todo: delete
+            Vector< real > mNormal2D = { 0., 0. };
 
-            // normal, if this is a 3d problem
+            //! normal, if this is a 3d problem, todo: delete
             Vector< real > mNormal3D = { 0., 0., 0. };
 
             InterpolationType mInterpolationType = InterpolationType::LAGRANGE ;
+
+            // pointer to active function
 
 //------------------------------------------------------------------------------
         public:
@@ -756,7 +762,7 @@ namespace belfem
              * tells if this field has an alpha boundary condition
              */
              bool
-             has_alpha() const ;
+             has_convection() const ;
 
 //------------------------------------------------------------------------------
 
@@ -953,11 +959,27 @@ namespace belfem
             void
             collect_node_data(
                     Element        * aElement,
+                    const string   & aFieldLabel );
+
+//------------------------------------------------------------------------------
+
+            void
+            collect_node_data(
+                    Element        * aElement,
+                    const Cell< string > & aFieldLabels );
+
+//------------------------------------------------------------------------------
+
+            // todo: old function, should be obsolete soon
+            void
+            collect_node_data(
+                    Element        * aElement,
                     const string   & aFieldLabel,
                     Vector< real > & aData );
 
 //------------------------------------------------------------------------------
 
+            // todo: old function, should be obsolete soon
             void
             collect_node_data(
                     Element        * aElement,
@@ -1026,7 +1048,6 @@ namespace belfem
              */
             uint
             doftype( const string & aDofLabel ) const ;
-
 
 //---------------------------------------------------------------------------------
 
@@ -1112,10 +1133,11 @@ namespace belfem
             virtual void
             assign_dofs_per_sideset( const Vector< id_t > & aSideSetIDs );
 
+
 //------------------------------------------------------------------------------
 
             virtual void
-            allocate_work_matrices( Group    * aGroup );
+            allocate_work_matrices( Group * aGroup );
 
 //------------------------------------------------------------------------------
 
@@ -1165,6 +1187,16 @@ namespace belfem
              */
             const Vector< real > &
             normal_tri6( Element * aElement, const uint aIndex  ) ;
+
+//------------------------------------------------------------------------------
+
+            // set the timestepping method
+            virtual void
+            set_timestepping_method( const EulerMethod aMethod, const bool aHaveStiffness=true );
+
+            // return the timestepping method
+            virtual EulerMethod
+            method() const ;
 
 //------------------------------------------------------------------------------
         private:
@@ -1235,9 +1267,9 @@ namespace belfem
 //------------------------------------------------------------------------------
 
          inline bool
-         IWG::has_alpha() const
+         IWG::has_convection() const
          {
-            return mHasAlpha ;
+            return mHasConvection ;
          }
 
 //------------------------------------------------------------------------------

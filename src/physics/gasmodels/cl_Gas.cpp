@@ -2166,7 +2166,7 @@ namespace belfem
                 while( std::abs( tT0 - tT1 ) > BELFEM_EPSILON_T )
                 {
                     aT = 0.5 * ( tT0 + tT1 );
-                    tF =  this->h( tT1, aP ) - aH;
+                       tF =  this->h( tT1, aP ) - aH;
 
                     if( tF0 * tF >= 0 )
                     {
@@ -3056,14 +3056,15 @@ namespace belfem
         // Step 2: initial iteration using bisection
         // - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        real tF;
 
         // loop counter
         uint tCount = 0;
         real tBeta0 = tBetaA;
         aBeta  = tBetaB;
 
-        while ( std::abs( tBeta0 - aBeta ) > 1.0e-3 )
+        real tF =  this->shock_beta( aT1, aP1, aU1, aAlpha, aT2, aP2, aU2, aBeta );
+
+        while ( std::abs( tF ) > 1.0e-3 )
         {
             // shift beta
             tBeta0 = aBeta;

@@ -15,7 +15,6 @@ namespace belfem
 {
     class Material
     {
-
 //----------------------------------------------------------------------------
     protected:
 //----------------------------------------------------------------------------
@@ -25,14 +24,14 @@ namespace belfem
 
         string mNumber ;
 
-        // maximum temperture
+        // maximum temperature
         real mTmax = BELFEM_REAL_MAX ;
 
         // flag telling if this material is used
         bool mFlag = false ;
 
         PermeabilityLaw mPermeabilityLaw = PermeabilityLaw::Constant ;
-        ResistivityLaw mResistivityLaw = ResistivityLaw::Constant ;
+        ResistivityLaw  mResistivityLaw  = ResistivityLaw::Constant ;
 
 //----------------------------------------------------------------------------
     public:

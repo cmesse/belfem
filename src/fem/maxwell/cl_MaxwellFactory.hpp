@@ -209,7 +209,7 @@ namespace belfem
             // kernel object for thermal
             KernelParameters * mThermalParameters = nullptr ;
             Kernel *           mThermalKernel = nullptr ;
-            IWG_Timestep *     mFourier = nullptr ;
+            IWG_TimestepOld *     mFourier = nullptr ;
 
 //------------------------------------------------------------------------------
         public:
@@ -253,7 +253,7 @@ namespace belfem
             MaxwellMeshSynch *
             thermal_synch() ;
 
-            IWG_Timestep *
+            IWG_TimestepOld *
             fourier() ;
 
 //------------------------------------------------------------------------------
@@ -635,7 +635,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        inline IWG_Timestep *
+        inline IWG_TimestepOld *
         MaxwellFactory::fourier()
         {
             return mFourier ;

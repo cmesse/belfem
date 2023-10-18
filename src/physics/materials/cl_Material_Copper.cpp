@@ -776,12 +776,14 @@ namespace belfem
             real tT0 = 1.0/polyval( mQ, std::log(mRRR ) );
             real tT1 = tT0 * 1.05 ;
             tT0 *= 0.95;
-            real aT = BELFEM_QUIET_NAN ;
+
             real tF0 =  nist::dinvlambda0dT( mPlambda, mBeta, tT0 );
             real tF = nist::dinvlambda0dT( mPlambda, mBeta, tT1 );
             uint tCount = 0 ;
 
-            while( std::abs( tT0 - tT1 ) > 100 * BELFEM_EPS )
+            real aT = tT1 ;
+
+            while( std::abs( tF ) > 100 * BELFEM_EPS )
             {
                 aT = 0.5 * ( tT0 + tT1 );
                 tF = nist::dinvlambda0dT( mPlambda, mBeta, aT );

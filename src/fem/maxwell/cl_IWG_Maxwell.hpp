@@ -16,7 +16,7 @@
 #include "fn_norm.hpp"
 #include "fn_dot.hpp"
 #include "fn_trans.hpp"
-#include "cl_IWG_Timestep.hpp"
+#include "cl_IWG_TimestepOld.hpp"
 #include "cl_FEM_Element.hpp"
 #include "cl_FEM_Group.hpp"
 #include "en_SolverEnums.hpp"
@@ -41,7 +41,7 @@ namespace belfem
          * an abstract baseclass for
          * solving the Maxwell equations
          */
-        class IWG_Maxwell : public IWG_Timestep
+        class IWG_Maxwell : public IWG_TimestepOld
         {
 //------------------------------------------------------------------------------
         protected:

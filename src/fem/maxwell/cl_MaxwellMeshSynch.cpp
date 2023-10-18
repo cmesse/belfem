@@ -2,7 +2,7 @@
 // Created by christian on 2/9/23.
 //
 #include "commtools.hpp"
-#include "cl_IWG_Timestep.hpp"
+#include "cl_IWG_TimestepOld.hpp"
 #include "cl_MaxwellMeshSynch.hpp"
 
 namespace belfem
@@ -79,8 +79,8 @@ namespace belfem
             comm_barrier();
 
             // synch time step
-            IWG_Timestep * tMaxwell = reinterpret_cast< IWG_Timestep * >( mMagneticKernel.dofmgr( 0 )->iwg() );
-            IWG_Timestep * tFourier = reinterpret_cast< IWG_Timestep * >( mThermalKernel.dofmgr( 0 )->iwg() );
+            IWG_TimestepOld * tMaxwell = reinterpret_cast< IWG_TimestepOld * >( mMagneticKernel.dofmgr( 0 )->iwg() );
+            IWG_TimestepOld * tFourier = reinterpret_cast< IWG_TimestepOld * >( mThermalKernel.dofmgr( 0 )->iwg() );
             tFourier->set_timestep( tMaxwell->timestep() );
 
         }

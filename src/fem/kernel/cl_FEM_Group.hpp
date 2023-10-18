@@ -17,6 +17,7 @@
 #include "cl_Material.hpp"
 #include "en_FEM_DomainType.hpp"
 #include "cl_IF_IntegrationData.hpp"
+#include "cl_FEM_Calculator.hpp"
 
 namespace belfem
 {
@@ -40,6 +41,9 @@ namespace belfem
 
             // pointer to parent
             DofManagerBase * mParent ;
+
+            // pointer to swap object
+            Calculator * mCalc = nullptr ;
 
             // either block or sideset
             const GroupType mType ;
@@ -278,6 +282,14 @@ namespace belfem
              */
             Cell< fem::Element * > &
             elements();
+
+//------------------------------------------------------------------------------
+
+            /**
+             * expose calculator object
+             */
+             Calculator *
+             calculator() ;
 
 //------------------------------------------------------------------------------
 
@@ -628,6 +640,7 @@ namespace belfem
 
             void
             set_mesh_id( const id_t & aID );
+
 //------------------------------------------------------------------------------
 
             /**
@@ -1411,9 +1424,27 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline Vector< real > &
-        Group:: work_normal()
+        Group::work_normal()
         {
             return mWorkNormal ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline Calculator *
+        Group::calculator()
+        {
+            return mCalc ;
+        }
+
+
+
+//------------------------------------------------------------------------------
+
+        inline ElementType
+        Group::element_type() const
+        {
+            return mElementType;
         }
 
 //------------------------------------------------------------------------------

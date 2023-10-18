@@ -48,13 +48,13 @@ namespace belfem
             aXiHat( 1 ,  0 ) =  0.00 ;
             aXiHat( 2 ,  0 ) =  0.00 ;
 
-            aXiHat( 0 ,  2 ) =  0.00 ;
-            aXiHat( 1 ,  2 ) =  1.00 ;
-            aXiHat( 2 ,  2 ) =  0.00 ;
-
             aXiHat( 0 ,  1 ) =  0.00 ;
             aXiHat( 1 ,  1 ) =  0.00 ;
             aXiHat( 2 ,  1 ) =  1.00 ;
+
+            aXiHat( 0 ,  2 ) =  0.00 ;
+            aXiHat( 1 ,  2 ) =  1.00 ;
+            aXiHat( 2 ,  2 ) =  0.00 ;
 
             aXiHat( 0 ,  3 ) =  0.00 ;
             aXiHat( 1 ,  3 ) =  0.00 ;

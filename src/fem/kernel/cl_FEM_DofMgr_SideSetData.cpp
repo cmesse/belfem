@@ -180,10 +180,10 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
             void
-            SideSetData::detect_wetted_sidesets()
+            SideSetData::collect_wetted_sidesets()
             {
                 // get number of wetted sidesets on this proc
-                if( mParent->iwg()->wetted_sidesets().length() > 0 )
+                if( mParent->iwg()->has_convection() )
                 {
                     uint tNumDofs = mParent->iwg()->dof_entity_types().length() ;
 
@@ -254,6 +254,7 @@ namespace belfem
                     }
                 }
             }
+
 //------------------------------------------------------------------------
 
             void

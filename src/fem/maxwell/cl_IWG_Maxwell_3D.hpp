@@ -12,7 +12,7 @@
 //#include "fn_norm.hpp"
 //#include "fn_dot.hpp"
 //#include "fn_trans.hpp"
-#include "cl_IWG_Timestep.hpp"
+#include "cl_IWG_TimestepOld.hpp"
 #include "cl_FEM_Element.hpp"
 #include "cl_FEM_Group.hpp"
 //#include "en_SolverEnums.hpp"
@@ -27,7 +27,7 @@ namespace belfem
 {
     namespace fem
     {
-        class IWG_Maxwell_3D //: public IWG_Timestep
+        class IWG_Maxwell_3D //: public IWG_TimestepOld
         {
             // delete me
             Group * mGroup = nullptr ;

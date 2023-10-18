@@ -23,7 +23,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         IWG_SurfaceGradient::IWG_SurfaceGradient() :
-            IWG( IwgType::SurfceGradient, IwgMode::Direct, SymmetryMode::PositiveDefiniteSymmetric  )
+            IWG( IwgType::SurfaceGradient, IwgMode::Direct, SymmetryMode::PositiveDefiniteSymmetric  )
         {
             mNumberOfDofsPerNode = 1;
             mNumberOfDerivativeDimensions = 3;

@@ -12,11 +12,13 @@ namespace belfem
     enum class IwgType
     {
         SimpleDiffusion,
-        StaticHeatConduction,   // thermal conduction, static
+        StaticHeatConduction,       // thermal conduction, static
         TransientHeatConduction,    // thermal conduction, transient
         Gradient2D,                 // computes derivatives in volume
-        SurfceGradient,             // computes derivatives on surface
+        Gradient3D,                 // computes derivatives in volume
+        SurfaceGradient,            // computes derivatives on surface
         PlaneStress,                // plane stress in 2D
+        LinearElasticity,           // Linear Elasticity
         TATCAD,                     // aerothermodymanics
 
         MAXWELL_HA_TRI3,

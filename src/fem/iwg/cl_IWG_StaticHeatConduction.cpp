@@ -1,4 +1,4 @@
-//
+   //
 // Created by Christian Messe on 24.07.20.
 //
 
@@ -21,7 +21,7 @@ namespace belfem
         IWG_StaticHeatConduction::IWG_StaticHeatConduction(
                 const uint aNumberOfDimensions,
                 const IwgType aType ) :
-                IWG_Timestep( aType )
+                IWG_TimestepOld( aType )
         {
             mNumberOfDofsPerNode = 1;
             mNumberOfDerivativeDimensions = aNumberOfDimensions ;
@@ -36,15 +36,22 @@ namespace belfem
 
             mFluxFields = { "dotQ" };
 
-            this->initialize() ;
-        }
+            mBcFields = { "alpha", "Tinf" } ;
 
+            // heat conduction can have a convection term
+            mHasConvection = true ;
+
+            this->initialize() ;
+
+            // allocate lambda matrix
+            mLambda.set_size( aNumberOfDimensions, aNumberOfDimensions );
+        }
 //------------------------------------------------------------------------------
 // Functions called by Field during assembly
 //------------------------------------------------------------------------------
 
         void
-        IWG_StaticHeatConduction::compute_jacobian_and_rhs(
+        IWG_StaticHeatConduction::compute_conduction(
                 Element        * aElement,
                 Matrix< real > & aJacobian,
                 Vector< real > & aRHS )
@@ -53,45 +60,30 @@ namespace belfem
             aJacobian.fill( 0.0 );
             aRHS.fill( 0.0 );
 
-            // get integration weights
-            const Vector< real > & tW = mGroup->integration_weights();
+            mCalc->link( aElement );
 
-            // get the B-Matrix
-            Matrix< real > & tB      = mGroup->work_dNdX();
+
+            // get integration weights
+            const Vector< real > & tW =  mCalc->weights();
 
             // nodal temperatures
-            Vector< real > & tThat   = mGroup->work_phi();
-
-            // matrix for thermal conduction
-            Matrix< real > & tLambda = mGroup->work_C() ;
+            Vector< real > & tTnodes   = mCalc->vector("T");
 
             // collect temperatures from last iteration
-            this->collect_node_data( aElement, "T", tThat );
+            this->collect_node_data( aElement, "T", tTnodes );
 
             // loop over all integration points
             for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
             {
-                // compute geometry Jacobian
-                Matrix< real > & tJ = aElement->J( k );
+                // get the B-Operator
+                const Matrix< real > & tB = mCalc->B( k );
 
-                // interpolate temperature for this point
-                real tT = dot( mGroup->n( k ), tThat );
-
-                // determinant
-                real tDetJ = std::abs( det( tJ ) );
-
-                // compute B
-                tB = inv( tJ ) * mGroup->dNdXi( k );
-
-                // compute thermal conductivity
-                mGroup->thermal_conductivity( tLambda, tT );
+                real tT = mCalc->node_interp( k, tTnodes );
 
                 // add to integration
-                aJacobian += tW( k ) * trans( tB ) * tLambda * tB * tDetJ;
-
+                aJacobian += tW( k ) * trans( tB ) * mMaterial->lambda( tT ) * tB * det( mCalc->J( k ) );
             }
         }
-
 
 //------------------------------------------------------------------------------
 
@@ -101,6 +93,7 @@ namespace belfem
                 Matrix< real > & aJacobian,
                 Vector< real > & aRHS )
         {
+
             // reset result vectors
             aJacobian.fill( 0.0 );
             aRHS.fill( 0.0 );
@@ -108,26 +101,23 @@ namespace belfem
             // get integration weights
             const Vector< real > & tW = mGroup->integration_weights();
 
-            // matrix for boundary conditions
-            Matrix< real > & tPsi = mGroup->work_Psi() ;
 
             // node coordinates
-            Matrix< real > & tX = mGroup->node_coords() ;
-
-            Cell< string > tFieldLabels = { "alpha", "Tinf" } ;
+            Matrix< real > & tX = mCalc->matrix("X");
+            this->collect_node_coords( aElement, tX );
 
             // collect temperatures from last iteration
-            this->collect_node_data( aElement, tFieldLabels, tPsi );
+            this->collect_node_data( aElement, mBcFields );
+
 
             // loop over all integration points
             for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
             {
-
                 // interpolate alpha for this point
-                real tAlpha = dot( mGroup->n( k ).vector_data(), tPsi.col( 0 ) );
+                real tAlpha = dot( mGroup->n( k ).vector_data(), mCalc->vector( "alpha").vector_data() );
 
                 // interpolate T inf for this point
-                real tTinf = dot( mGroup->n( k ).vector_data(), tPsi.col( 1 ) );
+                real tTinf = dot( mGroup->n( k ).vector_data(), mCalc->vector( "T").vector_data() );
 
                 // determinant along surface
                 real tDetJ =  mesh::compute_surface_increment( mGroup->dNdXi( k ), tX );
@@ -142,8 +132,11 @@ namespace belfem
 
             }
 
-            aJacobian *= mDeltaTime ;
-            aRHS *= mDeltaTime ;
+
+
+
+            //aJacobian *= mDeltaTime ;
+            //aRHS *= mDeltaTime ;
         }
 
 //------------------------------------------------------------------------------
@@ -159,6 +152,8 @@ namespace belfem
                       : mesh::number_of_nodes( aElement->element()->type() ),
                       "load vector has wrong length" );
 
+        BELFEM_ASSERT( mMesh->number_of_dimensions() == 2, "the convection routine has been written for the 2D case" );
+
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         // get data containers
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -167,8 +162,7 @@ namespace belfem
         const Vector< real > & tW = mGroup->integration_weights();
 
         // nodal information for source fields
-        Vector < real > & tpsi = mGroup->work_psi();
-
+        Vector < real > & tdotq = mCalc->vector("dotq");
 
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -178,11 +172,11 @@ namespace belfem
         // reset the load vector
         aConvection.fill( 0.0 );
 
-        this->collect_node_data( aElement, "dotQ", tpsi );
+        this->collect_node_data( aElement, "dotQ", tdotq );
 
         // collect node coords from master
         uint tNumDim = mField->mesh()->number_of_dimensions() ;
-        Matrix< real > & tX = mGroup->node_coords() ;
+        Matrix< real > & tX = mGroup->calculator()->matrix("X");
 
         mesh::collect_node_coords( aElement->element(),
                                    tX,
@@ -195,7 +189,7 @@ namespace belfem
         for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
         {
             // compute heatflux
-            tDotQ = dot( mGroup->N( k ).row( 0 ), tpsi.vector_data() );
+            tDotQ = dot( mGroup->integration()->phi( k ), tdotq );
 
             aConvection += tW( k ) * trans( mGroup->N( k ).row( 0 ) ) * tDotQ
                            *  mesh::compute_surface_increment( mGroup->dNdXi( k ), tX );
@@ -206,32 +200,38 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        IWG_StaticHeatConduction::allocate_work_matrices( Group    * aGroup )
+        IWG_StaticHeatConduction::link_to_group( Group * aGroup )
         {
-            // call function from parent
-            IWG::allocate_work_matrices( aGroup );
+            IWG::link_to_group( aGroup );
 
-            // change size of Psi Matrix, needed for alpha and T_inf
-            // and alpha and T_inf boundary condition
-            aGroup->work_Psi().set_size(
-                    mNumberOfNodesPerElement,
-                    2 );
+            switch ( aGroup->domain_type() )
+            {
 
-            // needed for dotq
-            aGroup->work_psi().set_size( mNumberOfNodesPerElement );
+                case( DomainType::Default ) :
+                {
+                    mFunComputeJacobian = & IWG_StaticHeatConduction::compute_conduction ;
+                    break ;
+                }
+                case( DomainType::Neumann ) :
+                {
+                   //  Neumann blocks don't have a Jacobian
+                   mFunComputeJacobian = nullptr ;
+                   break ;
+                }
+                case( DomainType::ThermalAlpha ) :
+                {
+                    mFunComputeJacobian = & IWG_StaticHeatConduction::compute_alpha_boundary_condition ;
 
-            aGroup->work_C().set_size( mNumberOfSpatialDimensions,
-                                       mNumberOfSpatialDimensions );
-
-            /*
-            // Help Matrix
-            aGroup->work_H().set_size( mNumberOfDofsPerNode * mNumberOfNodesPerElement,
-                                       mNumberOfDofsPerNode * mNumberOfNodesPerElement,
-                                       0.0 );
-
-            // change size of psi vector
-             ) ; */
+                    break ;
+                }
+                default:
+                {
+                    BELFEM_ERROR( false, "Illegal Domain type." );
+                    mFunComputeJacobian = nullptr ;
+                }
+            }
         }
+
 
 //------------------------------------------------------------------------------
     } /* end namespace fem */

@@ -5,13 +5,27 @@
 #ifndef BELFEM_CL_IWG_STATICHEATCONDUCTION_HPP
 #define BELFEM_CL_IWG_STATICHEATCONDUCTION_HPP
 
-#include "cl_IWG_Timestep.hpp"
+#include "cl_IWG_TimestepOld.hpp"
 namespace belfem
 {
     namespace fem
     {
-        class IWG_StaticHeatConduction : public IWG_Timestep
+        class IWG_StaticHeatConduction : public IWG_TimestepOld
         {
+            Cell< string > mBcFields ;
+
+            // link to function
+            void
+            ( IWG_StaticHeatConduction::*mFunComputeJacobian )
+                    (       Element        * aElement,
+                            Matrix< real > & aJacobian,
+                            Vector< real > & aRHS );
+
+        protected:
+
+            // matrix for thermal conductivity
+            Matrix< real > mLambda ;
+
 //------------------------------------------------------------------------------
         public:
 //------------------------------------------------------------------------------
@@ -44,6 +58,19 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            virtual void
+            link_to_group( Group * aGroup );
+
+//------------------------------------------------------------------------------
+        private:
+//------------------------------------------------------------------------------
+
+            void
+            compute_conduction(
+                    Element        * aElement,
+                    Matrix< real > & aJacobian,
+                    Vector< real > & aRHS );
+
             void
             compute_convection(
                     Element        * aElement,
@@ -51,21 +78,25 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            virtual void
+            void
             compute_alpha_boundary_condition(
                     Element        * aElement,
                     Matrix< real > & aJacobian,
                     Vector< real > & aRHS );
 
 //------------------------------------------------------------------------------
-        protected:
-//------------------------------------------------------------------------------
-
-            virtual void
-            allocate_work_matrices( Group    * aGroup );
-
-//------------------------------------------------------------------------------
         };
+//------------------------------------------------------------------------------
+
+        inline void
+        IWG_StaticHeatConduction::compute_jacobian_and_rhs(
+                Element        * aElement,
+                Matrix< real > & aJacobian,
+                Vector< real > & aRHS )
+        {
+            ( this->*mFunComputeJacobian ) ( aElement, aJacobian, aRHS ) ;
+        }
+
 //------------------------------------------------------------------------------
     } /* end namespace fem */
 } /* end namespace belfem */

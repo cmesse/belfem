@@ -50,7 +50,9 @@ namespace belfem
                 SideSet * mEmptySideset = nullptr;
 
                 // counts how many nodes on all sidesets experience convection
-                index_t mNumberOfConvectionNodes = 0 ;
+                index_t mNumberOfConvectionNodes ;
+
+                Cell< Vector< index_t > > mConvectionNodes ;
 
 //-----------------------------------------------------------------------------
             public:
@@ -97,12 +99,17 @@ namespace belfem
                  *  check if user has set the wetted sidesets
                  */
                  void
-                 detect_wetted_sidesets();
+                 collect_wetted_sidesets();
 
 //-----------------------------------------------------------------------------
 
                  void
                  count_wetted_nodes();
+
+//-----------------------------------------------------------------------------
+
+                 index_t
+                 number_of_wetted_nodes() const ;
 
 //-----------------------------------------------------------------------------
 
@@ -161,6 +168,14 @@ namespace belfem
             SideSetData::sideset_exists( const id_t aID ) const
             {
                 return mSideSetMap.key_exists( aID );
+            }
+
+//------------------------------------------------------------------------------
+
+            inline index_t
+            SideSetData::number_of_wetted_nodes() const
+            {
+                return mNumberOfConvectionNodes ;
             }
 
 //------------------------------------------------------------------------------

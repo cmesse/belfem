@@ -1,5 +1,5 @@
-//
-// Created by christian on 7/28/21.
+    //
+// Created by christian on 7/18/23.
 //
 
 #include "typedefs.hpp"
@@ -7,155 +7,97 @@
 #include "commtools.hpp"
 #include "fn_dot.hpp"
 #include "cl_IWG_Timestep.hpp"
-#include "cl_FEM_Group.hpp"
-#include "cl_FEM_DofManagerBase.hpp"
-#include "cl_FEM_Kernel.hpp"
-#include "cl_FEM_Element.hpp"
-#include "cl_FEM_Group.hpp"
+
 
 namespace belfem
 {
     namespace fem
     {
-//------------------------------------------------------------------------------
-
-            IWG_Timestep::IWG_Timestep(
-                    const IwgType aType,
-                    const IwgMode aMode,
-                    const SymmetryMode aSymmetryMode,
-                    const DofMode      aDofMode,
-                    const SideSetDofLinkMode aSideSetDofLinkMode ) :
-                    IWG( aType, aMode, aSymmetryMode, aDofMode, aSideSetDofLinkMode )
-            {
-
-            }
 
 //------------------------------------------------------------------------------
 
-            void
-            IWG_Timestep::set_timestep( const real aDeltaTime )
-            {
-                BELFEM_ASSERT( mField != nullptr, "IWG was not linked to a field" );
+        void
+        IWG_Timestep::set_timestepping_method( const EulerMethod aMethod, const bool aHaveStiffness )
+        {
+            // remember the method
+            mMethod = aMethod ;
 
-                if( mField->parent()->master() == mField->rank() )
+            if( aHaveStiffness )
+            {
+                switch( aMethod )
                 {
-                    mDeltaTime = aDeltaTime;
-
-                    Vector< real > tDeltaTime(
-                            mField->parent()->comm_table().length(),
-                            aDeltaTime );
-
-                    send( mField->parent()->comm_table(), tDeltaTime );
-                }
-                else
-                {
-                    receive( mField->parent()->master(), mDeltaTime );
-                }
-            }
-
-//------------------------------------------------------------------------------
-
-            real
-            IWG_Timestep::compute_Ttheta( const uint aK )
-            {
-                return ( 1.0 - mTheta )
-                             * dot( mGroup->n( aK ), mGroup->work_psi() )
-                        + mTheta
-                             * dot( mGroup->n( aK ), mGroup->work_phi() );
-            }
-
-//------------------------------------------------------------------------------
-
-            real
-            IWG_Timestep::compute_T0( const uint aK )
-            {
-                return dot( mGroup->n( aK ), mGroup->work_psi() );
-            }
-
-//------------------------------------------------------------------------------
-
-            real
-            IWG_Timestep::compute_T1( const uint aK )
-            {
-                return dot( mGroup->n( aK ), mGroup->work_phi() );
-            }
-
-//------------------------------------------------------------------------------
-
-            void
-            IWG_Timestep::set_euler_method( const real aTheta )
-            {
-                mTheta = aTheta ;
-                if( aTheta == 0.0 )
-                {
-                    // set the interpolation function
-                    mComputeT = & IWG_Timestep::compute_T0 ;
-                }
-                else if ( aTheta == 1.0 )
-                {
-                    mComputeT = & IWG_Timestep::compute_T1 ;
-                }
-                else
-                {
-                    mComputeT = & IWG_Timestep::compute_Ttheta ;
-                }
-            }
-
-//------------------------------------------------------------------------------
-
-            void
-            IWG_Timestep::set_euler_method( const EulerMethod aEulerMethod )
-            {
-                switch( aEulerMethod )
-                {
+                    case( EulerMethod::Static ) :
+                    {
+                        mTimestep = & IWG_Timestep::static_subfield ;
+                        break ;
+                    }
                     case( EulerMethod::ForwardExplicit ) :
                     {
-                        // set the parameter
-                        mTheta = 0.0 ;
-
-                        // set the interpolation function
-                        mComputeT
-                            = & IWG_Timestep::compute_T0 ;
-
-                        break ;
+                        mTimestep = & IWG_Timestep::explicit_euler ;
+                        break;
                     }
                     case( EulerMethod::CrankNicolson ) :
                     {
-                        // set the parameter
-                        mTheta = 0.5 ;
-
-                        // set the interpolation function
-                        mComputeT
-                            = & IWG_Timestep::compute_Ttheta ;
+                        mTimestep = & IWG_Timestep::crank_nicolson ;
                         break ;
                     }
                     case( EulerMethod::Galerkin ) :
                     {
-                        // set the parameter
-                        mTheta = 2.0 / 3.0 ;
-
-                        // set the interpolation function
-                        mComputeT
-                            = & IWG_Timestep::compute_Ttheta ;
+                        mTimestep = & IWG_Timestep::galerkin ;
                         break ;
                     }
                     case( EulerMethod::BackwardImplicit ) :
                     {
-                        // set the parameter
-                        mTheta = 1.0 ;
-
-                        // set the interpolation function
-                        mComputeT
-                            = & IWG_Timestep::compute_T1 ;
+                        mTimestep = & IWG_Timestep::backwards_euler ;
+                        break ;
+                    }
+                    case( EulerMethod::Derivative ) :
+                    {
+                        mTimestep = & IWG_Timestep::derivative ;
                         break ;
                     }
                     default:
                     {
-                        BELFEM_ERROR( false, "Unknown EulerMethod" );
+                        mTimestep = nullptr ;
+                        BELFEM_ERROR( false, "Invalid euler method");
+                        break ;
                     }
                 }
             }
+            else
+            {
+                switch( aMethod )
+                {
+                    case( EulerMethod::Static ) :
+                    {
+                        mTimestep = nullptr ;
+                        BELFEM_ERROR( false,
+                                      "Invalid euler method: must have a stiffness if field is static");
+                        break ;
+                    }
+                    case( EulerMethod::ForwardExplicit ) :
+                    case( EulerMethod::CrankNicolson ) :
+                    case( EulerMethod::Galerkin ) :
+                    case( EulerMethod::BackwardImplicit ) :
+                    {
+                        mTimestep = & IWG_Timestep::euler_no_stiffness ;
+                        break ;
+                    }
+                    case( EulerMethod::Derivative ) :
+                    {
+                        mTimestep = & IWG_Timestep::derivative_no_stiffness ;
+                        break ;
+                    }
+                    default:
+                    {
+                        mTimestep = nullptr ;
+                        BELFEM_ERROR( false, "Invalid euler method");
+                        break ;
+                    }
+                }
+            }
+        }
 
 //------------------------------------------------------------------------------
-    } /* end namespace fem */
-} /* end namespace belfem */
+    }
+}

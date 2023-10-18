@@ -54,17 +54,20 @@ int main( int    argc,
     // tParams.enforce_linear( { 1 } );
 
     // with the parameters object set, we create the kernel
-    Kernel tKernel( &tParams, true );
+    Kernel tKernel( &tParams, false );
 
     // create the equation object
-    IWG_StaticHeatConduction tIWG( tMesh->number_of_dimensions() );
+    //IWG_StaticHeatConduction tIWG( tMesh->number_of_dimensions() );
+
+    IWG * tIWG = tKernel.create_equation( IwgType::StaticHeatConduction );
+
+    tIWG->select_sidesets( { 1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 } );
+    tIWG->select_block( 26 );
 
     // now we grab the first field of the kernel
-    Field * tField = tKernel.field( 0 );
+    //Field * tField = tKernel.field( 0 );
+    DofManager * tField = tKernel.create_field( tIWG );
 
-
-    // and link it with the equation object
-    tField->set_integrated_weak_governing_equation( &tIWG );
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // User Settings and Boundary conditions
@@ -73,8 +76,6 @@ int main( int    argc,
     // initial guess
     real tTw0 = 300.0 ;
 
-    // initialize starting conditions
-    tField->field_data( "T" ).fill( tTw0 );
 
     // select the solver for this problem
 #ifdef BELFEM_PETSC
@@ -83,13 +84,16 @@ int main( int    argc,
     tField->set_solver( gDefaultSolver );
 #endif
 
+
+
+
     // select the material
     tField->block( 26 )->set_material( MaterialType::Copper ); // 26
 
     // set hotgas temperature
-    tField->sideset( 1 )->impose_dirichlet( 600.0 ); // 1
+    //tField->sideset( 1 )->impose_dirichlet( 600.0 ); // 1
     //tField->sideset( 1 )->impose_neumann( 60e6 );
-    //tField->sideset( 1 )->impose_alpha( 1e5, 800.0 );
+    tField->sideset( 1 )->impose_alpha( 1e5, 800.0 );
 
     // set coldgas temperature
     Vector< id_t > tChannels = { 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 };
@@ -105,13 +109,17 @@ int main( int    argc,
     comm_barrier();
 
     // initialize the dofs and detect wetted sidesets
-    tField->init_dofs() ;
+    //tField->init_dofs() ;
 
     // compute the surface normals of the mesh and redistribute over all procs
     //mesh::compute_surface_normals( tField->mesh(), tIWG.wetted_sidesets() );
 
-    tField->initialize_jacobian();
+    //tField->initialize_jacobian();
+    tField->initialize() ;
 
+
+    // initialize starting conditions
+    tField->field_data( "T" ).fill( tTw0 );
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Start the computation
@@ -125,8 +133,11 @@ int main( int    argc,
 
     while( tResidual > 1e-7 )
     {
-        tField->compute_surface_loads();
+        tField->reset_convection() ;
+        // tField->compute_surface_loads();
         tField->compute_jacobian_and_rhs();
+
+
         tField->solve();
         tResidual = tField->residual( tIter );
 

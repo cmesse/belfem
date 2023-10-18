@@ -13,7 +13,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         IWG_Maxwell_Thermal2D::IWG_Maxwell_Thermal2D() :
-                IWG_Timestep( IwgType::TransientHeatConduction,
+                IWG_TimestepOld( IwgType::TransientHeatConduction,
                      IwgMode::Iterative,
                      SymmetryMode::PositiveDefiniteSymmetric,
                      DofMode::AllBlocksEqual ),

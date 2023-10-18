@@ -38,12 +38,21 @@ namespace belfem
                 mMeshID( aID )
         {
             this->link_material_functions();
+
+            // create the calculator object
+            mCalc = new Calculator( this );
         }
 
 //------------------------------------------------------------------------------
+
         void
         Group::delete_pointers()
         {
+            if( mCalc != nullptr )
+            {
+                delete mCalc ;
+            }
+
             if ( mOwnElements )
             {
                 for ( auto tElement: mElements )
@@ -63,15 +72,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        ElementType
-        Group::element_type() const
-        {
-            BELFEM_ERROR( false, "Forbidden call to parent function Group::element_type()" );
-            return ElementType::EMPTY;
-        }
-
-//------------------------------------------------------------------------------
-
         void
         Group::assume_isogeometry()
         {
@@ -85,6 +85,7 @@ namespace belfem
 
             mGeometryIntegrationData = mIntegrationData;
         }
+
 //------------------------------------------------------------------------------
 
         Vector< real > &

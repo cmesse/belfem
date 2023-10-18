@@ -234,7 +234,7 @@ namespace belfem
         DofManager::init_dofs()
         {
             // check if user has set the wetted sidesets
-            mSideSetData->detect_wetted_sidesets() ;
+            mSideSetData->collect_wetted_sidesets() ;
 
             // count how many nodes are wet ( so that the convection table is not needed )
             mSideSetData->count_wetted_nodes() ;
@@ -275,6 +275,24 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
         void
+        DofManager::init_work()
+        {
+            // loop over all blocks
+            for ( Block * tBlock : mBlockData->blocks() )
+            {
+                tBlock->calculator()->allocate() ;
+            }
+
+            // loop over all sidesets
+            for( SideSet * tSideSet : mSideSetData->sidesets() )
+            {
+                tSideSet->calculator()->allocate() ;
+            }
+        }
+
+//-----------------------------------------------------------------------------
+
+        void
         DofManager::initialize()
         {
             BELFEM_ASSERT( mIWG->is_initialized(), "initialize iwg first");
@@ -286,7 +304,11 @@ namespace belfem
             // link dofs with fields on mesh
             mFieldData->update_field_indices( mDofData->dofs() );
 
+            // initialize degrees of freedom
             this->init_dofs();
+
+            // initialize work memory for the groups
+            this->init_work() ;
 
             // allocate the matrices
             this->init_matrices();
@@ -549,7 +571,7 @@ namespace belfem
             for ( SideSet * tSideSet : mSideSetData->sidesets() )
             {
                 // jump to next sideset if this block is not used
-                if( ! tSideSet->is_active() )
+                if( ! tSideSet->is_active() || tSideSet->bc_type( 0 ) == BoundaryConditionImposing::Neumann )
                 {
                     continue ;
                 }
@@ -580,7 +602,7 @@ namespace belfem
                 }
             }
 
-            if( mIWG->has_alpha() )
+            if( mIWG->has_convection() )
             {
                 for( SideSet * tSideSet : mSideSetData->sidesets() )
                 {
@@ -590,7 +612,7 @@ namespace belfem
                     }
 
                     // check if this is an alpha BC
-                    if ( tSideSet->bc_type( 0 ) == BoundaryConditionImposing::Alpha )
+                    if ( tSideSet->bc_type( 0 ) == BoundaryConditionImposing::Neumann )
                     {
                         // link this IWG with the group
                         mIWG->link_to_group( tSideSet ) ;
@@ -612,8 +634,8 @@ namespace belfem
                         // loop over all elements on this sideset
                         for ( Element * tElement : tElements )
                         {
-                            mIWG->compute_alpha_boundary_condition( tElement, tJ, tB );
-                            mSolverData->assemble_jacobian_and_rhs( tElement, tJ, tB );
+                            mIWG->compute_convection( tElement, tB );
+                            mSolverData->asseble_surface_loads( tElement, tB );
                         }
 
                     }
@@ -636,6 +658,18 @@ namespace belfem
                 message( 4, "    ... time for computing Jacobian and residual : %u ms\n",
                          ( unsigned int ) tTimer.stop());
             }
+        }
+
+//-----------------------------------------------------------------------------
+
+        void
+        DofManager::reset_convection()
+        {
+            if( ! mInitializedFlag )
+            {
+                this->initialize();
+            }
+            mSolverData->reset_convection() ;
         }
 
 //-----------------------------------------------------------------------------

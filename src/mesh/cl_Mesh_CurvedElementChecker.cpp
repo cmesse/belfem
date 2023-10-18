@@ -2,6 +2,8 @@
 // Created by Christian Messe on 05.01.22.
 //
 #include "commtools.hpp"
+#include "cl_Element.hpp"
+#include "cl_Face.hpp"
 #include "cl_Mesh_CurvedElementChecker.hpp"
 #include "assert.hpp"
 
@@ -20,7 +22,6 @@ namespace belfem
                 mBlocks( aBlocks ),
                 mSideSets( aSideSets )
         {
-
         }
 
 //------------------------------------------------------------------------------
@@ -44,11 +45,9 @@ namespace belfem
                 {
 
                     // perform flagging
-                    ( this->*mFunCheck )( tElement );
-
-                    // check if element is counted
-                    if( tElement->is_curved() )
+                    if( ( this->*mFunCheck )( tElement ) )
                     {
+                        tElement->set_curved_flag() ;
                         ++aCount ;
                     }
                 }
@@ -145,10 +144,7 @@ namespace belfem
                 {
                     case( ElementType::LINE2 ) :
                     case( ElementType::TRI3 ) :
-                    case( ElementType::QUAD4 ) :
                     case( ElementType::TET4 ) :
-                    case( ElementType::PENTA6 ) :
-                    case( ElementType::HEX8 ) :
                     {
                         mFunCheck = & CurvedElementChecker::check_linear ;
                         break ;
@@ -156,6 +152,11 @@ namespace belfem
                     case( ElementType::TRI6 ) :
                     {
                         mFunCheck = & CurvedElementChecker::check_tri6 ;
+                        break ;
+                    }
+                    case( ElementType::QUAD4 ) :
+                    {
+                        mFunCheck = & CurvedElementChecker::check_quad4 ;
                         break ;
                     }
                     case( ElementType::QUAD8 ) :
@@ -173,6 +174,11 @@ namespace belfem
                         mFunCheck = & CurvedElementChecker::check_tet10 ;
                         break ;
                     }
+                    case( ElementType::PENTA6 ) :
+                    {
+                        mFunCheck = & CurvedElementChecker::check_penta6 ;
+                        break ;
+                    }
                     case( ElementType::PENTA15 ) :
                     {
                         mFunCheck = & CurvedElementChecker::check_penta15 ;
@@ -181,6 +187,11 @@ namespace belfem
                     case( ElementType::PENTA18 ) :
                     {
                         mFunCheck = & CurvedElementChecker::check_penta18 ;
+                        break ;
+                    }
+                    case( ElementType::HEX8 ) :
+                    {
+                        mFunCheck = & CurvedElementChecker::check_hex8 ;
                         break ;
                     }
                     case( ElementType::HEX20 ) :
@@ -207,7 +218,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        void
+        bool
         CurvedElementChecker::check_tri6_2d( Element * aElement )
         {
 
@@ -215,47 +226,46 @@ namespace belfem
                                       aElement->node( 1 )->x(),
                                       aElement->node( 3 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->x(),
+            if( this->check_midpoint( aElement->node( 1 )->x(),
                                            aElement->node( 2 )->x(),
                                            aElement->node( 4 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 2 )->x(),
+            if( this->check_midpoint( aElement->node( 2 )->x(),
                                            aElement->node( 0 )->x(),
                                            aElement->node( 5 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->y(),
+            if( this->check_midpoint( aElement->node( 0 )->y(),
                                       aElement->node( 1 )->y(),
                                       aElement->node( 3 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->y(),
+            if( this->check_midpoint( aElement->node( 1 )->y(),
                                            aElement->node( 2 )->y(),
                                            aElement->node( 4 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 2 )->y(),
+            if( this->check_midpoint( aElement->node( 2 )->y(),
                                            aElement->node( 0 )->y(),
                                            aElement->node( 5 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else
-            {
-                aElement->unset_curved_flag() ;
-            }
+
+            return false ;
+
         }
 
 //------------------------------------------------------------------------------
 
-        void
+        bool
         CurvedElementChecker::check_quad8_2d( Element * aElement )
         {
 
@@ -263,137 +273,86 @@ namespace belfem
                                       aElement->node( 1 )->x(),
                                       aElement->node( 4 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->x(),
+            if( this->check_midpoint( aElement->node( 1 )->x(),
                                            aElement->node( 2 )->x(),
                                            aElement->node( 5 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 2 )->x(),
+            if( this->check_midpoint( aElement->node( 2 )->x(),
                                            aElement->node( 3 )->x(),
                                            aElement->node( 6 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 3 )->x(),
+            if( this->check_midpoint( aElement->node( 3 )->x(),
                                            aElement->node( 0 )->x(),
                                            aElement->node( 7 )->x()) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->y(),
+            if( this->check_midpoint( aElement->node( 0 )->y(),
                                       aElement->node( 1 )->y(),
                                       aElement->node( 4 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->y(),
+            if( this->check_midpoint( aElement->node( 1 )->y(),
                                            aElement->node( 2 )->y(),
                                            aElement->node( 5 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 2 )->y(),
+            if( this->check_midpoint( aElement->node( 2 )->y(),
                                            aElement->node( 3 )->y(),
                                            aElement->node( 6 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 3 )->y(),
+            if( this->check_midpoint( aElement->node( 3 )->y(),
                                            aElement->node( 0 )->y(),
                                            aElement->node( 7 )->y()) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else
-            {
-                aElement->unset_curved_flag() ;
-            }
+
+            return false ;
         }
 
 //------------------------------------------------------------------------------
 
-        void
+        bool
         CurvedElementChecker::check_quad9_2d( Element * aElement )
         {
-
-
-
+            if( this->check_quad8_2d( aElement ) )
+            {
+                return true ;
+            }
             if( this->check_midpoint( aElement->node( 0 )->x(),
-                                      aElement->node( 1 )->x(),
-                                      aElement->node( 4 )->x() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 1 )->x(),
-                                           aElement->node( 2 )->x(),
-                                           aElement->node( 5 )->x() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 2 )->x(),
-                                           aElement->node( 3 )->x(),
-                                           aElement->node( 6 )->x() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 3 )->x(),
-                                           aElement->node( 0 )->x(),
-                                           aElement->node( 7 )->x()) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 0 )->x(),
                                            aElement->node( 1 )->x(),
                                            aElement->node( 2 )->x(),
                                            aElement->node( 3 )->x(),
                                            aElement->node( 8 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->y(),
-                                      aElement->node( 1 )->y(),
-                                      aElement->node( 4 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 1 )->y(),
-                                           aElement->node( 2 )->y(),
-                                           aElement->node( 5 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 2 )->y(),
-                                           aElement->node( 3 )->y(),
-                                           aElement->node( 6 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 3 )->y(),
-                                           aElement->node( 0 )->y(),
-                                           aElement->node( 7 )->y()) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 0 )->y(),
+            if( this->check_midpoint( aElement->node( 0 )->y(),
                                            aElement->node( 1 )->y(),
                                            aElement->node( 2 )->y(),
                                            aElement->node( 3 )->y(),
                                            aElement->node( 8 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else
-            {
-                aElement->unset_curved_flag() ;
-            }
+
+            return false ;
         }
 
 //------------------------------------------------------------------------------
 
-        void
+        bool
         CurvedElementChecker::check_tri6( Element * aElement )
         {
 
@@ -401,207 +360,246 @@ namespace belfem
                                       aElement->node( 1 )->x(),
                                       aElement->node( 3 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->x(),
+            if( this->check_midpoint( aElement->node( 1 )->x(),
                                            aElement->node( 2 )->x(),
                                            aElement->node( 4 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 2 )->x(),
+            if( this->check_midpoint( aElement->node( 2 )->x(),
                                            aElement->node( 0 )->x(),
                                            aElement->node( 5 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->y(),
+            if( this->check_midpoint( aElement->node( 0 )->y(),
                                       aElement->node( 1 )->y(),
                                       aElement->node( 3 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->y(),
+            if( this->check_midpoint( aElement->node( 1 )->y(),
                                            aElement->node( 2 )->y(),
                                            aElement->node( 4 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 2 )->y(),
+            if( this->check_midpoint( aElement->node( 2 )->y(),
                                            aElement->node( 0 )->y(),
                                            aElement->node( 5 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->z(),
+            if( this->check_midpoint( aElement->node( 0 )->z(),
                                       aElement->node( 1 )->z(),
                                       aElement->node( 3 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->z(),
+            if( this->check_midpoint( aElement->node( 1 )->z(),
                                            aElement->node( 2 )->z(),
                                            aElement->node( 4 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 2 )->z(),
+            if( this->check_midpoint( aElement->node( 2 )->z(),
                                            aElement->node( 0 )->z(),
                                            aElement->node( 5 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else
-            {
-                aElement->unset_curved_flag() ;
-            }
+
+            return false ;
         }
 
 //------------------------------------------------------------------------------
 
-        void
+        bool
+        CurvedElementChecker::check_quad4( Element * aElement )
+        {
+            // we create a plane from 0->1 and 0-> 2. Then we check
+            // if point 3 is on this plane
+
+            mX[ 0 ] = aElement->node( 0 )->x();
+            mX[ 1 ] = aElement->node( 1 )->x();
+            mX[ 2 ] = aElement->node( 2 )->x();
+            mX[ 3 ] = aElement->node( 3 )->x();
+
+            mY[ 0 ] = aElement->node( 0 )->y();
+            mY[ 1 ] = aElement->node( 1 )->y();
+            mY[ 2 ] = aElement->node( 2 )->y();
+            mY[ 3 ] = aElement->node( 3 )->y();
+
+            mZ[ 0 ] = aElement->node( 0 )->z();
+            mZ[ 1 ] = aElement->node( 1 )->z();
+            mZ[ 2 ] = aElement->node( 2 )->z();
+            mZ[ 3 ] = aElement->node( 3 )->z();
+
+            // let  a = p1-p0 and b = p2-p0
+            // then n = cross( a, b )
+
+            // distance of plane to origin = x * n
+            real td = mZ[0] * ( mX[1] * mY[2] - mX[2]*mY[1] )
+                      + mZ[1] * ( mX[2] * mY[0] - mX[0] * mY[2] )
+                      + mZ[2] * ( mX[0] * mY[1] - mX[1] * mY[0] );
+
+            // expression for point 3
+            real tf = mX[0] * ( mZ[3] * ( mY[1] - mY[2] ) + mY[3] * ( mZ[2] - mZ[1]  ) )
+                    + mX[1] * ( mZ[3] * ( mY[2] - mY[0] ) + mY[3] *( mZ[0] - mZ[2]  ) )
+                    + mX[2] * ( mZ[3] * ( mY[0] - mY[1] ) + mY[3] *( mZ[1] - mZ[0] ) )
+                    + mX[3] * ( mY[0] * ( mZ[1] - mZ[2] ) + mY[1] *( mZ[2] - mZ[0] )
+                                + mY[2]*( mZ[0] - mZ[1] ) );
+            // check if point does not sit on plane
+            return std::abs( td - tf ) > mTwoMeshEpsilon ;
+        }
+
+//------------------------------------------------------------------------------
+
+        bool
+        CurvedElementChecker::check_quad4_face( Element * aElement, const uint aFaceIndex )
+        {
+            // we create a plane from 0->1 and 0-> 2. Then we check
+            // if point 3 is on this plane
+
+            aElement->get_corner_nodes_of_facet( aFaceIndex, mNodes );
+
+            mX[ 0 ] = mNodes( 0 )->x();
+            mX[ 1 ] = mNodes( 1 )->x();
+            mX[ 2 ] = mNodes( 2 )->x();
+            mX[ 3 ] = mNodes( 3 )->x();
+
+            mY[ 0 ] = mNodes( 0 )->y();
+            mY[ 1 ] = mNodes( 1 )->y();
+            mY[ 2 ] = mNodes( 2 )->y();
+            mY[ 3 ] = mNodes( 3 )->y();
+
+            mZ[ 0 ] = mNodes( 0 )->z();
+            mZ[ 1 ] = mNodes( 1 )->z();
+            mZ[ 2 ] = mNodes( 2 )->z();
+            mZ[ 3 ] = mNodes( 3 )->z();
+
+            // let  a = p1-p0 and b = p2-p0
+            // then n = cross( a, b )
+
+            // distance of plane to origin = x * n
+            real td = mZ[0] * ( mX[1] * mY[2] - mX[2]*mY[1] )
+                      + mZ[1] * ( mX[2] * mY[0] - mX[0] * mY[2] )
+                      + mZ[2] * ( mX[0] * mY[1] - mX[1] * mY[0] );
+
+            // expression for point 3
+            real tf = mX[0] * ( mZ[3] * ( mY[1] - mY[2] ) + mY[3] *( mZ[2] - mZ[1]  ) )
+            + mX[1] * ( mZ[3] * ( mY[2] - mY[0] ) + mY[3] *( mZ[0] - mZ[2]  ) )
+            + mX[2] * ( mZ[3] * ( mY[0] - mY[1] ) + mY[3] *( mZ[1] - mZ[0] ) )
+            + mX[3] * ( mY[0] * ( mZ[1] - mZ[2] ) + mY[1] *( mZ[2] - mZ[0] )
+                + mY[2]*( mZ[0] - mZ[1] ) );
+
+            // check if point does not sit on plane
+            return std::abs( td - tf ) > mTwoMeshEpsilon ;
+        }
+
+//------------------------------------------------------------------------------
+
+        bool
         CurvedElementChecker::check_quad8( Element * aElement )
         {
-
+            if( this->check_quad4( aElement ) )
+            {
+                return true ;
+            }
             if( this->check_midpoint( aElement->node( 0 )->x(),
                                       aElement->node( 1 )->x(),
                                       aElement->node( 4 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->x(),
+            if( this->check_midpoint( aElement->node( 1 )->x(),
                                            aElement->node( 2 )->x(),
                                            aElement->node( 5 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 2 )->x(),
+            if( this->check_midpoint( aElement->node( 2 )->x(),
                                            aElement->node( 3 )->x(),
                                            aElement->node( 6 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 3 )->x(),
+            if( this->check_midpoint( aElement->node( 3 )->x(),
                                            aElement->node( 0 )->x(),
                                            aElement->node( 7 )->x()) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->y(),
+            if( this->check_midpoint( aElement->node( 0 )->y(),
                                       aElement->node( 1 )->y(),
                                       aElement->node( 4 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->y(),
+            if( this->check_midpoint( aElement->node( 1 )->y(),
                                            aElement->node( 2 )->y(),
                                            aElement->node( 5 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 2 )->y(),
+            if( this->check_midpoint( aElement->node( 2 )->y(),
                                            aElement->node( 3 )->y(),
                                            aElement->node( 6 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 3 )->y(),
+            if( this->check_midpoint( aElement->node( 3 )->y(),
                                            aElement->node( 0 )->y(),
                                            aElement->node( 7 )->y()) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->z(),
+            if( this->check_midpoint( aElement->node( 0 )->z(),
                                       aElement->node( 1 )->z(),
                                       aElement->node( 4 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->z(),
+            if( this->check_midpoint( aElement->node( 1 )->z(),
                                            aElement->node( 2 )->z(),
                                            aElement->node( 5 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 2 )->z(),
+            if( this->check_midpoint( aElement->node( 2 )->z(),
                                            aElement->node( 3 )->z(),
                                            aElement->node( 6 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 3 )->z(),
+            if( this->check_midpoint( aElement->node( 3 )->z(),
                                            aElement->node( 0 )->z(),
                                            aElement->node( 7 )->z()) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else
-            {
-                aElement->unset_curved_flag() ;
-            }
+
+            return false ;
         }
 
 //------------------------------------------------------------------------------
 
-        void
+        bool
         CurvedElementChecker::check_quad9( Element * aElement )
         {
-
+            if( this->check_quad8( aElement ) )
+            {
+                return true ;
+            }
             if( this->check_midpoint( aElement->node( 0 )->x(),
-                                      aElement->node( 1 )->x(),
-                                      aElement->node( 4 )->x() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 1 )->x(),
-                                           aElement->node( 2 )->x(),
-                                           aElement->node( 5 )->x() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 2 )->x(),
-                                           aElement->node( 3 )->x(),
-                                           aElement->node( 6 )->x() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 3 )->x(),
-                                           aElement->node( 0 )->x(),
-                                           aElement->node( 7 )->x()) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 0 )->x(),
                                            aElement->node( 1 )->x(),
                                            aElement->node( 2 )->x(),
                                            aElement->node( 3 )->x(),
                                            aElement->node( 8 )->x() ) )
             {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 0 )->y(),
-                                      aElement->node( 1 )->y(),
-                                      aElement->node( 4 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 1 )->y(),
-                                           aElement->node( 2 )->y(),
-                                           aElement->node( 5 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 2 )->y(),
-                                           aElement->node( 3 )->y(),
-                                           aElement->node( 6 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 3 )->y(),
-                                           aElement->node( 0 )->y(),
-                                           aElement->node( 7 )->y()) )
-            {
-                aElement->set_curved_flag() ;
+                return true ;
             }
             else if( this->check_midpoint( aElement->node( 0 )->y(),
                                            aElement->node( 1 )->y(),
@@ -609,481 +607,360 @@ namespace belfem
                                            aElement->node( 3 )->y(),
                                            aElement->node( 8 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
             if( this->check_midpoint( aElement->node( 0 )->z(),
-                                      aElement->node( 1 )->z(),
-                                      aElement->node( 4 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 1 )->z(),
-                                           aElement->node( 2 )->z(),
-                                           aElement->node( 5 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 2 )->z(),
-                                           aElement->node( 3 )->z(),
-                                           aElement->node( 6 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 3 )->z(),
-                                           aElement->node( 0 )->z(),
-                                           aElement->node( 7 )->z()) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 0 )->z(),
                                            aElement->node( 1 )->z(),
                                            aElement->node( 2 )->z(),
                                            aElement->node( 3 )->z(),
                                            aElement->node( 8 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else
-            {
-                aElement->unset_curved_flag() ;
-            }
+
+            return false ;
         }
 
 //------------------------------------------------------------------------------
 
-        void
+        bool
         CurvedElementChecker::check_tet10( Element * aElement )
         {
             if( this->check_midpoint( aElement->node( 0 )->x(),
                                       aElement->node( 1 )->x(),
                                       aElement->node( 4 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->x(),
+            if( this->check_midpoint( aElement->node( 0 )->x(),
                                       aElement->node( 2 )->x(),
                                       aElement->node( 6 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->x(),
+            if( this->check_midpoint( aElement->node( 0 )->x(),
                                       aElement->node( 3 )->x(),
                                       aElement->node( 7 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->x(),
+            if( this->check_midpoint( aElement->node( 1 )->x(),
                                       aElement->node( 2 )->x(),
                                       aElement->node( 5 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->x(),
+            if( this->check_midpoint( aElement->node( 1 )->x(),
                                       aElement->node( 3 )->x(),
                                       aElement->node( 8 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 2 )->x(),
+            if( this->check_midpoint( aElement->node( 2 )->x(),
                                       aElement->node( 3 )->x(),
                                       aElement->node( 9 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->y(),
+            if( this->check_midpoint( aElement->node( 0 )->y(),
                                       aElement->node( 1 )->y(),
                                       aElement->node( 4 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->y(),
+            if( this->check_midpoint( aElement->node( 0 )->y(),
                                       aElement->node( 2 )->y(),
                                       aElement->node( 6 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->y(),
+            if( this->check_midpoint( aElement->node( 0 )->y(),
                                       aElement->node( 3 )->y(),
                                       aElement->node( 7 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->y(),
+            if( this->check_midpoint( aElement->node( 1 )->y(),
                                       aElement->node( 2 )->y(),
                                       aElement->node( 5 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->y(),
+            if( this->check_midpoint( aElement->node( 1 )->y(),
                                       aElement->node( 3 )->y(),
                                       aElement->node( 8 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 2 )->y(),
+            if( this->check_midpoint( aElement->node( 2 )->y(),
                                       aElement->node( 3 )->y(),
                                       aElement->node( 9 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->z(),
+            if( this->check_midpoint( aElement->node( 0 )->z(),
                                       aElement->node( 1 )->z(),
                                       aElement->node( 4 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->z(),
+            if( this->check_midpoint( aElement->node( 0 )->z(),
                                       aElement->node( 2 )->z(),
                                       aElement->node( 6 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->z(),
+            if( this->check_midpoint( aElement->node( 0 )->z(),
                                       aElement->node( 3 )->z(),
                                       aElement->node( 7 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->z(),
+            if( this->check_midpoint( aElement->node( 1 )->z(),
                                       aElement->node( 2 )->z(),
                                       aElement->node( 5 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->z(),
+            if( this->check_midpoint( aElement->node( 1 )->z(),
                                       aElement->node( 3 )->z(),
                                       aElement->node( 8 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 2 )->z(),
+            if( this->check_midpoint( aElement->node( 2 )->z(),
                                       aElement->node( 3 )->z(),
                                       aElement->node( 9 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else
-            {
-                aElement->unset_curved_flag();
-            }
+
+            return false ;
         }
+
 //------------------------------------------------------------------------------
 
-        void
+        bool
+        CurvedElementChecker::check_penta6( Element * aElement )
+        {
+            for( uint k=0 ; k<3; ++k )
+            {
+                if( this->check_quad4_face( aElement, k ) )
+                {
+                    return true ;
+                }
+            }
+            return false ;
+        }
+
+//------------------------------------------------------------------------------
+
+        bool
         CurvedElementChecker::check_penta15( Element * aElement )
         {
+            if( this->check_penta6( aElement ) )
+            {
+                return true ;
+            }
             if( this->check_midpoint( aElement->node( 0 )->x(),
                                       aElement->node( 1 )->x(),
                                       aElement->node( 6 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->x(),
+            if( this->check_midpoint( aElement->node( 0 )->x(),
                                            aElement->node( 2 )->x(),
                                            aElement->node( 8 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->x(),
+            if( this->check_midpoint( aElement->node( 0 )->x(),
                                            aElement->node( 3 )->x(),
                                            aElement->node( 9 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->x(),
+            if( this->check_midpoint( aElement->node( 1 )->x(),
                                            aElement->node( 2 )->x(),
                                            aElement->node( 7 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->x(),
+            if( this->check_midpoint( aElement->node( 1 )->x(),
                                            aElement->node( 4 )->x(),
                                            aElement->node( 10 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 2 )->x(),
+            if( this->check_midpoint( aElement->node( 2 )->x(),
                                            aElement->node( 5 )->x(),
                                            aElement->node( 11 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 3 )->x(),
+            if( this->check_midpoint( aElement->node( 3 )->x(),
                                            aElement->node( 4 )->x(),
                                            aElement->node( 12 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 3 )->x(),
+            if( this->check_midpoint( aElement->node( 3 )->x(),
                                            aElement->node( 5 )->x(),
                                            aElement->node( 14 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 4 )->x(),
+            if( this->check_midpoint( aElement->node( 4 )->x(),
                                            aElement->node( 5 )->x(),
                                            aElement->node( 13 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->y(),
+            if( this->check_midpoint( aElement->node( 0 )->y(),
                                            aElement->node( 1 )->y(),
                                            aElement->node( 6 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->y(),
+            if( this->check_midpoint( aElement->node( 0 )->y(),
                                            aElement->node( 2 )->y(),
                                            aElement->node( 8 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->y(),
+            if( this->check_midpoint( aElement->node( 0 )->y(),
                                            aElement->node( 3 )->y(),
                                            aElement->node( 9 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->y(),
+            if( this->check_midpoint( aElement->node( 1 )->y(),
                                            aElement->node( 2 )->y(),
                                            aElement->node( 7 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->y(),
+            if( this->check_midpoint( aElement->node( 1 )->y(),
                                            aElement->node( 4 )->y(),
                                            aElement->node( 10 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 2 )->y(),
+            if( this->check_midpoint( aElement->node( 2 )->y(),
                                            aElement->node( 5 )->y(),
                                            aElement->node( 11 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 3 )->y(),
+            if( this->check_midpoint( aElement->node( 3 )->y(),
                                            aElement->node( 4 )->y(),
                                            aElement->node( 12 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 3 )->y(),
+            if( this->check_midpoint( aElement->node( 3 )->y(),
                                            aElement->node( 5 )->y(),
                                            aElement->node( 14 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 4 )->y(),
+            if( this->check_midpoint( aElement->node( 4 )->y(),
                                            aElement->node( 5 )->y(),
                                            aElement->node( 13 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->z(),
+            if( this->check_midpoint( aElement->node( 0 )->z(),
                                       aElement->node( 1 )->z(),
                                       aElement->node( 6 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->z(),
+            if( this->check_midpoint( aElement->node( 0 )->z(),
                                            aElement->node( 2 )->z(),
                                            aElement->node( 8 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->z(),
+            if( this->check_midpoint( aElement->node( 0 )->z(),
                                            aElement->node( 3 )->z(),
                                            aElement->node( 9 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->z(),
+            if( this->check_midpoint( aElement->node( 1 )->z(),
                                            aElement->node( 2 )->z(),
                                            aElement->node( 7 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->z(),
+            if( this->check_midpoint( aElement->node( 1 )->z(),
                                            aElement->node( 4 )->z(),
                                            aElement->node( 10 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
             else if( this->check_midpoint( aElement->node( 2 )->z(),
                                            aElement->node( 5 )->z(),
                                            aElement->node( 11 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 3 )->z(),
+            if( this->check_midpoint( aElement->node( 3 )->z(),
                                            aElement->node( 4 )->z(),
                                            aElement->node( 12 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 3 )->z(),
+            if( this->check_midpoint( aElement->node( 3 )->z(),
                                            aElement->node( 5 )->z(),
                                            aElement->node( 14 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 4 )->z(),
+            if( this->check_midpoint( aElement->node( 4 )->z(),
                                            aElement->node( 5 )->z(),
                                            aElement->node( 13 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else
-            {
-                aElement->unset_curved_flag() ;
-            }
+
+            return false ;
         }
 
 //------------------------------------------------------------------------------
 
-        void
+        bool
         CurvedElementChecker::check_penta18( Element * aElement )
         {
-            if( this->check_midpoint( aElement->node( 0 )->x(),
-                                      aElement->node( 1 )->x(),
-                                      aElement->node( 6 )->x() ) )
+            if( this->check_penta15( aElement ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->x(),
-                                           aElement->node( 2 )->x(),
-                                           aElement->node( 8 )->x() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 0 )->x(),
-                                           aElement->node( 3 )->x(),
-                                           aElement->node( 9 )->x() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 1 )->x(),
-                                           aElement->node( 2 )->x(),
-                                           aElement->node( 7 )->x() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 1 )->x(),
-                                           aElement->node( 4 )->x(),
-                                           aElement->node( 10 )->x() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 2 )->x(),
-                                           aElement->node( 5 )->x(),
-                                           aElement->node( 11 )->x() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 3 )->x(),
-                                           aElement->node( 4 )->x(),
-                                           aElement->node( 12 )->x() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 3 )->x(),
-                                           aElement->node( 5 )->x(),
-                                           aElement->node( 14 )->x() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 4 )->x(),
-                                           aElement->node( 5 )->x(),
-                                           aElement->node( 13 )->x() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 0 )->x(),
-                                           aElement->node( 1 )->x(),
-                                           aElement->node( 3 )->x(),
-                                           aElement->node( 4 )->x(),
-                                           aElement->node( 15 )->x() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 1 )->x(),
+            if( this->check_midpoint( aElement->node( 1 )->x(),
                                            aElement->node( 2 )->x(),
                                            aElement->node( 4 )->x(),
                                            aElement->node( 5 )->x(),
                                            aElement->node( 16 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->x(),
+            if( this->check_midpoint( aElement->node( 0 )->x(),
                                            aElement->node( 2 )->x(),
                                            aElement->node( 3 )->x(),
                                            aElement->node( 5 )->x(),
                                            aElement->node( 17 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->y(),
-                                           aElement->node( 1 )->y(),
-                                           aElement->node( 6 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 0 )->y(),
-                                           aElement->node( 2 )->y(),
-                                           aElement->node( 8 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 0 )->y(),
-                                           aElement->node( 3 )->y(),
-                                           aElement->node( 9 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 1 )->y(),
-                                           aElement->node( 2 )->y(),
-                                           aElement->node( 7 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 1 )->y(),
-                                           aElement->node( 4 )->y(),
-                                           aElement->node( 10 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 2 )->y(),
-                                           aElement->node( 5 )->y(),
-                                           aElement->node( 11 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 3 )->y(),
-                                           aElement->node( 4 )->y(),
-                                           aElement->node( 12 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 3 )->y(),
-                                           aElement->node( 5 )->y(),
-                                           aElement->node( 14 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 4 )->y(),
-                                           aElement->node( 5 )->y(),
-                                           aElement->node( 13 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 0 )->y(),
+
+            if( this->check_midpoint( aElement->node( 0 )->y(),
                                            aElement->node( 1 )->y(),
                                            aElement->node( 3 )->y(),
                                            aElement->node( 4 )->y(),
                                            aElement->node( 15 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
             else if( this->check_midpoint( aElement->node( 1 )->y(),
                                            aElement->node( 2 )->y(),
@@ -1091,7 +968,7 @@ namespace belfem
                                            aElement->node( 5 )->y(),
                                            aElement->node( 16 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
             else if( this->check_midpoint( aElement->node( 0 )->y(),
                                            aElement->node( 2 )->y(),
@@ -1099,726 +976,617 @@ namespace belfem
                                            aElement->node( 5 )->y(),
                                            aElement->node( 17 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->z(),
-                                           aElement->node( 1 )->z(),
-                                           aElement->node( 6 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 0 )->z(),
-                                           aElement->node( 2 )->z(),
-                                           aElement->node( 8 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 0 )->z(),
-                                           aElement->node( 3 )->z(),
-                                           aElement->node( 9 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 1 )->z(),
-                                           aElement->node( 2 )->z(),
-                                           aElement->node( 7 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 1 )->z(),
-                                           aElement->node( 4 )->z(),
-                                           aElement->node( 10 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 2 )->z(),
-                                           aElement->node( 5 )->z(),
-                                           aElement->node( 11 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 3 )->z(),
-                                           aElement->node( 4 )->z(),
-                                           aElement->node( 12 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 3 )->z(),
-                                           aElement->node( 5 )->z(),
-                                           aElement->node( 14 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 4 )->z(),
-                                           aElement->node( 5 )->z(),
-                                           aElement->node( 13 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node( 0 )->z(),
+            if( this->check_midpoint( aElement->node( 0 )->z(),
                                            aElement->node( 1 )->z(),
                                            aElement->node( 3 )->z(),
                                            aElement->node( 4 )->z(),
                                            aElement->node( 15 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 1 )->z(),
+            if( this->check_midpoint( aElement->node( 1 )->z(),
                                            aElement->node( 2 )->z(),
                                            aElement->node( 4 )->z(),
                                            aElement->node( 5 )->z(),
                                            aElement->node( 16 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node( 0 )->z(),
+            if( this->check_midpoint( aElement->node( 0 )->z(),
                                            aElement->node( 2 )->z(),
                                            aElement->node( 3 )->z(),
                                            aElement->node( 5 )->z(),
                                            aElement->node( 17 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else
-            {
-                aElement->unset_curved_flag() ;
-            }
+
+            return false ;
         }
 
 //------------------------------------------------------------------------------
 
-        void
+        bool
+        CurvedElementChecker::check_hex8( Element * aElement )
+        {
+            for( uint k=0 ; k<6; ++k )
+            {
+                if( this->check_quad4_face( aElement, k ) )
+                {
+                    return true ;
+                }
+            }
+            return false ;
+        }
+
+//------------------------------------------------------------------------------
+
+        bool
         CurvedElementChecker::check_hex20( Element * aElement )
         {
+            if( this->check_hex8( aElement ) )
+            {
+                return true ;
+            }
             if( this->check_midpoint( aElement->node(  0 )->x(),
-                                           aElement->node(  1 )->x(),
-                                           aElement->node(  8 )->x() ) )
+                                      aElement->node(  1 )->x(),
+                                      aElement->node(  8 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  0 )->x(),
-                                           aElement->node(  3 )->x(),
-                                           aElement->node( 11 )->x() ) )
+            if( this->check_midpoint( aElement->node(  0 )->x(),
+                                      aElement->node(  3 )->x(),
+                                      aElement->node( 11 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  0 )->x(),
-                                           aElement->node(  4 )->x(),
-                                           aElement->node( 12 )->x() ) )
+            if( this->check_midpoint( aElement->node(  0 )->x(),
+                                      aElement->node(  4 )->x(),
+                                      aElement->node( 12 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  1 )->x(),
-                                           aElement->node(  2 )->x(),
-                                           aElement->node(  9 )->x() ) )
+            if( this->check_midpoint( aElement->node(  1 )->x(),
+                                      aElement->node(  2 )->x(),
+                                      aElement->node(  9 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  1 )->x(),
-                                           aElement->node(  5 )->x(),
-                                           aElement->node( 13 )->x() ) )
+            if( this->check_midpoint( aElement->node(  1 )->x(),
+                                      aElement->node(  5 )->x(),
+                                      aElement->node( 13 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  2 )->x(),
-                                           aElement->node(  3 )->x(),
-                                           aElement->node( 10 )->x() ) )
+            if( this->check_midpoint( aElement->node(  2 )->x(),
+                                      aElement->node(  3 )->x(),
+                                      aElement->node( 10 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  2 )->x(),
-                                           aElement->node(  6 )->x(),
-                                           aElement->node( 14 )->x() ) )
+            if( this->check_midpoint( aElement->node(  2 )->x(),
+                                      aElement->node(  6 )->x(),
+                                      aElement->node( 14 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  3 )->x(),
-                                           aElement->node(  7 )->x(),
-                                           aElement->node( 15 )->x() ) )
+            if( this->check_midpoint( aElement->node(  3 )->x(),
+                                      aElement->node(  7 )->x(),
+                                      aElement->node( 15 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  4 )->x(),
-                                           aElement->node(  5 )->x(),
-                                           aElement->node( 16 )->x() ) )
+            if( this->check_midpoint( aElement->node(  4 )->x(),
+                                      aElement->node(  5 )->x(),
+                                      aElement->node( 16 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  4 )->x(),
-                                           aElement->node(  7 )->x(),
-                                           aElement->node( 19 )->x() ) )
+            if( this->check_midpoint( aElement->node(  4 )->x(),
+                                      aElement->node(  7 )->x(),
+                                      aElement->node( 19 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  5 )->x(),
-                                           aElement->node(  6 )->x(),
-                                           aElement->node( 17 )->x() ) )
+            if( this->check_midpoint( aElement->node(  5 )->x(),
+                                      aElement->node(  6 )->x(),
+                                      aElement->node( 17 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  6 )->x(),
-                                           aElement->node(  7 )->x(),
-                                           aElement->node( 18 )->x() ) )
+            if( this->check_midpoint( aElement->node(  6 )->x(),
+                                      aElement->node(  7 )->x(),
+                                      aElement->node( 18 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  0 )->y(),
-                                           aElement->node(  1 )->y(),
-                                           aElement->node(  8 )->y() ) )
+            if( this->check_midpoint( aElement->node(  0 )->y(),
+                                      aElement->node(  1 )->y(),
+                                      aElement->node(  8 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  0 )->y(),
-                                           aElement->node(  3 )->y(),
-                                           aElement->node( 11 )->y() ) )
+            if( this->check_midpoint( aElement->node(  0 )->y(),
+                                      aElement->node(  3 )->y(),
+                                      aElement->node( 11 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  0 )->y(),
-                                           aElement->node(  4 )->y(),
-                                           aElement->node( 12 )->y() ) )
+            if( this->check_midpoint( aElement->node(  0 )->y(),
+                                      aElement->node(  4 )->y(),
+                                      aElement->node( 12 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  1 )->y(),
-                                           aElement->node(  2 )->y(),
-                                           aElement->node(  9 )->y() ) )
+            if( this->check_midpoint( aElement->node(  1 )->y(),
+                                      aElement->node(  2 )->y(),
+                                      aElement->node(  9 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  1 )->y(),
-                                           aElement->node(  5 )->y(),
-                                           aElement->node( 13 )->y() ) )
+            if( this->check_midpoint( aElement->node(  1 )->y(),
+                                      aElement->node(  5 )->y(),
+                                      aElement->node( 13 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  2 )->y(),
-                                           aElement->node(  3 )->y(),
-                                           aElement->node( 10 )->y() ) )
+            if( this->check_midpoint( aElement->node(  2 )->y(),
+                                      aElement->node(  3 )->y(),
+                                      aElement->node( 10 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  2 )->y(),
-                                           aElement->node(  6 )->y(),
-                                           aElement->node( 14 )->y() ) )
+            if( this->check_midpoint( aElement->node(  2 )->y(),
+                                      aElement->node(  6 )->y(),
+                                      aElement->node( 14 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  3 )->y(),
-                                           aElement->node(  7 )->y(),
-                                           aElement->node( 15 )->y() ) )
+            if( this->check_midpoint( aElement->node(  3 )->y(),
+                                      aElement->node(  7 )->y(),
+                                      aElement->node( 15 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  4 )->y(),
-                                           aElement->node(  5 )->y(),
-                                           aElement->node( 16 )->y() ) )
+            if( this->check_midpoint( aElement->node(  4 )->y(),
+                                      aElement->node(  5 )->y(),
+                                      aElement->node( 16 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  4 )->y(),
-                                           aElement->node(  7 )->y(),
-                                           aElement->node( 19 )->y() ) )
+            if( this->check_midpoint( aElement->node(  4 )->y(),
+                                      aElement->node(  7 )->y(),
+                                      aElement->node( 19 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  5 )->y(),
-                                           aElement->node(  6 )->y(),
-                                           aElement->node( 17 )->y() ) )
+            if( this->check_midpoint( aElement->node(  5 )->y(),
+                                      aElement->node(  6 )->y(),
+                                      aElement->node( 17 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  6 )->y(),
-                                           aElement->node(  7 )->y(),
-                                           aElement->node( 18 )->y() ) )
+            if( this->check_midpoint( aElement->node(  6 )->y(),
+                                      aElement->node(  7 )->y(),
+                                      aElement->node( 18 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  0 )->y(),
-                                           aElement->node(  1 )->y(),
-                                           aElement->node(  8 )->y() ) )
+            if( this->check_midpoint( aElement->node(  0 )->y(),
+                                      aElement->node(  1 )->y(),
+                                      aElement->node(  8 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  0 )->y(),
-                                           aElement->node(  3 )->y(),
-                                           aElement->node( 11 )->y() ) )
+            if( this->check_midpoint( aElement->node(  0 )->y(),
+                                      aElement->node(  3 )->y(),
+                                      aElement->node( 11 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  0 )->y(),
-                                           aElement->node(  4 )->y(),
-                                           aElement->node( 12 )->y() ) )
+            if( this->check_midpoint( aElement->node(  0 )->y(),
+                                      aElement->node(  4 )->y(),
+                                      aElement->node( 12 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  1 )->y(),
-                                           aElement->node(  2 )->y(),
-                                           aElement->node(  9 )->y() ) )
+            if( this->check_midpoint( aElement->node(  1 )->y(),
+                                      aElement->node(  2 )->y(),
+                                      aElement->node(  9 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  1 )->y(),
-                                           aElement->node(  5 )->y(),
-                                           aElement->node( 13 )->y() ) )
+            if( this->check_midpoint( aElement->node(  1 )->y(),
+                                      aElement->node(  5 )->y(),
+                                      aElement->node( 13 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  2 )->y(),
-                                           aElement->node(  3 )->y(),
-                                           aElement->node( 10 )->y() ) )
+            if( this->check_midpoint( aElement->node(  2 )->y(),
+                                      aElement->node(  3 )->y(),
+                                      aElement->node( 10 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  2 )->y(),
-                                           aElement->node(  6 )->y(),
-                                           aElement->node( 14 )->y() ) )
+            if( this->check_midpoint( aElement->node(  2 )->y(),
+                                      aElement->node(  6 )->y(),
+                                      aElement->node( 14 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  3 )->y(),
-                                           aElement->node(  7 )->y(),
-                                           aElement->node( 15 )->y() ) )
+            if( this->check_midpoint( aElement->node(  3 )->y(),
+                                      aElement->node(  7 )->y(),
+                                      aElement->node( 15 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  4 )->y(),
-                                           aElement->node(  5 )->y(),
-                                           aElement->node( 16 )->y() ) )
+            if( this->check_midpoint( aElement->node(  4 )->y(),
+                                      aElement->node(  5 )->y(),
+                                      aElement->node( 16 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  4 )->y(),
-                                           aElement->node(  7 )->y(),
-                                           aElement->node( 19 )->y() ) )
+            if( this->check_midpoint( aElement->node(  4 )->y(),
+                                      aElement->node(  7 )->y(),
+                                      aElement->node( 19 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  5 )->y(),
-                                           aElement->node(  6 )->y(),
-                                           aElement->node( 17 )->y() ) )
+            if( this->check_midpoint( aElement->node(  5 )->y(),
+                                      aElement->node(  6 )->y(),
+                                      aElement->node( 17 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  6 )->y(),
-                                           aElement->node(  7 )->y(),
-                                           aElement->node( 18 )->y() ) )
+            if( this->check_midpoint( aElement->node(  6 )->y(),
+                                      aElement->node(  7 )->y(),
+                                      aElement->node( 18 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else
+            if( this->check_midpoint( aElement->node(  0 )->z(),
+                                      aElement->node(  1 )->z(),
+                                      aElement->node(  8 )->z() ) )
             {
-                aElement->unset_curved_flag();
+                return true ;
             }
+            if( this->check_midpoint( aElement->node(  0 )->z(),
+                                      aElement->node(  3 )->z(),
+                                      aElement->node( 11 )->z() ) )
+            {
+                return true ;
+            }
+            if( this->check_midpoint( aElement->node(  0 )->z(),
+                                      aElement->node(  4 )->z(),
+                                      aElement->node( 12 )->z() ) )
+            {
+                return true ;
+            }
+            if( this->check_midpoint( aElement->node(  1 )->z(),
+                                      aElement->node(  2 )->z(),
+                                      aElement->node(  9 )->z() ) )
+            {
+                return true ;
+            }
+            if( this->check_midpoint( aElement->node(  1 )->z(),
+                                      aElement->node(  5 )->z(),
+                                      aElement->node( 13 )->z() ) )
+            {
+                return true ;
+            }
+            if( this->check_midpoint( aElement->node(  2 )->z(),
+                                      aElement->node(  3 )->z(),
+                                      aElement->node( 10 )->z() ) )
+            {
+                return true ;
+            }
+            if( this->check_midpoint( aElement->node(  2 )->z(),
+                                      aElement->node(  6 )->z(),
+                                      aElement->node( 14 )->z() ) )
+            {
+                return true ;
+            }
+            if( this->check_midpoint( aElement->node(  3 )->z(),
+                                      aElement->node(  7 )->z(),
+                                      aElement->node( 15 )->z() ) )
+            {
+                return true ;
+            }
+            if( this->check_midpoint( aElement->node(  4 )->z(),
+                                      aElement->node(  5 )->z(),
+                                      aElement->node( 16 )->z() ) )
+            {
+                return true ;
+            }
+            if( this->check_midpoint( aElement->node(  4 )->z(),
+                                      aElement->node(  7 )->z(),
+                                      aElement->node( 19 )->z() ) )
+            {
+                return true ;
+            }
+            if( this->check_midpoint( aElement->node(  5 )->z(),
+                                      aElement->node(  6 )->z(),
+                                      aElement->node( 17 )->z() ) )
+            {
+                return true ;
+            }
+            if( this->check_midpoint( aElement->node(  6 )->z(),
+                                      aElement->node(  7 )->z(),
+                                      aElement->node( 18 )->z() ) )
+            {
+                return true ;
+            }
+            if( this->check_midpoint( aElement->node(  0 )->z(),
+                                      aElement->node(  1 )->z(),
+                                      aElement->node(  8 )->z() ) )
+            {
+                return true ;
+            }
+            if( this->check_midpoint( aElement->node(  0 )->z(),
+                                      aElement->node(  3 )->z(),
+                                      aElement->node( 11 )->z() ) )
+            {
+                return true ;
+            }
+            if( this->check_midpoint( aElement->node(  0 )->z(),
+                                      aElement->node(  4 )->z(),
+                                      aElement->node( 12 )->z() ) )
+            {
+                return true ;
+            }
+            if( this->check_midpoint( aElement->node(  1 )->z(),
+                                      aElement->node(  2 )->z(),
+                                      aElement->node(  9 )->z() ) )
+            {
+                return true ;
+            }
+            if( this->check_midpoint( aElement->node(  1 )->z(),
+                                      aElement->node(  5 )->z(),
+                                      aElement->node( 13 )->z() ) )
+            {
+                return true ;
+            }
+            if( this->check_midpoint( aElement->node(  2 )->z(),
+                                      aElement->node(  3 )->z(),
+                                      aElement->node( 10 )->z() ) )
+            {
+                return true ;
+            }
+            if( this->check_midpoint( aElement->node(  2 )->z(),
+                                      aElement->node(  6 )->z(),
+                                      aElement->node( 14 )->z() ) )
+            {
+                return true ;
+            }
+            if( this->check_midpoint( aElement->node(  3 )->z(),
+                                      aElement->node(  7 )->z(),
+                                      aElement->node( 15 )->z() ) )
+            {
+                return true ;
+            }
+            if( this->check_midpoint( aElement->node(  4 )->z(),
+                                      aElement->node(  5 )->z(),
+                                      aElement->node( 16 )->z() ) )
+            {
+                return true ;
+            }
+            if( this->check_midpoint( aElement->node(  4 )->z(),
+                                      aElement->node(  7 )->z(),
+                                      aElement->node( 19 )->z() ) )
+            {
+                return true ;
+            }
+            if( this->check_midpoint( aElement->node(  5 )->z(),
+                                      aElement->node(  6 )->z(),
+                                      aElement->node( 17 )->z() ) )
+            {
+                return true ;
+            }
+            if( this->check_midpoint( aElement->node(  6 )->z(),
+                                      aElement->node(  7 )->z(),
+                                      aElement->node( 18 )->z() ) )
+            {
+                return true ;
+            }
+
+            return false ;
         }
 
 //------------------------------------------------------------------------------
 
 
-    void
-    CurvedElementChecker::check_hex27( Element * aElement )
-    {
+        bool
+        CurvedElementChecker::check_hex27( Element * aElement )
+        {
+            if( this->check_hex20( aElement ) )
+            {
+                return true ;
+            }
             if( this->check_midpoint( aElement->node(  0 )->x(),
-                                           aElement->node(  1 )->x(),
-                                           aElement->node(  8 )->x() ) )
+                                      aElement->node(  1 )->x(),
+                                      aElement->node(  4 )->x(),
+                                      aElement->node(  5 )->x(),
+                                      aElement->node( 25 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  0 )->x(),
-                                           aElement->node(  3 )->x(),
-                                           aElement->node( 11 )->x() ) )
+            if( this->check_midpoint( aElement->node(  1 )->x(),
+                                      aElement->node(  2 )->x(),
+                                      aElement->node(  5 )->x(),
+                                      aElement->node(  6 )->x(),
+                                      aElement->node( 24 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  0 )->x(),
-                                           aElement->node(  4 )->x(),
-                                           aElement->node( 12 )->x() ) )
+            if( this->check_midpoint( aElement->node(  2 )->x(),
+                                      aElement->node(  3 )->x(),
+                                      aElement->node(  6 )->x(),
+                                      aElement->node(  7 )->x(),
+                                      aElement->node( 26 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  1 )->x(),
-                                           aElement->node(  2 )->x(),
-                                           aElement->node(  9 )->x() ) )
+            if( this->check_midpoint( aElement->node(  0 )->x(),
+                                      aElement->node(  3 )->x(),
+                                      aElement->node(  4 )->x(),
+                                      aElement->node(  7 )->x(),
+                                      aElement->node( 23 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  1 )->x(),
-                                           aElement->node(  5 )->x(),
-                                           aElement->node( 13 )->x() ) )
+            if( this->check_midpoint( aElement->node(  0 )->x(),
+                                      aElement->node(  1 )->x(),
+                                      aElement->node(  2 )->x(),
+                                      aElement->node(  3 )->x(),
+                                      aElement->node( 21 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  2 )->x(),
-                                           aElement->node(  3 )->x(),
-                                           aElement->node( 10 )->x() ) )
+            if( this->check_midpoint( aElement->node(  4 )->x(),
+                                      aElement->node(  5 )->x(),
+                                      aElement->node(  6 )->x(),
+                                      aElement->node(  7 )->x(),
+                                      aElement->node( 22 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  2 )->x(),
-                                           aElement->node(  6 )->x(),
-                                           aElement->node( 14 )->x() ) )
+            if( this->check_midpoint( aElement->node(  0 )->x(),
+                                      aElement->node(  1 )->x(),
+                                      aElement->node(  2 )->x(),
+                                      aElement->node(  3 )->x(),
+                                      aElement->node(  4 )->x(),
+                                      aElement->node(  5 )->x(),
+                                      aElement->node(  6 )->x(),
+                                      aElement->node(  7 )->x(),
+                                      aElement->node( 20 )->x() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  3 )->x(),
-                                           aElement->node(  7 )->x(),
-                                           aElement->node( 15 )->x() ) )
+            if( this->check_midpoint( aElement->node(  0 )->y(),
+                                      aElement->node(  1 )->y(),
+                                      aElement->node(  4 )->y(),
+                                      aElement->node(  5 )->y(),
+                                      aElement->node( 25 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  4 )->x(),
-                                           aElement->node(  5 )->x(),
-                                           aElement->node( 16 )->x() ) )
+            if( this->check_midpoint( aElement->node(  1 )->y(),
+                                      aElement->node(  2 )->y(),
+                                      aElement->node(  5 )->y(),
+                                      aElement->node(  6 )->y(),
+                                      aElement->node( 24 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  4 )->x(),
-                                           aElement->node(  7 )->x(),
-                                           aElement->node( 19 )->x() ) )
+            if( this->check_midpoint( aElement->node(  2 )->y(),
+                                      aElement->node(  3 )->y(),
+                                      aElement->node(  6 )->y(),
+                                      aElement->node(  7 )->y(),
+                                      aElement->node( 26 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  5 )->x(),
-                                           aElement->node(  6 )->x(),
-                                           aElement->node( 17 )->x() ) )
+            if( this->check_midpoint( aElement->node(  0 )->y(),
+                                      aElement->node(  3 )->y(),
+                                      aElement->node(  4 )->y(),
+                                      aElement->node(  7 )->y(),
+                                      aElement->node( 23 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  6 )->x(),
-                                           aElement->node(  7 )->x(),
-                                           aElement->node( 18 )->x() ) )
+            if( this->check_midpoint( aElement->node(  0 )->y(),
+                                      aElement->node(  1 )->y(),
+                                      aElement->node(  2 )->y(),
+                                      aElement->node(  3 )->y(),
+                                      aElement->node( 21 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  0 )->x(),
-                                           aElement->node(  1 )->x(),
-                                           aElement->node(  4 )->x(),
-                                           aElement->node(  5 )->x(),
-                                           aElement->node( 25 )->x() ) )
+            if( this->check_midpoint( aElement->node(  4 )->y(),
+                                      aElement->node(  5 )->y(),
+                                      aElement->node(  6 )->y(),
+                                      aElement->node(  7 )->y(),
+                                      aElement->node( 22 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  1 )->x(),
-                                           aElement->node(  2 )->x(),
-                                           aElement->node(  5 )->x(),
-                                           aElement->node(  6 )->x(),
-                                           aElement->node( 24 )->x() ) )
+            if( this->check_midpoint( aElement->node(  0 )->y(),
+                                      aElement->node(  1 )->y(),
+                                      aElement->node(  2 )->y(),
+                                      aElement->node(  3 )->y(),
+                                      aElement->node(  4 )->y(),
+                                      aElement->node(  5 )->y(),
+                                      aElement->node(  6 )->y(),
+                                      aElement->node(  7 )->y(),
+                                      aElement->node( 20 )->y() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  2 )->x(),
-                                           aElement->node(  3 )->x(),
-                                           aElement->node(  6 )->x(),
-                                           aElement->node(  7 )->x(),
-                                           aElement->node( 26 )->x() ) )
+            if( this->check_midpoint( aElement->node(  0 )->z(),
+                                      aElement->node(  1 )->z(),
+                                      aElement->node(  4 )->z(),
+                                      aElement->node(  5 )->z(),
+                                      aElement->node( 25 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  0 )->x(),
-                                           aElement->node(  3 )->x(),
-                                           aElement->node(  4 )->x(),
-                                           aElement->node(  7 )->x(),
-                                           aElement->node( 23 )->x() ) )
+            if( this->check_midpoint( aElement->node(  1 )->z(),
+                                      aElement->node(  2 )->z(),
+                                      aElement->node(  5 )->z(),
+                                      aElement->node(  6 )->z(),
+                                      aElement->node( 24 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  0 )->x(),
-                                           aElement->node(  1 )->x(),
-                                           aElement->node(  2 )->x(),
-                                           aElement->node(  3 )->x(),
-                                           aElement->node( 21 )->x() ) )
+            if( this->check_midpoint( aElement->node(  2 )->z(),
+                                      aElement->node(  3 )->z(),
+                                      aElement->node(  6 )->z(),
+                                      aElement->node(  7 )->z(),
+                                      aElement->node( 26 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  4 )->x(),
-                                           aElement->node(  5 )->x(),
-                                           aElement->node(  6 )->x(),
-                                           aElement->node(  7 )->x(),
-                                           aElement->node( 22 )->x() ) )
+            if( this->check_midpoint( aElement->node(  0 )->z(),
+                                      aElement->node(  3 )->z(),
+                                      aElement->node(  4 )->z(),
+                                      aElement->node(  7 )->z(),
+                                      aElement->node( 23 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  0 )->x(),
-                                           aElement->node(  1 )->x(),
-                                           aElement->node(  2 )->x(),
-                                           aElement->node(  3 )->x(),
-                                           aElement->node(  4 )->x(),
-                                           aElement->node(  5 )->x(),
-                                           aElement->node(  6 )->x(),
-                                           aElement->node(  7 )->x(),
-                                           aElement->node( 20 )->x() ) )
+            if( this->check_midpoint( aElement->node(  0 )->z(),
+                                      aElement->node(  1 )->z(),
+                                      aElement->node(  2 )->z(),
+                                      aElement->node(  3 )->z(),
+                                      aElement->node( 21 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  0 )->y(),
-                                           aElement->node(  1 )->y(),
-                                           aElement->node(  8 )->y() ) )
+            if( this->check_midpoint( aElement->node(  4 )->z(),
+                                      aElement->node(  5 )->z(),
+                                      aElement->node(  6 )->z(),
+                                      aElement->node(  7 )->z(),
+                                      aElement->node( 22 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  0 )->y(),
-                                           aElement->node(  3 )->y(),
-                                           aElement->node( 11 )->y() ) )
+            if( this->check_midpoint( aElement->node(  0 )->z(),
+                                      aElement->node(  1 )->z(),
+                                      aElement->node(  2 )->z(),
+                                      aElement->node(  3 )->z(),
+                                      aElement->node(  4 )->z(),
+                                      aElement->node(  5 )->z(),
+                                      aElement->node(  6 )->z(),
+                                      aElement->node(  7 )->z(),
+                                      aElement->node( 20 )->z() ) )
             {
-                aElement->set_curved_flag() ;
+                return true ;
             }
-            else if( this->check_midpoint( aElement->node(  0 )->y(),
-                                           aElement->node(  4 )->y(),
-                                           aElement->node( 12 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  1 )->y(),
-                                           aElement->node(  2 )->y(),
-                                           aElement->node(  9 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  1 )->y(),
-                                           aElement->node(  5 )->y(),
-                                           aElement->node( 13 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  2 )->y(),
-                                           aElement->node(  3 )->y(),
-                                           aElement->node( 10 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  2 )->y(),
-                                           aElement->node(  6 )->y(),
-                                           aElement->node( 14 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  3 )->y(),
-                                           aElement->node(  7 )->y(),
-                                           aElement->node( 15 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  4 )->y(),
-                                           aElement->node(  5 )->y(),
-                                           aElement->node( 16 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  4 )->y(),
-                                           aElement->node(  7 )->y(),
-                                           aElement->node( 19 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  5 )->y(),
-                                           aElement->node(  6 )->y(),
-                                           aElement->node( 17 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  6 )->y(),
-                                           aElement->node(  7 )->y(),
-                                           aElement->node( 18 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  0 )->y(),
-                                           aElement->node(  1 )->y(),
-                                           aElement->node(  4 )->y(),
-                                           aElement->node(  5 )->y(),
-                                           aElement->node( 25 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  1 )->y(),
-                                           aElement->node(  2 )->y(),
-                                           aElement->node(  5 )->y(),
-                                           aElement->node(  6 )->y(),
-                                           aElement->node( 24 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  2 )->y(),
-                                           aElement->node(  3 )->y(),
-                                           aElement->node(  6 )->y(),
-                                           aElement->node(  7 )->y(),
-                                           aElement->node( 26 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  0 )->y(),
-                                           aElement->node(  3 )->y(),
-                                           aElement->node(  4 )->y(),
-                                           aElement->node(  7 )->y(),
-                                           aElement->node( 23 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  0 )->y(),
-                                           aElement->node(  1 )->y(),
-                                           aElement->node(  2 )->y(),
-                                           aElement->node(  3 )->y(),
-                                           aElement->node( 21 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  4 )->y(),
-                                           aElement->node(  5 )->y(),
-                                           aElement->node(  6 )->y(),
-                                           aElement->node(  7 )->y(),
-                                           aElement->node( 22 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  0 )->y(),
-                                           aElement->node(  1 )->y(),
-                                           aElement->node(  2 )->y(),
-                                           aElement->node(  3 )->y(),
-                                           aElement->node(  4 )->y(),
-                                           aElement->node(  5 )->y(),
-                                           aElement->node(  6 )->y(),
-                                           aElement->node(  7 )->y(),
-                                           aElement->node( 20 )->y() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  0 )->z(),
-                                           aElement->node(  1 )->z(),
-                                           aElement->node(  8 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  0 )->z(),
-                                           aElement->node(  3 )->z(),
-                                           aElement->node( 11 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  0 )->z(),
-                                           aElement->node(  4 )->z(),
-                                           aElement->node( 12 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  1 )->z(),
-                                           aElement->node(  2 )->z(),
-                                           aElement->node(  9 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  1 )->z(),
-                                           aElement->node(  5 )->z(),
-                                           aElement->node( 13 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  2 )->z(),
-                                           aElement->node(  3 )->z(),
-                                           aElement->node( 10 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  2 )->z(),
-                                           aElement->node(  6 )->z(),
-                                           aElement->node( 14 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  3 )->z(),
-                                           aElement->node(  7 )->z(),
-                                           aElement->node( 15 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  4 )->z(),
-                                           aElement->node(  5 )->z(),
-                                           aElement->node( 16 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  4 )->z(),
-                                           aElement->node(  7 )->z(),
-                                           aElement->node( 19 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  5 )->z(),
-                                           aElement->node(  6 )->z(),
-                                           aElement->node( 17 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  6 )->z(),
-                                           aElement->node(  7 )->z(),
-                                           aElement->node( 18 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  0 )->z(),
-                                           aElement->node(  1 )->z(),
-                                           aElement->node(  4 )->z(),
-                                           aElement->node(  5 )->z(),
-                                           aElement->node( 25 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  1 )->z(),
-                                           aElement->node(  2 )->z(),
-                                           aElement->node(  5 )->z(),
-                                           aElement->node(  6 )->z(),
-                                           aElement->node( 24 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  2 )->z(),
-                                           aElement->node(  3 )->z(),
-                                           aElement->node(  6 )->z(),
-                                           aElement->node(  7 )->z(),
-                                           aElement->node( 26 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  0 )->z(),
-                                           aElement->node(  3 )->z(),
-                                           aElement->node(  4 )->z(),
-                                           aElement->node(  7 )->z(),
-                                           aElement->node( 23 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  0 )->z(),
-                                           aElement->node(  1 )->z(),
-                                           aElement->node(  2 )->z(),
-                                           aElement->node(  3 )->z(),
-                                           aElement->node( 21 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  4 )->z(),
-                                           aElement->node(  5 )->z(),
-                                           aElement->node(  6 )->z(),
-                                           aElement->node(  7 )->z(),
-                                           aElement->node( 22 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else if( this->check_midpoint( aElement->node(  0 )->z(),
-                                           aElement->node(  1 )->z(),
-                                           aElement->node(  2 )->z(),
-                                           aElement->node(  3 )->z(),
-                                           aElement->node(  4 )->z(),
-                                           aElement->node(  5 )->z(),
-                                           aElement->node(  6 )->z(),
-                                           aElement->node(  7 )->z(),
-                                           aElement->node( 20 )->z() ) )
-            {
-                aElement->set_curved_flag() ;
-            }
-            else
-            {
-                aElement->unset_curved_flag() ;
-            }
-    }
+
+            return false;
+        }
 
 //------------------------------------------------------------------------------
     }

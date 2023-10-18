@@ -367,6 +367,10 @@ namespace belfem
         void
         SideSet::impose_dirichlet( const real aValue, const uint aDofType )
         {
+            // if a diriclet condition is set, no computation is done on
+            // this sideset
+            mIsActive = false ;
+
             // set value
             mBcValues( aDofType ) = aValue ;
 
@@ -380,6 +384,10 @@ namespace belfem
                 mParent->dof( mParent->calculate_dof_id( tNode, aDofType ) )->fix( aValue );
             }
 
+            // set domaon type of this shell
+            this->set_domain_type( DomainType::Dirichlet );
+
+            this->activate( false );
         }
 
 //------------------------------------------------------------------------------
@@ -391,6 +399,10 @@ namespace belfem
             mBcValues( aDofType ) = aValue ;
 
             mBcTypes( aDofType ) = BoundaryConditionImposing::Neumann ;
+
+            this->set_domain_type( DomainType::Neumann );
+
+            this->activate( true );
         }
 
 //------------------------------------------------------------------------------
@@ -411,11 +423,17 @@ namespace belfem
                 tAlpha.fill( 0.0 );
             }
 
+            // create field for reference temperature
             if( ! mParent->mesh()->field_exists( "Tinf") )
             {
                 Vector< real > & tTinf = mParent->mesh()->create_field( "Tinf" ) ;
                 tTinf.fill( mTinf );
             }
+
+            // set domaon type of this shell
+            this->set_domain_type( DomainType::ThermalAlpha );
+
+            this->activate( true );
         }
 
 //------------------------------------------------------------------------------
@@ -439,6 +457,10 @@ namespace belfem
                     mParent->dof( mParent->calculate_dof_id( tNode, k ) )->free();
                 }
             }
+
+            this->set_domain_type( DomainType::Default );
+
+            this->activate( false );
         }
 
 //------------------------------------------------------------------------------

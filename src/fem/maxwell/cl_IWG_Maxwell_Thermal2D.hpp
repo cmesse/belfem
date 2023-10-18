@@ -5,14 +5,14 @@
 #ifndef BELFEM_CL_IWG_MAXWELL_THERMAL2D_HPP
 #define BELFEM_CL_IWG_MAXWELL_THERMAL2D_HPP
 
-#include "cl_IWG_Timestep.hpp"
+#include "cl_IWG_TimestepOld.hpp"
 #include "cl_Material.hpp"
 
 namespace belfem
 {
     namespace fem
     {
-        class IWG_Maxwell_Thermal2D : public IWG_Timestep
+        class IWG_Maxwell_Thermal2D : public IWG_TimestepOld
         {
             const proc_t       mMyRank ;
 

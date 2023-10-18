@@ -792,7 +792,7 @@ namespace belfem
                 }
                 default:
                 {
-                    BELFEM_ERROR( false, "unsupported element type");
+                    BELFEM_ERROR( false, "unsupported element type: %s", to_string( aElementType ).c_str() );
                     return 0 ;
                 }
             }

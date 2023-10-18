@@ -78,6 +78,16 @@ namespace belfem
 
                 mJacobianTable.clear() ;
                 mDirichletTable.clear() ;
+
+                this->reset_convection() ;
+            }
+
+//------------------------------------------------------------------------------
+
+            void
+            SolverData::reset_convection()
+            {
+                mConvection.fill( 0.0 );
             }
 
 //------------------------------------------------------------------------------
@@ -187,6 +197,10 @@ namespace belfem
                 if( mParent->iwg()->num_rhs_cols() <= 1 )
                 {
                     mRhsVector.set_size( mMyNumberOfFreeDofs, 0.0 );
+                    if( mParent->iwg()->has_convection() )
+                    {
+                        mConvection.set_size( mMyNumberOfFreeDofs, 0.0 );
+                    }
                 }
                 else
                 {

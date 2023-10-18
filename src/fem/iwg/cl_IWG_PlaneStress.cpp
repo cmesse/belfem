@@ -40,11 +40,13 @@ namespace belfem
                 Matrix <real> & aJacobian )
         {
 
-            // reset result vectors
+            mCalc->link( aElement );
+
+            // reset the jacobnian matrix
             aJacobian.fill( 0.0 );
 
             // get integration weights
-            const Vector< real > & tW = mGroup->integration_weights();
+            const Vector< real > & tW = mCalc->weights() ;
 
             // get the B-Matrix
             Matrix< real > & tdNdX   = mGroup->work_dNdX();

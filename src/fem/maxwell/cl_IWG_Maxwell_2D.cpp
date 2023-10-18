@@ -20,7 +20,7 @@ namespace belfem
                 const SymmetryMode aSymmetryMode,
                 const SideSetDofLinkMode aSideSetDofLinkMode,
                 const bool         aUseEdges ) :
-                IWG_Timestep(
+                IWG_TimestepOld(
                         aType,
                         aMode,
                         aSymmetryMode,

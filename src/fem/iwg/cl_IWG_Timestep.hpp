@@ -1,5 +1,5 @@
 //
-// Created by christian on 7/28/21.
+// Created by christian on 7/18/23.
 //
 
 #ifndef BELFEM_CL_IWG_TIMESTEP_HPP
@@ -7,138 +7,243 @@
 
 #include "cl_IWG.hpp"
 #include "en_SolverEnums.hpp"
+#include "cl_FEM_Work.hpp"
 
 namespace belfem
 {
     namespace fem
     {
-//------------------------------------------------------------------------------
         class Element ;
-        class Group ;
-        /**
-         * an abstract baseclass for timestepping problems
-         */
+
         class IWG_Timestep: public IWG
         {
+            real mDeltaTime = 1.0 ;
+
+            EulerMethod mMethod;
+
+            // timestepping pointer
+            void
+            ( IWG_Timestep:: * mTimestep )(
+                    Matrix< real > & aM,
+                    Matrix< real > & aK,
+                    Vector< real > & aF,
+                    Vector< real > & aQ0  );
+
 //------------------------------------------------------------------------------
-            protected:
+        protected:
 //------------------------------------------------------------------------------
+
+            void
+            ( * mMatrixFunction )(
+                    Work    * aWork,
+                    Element * aElement ,
+                    Matrix< real > & aM,
+                    Matrix< real > & aK,
+                    Matrix< real > & aF,
+                    Matrix< real > & aQ0 );
+
+//------------------------------------------------------------------------------
+        public:
+//------------------------------------------------------------------------------
+
+            IWG_Timestep();
+
+            virtual ~IWG_Timestep();
+
+            // set the timestepping method
+            void
+            set_timestepping_method( const EulerMethod aMethod, const bool aHaveStiffness = true );
+
+            // return the timestepping method
+            EulerMethod
+            method() const;
+
+//------------------------------------------------------------------------------
+
+            virtual void
+            compute_jacobian_and_rhs(
+                    Element        * aElement,
+                    Matrix< real > & aJacobian,
+                    Vector< real > & aRHS );
+
+//------------------------------------------------------------------------------
+        protected:
+//------------------------------------------------------------------------------
+
             /**
-             * this is the timestepping parameter.
-             * Explicit:           theta = 0.0 ( not recommended )
-             * Crank-Nicolson :    theta = 1/2 ( based on finite difference approach )
-             * Galerkin:           theta = 2/3 ( based on finite element over time )
-             * Backwards Implicit: theta = 1.0 ( recommended setting )
-             */
-            real mTheta     = 1.0;
-
-            /**
-             * this function computes the temperature for the current position
-             * we use a function pointer to circumvent an unneccessary
-             * if statement
-             */
-            real
-            ( IWG_Timestep:: * mComputeT ) ( const uint aK );
-
-//------------------------------------------------------------------------------
-            public:
-//------------------------------------------------------------------------------
-
-            IWG_Timestep( const IwgType aType,
-                          const IwgMode aMode=IwgMode::Iterative,
-                          const SymmetryMode aSymmetryMode=SymmetryMode::PositiveDefiniteSymmetric,
-                          const DofMode      aDofMode=DofMode::AllBlocksEqual,
-                          const SideSetDofLinkMode aSideSetDofLinkMode=SideSetDofLinkMode::FacetOnly );
-
-//------------------------------------------------------------------------------
-
-            virtual ~IWG_Timestep() = default ;
-
-//------------------------------------------------------------------------------
-
-
-            /**
-             * chooses the timestepping method. By default, we use
-             * Euler Implicit, since it is very stable
+             * a default interface to compute the matrices of a timest epping
+             * scheme of shape of
+             * \f$ M \, \dot q + K ,\, q = f \f$
              *
-             * @param aEulerMethod
+             * @param aElement
+             * @param aM    : mass matrix
+             * @param aK    : stiffness matrix
+             * @param aF    : right hand side
              */
-            void
-            set_euler_method( const EulerMethod aEulerMethod );
-
-            void
-            set_euler_method( const real aTheta );
-
-//------------------------------------------------------------------------------
-
-            /**
-             * sets the timestep of the timestepping methd
-             *
-             * @param aDeltaTime timestep in seconds
-             */
-            void
-            set_timestep( const real aDeltaTime );
-
-//------------------------------------------------------------------------------
-
-            /**
-             * returns the theta-parameter for the timestepping
-             */
-            const real &
-            theta () const;
-
-//------------------------------------------------------------------------------
-
-            /**
-            * * these functions compute the temperature.
-            * we use function pointers to avoid an if-statement
-            *
-            * @param aK     index of integration point
-            * @return
-            */
-
-            real
-            compute_T( const uint aK );
+            virtual void
+            compute_mkf( Element * aElement,
+                         Matrix< real > & aM,
+                         Matrix< real > & aK,
+                         Vector< real > & aF,
+                         Vector< real > & aQ );
 
 //------------------------------------------------------------------------------
         private:
 //------------------------------------------------------------------------------
 
-            real
-            compute_Ttheta( const uint aK );
+            void
+            static_subfield( Matrix< real > & aM, Matrix< real > & aK, Vector< real > & aF, Vector< real > & aQ0  );
+
+//------------------------------------------------------------------------------
+            void
+            explicit_euler( Matrix< real > & aM, Matrix< real > & aK, Vector< real > & aF, Vector< real > & aQ0  );
 
 //------------------------------------------------------------------------------
 
-            real
-            compute_T0( const uint aK );
+            void
+            crank_nicolson( Matrix< real > & aM, Matrix< real > & aK, Vector< real > & aF, Vector< real > & aQ0  );
 
 //------------------------------------------------------------------------------
 
-            real
-            compute_T1( const uint aK );
+            void
+            galerkin( Matrix< real > & aM, Matrix< real > & aK, Vector< real > & aF, Vector< real > & aQ0  );
+
+//------------------------------------------------------------------------------
+
+            void
+            backwards_euler( Matrix< real > & aM,
+                             Matrix< real > & aK,
+                             Vector< real > & aF,
+                             Vector< real > & aQ0  );
+
+//------------------------------------------------------------------------------
+
+            void
+            derivative( Matrix< real > & aM, Matrix< real > & aK,
+                        Vector< real > & aF, Vector< real > & aQ0  );
+
+//------------------------------------------------------------------------------
+
+            void
+            euler_no_stiffness( Matrix< real > & aM, Matrix< real > & aK,
+                                Vector< real > & aF, Vector< real > & aQ0  );
+
+//------------------------------------------------------------------------------
+
+            void
+            derivative_no_stiffness( Matrix< real > & aM, Matrix< real > & aK,
+                                     Vector< real > & aF, Vector< real > & aQ0  );
 
 //------------------------------------------------------------------------------
         };
-//---------------------------------------------------------------------------
 
-        /**
-         * returns the theta-parameter for the timestepping
-         */
-        inline const real &
-        IWG_Timestep::theta () const
+        inline void
+        IWG_Timestep::compute_jacobian_and_rhs( Element        * aElement,
+                                                Matrix< real > & aJacobian,
+                                                Vector< real > & aRHS )
         {
-            return mTheta ;
+            ( *mMatrixFunction )(
+                    mWork,
+                    aElement,
+                    aJacobian,
+                    mWork->K(),
+                    mWork->f() );
+
         }
 
 //------------------------------------------------------------------------------
 
-        inline real
-        IWG_Timestep::compute_T( const uint aK )
+                                                inline void
+        IWG_Timestep::explicit_euler( Matrix< real > & aM,
+                                      Matrix< real > & aK,
+                                      Vector< real > & aF,
+                                      Vector< real > & aQ0  )
         {
-            return ( this->*mComputeT )( aK );
+            aF.vector_data() *= mDeltaTime ;
+            aK.matrix_data() *= mDeltaTime ;
+            aF.vector_data() += ( aM.matrix_data() - aK.matrix_data() ) * aQ0.vector_data() ;
+        }
+
+        inline void
+        IWG_Timestep::crank_nicolson( Matrix< real > & aM,
+                                      Matrix< real > & aK,
+                                      Vector< real > & aF,
+                                      Vector< real > & aQ0  )
+        {
+            aF.vector_data() *=       mDeltaTime ;
+            aK.matrix_data() *= 0.5 * mDeltaTime ;
+            aF.vector_data() += ( aM.matrix_data() - aK.matrix_data() ) * aQ0.vector_data() ;
+            aM.matrix_data() += aK.matrix_data() ;
+        }
+
+        inline void
+        IWG_Timestep::galerkin( Matrix< real > & aM,
+                                Matrix< real > & aK,
+                                Vector< real > & aF,
+                                Vector< real > & aQ0 )
+        {
+            aF.vector_data() *= mDeltaTime ;
+            aK.matrix_data() *= mDeltaTime / 3. ;
+            aF.vector_data() += ( aM.matrix_data() - aK.matrix_data() ) * aQ0.vector_data() ;
+            aM.matrix_data() += aK.matrix_data() ;
+            aM.matrix_data() += aK.matrix_data() ;
+        }
+
+        inline void
+        IWG_Timestep::backwards_euler( Matrix< real > & aM,
+                                       Matrix< real > & aK,
+                                       Vector< real > & aF,
+                                       Vector< real > & aQ0  )
+        {
+            aF.vector_data() *= mDeltaTime ;
+            aK.matrix_data() *= mDeltaTime ;
+            aF.vector_data() += aM.matrix_data() * aQ0.vector_data() ;
+            aM.matrix_data() += aK.matrix_data() ;
+        }
+
+
+        inline void
+        IWG_Timestep::derivative( Matrix< real > & aM,
+                                  Matrix< real > & aK,
+                                  Vector< real > & aF,
+                                  Vector< real > & aQ0  )
+        {
+            aF -= aK * aQ0 ;
         }
 
 //------------------------------------------------------------------------------
-    } /* end namespace fem */
-} /* end namespace belfem */
+
+        inline void
+        IWG_Timestep::euler_no_stiffness( Matrix< real > & aM,
+                                      Matrix< real > & aK,
+                                      Vector< real > & aF,
+                                      Vector< real > & aQ0  )
+        {
+            aF.vector_data() *= mDeltaTime ;
+            aF.vector_data() += aM.matrix_data() * aQ0.vector_data() ;
+        }
+
+        inline void
+        IWG_Timestep::derivative_no_stiffness( Matrix< real > & aM,
+                                               Matrix< real > & aK,
+                                               Vector< real > & aF,
+                                               Vector< real > & aQ0  )
+        {
+            // do nothing
+        }
+
+        inline void
+        IWG_Timestep::static_subfield( Matrix< real > & aM,
+                                       Matrix< real > & aK,
+                                       Vector< real > & aF,
+                                       Vector< real > & aQ0  )
+        {
+            aM.matrix_data() = aK.matrix_data() * mDeltaTime ;
+            aF.vector_data() *= mDeltaTime ;
+        }
+
+//------------------------------------------------------------------------------
+    }
+}
+
 #endif //BELFEM_CL_IWG_TIMESTEP_HPP

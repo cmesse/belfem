@@ -39,10 +39,12 @@ namespace belfem
      */
     enum class EulerMethod
     {
+        Static,            //
         ForwardExplicit,   // theta = 0.0
         CrankNicolson,     // theta = 0.5
         Galerkin,          // theta = 2/3
         BackwardImplicit,  // theta = 1.0
+        Derivative,
         UNDEFINED
     };
 

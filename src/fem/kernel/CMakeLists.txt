@@ -4,7 +4,7 @@ set( SOURCES
         en_FEM_DomainType.cpp
         cl_FEM_Dof.cpp
         cl_FEM_Element.cpp
-        cl_FEM_Swap.cpp
+        cl_FEM_Calculator.cpp
         cl_FEM_Group.cpp
         cl_FEM_Block.cpp
         cl_FEM_SideSet.cpp
@@ -85,8 +85,8 @@ if( USE_EXAMPLES )
     set( MAIN petsctest.cpp)
     include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
 
-    set( EXECNAME stationaryheat )
-    set( MAIN stationaryheat.cpp)
+    set( EXECNAME staticheat )
+    set( MAIN staticheat.cpp)
     include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
 
     set( EXECNAME transientheat )

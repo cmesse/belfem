@@ -5,6 +5,7 @@
 #ifndef BELFEM_CL_MESH_CURVEDELEMENTCHECKER_HPP
 #define BELFEM_CL_MESH_CURVEDELEMENTCHECKER_HPP
 
+#include "cl_Vector.hpp"
 #include "cl_Mesh.hpp"
 
 namespace belfem
@@ -32,8 +33,15 @@ namespace belfem
             const real mFourMeshEpsilon  = mTwoMeshEpsilon  + mTwoMeshEpsilon ;
             const real mEightMeshEpsilon = mFourMeshEpsilon + mFourMeshEpsilon ;
 
+            // for quad4
+            Cell< Node * > mNodes ;
+            real mX[ 4 ];
+            real mY[ 4 ];
+            real mZ[ 4 ];
+
+
             // function pointer to checker
-            void
+            bool
             ( CurvedElementChecker::*mFunCheck )( Element * aElement );
 
 //------------------------------------------------------------------------------
@@ -59,62 +67,82 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            void
+            bool
             check_linear( Element * aElement );
 
 //------------------------------------------------------------------------------
 
-            void
+            bool
             check_tri6_2d( Element * aElement );
 
 //------------------------------------------------------------------------------
 
-            void
+            bool
             check_quad8_2d( Element * aElement );
 
 //------------------------------------------------------------------------------
 
-            void
+            bool
             check_quad9_2d( Element * aElement );
 
 //------------------------------------------------------------------------------
 
-            void
+            bool
             check_tri6( Element * aElement );
 
 //------------------------------------------------------------------------------
 
-            void
+            bool
+            check_quad4( Element * aElement );
+
+//------------------------------------------------------------------------------
+
+            bool
+            check_quad4_face( Element * aElement, const uint aFaceIndex );
+
+//------------------------------------------------------------------------------
+
+            bool
             check_quad8( Element * aElement );
 
 //------------------------------------------------------------------------------
 
-            void
+            bool
             check_quad9( Element * aElement );
 
 //------------------------------------------------------------------------------
 
-            void
+            bool
             check_tet10( Element * aElement );
 
 //------------------------------------------------------------------------------
 
-            void
+            bool
+            check_penta6( Element * aElement );
+
+//------------------------------------------------------------------------------
+
+            bool
             check_penta15( Element * aElement );
 
 //------------------------------------------------------------------------------
 
-            void
+            bool
             check_penta18( Element * aElement );
 
 //------------------------------------------------------------------------------
 
-            void
+            bool
+            check_hex8( Element * aElement );
+
+//------------------------------------------------------------------------------
+
+            bool
             check_hex20( Element * aElement );
 
 //------------------------------------------------------------------------------
 
-            void
+            bool
             check_hex27( Element * aElement );
 
 //------------------------------------------------------------------------------
@@ -151,11 +179,11 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        inline void
+        inline bool
         CurvedElementChecker::check_linear( Element * aElement )
         {
             // do nothing, linear elements are never curved
-            aElement->unflag();
+            return false ;
         }
 
 //------------------------------------------------------------------------------

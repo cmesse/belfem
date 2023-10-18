@@ -81,14 +81,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        ElementType
-        Block::element_type() const
-        {
-            return mElementType;
-        }
-
-//------------------------------------------------------------------------------
-
         void
         Block::initialize_elements()
         {

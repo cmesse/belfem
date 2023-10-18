@@ -105,10 +105,10 @@ namespace belfem
             real tF0 = this->dalphadT( tT0 );
             real tF = this->dalphadT( tT1 );
 
-            real tT = 0.5 * ( tT0 + tT1 );
+            real tT = tT1 ;
 
             // first run with bisection
-                while( std::abs( tF0 -tF ) > 0.0001 )
+                while( std::abs( tF ) > 0.0001 )
                 {
                     tT = 0.5 * ( tT0 + tT1 );
                     tF = this->dalphadT( tT );

@@ -2031,7 +2031,7 @@ namespace belfem
                 }
             } // end loop over all blocks
 
-            if( mIWG->has_alpha() )
+            if( mIWG->has_convection() )
             {
                 // loop over all sidesets
                 for( SideSet * tSideSet : mSideSets )
@@ -2881,7 +2881,7 @@ namespace belfem
                 for( Element * tElement : tFacets )
                 {
                     // compute contribution of this element
-                    mIWG->compute_convection( tElement, tConvection );
+                    //mIWG->compute_convection( tElement, tConvection );
 
                     // add heat load to master
                     for ( uint i = 0; i < tNumDofs; ++i )

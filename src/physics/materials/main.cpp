@@ -103,7 +103,7 @@ int main( int    argc,
                 3000.0 }; */
 
 
-        Vector< real > tT = linspace( 4.0, 300.0, 297 );
+        Vector< real > tT = linspace( 4.0, 400.0, 397 );
               
         // scan material list
         uint n = tT.length();

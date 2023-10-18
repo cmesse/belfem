@@ -267,6 +267,11 @@ namespace belfem
             facet() ;
 
 //------------------------------------------------------------------------------
+
+            const mesh::Facet *
+            facet() const ;
+
+//------------------------------------------------------------------------------
             /**
              * return the material of this element
              */
@@ -501,6 +506,14 @@ namespace belfem
 
         inline  mesh::Facet *
         Element::facet()
+        {
+            return mFacet ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline const mesh::Facet *
+        Element::facet() const
         {
             return mFacet ;
         }

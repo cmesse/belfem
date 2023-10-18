@@ -106,7 +106,7 @@ int main( int    argc,
     Mesh   * tThermalMesh   = tFactory->thermal_mesh() ;
     MaxwellMeshSynch * tSynch = tFactory->thermal_synch() ;
     DofManager * tThermalField = tFactory->thermal_field() ;
-    IWG_Timestep * tFourier = tFactory->fourier() ;
+    IWG_TimestepOld * tFourier = tFactory->fourier() ;
 
     NonlinearSettings tNonlinThermal = tHaveThermal ?
                 tFactory->nonlinear_settings( MaxwellFieldType::THERMAL )

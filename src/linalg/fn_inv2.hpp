@@ -19,10 +19,10 @@ namespace belfem
         real aDetA = aA( 0, 0 )*aA( 1,1 )
                    - aA( 1, 0 )*aA( 0,1 );
 
-        aB( 0,0 )  =   aA( 1, 1 );
+        aB( 0, 0 ) =   aA( 1, 1 );
         aB( 1, 0 ) = - aA( 1, 0 );
         aB( 0, 1 ) = - aA( 0, 1 );
-        aB( 1,1 )  =   aA( 0, 0 );
+        aB( 1, 1 ) =   aA( 0, 0 );
 
         aB /= aDetA ;
 

@@ -2,16 +2,18 @@
 // Created by Christian Messe on 08.11.19.
 //
 
-#include "cl_IWG.hpp"
-#include "en_FEM_DomainType.hpp"
+
+
 #include "assert.hpp"
 #include "cl_Mesh.hpp"
+#include "en_FEM_DomainType.hpp"
 #include "cl_FEM_DofManagerBase.hpp"
 #include "cl_FEM_BoundaryCondition.hpp"
 #include "cl_FEM_Group.hpp"
 #include "cl_FEM_SideSet.hpp"
 #include "cl_FEM_Block.hpp"
 #include "cl_FEM_Element.hpp"
+#include "cl_FEM_Calculator.hpp"
 #include "cl_FEM_Kernel.hpp"
 #include "meshtools.hpp"
 #include "commtools.hpp"
@@ -372,6 +374,7 @@ namespace belfem
             mGroup    = aGroup;
             mField    = aGroup->parent();
             mMaterial = aGroup->material();
+            mCalc     = aGroup->calculator() ;
 
             if ( mGroup->element_type() == ElementType::EMPTY )
             {
@@ -839,6 +842,56 @@ namespace belfem
                 {
                     aData( i, j ) = tField( aElement->element()->node( i )->index() );
                 }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        IWG::collect_node_data(
+                Element        * aElement,
+                const Cell< string > & aFieldLabels )
+        {
+            for( const string & tFieldLabel : aFieldLabels )
+            {
+                // get ref to field on mesh
+                Vector< real > & tField = mMesh->field_data( tFieldLabel );
+
+                BELFEM_ASSERT(
+                        mMesh->field( tFieldLabel )->entity_type() == EntityType::NODE,
+                        "Field '%s' is not a node field", tFieldLabel.c_str() );
+
+                // grab data container from work
+                Vector< real > & tData = mCalc->vector( tFieldLabel );
+                // loop over all nodes
+                for( uint i=0; i< mNumberOfNodesPerElement; ++i )
+                {
+                    tData( i ) = tField( aElement->element()->node( i )->index() );
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        IWG::collect_node_data(
+                Element        * aElement,
+                const string   & aFieldLabel )
+        {
+
+            // get ref to field on mesh
+            Vector< real > & tField = mMesh->field_data( aFieldLabel );
+
+            BELFEM_ASSERT(
+                    mMesh->field( aFieldLabel )->entity_type() == EntityType::NODE,
+                    "Field '%s' is not a node field", aFieldLabel.c_str() );
+
+            // grab data container from work
+            Vector< real > & tData = mCalc->vector( aFieldLabel );
+            // loop over all nodes
+            for( uint i=0; i< mNumberOfNodesPerElement; ++i )
+            {
+                tData( i ) = tField( aElement->element()->node( i )->index() );
             }
         }
 
@@ -1371,7 +1424,7 @@ namespace belfem
                 // set the alpha flag if this is an alpha-heatflux-boundary condition
                 if( tLabel == "alpha" )
                 {
-                    mHasAlpha = true ;
+                    mHasConvection = true ;
                 }
 
                 // check if field exists on field list
@@ -1423,6 +1476,7 @@ namespace belfem
             this->create_doftype_map();
             this->count_dofs_per_block();
             this->count_dofs_per_sideset();
+
             mIsInitialized = true ;
         }
 
@@ -2537,6 +2591,22 @@ namespace belfem
 
             // now we can return the normal
             return mNormal2D ;
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        IWG::set_timestepping_method( const EulerMethod aMethod, const bool aHaveStiffness )
+        {
+            BELFEM_ERROR( false, "set_timestepping_method() not defined for this IWG") ;
+        }
+
+//------------------------------------------------------------------------------
+
+        EulerMethod
+        IWG::method() const
+        {
+            return EulerMethod::UNDEFINED ;
         }
 
 //------------------------------------------------------------------------------
