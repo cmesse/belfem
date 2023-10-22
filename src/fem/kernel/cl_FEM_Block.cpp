@@ -53,6 +53,10 @@ namespace belfem
             this->set_integration_order( aParent->block_integration_order() );
             this->initialize_elements();
             this->create_element_map();
+
+
+            // create the calculator object
+            mCalc = new Calculator( this );
         }
 
 //------------------------------------------------------------------------------
@@ -77,6 +81,7 @@ namespace belfem
             // note: sidesets must also be changed if assume_isogeometry is false
             this->assume_isogeometry();
 
+            mCalc->allocate_memory() ;
         }
 
 //------------------------------------------------------------------------------

@@ -121,9 +121,10 @@ namespace belfem
 
             uint mMasterIndex = BELFEM_UINT_MAX ;
 
-            const IntegrationData * mIntegration       = nullptr ;
-            const IntegrationData * mMasterIntegration = nullptr ;
-            const IntegrationData * mSlaveIntegration  = nullptr ;
+                  IntegrationData *   mDomainIntegration    = nullptr ;
+                  IntegrationData *   mThinShellIntegration = nullptr ;
+            Cell< IntegrationData * > mMasterIntegration ;
+            Cell< IntegrationData * > mSlaveIntegration ;
 
             //! stiffness matrix
             Matrix< real > mK ;
@@ -334,11 +335,38 @@ namespace belfem
             normal( const uint aIndex=0 );
 
 //------------------------------------------------------------------------------
-        private:
+
+            void
+            initialize_integration( const ElementType aElementType,
+                                         const InterpolationType aInterpolationType );
+
 //------------------------------------------------------------------------------
 
             void
-            allocate_vectors();
+            set_integration_order( const uint aOrder );
+
+//------------------------------------------------------------------------------
+
+            void
+            initialize_master_integration( const ElementType aElementType,
+                                           const InterpolationType aInterpolationType );
+
+//------------------------------------------------------------------------------
+
+            void
+            initialize_slave_integration( const ElementType aElementType,
+                                           const InterpolationType aInterpolationType );
+
+//------------------------------------------------------------------------------
+
+            void
+            allocate_memory();
+
+//------------------------------------------------------------------------------
+        private:
+//------------------------------------------------------------------------------
+
+
 
 //------------------------------------------------------------------------------
 
@@ -787,7 +815,7 @@ namespace belfem
         inline real
         Calculator::node_interp( const uint aIndex, const Vector< real > & aNodeValues ) const
         {
-            return dot( mIntegration->Nvector( aIndex ),  aNodeValues );
+            return dot( mIntegration->phi( aIndex ),  aNodeValues );
         }
 
 //------------------------------------------------------------------------------

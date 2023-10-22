@@ -21,12 +21,12 @@ namespace belfem
                                           InterpolationFunction * aShapeFunction ) :
             mElementType( aElementType )
         {
-            // create a temporary factory
-            InterpolationFunctionFactory tFactory ;
-
 
             if( aShapeFunction == nullptr )
             {
+                // create a temporary factory
+                InterpolationFunctionFactory tFactory ;
+
                 // create the shape function
                 mShapeFunction = tFactory.create_function( aElementType, aType );
 

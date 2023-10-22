@@ -62,6 +62,9 @@ namespace belfem
                 this->initialize_elements( aFacets );
                 this->collect_nodes( aFacets );
                 this->create_element_map();
+
+                // create the calculator object
+                mCalc = new Calculator( this );
             }
         }
 

@@ -280,13 +280,19 @@ namespace belfem
             // loop over all blocks
             for ( Block * tBlock : mBlockData->blocks() )
             {
-                tBlock->calculator()->allocate() ;
+                if( tBlock->calculator() != nullptr )
+                {
+                    tBlock->calculator()->allocate() ;
+                }
             }
 
             // loop over all sidesets
             for( SideSet * tSideSet : mSideSetData->sidesets() )
             {
-                tSideSet->calculator()->allocate() ;
+                if( tSideSet->calculator() != nullptr )
+                {
+                    tSideSet->calculator()->allocate() ;
+                }
             }
         }
 

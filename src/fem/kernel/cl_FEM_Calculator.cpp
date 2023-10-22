@@ -43,10 +43,9 @@ namespace belfem
 
         Calculator::Calculator( Group * aGroup ) :
                 mGroup( aGroup ),
-                mMesh( aGroup->parent()->mesh() ),
-                mIntegration( aGroup->integration() )
+                mMesh( aGroup->parent()->mesh() )
         {
-            this->allocate_vectors() ;
+
         }
 
 //------------------------------------------------------------------------------
@@ -68,8 +67,54 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+
         void
-        Calculator::allocate_vectors()
+        Calculator::initialize_integration(
+                const ElementType       aElementType,
+                const InterpolationType aInterpolationType )
+        {
+            if( mIntegration != nullptr )
+            {
+                delete mIntegration ;
+            }
+            mIntegration = new IntegrationData( aElementType,
+                                                aInterpolationType );
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        Calculator::set_integration_order( const uint aOrder )
+        {
+            mNumberOfNodes = mesh::number_of_nodes( mGroup->element_type() );
+
+            mIntegration->populate( aOrder, mGroup->parent()->integration_scheme() );
+
+            this->allocate_memory() ;
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        Calculator::initialize_master_integration( const ElementType aElementType,
+                                       const InterpolationType aInterpolationType )
+        {
+
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        initialize_slave_integration( const ElementType aElementType,
+                                      const InterpolationType aInterpolationType )
+        {
+
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        Calculator::allocate_memory()
         {
 
             if(
@@ -79,6 +124,12 @@ namespace belfem
             {
                 // get pointer to equation object
                 IWG * tEquation = mGroup->parent()->iwg();
+
+                // reset the list
+                mVectors.clear() ;
+
+                // reset the map
+                mVectorMap.clear() ;
 
                 for ( const string & tLabel: tEquation->all_fields())
                 {

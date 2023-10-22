@@ -71,6 +71,8 @@ namespace belfem
             bool mIsIsogeometric = true ;
 
             IntegrationData * mIntegrationData = nullptr ;
+
+            // this is meant if the geometry data are different
             IntegrationData * mGeometryIntegrationData = nullptr ;
 
             // shape function for element boundaries

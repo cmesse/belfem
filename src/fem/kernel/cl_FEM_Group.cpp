@@ -38,9 +38,6 @@ namespace belfem
                 mMeshID( aID )
         {
             this->link_material_functions();
-
-            // create the calculator object
-            mCalc = new Calculator( this );
         }
 
 //------------------------------------------------------------------------------
