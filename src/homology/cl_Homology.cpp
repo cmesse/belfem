@@ -1,0 +1,188 @@
+//
+// Created by grgia@ge.polymtl.ca on 18/12/23.
+//
+
+//todo: Maybe create a parent class for homology and cohomology, as they have very similar methods
+
+#include "cl_Homology.hpp"
+
+namespace belfem
+{
+    namespace mesh
+    {
+//------------------------------------------------------------------------------
+
+        Homology::Homology( SimplicialComplex * aSimplicialComplex, Mesh * aMesh ) :
+                mSimplicialComplex( aSimplicialComplex ),
+                mMesh( aMesh )
+        {
+            mGenerators.set_size(4,Cell< Chain * >());
+            mOrders.set_size(4,Cell< int >());
+
+            mD = mSimplicialComplex->createMatrixFromBoundaryMap();
+            this->homologyGroupOfChainComplex();
+            this->generatorsOfHomology();
+        }
+
+        //------------------------------------------------------------------------------
+
+        Homology::~Homology()
+        {
+            for(uint i = 0; i < mGenerators.size(); i++)
+            {
+                for (uint j = 0; j < mGenerators(i).size(); j++)
+                {
+                    delete mGenerators(i)(j);
+                }
+            }
+            mGenerators.clear();
+            mOrders.clear();
+            mV.clear();
+            mW.clear();
+            mU.clear();
+            mB.clear();
+            mD.clear();
+        }
+
+        //-----------------------------------------------------------------------------
+
+        void
+        Homology::homologyGroupOfChainComplex()
+        {
+            mV.clear();
+            mW.clear();
+
+            // loop over all dimensions
+            for(uint k = 0; k < 4; k++)
+            {
+                // populate the matrices W and V (kernel and image of the boundary)
+                auto [w, v] = kernelImage(mD(k));
+                mW[k] = w;
+                mV[k-1] = v;
+            }
+            mV[3] = Matrix< int >(mW[3].n_rows(),1,0);
+
+            //Compute the quotient groups
+            this->quotientGroup();
+        }
+
+        //-----------------------------------------------------------------------------
+
+        void
+        Homology::quotientGroup()
+        {
+            uint n;
+
+            //loop over all dimensions
+            for(uint k = 0; k < 4; k++)
+            {
+                n = mV[k].n_cols();
+                mB[k].set_size(mW[k].n_cols(),n,0);
+
+                //Solve W\V to get the A matrix
+                for (uint i = 0; i < n; i++)
+                {
+                    Matrix < int > tM = Matrix< int >(mV[k].col(i));
+                    Matrix < int > tv = SolveInt(mW[k],tM);
+
+                    for (uint j = 0; j < mW[k].n_cols(); j++)
+                    {
+                        mB[k](j,i) = tv(j,0);
+                    }
+                }
+
+                // Compute the Smith normal form of W\V
+                auto [tQ, tQ_, tR, tR_, s, t] = smithForm(mB[k]);
+                ms[k] = s;
+                mt[k] = t;
+
+                //Get the U matrix, with the homology generators as the last columns.
+                mU[k] = mW[k];
+                mU[k]*=tQ;
+            }
+        }
+
+        //-----------------------------------------------------------------------------
+
+        void
+        Homology::generatorsOfHomology()
+        {
+            uint tCount;
+            uint tCount2;
+
+            //loop over all dimensions
+            for (uint k = 0; k < 4; k++)
+            {
+                tCount = 0;
+
+                // loop over the last columns of U
+                for (uint j = ms[k]+1; j < mU[k].n_cols()+1; j++)
+                {
+
+                    //Get the order (0 means infinity... Maybe should change that)
+                    if(j > mt[k])
+                    {
+                        mOrders(k).push(0);
+                    }
+                    else
+                    {
+                        mOrders(k).push(mB[k](j-1,j-1));
+                    }
+
+                    // Create the generator from column data
+                    Chain * tChain = new Chain(k,mMesh);
+                    mGenerators(k).push(tChain);
+                    tCount2 = 0;
+                    for(const auto& [tKey, tChain2] : mSimplicialComplex->get_kchainMap(k))
+                    {
+                        mGenerators(k)(tCount)->addChainToChain(tChain2,mU[k](tCount2,j-1));
+                        tCount2++;
+                    }
+                    tCount++;
+                }
+            }
+        }
+
+        //-----------------------------------------------------------------------------
+
+
+        // Create field in the mesh to visualize the generators
+        void
+        Homology::create_kGeneratorsField(const uint k )
+        {
+            uint tCount = 0;
+            for(const auto& tChain : mGenerators(k))
+            {
+                tCount++;
+                char fieldName [50];
+                sprintf (fieldName, "1HomologyGenerator%d", tCount);
+                mMesh->create_field( fieldName, EntityType::NODE);
+                Map< id_t, int > tSimplicesMap = tChain->getSimplicesMap();
+                for( const auto& [tInd, tCoeff] :  tSimplicesMap)
+                {
+                    mMesh->field_data(fieldName)(mMesh->edge(tInd)->node(0)->index()) = 1;
+                    mMesh->field_data(fieldName)(mMesh->edge(tInd)->node(1)->index()) = 1;
+                }
+            }
+        }
+
+        //-----------------------------------------------------------------------------
+
+        Cell< Matrix< int > >
+        Homology::get_BoundaryMatrix()
+        {
+            return this->mD;
+        }
+
+        //-----------------------------------------------------------------------------
+
+        Cell <Cell< Chain * >>
+        Homology::get_Generators()
+        {
+            return this->mGenerators;
+        }
+
+        //-----------------------------------------------------------------------------
+    }
+}
+//------------------------------------------------------------------------------

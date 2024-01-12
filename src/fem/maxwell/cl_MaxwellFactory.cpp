@@ -51,9 +51,9 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         MaxwellFactory::MaxwellFactory( const InputFile & aInputFile )  :
-            IwgFactory( this->load_mesh( aInputFile ) ),
-            mInputFile( aInputFile ),
-            mMagneticParameters( new KernelParameters( this->magnetic_mesh() ) )
+                IwgFactory( this->load_mesh( aInputFile ) ),
+                mInputFile( aInputFile ),
+                mMagneticParameters( new KernelParameters( this->magnetic_mesh() ) )
         {
             this->create_magnetic() ;
             comm_barrier() ;
@@ -154,6 +154,7 @@ namespace belfem
                     delete mThermalMesh;
                 }
             }
+            delete mSimplicialComplex;
         }
 
 //------------------------------------------------------------------------------
@@ -183,8 +184,9 @@ namespace belfem
 #endif
 #endif
             // create the edges for this mesh
-            mMesh->create_edges( false, mNedelecBlocks, mNedelecSideSets ) ;
-
+            // todo: Debug that so we can create all the edges and still use the thin shell model
+            mMesh->create_edges( false, mBlockIDs, mSideSetIDs ) ; //changed by G Giard (all edges are needed for homology computation, but creates a bug with the thin shell...)
+            //mMesh->create_edges( false, mNedelecBlocks, mNedelecSideSets ) ; //this makes the thin shell works, but not the homology computation...
 
             // check if this is a higher order mesh
             if( mMesh->max_element_order() > 1 )
@@ -193,6 +195,7 @@ namespace belfem
                 mMesh->create_faces( false, mNedelecBlocks, mNedelecSideSets ) ;
             }
 
+            this->create_simplicial_complex() ;
 
             // read the timestepping information
             this->read_timestep() ;
@@ -332,6 +335,16 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
+        MaxwellFactory::create_simplicial_complex()
+        {
+            this->flag_nc_simplices();
+            mSimplicialComplex = new mesh::SimplicialComplex(mMesh);
+            this->unflag_nc_simplices();
+        }
+
+//------------------------------------------------------------------------------
+
+        void
         MaxwellFactory::create_commtable()
         {
             // create the comm table ( we don't have a kernel yet )
@@ -410,6 +423,16 @@ namespace belfem
         MaxwellFactory::maxtime() const
         {
             return mInputFile.section("timestepping")->get_value("maxtime", "s").first ;
+        }
+
+//------------------------------------------------------------------------------
+
+        real
+        MaxwellFactory::maxdt() const
+        {
+            return mInputFile.section("timestepping")->key_exists("timestepmax") ?
+                   mInputFile.section("timestepping")->get_value("timestepmax", "s").first :
+                   mInputFile.section("timestepping")->get_value("timestep", "s").first ;
         }
 
 //------------------------------------------------------------------------------
@@ -759,7 +782,7 @@ namespace belfem
                         {
                             // get labels
                             const Cell< string > & tTargets
-                                = reinterpret_cast< MaxwellMaterial * >( tMaterial )->domain_labels();
+                                    = reinterpret_cast< MaxwellMaterial * >( tMaterial )->domain_labels();
 
                             // add material to map
                             for ( index_t t = 0; t < tTargets.size(); ++t )
@@ -887,8 +910,8 @@ namespace belfem
                             real tEc = aInput->get_value( "ec", "V/m" ).first;
 
                             real tJc = aInput->key_exists( "jc" ) ?
-                                  aInput->get_value( "jc", "A/m^2" ).first :
-                                  aInput->get_value( "jc0", "A/m^2" ).first;
+                                       aInput->get_value( "jc", "A/m^2" ).first :
+                                       aInput->get_value( "jc0", "A/m^2" ).first;
 
                             aMaterial->set_rho_el_const( tEc / tJc );
                         }
@@ -1065,41 +1088,41 @@ namespace belfem
                     // get section
                     const input::Section * tSection = mInputFile.section( "maxwell")->section( "tape" );
 
-		    uint tNumLayers = tSection->end() - tSection->start() ;
+                    uint tNumLayers = tSection->end() - tSection->start() ;
 
                     mTapeThicknesses.set_size( tNumLayers );
 
-		    uint tCount = 0 ;
+                    uint tCount = 0 ;
 
-		    for ( uint l = tSection->start() ; l < tSection->end(); ++l)
+                    for ( uint l = tSection->start() ; l < tSection->end(); ++l)
                     {
                         // get line
-			const string & tLine = mInputFile.line( l );
+                        const string & tLine = mInputFile.line( l );
 
-			// get label
-			uint f = tLine.find( ':' );
-			const string tLabel = clean_string( tLine.substr( 0, f ) );
-                        
-			// get entry
-			const string tEntry = clean_string( tLine.substr( f+1, tLine.find(';')-f-1 ));
+                        // get label
+                        uint f = tLine.find( ':' );
+                        const string tLabel = clean_string( tLine.substr( 0, f ) );
 
-			// get value of entry
-			uint s = tEntry.find(' ');
-			real tValue = std::stod( tEntry.substr( 0, s ) );
-			
-			// get unit
-			string tUnit = tEntry.substr(s+1);
+                        // get entry
+                        const string tEntry = clean_string( tLine.substr( f+1, tLine.find(';')-f-1 ));
 
-			// make sure that unit is correct
+                        // get value of entry
+                        uint s = tEntry.find(' ');
+                        real tValue = std::stod( tEntry.substr( 0, s ) );
+
+                        // get unit
+                        string tUnit = tEntry.substr(s+1);
+
+                        // make sure that unit is correct
                         value tScale = unit_to_si( tUnit );
                         BELFEM_ERROR( check_unit( tScale, "m" ), "invalid unit, expect m or equivalent" );
 
-			// scale the value and write it into vector
+                        // scale the value and write it into vector
                         mTapeThicknesses( tCount++ ) = tValue * tScale.first ;
 
                         // add label to list
-			mTapeMaterialLabels.push( tLabel  );
-		    }
+                        mTapeMaterialLabels.push( tLabel  );
+                    }
                 }
             }
         }
@@ -1113,7 +1136,7 @@ namespace belfem
             for( DomainGroup * tGroup : mBlocks )
             {
                 if(    tGroup->type() == DomainType::Conductor
-                    || tGroup->type() == DomainType::Ferro )
+                       || tGroup->type() == DomainType::Ferro )
                 {
                     // grab material
                     Material * tMaterial = mMaterialMap( tGroup->label() );
@@ -1264,7 +1287,7 @@ namespace belfem
         {
             // grab section in input file
             const input::Section * tBCs
-                = mInputFile.section("maxwell")->section("boundaryConditions") ;
+                    = mInputFile.section("maxwell")->section("boundaryConditions") ;
 
             // get number of bcs
             index_t tNumBCs = tBCs->num_sections() ;
@@ -1299,7 +1322,7 @@ namespace belfem
                 real tPenalty   = tBC->key_exists("penalty") ? tBC->get_real( "penalty" ) : 1.0 ;
 
                 const string tScalingType = tBC->key_exists("type") ?  string_to_lower( tBC->get_string("type") ) :
-                        "none" ;
+                                            "none" ;
 
                 BoundaryConditionScaling tType = BoundaryConditionScaling::UNDEFINED ;
                 MagfieldBcType tMagfieldBcType = MagfieldBcType::UNDEFINED ;
@@ -1332,9 +1355,9 @@ namespace belfem
                     tType = bc_scaling_type( tScalingType );
 
                     BELFEM_ERROR( tType == BoundaryConditionScaling::Constant ||
-                                 ( tBC->key_exists("period") && ! tBC->key_exists("frequency") ) ||
-                                 ( ! tBC->key_exists("period") && tBC->key_exists("frequency") ),
-                                 "Must impose either period or frequency, not both!" );
+                                  ( tBC->key_exists("period") && ! tBC->key_exists("frequency") ) ||
+                                  ( ! tBC->key_exists("period") && tBC->key_exists("frequency") ),
+                                  "Must impose either period or frequency, not both!" );
 
 
                     // read parameters from input file
@@ -1394,7 +1417,7 @@ namespace belfem
 
                         // check if this is a negative bc
                         real tSign = ( tLabel.find( "minus") < tLabel.length() || tLabel.find("-") < tLabel.length() ) ?
-                                -1.0 : 1.0 ;
+                                     -1.0 : 1.0 ;
 
                         // set parameters for bc
                         tCurrent->set( tType, tSign * tAmplitude, tPeriod, tPhase );
@@ -1443,8 +1466,8 @@ namespace belfem
 
                         // get imposing type
                         BoundaryConditionImposing tImposing =  ( norm( tValues ) < BELFEM_EPSILON ) || tIsHA ?
-                                BoundaryConditionImposing::Dirichlet :
-                                BoundaryConditionImposing::Weak ;
+                                                               BoundaryConditionImposing::Dirichlet :
+                                                               BoundaryConditionImposing::Weak ;
 
                         // get unit
                         string tUnit = clean_string( tString.substr( j + 2 ));
@@ -1815,7 +1838,7 @@ namespace belfem
             mMagneticField = mMagneticKernel->create_field( tMaxwell );
 
             // create data arrays on mesh
-           // mMagneticField->create_fields( tMaxwell );
+            // mMagneticField->create_fields( tMaxwell );
 
             // link field with materials
             this->link_materials( mMagneticField );
@@ -1834,7 +1857,7 @@ namespace belfem
             // set the solver of this field based on the input
             this->set_solver( mMagneticField,
                               mInputFile.section("maxwell")
-                              ->section("solver")->section("linear") );
+                                      ->section("solver")->section("linear") );
 
             // add boundary conditions to field
             for( BoundaryCondition * tBC : mBoundaryConditions )
@@ -1953,12 +1976,12 @@ namespace belfem
                                               const real aPicardEpsilon,
                                               const real aNewtonOmega,
                                               const real aNewtonEpsilon ) :
-                           minIter( aMinIter ),
-                           maxIter( aMaxIter ),
-                           picardOmega( aPicardOmega ),
-                           picardEpsilon( aPicardEpsilon ),
-                           newtonOmega( aNewtonOmega ),
-                           newtonEpsilon( aNewtonEpsilon )
+                minIter( aMinIter ),
+                maxIter( aMaxIter ),
+                picardOmega( aPicardOmega ),
+                picardEpsilon( aPicardEpsilon ),
+                newtonOmega( aNewtonOmega ),
+                newtonEpsilon( aNewtonEpsilon )
         {
 
         }
@@ -2008,8 +2031,8 @@ namespace belfem
 
 
             real tPicardEpsilon = tSection->section_exists("picard") ?
-                                tSection->section("picard")->key_exists("epsilon") ?
-                                tSection->section("picard")->get_real("epsilon") : tNewtonEpsilon : tNewtonEpsilon ;
+                                  tSection->section("picard")->key_exists("epsilon") ?
+                                  tSection->section("picard")->get_real("epsilon") : tNewtonEpsilon : tNewtonEpsilon ;
 
 
             NonlinearSettings aData(
@@ -2800,7 +2823,7 @@ namespace belfem
 
                             // generate new label for sideset
                             if ( string_to_lower( tGroup->label()) ==
-                                string_to_lower( to_string( tGroup->type())))
+                                 string_to_lower( to_string( tGroup->type())))
                             {
                                 tSideSet->label() = sprint( tFormat.c_str(), ( uint ) tSideSet->id(),
                                                             to_string( tGroup->type()).c_str() );
@@ -2846,8 +2869,8 @@ namespace belfem
 #ifdef BELFEM_FERRO_HPHIA
                         // check if this sideset is an interface and must be swapped
                         if (   ( tMasterType == DomainType::Air && tSlaveType == DomainType::Conductor )
-                            || ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Conductor )
-                            || ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Air ))
+                               || ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Conductor )
+                               || ( tMasterType == DomainType::Ferro && tSlaveType == DomainType::Air ))
                         {
                             tFacet->flag() ;
                         }
@@ -2868,11 +2891,11 @@ namespace belfem
 #endif
                         else if( tMasterType == tSlaveType )
                         {
-                           // otherwise, we prefer the element with the lower ID
-                           if( tFacet->master()->id() > tFacet->slave()->id() )
-                           {
-                               tFacet->flag() ;
-                           }
+                            // otherwise, we prefer the element with the lower ID
+                            if( tFacet->master()->id() > tFacet->slave()->id() )
+                            {
+                                tFacet->flag() ;
+                            }
                         }
                     }
                 }
@@ -3171,16 +3194,16 @@ namespace belfem
             Cell< DomainGroup * > & tRawSymmetries = aAntiFlag ? mRawAntiSymmetries : mRawSymmetries ;
 
             const DomainType tAirType = aAntiFlag ?
-                    DomainType::AntiSymmetryAir
-                    : DomainType::SymmetryAir ;
+                                        DomainType::AntiSymmetryAir
+                                                  : DomainType::SymmetryAir ;
 
             const DomainType tFerroType = aAntiFlag ?
-                    DomainType::AntiSymmetryFerro :
-                    DomainType::SymmetryFerro ;
+                                          DomainType::AntiSymmetryFerro :
+                                          DomainType::SymmetryFerro ;
 
             const DomainType tConductorType = aAntiFlag ?
-                                          DomainType::AntiSymmetryConductor :
-                                          DomainType::SymmetryConductor ;
+                                              DomainType::AntiSymmetryConductor :
+                                              DomainType::SymmetryConductor ;
 
             const string tAirLabel =  aAntiFlag ? "antiSymmetryAir" : "symmetryAir" ;
             const string tFerroLabel =  aAntiFlag ? "antiSymmetryFerro" : "symmetryFerro" ;
@@ -3718,7 +3741,7 @@ namespace belfem
                 const string & aUnitB,
                 const string & aUnitH,
                 const value    aMaxB,
-                      real   & aM )
+                real   & aM )
         {
 
             if( comm_rank() == 0 )
@@ -4030,10 +4053,10 @@ namespace belfem
 
                 // create layer name
                 tBlock->label() =
-                sprint( tFormat.c_str(),
-                         k + 1,
-                         mTapeMaterialLabels( k  ).c_str() ,
-                         ( unsigned int ) std::ceil( mTapeThicknesses( k ) *1e6 ) );
+                        sprint( tFormat.c_str(),
+                                k + 1,
+                                mTapeMaterialLabels( k  ).c_str() ,
+                                ( unsigned int ) std::ceil( mTapeThicknesses( k ) *1e6 ) );
 
             }
         }
@@ -4237,7 +4260,7 @@ namespace belfem
                     {
                         // create a new facet
                         mesh::Element * tElement = tFactory.create_element( ElementType::LINE2,
-                                                                                     tOldFacet->id());
+                                                                            tOldFacet->id());
                         tElement->insert_node( tOldFacet->element()->node( 0 ), 0 );
                         tElement->insert_node( tOldFacet->element()->node( 1 ), 1 );
 
@@ -4331,7 +4354,7 @@ namespace belfem
             // get the container
             Vector< uint > & tNumShellsPerNode =
                     static_cast< IWG_Maxwell * >( mMagneticField->iwg() )
-                    ->num_shells_per_node() ;
+                            ->num_shells_per_node() ;
 
             if( mMagneticKernel->is_master() )
             {
@@ -4394,6 +4417,71 @@ namespace belfem
                 comm_barrier() ;
 
                 receive( mMagneticKernel->master(), tNumShellsPerNode );
+            }
+        }
+
+// -----------------------------------------------------------------------------
+
+
+        void
+        MaxwellFactory::flag_nc_simplices()
+        {
+            // Flag the non-conducting simplices for the homology and cohomology
+            for( uint i = 0; i < mBlocks.size(); ++i )
+            {
+                if (mBlocks(i)->type()!= DomainType::Coil && mBlocks(i)->type()!= DomainType::Conductor)
+                {
+                    for( uint j = 0; j < mBlocks(i)->groups().length(); ++j )
+                    {
+                        mMesh->block(mBlocks(i)->groups()(j))->flag_nodes();
+                        mMesh->block(mBlocks(i)->groups()(j))->flag_edges();
+                        mMesh->block(mBlocks(i)->groups()(j))->flag_elements();
+                    }
+                }
+            }
+
+            for( uint i = 0; i < mSideSets.size(); ++i )
+            {
+                if (mSideSets(i)->type()!= DomainType::ThinShell)
+                {
+                    for( uint j = 0; j < mSideSets(i)->groups().length(); ++j )
+                    {
+                        mMesh->sideset(mSideSets(i)->groups()(j))->flag_all_nodes();
+                        mMesh->sideset(mSideSets(i)->groups()(j))->flag_edges();
+                    }
+                }
+            }
+        }
+
+// -----------------------------------------------------------------------------
+
+        void
+        MaxwellFactory::unflag_nc_simplices()
+        {
+            // Flag the non-conducting simplices for the homology and cohomology
+            for( uint i = 0; i < mBlocks.size(); ++i )
+            {
+                if (mBlocks(i)->type()!= DomainType::Coil && mBlocks(i)->type()!= DomainType::Conductor)
+                {
+                    for( uint j = 0; j < mBlocks(i)->groups().length(); ++j )
+                    {
+                        mMesh->block(mBlocks(i)->groups()(j))->unflag_nodes();
+                        mMesh->block(mBlocks(i)->groups()(j))->unflag_edges();
+                        mMesh->block(mBlocks(i)->groups()(j))->unflag_elements();
+                    }
+                }
+            }
+
+            for( uint i = 0; i < mSideSets.size(); ++i )
+            {
+                if (mSideSets(i)->type()!= DomainType::ThinShell)
+                {
+                    for( uint j = 0; j < mSideSets(i)->groups().length(); ++j )
+                    {
+                        mMesh->sideset(mSideSets(i)->groups()(j))->unflag_all_nodes();
+                        mMesh->sideset(mSideSets(i)->groups()(j))->unflag_edges();
+                    }
+                }
             }
         }
 

@@ -26,8 +26,8 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     Mesh::Mesh( const proc_t aMasterProc, const bool aComputeConnectivities ) :
-        mMasterProc(  aMasterProc < comm_size() ? aMasterProc : 0 ),
-        mComputeConnectivities( aComputeConnectivities )
+            mMasterProc(  aMasterProc < comm_size() ? aMasterProc : 0 ),
+            mComputeConnectivities( aComputeConnectivities )
     {
 
     }
@@ -38,9 +38,9 @@ namespace belfem
             const uint & aNumberOfDimensions ,
             const proc_t aMasterProc,
             const bool aComputeConnectivities  ) :
-        mMasterProc(  aMasterProc < comm_size() ? aMasterProc : 0 ),
-        mNumberOfDimensions( aNumberOfDimensions ),
-        mComputeConnectivities( aComputeConnectivities )
+            mMasterProc(  aMasterProc < comm_size() ? aMasterProc : 0 ),
+            mNumberOfDimensions( aNumberOfDimensions ),
+            mComputeConnectivities( aComputeConnectivities )
     {
 
     }
@@ -77,7 +77,7 @@ namespace belfem
             else
             {
                 BELFEM_ERROR( false, "don't know how to read a mesh of type <%s>.",
-                             tType.c_str());
+                              tType.c_str());
             }
 
             uint tTime = tTimer.stop();
@@ -263,7 +263,7 @@ namespace belfem
             else if(  tType == "exo" )
             {
                 // create writer object
-                 mesh::ExodusWriter tWriter( this );
+                mesh::ExodusWriter tWriter( this );
 
                 // write mesh to file
                 tWriter.save( aFilePath );
@@ -291,11 +291,11 @@ namespace belfem
                 {
                     tFilePath = sprint("%s.0%4u", aFilePath.c_str(), ( unsigned int ) mTimeStep );
                 }
-		else
-		{
+                else
+                {
 
                     tFilePath = sprint("%s.%5u", aFilePath.c_str(), ( unsigned int ) mTimeStep );
-		}
+                }
 
                 // write mesh to file
                 tWriter.save( tFilePath );
@@ -411,6 +411,40 @@ namespace belfem
                 {
                     tElement->edge( k )->add_element( tElement );
                 }
+            }
+        }
+    }
+
+//------------------------------------------------------------------------------
+    //Added by G Giard
+    void
+    Mesh::connect_nodes_to_edges()
+    {
+        for( mesh::Node * tNode: mNodes )
+        {
+            tNode->reset_edge_container();
+        }
+
+        // loop over all elements
+        for( mesh::Edge * tEdge: mEdges )
+        {
+            for ( uint k = 0; k < tEdge->number_of_nodes(); ++k )
+            {
+                tEdge->node( k )->increment_edge_counter();
+            }
+        }
+
+        // allocate container for nodes
+        for( mesh::Node * tNode: mNodes )
+        {
+            tNode->allocate_edge_container();
+        }
+
+        for( mesh::Edge * tEdge: mEdges )
+        {
+            for ( uint k = 0; k < tEdge->number_of_nodes(); ++k )
+            {
+                tEdge->node( k )->add_edge( tEdge );
             }
         }
     }
@@ -564,8 +598,8 @@ namespace belfem
             } // end loop over candidates
 
             BELFEM_ASSERT( tMaster != nullptr,
-                "Could not find master for facet %u",
-                          ( unsigned int ) tFacet->id() );
+                           "Could not find master for facet %u",
+                           ( unsigned int ) tFacet->id() );
 
             // check if slave is found
             if ( tSlave == nullptr )
@@ -1035,8 +1069,8 @@ namespace belfem
         for( index_t v=0; v<tNumVertices; ++v )
         {
             mesh::Vertex * tVertex =  v < this->number_of_nodes() ?
-                    reinterpret_cast<mesh::Vertex *>(mNodes( v )) :
-                    reinterpret_cast<mesh::Vertex *>(mEdges( v - this->number_of_nodes() ) );
+                                      reinterpret_cast<mesh::Vertex *>(mNodes( v )) :
+                                      reinterpret_cast<mesh::Vertex *>(mEdges( v - this->number_of_nodes() ) );
 
             // get number of elements that are connected to this edge
             uint tNumElements = tVertex->number_of_elements();
@@ -1046,7 +1080,7 @@ namespace belfem
             for( uint e=0; e<tNumElements; ++e )
             {
                 tCount   += tVertex->element( e )->number_of_nodes()
-                          + tVertex->element( e )->number_of_edges() ;
+                            + tVertex->element( e )->number_of_edges() ;
             }
 
             // Allocate temporary cell
@@ -1148,7 +1182,7 @@ namespace belfem
             const id_t aID )
     {
         BELFEM_ASSERT( ! mFieldMap.key_exists( aLabel ),
-            "Field %s already exists on mesh.", aLabel.c_str() );
+                       "Field %s already exists on mesh.", aLabel.c_str() );
 
 
         // create field object
@@ -1232,7 +1266,7 @@ namespace belfem
     {
 
         BELFEM_ERROR( mElements.size() == 0,
-            "collect_elements_from_blocks() must not be called if elements container is already filled" );
+                      "collect_elements_from_blocks() must not be called if elements container is already filled" );
 
         // initialize counters
         index_t tCount = 0;
@@ -1269,7 +1303,7 @@ namespace belfem
     Mesh::collect_facets_from_sidesets()
     {
         BELFEM_ERROR( mFacets.size() == 0,
-                     "collect_facets_from_sidesets() must not be called if facet container is already filled" );
+                      "collect_facets_from_sidesets() must not be called if facet container is already filled" );
 
         index_t tCount = 0;
 
@@ -1302,7 +1336,7 @@ namespace belfem
     Mesh::collect_facets_from_cuts()
     {
         BELFEM_ERROR( mConnectors.size() == 0,
-                     "collect_facets_from_sidesets() must not be called if facet container is already filled" );
+                      "collect_facets_from_sidesets() must not be called if facet container is already filled" );
 
         index_t tCount = 0;
 
@@ -1461,6 +1495,7 @@ namespace belfem
             if( mComputeConnectivities )
             {
                 this->connect_nodes_to_elements();
+                this->connect_nodes_to_edges(); //Added by G Giard
 
                 if( ! mFacetsAreLinked )
                 {
@@ -1831,6 +1866,8 @@ namespace belfem
             mesh::EdgeFactory tFactory( this );
             tFactory.create_edges( aNedelecBlocks, aNedelecSideSets );
 
+            this->connect_nodes_to_edges();
+
             // print for debugging
             if( aPrint )
             {
@@ -1840,7 +1877,7 @@ namespace belfem
         }
     }
 
- //------------------------------------------------------------------------------
+    //------------------------------------------------------------------------------
 
     void
     Mesh::reset_edges()
@@ -1884,12 +1921,12 @@ namespace belfem
     {
         if( comm_rank() == mMasterProc && this->faces_exist() )
         {
-           mFacetMap.clear() ;
-           for( mesh::Face * tFace : mFaces )
-           {
-               delete tFace ;
-           }
-           mFaces.clear();
+            mFacetMap.clear() ;
+            for( mesh::Face * tFace : mFaces )
+            {
+                delete tFace ;
+            }
+            mFaces.clear();
         }
     }
 
@@ -1977,7 +2014,7 @@ namespace belfem
             for ( index_t f=0; f<tNumFacets; ++f )
             {
                 mTapeFacetMap[ mTapeFacetTable( 0, f ) ]
-                    = mFacetMap[ mTapeFacetTable( 1, f ) ];
+                        = mFacetMap[ mTapeFacetTable( 1, f ) ];
             }
         }
     }
@@ -2443,7 +2480,7 @@ namespace belfem
                         for ( id_t tID: tFacetIDs )
                         {
                             tTapeFacetTable( 0, tCount )
-                                = this->ghost_facet( tID, l )->id() ;
+                                    = this->ghost_facet( tID, l )->id() ;
                             tTapeFacetTable( 1, tCount++ ) = tID ;
                         }
                     }
@@ -2576,13 +2613,13 @@ namespace belfem
         {
             if( this->block_exists( tID ) )
             {
-               for( mesh::Element * tElement : this->block( tID )->elements() )
-               {
-                   tElement->flag() ;
-                   tElement->flag_nodes();
-                   tElement->set_index( tCount );
-                   tElements( tCount++ ) = tElement ;
-               }
+                for( mesh::Element * tElement : this->block( tID )->elements() )
+                {
+                    tElement->flag() ;
+                    tElement->flag_nodes();
+                    tElement->set_index( tCount );
+                    tElements( tCount++ ) = tElement ;
+                }
             }
         }
 

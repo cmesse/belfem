@@ -124,6 +124,19 @@ namespace belfem
         }
 //------------------------------------------------------------------------------
 
+        typename std::map< Key, Value >::const_iterator
+        begin() const
+        {
+            return mMap.begin();
+        }
+
+        typename std::map< Key, Value >::const_iterator
+        end() const
+        {
+            return mMap.end();
+        }
+//------------------------------------------------------------------------------
+
         void
         erase_key(  const Key & aKey  )
         {

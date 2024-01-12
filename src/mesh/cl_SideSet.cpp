@@ -34,7 +34,7 @@ namespace belfem
         SideSet::insert_facet( Facet * aFacet )
         {
             BELFEM_ASSERT( mFacetCounter < mFacets.size(),
-                          "SideSet is full" );
+                           "SideSet is full" );
 
             mFacets( mFacetCounter++ ) = aFacet;
 
@@ -104,6 +104,17 @@ namespace belfem
             for( Facet * tFacet : mFacets )
             {
                 tFacet->element()->flag_edges() ;
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        SideSet::unflag_edges()
+        {
+            for( Facet * tFacet : mFacets )
+            {
+                tFacet->element()->unflag_edges() ;
             }
         }
 

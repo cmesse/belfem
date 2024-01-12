@@ -69,6 +69,17 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
+        Block::unflag_nodes()
+        {
+            for( Element* tElement : mElements )
+            {
+                tElement->unflag_nodes();
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
         Block::flag_corner_nodes()
         {
             for( Element* tElement : mElements )
@@ -85,6 +96,17 @@ namespace belfem
             for( Element* tElement : mElements )
             {
                 tElement->flag_edges();
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        Block::unflag_edges()
+        {
+            for( Element* tElement : mElements )
+            {
+                tElement->unflag_edges();
             }
         }
 

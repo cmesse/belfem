@@ -16,6 +16,7 @@
 #include "cl_FEM_MaxwellBoundaryConditionCurrent.hpp"
 #include "cl_FEM_MaxwellBoundaryConditionMagfield.hpp"
 #include "cl_MaxwellMeshSynch.hpp"
+#include "cl_SimplicialComplex.hpp"
 
 namespace belfem
 {
@@ -69,6 +70,9 @@ namespace belfem
 
             // kernel object for maxwell
             Kernel *           mMagneticKernel = nullptr ;
+
+            // Simplicial Complex for homology computation
+            mesh::SimplicialComplex *  mSimplicialComplex;
 
             // flag telling if we own the mesh
             // (unset if create_mesh() was called )
@@ -233,6 +237,9 @@ namespace belfem
             DofManager *
             magnetic_field() ;
 
+            mesh::SimplicialComplex *
+            simplicial_complex() ;
+
 //------------------------------------------------------------------------------
 
             bool
@@ -274,6 +281,9 @@ namespace belfem
 
             real
             maxtime() const ;
+
+            real
+            maxdt() const ;
 
             uint
             meshdump() const ;
@@ -318,12 +328,17 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            void
+            create_simplicial_complex();
+
+//------------------------------------------------------------------------------
+
             /**
              * read the formulation which determines the IWG type
              * form the input file
              */
-             void
-             read_formulation();
+            void
+            read_formulation();
 
 //------------------------------------------------------------------------------
 
@@ -500,15 +515,15 @@ namespace belfem
                     const string & aUnitB,
                     const string & aUnitH,
                     const value    aMaxB,
-                          real   & aM );
+                    real   & aM );
 
 // -----------------------------------------------------------------------------
 
             /**
              * help function to determine the element type of a block
              */
-             ElementType
-             element_type( const id_t aBlockID );
+            ElementType
+            element_type( const id_t aBlockID );
 
 // -----------------------------------------------------------------------------
 
@@ -536,6 +551,17 @@ namespace belfem
             count_thin_shells_per_node();
 
 // -----------------------------------------------------------------------------
+
+            void
+            flag_nc_simplices();
+
+// -----------------------------------------------------------------------------
+
+            void
+            unflag_nc_simplices();
+
+// -----------------------------------------------------------------------------
+
         };
 
 //------------------------------------------------------------------------------
@@ -623,6 +649,14 @@ namespace belfem
         MaxwellFactory::magnetic_field()
         {
             return mMagneticField ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline mesh::SimplicialComplex *
+        MaxwellFactory::simplicial_complex()
+        {
+            return mSimplicialComplex ;
         }
 
 //------------------------------------------------------------------------------

@@ -19,9 +19,10 @@ set( SOURCES
         cl_MaxwellFactory.cpp
         fn_FEM_compute_brandt.cpp
         fn_FEM_compute_normb.cpp
-        )
+)
 
 include_directories( ${BELFEM_SOURCE_DIR}/mesh )
+include_directories( ${BELFEM_SOURCE_DIR}/homology )
 include_directories( ${BELFEM_SOURCE_DIR}/fem/interpolation )
 include_directories( ${BELFEM_SOURCE_DIR}/fem/edgeinterpolation )
 include_directories( ${BELFEM_SOURCE_DIR}/fem/iwg )
@@ -49,7 +50,7 @@ set ( LIBLIST
         postproc
         kernel
         postproc
-        )
+)
 
 include( ${BELFEM_CONFIG_DIR}/scripts/Add_Library.cmake )
 

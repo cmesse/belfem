@@ -153,8 +153,8 @@ namespace belfem
         /**
          * Multiply all node coordinates with a factor, e.g. to convert from mm to m.
          */
-         void
-         scale_mesh( const real aFactor );
+        void
+        scale_mesh( const real aFactor );
 
 //------------------------------------------------------------------------------
 
@@ -469,8 +469,8 @@ namespace belfem
         /**
          * check if block exists
          */
-         bool
-         block_exists( const id_t aID ) const ;
+        bool
+        block_exists( const id_t aID ) const ;
 
 //------------------------------------------------------------------------------
 
@@ -565,8 +565,8 @@ namespace belfem
         /**
          * returns the IDs of ghost sidesets needed for thin shells
          */
-         const Vector< id_t > &
-         ghost_sideset_ids() const ;
+        const Vector< id_t > &
+        ghost_sideset_ids() const ;
 
 //------------------------------------------------------------------------------
 
@@ -791,13 +791,13 @@ namespace belfem
         /**
          * called by kernel
          */
-         void
-         set_kernel_flag() ;
+        void
+        set_kernel_flag() ;
 
 //------------------------------------------------------------------------------
 
-         bool
-         is_kernel_mesh() const ;
+        bool
+        is_kernel_mesh() const ;
 
 //------------------------------------------------------------------------------
 
@@ -812,8 +812,8 @@ namespace belfem
         /**
          * return the list with blocks that contain edge elements
          */
-         const Vector< id_t > &
-         nedelec_blocks() const ;
+        const Vector< id_t > &
+        nedelec_blocks() const ;
 
 //------------------------------------------------------------------------------
 
@@ -828,8 +828,8 @@ namespace belfem
         /**
          * flags elements that are curved
          */
-         void
-         flag_curved_elements();
+        void
+        flag_curved_elements();
 
 //------------------------------------------------------------------------------
 
@@ -837,12 +837,12 @@ namespace belfem
          * create the ghost layers for selected elements
          * called by tape roller on master proc.
          */
-         void
-         create_ghost_sidesets(
-                 const Vector< id_t >    & aGhostBlockIDs,
-                 const Vector< id_t >    & aGhostSideSetIDs,
-                 const Vector< id_t >    & aElementIDs,
-                 Cell< mesh::Layer  * >  & aLayers );
+        void
+        create_ghost_sidesets(
+                const Vector< id_t >    & aGhostBlockIDs,
+                const Vector< id_t >    & aGhostSideSetIDs,
+                const Vector< id_t >    & aElementIDs,
+                Cell< mesh::Layer  * >  & aLayers );
 
 //------------------------------------------------------------------------------
 
@@ -850,8 +850,8 @@ namespace belfem
          * create the ghost layers for selected elements
          * called by non-master procs from kernel
          */
-         void
-         distribute_ghost_sidesets( const proc_t aTarget, const proc_t aMasterProc=0 );
+        void
+        distribute_ghost_sidesets( const proc_t aTarget, const proc_t aMasterProc=0 );
 
 
 //------------------------------------------------------------------------------
@@ -859,8 +859,8 @@ namespace belfem
         /**
          * get the number of layers if this is thin shell
          */
-         index_t
-         number_of_thin_shell_layers() const ;
+        index_t
+        number_of_thin_shell_layers() const ;
 
 //------------------------------------------------------------------------------
 
@@ -881,6 +881,11 @@ namespace belfem
 
         void
         connect_edges_to_elements( Cell< mesh::Element * > & aElements );
+
+//------------------------------------------------------------------------------
+
+        void
+        connect_nodes_to_edges();
 
 //------------------------------------------------------------------------------
 
@@ -954,13 +959,13 @@ namespace belfem
         /**
          * connect ghost elements to facets
          */
-         void
-         link_ghost_elements();
+        void
+        link_ghost_elements();
 
 //------------------------------------------------------------------------------
 
-         void
-         fix_ghost_adjacency();
+        void
+        fix_ghost_adjacency();
 
 //------------------------------------------------------------------------------
     };
@@ -1051,8 +1056,8 @@ namespace belfem
     Mesh::node( const id_t aID )
     {
         BELFEM_ASSERT( mNodeMap.key_exists( aID ),
-                      "Tried to access invalid node id: %lu.",
-                      ( long unsigned int ) aID );
+                       "Tried to access invalid node id: %lu.",
+                       ( long unsigned int ) aID );
 
         return mNodeMap( aID );
     }
@@ -1064,8 +1069,8 @@ namespace belfem
     Mesh::edge( const id_t aID )
     {
         BELFEM_ASSERT( mEdgeMap.key_exists( aID ),
-                      "Tried to access invalid edge id: %lu.",
-                      ( long unsigned int ) aID );
+                       "Tried to access invalid edge id: %lu.",
+                       ( long unsigned int ) aID );
 
         return mEdgeMap( aID );
     }
@@ -1076,8 +1081,8 @@ namespace belfem
     Mesh::face( const id_t aID )
     {
         BELFEM_ASSERT( mFaceMap.key_exists( aID ),
-                      "Tried to access invalid face id: %lu.",
-                      ( long unsigned int ) aID );
+                       "Tried to access invalid face id: %lu.",
+                       ( long unsigned int ) aID );
 
         return mFaceMap( aID );
     }
@@ -1088,8 +1093,8 @@ namespace belfem
     Mesh::element( const id_t aID )
     {
         BELFEM_ASSERT( mElementMap.key_exists( aID ),
-                      "Tried to access invalid element id: %lu.",
-                      ( long unsigned int ) aID );
+                       "Tried to access invalid element id: %lu.",
+                       ( long unsigned int ) aID );
 
         return mElementMap( aID ) ;
     }
@@ -1100,8 +1105,8 @@ namespace belfem
     Mesh::facet( const id_t aID )
     {
         BELFEM_ASSERT( mFacetMap.key_exists( aID ),
-                      "Tried to access invalid facet id: %lu.",
-                      ( long unsigned int ) aID );
+                       "Tried to access invalid facet id: %lu.",
+                       ( long unsigned int ) aID );
 
         return mFacetMap( aID );
     }
@@ -1112,8 +1117,8 @@ namespace belfem
     Mesh::block( const id_t aID )
     {
         BELFEM_ASSERT( mBlockMap.key_exists( aID ),
-                      "Tried to access invalid block id: %lu.",
-                      ( long unsigned int ) aID );
+                       "Tried to access invalid block id: %lu.",
+                       ( long unsigned int ) aID );
 
         return mBlockMap( aID );
     }
@@ -1124,8 +1129,8 @@ namespace belfem
     Mesh::sideset( const id_t aID )
     {
         BELFEM_ASSERT( mSideSetMap.key_exists( aID ),
-                      "Tried to access invalid sideset id: %lu.",
-                      ( long unsigned int ) aID );
+                       "Tried to access invalid sideset id: %lu.",
+                       ( long unsigned int ) aID );
 
         return mSideSetMap( aID );
     }
@@ -1136,8 +1141,8 @@ namespace belfem
     Mesh::cut( const id_t aID )
     {
         BELFEM_ASSERT( mCutMap.key_exists( aID ),
-                      "Tried to access invalid cut id: %lu.",
-                      ( long unsigned int ) aID );
+                       "Tried to access invalid cut id: %lu.",
+                       ( long unsigned int ) aID );
 
         return mCutMap( aID );
     }
@@ -1148,8 +1153,8 @@ namespace belfem
     Mesh::vertex( const id_t aID )
     {
         BELFEM_ASSERT( mVertexMap.key_exists( aID ),
-                      "Tried to access invalid vertex id: %lu.",
-                      ( long unsigned int ) aID );
+                       "Tried to access invalid vertex id: %lu.",
+                       ( long unsigned int ) aID );
 
         return mVertexMap( aID );
     }
@@ -1168,7 +1173,7 @@ namespace belfem
     Mesh::field( const string & aLabel )
     {
         BELFEM_ASSERT( mFieldMap.key_exists( aLabel ),
-                      "Field '%s' does not exist on mesh", aLabel.c_str());
+                       "Field '%s' does not exist on mesh", aLabel.c_str());
 
         return mFieldMap( aLabel );
     }
@@ -1188,7 +1193,7 @@ namespace belfem
     Mesh::field_data( const string & aLabel )
     {
         BELFEM_ASSERT( mFieldMap.key_exists( aLabel ),
-                      "Field '%s' does not exist on mesh", aLabel.c_str());
+                       "Field '%s' does not exist on mesh", aLabel.c_str());
 
         return mFieldMap( aLabel )->data();
     }
@@ -1493,7 +1498,7 @@ namespace belfem
     Mesh::original_facet( const id_t aID )
     {
         return mTapeFacetMap.key_exists( aID )
-            ? mTapeFacetMap( aID ) : mFacetMap( aID );
+               ? mTapeFacetMap( aID ) : mFacetMap( aID );
     }
 
 //------------------------------------------------------------------------------

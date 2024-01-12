@@ -116,6 +116,11 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
+            unflag_edges();
+
+//------------------------------------------------------------------------------
+
+            void
             flag_faces();
 
 //------------------------------------------------------------------------------
@@ -174,7 +179,7 @@ namespace belfem
         SideSet::facet_by_index( const index_t aIndex )
         {
             BELFEM_ASSERT( aIndex < mFacets.size(),
-                          "Invalid Facet index" );
+                           "Invalid Facet index" );
 
             return mFacets( aIndex );
         }
