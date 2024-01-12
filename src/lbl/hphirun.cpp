@@ -129,6 +129,9 @@ int main( int    argc,
     // time when simulation ends
     const real tMaxTime = tFactory->maxtime() ;
 
+    //
+    const real tMaxdt = tFactory->maxdt();
+
     // get the nonlinear settings
     NonlinearSettings tNonlinMagnetic = tFactory->nonlinear_settings() ;
 
@@ -196,7 +199,7 @@ int main( int    argc,
     }
 
     // end delete me
-    const real tDeltaTime = tFormulation->timestep();
+    real tDeltaTime = tFormulation->timestep();
     real & tTime = tMesh->time_stamp() ;
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -232,13 +235,32 @@ int main( int    argc,
     //tMesh->save( tOutFile );
     uint tTimeLoopCSV = 1 ;
 
+    //get the initial relaxation factors
+    real tOmegaP = tNonlinMagnetic.picardOmega ;
+    real tOmegaN = tNonlinMagnetic.newtonOmega ;
+    real tOmegaPT = tNonlinThermal.picardOmega ;
+    real tOmegaNT = tNonlinThermal.newtonOmega ;
+    real tRate; //rate of the iterative method
+    real tRateT; //rate of the thermal iterative method
+    uint tIter0 = 0; // number of iterations of the last time step
+    bool tRestartTime = false; //do we restart the time step because of poor convergence
 
+    const uint tIterFast = tNonlinMagnetic.maxIter/2 ; //number of iteration defining fast convergence (ideally chosen by user)
+    const real tTimeFastMult = 1.5 ; //Multiplication factor of time step when fast convergence (ideally chosen by user)
+    const real tTimeSlowMult = 0.5 ; //Multiplication factor of time step when too many iter (ideally chosen by user)
+    real tf = 1.0;
+
+    //real tOmegaP = tTime == 0 ? 0.5 : tNonlinMagnetic.picardOmega ;
+    //real tOmegaN = tTime == 0 ? 0.1 : tNonlinMagnetic.newtonOmega ;
 
     while( tTime < tMaxTime )
     {
+
         if( tHaveThermal )
         {
-            tFourier->shift_fields() ;
+            tOmegaP = tNonlinMagnetic.picardOmega; //reset EM relax if thermal
+            tOmegaN = tNonlinMagnetic.newtonOmega;
+            //tFourier->shift_fields() ;
         }
 
         if( tTimeLoopCSV++ >= tCsvDump )
@@ -246,7 +268,7 @@ int main( int    argc,
             tTimeLoopCSV = 1 ;
         }
 
-        if( tTimeLoop++ >= tMeshDump )
+        if( (tTimeLoop++ >= tMeshDump) & (!tRestartTime) )
         {
             // save backup
             /*string tString = sprint("%s.%04u", tBackupFile.c_str(), ( unsigned int ) tTimeCount );
@@ -283,33 +305,63 @@ int main( int    argc,
             tTimeLoop = 1;
         }
 
-        real tOmegaP = tTime == 0 ? 0.5 : tNonlinMagnetic.picardOmega ;
-        real tOmegaN = tTime == 0 ? 0.1 : tNonlinMagnetic.newtonOmega ;
-        //real tOmegaP = tNonlinMagnetic.picardOmega ;
-        //real tOmegaN = tNonlinMagnetic.newtonOmega ;
 
-        // increment timestep
-        tTime += tDeltaTime;
+        // increment timestep (or restart with a smaller time step if necessary)
+        if ( tRestartTime ) //restart with a smaller time step if necessary
+        {
+            tTime -= tDeltaTime; //go back one time step
+            tTimeCount--;
+            tDeltaTime *= tTimeSlowMult; //update the time step
+            tFormulation->timestep()=tDeltaTime;
+            //tFormulation->load( tBackupFile, tMesh  );
+        }
+
+        tTime += tDeltaTime; //increment
 
         // increment time counter
         tTimeCount++;
 
-        // reset number of iterations
-        tFormulation->shift_fields();
+        if ( tRestartTime )
+        {
+            tFormulation->reset_fields( );
+        }
+        else
+        {
+            tFormulation->shift_fields();
+        }
+
         tFormulation->compute_boundary_conditions( tTime );
 
         if( tHaveThermal )
         {
-            tFourier->shift_fields() ;
+            if ( tRestartTime )
+            {
+                tFourier->reset_fields();
+            }
+            else
+            {
+                tFourier->shift_fields();
+            }
         }
 
+        tRestartTime = false ;
         uint tIter = 0;
 
         // residual
         real tEpsilon = BELFEM_REAL_MAX;
         real tEpsilon0 ;
+        real tEpsilonT ;
 
-        real tEpsilonT = 0 ;
+        if (tHaveThermal)
+        {
+            tEpsilonT = BELFEM_REAL_MAX ;
+
+        }
+        else
+        {
+            tEpsilonT = 0 ;
+        }
+        real tEpsilonT0 = 0 ;
 
 
         if ( tKernel->is_master() )
@@ -320,12 +372,8 @@ int main( int    argc,
             std::cout << "  --------------------------------------------------------------------------" << std::endl;
         }
 
-        Timer tTimer;
 
-        //index_t tCountP = 0 ;
-        //index_t tCountN = 0 ;
-
-
+        bool tNewton = false; //did the algorithm go in Newton yet?
         while ( tEpsilon > tNonlinMagnetic.newtonEpsilon || tIter < tNonlinMagnetic.minIter || tEpsilonT > tNonlinThermal.newtonEpsilon )
         {
             if( tHaveThermal )
@@ -333,12 +381,12 @@ int main( int    argc,
                 if( tEpsilonT > tNonlinThermal.picardEpsilon )
                 {
                     tFourier->set_algorithm( SolverAlgorithm::Picard );
-                    tFourier->set_omega( tNonlinThermal.picardOmega );
+                    tFourier->set_omega( tOmegaPT );
                 }
                 else
                 {
                     tFourier->set_algorithm( SolverAlgorithm::NewtonRaphson );
-                    tFourier->set_omega( tNonlinThermal.newtonOmega );
+                    tFourier->set_omega( tOmegaNT );
                 }
             }
 
@@ -346,7 +394,14 @@ int main( int    argc,
             if ( tEpsilon > tNonlinMagnetic.picardEpsilon )
             {
                 tFormulation->set_algorithm( SolverAlgorithm::Picard );
+                //tFormulation->set_algorithm( SolverAlgorithm::NewtonRaphson );
+                if (tNewton) //did the algorithm already been in Newton
+                {
+                    tOmegaP=tOmegaN;
+                    tNewton = false;
+                }
                 tFormulation->set_omega( tOmegaP );
+
 
                 /*if( tCountP++ > 0 )
                 {
@@ -362,8 +417,14 @@ int main( int    argc,
             else
             {
                 //tFormulation->set_algorithm( SolverAlgorithm::Picard );
+                if (!tNewton) //first time in Newton
+                {
+                    tOmegaN=std::min(tOmegaP,tOmegaN) ; //we don't want the algorithm to have a too high relax if slowly converging
+                    tNewton = true;
+                }
                 tFormulation->set_algorithm( SolverAlgorithm::NewtonRaphson );
                 tFormulation->set_omega( tOmegaN );
+
                 /*if( tCountN++ > 1 )
                 {
                     tOmegaN *= std::max(std::min( std::pow( tEpsilon0 / tEpsilon, 0.25 ), 1.05 ), 0.5 );
@@ -382,30 +443,109 @@ int main( int    argc,
             // synchronize ej because we need this for the quench
             tMagfield->collect_field("elementEJ");
             tMagfield->collect_field( "elementJz");
+            tMagfield->collect_field( "elementJJc");
 
             tMagfield->solve();
+            tIter++;
 
             if( tHaveThermal )
             {
                 tSynch->magnetic_to_thermal_b_and_ej() ;
                 tThermalField->compute_jacobian_and_rhs();
                 tThermalField->solve() ;
-                tEpsilonT = tThermalField->residual( tIter );
+
+                //is the iteration convergent or divergent for the thermal problem
+                tEpsilonT0 = tEpsilonT ; //last residual
+                tEpsilonT = tThermalField->residual( tIter ); //current residual
+                tRateT = (std::abs(tEpsilonT)-std::abs(tEpsilonT0))/std::abs(tEpsilonT0);
+
+                if (tRateT >= 0.0) //diverging
+                {
+                    //tf = 0.5;
+                    //std::cout << "Multiplication factor: " << tf << std::endl;
+                    if ( tEpsilonT > tNonlinThermal.picardEpsilon )
+                    {
+                        //tOmegaPT=std::max(tf*tOmegaPT, 0.05);
+                        tOmegaPT=0.5;
+                    }
+                    else
+                    {
+                        //tOmegaNT=std::max(tf*tOmegaNT, 0.05);
+                        tOmegaNT=0.5;
+                    }
+                }
+                else //converging
+                {
+                    //tf = 1.1+2*0.4*std::atan(-1.0*tRateT)/constant::pi;
+                    //tf = 1.5;
+                    //std::cout << "Multiplication factor: " << tf << std::endl;
+                    if ( tEpsilonT > tNonlinThermal.picardEpsilon )
+                    {
+                        //tOmegaPT = tf*tOmegaPT;
+                        //tOmegaPT=std::min(tf*tOmegaPT, 2.0); //allow sur-relax?
+                        tOmegaPT=1.0;
+                    }
+                    else
+                    {
+                        //tOmegaNT = tf*tOmegaNT;
+                        //tOmegaNT=std::min(tf*tOmegaNT, 2.0); //allow sur-relax?
+                        tOmegaNT=1.0;
+                    }
+                }
+
                 tSynch->thermal_to_magnetic_T() ;
             }
 
             tEpsilon0 = tEpsilon ;
-            tEpsilon = tMagfield->residual( tIter++ );
+            tEpsilon = tMagfield->residual( tIter );
+            tRate = (std::abs(tEpsilon)-std::abs(tEpsilon0))/std::abs(tEpsilon0);
+            //std::cout << "Rate of convergence: " << tRate << std::endl;
+
+            // Increase or decrease the relax factors depending on the previous and the current residual
+            if (tRate >= 0.0) //diverging
+            {
+                tf = 0.5;
+                if ( tEpsilon > tNonlinMagnetic.picardEpsilon )
+                {
+                    tOmegaP=std::max(tf*tOmegaP, 0.0005);
+                }
+                else
+                {
+                    tOmegaN=std::max(tf*tOmegaN, 0.0005);
+                }
+            }
+            else //converging
+            {
+                tf = 1.1+2*0.4*std::atan(-1.0*tRate)/constant::pi;
+                if ( tEpsilon > tNonlinMagnetic.picardEpsilon )
+                {
+                    tOmegaP=std::min(tf*tOmegaP, 1.0);
+                }
+                else
+                {
+                    tOmegaN=std::min(tf*tOmegaN, 1.0);
+                }
+            }
+
 
             if ( tKernel->is_master() )
             {
+
+
                 string tAlgLabel = tFormulation->algorithm() == SolverAlgorithm::Picard ? " P " : " NR";
                 if( tHaveThermal )
                 {
+                    string tAlgLabelT = tFourier->algorithm() == SolverAlgorithm::Picard ? " P " : " NR";
                     real tTmax = max( tThermalMesh->field_data( "T") );
 
-                    std::cout << "    it:  " << tIter << tAlgLabel << " omega " << tFormulation->omega()
+                    /*std::cout << "    it:  " << tIter << tAlgLabel << " omega " << tFormulation->omega()
                               << " log10(eps): " << std::round( std::log10( tEpsilon ) * 100 ) * 0.01
+                            << " log10(epsT): " << std::round( std::log10( tEpsilonT ) * 100 ) * 0.01
+                            << " Tmax: " << tTmax
+                            << std::endl;*/
+                    std::cout << "    it:  " << tIter << " EM " << tAlgLabel << " omega " << tFormulation->omega()
+                              << " log10(eps) " << std::round( std::log10( tEpsilon ) * 100 ) * 0.01 << std::endl;
+                    std::cout << "           Th " << tAlgLabelT <<  " omega " << tFourier->omega()
                               << " log10(epsT): " << std::round( std::log10( tEpsilonT ) * 100 ) * 0.01
                               << " Tmax: " << tTmax
                               << std::endl;
@@ -419,26 +559,37 @@ int main( int    argc,
 
             if( tIter > tNonlinMagnetic.maxIter )
             {
+                tRestartTime = true; //set flag to restart with smaller time step
+                tOmegaP = tNonlinMagnetic.picardOmega ; //reset the relaxation factors
+                tOmegaN = tNonlinMagnetic.newtonOmega ;
                 if ( tKernel->is_master() )
                 {
                     const Vector< real > & tRhs = tMagfield->rhs_vector() ;
-                    std::cout << "    WARNING: too many iterations. Exiting this time step" << std::endl ;
+                    //std::cout << "    WARNING: too many iterations. Exiting this time step" << std::endl ;
+                    std::cout << "    WARNING: too many iterations. Exiting this time step and decreasing time step to "<<
+                              tTimeSlowMult*tDeltaTime*1000 << " ms" << std::endl ;
                     tMagfield->print_worst_dof();
                 }
                 break ;
             }
-            else if ( (  std::abs( std::log10( tEpsilon ) - std::log10( tEpsilon0 ) ) < 1e-4 ) &&
-                      ( tEpsilon > tNonlinMagnetic.newtonEpsilon ) )
+            /*else if ( (  std::abs( std::log10( tEpsilon ) - std::log10( tEpsilon0 ) ) < 1e-4 ) &&
+            ( tEpsilon > tNonlinMagnetic.newtonEpsilon ) )
             {
+                tRestartTime = true; //set flag to restart with smaller time step
+                tOmegaP = tNonlinMagnetic.picardOmega ; //reset the relaxation factors
+                tOmegaN = tNonlinMagnetic.newtonOmega ;
                 if ( tKernel->is_master() )
                 {
                     //tMagfield->solver()->
-                    std::cout << "    WARNING: desired convergence could not be reached" << std::endl ;
+                    //std::cout << "    WARNING: desired convergence could not be reached" << std::endl ;
+                    std::cout << "    WARNING: desired convergence could not be reached, decreasing time step to "<<
+                              tTimeSlowMult*tDeltaTime*1000 << " ms" << std::endl;
                     tMagfield->print_worst_dof();
                 }
                 break ;
-            }
+            }*/
         }
+
         if ( tKernel->is_master() )
         {
             gLog.message( 1, "    timestep completed in %4.2f seconds", ( float ) tTimer.stop() * 0.001 );
@@ -446,7 +597,7 @@ int main( int    argc,
 
 
         // todo: move into postprocess routine
-        if( tTimeLoopCSV == 1 )
+        if( (tTimeLoopCSV == 1) & (!tRestartTime))
         {
             if ( comm_rank() == 0 )
             {
@@ -538,6 +689,10 @@ int main( int    argc,
                      << std::endl;
                 tCSV.close();
 
+                // test new checkerboarding criteria
+                //real tCrit = compute_criteria( tMesh, 1 );
+                //std::cout << "    checkerboard criterion : " << tCrit << std::endl ;
+
                 if ( tMagfield->solver()->type() == SolverType::MUMPS )
                 {
                     std::cout << "    cond: " << tK << " " << tR << std::endl;
@@ -582,6 +737,24 @@ int main( int    argc,
         //tMesh->save( "test.exo");
 
 
+        //adaptive time step
+        /*if(( tIter > 40) & (!tRestartTime)) //slow convergence (can be modified)
+        {
+            tDeltaTime = 0.75*tDeltaTime; //factor can be modified
+            tFormulation->timestep()=tDeltaTime;
+            std::cout << "Slow convergence, decreasing the time step to " << tDeltaTime << std::endl;
+        }*/
+        if (( tIter < tIterFast ) & ( !tRestartTime )) //fast convergence
+        {
+            tDeltaTime = std::min( tTimeFastMult * tDeltaTime, tMaxdt ); //increasing time step
+            tFormulation->timestep() = tDeltaTime;
+            if ( tKernel->is_master() )
+            {
+                std::cout << "Fast convergence, increasing the time step to " << tDeltaTime * 1000 << " ms" << std::endl;
+            }
+        }
+
+
         comm_barrier() ;
     }
 
@@ -607,11 +780,11 @@ int main( int    argc,
     }
 
     delete tKernel ;
+
+    delete tHomology ;
+    delete tCohomology ;
+
     delete tMesh ;
-
-    delete tHomology;
-
-    delete tCohomology;
 
     // close communicator
     return gComm.finalize();

@@ -1348,8 +1348,8 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        const real &
-        IWG::timestep() const
+        real &
+        IWG::timestep()
         {
             return mDeltaTime;
         }
@@ -2064,6 +2064,14 @@ namespace belfem
         IWG::shift_fields()
         {
             BELFEM_ERROR( false, "shift_fields() not implemented for this IWG");
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        IWG::reset_fields()
+        {
+            BELFEM_ERROR( false, "reset_fields() not implemented for this IWG");
         }
 
 //------------------------------------------------------------------------------

@@ -733,8 +733,8 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             // timestep, if this is a transient problem
-            const real &
-            timestep() const;
+            real &
+            timestep() ;
 
 //---------------------------------------------------------------------------------
 
@@ -939,6 +939,15 @@ namespace belfem
              */
             virtual void
             shift_fields();
+
+//------------------------------------------------------------------------------
+
+            /**
+             * called by main file to copy fields into last timestep
+             * eg. T0 = T
+             */
+            virtual void
+            reset_fields();
 
 //------------------------------------------------------------------------------
 
