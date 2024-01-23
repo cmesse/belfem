@@ -34,6 +34,39 @@ namespace belfem
         //------------------------------------------------------------------------------
 
         void
+        Cochain::operator+( Cochain * aCochain )
+        {
+            this->addCochainToCochain( aCochain, 1 );
+        }
+
+        //-----------------------------------------------------------------------------
+
+        void
+        Cochain::operator-( Cochain * aCochain )
+        {
+            this->removeCochainFromCochain( aCochain );
+        }
+
+        //-----------------------------------------------------------------------------
+
+        int
+        Cochain::operator()( Chain * aChain )
+        {
+            int tVal = 0;
+            Map< id_t, int > tChainMap = aChain->getSimplicesMap();
+            for( const auto& [tInd, tCoeff] : mSimplicesMap )
+            {
+                if (tChainMap.key_exists(tInd))
+                {
+                    tVal += tCoeff*tChainMap(tInd);
+                }
+            }
+            return tVal ;
+        }
+
+        //-----------------------------------------------------------------------------
+
+        void
         Cochain::addSimplexToCochain( const id_t aInd, const int aCoeff )
         {
 

@@ -37,6 +37,22 @@ namespace belfem
         //------------------------------------------------------------------------------
 
         void
+        Chain::operator+( Chain * aChain )
+        {
+            this->addChainToChain( aChain, 1 );
+        }
+
+        //-----------------------------------------------------------------------------
+
+        void
+        Chain::operator-( Chain * aChain )
+        {
+            this->removeChainFromChain( aChain );
+        }
+
+        //-----------------------------------------------------------------------------
+
+        void
         Chain::addSimplexToChain( const id_t aInd, const int aCoeff )
         {
 

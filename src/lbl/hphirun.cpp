@@ -69,9 +69,9 @@ int main( int    argc,
     // Reduce the simplicial complex
     // start timer
     Timer tTimer;
-    std::cout << "Reducing the complex ..." << std::endl;
+    /*std::cout << "Reducing the complex ..." << std::endl;
     tSComplex->reduce_complexCCR();
-    std::cout << "Complex reduced in: "<< tTimer.stop()*1e-3 << " s" << std::endl;
+    std::cout << "Complex reduced in: "<< tTimer.stop()*1e-3 << " s" << std::endl;*/
 
     std::cout << "Number of 0-chains: " << tSComplex->number_of_0simplices() <<std::endl;
     std::cout << "Number of 1-chains: " << tSComplex->number_of_1simplices() <<std::endl;
@@ -90,7 +90,8 @@ int main( int    argc,
     //Compute the homology and cohomology generators
     Timer tTimer3;
     std::cout << "Computing Homology ..." << std::endl;
-    mesh::Homology * tHomology = new mesh::Homology(tSComplex, tMesh);
+    //mesh::Homology * tHomology = new mesh::Homology(tSComplex, tMesh);
+    mesh::Homology * tHomology = new mesh::Homology(tMesh); //generating the homology as boundary of conductor
     std::cout << "Homology generators computed in: "<< tTimer3.stop() << " ms" << std::endl;
     tHomology->create_kGeneratorsField(1);
 
@@ -98,6 +99,8 @@ int main( int    argc,
     std::cout << "Computing Cohomology ..." << std::endl;
     mesh::Cohomology * tCohomology = new mesh::Cohomology(tSComplex, tMesh);
     std::cout << "Cohomology generators computed in: "<< tTimer4.stop() << " ms" << std::endl;
+    std::cout << "Updating Cohomology from suggested homology ..." << std::endl;
+    tCohomology->updatekGeneratorsFromHomology(tHomology->get_Generators()(1),1);
     tCohomology->create_kGeneratorsField(1);
 
     // flag telling if we compute the norm of b

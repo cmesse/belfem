@@ -10,5 +10,6 @@ set( SOURCES
 )
 
 include_directories( ${BELFEM_SOURCE_DIR}/mesh )
+include_directories( ${BELFEM_SOURCE_DIR}/fem/kernel )
 
 include( ${BELFEM_CONFIG_DIR}/scripts/Add_Library.cmake )

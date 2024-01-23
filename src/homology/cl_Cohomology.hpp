@@ -5,6 +5,7 @@
 #include "cl_Mesh.hpp"
 #include "cl_Cochain.hpp"
 #include "cl_SimplicialComplex.hpp"
+#include "cl_Chain.hpp"
 #include "fn_Smith.hpp"
 #include "cl_Map.hpp"
 #include "cl_Cell.hpp"
@@ -39,6 +40,8 @@ namespace belfem
             Cell< Matrix< int > > mD;
 
             SimplicialComplex* mSimplicialComplex;
+
+            bool mflagProp = false;
 
             //Mesh
             Mesh * mMesh ;
@@ -84,6 +87,11 @@ namespace belfem
 
             Cell <Cell< Cochain * >>
             get_Generators();
+
+            //-----------------------------------------------------------------------------
+
+            void
+            updatekGeneratorsFromHomology(Cell< Chain * > mkGenerators, const uint k);
 
             //-----------------------------------------------------------------------------
 

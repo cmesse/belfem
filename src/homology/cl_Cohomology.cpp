@@ -3,6 +3,7 @@
 //
 
 #include "cl_Cohomology.hpp"
+#include "fn_inv.hpp"
 
 namespace belfem
 {
@@ -151,7 +152,14 @@ namespace belfem
             {
                 tCount++;
                 char fieldName [50];
-                sprintf (fieldName, "1CohomologyGenerator%d", tCount);
+                if (mflagProp)
+                {
+                    sprintf (fieldName, "1SuggestCohomologyGenerator%d", tCount);
+                }
+                else
+                {
+                    sprintf (fieldName, "1CohomologyGenerator%d", tCount);
+                }
                 mMesh->create_field( fieldName, EntityType::NODE);
                 Map< id_t, int > tSimplicesMap = tCochain->getSimplicesMap();
                 for( const auto& [tInd, tCoeff] :  tSimplicesMap)
@@ -176,6 +184,47 @@ namespace belfem
         Cohomology::get_Generators()
         {
             return this->mGenerators;
+        }
+
+        //-----------------------------------------------------------------------------
+
+        void
+        Cohomology::updatekGeneratorsFromHomology(Cell< Chain * > tkGenerators, const uint k)
+        {
+            const uint n = mGenerators(k).size();
+            BELFEM_ASSERT(tkGenerators.size() == n, "Error, not the same number of k-generators" );
+            Matrix< real > tTransMat = Matrix< real >(mGenerators(k).size(),mGenerators(k).size(),0);
+
+            //Populate the transformation matrix
+            for(uint i = 0; i < n; i++)
+            {
+                Cochain * tCoGen = mGenerators(k)(i);
+                for(uint j = 0; j < n; j++)
+                {
+                    tTransMat(i,j) = tCoGen->operator()(tkGenerators(j));
+                }
+            }
+
+            Matrix< real > tTransInv = inv(tTransMat);
+
+            Cell< Cochain * > tNewGenerators = Cell< Cochain * >();
+            for(uint i = 0; i < n; i++)
+            {
+                Cochain * tGen = new Cochain(k, mMesh);
+                for(uint j = 0; j < n; j++)
+                {
+                    tGen->addCochainToCochain(mGenerators(k)(j),tTransInv(i,j));
+                }
+                tNewGenerators.push(tGen);
+            }
+
+            for(uint i = 0; i < n; i++)
+            {
+                delete mGenerators(k)(i);
+            }
+            mGenerators(k) = tNewGenerators;
+
+            mflagProp = true;
         }
 
         //-----------------------------------------------------------------------------

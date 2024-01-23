@@ -10,6 +10,7 @@
 #include "cl_Cohomology.hpp"
 #include "banner.hpp"
 #include "cl_Node.hpp"
+#include "cl_SideSet.hpp"
 
 #include "typedefs.hpp"
 #include "commtools.hpp"
@@ -118,6 +119,15 @@ int main( int    argc,
     std::cout << "Cohomology generators computed in: "<< tTimer4.stop() << " ms" << std::endl;
     tCohomology->create_kGeneratorsField(1);
 
+    //Define chain on conductor edge for homology
+    std::cout << "Suggesting an homology from the conductor boundary ..." << std::endl;
+    tHomology->suggest_Homology();
+    tHomology->create_kGeneratorsField(1);
+
+    std::cout << "Updating Cohomology from suggested homology ..." << std::endl;
+    tCohomology->updatekGeneratorsFromHomology(tHomology->get_Generators()(1),1);
+    tCohomology->create_kGeneratorsField(1);
+
     // save the mesh
     tMesh->save(tOutFile);
 
@@ -125,8 +135,8 @@ int main( int    argc,
 
     delete tHomology;
 
-    delete tCohomology;
 
+    delete tCohomology;
 
     delete tMesh ;
     return 0;

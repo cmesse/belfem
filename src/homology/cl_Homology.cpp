@@ -5,12 +5,21 @@
 //todo: Maybe create a parent class for homology and cohomology, as they have very similar methods
 
 #include "cl_Homology.hpp"
+#include "en_FEM_DomainType.hpp"
 
 namespace belfem
 {
     namespace mesh
     {
 //------------------------------------------------------------------------------
+
+        Homology::Homology( Mesh * aMesh ) :
+                mMesh( aMesh )
+        {
+            this->suggest_Homology();
+        }
+
+        //------------------------------------------------------------------------------
 
         Homology::Homology( SimplicialComplex * aSimplicialComplex, Mesh * aMesh ) :
                 mSimplicialComplex( aSimplicialComplex ),
@@ -28,6 +37,18 @@ namespace belfem
 
         Homology::~Homology()
         {
+            this->reset();
+            if (mflagProp)
+            {
+                delete mSimplicialComplex;
+            }
+        }
+
+        //-----------------------------------------------------------------------------
+
+        void
+        Homology::reset()
+        {
             for(uint i = 0; i < mGenerators.size(); i++)
             {
                 for (uint j = 0; j < mGenerators(i).size(); j++)
@@ -42,6 +63,7 @@ namespace belfem
             mU.clear();
             mB.clear();
             mD.clear();
+
         }
 
         //-----------------------------------------------------------------------------
@@ -155,7 +177,14 @@ namespace belfem
             {
                 tCount++;
                 char fieldName [50];
-                sprintf (fieldName, "1HomologyGenerator%d", tCount);
+                if (mflagProp)
+                {
+                    sprintf (fieldName, "1SuggestedHomologyGenerator%d", tCount);
+                }
+                else
+                {
+                    sprintf (fieldName, "1HomologyGenerator%d", tCount);
+                }
                 mMesh->create_field( fieldName, EntityType::NODE);
                 Map< id_t, int > tSimplicesMap = tChain->getSimplicesMap();
                 for( const auto& [tInd, tCoeff] :  tSimplicesMap)
@@ -167,6 +196,61 @@ namespace belfem
         }
 
         //-----------------------------------------------------------------------------
+
+        void
+        Homology::suggest_Homology()
+        {
+            //Reset attributes
+            this->reset();
+            mGenerators.set_size(4,Cell< Chain * >());
+            mOrders.set_size(4,Cell< int >());
+
+            //Flag the desired simplices (around the conductors)
+            for( mesh::SideSet * tSideSet : mMesh->sidesets() )
+            {
+                // make sure that sideset is not empty
+                if ( tSideSet->number_of_facets() > 0 )
+                {
+                    // get first facet
+                    mesh::Facet * tFacet = tSideSet->facet_by_index( 0 );
+
+                    // make sure that it has a slave
+                    if ( tFacet->has_slave())
+                    {
+                        fem::DomainType tMasterType
+                                = static_cast< fem::DomainType >( tFacet->master()->physical_tag());
+
+                        fem::DomainType tSlaveType
+                                = static_cast< fem::DomainType >( tFacet->slave()->physical_tag());
+
+                        // check if this sideset is an interface
+                        if ( (tMasterType == fem::DomainType::Coil || tMasterType == fem::DomainType::Conductor) && tSlaveType == fem::DomainType::Air )
+                        {
+                            // Flag edges and nodes of conductor boundaries
+                            for ( uint i = 0; i < tSideSet->number_of_facets(); i++ )
+                            {
+                                mMesh->edge(tSideSet->facet_by_index( i )->id())->flag();
+                                for ( uint j = 0; j < mMesh->edge(tSideSet->facet_by_index( i )->id())->number_of_nodes(); j++ )
+                                {
+                                    mMesh->edge(tSideSet->facet_by_index( i )->id())->node(j)->flag();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            //Create a new simplicial complex for the suggested homology
+            mSimplicialComplex = new SimplicialComplex(mMesh);
+            mSimplicialComplex->reduce_complexCCR();
+            mMesh->unflag_everything();
+            mflagProp = true;
+
+            //Compute the suggested homology
+            mD = mSimplicialComplex->createMatrixFromBoundaryMap();
+            this->homologyGroupOfChainComplex();
+            this->generatorsOfHomology();
+        }
 
         Cell< Matrix< int > >
         Homology::get_BoundaryMatrix()

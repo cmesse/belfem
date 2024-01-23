@@ -9,6 +9,7 @@
 #include "cl_Cell.hpp"
 #include "cl_Vertex.hpp"
 #include "cl_Mesh.hpp"
+#include "cl_Chain.hpp"
 
 #ifndef BELFEM_CL_COCHAIN_HPP
 #define BELFEM_CL_COCHAIN_HPP
@@ -45,6 +46,21 @@ namespace belfem
             //-----------------------------------------------------------------------------
 
             void
+            operator+( Cochain * aCochain ) ;
+
+            //-----------------------------------------------------------------------------
+
+            void
+            operator-( Cochain * aCochain ) ;
+
+            //-----------------------------------------------------------------------------
+
+            int
+            operator()( Chain * aChain ) ;
+
+            //-----------------------------------------------------------------------------
+
+            void
             addSimplexToCochain(const id_t aInd, const int aCoeff ) ;
 
             //-----------------------------------------------------------------------------
@@ -55,7 +71,7 @@ namespace belfem
             //-----------------------------------------------------------------------------
 
             void
-            addCochainToCochain(Cochain * aChain, int aCoeff) ;
+            addCochainToCochain(Cochain * aCochain, int aCoeff) ;
 
             //-----------------------------------------------------------------------------
 
