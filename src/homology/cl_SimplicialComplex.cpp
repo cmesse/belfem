@@ -503,11 +503,11 @@ namespace belfem
         void
         SimplicialComplex::create_kComplexField( const uint k, Mesh * aMesh )
         {
+            char fieldName[50];
+            sprintf( fieldName, "1ChainComplex" );
+            aMesh->create_field( fieldName, EntityType::NODE );
             for ( const auto & [tKey, tChain]: this->get_kchainMap( k ))
             {
-                char fieldName[50];
-                sprintf( fieldName, "1ChainComplex%d", tKey );
-                aMesh->create_field( fieldName, EntityType::NODE );
                 Map< id_t, int > tSimplicesMap = tChain->getSimplicesMap();
                 for ( const auto & [tInd, tCoeff]: tSimplicesMap )
                 {

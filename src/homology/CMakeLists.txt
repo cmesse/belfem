@@ -6,6 +6,7 @@ set( SOURCES
         cl_SimplicialComplex.cpp
         cl_Homology.cpp
         cl_Cohomology.cpp
+        cl_BeltedTree.cpp
         fn_Smith.cpp
 )
 

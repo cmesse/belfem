@@ -4440,7 +4440,7 @@ namespace belfem
                 }
             }
 
-            for( uint i = 0; i < mSideSets.size(); ++i )
+            /*for( uint i = 0; i < mSideSets.size(); ++i )
             {
                 if (mSideSets(i)->type()!= DomainType::ThinShell)
                 {
@@ -4450,7 +4450,7 @@ namespace belfem
                         mMesh->sideset(mSideSets(i)->groups()(j))->flag_edges();
                     }
                 }
-            }
+            }*/
         }
 
 // -----------------------------------------------------------------------------
@@ -4472,7 +4472,7 @@ namespace belfem
                 }
             }
 
-            for( uint i = 0; i < mSideSets.size(); ++i )
+            /*for( uint i = 0; i < mSideSets.size(); ++i )
             {
                 if (mSideSets(i)->type()!= DomainType::ThinShell)
                 {
@@ -4482,7 +4482,7 @@ namespace belfem
                         mMesh->sideset(mSideSets(i)->groups()(j))->unflag_edges();
                     }
                 }
-            }
+            }*/
         }
 
 // -----------------------------------------------------------------------------

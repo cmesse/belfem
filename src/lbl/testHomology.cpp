@@ -6,6 +6,7 @@
 #include "cl_Chain.hpp"
 #include "cl_Cochain.hpp"
 #include "cl_SimplicialComplex.hpp"
+#include "cl_BeltedTree.hpp"
 #include "cl_Homology.hpp"
 #include "cl_Cohomology.hpp"
 #include "banner.hpp"
@@ -128,17 +129,38 @@ int main( int    argc,
     tCohomology->updatekGeneratorsFromHomology(tHomology->get_Generators()(1),1);
     tCohomology->create_kGeneratorsField(1);
 
+    // Create the Belted Tree (extremely slow for now...)
+    std::cout << "Creating new simplicial complex for belted tree" << std::endl ;
+    tFactory->flag_nc_simplices();
+    SimplicialComplex * tSComplex2 = new SimplicialComplex(tMesh) ;
+    tFactory->unflag_nc_simplices();
+
+    Timer tTimer5;
+    std::cout << "Creating the belted tree ..." << std::endl ;
+    BeltedTree * tBTree = new BeltedTree(tMesh,  tSComplex2, tHomology->get_Generators()(1)) ;
+    std::cout << "Belted tree computed in: "<< tTimer5.stop()*1e-3 << " s" << std::endl;
+    tBTree->create_TreeField("BeltedTree");
+
+    Timer tTimer6;
+    std::cout << "Computing cohomology from belted tree ..." << std::endl ;
+    tBTree->compute_cohomology();
+    std::cout << "Cohomology computed in: "<< tTimer6.stop() << " ms" << std::endl;
+    tBTree->create_cohomologyField();
+
     // save the mesh
     tMesh->save(tOutFile);
+
+    delete tBTree ;
 
     delete tFactory;
 
     delete tHomology;
 
-
     delete tCohomology;
 
-    delete tMesh ;
+    delete tMesh;
+
+
     return 0;
 
 }
