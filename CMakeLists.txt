@@ -15,7 +15,7 @@ set (CMAKE_CXX_STANDARD 14)
 # User Settings
 # -------------------------------------------------------------------------
 
-option( USE_MPI "Use Message Parsing Library" OFF )
+option( USE_MPI "Use Message Parsing Library" ON )
 
 option( USE_OPENMP "Use OpenMP" off )
 option( USE_MKL "Use Intel Math Kernel Library" OFF )

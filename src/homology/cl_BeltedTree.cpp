@@ -78,6 +78,7 @@ namespace belfem
                     }
                 }
             }
+            this->create_TreeField("BeltedTree0") ;
 
             //Build the maximal possible tree
             Map< id_t, Chain * > t1ChainMap = mSimplicialComplex->get_kchainMap(1);

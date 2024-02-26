@@ -40,7 +40,7 @@ foreach( LIBITEM ${LIBLIST} )
 endforeach()
 
 string(STRIP "${BELFEM_LIBS}" BELFEM_LIBS)
-target_include_directories( test_${TESTNAME} BEFORE INTERFACE $ENV{SCLS}/include )
+target_include_directories( test_${TESTNAME} BEFORE INTERFACE $ENV{TPLS}/include )
 target_link_libraries(  test_${TESTNAME} ${BELFEM_LIBS} ${BELFEM_IO_LIBS} ${BELFEM_MATRIX_LIBS}  -lgtest -lgtest_main  ${BELFEM_FORTRANLIBS} )
 if( NOT APPLE )
     target_link_libraries(test_${TESTNAME} -pthread )

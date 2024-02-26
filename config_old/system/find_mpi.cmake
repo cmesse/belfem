@@ -3,7 +3,7 @@ if( USE_MPI )
     if( DEFINED ENV{MPI_HOME} )
         # for summary output
         set( BELFEM_MPIHOME $ENV{MPI_HOME} )
-        if( NOT $ENV{MPI_HOME} STREQUAL ${SCLSLIBDIR} )
+        if( NOT $ENV{MPI_HOME} STREQUAL $ENV{TPLIBS} )
             # step 3: find library directory
             if( IS_DIRECTORY $ENV{MPI_HOME}/lib64 )
                 list( APPEND BELFEM_RPATH $ENV{MPI_HOME}/lib64 )

@@ -18,6 +18,9 @@
 #include "cl_SimplicialComplex.hpp"
 #include "cl_Homology.hpp"
 #include "cl_Cohomology.hpp"
+#include "cl_Node.hpp"
+#include "cl_Element_Factory.hpp"
+#include "cl_Mesh_HDF5Reader.hpp"
 
 
 //#include "fn_FEM_compute_element_current_thinshell.hpp"
@@ -63,45 +66,160 @@ int main( int    argc,
     // get the mesh
     Mesh * tMesh = tFactory->magnetic_mesh() ;
 
-    // get the simplicial complex
-    mesh::SimplicialComplex * tSComplex = tFactory->simplicial_complex();
+    // get the name for the outmesh
+    //const string tOutFile = tFactory->outfile();
 
-    // Reduce the simplicial complex
-    // start timer
-    Timer tTimer;
-    /*std::cout << "Reducing the complex ..." << std::endl;
-    tSComplex->reduce_complexCCR();
-    std::cout << "Complex reduced in: "<< tTimer.stop()*1e-3 << " s" << std::endl;*/
+    bool suggHomology = true; //Do we suggest the homology from conductors' boundaries
 
-    std::cout << "Number of 0-chains: " << tSComplex->number_of_0simplices() <<std::endl;
-    std::cout << "Number of 1-chains: " << tSComplex->number_of_1simplices() <<std::endl;
-    std::cout << "Number of 2-chains: " << tSComplex->number_of_2simplices() <<std::endl;
+    // --------------------------------------------------------------
+    // Creating the edge mesh for homology saving and  vizualization
+    // --------------------------------------------------------------
+    Mesh * tMeshEdge = new Mesh( 2 , 0, false );
+    Cell< mesh::Node * > & tNodes = tMeshEdge->nodes();
+    Map< id_t, mesh::Node * > tNodeMap ;
+    id_t tNumNodes = tMesh->number_of_nodes();
+    id_t tNumEdges = tMesh->number_of_edges();
 
-    // Coreduce the simplicial complex
-    Timer tTimer2;
-    std::cout << "(Co)reducing the complex ..." << std::endl;
-    tSComplex->coreduce_complexCCR();
-    std::cout << "Complex (co)reduced in: "<< tTimer2.stop()*1e-3 << " s" << std::endl;
+    // allocate node memory
+    tNodes.set_size( tNumNodes, nullptr );
+    for ( uint k=0; k<tNumNodes; ++k)
+    {
+        // grab data
+        id_t id = tMesh->nodes()(k)->id();
+        real x = tMesh->nodes()(k)->x();
+        real y = tMesh->nodes()(k)->y();
+        real z = tMesh->nodes()(k)->z();
 
-    std::cout << "Number of 0-cochains: " << tSComplex->number_of_kcosimplices(0) <<std::endl;
-    std::cout << "Number of 1-cochains: " << tSComplex->number_of_kcosimplices(1) <<std::endl;
-    std::cout << "Number of 2-cochains: " << tSComplex->number_of_kcosimplices(2) <<std::endl;
+        // create a new node
+        mesh::Node * tNode =  new mesh::Node( id, x, y, z );
 
-    //Compute the homology and cohomology generators
-    Timer tTimer3;
-    std::cout << "Computing Homology ..." << std::endl;
-    //mesh::Homology * tHomology = new mesh::Homology(tSComplex, tMesh);
-    mesh::Homology * tHomology = new mesh::Homology(tMesh); //generating the homology as boundary of conductor
-    std::cout << "Homology generators computed in: "<< tTimer3.stop() << " ms" << std::endl;
-    tHomology->create_kGeneratorsField(1);
+        // add node to container
+        tNodes( k ) = tNode ;
 
-    Timer tTimer4;
-    std::cout << "Computing Cohomology ..." << std::endl;
-    mesh::Cohomology * tCohomology = new mesh::Cohomology(tSComplex, tMesh);
-    std::cout << "Cohomology generators computed in: "<< tTimer4.stop() << " ms" << std::endl;
-    std::cout << "Updating Cohomology from suggested homology ..." << std::endl;
-    tCohomology->updatekGeneratorsFromHomology(tHomology->get_Generators()(1),1);
-    tCohomology->create_kGeneratorsField(1);
+        // add node to map
+        tNodeMap[ id ] = tNode ;
+
+    }
+
+    mesh::Block * tBlockE = new mesh::Block( 1, tNumEdges );
+    tBlockE->label() = "Edges";
+    // create element factory
+    mesh::ElementFactory tElementFactory ;
+
+    // grab element container
+    Cell< mesh::Element * > & tEdges = tBlockE->elements();
+
+    //Cell< mesh::Edge * > & tEdges = tMesh->edges();
+    tEdges.set_size( tNumEdges, nullptr );
+    for ( uint e=0; e<tNumEdges; ++e)
+    {
+        id_t edge_id = tMesh->edges()(e)->id();
+        id_t node_id_1 = tMesh->edges()(e)->node(0)->id();
+        id_t node_id_2 = tMesh->edges()(e)->node(1)->id();
+
+        mesh::Element * tEdge = tElementFactory.create_element( ElementType::LINE2, edge_id );
+        tEdge->insert_node( tNodeMap(node_id_1), 0  );
+
+        tEdge->insert_node( tNodeMap( node_id_2 ), 1 );
+        tEdges( e ) = tEdge ;
+
+    }
+
+    // add the block to the mesh
+    tMeshEdge->blocks().push( tBlockE );
+    tMeshEdge->finalize();
+
+    // ---------------------------------------------------------
+    // Computing Homology
+    // ---------------------------------------------------------
+
+    mesh::Homology * tHomology;
+    mesh::Cohomology * tCohomology;
+
+    Timer tTimer ;
+    // Check if we already have a homology file
+    if (file_exists("Homology.hdf5"))
+    {
+        std::cout << "Homology already exists, loading data" << std::endl;
+        Mesh * tMeshEdgeLoaded = new Mesh( 2 , 0, false );
+        mesh::HDF5Reader * tReader = new mesh::HDF5Reader( "Homology.hdf5", tMeshEdgeLoaded );
+
+        tHomology = new mesh::Homology(tMesh, tMeshEdgeLoaded);
+        tCohomology = new mesh::Cohomology(tMesh, tMeshEdgeLoaded);
+
+        //Create homology and cohomology fields in mesh
+        tHomology->create_kGeneratorsField(1, tMeshEdge);
+        tCohomology->create_kGeneratorsField(1, tMeshEdge);
+
+        delete tReader;
+    }
+    else
+    {
+        // Create the simplicial complex
+        std::cout << "Creating the simplicial complex ..." << std::endl;
+        mesh::SimplicialComplex * tSComplex = tFactory->simplicial_complex();
+        //SimplicialComplex * tSComplex = new SimplicialComplex(tMesh);
+
+        std::cout << "Number of 0-chains: " << tSComplex->number_of_0simplices() <<std::endl;
+        std::cout << "Number of 1-chains: " << tSComplex->number_of_1simplices() <<std::endl;
+        std::cout << "Number of 2-chains: " << tSComplex->number_of_2simplices() <<std::endl;
+
+        // Coreduce the simplicial complex
+        std::cout << "(Co)reducing the complex ..." << std::endl;
+        tSComplex->coreduce_complexCCR();
+        std::cout << "Complex (co)reduced in: "<< tTimer.stop()*1e-3 << " s" << std::endl;
+
+        std::cout << "Number of 0-cochains: " << tSComplex->number_of_kcosimplices(0) <<std::endl;
+        std::cout << "Number of 1-cochains: " << tSComplex->number_of_kcosimplices(1) <<std::endl;
+        std::cout << "Number of 2-cochains: " << tSComplex->number_of_kcosimplices(2) <<std::endl;
+
+        std::cout << "Computing Cohomology ..." << std::endl;
+        tCohomology = new mesh::Cohomology(tSComplex, tMesh);
+        std::cout << "Cohomology generators computed in: "<< tTimer.stop() << " ms" << std::endl;
+        //tCohomology->create_kGeneratorsField(1, tMeshEdge);
+
+        // Do we want to suggest a homology?
+        if (suggHomology)
+        {
+            //Define chain on conductor edge for homology
+            std::cout << "Suggesting an homology from the conductor boundary ..." << std::endl;
+            tHomology = new mesh::Homology( tMesh);
+
+            std::cout << "Updating Cohomology from suggested homology ..." << std::endl;
+            tCohomology->updatekGeneratorsFromHomology(tHomology->get_Generators()(1),1);
+        }
+        else // Otherwise, compute the homology as usual
+        {
+            // Reduce the simplicial complex
+            // start timer
+            std::cout << "Reducing the complex ..." << std::endl;
+            tSComplex->reduce_complexCCR();
+            std::cout << "Complex reduced in: "<< tTimer.stop()*1e-3 << " s" << std::endl;
+
+            std::cout << "Number of 0-chains: " << tSComplex->number_of_0simplices() <<std::endl;
+            std::cout << "Number of 1-chains: " << tSComplex->number_of_1simplices() <<std::endl;
+            std::cout << "Number of 2-chains: " << tSComplex->number_of_2simplices() <<std::endl;
+
+            //Compute the homology and cohomology generators
+            std::cout << "Computing Homology ..." << std::endl;
+            tHomology = new mesh::Homology(tSComplex, tMesh);
+            std::cout << "Homology generators computed in: "<< tTimer.stop() << " ms" << std::endl;
+            //tHomology->create_kGeneratorsField(1, tMeshEdge);
+        }
+
+        //Create homology and cohomology fields in mesh
+        tHomology->create_kGeneratorsField(1, tMeshEdge);
+        tCohomology->create_kGeneratorsField(1, tMeshEdge);
+
+        // Save homology information
+        tMeshEdge->save("Homology.hdf5");
+    }
+
+    // save the mesh
+    //tMesh->save(tOutFile);
+
+    // save the homology
+    tMeshEdge->save("Homology.e-s");
 
     // flag telling if we compute the norm of b
     bool tComputeNormB      = tFactory->compute_normb() ;

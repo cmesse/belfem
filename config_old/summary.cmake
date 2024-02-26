@@ -23,7 +23,7 @@ else()
     message( "Using MPI  : no")
 endif()
 
-message( "SCLS       : " $ENV{SCLS} )
+message( "TPLS       : " $ENV{TPLS} )
 
 if( USE_MKL )
     message( "LINALG     : MKL" )

@@ -11,6 +11,16 @@ namespace belfem
     {
 //------------------------------------------------------------------------------
 
+        Cohomology::Cohomology( Mesh * aMesh, Mesh * aEdgeMesh ) :
+                mMesh(aMesh)
+        {
+            mGenerators.set_size(4,Cell< Cochain * >());
+            mOrders.set_size(4,Cell< int >());
+            this->generatorsFromField(aEdgeMesh);
+        }
+
+        //-----------------------------------------------------------------------------
+
         Cohomology::Cohomology( SimplicialComplex * aSimplicialComplex, Mesh * aMesh ) :
                 mSimplicialComplex( aSimplicialComplex ),
                 mMesh( aMesh )
@@ -145,28 +155,49 @@ namespace belfem
         //-----------------------------------------------------------------------------
 
         void
-        Cohomology::create_kGeneratorsField(const uint k )
+        Cohomology::create_kGeneratorsField(const uint k, Mesh * tMesh )
         {
             uint tCount = 0;
             for(const auto& tCochain : mGenerators(k))
             {
                 tCount++;
                 char fieldName [50];
-                if (mflagProp)
-                {
-                    sprintf (fieldName, "1SuggestCohomologyGenerator%d", tCount);
-                }
-                else
+                /*if (mflagProp)
                 {
                     sprintf (fieldName, "1CohomologyGenerator%d", tCount);
                 }
-                mMesh->create_field( fieldName, EntityType::NODE);
+                else
+                {
+                    sprintf (fieldName, "1CohomologyGeneratorComp%d", tCount);
+                }*/
+                sprintf (fieldName, "1CohomologyGenerator%d", tCount);
+                tMesh->create_field( fieldName, EntityType::ELEMENT);
                 Map< id_t, int > tSimplicesMap = tCochain->getSimplicesMap();
                 for( const auto& [tInd, tCoeff] :  tSimplicesMap)
                 {
-                    mMesh->field_data(fieldName)(mMesh->edge(tInd)->node(0)->index()) = 1;
-                    mMesh->field_data(fieldName)(mMesh->edge(tInd)->node(1)->index()) = 1;
+                    tMesh->field_data(fieldName)(tMesh->element(tInd)->index()) = tCoeff;
+                    //tMesh->field_data(fieldName)(tMesh->edge(tInd)->node(1)->index()) = 1;
                 }
+            }
+        }
+
+        //-----------------------------------------------------------------------------
+
+        void
+        Cohomology::generatorsFromField(Mesh * tEdgeMesh)
+        {
+            char fieldName [50];
+            uint tCount = 1 ;
+            sprintf (fieldName, "1CohomologyGenerator%d", tCount);
+            while ( tEdgeMesh->field_exists(fieldName) )
+            {
+                mGenerators(1).push(new Cochain(1, mMesh));
+                for(uint i = 0; i < tEdgeMesh->number_of_elements(); i++)
+                {
+                    mGenerators(1)(tCount-1)->addSimplexToCochain(tEdgeMesh->elements()(i)->id(),tEdgeMesh->field_data(fieldName)(i));
+                }
+                tCount++;
+                sprintf (fieldName, "1CohomologyGenerator%d", tCount);
             }
         }
 

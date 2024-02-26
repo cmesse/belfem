@@ -13,6 +13,14 @@ namespace belfem
     {
 //------------------------------------------------------------------------------
 
+        Homology::Homology( Mesh * aMesh, Mesh * aEdgeMesh ):
+                mMesh( aMesh )
+        {
+            mGenerators.set_size(4,Cell< Chain * >());
+            mOrders.set_size(4,Cell< int >());
+            this->generatorsFromField(aEdgeMesh);
+        }
+
         Homology::Homology( Mesh * aMesh ) :
                 mMesh( aMesh )
         {
@@ -170,28 +178,50 @@ namespace belfem
 
         // Create field in the mesh to visualize the generators
         void
-        Homology::create_kGeneratorsField(const uint k )
+        Homology::create_kGeneratorsField(const uint k, Mesh * tMesh )
         {
             uint tCount = 0;
             for(const auto& tChain : mGenerators(k))
             {
                 tCount++;
                 char fieldName [50];
-                if (mflagProp)
-                {
-                    sprintf (fieldName, "1SuggestedHomologyGenerator%d", tCount);
-                }
-                else
+                /*if (mflagProp)
                 {
                     sprintf (fieldName, "1HomologyGenerator%d", tCount);
                 }
-                mMesh->create_field( fieldName, EntityType::NODE);
+                else
+                {
+                    sprintf (fieldName, "1HomologyGeneratorComp%d", tCount);
+                }*/
+
+                sprintf (fieldName, "1HomologyGenerator%d", tCount);
+                tMesh->create_field( fieldName, EntityType::ELEMENT);
                 Map< id_t, int > tSimplicesMap = tChain->getSimplicesMap();
                 for( const auto& [tInd, tCoeff] :  tSimplicesMap)
                 {
-                    mMesh->field_data(fieldName)(mMesh->edge(tInd)->node(0)->index()) = 1;
-                    mMesh->field_data(fieldName)(mMesh->edge(tInd)->node(1)->index()) = 1;
+                    tMesh->field_data(fieldName)(tMesh->element(tInd)->index()) = tCoeff;
+                    //mMesh->field_data(fieldName)(mMesh->edge(tInd)->node(1)->index()) = 1;
                 }
+            }
+        }
+
+        //-----------------------------------------------------------------------------
+
+        void
+        Homology::generatorsFromField(Mesh * tEdgeMesh)
+        {
+            char fieldName [50];
+            uint tCount = 1 ;
+            sprintf (fieldName, "1HomologyGenerator%d", tCount);
+            while ( tEdgeMesh->field_exists(fieldName) )
+            {
+                mGenerators(1).push(new Chain(1, mMesh));
+                for(uint i = 0; i < tEdgeMesh->number_of_elements(); i++)
+                {
+                    mGenerators(1)(tCount-1)->addSimplexToChain(tEdgeMesh->elements()(i)->id(),tEdgeMesh->field_data(fieldName)(i));
+                }
+                tCount++;
+                sprintf (fieldName, "1HomologyGenerator%d", tCount);
             }
         }
 

@@ -8,8 +8,8 @@ if( USE_MUMPS )
     set( BELFEM_MUMPS_LIBS "-ldmumps -lmumps_common -lesmumps -lpord -lparmetis -lptscotch -lptscotcherr -lscotch -lscotcherr")
 
 
-    list( APPEND BELFEM_INCLUDES "$ENV{SCLS}/include/mumps" )
-    set( BELFEM_FCFLAGS   "${BELFEM_FCFLAGS} -I$ENV{SCLS}/include/mumps" )
+    list( APPEND BELFEM_INCLUDES "$ENV{TPLS}/include/mumps" )
+    set( BELFEM_FCFLAGS   "${BELFEM_FCFLAGS} -I$ENV{TPLS}/include/mumps" )
 
 
     set( BELFEM_MATRIX_LIBS "${BELFEM_MUMPS_LIBS} ${BELFEM_MATRIX_LIBS}")
