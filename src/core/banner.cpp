@@ -229,7 +229,7 @@ namespace belfem
 #ifdef BELFEM_NETLIB
             std::fprintf( stdout, "    BLAS & LAPACK : Netlib\n");
 #elif BELFEM_ACCELLERATE
-            std::fprintf( stdout, "    BLAS & LAPACK : Apple Accellerate Framework\n");
+               std::fprintf( stdout, "    BLAS & LAPACK : Apple Accellerate Framework\n");
 #elif BELFEM_MKL
             std::fprintf( stdout, "    BLAS & LAPACK : Intel Math Kernel Library (MKL)\n");
 #endif

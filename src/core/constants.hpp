@@ -4,7 +4,7 @@
 
 #ifndef BELFEM_CONSTANTS_HPP
 #define BELFEM_CONSTANTS_HPP
-
+#include <cmath>
 #include "typedefs.hpp"
 
 #ifdef BELFEM_GCC

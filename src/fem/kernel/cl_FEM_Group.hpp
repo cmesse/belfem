@@ -68,12 +68,14 @@ namespace belfem
             // must be set by child
             uint mNumberOfNodesPerElement = BELFEM_UINT_MAX ;
 
-            bool mIsIsogeometric = true ;
+            uint mIntegrationOrder = 0 ;
 
-            IntegrationData * mIntegrationData = nullptr ;
+            //bool mIsIsogeometric = true ;
+
+            //IntegrationData * mIntegrationData = nullptr ;
 
             // this is meant if the geometry data are different
-            IntegrationData * mGeometryIntegrationData = nullptr ;
+            //IntegrationData * mGeometryIntegrationData = nullptr ;
 
             // shape function for element boundaries
             Cell< Cell< Matrix < real > > > mBoundaryN ;
@@ -255,22 +257,6 @@ namespace belfem
              */
              const IntegrationData *
              integration() ;
-
-//------------------------------------------------------------------------------
-
-            /**
-             * expose integration weights
-             */
-            const Vector< real > &
-            integration_weights() const;
-
-//------------------------------------------------------------------------------
-
-            /**
-             * expose integration points
-             */
-            const Matrix< real > &
-            integration_points() const;
 
 //------------------------------------------------------------------------------
 
@@ -648,10 +634,10 @@ namespace belfem
             /**
              * for special purpose integration, sideset only
              */
-            virtual const IntegrationData *
+            virtual IntegrationData *
             master_integration( const uint aSideSetIndex );
 
-            virtual const IntegrationData *
+            virtual IntegrationData *
             slave_integration( const uint aSideSetIndex );
 
             void
@@ -768,18 +754,17 @@ namespace belfem
 //------------------------------------------------------------------------------
         protected:
 //------------------------------------------------------------------------------
-
-
-            void
-            assume_isogeometry();
-
-//------------------------------------------------------------------------------
 // Material Helpers
 //------------------------------------------------------------------------------
 
             // called by constructor
             void
             link_material_functions();
+
+//------------------------------------------------------------------------------
+
+            void
+            create_calculator();
 
 //------------------------------------------------------------------------------
 
@@ -875,37 +860,6 @@ namespace belfem
         {
             return mElements;
         }
-//------------------------------------------------------------------------------
-
-        inline const IntegrationData *
-        Group::integration()
-        {
-            return mIntegrationData ;
-        }
-
-//------------------------------------------------------------------------------
-
-        inline const Vector< real > &
-        Group::integration_weights() const
-        {
-            return mIntegrationData->weights() ;
-        }
-
-//------------------------------------------------------------------------------
-
-        inline const Matrix< real > &
-        Group::integration_points() const
-        {
-            return mIntegrationData->points() ;
-        }
-
-//------------------------------------------------------------------------------
-
-        inline const Vector< real > &
-        Group::n( const uint aIndex ) const
-        {
-            return mIntegrationData->phi( aIndex );
-        }
 
 //------------------------------------------------------------------------------
 
@@ -917,68 +871,11 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        inline const Matrix< real > &
-        Group::N( const uint aIndex ) const
-        {
-            return mIntegrationData->N( aIndex );
-        }
-
-//------------------------------------------------------------------------------
-
-        inline const Matrix< real > &
-        Group::Nvector( const uint aIndex ) const
-        {
-            return mIntegrationData->Nvector( aIndex );
-        }
-
-//------------------------------------------------------------------------------
-
-        inline const Matrix< real > &
-        Group::dNdXi( const uint aIndex ) const
-        {
-            return mIntegrationData->dNdXi( aIndex );
-        }
-
-//------------------------------------------------------------------------------
-
-        inline const Matrix< real > &
-        Group::d2NdXi2( const uint aIndex ) const
-        {
-            return mIntegrationData->d2NdXi2( aIndex );
-        }
-
-//------------------------------------------------------------------------------
-
-        inline const Matrix< real > &
-        Group::G( const uint aIndex ) const
-        {
-            return mGeometryIntegrationData->N( aIndex );
-        }
-
-//------------------------------------------------------------------------------
-
-        inline const Matrix< real > &
-        Group::dGdXi( const uint aIndex ) const
-        {
-            return mGeometryIntegrationData->dNdXi( aIndex );
-        }
-
-//------------------------------------------------------------------------------
-
-        inline const Matrix< real > &
-        Group::d2GdXi2( const uint aIndex ) const
-        {
-            return mGeometryIntegrationData->d2NdXi2( aIndex );
-        }
-
-//------------------------------------------------------------------------------
-
         inline uint &
         Group::work_index()
         {
             return mWorkIndex;
         }
-
 
 //------------------------------------------------------------------------------
 
@@ -1372,14 +1269,6 @@ namespace belfem
         Group::set_mesh_id( const id_t & aID )
         {
             mMeshID = aID ;
-        }
-
-//------------------------------------------------------------------------------
-
-        inline const InterpolationFunction *
-        Group::interpolation_function() const
-        {
-            return mIntegrationData->function() ;
         }
 
 //------------------------------------------------------------------------------

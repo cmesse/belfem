@@ -2,13 +2,8 @@ set( LIBNAME iwg )
 
 set( SOURCES
         cl_IWG.cpp
-        cl_IWG_TimestepOld.cpp
-        cl_IWG_SimpleDiffusion.cpp
+        cl_IWG_Timestep.cpp
         cl_IWG_StaticHeatConduction.cpp
-        cl_IWG_TransientHeatConduction.cpp
-        cl_IWG_PlaneStress.cpp
-        cl_IWG_2DGradient.cpp
-        cl_IWG_SurfaceGradient.cpp
         cl_IwgFactory.cpp
         )
 
@@ -28,6 +23,7 @@ include_directories( ${BELFEM_SOURCE_DIR}/numerics/integration )
 include_directories( ${BELFEM_SOURCE_DIR}/numerics/spline )
 include_directories( ${BELFEM_SOURCE_DIR}/physics )
 include_directories( ${BELFEM_SOURCE_DIR}/physics/materials )
+
 if ( USE_GASMODELS )
     include_directories( ${BELFEM_SOURCE_DIR}/physics/gastables )
     include_directories( ${BELFEM_SOURCE_DIR}/physics/gasmodels )

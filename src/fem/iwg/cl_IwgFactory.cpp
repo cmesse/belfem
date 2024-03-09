@@ -4,11 +4,7 @@
 #include "commtools.hpp"
 #include "cl_IwgFactory.hpp"
 
-#include "cl_IWG_2DGradient.hpp"
-#include "cl_IWG_SimpleDiffusion.hpp"
 #include "cl_IWG_StaticHeatConduction.hpp"
-#include "cl_IWG_TransientHeatConduction.hpp"
-#include "cl_IWG_PlaneStress.hpp"
 
 namespace belfem
 {
@@ -35,31 +31,15 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         IWG *
-        IwgFactory::create_iwg( const IwgType aType ) const
+        IwgFactory::create_iwg( const IwgType aType, const ModelDimensionality aDimensionality ) const
         {
            BELFEM_ERROR( ! is_maxwell( aType ) , "Can't create Maxwell IWG with IwgFactory. Use MaxwellFactory instead");
 
             switch ( aType )
             {
-                case( IwgType::Gradient2D ) :
-                {
-                    return new IWG_2DGradient() ;
-                }
-                case( IwgType::SimpleDiffusion ) :
-                {
-                    return new IWG_SimpleDiffusion( mNumberOfDimensions );
-                }
                 case( IwgType::StaticHeatConduction ) :
                 {
-                    return new IWG_StaticHeatConduction( mNumberOfDimensions );
-                }
-                case( IwgType::TransientHeatConduction ) :
-                {
-                    return new IWG_TransientHeatConduction( mNumberOfDimensions );
-                }
-                case( IwgType::PlaneStress ) :
-                {
-                    return new IWG_PlaneStress();
+                    return new IWG_StaticHeatConduction( aDimensionality );
                 }
                 default:
                 {

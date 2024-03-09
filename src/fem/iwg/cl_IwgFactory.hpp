@@ -38,7 +38,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             IWG *
-            create_iwg( const IwgType aType ) const;
+            create_iwg( const IwgType aType, const ModelDimensionality aDimensionality=ModelDimensionality::TwoD ) const;
 
 //------------------------------------------------------------------------------
 

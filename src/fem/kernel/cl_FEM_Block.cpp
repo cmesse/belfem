@@ -14,6 +14,7 @@
 #include "fn_IF_initialize_integration_points.hpp"
 #include "fn_IF_initialize_shape_function.hpp"
 #include "cl_FEM_DofManager.hpp"
+#include "cl_FEM_Calculator.hpp"
 
 namespace belfem
 {
@@ -40,23 +41,13 @@ namespace belfem
                                               aBlock->id(), aNumberOfElements ),
             mBlock( aBlock )
         {
-            if ( mParent->iwg() == NULL )
-            {
-                mIntegrationData = new IntegrationData( aBlock->element_type(),
-                                                        InterpolationType::LAGRANGE );
-            }
-            else
-            {
-                mIntegrationData = new IntegrationData( aBlock->element_type(),
-                                                        mParent->iwg()->interpolation_type());
-            }
+
+
+            mCalc->initialize_integration( this->element_type(), aParent->iwg()->interpolation_type() );
             this->set_integration_order( aParent->block_integration_order() );
             this->initialize_elements();
             this->create_element_map();
 
-
-            // create the calculator object
-            mCalc = new Calculator( this );
         }
 
 //------------------------------------------------------------------------------
@@ -75,13 +66,12 @@ namespace belfem
             // set the number of nodes per element
             mNumberOfNodesPerElement = mesh::number_of_nodes( mElementType ) ;
 
-            mIntegrationData->populate( aOrder,
-                            mParent->integration_scheme() );
+            mIntegrationOrder = aOrder ;
 
-            // note: sidesets must also be changed if assume_isogeometry is false
-            this->assume_isogeometry();
-
-            mCalc->allocate_memory() ;
+            if( mCalc != nullptr )
+            {
+                mCalc->set_integration_order( aOrder );
+            }
         }
 
 //------------------------------------------------------------------------------

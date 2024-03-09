@@ -46,10 +46,6 @@ namespace belfem
             Dof ** mDOFs = nullptr ;
             uint mNumberOfDofs = 0 ;
 
-            // pointer to L-Matrix function
-            void
-            ( Element::*mL )( Matrix< real > & aJ, Matrix< real > & aL );
-
             real * mRotationData = nullptr ;
 
             // edge directions, if this is a Nedelec element
@@ -144,45 +140,6 @@ namespace belfem
              */
              void
              unflag_dofs();
-
-//------------------------------------------------------------------------------
-
-            /**
-             * get the precomputed shape function from parent block
-             */
-            const Matrix< real > &
-            N( const uint aPointIndex ) const;
-
-//------------------------------------------------------------------------------
-
-            /**
-             * get the precomputed shape function from parent block ( Geometry )
-             */
-            const Matrix< real > &
-            G( const uint aPointIndex ) const;
-
-//------------------------------------------------------------------------------
-
-            // compute the transposed geometry Jacobian
-            // rule: J * dNdX = dNdXi
-            Matrix< real > &
-            J( const uint aPointIndex );
-
-//------------------------------------------------------------------------------
-
-            // compute the K-Matrix for the geometry transformation
-            // rule: L * d2NdX2 = d2NdXi2 - K * dNdXi
-            Matrix< real > &
-            K( const uint aPointIndex );
-
-//------------------------------------------------------------------------------
-
-            // compute the L-Matrix for the geometry transformation
-            Matrix< real > &
-            // rule: L * d2NdX2 = d2NdXi2 - K * dNdXi
-            L( const uint aPointIndex );
-
-//------------------------------------------------------------------------------
 
             /**
              * tell if this element has rotation properties
@@ -455,32 +412,12 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
-            L1D( Matrix< real > & aJ, Matrix< real > & aL );
-
-//------------------------------------------------------------------------------
-
-            void
-            L2D( Matrix< real > & aJ, Matrix< real > & aL );
-
-//------------------------------------------------------------------------------
-
-            void
-            L3D( Matrix< real > & aJ, Matrix< real > & aL);
-
-//------------------------------------------------------------------------------
-
-            void
             compute_edge_directions();
 
 //------------------------------------------------------------------------------
 
             void
             compute_edge_directions_thinshell();
-
-//------------------------------------------------------------------------------
-
-            void
-            link_second_derivative_functions( const ElementType aElementType );
 
 //------------------------------------------------------------------------------
 

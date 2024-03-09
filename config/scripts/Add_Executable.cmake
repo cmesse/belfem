@@ -43,7 +43,7 @@ endforeach()
 # tidy up
 string(STRIP "${BELFEM_LIBS}" BELFEM_LIBS)
 
-#target_include_directories( ${EXECNAME} PRIVATE $ENV{TPLS}/include )
+#target_include_directories( ${EXECNAME} PRIVATE $ENV{SCLS}/include )
 if ( USE_PROFILER )
     target_link_libraries( ${EXECNAME} ${BELFEM_LIBS} ${BELFEM_SOLVER_LIBS} ${BELFEM_MATRIX_LIBS} ${BELFEM_IO_LIBS} ${BELFEM_PERFORMANCELIBS} ${BELFEM_FORTRANLIBS} ${BELFEM_OPENMPLIBS} )
 else()

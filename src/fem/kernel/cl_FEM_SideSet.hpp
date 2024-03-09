@@ -172,7 +172,7 @@ namespace belfem
              * @param aSideSetIndex
              * @return
              */
-            const IntegrationData *
+            IntegrationData *
             master_integration( const uint aSideSetIndex ) ;
 
 //------------------------------------------------------------------------------
@@ -182,7 +182,7 @@ namespace belfem
              * @param aSideSetIndex
              * @return
              */
-            const IntegrationData *
+            IntegrationData *
             slave_integration( const uint aSideSetIndex ) ;
 
 //------------------------------------------------------------------------------
@@ -297,7 +297,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        inline const IntegrationData *
+        inline IntegrationData *
         SideSet::master_integration( const uint aSideSetIndex )
         {
             return mMasterIntegration( aSideSetIndex );
@@ -305,7 +305,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        inline const IntegrationData *
+        inline IntegrationData *
         SideSet::slave_integration( const uint aSideSetIndex )
         {
             return mSlaveIntegration( aSideSetIndex );

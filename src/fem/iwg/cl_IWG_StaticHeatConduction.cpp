@@ -19,12 +19,34 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         IWG_StaticHeatConduction::IWG_StaticHeatConduction(
-                const uint aNumberOfDimensions,
+                const ModelDimensionality  aModelDimensionality,
                 const IwgType aType ) :
-                IWG_TimestepOld( aType )
+                IWG_Timestep( aType, aModelDimensionality )
         {
             mNumberOfDofsPerNode = 1;
-            mNumberOfDerivativeDimensions = aNumberOfDimensions ;
+
+            switch ( aModelDimensionality )
+            {
+                case( ModelDimensionality::TwoD ) :
+                case( ModelDimensionality::AxSymmX ) :
+                case( ModelDimensionality::AxSymmY ) :
+                {
+                    mNumberOfSpatialDimensions = 2 ;
+                    mNumberOfDerivativeDimensions = 2 ;
+                    break ;
+                }
+                case( ModelDimensionality::ThreeD ) :
+                {
+                    mNumberOfSpatialDimensions = 3 ;
+                    mNumberOfDerivativeDimensions = 3 ;
+                    break;
+                }
+                default:
+                {
+                    BELFEM_ERROR( false, "Invalid Model Dimensionality");
+                }
+            }
+
             mNumberOfRhsCols = 1;
 
             // timestep must be 1.0 for the stationary class
@@ -44,7 +66,7 @@ namespace belfem
             this->initialize() ;
 
             // allocate lambda matrix
-            mLambda.set_size( aNumberOfDimensions, aNumberOfDimensions );
+            mLambda.set_size( mNumberOfSpatialDimensions, mNumberOfSpatialDimensions );
         }
 //------------------------------------------------------------------------------
 // Functions called by Field during assembly
@@ -53,12 +75,12 @@ namespace belfem
         void
         IWG_StaticHeatConduction::compute_conduction(
                 Element        * aElement,
-                Matrix< real > & aJacobian,
-                Vector< real > & aRHS )
+                Matrix< real > & aK,
+                Vector< real > & aQ )
         {
             // reset result vectors
-            aJacobian.fill( 0.0 );
-            aRHS.fill( 0.0 );
+            aK.fill( 0.0 );
+            aQ.fill( 0.0 );
 
             mCalc->link( aElement );
 
@@ -81,7 +103,9 @@ namespace belfem
                 real tT = mCalc->node_interp( k, tTnodes );
 
                 // add to integration
-                aJacobian += tW( k ) * trans( tB ) * mMaterial->lambda( tT ) * tB * det( mCalc->J( k ) );
+                aK += tW( k ) * trans( tB ) *
+                        mMaterial->lambda( tT ) *
+                        tB * det( mCalc->J( k ) );
             }
         }
 
@@ -99,22 +123,22 @@ namespace belfem
             aRHS.fill( 0.0 );
 
             // get integration weights
-            const Vector< real > & tW = mGroup->integration_weights();
+            //const Vector< real > & tW = mGroup->integration_weights();
 
 
             // node coordinates
-            Matrix< real > & tX = mCalc->matrix("X");
-            this->collect_node_coords( aElement, tX );
+           // Matrix< real > & tX = mCalc->matrix("X");
+            //this->collect_node_coords( aElement, tX );
 
             // collect temperatures from last iteration
-            this->collect_node_data( aElement, mBcFields );
+            //this->collect_node_data( aElement, mBcFields );
 
 
             // loop over all integration points
             for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
             {
                 // interpolate alpha for this point
-                real tAlpha = dot( mGroup->n( k ).vector_data(), mCalc->vector( "alpha").vector_data() );
+                /*real tAlpha = dot( mGroup->n( k ).vector_data(), mCalc->vector( "alpha").vector_data() );
 
                 // interpolate T inf for this point
                 real tTinf = dot( mGroup->n( k ).vector_data(), mCalc->vector( "T").vector_data() );
@@ -128,7 +152,7 @@ namespace belfem
 
 
                 aRHS += tW( k ) * trans( mGroup->N( k ).row( 0 ) ) * tAlpha
-                               * tTinf * tDetJ ;
+                               * tTinf * tDetJ ; */
 
             }
 
@@ -154,12 +178,14 @@ namespace belfem
 
         BELFEM_ASSERT( mMesh->number_of_dimensions() == 2, "the convection routine has been written for the 2D case" );
 
+        BELFEM_ERROR( false, "this must be redone");
+
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         // get data containers
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
         // integration weights
-        const Vector< real > & tW = mGroup->integration_weights();
+        const Vector< real > & tW = mGroup->integration()->weights();
 
         // nodal information for source fields
         Vector < real > & tdotq = mCalc->vector("dotq");
@@ -191,8 +217,8 @@ namespace belfem
             // compute heatflux
             tDotQ = dot( mGroup->integration()->phi( k ), tdotq );
 
-            aConvection += tW( k ) * trans( mGroup->N( k ).row( 0 ) ) * tDotQ
-                           *  mesh::compute_surface_increment( mGroup->dNdXi( k ), tX );
+            aConvection += tW( k ) * trans( mCalc->N( k ).row( 0 ) ) * tDotQ
+                           * mCalc->dS( k );
         }
 
     }

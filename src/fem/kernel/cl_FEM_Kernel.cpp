@@ -2664,6 +2664,9 @@ namespace belfem
             Vector< real > & tVolumes = mMesh->create_field( "_Volumes",
                                                              EntityType::ELEMENT ) ;
 
+            // we don't want to write this field
+            mMesh->field( "_Volumes" )->set_write_to_file_flag( false );
+
             mesh::Pipette  tPip ;
 
             index_t tCount = 0 ;

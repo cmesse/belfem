@@ -44,27 +44,25 @@ namespace belfem
                 // set the number of nodes per element
                 mNumberOfNodesPerElement = mesh::number_of_nodes( mElementType );
 
-                if( mParent->iwg() == NULL )
+
+                /*
                 {
                     mIntegrationData = new IntegrationData( mElementType,
                                                             InterpolationType::LAGRANGE );
                 }
                 else
                 {
-                    mIntegrationData = new IntegrationData( mElementType,
-                                                            mParent->iwg()->interpolation_type());
+
                 }
-
                 mIntegrationData->populate( aParent->sideset_integration_order(),
-                                            aParent->integration_scheme() );
+                                            aParent->integration_scheme() );*/
 
-                this->assume_isogeometry();
+
                 this->initialize_elements( aFacets );
                 this->collect_nodes( aFacets );
                 this->create_element_map();
 
-                // create the calculator object
-                mCalc = new Calculator( this );
+
             }
         }
 
@@ -107,18 +105,31 @@ namespace belfem
                 // set the number of nodes per element
                 mNumberOfNodesPerElement = mesh::number_of_nodes( mElementType );
 
-
-                this->assume_isogeometry();
                 this->initialize_elements( aFacets );
                 this->collect_nodes( aFacets );
                 this->create_element_map();
 
-                uint tOrder = 0 ;
+                mIntegrationOrder = 0 ;
                 if( aParent != nullptr )
                 {
-                    tOrder = aParent->sideset_integration_order() ;
+                    mIntegrationOrder = aParent->sideset_integration_order() ;
                 }
-                this->initialize_lookup_tables( tOrder );
+
+                if( mCalc != nullptr )
+                {
+                    mCalc->set_integration_order( mIntegrationOrder );
+
+                    if ( mParent->iwg() == nullptr )
+                    {
+                        mCalc->initialize_integration( mElementType, InterpolationType::LAGRANGE );
+                    }
+                    else
+                    {
+                        mCalc->initialize_integration( mElementType, aParent->iwg()->interpolation_type());
+                    }
+                }
+
+                this->initialize_lookup_tables( mIntegrationOrder );
                 this->initialize_work_matrices();
             }
         }
@@ -559,12 +570,6 @@ namespace belfem
                             auto_integration_order( mSlaveType ) );
                 }
             }
-
-            // note that the integration data is not populated!
-            mIntegrationData = new IntegrationData( mElementType );
-
-            // populate main integration data
-            mIntegrationData->populate( tIntegrationOrder, tScheme );
 
             if( tHaveMaster )
             {

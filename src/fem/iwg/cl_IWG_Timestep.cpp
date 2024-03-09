@@ -7,12 +7,26 @@
 #include "commtools.hpp"
 #include "fn_dot.hpp"
 #include "cl_IWG_Timestep.hpp"
+#include "cl_FEM_Calculator.hpp"
 
 
 namespace belfem
 {
     namespace fem
     {
+//------------------------------------------------------------------------------
+
+        IWG_Timestep::IWG_Timestep(
+                const IwgType aType,
+                const ModelDimensionality aDimensionality,
+                const IwgMode aMode,
+                const SymmetryMode aSymmetryMode,
+                const DofMode      aDofMode,
+                const SideSetDofLinkMode aSideSetDofLinkMode ) :
+                IWG( aType, aDimensionality, aMode, aSymmetryMode, aDofMode, aSideSetDofLinkMode )
+        {
+
+        }
 
 //------------------------------------------------------------------------------
 
@@ -96,6 +110,36 @@ namespace belfem
                     }
                 }
             }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        IWG_Timestep::compute_mkf( Element * aElement,
+                     Matrix< real > & aM,
+                     Matrix< real > & aK,
+                     Vector< real > & aF,
+                     Vector< real > & aQ )
+        {
+            BELFEM_ERROR( false, "compute_mkf not implemented for this IWG" );
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        IWG_Timestep::compute_jacobian_and_rhs( Element        * aElement,
+                                                Matrix< real > & aJacobian,
+                                                Vector< real > & aRHS )
+        {
+
+            this->compute_mkf(
+                    aElement,
+                    aJacobian,
+                    mCalc->K(),
+                    aRHS,
+                    mCalc->q0() );
+
+
         }
 
 //------------------------------------------------------------------------------

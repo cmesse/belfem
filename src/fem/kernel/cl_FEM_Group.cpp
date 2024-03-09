@@ -38,6 +38,7 @@ namespace belfem
                 mMeshID( aID )
         {
             this->link_material_functions();
+            this->create_calculator();
         }
 
 //------------------------------------------------------------------------------
@@ -57,30 +58,6 @@ namespace belfem
                     delete tElement;
                 }
             }
-            if ( !mIsIsogeometric && mGeometryIntegrationData != nullptr )
-            {
-                delete mGeometryIntegrationData;
-            }
-            if ( mIntegrationData != nullptr )
-            {
-                delete mIntegrationData;
-            }
-        }
-
-//------------------------------------------------------------------------------
-
-        void
-        Group::assume_isogeometry()
-        {
-            if ( !mIsIsogeometric && mGeometryIntegrationData != nullptr )
-            {
-                delete mGeometryIntegrationData;
-            }
-
-            // the switch is also needed for the destructor
-            mIsIsogeometric = true;
-
-            mGeometryIntegrationData = mIntegrationData;
         }
 
 //------------------------------------------------------------------------------
@@ -164,7 +141,26 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        const IntegrationData *
+        void
+        Group::create_calculator()
+        {
+            std::cout << "check " << mID << " " << ( mParent->iwg() == nullptr )
+                << " " << ( mCalc == nullptr ) << std::endl ;
+
+            if ( mParent->iwg() != nullptr && mCalc == nullptr )
+            {
+                // create the calculator object
+                mCalc = new Calculator( this, mParent->iwg()->model_dimensionality() );
+
+                mCalc->set_integration_order( mIntegrationOrder );
+
+            }
+        }
+
+
+//------------------------------------------------------------------------------
+
+        IntegrationData *
         Group::master_integration( const uint aSideSetIndex )
         {
             BELFEM_ERROR( false,
@@ -174,7 +170,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        const IntegrationData *
+        IntegrationData *
         Group::slave_integration( const uint aSideSetIndex )
         {
             BELFEM_ERROR( false,

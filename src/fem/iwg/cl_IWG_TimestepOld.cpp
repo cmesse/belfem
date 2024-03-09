@@ -21,11 +21,12 @@ namespace belfem
 
             IWG_TimestepOld::IWG_TimestepOld(
                     const IwgType aType,
+                    const ModelDimensionality aDimensionality,
                     const IwgMode aMode,
                     const SymmetryMode aSymmetryMode,
                     const DofMode      aDofMode,
                     const SideSetDofLinkMode aSideSetDofLinkMode ) :
-                    IWG( aType, aMode, aSymmetryMode, aDofMode, aSideSetDofLinkMode )
+                    IWG( aType, aDimensionality, aMode, aSymmetryMode, aDofMode, aSideSetDofLinkMode )
             {
 
             }

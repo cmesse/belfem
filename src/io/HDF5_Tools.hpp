@@ -7,6 +7,7 @@
 
 #ifdef BELFEM_HDF5
 #include <cstring>
+
 #include <hdf5.h>
 #else
 namespace belfem

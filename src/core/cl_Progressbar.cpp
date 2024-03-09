@@ -11,7 +11,7 @@
 namespace belfem
 {
 //------------------------------------------------------------------------------
-    Progressbar::Progressbar( const index_t aNumSteps, FILE * aFile ) :
+    Progressbar::Progressbar( const uint       aNumSteps, FILE * aFile ) :
         mNumSteps( aNumSteps ),
         mFile( aFile )
     {

@@ -21,9 +21,6 @@ namespace belfem
         {
             this->link_dofs( aField );
 
-            // link the extended Jacobian
-            this->link_second_derivative_functions( aElement->type() );
-
         }
 
 //------------------------------------------------------------------------------
@@ -37,9 +34,6 @@ namespace belfem
         {
             // grab ID from group
             this->link_dofs( aDofManager, aParent->id() );
-
-            // link the extended Jacobian
-            this->link_second_derivative_functions( aElement->type() );
         }
 
 
@@ -74,9 +68,6 @@ namespace belfem
                              aParent->id(),
                              aMasterBlockID,
                              aSlaveBlockID );
-
-            // link the extended Jacobian
-            this->link_second_derivative_functions( aFacet->element()->type() );
         }
 
 //------------------------------------------------------------------------------
@@ -1379,151 +1370,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        const Matrix< real > &
-        Element::N( const uint aPointIndex ) const
-        {
-            return mParent->N( aPointIndex );
-        }
-
-//------------------------------------------------------------------------------
-
-        const Matrix< real > &
-        Element::G( const uint aPointIndex ) const
-        {
-            return mParent->G( aPointIndex );
-        }
-
-//------------------------------------------------------------------------------
-
-        Matrix< real > &
-        Element::J( const uint aPointIndex )
-        {
-            // remember index
-            mParent->work_index() = aPointIndex;
-
-            // collect node coordinates
-            this->get_node_coors( mParent->node_coords() );
-
-            // compute jacobian
-            mParent->work_J() = mParent->dGdXi( aPointIndex )
-                    * mParent->node_coords() ;
-
-            // return matrix
-            return mParent->work_J();
-        }
-
-//------------------------------------------------------------------------------
-
-        Matrix< real > &
-        Element::K( const uint aPointIndex )
-        {
-            BELFEM_ASSERT( mParent->work_index() == aPointIndex,
-             "J-Matrix has not been computed for this integration point ( is %u but expect %u )",
-             ( unsigned int ) aPointIndex,
-             ( unsigned int ) mParent->work_index() );
-
-            // collect node coordinates
-            this->get_node_coors( mParent->node_coords() );
-
-            // compute K-Matrix
-            mParent->work_K() = mParent->d2GdXi2( aPointIndex ) * mParent->node_coords();
-
-            // return matrix
-            return mParent->work_K();
-        }
-//------------------------------------------------------------------------------
-
-        Matrix< real > &
-        Element::L( const uint aPointIndex )
-        {
-            BELFEM_ASSERT( mParent->work_index() == aPointIndex,
-                          "J-Matrix has not been computed for this integration point ( is %u but expect %u )",
-                                  ( unsigned int ) aPointIndex,
-                          ( unsigned int ) mParent->work_index() );
-
-            // compute K-Matrix
-            ( this->*mL )( mParent->work_J(), mParent->work_L() );
-
-            // return matrix
-            return mParent->work_L();
-        }
-
-//------------------------------------------------------------------------------
-
-        void
-        Element::L1D( Matrix< real > & aJ, Matrix< real > & aL )
-        {
-            aL( 0, 0 ) = aJ( 0, 0 ) * aJ( 0, 0 );
-        }
-
-//------------------------------------------------------------------------------
-
-        void
-        Element::L2D( Matrix< real > & aJ, Matrix< real > & aL )
-        {
-            aL( 0, 0 ) = aJ( 0, 0 ) * aJ( 0, 0 );
-            aL( 1, 0 ) = aJ( 1, 0 ) * aJ( 1, 0 );
-            aL( 2, 0 ) = aJ( 0, 0 ) * aJ( 1, 0 );
-
-            aL( 0, 1 ) = aJ( 0, 1 ) * aJ( 0, 1 );
-            aL( 1, 1 ) = aJ( 1, 1 ) * aJ( 1, 1 );
-            aL( 2, 1 ) = aJ( 0, 1 ) * aJ( 1, 1 );
-
-            aL( 0, 2 ) = 2.0 * aJ( 0, 0 ) * aJ( 0, 1 );
-            aL( 1, 2 ) = 2.0 * aJ( 1, 0 ) * aJ( 1, 1 );
-            aL( 2, 2 ) = aJ( 0, 0 ) * aJ( 1, 1 ) + aJ( 1, 0 ) * aJ( 0, 1 );
-        }
-
-//------------------------------------------------------------------------------
-
-        void
-        Element::L3D( Matrix< real > & aJ, Matrix< real > & aL )
-        {
-            aL( 0, 0 ) = aJ( 0, 0 ) * aJ( 0, 0 );
-            aL( 1, 0 ) = aJ( 1, 0 ) * aJ( 1, 0 );
-            aL( 2, 0 ) = aJ( 2, 0 ) * aJ( 2, 0 );
-            aL( 3, 0 ) = aJ( 1, 0 ) * aJ( 2, 0 );
-            aL( 4, 0 ) = aJ( 0, 0 ) * aJ( 2, 0 );
-            aL( 5, 0 ) = aJ( 0, 0 ) * aJ( 1, 0 );
-
-            aL( 0, 1 ) = aJ( 0, 1 ) * aJ( 0, 1 );
-            aL( 1, 1 ) = aJ( 1, 1 ) * aJ( 1, 1 );
-            aL( 2, 1 ) = aJ( 2, 1 ) * aJ( 2, 1 );
-            aL( 3, 1 ) = aJ( 1, 1 ) * aJ( 2, 1 );
-            aL( 4, 1 ) = aJ( 0, 1 ) * aJ( 2, 1 );
-            aL( 5, 1 ) = aJ( 0, 1 ) * aJ( 1, 1 );
-
-            aL( 0, 2 ) = aJ( 0, 2 ) * aJ( 0, 2 );
-            aL( 1, 2 ) = aJ( 1, 2 ) * aJ( 1, 2 );
-            aL( 2, 2 ) = aJ( 2, 2 ) * aJ( 2, 2 );
-            aL( 3, 2 ) = aJ( 1, 2 ) * aJ( 2, 2 );
-            aL( 4, 2 ) = aJ( 0, 2 ) * aJ( 2, 2 );
-            aL( 5, 2 ) = aJ( 0, 2 ) * aJ( 1, 2 );
-
-            aL( 0, 3 ) = 2.0 * aJ( 0, 1 ) * aJ( 0, 2 );
-            aL( 1, 3 ) = 2.0 * aJ( 1, 1 ) * aJ( 1, 2 );
-            aL( 2, 3 ) = 2.0 * aJ( 2, 1 ) * aJ( 2, 2 );
-            aL( 3, 3 ) = aJ( 1, 1 ) * aJ( 2, 2 ) + aJ( 2, 1 ) * aJ( 1, 2 );
-            aL( 4, 3 ) = aJ( 0, 1 ) * aJ( 2, 2 ) + aJ( 2, 1 ) * aJ( 0, 2 );
-            aL( 5, 3 ) = aJ( 0, 1 ) * aJ( 1, 2 ) + aJ( 1, 1 ) * aJ( 0, 2 );
-
-            aL( 0, 4 ) = 2.0 * aJ( 0, 0 ) * aJ( 0, 2 );
-            aL( 1, 4 ) = 2.0 * aJ( 1, 0 ) * aJ( 1, 2 );
-            aL( 2, 4 ) = 2.0 * aJ( 2, 0 ) * aJ( 2, 2 );
-            aL( 3, 4 ) = aJ( 1, 0 ) * aJ( 2, 2 ) + aJ( 2, 0 ) * aJ( 1, 2 );
-            aL( 4, 4 ) = aJ( 0, 0 ) * aJ( 2, 2 ) + aJ( 2, 0 ) * aJ( 0, 2 );
-            aL( 5, 4 ) = aJ( 0, 0 ) * aJ( 1, 2 ) + aJ( 1, 0 ) * aJ( 0, 2 );
-
-            aL( 0, 5 ) = 2.0 * aJ( 0, 0 ) * aJ( 0, 1 );
-            aL( 1, 5 ) = 2.0 * aJ( 1, 0 ) * aJ( 1, 1 );
-            aL( 2, 5 ) = 2.0 * aJ( 2, 0 ) * aJ( 2, 1 );
-            aL( 3, 5 ) = aJ( 1, 0 ) * aJ( 2, 1 ) + aJ( 2, 0 ) * aJ( 1, 1 );
-            aL( 4, 5 ) = aJ( 0, 0 ) * aJ( 2, 1 ) + aJ( 2, 0 ) * aJ( 0, 1 );
-            aL( 5, 5 ) = aJ( 0, 0 ) * aJ( 1, 1 ) + aJ( 1, 0 ) * aJ( 0, 1 );
-        }
-
-//------------------------------------------------------------------------------
-
         void
         Element::flag_dofs()
         {
@@ -1654,36 +1500,6 @@ namespace belfem
             else
             {
                 mEdgeDirections.set( 0 );
-            }
-        }
-
-//------------------------------------------------------------------------------
-
-        void
-        Element::link_second_derivative_functions( const ElementType aElementType )
-        {
-            // link L-Function for second derivatives
-            switch( mesh::dimension( aElementType ) )
-            {
-                case( 1 ):
-                {
-                    mL  = & Element::L1D;
-                    break;
-                }
-                case( 2 ):
-                {
-                    mL  = & Element::L2D;
-                    break;
-                }
-                case( 3 ):
-                {
-                    mL  = & Element::L3D;
-                    break;
-                }
-                default:
-                {
-                    BELFEM_ERROR( false, "Invalid dimension for element type");
-                }
             }
         }
 

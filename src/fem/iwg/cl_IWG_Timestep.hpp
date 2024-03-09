@@ -7,7 +7,7 @@
 
 #include "cl_IWG.hpp"
 #include "en_SolverEnums.hpp"
-#include "cl_FEM_Work.hpp"
+
 
 namespace belfem
 {
@@ -17,7 +17,6 @@ namespace belfem
 
         class IWG_Timestep: public IWG
         {
-            real mDeltaTime = 1.0 ;
 
             EulerMethod mMethod;
 
@@ -32,23 +31,21 @@ namespace belfem
 //------------------------------------------------------------------------------
         protected:
 //------------------------------------------------------------------------------
-
-            void
-            ( * mMatrixFunction )(
-                    Work    * aWork,
-                    Element * aElement ,
-                    Matrix< real > & aM,
-                    Matrix< real > & aK,
-                    Matrix< real > & aF,
-                    Matrix< real > & aQ0 );
+            real mDeltaTime = 1.0 ;
 
 //------------------------------------------------------------------------------
         public:
 //------------------------------------------------------------------------------
 
-            IWG_Timestep();
+            IWG_Timestep( const IwgType aType,
+                          const ModelDimensionality aDimensionality,
+                          const IwgMode aMode=IwgMode::Iterative,
+                          const SymmetryMode aSymmetryMode=SymmetryMode::PositiveDefiniteSymmetric,
+                          const DofMode      aDofMode=DofMode::AllBlocksEqual,
+                          const SideSetDofLinkMode aSideSetDofLinkMode=SideSetDofLinkMode::FacetOnly );
 
-            virtual ~IWG_Timestep();
+
+            virtual ~IWG_Timestep() = default ;
 
             // set the timestepping method
             void
@@ -78,7 +75,7 @@ namespace belfem
              * @param aElement
              * @param aM    : mass matrix
              * @param aK    : stiffness matrix
-             * @param aF    : right hand side
+             * @param aF    : load vector
              */
             virtual void
             compute_mkf( Element * aElement,
@@ -137,19 +134,6 @@ namespace belfem
 //------------------------------------------------------------------------------
         };
 
-        inline void
-        IWG_Timestep::compute_jacobian_and_rhs( Element        * aElement,
-                                                Matrix< real > & aJacobian,
-                                                Vector< real > & aRHS )
-        {
-            ( *mMatrixFunction )(
-                    mWork,
-                    aElement,
-                    aJacobian,
-                    mWork->K(),
-                    mWork->f() );
-
-        }
 
 //------------------------------------------------------------------------------
 
@@ -241,6 +225,16 @@ namespace belfem
             aM.matrix_data() = aK.matrix_data() * mDeltaTime ;
             aF.vector_data() *= mDeltaTime ;
         }
+
+//------------------------------------------------------------------------------
+
+        // return the timestepping method
+        inline EulerMethod
+        IWG_Timestep::method() const
+        {
+            return mMethod ;
+        }
+
 
 //------------------------------------------------------------------------------
     }

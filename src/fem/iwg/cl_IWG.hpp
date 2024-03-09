@@ -99,6 +99,9 @@ namespace belfem
             //! this enum tells which equation object is used
             const IwgType    mType;
 
+            //! this enum tells which dimensionality we have
+            const ModelDimensionality mDimensionality;
+
             //! this enum tells if we have to perform a Newton-Raphson
             const IwgMode    mMode;
 
@@ -283,6 +286,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             IWG( const IwgType aType,
+                 const ModelDimensionality aDimensionality,
                  const IwgMode aMode=IwgMode::Iterative,
                  const SymmetryMode aSymmetryMode=SymmetryMode::PositiveDefiniteSymmetric,
                  const DofMode      aDofMode=DofMode::AllBlocksEqual,
@@ -640,6 +644,14 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             /**
+             * return the dimensionality of this IWG
+             */
+            ModelDimensionality
+            model_dimensionality() const ;
+
+//------------------------------------------------------------------------------
+
+            /**
              * set the interpolation type of node elements
              */
             void
@@ -720,7 +732,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             /**
-             * special function, must be called before init->jacobian() is called
+             * special function, must be called bedimfore init->jacobian() is called
              * @return
              */
             void

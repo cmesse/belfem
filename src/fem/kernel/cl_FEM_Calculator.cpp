@@ -1,6 +1,8 @@
 //
 // Created by christian on 6/9/23.
 //
+#include <iostream>
+
 #include "assert.hpp"
 #include "cl_IWG.hpp"
 #include "cl_FEM_Calculator.hpp"
@@ -41,9 +43,10 @@ namespace belfem
         }
 //------------------------------------------------------------------------------
 
-        Calculator::Calculator( Group * aGroup ) :
+        Calculator::Calculator( Group * aGroup, const ModelDimensionality aDimensionality ) :
                 mGroup( aGroup ),
-                mMesh( aGroup->parent()->mesh() )
+                mMesh( aGroup->parent()->mesh() ),
+                mDimensionality( aDimensionality )
         {
 
         }
@@ -63,6 +66,16 @@ namespace belfem
             {
                 delete tVector ;
             }
+
+
+            if( mDomainIntegration != nullptr )
+            {
+                delete mDomainIntegration ;
+            }
+            if ( mLinearIntegration != nullptr )
+            {
+                delete mLinearIntegration ;
+            }
         }
 
 //------------------------------------------------------------------------------
@@ -73,12 +86,21 @@ namespace belfem
                 const ElementType       aElementType,
                 const InterpolationType aInterpolationType )
         {
-            if( mIntegration != nullptr )
+            if( mDomainIntegration != nullptr )
             {
-                delete mIntegration ;
+                delete mDomainIntegration ;
             }
-            mIntegration = new IntegrationData( aElementType,
+            mDomainIntegration = new IntegrationData( aElementType,
                                                 aInterpolationType );
+
+            if ( mLinearIntegration != nullptr )
+            {
+                delete mLinearIntegration ;
+            }
+
+            mLinearIntegration = new IntegrationData( mesh::linear_element_type( aElementType ),
+                                                      aInterpolationType );
+
         }
 
 //------------------------------------------------------------------------------
@@ -87,28 +109,17 @@ namespace belfem
         Calculator::set_integration_order( const uint aOrder )
         {
             mNumberOfNodes = mesh::number_of_nodes( mGroup->element_type() );
+            mNumberOfCornerNodes = mesh::number_of_corner_nodes( mGroup->element_type() );
 
-            mIntegration->populate( aOrder, mGroup->parent()->integration_scheme() );
-
+            if( mDomainIntegration  != nullptr )
+            {
+                mDomainIntegration->populate( aOrder, mGroup->parent()->integration_scheme());
+            }
+            if( mLinearIntegration != nullptr )
+            {
+                mLinearIntegration->populate( aOrder, mGroup->parent()->integration_scheme());
+            }
             this->allocate_memory() ;
-        }
-
-//------------------------------------------------------------------------------
-
-        void
-        Calculator::initialize_master_integration( const ElementType aElementType,
-                                       const InterpolationType aInterpolationType )
-        {
-
-        }
-
-//------------------------------------------------------------------------------
-
-        void
-        initialize_slave_integration( const ElementType aElementType,
-                                      const InterpolationType aInterpolationType )
-        {
-
         }
 
 //------------------------------------------------------------------------------
@@ -116,6 +127,11 @@ namespace belfem
         void
         Calculator::allocate_memory()
         {
+
+            if( mGroup->parent()->iwg() == nullptr )
+            {
+                return  ;
+            }
 
             if(
                     mGroup->type() == GroupType::BLOCK ||
@@ -172,13 +188,13 @@ namespace belfem
 //------------------------------------------------------------------------------
 
 
-        const IntegrationData *
+        IntegrationData *
         Calculator::slave_integration_2d( const Element * aElement )
         {
             return mGroup->slave_integration( aElement->facet()->slave_index() );
         }
 
-        const IntegrationData *
+        IntegrationData *
         Calculator::slave_integration_tet( const Element * aElement )
         {
             return mGroup->slave_integration(
@@ -186,7 +202,7 @@ namespace belfem
                     + aElement->facet()->orientation_on_slave() );
         }
 
-        const IntegrationData *
+        IntegrationData *
         Calculator::slave_integration_hex( const Element * aElement )
         {
             return mGroup->slave_integration(
@@ -200,13 +216,13 @@ namespace belfem
         Calculator::allocate()
         {
 
-            if(  mGroup->number_of_elements() == 0 )
+            if(  mGroup->number_of_elements() == 0 || this->integration() == nullptr )
             {
                 return;
             }
 
             // copy integration weights from group
-            const Vector< real > & tW = mGroup->integration_weights();
+            const Vector< real > & tW = this->integration()->weights();
             mIntegrationWeights.set_size( tW.length() );
             for ( uint k=0; k< tW.length(); ++k )
             {
@@ -219,6 +235,9 @@ namespace belfem
 
             // number of nodes per element
             mNumberOfNodes = mesh::number_of_nodes( mGroup->element_type() );
+
+            // corner nodes per element
+            mNumberOfCornerNodes = mesh::number_of_corner_nodes( mGroup->element_type() );
 
             // number of edges per element
             //uint tNumEdges = mesh::number_of_edges( mGroup->element_type() );
@@ -236,6 +255,7 @@ namespace belfem
 
             // matrices for X-Coordinates
             mX.set_size( mNumberOfNodes, tNumDimensions, BELFEM_QUIET_NAN );
+            mXc.set_size( mNumberOfCornerNodes, tNumDimensions, BELFEM_QUIET_NAN );
 
             // matrix for Jacobian and its inverse
             mJ = this->create_matrix( "J", tNumDimensions, tNumDimensions );
@@ -317,11 +337,15 @@ namespace belfem
                     break ;
                 }
             }
+
             // stiffness matrix
             mK.set_size( tNumDofs, tNumDofs, BELFEM_QUIET_NAN );
 
             // load vector
             mf.set_size( tNumDofs, BELFEM_QUIET_NAN );
+
+            // dof vector
+            mq0.set_size( tNumDofs, BELFEM_QUIET_NAN );
 
             // link function to invert J
             switch( tNumDimensions )
@@ -345,21 +369,62 @@ namespace belfem
             // done if this is a block
             if ( mGroup->type() == GroupType::BLOCK )
             {
-                /*
-                // check of we have vector fields
-
-                // grab first element on block
-                Element * tElement = mGroup->elements()( 0 ) ;
-
-                // grab equation objectmB->matrix() ;
-                IWG * tIWG = mGroup->parent()->iwg() ;
-
-                for( uint k = 0 ; k<tElement->number_of_dofs() ; ++k  )
+                switch( mGroup->parent()->iwg()->model_dimensionality() )
                 {
-                    std::cout << k << " " << tIWG->dof_label( tElement->dof( k )->type_id() ) << std::endl ;
-                }*/
-
+                    case( ModelDimensionality::TwoD ) :
+                    {
+                        mFundV = & Calculator::dV_2D_3D ;
+                        break ;
+                    }
+                    case( ModelDimensionality::AxSymmX ) :
+                    {
+                        mFundV = & Calculator::dV_axsymmx ;
+                        break ;
+                    }
+                    case( ModelDimensionality::AxSymmY ) :
+                    {
+                        mFundV = & Calculator::dV_axsymmy ;
+                        break ;
+                    }
+                    case( ModelDimensionality::ThreeD ) :
+                    {
+                        mFundV = & Calculator::dV_2D_3D ;
+                        break ;
+                    }
+                    default:
+                    {
+                        BELFEM_ERROR( false, "Invalid Model Dimensionality");
+                    }
+                }
                 return ;
+            }
+
+            switch( mGroup->parent()->iwg()->model_dimensionality() )
+            {
+                case( ModelDimensionality::TwoD ) :
+                {
+                    mFundS = & Calculator::dS_line ;
+                    break ;
+                }
+                case( ModelDimensionality::AxSymmX ) :
+                {
+                    mFundS = & Calculator::dS_axsymmx ;
+                    break ;
+                }
+                case( ModelDimensionality::AxSymmY ) :
+                {
+                    mFundS = & Calculator::dS_axsymmy ;
+                    break ;
+                }
+                case( ModelDimensionality::ThreeD ) :
+                {
+                    BELFEM_ERROR( false, "No dS function assigned");
+                    break ;
+                }
+                default:
+                {
+                    BELFEM_ERROR( false, "Invalid Model Dimensionality");
+                }
             }
 
             // check if we are allocating master and slave elements
@@ -372,6 +437,59 @@ namespace belfem
                 // allocate normal vector
                 mNormal.set_size( tNumDimensions, BELFEM_QUIET_NAN );
 
+                mJm = this->create_matrix( "Jm", tNumDimensions, tNumDimensions );
+
+                // get the interpolation order of the master block
+                InterpolationOrder tOrder = mesh::interpolation_order( mGroup->master_type() ) ;
+
+                switch( mesh::geometry_type( mGroup->master_type() ) )
+                {
+                    case( GeometryType::TRI ) :
+                    {
+                        if( tOrder == InterpolationOrder::LINEAR )
+                        {
+                            mFunNormal = & Calculator::normal_tri_straight ;
+                        }
+                        else
+                        {
+                            mFunNormal = & Calculator::normal_tri_curved ;
+                        }
+                        break ;
+                    }
+                    case( GeometryType::QUAD ) :
+                    {
+                        if( tOrder == InterpolationOrder::LINEAR )
+                        {
+                            mFunNormal = & Calculator::normal_quad_straight ;
+                        }
+                        else
+                        {
+                            mFunNormal = & Calculator::normal_quad_curved ;
+                        }
+                        break ;
+                    }
+                    case( GeometryType::TET ) :
+                    {
+                        if( tOrder == InterpolationOrder::LINEAR )
+                        {
+                            mFunNormal = & Calculator::normal_tet_straight ;
+                        }
+                        else
+                        {
+                            mFunNormal = & Calculator::normal_tet_curved ;
+                        }
+                        break ;
+                    }
+                    case( GeometryType::HEX ) :
+                    {
+                        mFunNormal = & Calculator::normal_hex ;
+                        break ;
+                    }
+                    default:
+                    {
+                        BELFEM_ERROR( false, "No normal function assigned");
+                    }
+                }
             }
 
             if( mGroup->slave_type() != ElementType::EMPTY )
@@ -383,8 +501,9 @@ namespace belfem
                 //tNumNedelecDofs = mesh::number_of_nedelec_dofs( mGroup->slave_type() );
 
                 // mIndexXs = this->create_matrix( "Xs", tNumNodes, tNumDimensions );
-                //mIndexJs = this->create_matrix( "Js", tNumDimensions, tNumDimensions );
                 // mIndexBs = this->create_matrix( "Bs", tNumNodes, tNumDimensions );
+
+                mJs = this->create_matrix( "Js", tNumDimensions, tNumDimensions );
 
                 switch( mesh::geometry_type( mGroup->slave_type() ) )
                 {
@@ -443,18 +562,39 @@ namespace belfem
 
             aElement->get_node_coors( mX );
 
+
+            mIsCurved = aElement->element()->is_curved() ;
+
+            // for curved elements, we can copy the corner nodes
+            if( ! mIsCurved )
+            {
+                for( uint j=0; j<mX.n_cols(); ++j )
+                {
+                    for( uint i=0; i<mNumberOfCornerNodes; ++i )
+                    {
+                        mXc( i, j ) = mX( i, j );
+                    }
+                }
+            }
+
+
+            mJ->set_index( BELFEM_UINT_MAX );
             if( aElement->master() != nullptr )
             {
                 aElement->master()->get_node_coors( mXm );
                 mMasterIndex = aElement->facet()->master_index() ;
                 mMasterIntegration = mGroup->master_integration( mMasterIndex );
+                mJm->set_index( BELFEM_UINT_MAX );
             }
 
             if( aElement->slave() != nullptr )
             {
                 aElement->slave()->get_node_coors( mXs );
                 mSlaveIntegration = ( this->*mFunSlaveIntegration )( aElement );
+                mJs->set_index( BELFEM_UINT_MAX );
             }
+
+
         }
 
 //------------------------------------------------------------------------------
@@ -559,7 +699,11 @@ namespace belfem
         const Vector< real > &
         Calculator::normal_tri_curved( const uint aIndex  )
         {
-            if( mNormalIndex != aIndex )
+            if( ! mIsCurved )
+            {
+                return this->normal_tri_straight( aIndex );
+            }
+            else if( mNormalIndex != aIndex )
             {
                 // remember the index
                 mNormalIndex = aIndex;
@@ -676,7 +820,11 @@ namespace belfem
         const Vector< real > &
         Calculator::normal_quad_curved( const uint aIndex )
         {
-            if( mNormalIndex != aIndex )
+            if( ! mIsCurved )
+            {
+                return this->normal_quad_straight( aIndex );
+            }
+            else if( mNormalIndex != aIndex )
             {
                 // remember the index
                 mNormalIndex = aIndex;
@@ -771,7 +919,11 @@ namespace belfem
         const Vector< real > &
         Calculator::normal_tet_curved( const uint aIndex )
         {
-            if ( mNormalIndex != aIndex )
+            if( ! mIsCurved )
+            {
+                return this->normal_tet_straight( aIndex );
+            }
+            else if ( mNormalIndex != aIndex )
             {
                 // remember the index
                 mNormalIndex = aIndex;

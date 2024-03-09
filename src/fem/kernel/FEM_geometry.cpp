@@ -636,7 +636,7 @@ namespace belfem
                 uint tNumSurfaces = mesh::number_of_facets( aGroup->master_type() );
 
                 // check weights of main group
-                bool tBool = norm( aWeights - aGroup->integration_weights() ) > tEpsilon ;
+                bool tBool = norm( aWeights - aGroup->integration()->weights() ) > tEpsilon ;
 
                 if( tBool )
                 {

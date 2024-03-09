@@ -9,6 +9,50 @@ namespace belfem
 {
 //------------------------------------------------------------------------------
 
+    enum class ModelDimensionality
+    {
+        TwoD,
+        AxSymmX,
+        AxSymmY,
+        ThreeD,
+        UNDEFINED
+    };
+
+    //
+    enum class Nfunction
+    {
+        Scalar = 0,
+        Vec2d  = 1,
+        Vec3d  = 2,
+        UNDEFINED = 3
+    };
+
+    enum class Bfunction
+    {
+        Gradient     = 0,
+        Planestress  = 1,
+        Voigt        = 2,
+        UNDEFINED = 3
+    };
+
+
+    /*enum class Ntype
+    {
+        Scalar,
+        Vector2d,
+        Vector3d,
+        UNDEFINED
+    };
+
+    enum class Btype
+    {
+        Gradient2d,
+        Gradient3d,
+        Planestress,
+        Voigt,
+        UNDEFINED
+    }; */
+
     enum class IwgType
     {
         SimpleDiffusion,

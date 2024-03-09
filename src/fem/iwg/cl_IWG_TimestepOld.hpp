@@ -45,6 +45,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             IWG_TimestepOld( const IwgType aType,
+                          const ModelDimensionality aDimensionality,
                           const IwgMode aMode=IwgMode::Iterative,
                           const SymmetryMode aSymmetryMode=SymmetryMode::PositiveDefiniteSymmetric,
                           const DofMode      aDofMode=DofMode::AllBlocksEqual,

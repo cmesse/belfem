@@ -15,7 +15,7 @@ set (CMAKE_CXX_STANDARD 14)
 # User Settings
 # -------------------------------------------------------------------------
 
-option( USE_MPI "Use Message Parsing Library" OFF )
+option( USE_MPI "Use Message Parsing Library" ON )
 
 option( USE_OPENMP "Use OpenMP" off )
 option( USE_MKL "Use Intel Math Kernel Library" OFF )
@@ -120,8 +120,8 @@ include( ${BELFEM_CONFIG_DIR}/globals.cmake )
 set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${BINDIR} )
 set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${LIBDIR} )
 set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}" )
-if( TPLSLIBDIR  )
-    set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L${TPLSLIBDIR}" )
+if( SCLSLIBDIR  )
+    set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L${SCLSLIBDIR}" )
 endif()
 
 add_subdirectory( src )

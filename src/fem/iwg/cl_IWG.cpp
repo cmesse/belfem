@@ -28,12 +28,14 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         IWG::IWG(  const IwgType aType,
+                   const ModelDimensionality aDimensionality,
                    const IwgMode aMode,
                    const SymmetryMode aSymmetryMode,
                    const DofMode aDofMode,
                    const SideSetDofLinkMode aSideSetDofLinkMode ) :
             mRank( comm_rank() ),
             mType( aType ),
+            mDimensionality( aDimensionality ),
             mMode( aMode ),
             mSymmetryMode( aSymmetryMode ),
             mDofMode( aDofMode ),
@@ -211,6 +213,14 @@ namespace belfem
         IWG::type() const
         {
             return mType;
+        }
+
+//------------------------------------------------------------------------------
+
+        ModelDimensionality
+        IWG::model_dimensionality() const
+        {
+            return mDimensionality ;
         }
 
 //------------------------------------------------------------------------------
@@ -502,9 +512,9 @@ namespace belfem
                 {
                     mNumberOfIntegrationPoints = 0 ;
                 }
-                else
+                else if ( aGroup->element_type() != ElementType::EMPTY )
                 {
-                    mNumberOfIntegrationPoints = aGroup->integration_weights().length();
+                    mNumberOfIntegrationPoints = aGroup->calculator()->integration()->weights().length();
                 }
 
 
@@ -2007,29 +2017,7 @@ namespace belfem
                          "compute_boundary_flux_matrix() not implemented for this IWG");
         }
 
-//------------------------------------------------------------------------------
-
-        const Matrix< real > &
-        IWG::N( const uint & aIntegrationPoint )
-        {
-            Matrix< real > & aN = mGroup->work_N();
-            const Vector< real > & tN = mGroup->n( aIntegrationPoint );
-
-            aN.fill( 0.0 );
-
-            uint j=0;
-
-            for( uint k=0; k<mNumberOfNodesPerElement; ++k )
-            {
-                for( uint i=0; i<mNumberOfDofsPerNode; ++i )
-                {
-                    aN( i, j++ ) = tN( k );
-                }
-            }
-
-            return aN ;
-        }
-//------------------------------------------------------------------------------
+//---------------------------------------------------------------------
 
         void
         IWG::set_blocks(

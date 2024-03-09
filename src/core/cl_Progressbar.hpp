@@ -27,7 +27,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
 
-        Progressbar( const index_t aNumSteps=100, FILE * aFile = stdout );
+        Progressbar( const uint aNumSteps=100, FILE * aFile = stdout );
 
 //------------------------------------------------------------------------------
 
@@ -45,7 +45,7 @@ namespace belfem
          * @param aProgress
          */
         void
-        step( const index_t & aProgress );
+        step( const uint & aProgress );
 
 //------------------------------------------------------------------------------
 

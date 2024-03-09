@@ -11,10 +11,10 @@ namespace belfem
         data_path()
         {
             // get the tpls environment variabl
-            string tTPLS = std::getenv("TPLS");
+            string tSCLS = std::getenv("SCLS");
 
             // go two steps up and add the cea directory
-            return tTPLS.substr( 0, tTPLS.find_last_of('/') ) +"/cea";
+            return tSCLS.substr( 0, tSCLS.find_last_of('/') ) +"/cea";
         }
     }
 }

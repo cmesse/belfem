@@ -34,16 +34,15 @@ namespace belfem
 
             aPoints( 0, 2 ) = 0.2;
             aPoints( 1, 2 ) = 0.6;
-            aPoints( 1, 2 ) = 0.2;
+            aPoints( 2, 2 ) = 0.2;
 
             aPoints( 0, 3 ) = 0.2;
             aPoints( 1, 3 ) = 0.2;
-            aPoints( 1, 3 ) = 0.6;
+            aPoints( 2, 3 ) = 0.6;
 
             aWeights.set_size( 4 );
 
             aWeights( 0 ) = -27.0 / 96.0;
-            aWeights( 0 ) = 0.0 ;
             aWeights( 1 ) = 25.0 / 96.0;
             aWeights( 2 ) = aWeights( 1 );
             aWeights( 3 ) = aWeights( 1 );

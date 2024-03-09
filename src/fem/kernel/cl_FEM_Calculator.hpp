@@ -10,32 +10,16 @@
 #include "cl_Matrix.hpp"
 
 #include "fn_dot.hpp"
+#include "fn_det.hpp"
 #include "fn_inv2.hpp"
 #include "fn_inv3.hpp"
 
 #include "cl_Mesh.hpp"
 #include "cl_IF_IntegrationData.hpp"
-
+#include "en_IWGs.hpp"
 
 namespace belfem
 {
-    //
-    enum class Nfunction
-    {
-        Scalar = 0,
-        Vec2d  = 1,
-        Vec3d  = 2,
-        UNDEFINED = 3
-    };
-
-    enum class Bfunction
-    {
-        Gradient     = 0,
-        Planestress  = 1,
-        Voigt        = 2,
-        UNDEFINED = 3
-    };
-
     namespace fem
     {
         class Group ;
@@ -112,25 +96,42 @@ namespace belfem
             // link to mesh
             Mesh  * mMesh ;
 
+            const ModelDimensionality mDimensionality ;
+
             Vector< real > mIntegrationWeights ;
 
             // switch telling if we are allocated
             bool mIsAllocated = false ;
 
             uint mNumberOfNodes = BELFEM_UINT_MAX ;
+            uint mNumberOfCornerNodes = BELFEM_UINT_MAX ;
 
             uint mMasterIndex = BELFEM_UINT_MAX ;
 
-                  IntegrationData *   mDomainIntegration    = nullptr ;
-                  IntegrationData *   mThinShellIntegration = nullptr ;
-            Cell< IntegrationData * > mMasterIntegration ;
-            Cell< IntegrationData * > mSlaveIntegration ;
+                  IntegrationData * mDomainIntegration    = nullptr ;
+                  IntegrationData * mLinearIntegration    = nullptr ;
+                  IntegrationData * mThinShellIntegration = nullptr ;
+                  IntegrationData * mMasterIntegration    = nullptr ;
+                  IntegrationData * mSlaveIntegration     = nullptr ;
+
+                  // flag telling if element is straight or curved
+                  bool mIsCurved = false ;
 
             //! stiffness matrix
             Matrix< real > mK ;
 
+            //! mass matrix
+            Matrix< real > mM ;
+
             //! load vector
             Vector< real > mf ;
+
+            //! dof vector for last timestep
+            Vector< real > mq0 ;
+
+            //! current dof vector for last timestep
+            Vector< real > mq ;
+
 
             //! normal vector
             Vector< real > mNormal ;
@@ -153,7 +154,8 @@ namespace belfem
 
 
             // pointers for faster access
-            Matrix< real > mX ;  // node coordinates
+            Matrix< real > mX  ;  // node coordinates
+            Matrix< real > mXc ;  // node coordinates at corners
             calculator::MatrixData * mJ    = nullptr ;  // jacobian matrix
             calculator::MatrixData * mInvJ = nullptr ;  // jacobian matrix
             calculator::MatrixData * mN    = nullptr ;  // node interpolatoin operator
@@ -177,9 +179,10 @@ namespace belfem
 
             real mDetJ      = BELFEM_QUIET_NAN ;
             uint mDetJIndex = BELFEM_UINT_MAX ;
+            real mRadius    = BELFEM_QUIET_NAN ; // only needed if axisymmetric
 
             // function to link the slave integration data
-            const IntegrationData * ( Calculator::*mFunSlaveIntegration )( const Element * aElement ) ;
+            IntegrationData * ( Calculator::*mFunSlaveIntegration )( const Element * aElement ) ;
 
             real ( * mFunInvertJ )( const Matrix< real > & aA, Matrix< real > & aB );
 
@@ -201,7 +204,7 @@ namespace belfem
         public:
 //------------------------------------------------------------------------------
 
-            Calculator( Group * aGroup );
+            Calculator( Group * aGroup, const ModelDimensionality aDimensionality );
 
 //------------------------------------------------------------------------------
 
@@ -219,6 +222,46 @@ namespace belfem
 
             void
             link( Element * aElement );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * return the stiffness matrix
+             */
+            Matrix< real > &
+            K() ;
+
+//------------------------------------------------------------------------------
+
+            /**
+             * return the mass matrix
+             */
+            Matrix< real > &
+            M() ;
+
+//------------------------------------------------------------------------------
+
+            /**
+             * return the load vector
+             */
+            Vector< real > &
+            f() ;
+
+//------------------------------------------------------------------------------
+
+            /**
+             * return the dof vector at current timestep
+             */
+            Vector< real > &
+            q() ;
+
+//------------------------------------------------------------------------------
+
+            /**
+             * return the dof vector at the last timestep
+             */
+            Vector< real > &
+            q0() ;
 
 //------------------------------------------------------------------------------
 
@@ -327,6 +370,22 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             /**
+             * surface increment
+             */
+            real
+            dS ( const uint aIndex=0 ) ;
+
+//------------------------------------------------------------------------------
+
+            /**
+             * volume increment
+             */
+            real
+            dV ( const uint aIndex=0 ) ;
+
+//------------------------------------------------------------------------------
+
+            /**
              * returns the normal of a surface
              * @param aIndex
              * @return
@@ -348,26 +407,25 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
-            initialize_master_integration( const ElementType aElementType,
-                                           const InterpolationType aInterpolationType );
-
-//------------------------------------------------------------------------------
-
-            void
-            initialize_slave_integration( const ElementType aElementType,
-                                           const InterpolationType aInterpolationType );
-
-//------------------------------------------------------------------------------
-
-            void
             allocate_memory();
 
 //------------------------------------------------------------------------------
-        private:
+
+            const IntegrationData *
+            integration() const ;
+
 //------------------------------------------------------------------------------
 
+            const IntegrationData *
+            master_integration() const ;
 
+//------------------------------------------------------------------------------
 
+            const IntegrationData *
+            slave_integration() const ;
+
+//------------------------------------------------------------------------------
+        private:
 //------------------------------------------------------------------------------
 
             calculator::VectorData *
@@ -385,13 +443,13 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            const IntegrationData *
+            IntegrationData *
             slave_integration_2d( const Element * aElement ) ;
 
-            const IntegrationData *
+            IntegrationData *
             slave_integration_tet( const Element * aElement ) ;
 
-            const IntegrationData *
+            IntegrationData *
             slave_integration_hex( const Element * aElement ) ;
 
 //------------------------------------------------------------------------------
@@ -468,12 +526,32 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             real
+            dV_2D_3D( const uint aIndex );
+
+//------------------------------------------------------------------------------
+
+            real
+            dV_axsymmx( const uint aIndex );
+
+//------------------------------------------------------------------------------
+
+            real
+            dV_axsymmy( const uint aIndex );
+
+//------------------------------------------------------------------------------
+
+            real
             dS_line( const uint aIndex );
 
 //------------------------------------------------------------------------------
 
             real
-            dS_triangle( const uint aIndex );
+            dS_axsymmx( const uint aIndex );
+
+//------------------------------------------------------------------------------
+
+            real
+            dS_axsymmy( const uint aIndex );
 
 //------------------------------------------------------------------------------
         };
@@ -583,8 +661,9 @@ namespace belfem
             if ( aIndex != mJ->index() )
             {
                 mJ->set_index( aIndex );
-                mJ->matrix().matrix_data() =
-                          mIntegration->dNdXi( aIndex ) * mX ;
+                mJ->matrix().matrix_data() = mIsCurved ?
+                        mDomainIntegration->dNdXi( aIndex ) * mX :
+                        mLinearIntegration->dNdXi( aIndex ) * mXc ;
             }
 
             return mJ->matrix() ;
@@ -643,7 +722,7 @@ namespace belfem
         inline const Matrix< real > &
         Calculator::Nscalar( const uint aIndex )
         {
-            return mIntegration->N( aIndex );
+            return mDomainIntegration->N( aIndex );
         }
 
 //------------------------------------------------------------------------------
@@ -654,7 +733,7 @@ namespace belfem
             if( mN->index() != aIndex )
             {
                 // precomputed data
-                const Vector< real > & tPhi = mIntegration->phi( aIndex );
+                const Vector< real > & tPhi = mDomainIntegration->phi( aIndex );
 
                 // remember the index
                 mN->set_index( aIndex );
@@ -683,7 +762,7 @@ namespace belfem
             if( mN->index() != aIndex )
             {
                 // precomputed data
-                const Vector< real > & tPhi = mIntegration->phi( aIndex );
+                const Vector< real > & tPhi = mDomainIntegration->phi( aIndex );
 
                 // remember the index
                 mN->set_index( aIndex );
@@ -716,7 +795,7 @@ namespace belfem
                 mB->set_index( aIndex );
 
                 mB->matrix() =
-                        this->invJ( aIndex ) * mIntegration->dNdXi( aIndex );
+                        this->invJ( aIndex ) * mDomainIntegration->dNdXi( aIndex );
             }
 
             return mB->matrix() ;
@@ -736,7 +815,7 @@ namespace belfem
                 Matrix< real > & tdN = mdN->matrix() ;
 
                 // compute derivatives
-                tdN = this->invJ( aIndex ) * mIntegration->dNdXi( aIndex );
+                tdN = this->invJ( aIndex ) * mDomainIntegration->dNdXi( aIndex );
 
                 // get matrix object
                 Matrix< real > & tB = mB->matrix() ;
@@ -771,7 +850,7 @@ namespace belfem
                 Matrix< real > & tdN = mdN->matrix() ;
 
                 // compute derivatives
-                tdN = this->invJ( aIndex ) * mIntegration->dNdXi( aIndex );
+                tdN = this->invJ( aIndex ) * mDomainIntegration->dNdXi( aIndex );
 
                 // get matrix object
                 Matrix< real > & tB = mB->matrix() ;
@@ -815,7 +894,7 @@ namespace belfem
         inline real
         Calculator::node_interp( const uint aIndex, const Vector< real > & aNodeValues ) const
         {
-            return dot( mIntegration->phi( aIndex ),  aNodeValues );
+            return dot( mDomainIntegration->phi( aIndex ),  aNodeValues );
         }
 
 //------------------------------------------------------------------------------
@@ -835,6 +914,73 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        inline real
+        Calculator::dS( const uint aIndex )
+        {
+            return ( this->*mFundS )( aIndex );
+        }
+
+//------------------------------------------------------------------------------
+
+        inline real
+        Calculator::dV( const uint aIndex )
+        {
+            return ( this->*mFundV)( aIndex );
+        }
+
+//------------------------------------------------------------------------------
+
+        inline real
+        Calculator::dV_2D_3D( const uint aIndex )
+        {
+            if( mDetJIndex != aIndex )
+            {
+                mDetJIndex = aIndex ;
+                mDetJ = det( this->J( aIndex ) );
+            }
+            return mDetJ ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline real
+        Calculator::dV_axsymmx( const uint aIndex )
+        {
+            if( mDetJIndex != aIndex )
+            {
+                mDetJIndex = aIndex ;
+
+                // radius contribution
+                mDetJ = mIsCurved ? dot(
+                        mDomainIntegration->phi( aIndex ).vector_data(), mX.col( 1 ) ) :
+                        dot( mLinearIntegration->phi( aIndex ).vector_data(), mXc.col( 1 ) );
+
+                mDetJ *= det( this->J( aIndex ) );
+            }
+            return mDetJ ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline real
+        Calculator::dV_axsymmy( const uint aIndex )
+        {
+            if( mDetJIndex != aIndex )
+            {
+                mDetJIndex = aIndex ;
+
+                // radius contribution
+                mDetJ = mIsCurved ? dot(
+                        mDomainIntegration->phi( aIndex ).vector_data(), mX.col( 0 ) ) :
+                        dot( mLinearIntegration->phi( aIndex ).vector_data(), mXc.col( 0 ) );
+
+                mDetJ *= det( this->J( aIndex ) );
+            }
+            return mDetJ ;
+        }
+
+//------------------------------------------------------------------------------
+
 
         inline real
         Calculator::dS_line( const uint aIndex )
@@ -849,13 +995,95 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline real
-        Calculator::dS_triangle( const uint aIndex )
+        Calculator::dS_axsymmx( const uint aIndex )
         {
             // compute the normal if it hasn't been computed so far
             ( this->*mFunNormal ) ( aIndex );
 
             // return the surface increment
-            return mSurfaceIncrement ;
+            return dot( mMasterIntegration->phi( aIndex ).vector_data(),
+                        mXm.col( 0 ) )
+                    * mSurfaceIncrement ;
+
+        }
+
+//------------------------------------------------------------------------------
+
+        inline real
+        Calculator::dS_axsymmy( const uint aIndex )
+        {
+            // compute the normal if it hasn't been computed so far
+            ( this->*mFunNormal ) ( aIndex );
+
+            // return the surface increment
+            return dot( mMasterIntegration->phi( aIndex ).vector_data(),
+                        mXm.col( 1 ) )
+                   * mSurfaceIncrement ;
+
+        }
+
+//------------------------------------------------------------------------------
+
+        inline const IntegrationData *
+        Calculator::integration() const
+        {
+            return mDomainIntegration ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline const IntegrationData *
+        Calculator::master_integration() const
+        {
+            return mMasterIntegration ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline const IntegrationData *
+        Calculator::slave_integration() const
+        {
+            return mSlaveIntegration ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline Matrix< real > &
+        Calculator::K()
+        {
+            return mK ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline Matrix< real > &
+        Calculator::M()
+        {
+            return mM ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline Vector< real > &
+        Calculator::f()
+        {
+            return mf ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline Vector< real > &
+        Calculator::q()
+        {
+            return mq ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline Vector< real > &
+        Calculator::q0()
+        {
+            return mq0 ;
         }
 
 //------------------------------------------------------------------------------

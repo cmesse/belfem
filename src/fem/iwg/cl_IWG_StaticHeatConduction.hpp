@@ -5,12 +5,12 @@
 #ifndef BELFEM_CL_IWG_STATICHEATCONDUCTION_HPP
 #define BELFEM_CL_IWG_STATICHEATCONDUCTION_HPP
 
-#include "cl_IWG_TimestepOld.hpp"
+#include "cl_IWG_Timestep.hpp"
 namespace belfem
 {
     namespace fem
     {
-        class IWG_StaticHeatConduction : public IWG_TimestepOld
+        class IWG_StaticHeatConduction : public IWG_Timestep
         {
             Cell< string > mBcFields ;
 
@@ -39,7 +39,7 @@ namespace belfem
              *              from their constructor
              */
             IWG_StaticHeatConduction (
-                    const uint    aNumberOfDimensions,
+                    const ModelDimensionality  aModelDimensionality,
                     const IwgType aType=IwgType::StaticHeatConduction );
 
 //------------------------------------------------------------------------------
@@ -68,8 +68,8 @@ namespace belfem
             void
             compute_conduction(
                     Element        * aElement,
-                    Matrix< real > & aJacobian,
-                    Vector< real > & aRHS );
+                    Matrix< real > & aK,
+                    Vector< real > & aQ );
 
             void
             compute_convection(
@@ -94,7 +94,7 @@ namespace belfem
                 Matrix< real > & aJacobian,
                 Vector< real > & aRHS )
         {
-            ( this->*mFunComputeJacobian ) ( aElement, aJacobian, aRHS ) ;
+            ( this->*mFunComputeJacobian )( aElement, aJacobian, aRHS );
         }
 
 //------------------------------------------------------------------------------
