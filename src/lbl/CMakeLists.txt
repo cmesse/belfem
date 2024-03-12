@@ -85,3 +85,7 @@ include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
 set( EXECNAME testHomology )
 set( MAIN testHomology.cpp)
 include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
+
+set( EXECNAME testHomology3D )
+set( MAIN testHomology3D.cpp)
+include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
