@@ -69,13 +69,6 @@ namespace belfem
         public:
 //------------------------------------------------------------------------------
 
-            // deprecated
-            SideSet(                Field * aParent,
-                    const id_t              aID,
-                    Cell< mesh::Facet * > & aFacets );
-
-//------------------------------------------------------------------------------
-
             SideSet( DofManager * aParent,
                      const id_t aID,
                      Cell< mesh::Facet * > & aFacets,

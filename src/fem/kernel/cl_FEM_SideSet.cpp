@@ -2,7 +2,6 @@
 // Created by Christian Messe on 03.11.19.
 //
 #include "cl_Mesh.hpp"
-#include "cl_FEM_Field.hpp"
 #include "cl_FEM_DofManager.hpp"
 #include "cl_FEM_SideSet.hpp"
 #include "cl_FEM_Kernel.hpp"
@@ -23,60 +22,13 @@ namespace belfem
     {
 //------------------------------------------------------------------------------
 
-        SideSet::SideSet(
-                Field * aParent,
-                const id_t     aID,
-                Cell< mesh::Facet * > & aFacets ) :
-                Group( aParent, GroupType::SIDESET,
-                       aFacets.size() > 0
-                       ? ( aParent->enforce_linear_interpolation() ?
-                           mesh::linear_element_type( aFacets( 0 )->element()->type()  ) :
-                           aFacets( 0 )->element()->type() )
-                       : ( ElementType::UNDEFINED ),
-                       aID, aFacets.size() )
-        {
-            // allocate set-wise boundary conditions
-            mBcValues.set_size( aParent->number_of_dofs_per_node(), 0.0 );
-            mBcTypes.set_size( aParent->number_of_dofs_per_node(), BoundaryConditionImposing::Free );
-
-            if( mElementType != ElementType::UNDEFINED )
-            {
-                // set the number of nodes per element
-                mNumberOfNodesPerElement = mesh::number_of_nodes( mElementType );
-
-
-                /*
-                {
-                    mIntegrationData = new IntegrationData( mElementType,
-                                                            InterpolationType::LAGRANGE );
-                }
-                else
-                {
-
-                }
-                mIntegrationData->populate( aParent->sideset_integration_order(),
-                                            aParent->integration_scheme() );*/
-
-
-                this->initialize_elements( aFacets );
-                this->collect_nodes( aFacets );
-                this->create_element_map();
-
-
-            }
-        }
-
-//------------------------------------------------------------------------------
-
         SideSet::SideSet( DofManager * aParent,
                           const id_t aID,
                           Cell< mesh::Facet * > & aFacets,
                           const GroupType aGroupType  ) :
                 Group( aParent, aGroupType,
                        aFacets.size() > 0
-                       ? ( aParent->enforce_linear_interpolation() ?
-                           mesh::linear_element_type( aFacets( 0 )->element()->type()  ) :
-                           aFacets( 0 )->element()->type() )
+                       ? aFacets( 0 )->element()->type()
                        : ( ElementType::UNDEFINED ),
                        aID, aFacets.size() ),
                        mMasterType( aFacets.size() == 0 || aGroupType == GroupType::CUT ? ElementType::EMPTY :
@@ -117,8 +69,6 @@ namespace belfem
 
                 if( mCalc != nullptr )
                 {
-                    mCalc->set_integration_order( mIntegrationOrder );
-
                     if ( mParent->iwg() == nullptr )
                     {
                         mCalc->initialize_integration( mElementType, InterpolationType::LAGRANGE );
@@ -127,6 +77,9 @@ namespace belfem
                     {
                         mCalc->initialize_integration( mElementType, aParent->iwg()->interpolation_type());
                     }
+
+                    mCalc->set_integration_order( mIntegrationOrder );
+
                 }
 
                 this->initialize_lookup_tables( mIntegrationOrder );
@@ -187,136 +140,111 @@ namespace belfem
             // allocate memory
             mElements.set_size( tNumberOfFacets, nullptr );
 
-            // legacy support
-            switch ( mParent->type() )
+            DofManager * tParent = reinterpret_cast< DofManager * >( mParent );
+
+            switch( mType )
             {
-                case( DofManagerType::OLD ) :
+                case( GroupType::CUT ) :
                 {
-                    Field * tParent = reinterpret_cast< Field * >( mParent );
+                    index_t tCount = 0 ;
 
-                    // create elements
-                    for( index_t e=0; e<tNumberOfFacets; ++e )
+                    // loop over all facets
+                    for ( mesh::Facet * tFacet: aFacets )
                     {
-                        mElements( e ) = new Element( this, tParent,
-                                                      aFacets( e )->element() );
+                        mElements( tCount++ ) = new Element(
+                                this,
+                                tParent,
+                                tFacet,
+                                SideSetDofLinkMode::Cut,
+                                tFacet->element()->block_id(), // block id contains plus block, needed for dof types
+                                0 );
                     }
-                    break;
+                    break ;
                 }
-                case( DofManagerType::NEW ) :
+                case( GroupType::SHELL ) :
                 {
+                    // counter for new elements
+                    index_t tCount = 0 ;
 
-                    DofManager * tParent = reinterpret_cast< DofManager * >( mParent );
+                    // get number of layers
+                    index_t tNumberOfLayers = mParent->mesh()->number_of_thin_shell_layers() ;
 
-                    switch( mType )
+
+                    // allocate facet container
+                    Cell< mesh::Facet * > tFacets( tNumberOfLayers, nullptr );
+
+                    for ( mesh::Facet * tFacet: aFacets )
                     {
-                        case( GroupType::CUT ) :
+                        // collect facets
+                        for ( index_t l = 0; l < tNumberOfLayers; ++l )
                         {
-                            index_t tCount = 0 ;
-
-                            // loop over all facets
-                            for ( mesh::Facet * tFacet: aFacets )
-                            {
-                                mElements( tCount++ ) = new Element(
-                                        this,
-                                        tParent,
-                                        tFacet,
-                                        SideSetDofLinkMode::Cut,
-                                        tFacet->element()->block_id(), // block id contains plus block, needed for dof types
-                                        0 );
-                            }
-                            break ;
+                            tFacets( l ) = mParent->mesh()->ghost_facet( tFacet->id(), l );
                         }
-                        case( GroupType::SHELL ) :
+
+                        // create the new element
+                        mElements( tCount++ ) = new Element(
+                                this,
+                                tParent,
+                                tFacet,
+                                tFacets,
+                                tFacet->master()->block_id(), // block id contains plus block, needed for dof types
+                                tFacet->slave()->block_id() );
+                    }
+
+                    break ;
+                }
+                default :
+                {
+                    // flag relevant elements on master block
+                    tParent->mesh()->unflag_all_elements() ;
+
+                    for ( mesh::Facet * tFacet: aFacets )
+                    {
+                        BELFEM_ASSERT( tFacet->master() != nullptr,
+                                       "Master of facet %lu must not be null",
+                                       ( long unsigned int ) tFacet->id());
+
+                        tFacet->master()->flag();
+
+                        if ( tFacet->slave() != nullptr )
                         {
-                            // counter for new elements
-                            index_t tCount = 0 ;
-
-                            // get number of layers
-                            index_t tNumberOfLayers = mParent->mesh()->number_of_thin_shell_layers() ;
-
-
-                            // allocate facet container
-                            Cell< mesh::Facet * > tFacets( tNumberOfLayers, nullptr );
-
-                            for ( mesh::Facet * tFacet: aFacets )
-                            {
-                                // collect facets
-                                for ( index_t l = 0; l < tNumberOfLayers; ++l )
-                                {
-                                    tFacets( l ) = mParent->mesh()->ghost_facet( tFacet->id(), l );
-                                }
-
-                                // create the new element
-                                mElements( tCount++ ) = new Element(
-                                        this,
-                                        tParent,
-                                        tFacet,
-                                        tFacets,
-                                        tFacet->master()->block_id(), // block id contains plus block, needed for dof types
-                                        tFacet->slave()->block_id() );
-                            }
-
-                            break ;
-                        }
-                        default :
-                        {
-                            // flag relevant elements on master block
-                            tParent->mesh()->unflag_all_elements() ;
-
-                            for ( mesh::Facet * tFacet: aFacets )
-                            {
-                                BELFEM_ASSERT( tFacet->master() != nullptr,
-                                               "Master of facet %lu must not be null",
-                                               ( long unsigned int ) tFacet->id());
-
-                                tFacet->master()->flag();
-
-                                if ( tFacet->slave() != nullptr )
-                                {
-                                    tFacet->slave()->flag();
-                                }
-                            }
-
-                            // initialize counter
-                            index_t tCount = 0;
-
-                            // the block map tells which element sits on which block
-                            Map< id_t, id_t > tBlockMap;
-                            for ( mesh::Block * tBlock: tParent->mesh()->blocks())
-                            {
-                                for ( mesh::Element * tElement: tBlock->elements())
-                                {
-                                    if ( tElement->is_flagged())
-                                    {
-                                        tBlockMap[ tElement->id() ] = tBlock->id();
-                                    }
-                                }
-                            }
-
-                            // get the linking mode
-                            SideSetDofLinkMode tMode = mParent->iwg()->sideset_dof_link_mode();
-
-                            // loop over all facets
-                            for ( mesh::Facet * tFacet: aFacets )
-                            {
-                                mElements( tCount++ ) = new Element(
-                                        this,
-                                        tParent,
-                                        tFacet,
-                                        tMode,
-                                        tBlockMap( tFacet->master()->id()),
-                                        tFacet->slave() == nullptr ?
-                                        0 :
-                                        tBlockMap( tFacet->slave()->id()));
-                            }
-                            break ;
+                            tFacet->slave()->flag();
                         }
                     }
-                    break;
-                }
-                default:
-                {
-                    BELFEM_ERROR( false, "Invalid DOF Manager type");
+
+                    // initialize counter
+                    index_t tCount = 0;
+
+                    // the block map tells which element sits on which block
+                    Map< id_t, id_t > tBlockMap;
+                    for ( mesh::Block * tBlock: tParent->mesh()->blocks())
+                    {
+                        for ( mesh::Element * tElement: tBlock->elements())
+                        {
+                            if ( tElement->is_flagged())
+                            {
+                                tBlockMap[ tElement->id() ] = tBlock->id();
+                            }
+                        }
+                    }
+
+                    // get the linking mode
+                    SideSetDofLinkMode tMode = mParent->iwg()->sideset_dof_link_mode();
+
+                    // loop over all facets
+                    for ( mesh::Facet * tFacet: aFacets )
+                    {
+                        mElements( tCount++ ) = new Element(
+                                this,
+                                tParent,
+                                tFacet,
+                                tMode,
+                                tBlockMap( tFacet->master()->id()),
+                                tFacet->slave() == nullptr ?
+                                0 :
+                                tBlockMap( tFacet->slave()->id()));
+                    }
+                    break ;
                 }
             }
         }
@@ -329,22 +257,12 @@ namespace belfem
             // reset node container
             mParent->mesh()->unflag_all_nodes();
 
-            if ( mParent->enforce_linear_interpolation() )
+            // flag all nodes that belong to this set
+            for ( mesh::Facet * tFacet : aFacets )
             {
-                // flag all corner nodes that belong to this set
-                for( mesh::Facet * tFacet : aFacets )
-                {
-                    tFacet->flag_corner_nodes();
-                }
+                tFacet->flag_nodes();
             }
-            else
-            {
-                // flag all nodes that belong to this set
-                for ( mesh::Facet * tFacet : aFacets )
-                {
-                    tFacet->flag_nodes();
-                }
-            }
+
 
             // count flagged nodes
             index_t tCount = 0;

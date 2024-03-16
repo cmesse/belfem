@@ -110,13 +110,6 @@ namespace belfem
             // create the field information
             mFieldData->collect_node_owners() ;
             mFieldData->collect_ghost_element_owners() ;
-
-            // check if the linear projection flag is on
-            if( this->enforce_linear_interpolation() )
-            {
-                // collect critical nodes
-                mFieldData->initialize_linear_projection_lists() ;
-            }
         }
 //-----------------------------------------------------------------------------
 
@@ -624,9 +617,7 @@ namespace belfem
                         mIWG->link_to_group( tSideSet ) ;
 
                         // get number of dofs per element
-                        uint tN = this->enforce_linear_interpolation() ?
-                                  mesh::number_of_corner_nodes( tSideSet->element_type() )
-                                   :  mesh::number_of_nodes( tSideSet->element_type() );
+                        uint tN = mesh::number_of_nodes( tSideSet->element_type() );
 
                         // allocate element Jacobian
                         Matrix< real > tJ( tN, tN );

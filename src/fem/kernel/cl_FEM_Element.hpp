@@ -55,13 +55,6 @@ namespace belfem
         public:
 //------------------------------------------------------------------------------
 
-            // deprecated constructor
-            Element( Group * aParent,
-                     Field * aField,
-                     mesh::Element * aElement );
-
-//------------------------------------------------------------------------------
-
           Element(
                   Block         * aParent,
                   DofManager    * aDofManager,
@@ -246,14 +239,6 @@ namespace belfem
                     const id_t aSideSetID,
                     const id_t aMasterBlockID,
                     const id_t aSlaveBlockID );
-
-//------------------------------------------------------------------------------
-
-            /**
-             * connect element with dofs of field (deprecated)
-             */
-            void
-            link_dofs( Field * aField );
 
 //------------------------------------------------------------------------------
 

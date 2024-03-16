@@ -5,7 +5,6 @@
 #include "cl_FEM_Element.hpp"
 #include "cl_FEM_Block.hpp"
 #include "cl_FEM_SideSet.hpp"
-#include "cl_FEM_Field.hpp"
 #include "cl_FEM_DofManager.hpp"
 #include "meshtools.hpp"
 
@@ -13,16 +12,6 @@ namespace belfem
 {
     namespace fem
     {
-//------------------------------------------------------------------------------
-
-        Element::Element(  Group * aParent, Field * aField, mesh::Element * aElement  ) :
-            mParent( aParent ),
-            mElement( aElement )
-        {
-            this->link_dofs( aField );
-
-        }
-
 //------------------------------------------------------------------------------
 
         Element::Element(
@@ -114,78 +103,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        // deprecated function
-        void
-        Element::link_dofs( Field * aField )
-        {
-            // get number of dofs per node and edge
-            index_t tNumberOfDofsPerNode = aField->number_of_dofs_per_node();
-            index_t tNumberOfNodesPerElement =
-                    mParent->parent()->enforce_linear_interpolation() ?
-                    mElement->number_of_corner_nodes() :
-                    mElement->number_of_nodes();
-
-            index_t tNumberOfDofsPerEdge = aField->number_of_dofs_per_edge();
-            index_t tNumberOfEdgesPerElement = mElement->number_of_edges();
-
-            // compute numner of dofs
-            mNumberOfDofs  = tNumberOfDofsPerNode * tNumberOfNodesPerElement
-                           + tNumberOfDofsPerEdge * tNumberOfEdgesPerElement ;
-
-
-            // allocate dof container
-            mDOFs = ( Dof ** ) malloc( mNumberOfDofs * sizeof( Dof ) );
-
-            // initialize counter
-            index_t tCount = 0;
-
-            // loop over all edges
-            if ( mParent->parent()->mesh()->edges_exist() && tNumberOfEdgesPerElement > 0 )
-            {
-                this->compute_edge_directions();
-
-                // link element with dofs
-                if ( tNumberOfDofsPerEdge > 0 && tNumberOfEdgesPerElement > 0 )
-                {
-                    // link element to edge dofs
-                    for ( uint k = 0; k < tNumberOfEdgesPerElement; ++k )
-                    {
-                        if ( mEdgeDirections.test( k ) )
-                        {
-                            for ( uint i = 0; i < tNumberOfDofsPerEdge; ++i )
-                            {
-                                mDOFs[ tCount++ ] = aField->dof(
-                                        aField->calculate_dof_id( mElement->edge( k ), i ));
-                            }
-                        }
-                        else
-                        {
-                            for ( int i = tNumberOfDofsPerEdge - 1; i >= 0; i-- )
-                            {
-                                mDOFs[ tCount++ ] = aField->dof(
-                                        aField->calculate_dof_id( mElement->edge( k ), i ));
-                            }
-                        }
-                    }
-                }
-            }
-
-            // loop over all nodes
-            for ( uint k = 0; k < tNumberOfNodesPerElement; ++k )
-            {
-                for ( uint i = 0; i < tNumberOfDofsPerNode; ++i )
-                {
-                    mDOFs[ tCount++ ] = aField->dof(
-                            aField->calculate_dof_id( mElement->node( k ), i ));
-                }
-            }
-
-            BELFEM_ASSERT( tCount == mNumberOfDofs,
-                          "Something went wrong while linking element with DOFs" );
-        }
-
-//------------------------------------------------------------------------------
-
         void
         Element::link_dofs( DofManager * aDofManager, const id_t aBlockID )
         {
@@ -204,10 +121,7 @@ namespace belfem
             // get number of dofs per node and edge
             index_t tNumberOfDofsPerNode = tNodeDofTypes.length();
 
-            index_t tNumberOfNodesPerElement =
-                    aDofManager->enforce_linear_interpolation() ?
-                    mElement->number_of_corner_nodes() :
-                    mElement->number_of_nodes();
+            index_t tNumberOfNodesPerElement = mElement->number_of_nodes();
 
             index_t tNumberOfDofsPerEdge =  tEdgeDofTypes.length() * aDofManager->iwg()->edge_multiplicity();
 
@@ -480,10 +394,7 @@ namespace belfem
                      + aSlaveFaceDofTypes.length() ) * aDofManager->iwg()->face_multiplicity() ;
 
             // get the number of nodes on this facet
-            index_t tNumberOfNodesPerElement =
-                    aDofManager->enforce_linear_interpolation() ?
-                    mElement->number_of_corner_nodes() :
-                    mElement->number_of_nodes();
+            index_t tNumberOfNodesPerElement = mElement->number_of_nodes();
 
             index_t tNumberOfEdgesPerElement = mElement->number_of_edges() ;
             index_t tNumberOfFacesPerElement = mElement->number_of_faces() ;
@@ -590,16 +501,10 @@ namespace belfem
         {
             BELFEM_ASSERT( mMaster != nullptr, "Master element not linked" );
 
-            index_t tNumberOfNodesOnMaster =
-                    aDofManager->enforce_linear_interpolation() ?
-                    mMaster->element()->number_of_corner_nodes() :
-                    mMaster->element()->number_of_nodes();
+            index_t tNumberOfNodesOnMaster = mMaster->element()->number_of_nodes();
 
             // get number of dofs on the facet
-            index_t  tNumberOfNodesOnFacet =
-                    aDofManager->enforce_linear_interpolation() ?
-                    mElement->number_of_corner_nodes() :
-                    mElement->number_of_nodes();
+            index_t  tNumberOfNodesOnFacet = mElement->number_of_nodes();
 
 
             index_t tNumberOfEdgesOnMaster =
@@ -710,15 +615,9 @@ namespace belfem
             BELFEM_ASSERT( mSlave != nullptr, "Slave element not linked" );
 
             // get number of dofs on the facet
-            index_t  tNumberOfNodesOnFacet =
-                    aDofManager->enforce_linear_interpolation() ?
-                    mElement->number_of_corner_nodes() :
-                    mElement->number_of_nodes();
+            index_t  tNumberOfNodesOnFacet = mElement->number_of_nodes();
 
-            index_t tNumberOfNodesOnSlave =
-                    aDofManager->enforce_linear_interpolation() ?
-                    mSlave->element()->number_of_corner_nodes() :
-                    mSlave->element()->number_of_nodes();
+            index_t tNumberOfNodesOnSlave = mSlave->element()->number_of_nodes();
 
             index_t tNumberOfEdgesOnFacet =
                     mElement->number_of_edges();
@@ -833,15 +732,9 @@ namespace belfem
             BELFEM_ASSERT( mSlave != nullptr, "Slave element not linked" );
 
             // get number of dofs on the facet
-            index_t  tNumberOfNodesOnMaster =
-                    aDofManager->enforce_linear_interpolation() ?
-                    mMaster->element()->number_of_corner_nodes() :
-                    mMaster->element()->number_of_nodes();
+            index_t  tNumberOfNodesOnMaster = mMaster->element()->number_of_nodes();
 
-            index_t tNumberOfNodesOnSlave =
-                    aDofManager->enforce_linear_interpolation() ?
-                    mSlave->element()->number_of_corner_nodes() :
-                    mSlave->element()->number_of_nodes();
+            index_t tNumberOfNodesOnSlave = mSlave->element()->number_of_nodes();
 
             index_t tNumberOfEdgesOnMaster =
                     mMaster->element()->number_of_edges();
@@ -1033,20 +926,11 @@ namespace belfem
                 const Vector< index_t > & aThinShellFaceDofTypes,
                 const Vector< index_t > & aLambdaDofTypes )
         {
-            index_t  tNumberOfNodesOnMaster =
-                    aDofManager->enforce_linear_interpolation() ?
-                    mMaster->element()->number_of_corner_nodes() :
-                    mMaster->element()->number_of_nodes();
+            index_t  tNumberOfNodesOnMaster = mMaster->element()->number_of_nodes();
 
-            index_t tNumberOfNodesOnSlave =
-                    aDofManager->enforce_linear_interpolation() ?
-                    mSlave->element()->number_of_corner_nodes() :
-                    mSlave->element()->number_of_nodes();
+            index_t tNumberOfNodesOnSlave = mSlave->element()->number_of_nodes();
 
-            index_t tNumberOfNodesOnFacet =
-                    aDofManager->enforce_linear_interpolation() ?
-                    mElement->number_of_corner_nodes() :
-                    mElement->number_of_nodes();
+            index_t tNumberOfNodesOnFacet = mElement->number_of_nodes();
 
             uint tNumberOfLayers = aLayers.size() ;
 

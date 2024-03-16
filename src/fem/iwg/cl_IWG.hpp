@@ -151,7 +151,6 @@ namespace belfem
 
             uint   mNumberOfEdgesPerElement = 0 ;
             uint   mNumberOfFacesPerElement = 0 ;
-            uint   mNumberOfIntegrationPoints = 0 ;
 
             uint   mNumberOfDofsPerElement;
 

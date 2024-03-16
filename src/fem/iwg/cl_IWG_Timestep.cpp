@@ -25,7 +25,7 @@ namespace belfem
                 const SideSetDofLinkMode aSideSetDofLinkMode ) :
                 IWG( aType, aDimensionality, aMode, aSymmetryMode, aDofMode, aSideSetDofLinkMode )
         {
-
+            mNumberOfRhsCols = 1 ;
         }
 
 //------------------------------------------------------------------------------

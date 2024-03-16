@@ -145,8 +145,6 @@ namespace belfem
                 const Vector< uint > & aNumDofsPerNode,
                 const Vector< uint > & aNumDofsPerEdge )
         {
-            BELFEM_ERROR( mEnforceLinear.length() == 1,
-                "set_field_dimensions must be called before enforce_linear" );
 
             mNumDofsPerNode = aNumDofsPerNode ;
             mNumDofsPerEdge = aNumDofsPerEdge ;
@@ -190,13 +188,6 @@ namespace belfem
                     mBlockIntegrationOrders( k ) = tOrders( k );
                 }
             }
-        }
-//------------------------------------------------------------------------------
-
-        void
-        KernelParameters::enforce_linear( const Vector< uint > & aEnforceLinear )
-        {
-            mEnforceLinear = aEnforceLinear ;
         }
 
 //------------------------------------------------------------------------------

@@ -4,7 +4,6 @@
 
 #include "cl_FEM_Bearing.hpp"
 #include "cl_FEM_DofManagerBase.hpp"
-#include "cl_FEM_Field.hpp"
 #include "cl_FEM_DofManager.hpp"
 #include "cl_FEM_Kernel.hpp"
 #include "cl_IWG.hpp"
@@ -20,29 +19,6 @@ namespace belfem
             mID( 0 )
         {
 
-        }
-
-//------------------------------------------------------------------------------
-
-        Bearing::Bearing( Field * aParent, const id_t aID, mesh::Node * aNode ) :
-            mParent( aParent ),
-            mID( aID ),
-            mNode( aNode )
-        {
-            if ( aNode->owner() == comm_rank() )
-            {
-                // get number of dofs per node
-                uint tNumDOFs = mParent->number_of_dofs_per_node();
-
-                // allocate container
-                mDOFs.set_size( tNumDOFs, nullptr );
-
-                // populate container
-                for ( uint k = 0; k < tNumDOFs; ++k )
-                {
-                    mDOFs( k ) = mParent->dof( mParent->calculate_dof_id( aNode, k ) );
-                }
-             }
         }
 
 //------------------------------------------------------------------------------

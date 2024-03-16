@@ -144,15 +144,11 @@ namespace belfem
         void
         Group::create_calculator()
         {
-            std::cout << "check " << mID << " " << ( mParent->iwg() == nullptr )
-                << " " << ( mCalc == nullptr ) << std::endl ;
 
             if ( mParent->iwg() != nullptr && mCalc == nullptr )
             {
                 // create the calculator object
                 mCalc = new Calculator( this, mParent->iwg()->model_dimensionality() );
-
-                mCalc->set_integration_order( mIntegrationOrder );
 
             }
         }

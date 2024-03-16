@@ -20,7 +20,6 @@ set( SOURCES
         cl_FEM_DofMgr_FieldData.cpp
         cl_FEM_DofMgr_SolverData.cpp
         cl_FEM_DofManager.cpp
-        cl_FEM_Field.cpp
         cl_FEM_BoundaryCondition.cpp
         cl_FEM_KernelParameters.cpp
         cl_FEM_Kernel.cpp

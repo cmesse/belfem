@@ -26,7 +26,7 @@ namespace belfem
     {
 //------------------------------------------------------------------------------
 
-        Kernel::Kernel( KernelParameters * aKernelParameters, bool aLegacyMode ) :
+        Kernel::Kernel( KernelParameters * aKernelParameters ) :
             mParams( aKernelParameters ),
             mMesh( aKernelParameters->mesh() ),
             mMyRank( comm_rank() ),
@@ -169,11 +169,6 @@ namespace belfem
             // but we do it anyways to be safe
             this->compute_element_volumes();
 
-            if( aLegacyMode )
-            {
-                this->create_fields();
-            }
-
             comm_barrier() ;
         }
 
@@ -181,10 +176,6 @@ namespace belfem
 
         Kernel::~Kernel()
         {
-            for ( Field * tField: mFields )
-            {
-                delete tField;
-            }
 
             for ( DofManager * tField: mDofManagers )
             {
@@ -2246,145 +2237,6 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        Kernel::create_fields()
-        {
-            if ( mMyRank == mMasterRank )
-            {
-                Timer tTimer;
-
-                // send field dimension to each proc
-                Vector< uint > tNumDOFsPerNode = mParams->num_dofs_per_node();
-                Vector< uint > tNumDOFsPerEdge = mParams->num_dofs_per_edge();
-                Vector< uint > tEnforceLinear  = mParams->linear_enforcement_flags();
-
-                if ( tNumDOFsPerNode.length() == 1 )
-                {
-                    message( 4, " Creating 1 field ..." );
-                }
-                else
-                {
-                    message( 4, " Creating %u fields ...",
-                             ( unsigned int ) tNumDOFsPerNode.length());
-                }
-
-                Cell< Vector< uint > > tNodeFieldDimensions( mNumberOfProcs, tNumDOFsPerNode );
-                send( mCommTable, tNodeFieldDimensions );
-
-                Cell< Vector< uint > > tEdgeFieldDimensions( mNumberOfProcs, tNumDOFsPerEdge );
-                send( mCommTable, tEdgeFieldDimensions );
-
-                Cell< Vector< uint > > tEnforceLinearFlags( mNumberOfProcs, tEnforceLinear );
-                send( mCommTable, tEnforceLinearFlags );
-
-                const Vector< uint > & tBlockIndices = mParams->block_indices();
-
-                Cell< mesh::Block * > & tBlocks = mMesh->blocks();
-
-                // prepare block IDs
-                Vector< id_t > tBlockIDs( tBlockIndices.length() );
-                for ( uint b = 0; b < tBlockIndices.length(); ++b )
-                {
-                    tBlockIDs( b ) = tBlocks( tBlockIndices( b ) )->id();
-                }
-
-                // send block IDs to other procs
-                // note: we assume that all blocks contribute to all fields here
-                Cell< Vector< id_t > > tAllBlocksIDs( mNumberOfProcs, tBlockIDs );
-                send( mCommTable, tAllBlocksIDs );
-
-                // get number of fields
-                uint tNumberOfFields = tNumDOFsPerNode.length();
-
-                // populate the fields
-                mFields.set_size( tNumberOfFields, nullptr );
-
-                for ( uint f = 0; f < tNumberOfFields; ++f )
-                {
-                    bool tEnforceLinearFlag = false ;
-                    if( f < tEnforceLinear.length() )
-                    {
-                        if ( tEnforceLinear( f ) != 0 )
-                        {
-                            tEnforceLinearFlag = true ;
-                        }
-                    }
-
-                    mFields( f ) = new Field(
-                            this, tBlockIDs, tNumDOFsPerNode( f ), tNumDOFsPerEdge( f ),
-                            tEnforceLinearFlag );
-                }
-
-                message( 4, "    ... time for field creation                 : %u ms\n",
-                         ( unsigned int ) tTimer.stop());
-            }
-            else
-            {
-                Vector< uint > tNumDOFsPerNode;
-                receive( mMasterRank, tNumDOFsPerNode );
-
-                Vector< uint > tNumDOFsPerEdge;
-                receive( mMasterRank, tNumDOFsPerEdge );
-
-                Vector< uint > tEnforceLinear;
-                receive( mMasterRank, tEnforceLinear );
-
-                Vector< id_t > tRecBlockIDs;
-                receive( mMasterRank, tRecBlockIDs );
-
-                // count existing blocks
-                uint tCount = 0;
-
-                for ( id_t tID : tRecBlockIDs )
-                {
-                    if ( mSubMesh->block_exists( tID ))
-                    {
-                        ++tCount;
-                    }
-                }
-
-                // generate container with blocks that exist on this proc
-                Vector< id_t > tBlockIDs( tCount );
-
-                tCount = 0;
-                for ( id_t tID : tRecBlockIDs )
-                {
-                    if ( mSubMesh->block_exists( tID ))
-                    {
-                        tBlockIDs( tCount++ ) = tID;
-                    }
-                }
-
-                // get number of fields
-                uint tNumberOfFields = tNumDOFsPerNode.length();
-
-                // populate the fields
-                mFields.set_size( tNumberOfFields, nullptr );
-
-                for ( uint f = 0; f < tNumberOfFields; ++f )
-                {
-                    bool tEnforceLinearFlag = false ;
-
-                    if( f < tEnforceLinear.length() )
-                    {
-                        if ( tEnforceLinear( f ) != 0 )
-                        {
-                            tEnforceLinearFlag = true ;
-                        }
-                    }
-
-                    mFields( f ) = new Field(
-                            this,
-                            tBlockIDs,
-                            tNumDOFsPerNode( f ),
-                            tNumDOFsPerEdge( f ),
-                            tEnforceLinearFlag );
-                }
-            }
-        }
-
-//------------------------------------------------------------------------------
-
-        void
         Kernel::merge_facet_and_connector_tables()
         {
             for( proc_t p=0; p<mNumberOfProcs; ++p )
@@ -2442,14 +2294,6 @@ namespace belfem
 
                 graph::symrcm( tVertices );
             }
-        }
-
-//------------------------------------------------------------------------------
-
-        Field *
-        Kernel::field( const uint aIndex )
-        {
-            return mFields( aIndex );
         }
 
 //------------------------------------------------------------------------------

@@ -5,7 +5,6 @@
 #include "cl_IWG_StaticHeatConduction.hpp"
 #include "cl_FEM_Group.hpp"
 #include "cl_FEM_Element.hpp"
-#include "cl_FEM_Field.hpp"
 #include "fn_det.hpp"
 #include "fn_trans.hpp"
 #include "fn_inv.hpp"
@@ -47,8 +46,6 @@ namespace belfem
                 }
             }
 
-            mNumberOfRhsCols = 1;
-
             // timestep must be 1.0 for the stationary class
             // do not touch, only children should overwrite this
             mDeltaTime = 1.0 ;
@@ -58,7 +55,7 @@ namespace belfem
 
             mFluxFields = { "dotQ" };
 
-            mBcFields = { "alpha", "Tinf" } ;
+            mOtherFields = { "alpha", "Tinf" } ;
 
             // heat conduction can have a convection term
             mHasConvection = true ;
@@ -82,20 +79,17 @@ namespace belfem
             aK.fill( 0.0 );
             aQ.fill( 0.0 );
 
+            // link calculator
             mCalc->link( aElement );
 
-
             // get integration weights
-            const Vector< real > & tW =  mCalc->weights();
+            const Vector< real > & tW =  mCalc->integration()->weights();
 
             // nodal temperatures
-            Vector< real > & tTnodes   = mCalc->vector("T");
-
-            // collect temperatures from last iteration
-            this->collect_node_data( aElement, "T", tTnodes );
+            const Vector< real > & tTnodes   = mCalc->node_data("T");
 
             // loop over all integration points
-            for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+            for( uint k=0; k<mCalc->num_intpoints(); ++k )
             {
                 // get the B-Operator
                 const Matrix< real > & tB = mCalc->B( k );
@@ -105,7 +99,7 @@ namespace belfem
                 // add to integration
                 aK += tW( k ) * trans( tB ) *
                         mMaterial->lambda( tT ) *
-                        tB * det( mCalc->J( k ) );
+                        tB * mCalc->dV( k );
             }
         }
 
@@ -122,45 +116,34 @@ namespace belfem
             aJacobian.fill( 0.0 );
             aRHS.fill( 0.0 );
 
+            // link calculator
+            mCalc->link( aElement );
+
             // get integration weights
-            //const Vector< real > & tW = mGroup->integration_weights();
-
-
-            // node coordinates
-           // Matrix< real > & tX = mCalc->matrix("X");
-            //this->collect_node_coords( aElement, tX );
+            const Vector< real > & tW = mCalc->integration()->weights();
 
             // collect temperatures from last iteration
-            //this->collect_node_data( aElement, mBcFields );
-
+            const Vector< real > & tAlphaNodes = mCalc->node_data("alpha");
+            const Vector< real > & tTinfNodes  = mCalc->node_data("Tinf");
 
             // loop over all integration points
-            for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+            for( uint k=0; k<mCalc->num_intpoints(); ++k )
             {
                 // interpolate alpha for this point
-                /*real tAlpha = dot( mGroup->n( k ).vector_data(), mCalc->vector( "alpha").vector_data() );
+                real tAlpha = mCalc->node_interp( k , tAlphaNodes );
 
                 // interpolate T inf for this point
-                real tTinf = dot( mGroup->n( k ).vector_data(), mCalc->vector( "T").vector_data() );
+                real tTinf = mCalc->node_interp( k, tTinfNodes );
 
-                // determinant along surface
-                real tDetJ =  mesh::compute_surface_increment( mGroup->dNdXi( k ), tX );
 
                 // add to integration
-                aJacobian += tW( k ) * trans( mGroup->N( k ).row( 0 ) ) * tAlpha
-                             * mGroup->N( k ).row( 0 ) * tDetJ ;
+                aJacobian += tW( k ) * trans( mCalc->N( k ) ) * tAlpha * mCalc->N( k ) * mCalc->dS( k );
 
 
-                aRHS += tW( k ) * trans( mGroup->N( k ).row( 0 ) ) * tAlpha
-                               * tTinf * tDetJ ; */
+                aRHS += tW( k ) * trans( mCalc->N( k ).row( 0 ) ) * tAlpha
+                               * tTinf * mCalc->dS( k );
 
             }
-
-
-
-
-            //aJacobian *= mDeltaTime ;
-            //aRHS *= mDeltaTime ;
         }
 
 //------------------------------------------------------------------------------
@@ -171,56 +154,36 @@ namespace belfem
     {
         // Check input
         BELFEM_ASSERT( aConvection.length() ==
-                      mGroup->parent()->enforce_linear_interpolation() ?
-                      mesh::number_of_corner_nodes( aElement->element()->type() )
-                      : mesh::number_of_nodes( aElement->element()->type() ),
+                       mesh::number_of_nodes( aElement->element()->type() ),
                       "load vector has wrong length" );
 
         BELFEM_ASSERT( mMesh->number_of_dimensions() == 2, "the convection routine has been written for the 2D case" );
 
-        BELFEM_ERROR( false, "this must be redone");
+        // reset the load vector
+        aConvection.fill( 0.0 );
+
+        // link element
+        mCalc->link( aElement );
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         // get data containers
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
         // integration weights
-        const Vector< real > & tW = mGroup->integration()->weights();
-
-        // nodal information for source fields
-        Vector < real > & tdotq = mCalc->vector("dotq");
-
-
-        // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        // create shortcuts for better readability
-        // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-        // reset the load vector
-        aConvection.fill( 0.0 );
-
-        this->collect_node_data( aElement, "dotQ", tdotq );
-
-        // collect node coords from master
-        uint tNumDim = mField->mesh()->number_of_dimensions() ;
-        Matrix< real > & tX = mGroup->calculator()->matrix("X");
-
-        mesh::collect_node_coords( aElement->element(),
-                                   tX,
-                                   tNumDim,
-                                   mGroup->parent()->enforce_linear_interpolation() );
+        const Vector< real > & tW = mCalc->integration()->weights();
+        const Vector < real > & tdotq = mCalc->node_data("dotQ");
 
         real tDotQ ;
 
         // loop over all integration points
-        for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+        for( uint k=0; k<mCalc->num_intpoints(); ++k )
         {
             // compute heatflux
-            tDotQ = dot( mGroup->integration()->phi( k ), tdotq );
+            tDotQ = mCalc->node_interp( k, tdotq );
 
             aConvection += tW( k ) * trans( mCalc->N( k ).row( 0 ) ) * tDotQ
                            * mCalc->dS( k );
         }
-
     }
 
 //------------------------------------------------------------------------------

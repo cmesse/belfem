@@ -28,7 +28,6 @@ namespace belfem
                 const uint & mBlockIntegrationOrder ;
                 const uint & mSideSetIntegrationOrder ;
                 const IntegrationScheme & mIntegrationScheme ;
-                const uint & mEnforceLinear ;
 
 //------------------------------------------------------------------------------
             public:
@@ -55,11 +54,6 @@ namespace belfem
 
                 IntegrationScheme
                 integration_scheme() const ;
-
-//------------------------------------------------------------------------------
-
-                bool
-                enforce_linear() const ;
 
 //------------------------------------------------------------------------------
 
@@ -91,14 +85,6 @@ namespace belfem
             Parameters::integration_scheme() const
             {
                 return mIntegrationScheme ;
-            }
-
-//------------------------------------------------------------------------------
-
-            inline bool
-            Parameters::enforce_linear() const
-            {
-                return mEnforceLinear > 0 ;
             }
 
 //------------------------------------------------------------------------------

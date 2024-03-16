@@ -389,7 +389,6 @@ namespace belfem
             if ( mGroup->element_type() == ElementType::EMPTY )
             {
                 mNumberOfDofsPerElement = 0 ;
-                mNumberOfIntegrationPoints = 0;
                 mNumberOfEdgesPerElement = 0 ;
                 mNumberOfNodesPerElement = 0 ;
                 mNumberOfThinShellLayers = 0 ;
@@ -508,16 +507,6 @@ namespace belfem
                     }
                 }
 
-                if( aGroup->type() == GroupType::CUT )
-                {
-                    mNumberOfIntegrationPoints = 0 ;
-                }
-                else if ( aGroup->element_type() != ElementType::EMPTY )
-                {
-                    mNumberOfIntegrationPoints = aGroup->calculator()->integration()->weights().length();
-                }
-
-
                 // RHS dofs must be set if we have an L2 projection
                 if( mNumberOfRhsEdgeDofsPerElement == 0 )
                 {
@@ -565,31 +554,22 @@ namespace belfem
                     }
                     case( SideSetDofLinkMode::FacetAndMaster ) :
                     {
-                        return aSideSet->parent()->enforce_linear_interpolation() ?
-                            mesh::number_of_corner_nodes( aSideSet->master_type() ) :
-                            mesh::number_of_nodes( aSideSet->master_type() );
+                        return mesh::number_of_nodes( aSideSet->master_type() );
                     }
                     case( SideSetDofLinkMode::MasterAndSlave ) :
                     {
                         if( this->has_edge_dofs() )
                         {
-                            return aSideSet->parent()->enforce_linear_interpolation() ?
-                                   mesh::number_of_corner_nodes(
-                                           aSideSet->slave_type() == ElementType::EMPTY ? aSideSet->master_type() : aSideSet->slave_type() ) :
-                                   mesh::number_of_nodes( aSideSet->slave_type() == ElementType::EMPTY ? aSideSet->master_type() : aSideSet->slave_type() );
+                            return mesh::number_of_nodes( aSideSet->slave_type() == ElementType::EMPTY ? aSideSet->master_type() : aSideSet->slave_type() );
                         }
                         else
                         {
-                            return aSideSet->parent()->enforce_linear_interpolation() ?
-                                   mesh::number_of_corner_nodes( aSideSet->master_type() ) :
-                                   mesh::number_of_nodes( aSideSet->master_type() );
+                            return mesh::number_of_nodes( aSideSet->master_type() );
                         }
                     }
                     case( SideSetDofLinkMode::FacetAndSlave ) :
                     {
-                        return aSideSet->parent()->enforce_linear_interpolation() ?
-                               mesh::number_of_corner_nodes( aSideSet->slave_type() ) :
-                               mesh::number_of_nodes( aSideSet->slave_type() );
+                        return mesh::number_of_nodes( aSideSet->slave_type() );
                     }
                     default :
                     {

@@ -21,8 +21,7 @@ namespace belfem
                         aKernel->params()->block_integration_order( aFieldIndex  ) ),
                 mSideSetIntegrationOrder(
                         aKernel->params()->sideset_integration_order( aFieldIndex ) ),
-                mIntegrationScheme( aKernel->params()->integration_scheme() ),
-                mEnforceLinear( aKernel->params()->linear_enforcement_flag( aFieldIndex ) )
+                mIntegrationScheme( aKernel->params()->integration_scheme() )
             {
 
             }
@@ -35,7 +34,6 @@ namespace belfem
                 std::cout << "Block Integration Order " << mBlockIntegrationOrder << std::endl;
                 std::cout << "Sideset Integration Order " << mSideSetIntegrationOrder << std::endl;
                 std::cout << "Integration Scheme " << to_string( mIntegrationScheme ) << std::endl;
-                std::cout << "Enforce Linear  " << this->enforce_linear() << std::endl;
             }
 
 //-----------------------------------------------------------------------------

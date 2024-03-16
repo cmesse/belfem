@@ -120,6 +120,8 @@ namespace belfem
                 mLinearIntegration->populate( aOrder, mGroup->parent()->integration_scheme());
             }
             this->allocate_memory() ;
+
+            mNumberOfIntegrationPoints = mDomainIntegration->weights().length() ;
         }
 
 //------------------------------------------------------------------------------
@@ -147,12 +149,46 @@ namespace belfem
                 // reset the map
                 mVectorMap.clear() ;
 
+                // flags for special cases
+                bool tHaveEdgeH = false ;
+                bool tHaveFaceH = false ;
+                bool tHaveCellH = false ;
+                bool tHaveEdgeA = false ;
+                bool tHaveFaceA = false ;
+                bool tHaveCellA = false ;
                 for ( const string & tLabel: tEquation->all_fields())
                 {
                     // the size of the vector
                     uint tSize = 0;
 
                     EntityType tType = entity_type( tLabel );
+
+                    if( tLabel == "edge_a" )
+                    {
+                        tHaveEdgeA = true ;
+                    }
+                    if( tLabel == "face_a" )
+                    {
+                        tHaveFaceA = true ;
+                    }
+                    if( tLabel == "cell_a" )
+                    {
+                        tHaveCellA = true ;
+                    }
+
+                    if( tLabel == "edge_h" )
+                    {
+                        tHaveEdgeH = true ;
+                    }
+                    if( tLabel == "face_h" )
+                    {
+                        tHaveFaceH = true ;
+                    }
+                    if( tLabel == "cell_h" )
+                    {
+                        tHaveCellH = true ;
+                    }
+
 
                     // determine size
                     switch ( tType )
@@ -181,6 +217,38 @@ namespace belfem
 
                     // allocate size
                     this->create_vector( tLabel, tSize, tType );
+                }
+
+                // catch special cases for higher order Nedelecs
+                // catch special case for higher order Nedelecs
+                if( tHaveEdgeA && tHaveFaceA )
+                {
+                    uint tSize =
+                            tEquation->edge_multiplicity() * mesh::number_of_edges( mGroup->element_type())
+                            + tEquation->face_multiplicity() * mesh::number_of_faces( mGroup->element_type());
+
+                    if( tHaveCellA )
+                    {
+                        tSize += tEquation->cell_multiplicity();
+                    }
+
+                    this->create_vector( "nedelec_a", tSize, EntityType::UNDEFINED );
+                    this->create_vector( "nedelec_a0", tSize, EntityType::UNDEFINED );
+                }
+
+                if( tHaveEdgeH && tHaveFaceH )
+                {
+                    uint tSize =
+                             tEquation->edge_multiplicity() * mesh::number_of_edges( mGroup->element_type())
+                           + tEquation->face_multiplicity() * mesh::number_of_faces( mGroup->element_type());
+
+                    if( tHaveCellH )
+                    {
+                        tSize += tEquation->cell_multiplicity();
+                    }
+
+                    this->create_vector( "nedelec_h", tSize, EntityType::UNDEFINED );
+                    this->create_vector( "nedelec_h0", tSize, EntityType::UNDEFINED );
                 }
             }
         }
@@ -219,14 +287,6 @@ namespace belfem
             if(  mGroup->number_of_elements() == 0 || this->integration() == nullptr )
             {
                 return;
-            }
-
-            // copy integration weights from group
-            const Vector< real > & tW = this->integration()->weights();
-            mIntegrationWeights.set_size( tW.length() );
-            for ( uint k=0; k< tW.length(); ++k )
-            {
-                mIntegrationWeights( k ) = tW( k );
             }
 
             // make sure that allocation funciton is only called once
@@ -594,7 +654,7 @@ namespace belfem
                 mJs->set_index( BELFEM_UINT_MAX );
             }
 
-
+            mElement = aElement ;
         }
 
 //------------------------------------------------------------------------------
@@ -641,6 +701,119 @@ namespace belfem
             mMatrixMap[ aLabel ] = aMatrix ;
 
             return aMatrix ;
+        }
+
+
+//------------------------------------------------------------------------------
+
+        const Vector< real > &
+        Calculator::node_data( const string & aNodeField )
+        {
+            BELFEM_ASSERT(
+                    mMesh->field( aNodeField )->entity_type() == EntityType::NODE,
+                    "Field '%s' is not a node field", aNodeField.c_str() );
+
+            // grab data object
+            calculator::VectorData * tVectorData = mVectorMap( aNodeField );
+
+            // grab the vector object
+            Vector< real > & aData = tVectorData->vector() ;
+
+            // grab data object from mesh
+            const Vector< real > & tNodeData = mMesh->field_data( aNodeField );
+
+            // loop over all nodes
+            for( uint i=0; i< mElement->element()->number_of_nodes(); ++i )
+            {
+                // copy node data from mesh
+                aData( i  ) = tNodeData( mElement->element()->node( i )->index() );
+            }
+
+            return aData ;
+        }
+
+//------------------------------------------------------------------------------
+
+        const Vector< real > &
+        Calculator::nedelec_data_linear( const string & aEdgeField )
+        {
+            BELFEM_ASSERT(
+                    mMesh->field( aEdgeField )->entity_type() == EntityType::EDGE,
+                    "Field '%s' is not an edge field", aEdgeField.c_str() );
+
+            // grab data object
+            calculator::VectorData * tVectorData = mVectorMap( aEdgeField );
+
+            // get ref to field on mesh
+            Vector< real > & tField = mMesh->field_data( aEdgeField );
+
+            // grab the vector object
+            Vector< real > & aData = tVectorData->vector() ;
+
+            // loop over all edges
+            for( uint e=0; e< mElement->element()->number_of_edges(); ++e )
+            {
+                aData( e ) = tField( mElement->element()->edge( e )->index() );
+            }
+
+            return aData ;
+        }
+
+//------------------------------------------------------------------------------
+
+        const Vector< real > &
+        Calculator::nedelec_data_quadratic_2d(
+                const string & aEdgeField,
+                const string & aFaceField,
+                const string & aVectorLabel )
+        {
+            BELFEM_ASSERT(
+                    mMesh->field( aEdgeField )->entity_type() == EntityType::EDGE,
+                    "Field '%s' is not an edge field", aEdgeField.c_str());
+
+
+            BELFEM_ASSERT(
+                    mMesh->field( aFaceField )->entity_type() == EntityType::FACE,
+                    "Field '%s' is not an edge field", aFaceField.c_str());
+
+
+            Vector< real > & aData = mMesh->field_data( aVectorLabel );
+
+            Vector< real > & tEdgeData = mMesh->field_data( aEdgeField );
+            Vector< real > & tFaceData = mMesh->field_data( aFaceField );
+
+            uint tCount = 0;
+
+            for ( uint e = 0; e < mElement->element()->number_of_edges(); ++e )
+            {
+                aData( tCount++ ) = tEdgeData( mElement->element()->edge( e )->index());
+            }
+
+            for ( uint e = 0; e < mElement->element()->number_of_edges(); ++e )
+            {
+
+                // get index of edge
+                index_t tIndex = mElement->element()->edge( e )->index();
+
+                // check direction of edge
+                if ( mElement->edge_direction( e ))
+                {
+                    aData( tCount++ ) = tEdgeData( tIndex + tIndex );
+                    aData( tCount++ ) = tEdgeData( tIndex + tIndex + 1 );
+                }
+                else
+                {
+                    aData( tCount++ ) = tEdgeData( tIndex + tIndex + 1 );
+                    aData( tCount++ ) = tEdgeData( tIndex + tIndex );
+                }
+            }
+
+            // write data into container
+            index_t tIndex = mElement->element()->index();
+            aData( tCount++ ) = tFaceData( tIndex );
+            aData( tCount++ ) = tFaceData( tIndex + tIndex + 1 );
+
+            return aData ;
         }
 
 //------------------------------------------------------------------------------

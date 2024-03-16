@@ -402,24 +402,11 @@ namespace belfem
             // unflag all nodes on the mesh
             tMesh->unflag_all_nodes();
 
-            if( aDofManager->enforce_linear_interpolation() )
+            for( id_t tID : aIDs )
             {
-                for( id_t tID : aIDs )
+                if( tMesh->sideset_exists( tID ) )
                 {
-                    if( tMesh->sideset_exists( tID ) )
-                    {
-                        tMesh->sideset( tID )->flag_corner_nodes();
-                    }
-                }
-            }
-            else
-            {
-                for( id_t tID : aIDs )
-                {
-                    if( tMesh->sideset_exists( tID ) )
-                    {
-                        tMesh->sideset( tID )->flag_all_nodes();
-                    }
+                    tMesh->sideset( tID )->flag_all_nodes();
                 }
             }
 

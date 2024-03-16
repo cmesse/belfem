@@ -1158,12 +1158,6 @@ namespace belfem
                 // get master proc
                 proc_t tMaster = mKernel->master();
 
-                // check if data must be projected
-                if( mParent->enforce_linear_interpolation() )
-                {
-                    this->project_linear_field_to_higher_mesh( aFieldLabels );
-                }
-
                 if ( mMyRank == tMaster )
                 {
 

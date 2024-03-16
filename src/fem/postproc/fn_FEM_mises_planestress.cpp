@@ -17,7 +17,6 @@
 
 #include "cl_FEM_Group.hpp"
 #include "cl_FEM_Block.hpp"
-#include "cl_FEM_Field.hpp"
 #include "cl_FEM_Kernel.hpp"
 
 namespace belfem

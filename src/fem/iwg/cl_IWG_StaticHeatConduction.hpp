@@ -12,7 +12,6 @@ namespace belfem
     {
         class IWG_StaticHeatConduction : public IWG_Timestep
         {
-            Cell< string > mBcFields ;
 
             // link to function
             void

@@ -866,54 +866,29 @@ namespace belfem
                 // if so, relevant entities are flagged
                 bool tHaveEntityDofs = false ;
 
-                // - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - -d
                 // Step 1: flag all mesh entities the dofs are based on
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
-                if ( mParent->enforce_linear_interpolation() )
+
+                for ( id_t tID : aIWG->selected_blocks() )
                 {
-                    for( id_t tID : aIWG->selected_blocks() )
+                    if ( aIWG->number_of_dofs_per_node( tID ) > 0 )
                     {
-
-                        if ( aIWG->number_of_dofs_per_node( tID ) > 0 )
-                        {
-                            tHaveEntityDofs = true;
-                            mMesh->block( tID )->flag_corner_nodes();
-                        }
-                    }
-
-                    // also flag ghost sidesets
-                    for( id_t tID : aIWG->ghost_sideset_ids() )
-                    {
-                        // grab sideset on mesh
-                        if ( aIWG->dofs_per_node_on_sideset( tID ).length() > 0 )
-                        {
-                            tHaveEntityDofs = true;
-                            mMesh->sideset( tID )->flag_corner_nodes();
-                        }
+                        tHaveEntityDofs = true;
+                        mMesh->block( tID )->flag_nodes();
                     }
                 }
-                else
-                {
-                    for ( id_t tID : aIWG->selected_blocks() )
-                    {
-                        if ( aIWG->number_of_dofs_per_node( tID ) > 0 )
-                        {
-                            tHaveEntityDofs = true;
-                            mMesh->block( tID )->flag_nodes();
-                        }
-                    }
 
-                    // also flag ghost sidesets (if they exist)
-                    for( id_t tID : aIWG->ghost_sideset_ids() )
+                // also flag ghost sidesets (if they exist)
+                for( id_t tID : aIWG->ghost_sideset_ids() )
+                {
+                    // grab sideset on mesh
+                    if ( aIWG->dofs_per_node_on_sideset( tID ).length() > 0 )
                     {
-                        // grab sideset on mesh
-                        if ( aIWG->dofs_per_node_on_sideset( tID ).length() > 0 )
-                        {
-                            tHaveEntityDofs = true;
-                            mMesh->sideset( tID )->flag_all_nodes() ;
-                        }
+                        tHaveEntityDofs = true;
+                        mMesh->sideset( tID )->flag_all_nodes() ;
                     }
                 }
 
@@ -964,9 +939,7 @@ namespace belfem
                     {
                         // get the number of nodes per element on this block.
                         // We must check if linearity is enforced
-                        uint tNumEntities = mParent->enforce_linear_interpolation() ?
-                                            mesh::number_of_corner_nodes( tBlock->element_type() ) :
-                                            mesh::number_of_nodes( tBlock->element_type() );
+                        uint tNumEntities = mesh::number_of_nodes( tBlock->element_type() );
 
                         // now we loop over all elements on the block and the selected number of nodes
                         for( mesh::Element * tElement : tBlock->elements() )
@@ -1002,9 +975,7 @@ namespace belfem
                     if( tSelectedDofs.length() > 0 )
                     {
                         // get the number of edges per element on this sideset
-                        uint tNumEntities = mParent->enforce_linear_interpolation() ?
-                                            mesh::number_of_corner_nodes( tSideSet->element_type() )
-                                                                                    : mesh::number_of_nodes( tSideSet->element_type() );
+                        uint tNumEntities = mesh::number_of_nodes( tSideSet->element_type() );
 
                         // now we loop over all elements on the block and the selected number oedges
                         for( mesh::Facet * tFacet : tSideSet->facets() )
@@ -1041,9 +1012,7 @@ namespace belfem
                     if( tSelectedDofs.length() > 0 )
                     {
                         // get the number of edges per element on this sideset
-                        uint tNumEntities = mParent->enforce_linear_interpolation() ?
-                                 mesh::number_of_corner_nodes( tSideSet->element_type() )
-                                : mesh::number_of_nodes( tSideSet->element_type() );
+                        uint tNumEntities = mesh::number_of_nodes( tSideSet->element_type() );
 
                         // now we loop over all elements on the block and the selected number oedges
                         for( mesh::Facet * tFacet : tSideSet->facets() )
@@ -1166,9 +1135,7 @@ namespace belfem
                     {
                         // get the number of nodes per element on this block.
                         // We must check if linearity is enforced
-                        uint tNumEntities = mParams->enforce_linear() ?
-                                            mesh::number_of_corner_nodes( tBlock->element_type() ) :
-                                            mesh::number_of_nodes( tBlock->element_type() );
+                        uint tNumEntities = mesh::number_of_nodes( tBlock->element_type() );
 
 
                         // loop over all elements on this block
@@ -1207,9 +1174,7 @@ namespace belfem
                     {
                         // get the number of nodes per element on this block.
                         // We must check if linearity is enforced
-                        uint tNumEntities = mParams->enforce_linear() ?
-                                            mesh::number_of_corner_nodes( tSideSet->element_type()) :
-                                            mesh::number_of_nodes( tSideSet->element_type());
+                        uint tNumEntities = mesh::number_of_nodes( tSideSet->element_type());
 
 
                         // loop over all elements on this block
@@ -1253,9 +1218,7 @@ namespace belfem
                         {
                             // get the number of nodes per element on this block.
                             // We must check if linearity is enforced
-                            uint tNumEntities = mParams->enforce_linear() ?
-                                                mesh::number_of_corner_nodes( tSideSet->element_type() ) :
-                                                mesh::number_of_nodes( tSideSet->element_type() );
+                            uint tNumEntities = mesh::number_of_nodes( tSideSet->element_type() );
 
 
                             // loop over all elements on this sideset
@@ -2918,9 +2881,7 @@ namespace belfem
                 // get block
                 ElementType tType = mMesh->block( aBlockID )->element_type() ;
 
-                uint aN = mParent->enforce_linear_interpolation() ?
-                        mesh::number_of_corner_nodes( tType ) :
-                        mesh::number_of_nodes( tType );
+                uint aN = mesh::number_of_nodes( tType );
 
                 aN *= mParent->iwg()->number_of_dofs_per_node( aBlockID );
 

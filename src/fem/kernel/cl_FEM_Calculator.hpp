@@ -55,6 +55,9 @@ namespace belfem
                 Vector< real > &
                 vector();
 
+                EntityType
+                entity_type() const ;
+
             };
 
             class MatrixData
@@ -96,15 +99,17 @@ namespace belfem
             // link to mesh
             Mesh  * mMesh ;
 
-            const ModelDimensionality mDimensionality ;
+            // link to current element
+            Element * mElement = nullptr ;
 
-            Vector< real > mIntegrationWeights ;
+            const ModelDimensionality mDimensionality ;
 
             // switch telling if we are allocated
             bool mIsAllocated = false ;
 
             uint mNumberOfNodes = BELFEM_UINT_MAX ;
             uint mNumberOfCornerNodes = BELFEM_UINT_MAX ;
+            uint mNumberOfIntegrationPoints = 0 ;
 
             uint mMasterIndex = BELFEM_UINT_MAX ;
 
@@ -268,8 +273,34 @@ namespace belfem
             /**
              * return a vector object
              */
-             Vector< real > &
-             vector( const string & aLabel );
+             const Vector< real > &
+             node_data( const string & aNodeField );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * return a vector object
+             */
+            const Vector< real > &
+            nedelec_data_linear( const string & aEdgeField );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * return a vector object
+             */
+            const Vector< real > &
+            nedelec_data_quadratic_2d( const string & aEdgeField,
+                                    const string & aFaceField,
+                                    const string & aVectorLabel );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * return a vector object
+             */
+            Vector< real > &
+            vector( const string & aLabel );
 
 //------------------------------------------------------------------------------
 
@@ -278,14 +309,6 @@ namespace belfem
              */
             Matrix< real > &
             matrix( const string & aLabel );
-
-//------------------------------------------------------------------------------
-
-            /**
-             * return the integation weights
-             */
-            const Vector< real > &
-            weights() const ;
 
 //------------------------------------------------------------------------------
 
@@ -423,6 +446,11 @@ namespace belfem
 
             const IntegrationData *
             slave_integration() const ;
+
+//------------------------------------------------------------------------------
+
+            uint
+            num_intpoints() const ;
 
 //------------------------------------------------------------------------------
         private:
@@ -581,6 +609,12 @@ namespace belfem
             return mVectorData ;
         }
 
+        inline EntityType
+        calculator::VectorData::entity_type() const
+        {
+            return mType ;
+        }
+
         inline const string &
         calculator::MatrixData::label() const
         {
@@ -621,12 +655,6 @@ namespace belfem
         Calculator::matrix( const string & aLabel )
         {
             return mMatrixMap( aLabel )->matrix() ;
-        }
-
-        inline const Vector< real > &
-        Calculator::weights() const
-        {
-            return mIntegrationWeights ;
         }
 
 //------------------------------------------------------------------------------
@@ -1084,6 +1112,14 @@ namespace belfem
         Calculator::q0()
         {
             return mq0 ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline uint
+        Calculator::num_intpoints() const
+        {
+            return mNumberOfIntegrationPoints ;
         }
 
 //------------------------------------------------------------------------------

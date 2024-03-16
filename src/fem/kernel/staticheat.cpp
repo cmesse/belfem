@@ -54,7 +54,7 @@ int main( int    argc,
     // tParams.enforce_linear( { 1 } );
 
     // with the parameters object set, we create the kernel
-    Kernel tKernel( &tParams, false );
+    Kernel tKernel( &tParams );
 
     // create the equation object
     //IWG_StaticHeatConduction tIWG( tMesh->number_of_dimensions() );
@@ -92,8 +92,8 @@ int main( int    argc,
 
     // set hotgas temperature
     //tField->sideset( 1 )->impose_dirichlet( 600.0 ); // 1
-    tField->sideset( 1 )->impose_neumann( 60e6 );
-    //tField->sideset( 1 )->impose_alpha( 1e5, 800.0 );
+    //tField->sideset( 1 )->impose_neumann( 60e6 );
+    tField->sideset( 1 )->impose_alpha( 1e5, 800.0 );
 
     // set coldgas temperature
     Vector< id_t > tChannels = { 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 };

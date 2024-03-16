@@ -189,11 +189,6 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
-            enforce_linear( const Vector< uint > & aEnforceLinear );
-
-//------------------------------------------------------------------------------
-
-            void
             set_block_integration_orders( const Vector< uint > & aBlockIntegrationOrders );
 
 //------------------------------------------------------------------------------

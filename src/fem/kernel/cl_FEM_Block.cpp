@@ -5,7 +5,6 @@
 
 
 #include "cl_FEM_Block.hpp"
-#include "cl_FEM_Field.hpp"
 
 
 #include "meshtools.hpp"
@@ -35,9 +34,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         Block::Block( DofManagerBase * aParent, mesh::Block * aBlock,  const index_t aNumberOfElements ) :
-            Group( aParent, GroupType::BLOCK, aParent->enforce_linear_interpolation() ?
-                                              mesh::linear_element_type( aBlock->element_type() ) :
-                                              aBlock->element_type(),
+            Group( aParent, GroupType::BLOCK, aBlock->element_type(),
                                               aBlock->id(), aNumberOfElements ),
             mBlock( aBlock )
         {
@@ -88,48 +85,17 @@ namespace belfem
             // get pointer to element container on block
             Cell< mesh::Element * > & tElements = mBlock->elements();
 
-            // legacy support
-            switch ( mParent->type() )
+            DofManager * tParent = reinterpret_cast< DofManager * >( mParent );
+            // create elements
+            for( mesh::Element * tElement : tElements )
             {
-                case( DofManagerType::OLD ) :
+                // test if I own this element
+                if( tElement->owner() == mMyRank )
                 {
-                    Field * tParent = reinterpret_cast< Field * >( mParent );
-
-                    // create elements
-                    for( mesh::Element * tElement : tElements )
-                    {
-                        // test if I own this element
-                        if( tElement->owner() == mMyRank )
-                        {
-                            // create the new element
-                            mElements( tCount++ ) = new fem::Element(
-                                    this, tParent, tElement );
-                        }
-                    }
-                    break;
+                    // create the new element
+                    mElements( tCount++ ) = new fem::Element(
+                            this, tParent, tElement );
                 }
-                case( DofManagerType::NEW ) :
-                {
-                    DofManager * tParent = reinterpret_cast< DofManager * >( mParent );
-                    // create elements
-                    for( mesh::Element * tElement : tElements )
-                    {
-                        // test if I own this element
-                        if( tElement->owner() == mMyRank )
-                        {
-                            // create the new element
-                            mElements( tCount++ ) = new fem::Element(
-                                    this, tParent, tElement );
-                        }
-                    }
-                    break;
-                }
-                default:
-                {
-                    BELFEM_ERROR( false, "Invalid DOF Manager type");
-                }
-                case DofManagerType::UNDEFINED:
-                    break;
             }
 
             BELFEM_ASSERT( tCount == mNumberOfElements,

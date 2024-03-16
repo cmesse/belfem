@@ -103,11 +103,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            virtual bool
-            enforce_linear_interpolation() const ;
-
-//------------------------------------------------------------------------------
-
             virtual id_t
             calculate_dof_id( const mesh::Node * aNode , const uint aDofType )  const;
 

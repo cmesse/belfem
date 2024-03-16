@@ -169,11 +169,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            bool
-            enforce_linear_interpolation() const ;
-
-//------------------------------------------------------------------------------
-
             id_t
             calculate_dof_id( const mesh::Node * aNode , const uint aDofType )  const;
 
@@ -479,14 +474,6 @@ namespace belfem
         DofManager::dofs()
         {
             return mDofData->dofs() ;
-        }
-
-//------------------------------------------------------------------------------
-
-        inline bool
-        DofManager::enforce_linear_interpolation() const
-        {
-            return mParams->enforce_linear();
         }
 
 //------------------------------------------------------------------------------

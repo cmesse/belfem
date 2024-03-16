@@ -1572,9 +1572,6 @@ namespace belfem
                 tFlags( f ) = mEnforceLinear ? 1 : 0 ;
             }
 
-            // write flags to parameters
-            mMagneticParameters->enforce_linear( tFlags );
-
             mMagneticParameters->set_sideset_integration_orders( 9 );
             mMagneticParameters->set_block_integration_orders( 9 );
 

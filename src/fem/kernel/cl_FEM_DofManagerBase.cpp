@@ -34,15 +34,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        bool
-        DofManagerBase::enforce_linear_interpolation() const
-        {
-            BELFEM_ERROR( false, "invalid call to abstract base class function." );
-            return false ;
-        }
-
-//------------------------------------------------------------------------------
-
         id_t
         DofManagerBase::calculate_dof_id( const mesh::Node * aNode , const uint aDofType ) const
         {

@@ -19,9 +19,6 @@
 #include "cl_FEM_Block.hpp"
 #include "cl_FEM_KernelParameters.hpp"
 
-// the legacy dof manager
-#include "cl_FEM_Field.hpp"
-
 #include "cl_FEM_DofManager.hpp"
 
 #include "en_IWGs.hpp"
@@ -76,9 +73,6 @@ namespace belfem
             Map< id_t, mesh::Facet * >  mFacetMap ;
             // Map< id_t, mesh::Facet * >  mConnectorMap ;
 
-            // legacy fields
-            Cell< Field * > mFields;
-
             Cell< DofManager * > mDofManagers ;
             Cell< IWG * >        mIWGs ;
 
@@ -97,7 +91,7 @@ namespace belfem
         public:
 //------------------------------------------------------------------------------
 
-            Kernel( KernelParameters * aKernelParameters, bool aLegacyMode=false );
+            Kernel( KernelParameters * aKernelParameters );
 
 //------------------------------------------------------------------------------
 
@@ -132,14 +126,6 @@ namespace belfem
              */
              proc_t
              comm_table( const index_t aIndex ) const;
-
-//------------------------------------------------------------------------------
-
-            /**
-             * expose a field
-             */
-             Field *
-             field( const uint aIndex );
 
 //------------------------------------------------------------------------------
 
@@ -361,11 +347,6 @@ namespace belfem
 
             void
             receive_vertices();
-
-//------------------------------------------------------------------------------
-
-            void
-            create_fields();
 
 //------------------------------------------------------------------------------
 
