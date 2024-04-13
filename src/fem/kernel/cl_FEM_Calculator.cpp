@@ -404,8 +404,10 @@ namespace belfem
             // load vector
             mf.set_size( tNumDofs, BELFEM_QUIET_NAN );
 
-            // dof vector
+            // dof vectors
             mq0.set_size( tNumDofs, BELFEM_QUIET_NAN );
+            mq1.set_size( tNumDofs, BELFEM_QUIET_NAN );
+            mq.set_size( tNumDofs, BELFEM_QUIET_NAN );
 
             // link function to invert J
             switch( tNumDimensions )
@@ -707,7 +709,37 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         const Vector< real > &
-        Calculator::node_data( const string & aNodeField )
+        Calculator::node_data_0( const string & aNodeField )
+        {
+            string tNodeField = aNodeField + "0";
+
+            BELFEM_ASSERT(
+                    mMesh->field( tNodeField )->entity_type() == EntityType::NODE,
+                    "Field '%s' is not a node field", tNodeField.c_str() );
+
+            // grab data object
+            calculator::VectorData * tVectorData = mVectorMap( tNodeField );
+
+            // grab the vector object
+            Vector< real > & aData = tVectorData->vector() ;
+
+            // grab data object from mesh
+            const Vector< real > & tNodeData = mMesh->field_data( tNodeField );
+
+            // loop over all nodes
+            for( uint i=0; i< mElement->element()->number_of_nodes(); ++i )
+            {
+                // copy node data from mesh
+                aData( i  ) = tNodeData( mElement->element()->node( i )->index() );
+            }
+
+            return aData ;
+        }
+
+//------------------------------------------------------------------------------
+
+        const Vector< real > &
+        Calculator::node_data_1( const string & aNodeField )
         {
             BELFEM_ASSERT(
                     mMesh->field( aNodeField )->entity_type() == EntityType::NODE,
@@ -735,7 +767,76 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         const Vector< real > &
-        Calculator::nedelec_data_linear( const string & aEdgeField )
+        Calculator::node_data_theta( const string & aNodeField )
+        {
+            string tNodeField = aNodeField + "0";
+
+            BELFEM_ASSERT(
+                    mMesh->field( tNodeField )->entity_type() == EntityType::NODE,
+                    "Field '%s' is not a node field", tNodeField.c_str() );
+
+            BELFEM_ASSERT(
+                    mMesh->field( aNodeField )->entity_type() == EntityType::NODE,
+                    "Field '%s' is not a node field", aNodeField.c_str() );
+
+            // grab data object
+            calculator::VectorData * tVectorData = mVectorMap( aNodeField );
+
+            // grab the vector object
+            Vector< real > & aData = tVectorData->vector() ;
+
+            // grab data object from mesh
+            const Vector< real > & tNodeData0 = mMesh->field_data( tNodeField );
+            const Vector< real > & tNodeData1 = mMesh->field_data( aNodeField );
+
+            // loop over all nodes
+            for( uint i=0; i< mElement->element()->number_of_nodes(); ++i )
+            {
+                // get the node index
+                index_t tIndex = mElement->element()->node( i )->index() ;
+
+                // interpolate data at desired timestep
+                aData( i  ) =
+                          tNodeData0( tIndex ) * mOneMinusTheta
+                        + tNodeData1( tIndex ) * mTheta ;
+            }
+
+            return aData ;
+        }
+
+//------------------------------------------------------------------------------
+
+        const Vector< real > &
+        Calculator::nedelec_data_linear_0( const string & aEdgeField )
+        {
+            string tEdgeField = aEdgeField + "0";
+
+            BELFEM_ASSERT(
+                    mMesh->field( tEdgeField )->entity_type() == EntityType::EDGE,
+                    "Field '%s' is not an edge field", tEdgeField.c_str() );
+
+            // grab data object
+            calculator::VectorData * tVectorData = mVectorMap( tEdgeField );
+
+            // get ref to field on mesh
+            Vector< real > & tField = mMesh->field_data( tEdgeField );
+
+            // grab the vector object
+            Vector< real > & aData = tVectorData->vector() ;
+
+            // loop over all edges
+            for( uint e=0; e< mElement->element()->number_of_edges(); ++e )
+            {
+                aData( e ) = tField( mElement->element()->edge( e )->index() );
+            }
+
+            return aData ;
+        }
+
+//------------------------------------------------------------------------------
+
+        const Vector< real > &
+        Calculator::nedelec_data_linear_1( const string & aEdgeField )
         {
             BELFEM_ASSERT(
                     mMesh->field( aEdgeField )->entity_type() == EntityType::EDGE,
@@ -762,32 +863,66 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         const Vector< real > &
-        Calculator::nedelec_data_quadratic_2d(
+        Calculator::nedelec_data_linear_theta( const string & aEdgeField )
+        {
+            string tEdgeField = aEdgeField + "0";
+
+            BELFEM_ASSERT(
+                    mMesh->field( tEdgeField )->entity_type() == EntityType::EDGE,
+                    "Field '%s' is not an edge field", tEdgeField.c_str() );
+
+            BELFEM_ASSERT(
+                    mMesh->field( aEdgeField )->entity_type() == EntityType::EDGE,
+                    "Field '%s' is not an edge field", aEdgeField.c_str() );
+
+            // grab data object
+            calculator::VectorData * tVectorData = mVectorMap( aEdgeField );
+
+            // get ref to field on mesh
+            Vector< real > & tField0 = mMesh->field_data( tEdgeField );
+            Vector< real > & tField1 = mMesh->field_data( aEdgeField );
+
+            // grab the vector object
+            Vector< real > & aData = tVectorData->vector() ;
+
+            // loop over all edges
+            for( uint e=0; e< mElement->element()->number_of_edges(); ++e )
+            {
+                index_t tIndex = mElement->element()->edge( e )->index() ;
+                aData( e ) =  tField0( tIndex ) * mOneMinusTheta
+                                   + tField1( tIndex ) * mTheta ;
+            }
+
+            return aData ;
+        }
+
+//------------------------------------------------------------------------------
+
+        const Vector< real > &
+        Calculator::nedelec_data_quadratic_2d_0(
                 const string & aEdgeField,
                 const string & aFaceField,
                 const string & aVectorLabel )
         {
+            string tEdgeField = aEdgeField + "0";
+            string tFaceField = aFaceField + "0";
+
             BELFEM_ASSERT(
-                    mMesh->field( aEdgeField )->entity_type() == EntityType::EDGE,
-                    "Field '%s' is not an edge field", aEdgeField.c_str());
+                    mMesh->field( tEdgeField )->entity_type() == EntityType::EDGE,
+                    "Field '%s' is not an edge field", tEdgeField.c_str());
 
 
             BELFEM_ASSERT(
-                    mMesh->field( aFaceField )->entity_type() == EntityType::FACE,
-                    "Field '%s' is not an edge field", aFaceField.c_str());
+                    mMesh->field( tFaceField )->entity_type() == EntityType::FACE,
+                    "Field '%s' is not an edge field", tFaceField.c_str());
 
 
             Vector< real > & aData = mMesh->field_data( aVectorLabel );
 
-            Vector< real > & tEdgeData = mMesh->field_data( aEdgeField );
-            Vector< real > & tFaceData = mMesh->field_data( aFaceField );
+            Vector< real > & tEdgeData = mMesh->field_data( tEdgeField );
+            Vector< real > & tFaceData = mMesh->field_data( tFaceField );
 
             uint tCount = 0;
-
-            for ( uint e = 0; e < mElement->element()->number_of_edges(); ++e )
-            {
-                aData( tCount++ ) = tEdgeData( mElement->element()->edge( e )->index());
-            }
 
             for ( uint e = 0; e < mElement->element()->number_of_edges(); ++e )
             {
@@ -809,9 +944,138 @@ namespace belfem
             }
 
             // write data into container
-            index_t tIndex = mElement->element()->index();
+            index_t tIndex = 2 * mElement->element()->index();
             aData( tCount++ ) = tFaceData( tIndex );
-            aData( tCount++ ) = tFaceData( tIndex + tIndex + 1 );
+            aData( tCount++ ) = tFaceData( tIndex + 1 );
+
+            return aData ;
+        }
+
+//-------------------------------------   -----------------------------------------
+
+        const Vector< real > &
+        Calculator::nedelec_data_quadratic_2d_1(
+                const string & aEdgeField,
+                const string & aFaceField,
+                const string & aVectorLabel )
+        {
+
+            BELFEM_ASSERT(
+                    mMesh->field( aEdgeField )->entity_type() == EntityType::EDGE,
+                    "Field '%s' is not an edge field", aEdgeField.c_str());
+
+
+            BELFEM_ASSERT(
+                    mMesh->field( aFaceField )->entity_type() == EntityType::FACE,
+                    "Field '%s' is not an edge field", aFaceField.c_str());
+
+
+            Vector< real > & aData = mMesh->field_data( aVectorLabel );
+
+            Vector< real > & tEdgeData = mMesh->field_data( aEdgeField );
+            Vector< real > & tFaceData = mMesh->field_data( aFaceField );
+
+            uint tCount = 0;
+
+            for ( uint e = 0; e < mElement->element()->number_of_edges(); ++e )
+            {
+
+                // get index of edge
+                index_t tIndex = mElement->element()->edge( e )->index();
+
+                // check direction of edge
+                if ( mElement->edge_direction( e ))
+                {
+                    aData( tCount++ ) = tEdgeData( tIndex + tIndex );
+                    aData( tCount++ ) = tEdgeData( tIndex + tIndex + 1 );
+                }
+                else
+                {
+                    aData( tCount++ ) = tEdgeData( tIndex + tIndex + 1 );
+                    aData( tCount++ ) = tEdgeData( tIndex + tIndex );
+                }
+            }
+
+            // write data into container
+            index_t tIndex = 2 * mElement->element()->index();
+            aData( tCount++ ) = tFaceData( tIndex );
+            aData( tCount++ ) = tFaceData( tIndex + 1 );
+
+            return aData ;
+        }
+
+//------------------------------------------------------------------------------
+
+        const Vector< real > &
+        Calculator::nedelec_data_quadratic_2d_theta(
+                const string & aEdgeField,
+                const string & aFaceField,
+                const string & aVectorLabel )
+        {
+            string tEdgeField = aEdgeField + "0";
+            string tFaceField = aFaceField + "0";
+
+            BELFEM_ASSERT(
+                    mMesh->field( tEdgeField )->entity_type() == EntityType::EDGE,
+                    "Field '%s' is not an edge field", tEdgeField.c_str());
+
+
+            BELFEM_ASSERT(
+                    mMesh->field( tFaceField )->entity_type() == EntityType::FACE,
+                    "Field '%s' is not an edge field", tFaceField.c_str());
+
+
+            BELFEM_ASSERT(
+                    mMesh->field( aEdgeField )->entity_type() == EntityType::EDGE,
+                    "Field '%s' is not an edge field", aEdgeField.c_str());
+
+
+            BELFEM_ASSERT(
+                    mMesh->field( aFaceField )->entity_type() == EntityType::FACE,
+                    "Field '%s' is not an edge field", aFaceField.c_str());
+
+            Vector< real > & aData = mMesh->field_data( aVectorLabel );
+
+            Vector< real > & tEdgeData0 = mMesh->field_data( tEdgeField );
+            Vector< real > & tFaceData0 = mMesh->field_data( tFaceField );
+
+            Vector< real > & tEdgeData1 = mMesh->field_data( aEdgeField );
+            Vector< real > & tFaceData1 = mMesh->field_data( aFaceField );
+
+            uint tCount = 0;
+
+            for ( uint e = 0; e < mElement->element()->number_of_edges(); ++e )
+            {
+
+                // get index of edge
+                index_t tIndex = mElement->element()->edge( e )->index();
+
+                // check direction of edge
+                if ( mElement->edge_direction( e ))
+                {
+                    aData( tCount++ ) =   tEdgeData0( tIndex + tIndex ) * mOneMinusTheta
+                                              + tEdgeData1( tIndex + tIndex )  * mTheta ;
+
+                    aData( tCount++ ) = tEdgeData0( tIndex + tIndex + 1 ) * mOneMinusTheta
+                                              + tEdgeData1( tIndex + tIndex + 1 ) * mTheta ;
+                }
+                else
+                {
+                    aData( tCount++ ) = tEdgeData0( tIndex + tIndex + 1 ) * mOneMinusTheta
+                                        + tEdgeData1( tIndex + tIndex + 1 ) * mTheta ;
+
+                    aData( tCount++ ) =   tEdgeData0( tIndex + tIndex ) * mOneMinusTheta
+                                          + tEdgeData1( tIndex + tIndex )  * mTheta ;
+                }
+            }
+
+            // write data into container
+            index_t tIndex = 2 * mElement->element()->index();
+            aData( tCount++ ) =   tFaceData0( tIndex ) * mOneMinusTheta
+                                       + tFaceData1( tIndex ) * mTheta ;
+
+            aData( tCount++ ) = tFaceData0( tIndex + 1 )
+                                     + tFaceData1( tIndex + 1 ) * mTheta ;
 
             return aData ;
         }
@@ -1194,6 +1458,35 @@ namespace belfem
             // now we can return the vector
             return mNormal;
         }
+
+//------------------------------------------------------------------------------
+
+        const Vector< real > &
+        Calculator::q0()
+        {
+            for( uint k=0; k<mElement->number_of_dofs(); ++k )
+            {
+                Dof * tDof = mElement->dof( k );
+
+                mq0( k ) = mMesh->field( mMesh->field( tDof->field_index() )->label() + "0" )->data()( tDof->dof_index_on_field() );
+            }
+            return mq0 ;
+        }
+
+//------------------------------------------------------------------------------
+
+        const Vector< real > &
+        Calculator::q1()
+        {
+            for( uint k=0; k<mElement->number_of_dofs(); ++k )
+            {
+                Dof * tDof = mElement->dof( k );
+
+                mq1( k ) = mMesh->field( tDof->field_index() )->data()( tDof->dof_index_on_field() );
+            }
+            return mq1 ;
+        }
+
 //------------------------------------------------------------------------------
     }
 }

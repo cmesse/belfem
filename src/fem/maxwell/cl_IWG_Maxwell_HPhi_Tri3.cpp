@@ -425,11 +425,11 @@ namespace belfem
             // compute potential for the individual nodes
 
             tPhi( 0 ) = tHx * aElement->facet()->master()->node( 0 )->x()
-                            + tHy * aElement->facet()->master()->node( 0 )->y();
+                             + tHy * aElement->facet()->master()->node( 0 )->y();
             tPhi( 1 ) = tHx * aElement->facet()->master()->node( 1 )->x()
-                            + tHy * aElement->facet()->master()->node( 1 )->y();
+                             + tHy * aElement->facet()->master()->node( 1 )->y();
             tPhi( 2 ) = tHx * aElement->facet()->master()->node( 2 )->x()
-                            + tHy * aElement->facet()->master()->node( 2  )->y();
+                             + tHy * aElement->facet()->master()->node( 2  )->y();
             aRHS = aJacobian * tPhi ;
         }
 
@@ -727,7 +727,7 @@ namespace belfem
                 real tValue = tLm( k ) * tRho / t ;
                 tK( k, p )   =    tValue ;
                 tK( k, p+1 ) =   -tValue ;
-            }
+            }aNedelecBlocks
 
             // recover resistivity from slave side
             tRho = mMesh->field_data( "elementRho")( mGhostElementMap( aElement->id()

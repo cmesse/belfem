@@ -9,7 +9,7 @@
 #include "Mesh_Enums.hpp"
 
 #include "cl_Element.hpp"
-#include "cl_LagrangeElement.hpp"
+#include "cl_ElementTemplate.hpp"
 
 namespace belfem
 {

@@ -84,10 +84,10 @@ namespace belfem
             if( aSlave != nullptr )
             {
                 Cell< Node * > tMasterNodes;
-                aMaster->get_nodes_of_facet( aIndexOnMaster, tMasterNodes );
+                aMaster->get_corner_nodes_of_facet( aIndexOnMaster, tMasterNodes );
 
                 Cell< Node * > tSlaveNodes;
-                aSlave->get_nodes_of_facet( aIndexOnSlave, tSlaveNodes );
+                aSlave->get_corner_nodes_of_facet( aIndexOnSlave, tSlaveNodes );
 
                 BELFEM_ASSERT( tMasterNodes.size() == tSlaveNodes.size(), "Facets do not match" );
 
@@ -110,6 +110,37 @@ namespace belfem
             }
 
             return BELFEM_UINT_MAX ;
+        }
+
+//-----------------------------------------------------------------------------
+
+        bool
+        Face::edge_orientation( const uint aEdgeIndex ) const
+        {
+            BELFEM_ASSERT( aEdgeIndex < this->number_of_edges(), "Invalid edge index %u at face %lu",
+                           ( unsigned int ) aEdgeIndex,
+                           ( long unsigned int ) this->id() );
+
+            id_t tA = this->node( aEdgeIndex )->id();
+            id_t tB = this->node( aEdgeIndex + 1 < this->number_of_edges() ? aEdgeIndex + 1 : 0 )->id() ;
+
+            const Edge * tEdge = this->edge( aEdgeIndex );
+
+            if( tA == tEdge->node( 0 )->id() && tB == tEdge->node( 1 )->id() )
+            {
+                return true ;
+            }
+            else if( tA == tEdge->node( 1 )->id() && tB == tEdge->node( 0 )->id() )
+            {
+                return false ;
+            }
+            else
+            {
+                BELFEM_ERROR( false, "Invalid edge %u at face %lu",
+                               ( unsigned int ) aEdgeIndex,
+                               ( long unsigned int ) this->id() );
+                return false ;
+            }
         }
 
 //-----------------------------------------------------------------------------

@@ -50,24 +50,12 @@ namespace belfem
             {
                 mMesh.update_node_indices() ;
 
-                Vector< id_t > tBlockIDs ;
-                if( aNedelecBlocks.length() == 0 && aNedelecSideSets.length() == 0 )
-                {
-                    // select all blocks
-                    this->get_all_block_ids( tBlockIDs );
-                }
-                else
-                {
-                    // select given blocks
-                    tBlockIDs = aNedelecBlocks ;
-                }
-
                 message( 2, "Creating edges ...");
 
                 // collect the elements from these blocks
                 Cell< Element * > tElements ;
 
-                this->collect_elements( tBlockIDs, aNedelecSideSets );
+                this->collect_elements( aNedelecBlocks, aNedelecSideSets );
 
                 // create the edge IDs
                 Vector< luint > tEdgeKeys ;
@@ -121,45 +109,89 @@ namespace belfem
                 const Vector< id_t > & aBlockIDs,
                 const Vector< id_t > & aSideSetIDs )
         {
+
             mMesh.unflag_all_elements() ;
             mMesh.unflag_all_facets() ;
 
             // reset element order
             mElementOrder = 0 ;
 
+            aBlockIDs.print("aBlockIDs");
+            aSideSetIDs.print("aSideSetIDs");
+
             // count number of elements
-            for( id_t tID : aBlockIDs )
+            if( aBlockIDs.length() == 0 )
             {
-                mMesh.block( tID )->flag_elements() ;
-
-                // get order
-                uint tOrder = interpolation_order_numeric( mMesh.block( tID )->element_type() );
-
-                mElementOrder = tOrder > mElementOrder ?
-                                tOrder : mElementOrder ;
-            }
-            for( id_t tID : aSideSetIDs )
-            {
-                Cell< Facet * > & tFacets = mMesh.sideset( tID )->facets();
-
-                for( Facet * tFacet : tFacets )
+                for( Block * tBlock : mMesh.blocks() )
                 {
-                    tFacet->flag() ;
-                }
+                    tBlock->flag_elements() ;
 
-                if( tFacets.size() > 0 )
-                {
                     // get order
-                    uint tOrder = interpolation_order_numeric( mMesh.sideset( tID )->element_type() );
+                    uint tOrder = interpolation_order_numeric( tBlock->element_type() );
 
                     mElementOrder = tOrder > mElementOrder ?
                                     tOrder : mElementOrder ;
+
+                }
+            }
+            else
+            {
+                for ( id_t tID: aBlockIDs )
+                {
+                    mMesh.block( tID )->flag_elements();
+
+                    // get order
+                    uint tOrder = interpolation_order_numeric( mMesh.block( tID )->element_type());
+
+                    mElementOrder = tOrder > mElementOrder ?
+                                    tOrder : mElementOrder;
+                }
+            }
+
+            if( aSideSetIDs.length() == 0 )
+            {
+                for( SideSet * tSideSet : mMesh.sidesets() )
+                {
+                    Cell< Facet * > & tFacets = tSideSet->facets();
+                    for( Facet * tFacet : tFacets )
+                    {
+                        if( tFacet->master()->is_flagged() )
+                        {
+                            tFacet->flag();
+
+                            // get order
+                            uint tOrder = interpolation_order_numeric( tSideSet->element_type() );
+
+                            mElementOrder = tOrder > mElementOrder ?
+                                            tOrder : mElementOrder ;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                for ( id_t tID: aSideSetIDs )
+                {
+                    Cell< Facet * > & tFacets = mMesh.sideset( tID )->facets();
+
+                    for ( Facet * tFacet: tFacets )
+                    {
+                        tFacet->flag();
+                    }
+
+                    if ( tFacets.size() > 0 )
+                    {
+                        // get order
+                        uint tOrder = interpolation_order_numeric( mMesh.sideset( tID )->element_type());
+
+                        mElementOrder = tOrder > mElementOrder ?
+                                        tOrder : mElementOrder;
+                    }
                 }
             }
 
             // initialize counter
             index_t tCount = 0 ;
-
 
             // count flagged elements
             Cell< Element * > & tAllElements = mMesh.elements() ;
@@ -184,20 +216,15 @@ namespace belfem
             // allocate memory
             mElements.set_size( tCount, nullptr );
 
+            std::cout << "check " << tCount << std::endl ;
+
             // reset counter
             tCount = 0 ;
 
-            // add elements from blocks
-            for( id_t tID : aBlockIDs )
+            for( Element * tElement : tAllElements )
             {
-                // grab element container
-                Cell< Element * > & tElements
-                        = mMesh.block( tID )->elements();
-
-                // add elements
-                for ( Element * tElement : tElements )
+                if( tElement->is_flagged() )
                 {
-                    // increment the counter
                     mElements( tCount++ ) = tElement;
                 }
             }
@@ -484,9 +511,8 @@ namespace belfem
             if ( mRank == 0 )
             {
                 Cell< Edge * >    & tEdges = mMesh.edges();
-                Cell< Element * > & tElements = mMesh.elements();
 
-                std::cout << "Edges:" << std::endl ;
+                std::cout << "EDGES:" << std::endl ;
 
                 for( Edge * tEdge : tEdges )
                 {
@@ -498,22 +524,6 @@ namespace belfem
                     }
                     std::cout << std::endl ;
                 }
-
-                std::cout << "Elements:" << std::endl ;
-
-                for( Element * tElement : tElements )
-                {
-                    if( tElement->has_edges() )
-                    {
-                        std::cout << tElement->id() << " :" ;
-                        for( uint k=0; k<tElement->number_of_edges(); ++k )
-                        {
-                            std::cout << " " << tElement->edge( k )->id() ;
-                        }
-                        std::cout << std::endl ;
-                    }
-                }
-
             }
         }
 

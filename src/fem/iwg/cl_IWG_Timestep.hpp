@@ -131,6 +131,7 @@ namespace belfem
             derivative_no_stiffness( Matrix< real > & aM, Matrix< real > & aK,
                                      Vector< real > & aF, Vector< real > & aQ0  );
 
+
 //------------------------------------------------------------------------------
         };
 

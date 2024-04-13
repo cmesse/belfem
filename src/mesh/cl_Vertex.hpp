@@ -29,6 +29,9 @@ namespace belfem
             //! pointer to edges
             Edge **mEdges;
 
+            //! pointer to faces
+            Face **mFaces;
+
             //! pointer to facets
             Facet **mFacets;
 
@@ -40,6 +43,9 @@ namespace belfem
 
             //! number of edges connected to this vertex
             uint mEdgeCounter = 0 ;
+
+            //! number of faces connected to this vertex
+            uint mFaceCounter = 0 ;
 
             //! number of facets connected to this vertex
             uint mFacetCounter = 0 ;
@@ -124,6 +130,32 @@ namespace belfem
 
             virtual const Edge *
             edge( const uint aIndex ) const ;
+//------------------------------------------------------------------------------
+//  faces
+
+//------------------------------------------------------------------------------
+
+            void
+            reset_face_container();
+
+            void
+            increment_face_counter();
+
+            void
+            allocate_face_container();
+
+            void
+            add_face( Face * aFace );
+
+            virtual uint
+            number_of_faces() const ;
+
+            virtual Face *
+            face( const uint aIndex );
+
+            virtual const Face *
+            face( const uint aIndex ) const ;
+
 
 //------------------------------------------------------------------------------
 //  facets
@@ -307,6 +339,38 @@ namespace belfem
                           ( unsigned int ) mNodeCounter );
 
             return mEdges[ aIndex ];
+        }
+
+//------------------------------------------------------------------------------
+
+        inline uint
+        Vertex::number_of_faces() const
+        {
+            return mFaceCounter ;
+        }
+
+        inline Face *
+        Vertex::face( const uint aIndex )
+        {
+            BELFEM_ASSERT( aIndex < mFaceCounter,
+                           "Face index %u is out of bounds for face %u, must be < %u.",
+                           ( unsigned int ) aIndex,
+                           ( unsigned int ) this->id(),
+                           ( unsigned int ) mFaceCounter );
+
+            return mFaces[ aIndex ];
+        }
+
+        inline const Face *
+        Vertex::face( const uint aIndex ) const
+        {
+            BELFEM_ASSERT( aIndex < mFaceCounter,
+                           "Face index %u is out of bounds for face %u, must be < %u.",
+                           ( unsigned int ) aIndex,
+                           ( unsigned int ) this->id(),
+                           ( unsigned int ) mFaceCounter );
+
+            return mFaces[ aIndex ];
         }
 
 //------------------------------------------------------------------------------

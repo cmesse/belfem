@@ -7,6 +7,7 @@
 
 #include "assert.hpp"
 #include "typedefs.hpp"
+#include "cl_Bitset.hpp"
 #include "Mesh_Enums.hpp"
 #include "cl_Element.hpp"
 
@@ -26,7 +27,7 @@ namespace belfem
           * F : Number of Faces
           */
         template< uint N, uint C, uint E, uint T, uint F >
-        class LagrangeElement : public Element
+        class ElementTemplate : public Element
         {
             //! pointer to nodes
             Node **mNodes;
@@ -43,15 +44,17 @@ namespace belfem
             //! flag telling if faces have been allocated
             bool mHaveFaces = false ;
 
+            Bitset<E> mEdgeOrientations ;
+
 //------------------------------------------------------------------------------
         public:
 //------------------------------------------------------------------------------
 
-            LagrangeElement( const id_t & aID );
+            ElementTemplate( const id_t & aID );
 
 //------------------------------------------------------------------------------
 
-            ~LagrangeElement();
+            ~ElementTemplate();
 
 //------------------------------------------------------------------------------
 
@@ -288,6 +291,17 @@ namespace belfem
              print() const ;
 
 //------------------------------------------------------------------------------
+
+            void
+            set_edge_orientation( const uint aEdgeIndex, const bool aIsPlus );
+
+//------------------------------------------------------------------------------
+
+
+            bool
+            edge_orientation( const uint aEdgeIndex ) const ;
+
+//------------------------------------------------------------------------------
         private:
 //------------------------------------------------------------------------------
 
@@ -344,7 +358,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::allocate_node_container()
+        ElementTemplate< N, C, E, T, F >::allocate_node_container()
         {
             // create the contiainer
             mNodes = new Node * [ N ];
@@ -361,7 +375,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::allocate_edge_container()
+        ElementTemplate< N, C, E, T, F >::allocate_edge_container()
         {
             // make sure that container is empty
             BELFEM_ASSERT( ! mHaveEdges, "Edge container for element %lu has already been allocated",
@@ -383,7 +397,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::allocate_face_container()
+        ElementTemplate< N, C, E, T, F >::allocate_face_container()
         {
             // make sure that container is empty
             BELFEM_ASSERT( ! mHaveFaces, "Face container for element %lu has already been allocated",
@@ -404,7 +418,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         template< uint N, uint C, uint E, uint T, uint F >
-        LagrangeElement< N, C, E, T, F >::LagrangeElement( const id_t & aID ) :
+        ElementTemplate< N, C, E, T, F >::ElementTemplate( const id_t & aID ) :
                 Element( aID )
         {
             this->allocate_node_container();
@@ -418,7 +432,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         template< uint N, uint C, uint E, uint T, uint F >
-        LagrangeElement< N, C, E, T, F >::~LagrangeElement()
+        ElementTemplate< N, C, E, T, F >::~ElementTemplate()
         {
             this->delete_face_container();
             this->delete_edge_container();
@@ -429,9 +443,9 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         ElementType
-        LagrangeElement< N, C, E, T, F >::type() const
+        ElementTemplate< N, C, E, T, F >::type() const
         {
-            BELFEM_ERROR( false, "type() function not implemented for LagrangeElement< %u, %u, %u, %u, %u  > with id %lu",
+            BELFEM_ERROR( false, "type() function not implemented for ElementTemplate< %u, %u, %u, %u, %u  > with id %lu",
                          ( unsigned int ) N,
                          ( unsigned int ) C,
                          ( unsigned int ) E,
@@ -446,7 +460,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         uint
-        LagrangeElement< N, C, E, T, F >::number_of_nodes() const
+        ElementTemplate< N, C, E, T, F >::number_of_nodes() const
         {
             return N;
         }
@@ -455,7 +469,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         inline uint
-        LagrangeElement< N, C, E, T, F >::number_of_corner_nodes() const
+        ElementTemplate< N, C, E, T, F >::number_of_corner_nodes() const
         {
             return C;
         }
@@ -464,7 +478,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         uint
-        LagrangeElement< N, C, E, T, F >::number_of_facets() const
+        ElementTemplate< N, C, E, T, F >::number_of_facets() const
         {
             return T;
         }
@@ -473,7 +487,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         uint
-        LagrangeElement< N, C, E, T, F >::number_of_faces() const
+        ElementTemplate< N, C, E, T, F >::number_of_faces() const
         {
             return F;
         }
@@ -483,7 +497,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         uint
-        LagrangeElement< N, C, E, T, F >::number_of_edges() const
+        ElementTemplate< N, C, E, T, F >::number_of_edges() const
         {
             return E;
         }
@@ -492,7 +506,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::delete_node_container()
+        ElementTemplate< N, C, E, T, F >::delete_node_container()
         {
             // delete the node container
             delete[] mNodes;
@@ -501,7 +515,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::delete_face_container()
+        ElementTemplate< N, C, E, T, F >::delete_face_container()
         {
             // check if container has been allocated
             if ( mHaveFaces )
@@ -518,7 +532,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::delete_edge_container()
+        ElementTemplate< N, C, E, T, F >::delete_edge_container()
         {
             // check if container has been allocated
             if ( mHaveEdges )
@@ -535,7 +549,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::insert_node( Node * aNode, const uint aIndex )
+        ElementTemplate< N, C, E, T, F >::insert_node( Node * aNode, const uint aIndex )
         {
             // make sure that index is valid
             BELFEM_ASSERT(aIndex < N,
@@ -552,7 +566,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         Node *
-        LagrangeElement< N, C, E, T, F >::node( const uint aIndex )
+        ElementTemplate< N, C, E, T, F >::node( const uint aIndex )
         {
             // make sure that index is valid
             BELFEM_ASSERT(aIndex < N,
@@ -569,7 +583,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         const Node *
-        LagrangeElement< N, C, E, T, F >::node( const uint aIndex ) const
+        ElementTemplate< N, C, E, T, F >::node( const uint aIndex ) const
         {
             // make sure that index is valid
             BELFEM_ASSERT(aIndex < N,
@@ -587,7 +601,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         inline bool
-        LagrangeElement< N, C, E, T, F >::has_edges() const
+        ElementTemplate< N, C, E, T, F >::has_edges() const
         {
             return mHaveEdges ;
         }
@@ -596,7 +610,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         inline bool
-        LagrangeElement< N, C, E, T, F >::has_faces() const
+        ElementTemplate< N, C, E, T, F >::has_faces() const
         {
             return mHaveFaces ;
         }
@@ -605,7 +619,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::insert_edge( Edge * aEdge, const uint aIndex )
+        ElementTemplate< N, C, E, T, F >::insert_edge( Edge * aEdge, const uint aIndex )
         {
             // make sure that index is valid
             BELFEM_ASSERT(aIndex < E,
@@ -622,7 +636,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::insert_face( Face * aFace, const uint aIndex )
+        ElementTemplate< N, C, E, T, F >::insert_face( Face * aFace, const uint aIndex )
         {
             // make sure that index is valid
             BELFEM_ASSERT( aIndex < F,
@@ -639,7 +653,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         Edge *
-        LagrangeElement< N, C, E, T, F >::edge( const uint aIndex )
+        ElementTemplate< N, C, E, T, F >::edge( const uint aIndex )
         {
 
             BELFEM_ASSERT( mHaveEdges, "Edges for element %lu have not been allocated",
@@ -660,7 +674,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         const Edge *
-        LagrangeElement< N, C, E, T, F >::edge( const uint aIndex ) const
+        ElementTemplate< N, C, E, T, F >::edge( const uint aIndex ) const
         {
 
             BELFEM_ASSERT( mHaveEdges, "Edges for element %lu have not been allocated",
@@ -681,7 +695,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         Face *
-        LagrangeElement< N, C, E, T, F >::face( const uint aIndex )
+        ElementTemplate< N, C, E, T, F >::face( const uint aIndex )
         {
 
             BELFEM_ASSERT( mHaveFaces, "Faces for element %lu have not been allocated",
@@ -702,7 +716,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         const Face *
-        LagrangeElement< N, C, E, T, F >::face( const uint aIndex ) const
+        ElementTemplate< N, C, E, T, F >::face( const uint aIndex ) const
         {
 
             BELFEM_ASSERT( mHaveFaces, "Edges for element %lu have not been allocated",
@@ -723,7 +737,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::unflag_nodes()
+        ElementTemplate< N, C, E, T, F >::unflag_nodes()
         {
             for( uint k=0; k<N; ++k )
             {
@@ -735,7 +749,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::flag_nodes()
+        ElementTemplate< N, C, E, T, F >::flag_nodes()
         {
             for( uint k=0; k<N; ++k )
             {
@@ -747,7 +761,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::flag_corner_nodes()
+        ElementTemplate< N, C, E, T, F >::flag_corner_nodes()
         {
             for( uint k=0; k<C; ++k )
             {
@@ -759,7 +773,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::unflag_corner_nodes()
+        ElementTemplate< N, C, E, T, F >::unflag_corner_nodes()
         {
             for( uint k=0; k<C; ++k )
             {
@@ -771,7 +785,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::unflag_edges()
+        ElementTemplate< N, C, E, T, F >::unflag_edges()
         {
             if( mHaveEdges )
             {
@@ -786,7 +800,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::flag_edges()
+        ElementTemplate< N, C, E, T, F >::flag_edges()
         {
             if( mHaveEdges )
             {
@@ -801,7 +815,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::unflag_faces()
+        ElementTemplate< N, C, E, T, F >::unflag_faces()
         {
             if( mHaveFaces )
             {
@@ -816,7 +830,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::flag_faces()
+        ElementTemplate< N, C, E, T, F >::flag_faces()
         {
             if( mHaveFaces )
             {
@@ -831,7 +845,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::get_nodes_of_facet( const uint aFacetIndex, Cell< Node * > & aNodes )
+        ElementTemplate< N, C, E, T, F >::get_nodes_of_facet( const uint aFacetIndex, Cell< Node * > & aNodes )
         {
             BELFEM_ERROR( false,
                     "Function get_nodes_of_facet() not implemented for element %lu",
@@ -842,7 +856,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::get_corner_nodes_of_facet( const uint aFacetIndex, Cell< Node * > & aNodes )
+        ElementTemplate< N, C, E, T, F >::get_corner_nodes_of_facet( const uint aFacetIndex, Cell< Node * > & aNodes )
         {
             BELFEM_ERROR( false,
                           "Function get_corner_nodes_of_facet() not implemented for element %lu",
@@ -853,7 +867,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::get_edges_of_facet( const uint aFacetIndex, Cell< Edge * > & aEdges )
+        ElementTemplate< N, C, E, T, F >::get_edges_of_facet( const uint aFacetIndex, Cell< Edge * > & aEdges )
         {
             BELFEM_ERROR( false,
                          "invalid call of base class function get_edges_of_facet() from element %lu",
@@ -865,7 +879,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::get_nodes_of_edge( const uint aEdgeIndex, Cell< Node * > & aNodes )
+        ElementTemplate< N, C, E, T, F >::get_nodes_of_edge( const uint aEdgeIndex, Cell< Node * > & aNodes )
         {
             // unless this is a 3D element, this function is identical to get_nodes_of_facet
             this->get_nodes_of_facet( aEdgeIndex, aNodes );
@@ -875,7 +889,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::throw_facet_error( const uint aFacetIndex )
+        ElementTemplate< N, C, E, T, F >::throw_facet_error( const uint aFacetIndex )
         {
             BELFEM_ERROR( aFacetIndex<T,
                     "invalid facet index %u for element %lu ( must be < %u )",
@@ -888,7 +902,49 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::throw_edge_error( const uint aEdgeIndex )
+        ElementTemplate< N, C, E, T, F >::set_edge_orientation( const uint aEdgeIndex, const bool aIsPlus )
+        {
+            BELFEM_ASSERT( mHaveEdges, "edges have not been allocated for element %lu",
+                           ( long unsigned int ) this->id() );
+
+            BELFEM_ASSERT( aEdgeIndex<E,
+                          "invalid edge index %u for element %lu ( must be < %u )",
+                          ( unsigned int ) aEdgeIndex,
+                          ( long unsigned int ) this->id(),
+                          ( unsigned int ) E );
+
+            if( aIsPlus )
+            {
+                mEdgeOrientations.set( aEdgeIndex );
+            }
+            else
+            {
+                mEdgeOrientations.reset( aEdgeIndex );
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        template< uint N, uint C, uint E, uint T, uint F >
+        bool
+        ElementTemplate< N, C, E, T, F >::edge_orientation( const uint aEdgeIndex ) const
+        {
+            BELFEM_ASSERT( mHaveEdges, "edges have not been allocated for element %lu",
+                           ( long unsigned int ) this->id() );
+
+            BELFEM_ASSERT( aEdgeIndex<E,
+                           "invalid edge index %u for element %lu ( must be < %u )",
+                           ( unsigned int ) aEdgeIndex,
+                           ( long unsigned int ) this->id(),
+                           ( unsigned int ) E );
+            
+            return mEdgeOrientations.test( aEdgeIndex );
+        }
+
+//------------------------------------------------------------------------------
+        template< uint N, uint C, uint E, uint T, uint F >
+        void
+        ElementTemplate< N, C, E, T, F >::throw_edge_error( const uint aEdgeIndex )
         {
             BELFEM_ERROR( aEdgeIndex<E,
                          "invalid edge index %u for element %lu ( must be < %u )",
@@ -901,7 +957,7 @@ namespace belfem
 
         template< uint N, uint C, uint E, uint T, uint F >
         void
-        LagrangeElement< N, C, E, T, F >::print() const
+        ElementTemplate< N, C, E, T, F >::print() const
         {
             std::cout << "Element " << this->id() << " of type " <<
                 to_string( this->type() ) << std::endl << std::endl

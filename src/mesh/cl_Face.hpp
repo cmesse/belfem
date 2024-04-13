@@ -18,9 +18,6 @@ namespace belfem
 
 //-----------------------------------------------------------------------------
 
-        /**
-         * \brief Special Edge class for NEDELEC-Type elements
-         */
         class Face : public Vertex
         {
 
@@ -80,6 +77,11 @@ namespace belfem
 
             uint
             orientation_on_slave() const ;
+
+//-----------------------------------------------------------------------------
+
+            bool
+            edge_orientation( const uint aEdgeIndex ) const ;
 
 //-----------------------------------------------------------------------------
         private:

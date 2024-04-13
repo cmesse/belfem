@@ -104,9 +104,9 @@ namespace belfem
                     const Vector< id_t >        & aSideSetIDs,
                     const index_t               & aNumFaces,
                     const Map< luint, index_t > & aFaceMap,
-                    Vector< id_t >              & aMasterOwner,
+                    Vector< id_t >              & aMasterIDs,
                     Vector< index_t >           & aMasterIndex,
-                    Vector< id_t >              & aSlaveOwner,
+                    Vector< id_t >              & aSlaveIDs,
                     Vector< index_t >           & aSlaveIndex );
 
 //----------------------------------------------------------------------

@@ -134,9 +134,8 @@ namespace belfem
             //! dof vector for last timestep
             Vector< real > mq0 ;
 
-            //! current dof vector for last timestep
-            Vector< real > mq ;
-
+            //! dof vector for next timestep
+            Vector< real > mq1 ;
 
             //! normal vector
             Vector< real > mNormal ;
@@ -205,6 +204,10 @@ namespace belfem
             // surface increment
             real ( Calculator::*mFundS )( const uint aIndex );
 
+            // for theta method
+            real mTheta = 1.0 ;
+            real mOneMinusTheta = 0.0 ;
+
 //------------------------------------------------------------------------------
         public:
 //------------------------------------------------------------------------------
@@ -257,15 +260,15 @@ namespace belfem
             /**
              * return the dof vector at current timestep
              */
-            Vector< real > &
-            q() ;
+            const Vector< real > &
+            q1() ;
 
 //------------------------------------------------------------------------------
 
             /**
              * return the dof vector at the last timestep
              */
-            Vector< real > &
+            const Vector< real > &
             q0() ;
 
 //------------------------------------------------------------------------------
@@ -419,8 +422,8 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             void
-            initialize_integration( const ElementType aElementType,
-                                         const InterpolationType aInterpolationType );
+            initialize_integration( const ElementType    aElementType,
+                                    const InterpolationType aInterpolationType );
 
 //------------------------------------------------------------------------------
 
@@ -580,6 +583,58 @@ namespace belfem
 
             real
             dS_axsymmy( const uint aIndex );
+
+//------------------------------------------------------------------------------
+
+            const Vector< real > &
+            node_data_0( const string & aNodeField );
+
+
+//------------------------------------------------------------------------------
+
+            const Vector< real > &
+            node_data_1( const string & aNodeField );
+
+//------------------------------------------------------------------------------
+
+            const Vector< real > &
+            node_data_theta( const string & aNodeField );
+
+//------------------------------------------------------------------------------
+
+            const Vector< real > &
+            nedelec_data_linear_0( const string & aEdgeField );
+
+//------------------------------------------------------------------------------
+
+            const Vector< real > &
+            nedelec_data_linear_1( const string & aEdgeField );
+
+//------------------------------------------------------------------------------
+
+            const Vector< real > &
+            nedelec_data_linear_theta( const string & aEdgeField );
+
+//------------------------------------------------------------------------------
+
+            const Vector< real > &
+            nedelec_data_quadratic_2d_0( const string & aEdgeField,
+                                       const string & aFaceField,
+                                       const string & aVectorLabel );
+
+//------------------------------------------------------------------------------
+
+            const Vector< real > &
+            nedelec_data_quadratic_2d_1( const string & aEdgeField,
+                                         const string & aFaceField,
+                                         const string & aVectorLabel );
+
+//------------------------------------------------------------------------------
+
+            const Vector< real > &
+            nedelec_data_quadratic_2d_theta( const string & aEdgeField,
+                                         const string & aFaceField,
+                                         const string & aVectorLabel );
 
 //------------------------------------------------------------------------------
         };
@@ -1096,22 +1151,6 @@ namespace belfem
         Calculator::f()
         {
             return mf ;
-        }
-
-//------------------------------------------------------------------------------
-
-        inline Vector< real > &
-        Calculator::q()
-        {
-            return mq ;
-        }
-
-//------------------------------------------------------------------------------
-
-        inline Vector< real > &
-        Calculator::q0()
-        {
-            return mq0 ;
         }
 
 //------------------------------------------------------------------------------

@@ -7,7 +7,7 @@
 
 #include "typedefs.hpp"
 #include "Mesh_Enums.hpp"
-#include "cl_LagrangeElement.hpp"
+#include "cl_ElementTemplate.hpp"
 
 namespace belfem
 {
@@ -17,7 +17,7 @@ namespace belfem
 
         template <>
         ElementType
-        LagrangeElement< 1, 1, 0, 0, 0 >::type() const
+        ElementTemplate< 1, 1, 0, 0, 0 >::type() const
         {
             return ElementType::VERTEX;
         }

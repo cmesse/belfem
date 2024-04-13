@@ -11,6 +11,7 @@
 #include "cl_Mesh_GmshReader.hpp"
 #include "cl_Mesh_ExodusWriter.hpp"
 #include "cl_Mesh.hpp"
+#include "cl_Mesh_OrientationChecker.hpp"
 
 using namespace belfem;
 
@@ -27,31 +28,33 @@ int main( int    argc,
     // print_banner();
 
     // load the mesh
-    Mesh * tMesh = new Mesh( "mesh.msh" );
+    Mesh * tMesh = new Mesh( "tetsindie.msh" );
 
     // convert node coordinates from mm to m
-    tMesh->scale_mesh( 0.001 );
+    //tMesh->scale_mesh( 0.001 );
 
-    /*// create a field
-    Vector< real > & tElemField = tMesh->create_field( "MyElementField", EntityType::ELEMENT );
-    Vector< real > & tNodeField = tMesh->create_field( "MyNodeField", EntityType::NODE );
-
-    // create a global variable
-    tMesh->create_global_variable( "Pi", 3.141 );
-
-    for( uint k=0; k<tMesh->number_of_nodes(); ++k )
+    // create an orientation checker
+    for( mesh::Block * tBlock : tMesh->blocks() )
     {
-        tNodeField( k ) = ( real ) k;
+
+        mesh::OrientationChecker * tChecker = new mesh::OrientationChecker();
+        tChecker->set_element_type( tBlock->element_type() );
+
+        for ( mesh::Element * tElement: tMesh->elements())
+        {
+            tChecker->process_element( tElement );
+        }
+
+        delete tChecker ;
     }
 
-    for( uint k=0; k<tMesh->number_of_elements(); ++k )
-    {
-        tElemField( k ) = ( real ) k;
-    } */
+    tMesh->create_edges( false );
+    tMesh->create_faces( false );
 
     //mesh::ExodusWriter tWriter( tMesh );
     //tMesh->save( "mesh.vtk" );
     tMesh->save( "mesh.exo" );
+
 
     delete tMesh ;
 

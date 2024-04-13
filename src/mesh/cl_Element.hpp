@@ -461,6 +461,30 @@ namespace belfem
                              ( long unsigned int ) this->id() );
             }
 
+
+//------------------------------------------------------------------------------
+
+            virtual void
+            set_edge_orientation( const uint aEdgeIndex, const bool aIsPlus )
+            {
+                BELFEM_ERROR( false,
+                              "invalid call of base class function set_edge_orientation() from Element %lu",
+                              ( long unsigned int ) this->id() );
+            }
+
+
+//------------------------------------------------------------------------------
+
+            virtual bool
+            edge_orientation( const uint aEdgeIndex ) const
+            {
+                BELFEM_ERROR( false,
+                              "invalid call of base class function edge_orientation() from Element %lu",
+                              ( long unsigned int ) this->id() );
+
+                return false ;
+            }
+
 //------------------------------------------------------------------------------
 
             void

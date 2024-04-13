@@ -7,7 +7,7 @@
 
 #include "typedefs.hpp"
 #include "Mesh_Enums.hpp"
-#include "cl_LagrangeElement.hpp"
+#include "cl_ElementTemplate.hpp"
 
 namespace belfem
 {
@@ -17,7 +17,7 @@ namespace belfem
 
         template <>
         ElementType
-        LagrangeElement< 4, 4, 6, 4, 4 >::type() const
+        ElementTemplate< 4, 4, 6, 4, 4 >::type() const
         {
             return ElementType::TET4;
         }
@@ -26,7 +26,7 @@ namespace belfem
 
         template <>
         void
-        LagrangeElement< 4, 4, 6, 4, 4 >::get_nodes_of_facet( const uint aFacetIndex, Cell< Node * > & aNodes )
+        ElementTemplate< 4, 4, 6, 4, 4 >::get_nodes_of_facet( const uint aFacetIndex, Cell< Node * > & aNodes )
         {
             // allocate the node container
             aNodes.set_size( 3, nullptr );
@@ -72,7 +72,7 @@ namespace belfem
 
         template <>
         void
-        LagrangeElement< 4, 4, 6, 4, 4 >::get_corner_nodes_of_facet( const uint aFacetIndex, Cell< Node * > & aNodes )
+        ElementTemplate< 4, 4, 6, 4, 4 >::get_corner_nodes_of_facet( const uint aFacetIndex, Cell< Node * > & aNodes )
         {
             this->get_nodes_of_facet( aFacetIndex, aNodes );
         }
@@ -81,7 +81,7 @@ namespace belfem
 
         template <>
         void
-        LagrangeElement< 4, 4, 6, 4, 4 >::get_nodes_of_edge( const uint aEdgeIndex, Cell< Node * > & aNodes )
+        ElementTemplate< 4, 4, 6, 4, 4 >::get_nodes_of_edge( const uint aEdgeIndex, Cell< Node * > & aNodes )
         {
             // allocate the node container
             aNodes.set_size( 2, nullptr );
@@ -135,7 +135,7 @@ namespace belfem
 
         template <>
         void
-        LagrangeElement< 4, 4, 6, 4, 4 >::get_edges_of_facet(
+        ElementTemplate< 4, 4, 6, 4, 4 >::get_edges_of_facet(
                 const uint aFacetIndex, Cell< Edge * > & aEdges )
         {
             // allocate the node container

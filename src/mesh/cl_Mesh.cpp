@@ -378,6 +378,39 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     void
+    Mesh::connect_nodes_to_edges()
+    {
+        for( mesh::Node * tNode : mNodes )
+        {
+            tNode->reset_edge_container();
+        }
+
+        for( mesh::Edge * tEdge : mEdges )
+        {
+            for( uint k=0; k<tEdge->number_of_nodes(); ++k )
+            {
+                tEdge->node( k )->increment_edge_counter();
+            }
+        }
+
+        for( mesh::Node * tNode : mNodes )
+        {
+            tNode->allocate_edge_container();
+        }
+
+        for( mesh::Edge * tEdge : mEdges )
+        {
+            for( uint k=0; k<tEdge->number_of_nodes(); ++k )
+            {
+                tEdge->node( k )->add_edge( tEdge );
+            }
+        }
+
+    }
+
+//------------------------------------------------------------------------------
+
+    void
     Mesh::connect_edges_to_elements( Cell< mesh::Element * > & aElements )
     {
         for( mesh::Edge * tEdge: mEdges )
@@ -1025,6 +1058,54 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     void
+    Mesh::connect_faces_to_edges_and_edges_to_faces()
+    {
+        if( mNumberOfDimensions == 2 )
+        {
+            return ;
+        }
+
+        this->unflag_all_nodes() ;
+        this->unflag_all_edges();
+        this->unflag_all_faces();
+        this->unflag_all_elements() ;
+
+        Cell< mesh::Edge * > tEdges ;
+
+        for( mesh::Face * tFace : mFaces )
+        {
+            tFace->master()->get_edges_of_facet( tFace->index_on_master(),
+                                                 tEdges );
+
+            tFace->allocate_edge_container( tEdges.size() ) ;
+
+            uint tCount = 0 ;
+            for( mesh::Edge * tEdge : tEdges )
+            {
+                tFace->insert_edge( tEdge, tCount++ );
+                tEdge->increment_face_counter();
+            }
+        }
+
+        for( mesh::Edge * tEdge : mEdges )
+        {
+            tEdge->allocate_face_container();
+        }
+
+        for( mesh::Face * tFace : mFaces )
+        {
+            tFace->master()->get_edges_of_facet( tFace->index_on_master(),
+                                                 tEdges );
+            for( mesh::Edge * tEdge : tEdges )
+            {
+                tEdge->add_face( tFace );
+            }
+        }
+    }
+
+//------------------------------------------------------------------------------
+
+    void
     Mesh::connect_vertices_to_vertices()
     {
 
@@ -1540,13 +1621,34 @@ namespace belfem
             mConnectors.clear() ;
             mFacets.clear() ;
 
-            for ( mesh::Node * tNode : mNodes )
+            for ( mesh::Node * tVertex : mNodes )
             {
-                tNode->reset_vertex_container();
-                tNode->reset_node_container();
-                tNode->reset_edge_container();
-                tNode->reset_facet_container();
-                tNode->reset_element_container();
+                tVertex->reset_vertex_container();
+                tVertex->reset_node_container();
+                tVertex->reset_edge_container();
+                tVertex->reset_face_container();
+                tVertex->reset_facet_container();
+                tVertex->reset_element_container();
+            }
+
+            for ( mesh::Edge * tVertex : mEdges )
+            {
+                tVertex->reset_vertex_container();
+                tVertex->reset_node_container();
+                tVertex->reset_edge_container();
+                tVertex->reset_face_container();
+                tVertex->reset_facet_container();
+                tVertex->reset_element_container();
+            }
+
+            for ( mesh::Face * tVertex : mFaces )
+            {
+                tVertex->reset_vertex_container();
+                tVertex->reset_node_container();
+                tVertex->reset_edge_container();
+                tVertex->reset_face_container();
+                tVertex->reset_facet_container();
+                tVertex->reset_element_container();
             }
 
             // we do NOT reset these links!
@@ -1561,8 +1663,17 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     void
+    Mesh::finalize_edges()
+    {
+        this->finalize_edges( mElements );
+    }
+
+//------------------------------------------------------------------------------
+
+    void
     Mesh::finalize_edges( Cell< mesh::Element * > & aElements )
     {
+        std::cout << "finalize edges" << std::endl ;
         if( mEdges.size() > 0 )
         {
             // flag edge elements
@@ -1570,9 +1681,11 @@ namespace belfem
 
             if( mComputeConnectivities )
             {
+                this->connect_nodes_to_edges();
                 this->connect_edges_to_elements( aElements );
                 this->connect_edges_to_edges();
             }
+            this->compute_edge_orientations();
             this->create_edge_map();
         }
     }
@@ -1582,9 +1695,14 @@ namespace belfem
     void
     Mesh::finalize_faces()
     {
+        std::cout << "finalize faces" << std::endl ;
         if( mFaces.size() > 0 )
         {
             this->create_face_map();
+            if ( mComputeConnectivities and mEdges.size() > 0 )
+            {
+                this->connect_faces_to_edges_and_edges_to_faces();
+            }
         }
     }
 
@@ -2372,7 +2490,7 @@ namespace belfem
 
         if( this->edges_exist() )
         {
-            this->finalize_edges( mElements );
+            this->finalize_edges( );
         }
         if( this->faces_exist() )
         {
@@ -2687,6 +2805,41 @@ namespace belfem
         this->unflag_all_nodes();
         this->update_node_indices();
         this->update_element_indices();
+    }
+
+//------------------------------------------------------------------------------
+
+    void
+    Mesh::compute_edge_orientations()
+    {
+        Cell< mesh::Node * > tNodes ;
+        for( mesh::Element * tElement : mElements )
+        {
+            for( uint e=0; e<tElement->number_of_edges(); ++e )
+            {
+                tElement->get_nodes_of_edge( e, tNodes );
+                id_t tA = tNodes( 0 )->id() ;
+                id_t tB = tNodes( 1 )->id() ;
+
+                id_t tC = tElement->edge( e )->node( 0 )->id() ;
+                id_t tD = tElement->edge( e )->node( 1 )->id() ;
+
+                if( tA == tC && tB == tD )
+                {
+                    tElement->set_edge_orientation( e, true );
+                }
+                else if ( tA == tD && tB == tC )
+                {
+                    tElement->set_edge_orientation( e, false );
+                }
+                else
+                {
+                    BELFEM_ERROR( false, "Internal error at element %lu: invalid edge %u",
+                                  ( long unsigned int ) tElement->id(),
+                                  ( unsigned  int ) e );
+                }
+            }
+        }
     }
 
 //------------------------------------------------------------------------------

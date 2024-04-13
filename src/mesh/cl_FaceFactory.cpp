@@ -73,8 +73,8 @@ namespace belfem
                     Map< luint, index_t > tFaceMap;
                     index_t tNumFaces = this->count_faces( tNedelecBlocks, aNedelecSideSets, tFaceMap );
 
-                    Vector< id_t > tPrimaryOwner;
-                    Vector< id_t > tSecondaryOwner;
+                    Vector< id_t > tMaster;
+                    Vector< id_t > tSlave;
                     Vector< index_t > tPrimaryIndex;
                     Vector< index_t > tSecondaryIndex;
 
@@ -83,9 +83,9 @@ namespace belfem
                             aNedelecSideSets,
                             tNumFaces,
                             tFaceMap,
-                            tPrimaryOwner,
+                            tMaster,
                             tPrimaryIndex,
-                            tSecondaryOwner,
+                            tSlave,
                             tSecondaryIndex );
 
 
@@ -93,9 +93,9 @@ namespace belfem
                     this->allocate_face_containers( tNedelecBlocks );
 
                     this->create_faces_3d(
-                            tPrimaryOwner,
+                            tMaster,
                             tPrimaryIndex,
-                            tSecondaryOwner,
+                            tSlave,
                             tSecondaryIndex );
 
                     // compute the face IDs
@@ -390,14 +390,14 @@ namespace belfem
                 const Vector< id_t >        & aSideSetIDs,
                 const index_t               & aNumFaces,
                 const Map< luint, index_t > & aFaceMap,
-                Vector< id_t >              & aMasterOwner,
+                Vector< id_t >              & aMasterIDs,
                 Vector< index_t >           & aMasterIndex,
-                Vector< id_t >              & aSlaveOwner,
+                Vector< id_t >              & aSlaveIDs,
                 Vector< index_t >           & aSlaveIndex   )
         {
             // allocate memory
-            aMasterOwner.set_size( aNumFaces, gNoID );
-            aSlaveOwner.set_size( aNumFaces, gNoID );
+            aMasterIDs.set_size( aNumFaces, gNoID );
+            aSlaveIDs.set_size( aNumFaces, gNoID );
             aMasterIndex.set_size( aNumFaces, gNoIndex );
             aSlaveIndex.set_size( aNumFaces, gNoIndex );
 
@@ -427,15 +427,15 @@ namespace belfem
                                         tTriNodes ));
 
                                 // check if owner is present
-                                if ( aMasterOwner( tIndex ) != gNoID )
+                                if ( aMasterIDs( tIndex ) != gNoID )
                                 {
                                     // shift owner
-                                    aSlaveOwner( tIndex ) = aMasterOwner( tIndex );
+                                    aSlaveIDs( tIndex ) = aMasterIDs( tIndex );
                                     aSlaveIndex( tIndex ) = aMasterIndex( tIndex );
                                 }
 
                                 // remember stuff
-                                aMasterOwner( tIndex ) = tElement->id();
+                                aMasterIDs( tIndex ) = tElement->id();
                                 aMasterIndex( tIndex ) = f;
                             }
                         }
@@ -455,15 +455,15 @@ namespace belfem
                                         tTriNodes ));
 
                                 // check if owner is present
-                                if ( aMasterOwner( tIndex ) != gNoID )
+                                if ( aMasterIDs( tIndex ) != gNoID )
                                 {
                                     // shift owner
-                                    aSlaveOwner( tIndex ) = aMasterOwner( tIndex );
+                                    aSlaveIDs( tIndex ) = aMasterIDs( tIndex );
                                     aSlaveIndex( tIndex ) = aMasterIndex( tIndex );
                                 }
 
                                 // remember stuff
-                                aMasterOwner( tIndex ) = tElement->id();
+                                aMasterIDs( tIndex ) = tElement->id();
                                 aMasterIndex( tIndex ) = f;
                             }
                             for ( uint f = 3; f < 5; ++f )
@@ -476,15 +476,15 @@ namespace belfem
                                         tQuadNodes ));
 
                                 // check if owner is present
-                                if ( aMasterOwner( tIndex ) != gNoID )
+                                if ( aMasterIDs( tIndex ) != gNoID )
                                 {
                                     // shift owner
-                                    aSlaveOwner( tIndex ) = aMasterOwner( tIndex );
+                                    aSlaveIDs( tIndex ) = aMasterIDs( tIndex );
                                     aSlaveIndex( tIndex ) = aMasterIndex( tIndex );
                                 }
 
                                 // remember stuff
-                                aMasterOwner( tIndex ) = tElement->id();
+                                aMasterIDs( tIndex ) = tElement->id();
                                 aMasterIndex( tIndex ) = f;
                             }
                         }
@@ -504,15 +504,15 @@ namespace belfem
                                         tQuadNodes ));
 
                                 // check if owner is present
-                                if ( aMasterOwner( tIndex ) != gNoID )
+                                if ( aMasterIDs( tIndex ) != gNoID )
                                 {
                                     // shift owner
-                                    aSlaveOwner( tIndex ) = aMasterOwner( tIndex );
+                                    aSlaveIDs( tIndex ) = aMasterIDs( tIndex );
                                     aSlaveIndex( tIndex ) = aMasterIndex( tIndex );
                                 }
 
                                 // remember stuff
-                                aMasterOwner( tIndex ) = tElement->id();
+                                aMasterIDs( tIndex ) = tElement->id();
                                 aMasterIndex( tIndex ) = f;
                             }
                         }
@@ -541,15 +541,14 @@ namespace belfem
                             tQuadNodes ) );
 
                     // check if facet has been claimed
-                    if( aMasterOwner( tIndex ) == gNoID )
+                    if( aMasterIDs( tIndex ) == gNoID )
                     {
-                        aMasterOwner( tIndex ) = tFacet->id();
+                        aMasterIDs( tIndex ) = tFacet->id();
 
                         // we deliberateley don't write an index here
                     }
                 }
             } // end loop over all sidesets
-
         }
 //-----------------------------------------------------------------------
 
@@ -621,12 +620,12 @@ namespace belfem
 //-----------------------------------------------------------------------
 
         void
-        FaceFactory::create_faces_3d( Vector< id_t > & aMasterOwner,
+        FaceFactory::create_faces_3d( Vector< id_t > & aMasterIDs,
                       Vector< index_t >             & aMasterIndex,
-                      Vector< id_t >                & aSlaveOwner,
+                      Vector< id_t >                & aSlaveIDs,
                       Vector< index_t >             & aSlaveIndex )
         {
-            index_t tNumFaces = aMasterOwner.length();
+            index_t tNumFaces = aMasterIDs.length();
 
             Cell< mesh::Face * > & tFaces = mMesh.faces() ;
 
@@ -638,15 +637,15 @@ namespace belfem
             for( index_t tIndex = 0; tIndex<tNumFaces; ++tIndex )
             {
 
-                if( aSlaveOwner( tIndex ) < gNoID ) // face has primary and secondary elements
+                if( aSlaveIDs( tIndex ) < gNoID ) // face has primary and secondary elements
                 {
                     // get primary element
                     Element * tMaster
-                            = mMesh.element( aMasterOwner( tIndex ) );
+                            = mMesh.element( aMasterIDs( tIndex ) );
 
                     // get secondary element
                     Element * tSlave
-                            = mMesh.element( aSlaveOwner( tIndex ) );
+                            = mMesh.element( aSlaveIDs( tIndex ) );
 
                     // create new face
                     Face * tFace =  new Face(
@@ -668,7 +667,7 @@ namespace belfem
                 {
                     // get primary element
                     Element * tMaster
-                            = mMesh.element( aMasterOwner( tIndex ) );
+                            = mMesh.element( aMasterIDs( tIndex ) );
 
                     // create new face
                     Face * tFace =  new Face(
@@ -686,7 +685,7 @@ namespace belfem
                 else // this is a facet-only face
                 {
                     // get Facet Element
-                    Element * tElement = mMesh.facet( aMasterOwner( tIndex ) )->element() ;
+                    Element * tElement = mMesh.facet( aMasterIDs( tIndex ) )->element() ;
 
                     // create a new face
                     Face * tFace = new Face( tElement, 0, nullptr, gNoIndex );

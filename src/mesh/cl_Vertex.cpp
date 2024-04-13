@@ -33,6 +33,7 @@ namespace belfem
             this->reset_vertex_container();
             this->reset_node_container();
             this->reset_edge_container();
+            this->reset_face_container();
             this->reset_facet_container();
             this->reset_element_container();
         }
@@ -157,6 +158,40 @@ namespace belfem
                           ( unsigned int ) mEdgeCounter );
 
             mEdges[ aIndex ] = aEdge ;
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        Vertex::reset_face_container()
+        {
+            if ( mFaceCounter != 0 )
+            {
+                delete [] mFaces ;
+                mFaceCounter = 0 ;
+            }
+        }
+
+        void
+        Vertex::increment_face_counter()
+        {
+            ++mFaceCounter ;
+        }
+
+        void
+        Vertex::allocate_face_container()
+        {
+            if( mFaceCounter > 0 )
+            {
+                mFaces = new Face * [ mFaceCounter ];
+                mFaceCounter = 0 ;
+            }
+        }
+
+        void
+        Vertex::add_face( Face * aFace )
+        {
+            mFaces[ mFaceCounter++ ] = aFace ;
         }
 
 //------------------------------------------------------------------------------
