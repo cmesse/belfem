@@ -32,24 +32,15 @@ int main( int    argc,
 
     // convert node coordinates from mm to m
     //tMesh->scale_mesh( 0.001 );
-
-    // create an orientation checker
-    for( mesh::Block * tBlock : tMesh->blocks() )
-    {
-
-        mesh::OrientationChecker * tChecker = new mesh::OrientationChecker();
-        tChecker->set_element_type( tBlock->element_type() );
-
-        for ( mesh::Element * tElement: tMesh->elements())
-        {
-            tChecker->process_element( tElement );
-        }
-
-        delete tChecker ;
-    }
-
     tMesh->create_edges( false );
     tMesh->create_faces( false );
+
+    // check orientations (optional)
+    index_t tCount = tMesh->check() ;
+    std::cout << "reoriented " << tCount << " elements." << std::endl ;
+
+    mesh::Edge * tEdge = tMesh->edges()(0);
+    std::cout << tEdge->number_of_faces() << std::endl ;
 
     //mesh::ExodusWriter tWriter( tMesh );
     //tMesh->save( "mesh.vtk" );

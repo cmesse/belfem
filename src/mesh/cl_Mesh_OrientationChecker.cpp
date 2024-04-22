@@ -330,7 +330,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        void
+        index_t
         OrientationChecker::process_2d_element( Element * aElement )
         {
             // collect the node coordinates
@@ -340,12 +340,18 @@ namespace belfem
             {
                 // flip the element
                 ( this->*mFunFlip )( aElement );
+
+                return 1;
+            }
+            else
+            {
+                return 0;
             }
         }
 
 //------------------------------------------------------------------------------
 
-        void
+        index_t
         OrientationChecker::process_tet_element( Element * aElement )
         {
             this->collect_node_coords_tet( aElement );
@@ -401,12 +407,18 @@ namespace belfem
             {
                 // flip the element
                 ( this->*mFunFlip )( aElement );
+
+                return 1;
+            }
+            else
+            {
+                return 0;
             }
         }
 
 //------------------------------------------------------------------------------
 
-        void
+        index_t
         OrientationChecker::process_penta_element( Element * aElement )
         {
             this->collect_node_coords_penta( aElement );
@@ -466,11 +478,16 @@ namespace belfem
             {
                 // flip the element
                 ( this->*mFunFlip )( aElement );
+                return 1;
+            }
+            else
+            {
+                return 0;
             }
         }
 //------------------------------------------------------------------------------
 
-        void
+        index_t
         OrientationChecker::process_hex_element( Element * aElement )
         {
             this->collect_node_coords_hex( aElement );
@@ -532,6 +549,12 @@ namespace belfem
             {
                 // flip the element
                 ( this->*mFunFlip )( aElement );
+
+                return 1;
+            }
+            else
+            {
+                return 0;
             }
         }
 

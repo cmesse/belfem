@@ -45,7 +45,7 @@ namespace belfem
 
 
             // function that checks if the element orientation must be changed
-            void
+            index_t
             ( OrientationChecker::*mFunProcess )
             (       Element       * aElement );
 
@@ -74,7 +74,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            void
+            index_t
             process_element( Element * aElement );
 
 //------------------------------------------------------------------------------
@@ -106,22 +106,22 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            void
+            index_t
             process_2d_element( Element * aElement );
 
 //------------------------------------------------------------------------------
 
-            void
+            index_t
             process_tet_element( Element * aElement );
 
 //------------------------------------------------------------------------------
 
-            void
+            index_t
             process_penta_element( Element * aElement );
 
 //------------------------------------------------------------------------------
 
-            void
+            index_t
             process_hex_element( Element * aElement );
 
 //-----------------------------------------------------------------------------
@@ -234,13 +234,13 @@ namespace belfem
 
 //-----------------------------------------------------------------------------
 
-        inline void
+        inline index_t
         OrientationChecker::process_element( Element * aElement )
         {
             BELFEM_ASSERT( aElement->type() == mElementType,
                            "Element type does not match" );
 
-            ( this->*mFunProcess )( aElement );
+            return ( this->*mFunProcess )( aElement );
         }
 
 //-----------------------------------------------------------------------------

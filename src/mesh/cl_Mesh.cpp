@@ -20,6 +20,7 @@
 #include "cl_EdgeFactory.hpp"
 #include "cl_FaceFactory.hpp"
 #include "fn_max.hpp"
+#include "cl_Mesh_OrientationChecker.hpp"
 
 namespace belfem
 {
@@ -2843,4 +2844,26 @@ namespace belfem
     }
 
 //------------------------------------------------------------------------------
+
+    index_t
+    Mesh::check()
+    {
+        index_t aCount = 0;
+        for( mesh::Block * tBlock : mBlocks )
+        {
+
+            mesh::OrientationChecker * tChecker = new mesh::OrientationChecker();
+            tChecker->set_element_type( tBlock->element_type() );
+
+            for ( mesh::Element * tElement: mElements )
+            {
+                aCount += tChecker->process_element( tElement );
+            }
+
+            delete tChecker ;
+        }
+
+        return aCount ;
+    }
+
 }
