@@ -27,7 +27,7 @@ namespace belfem
             Mesh * mMesh ;
 
             //Map of the k-simplices coefficients
-            Map< id_t, int > mSimplicesMap ;
+            Map< id_t, int > mSimplicesMap;
 
             //Boundary chain of the given chain
             Chain * mBoundary = nullptr;

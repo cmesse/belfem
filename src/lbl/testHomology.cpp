@@ -174,6 +174,7 @@ int main( int    argc,
         // Coreduce the simplicial complex
         Timer tTimer2;
         std::cout << "(Co)reducing the complex ..." << std::endl;
+        tSComplex->coreduce_complexPellikka();
         tSComplex->coreduce_complexCCR();
         std::cout << "Complex (co)reduced in: "<< tTimer2.stop()*1e-3 << " s" << std::endl;
 
@@ -203,6 +204,7 @@ int main( int    argc,
             // start timer
             Timer tTimer;
             std::cout << "Reducing the complex ..." << std::endl;
+            tSComplex->reduce_complexPellikka();
             tSComplex->reduce_complexCCR();
             std::cout << "Complex reduced in: "<< tTimer.stop()*1e-3 << " s" << std::endl;
 

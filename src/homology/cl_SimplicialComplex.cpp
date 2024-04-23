@@ -333,6 +333,310 @@ namespace belfem
 
         //-----------------------------------------------------------------------------
 
+        // pReduce from Pellikka et al.
+        bool
+        SimplicialComplex::pReduce(const uint p)
+        {
+            bool tRemoved = false;
+            if (p == 0)
+            {
+                return tRemoved;
+            }
+            uint tCount = 0;
+            for ( auto it = mChainsMap( p-1 ).begin(); it != mChainsMap( p-1 ).end() ;)
+            {
+                tCount = 0;
+                uint tpChainReduced;
+                uint tp1ChainReduced;
+                for (const auto & [tKey, tpChain]: mChainsMap( p ))
+                {
+                    if(tpChain->getBoundary()->getCoefficient(it->first) != 0)
+                    {
+                        tCount += 1;
+                        tpChainReduced = tKey;
+                        tp1ChainReduced = it->first;
+                    }
+                    if (tCount > 1)
+                    {
+                        break;
+                    }
+                }
+
+                if (tCount == 1)
+                {
+                    --it;
+                    this->remove_kchainFromMap( p, tpChainReduced );
+                    this->remove_kchainFromMap( p - 1, tp1ChainReduced );
+                    tRemoved = true;
+                }
+                else
+                {
+                    it++;
+                }
+            }
+            return tRemoved;
+        }
+
+        //-----------------------------------------------------------------------------
+
+        // pCombine from Pellikka et al.
+        void
+        SimplicialComplex::pCombine(const uint p)
+        {
+            int val1;
+            int val2;
+            uint tCount;
+            id_t tpChainAdd;
+            id_t tpChainReduced;
+            id_t tCp_1;
+            Cell< id_t > Q;
+
+            for (const auto & [tKey, tCp]: mChainsMap( p ))
+            {
+
+                if (p == 0)
+                {
+                    return;
+                }
+                for (const auto & [tId, tCoeff]: tCp->getBoundary()->getSimplicesMap())
+                {
+                    Q.push(tId);
+                }
+
+                while (Q.size() > 0)
+                {
+                    tCp_1 = Q.pop();
+                    tCount = 0;
+                    for (const auto & [t1Key, tpChain]: mChainsMap( p ))
+                    {
+                        if ( tpChain->getBoundary()->getCoefficient( tCp_1 ) != 0 )
+                        {
+                            tCount += 1;
+                            if ( tCount == 1 )
+                            {
+                                tpChainAdd = t1Key;
+                            }
+                            else if ( tCount == 2 )
+                            {
+                                tpChainReduced = t1Key;
+                            }
+
+                        }
+                        if ( tCount > 2 )
+                        {
+                            break;
+                        }
+                    }
+                    if ( tCount == 2)
+                    {
+                        val1 = mBoundaryMap( p )[ tpChainReduced ]->getCoefficient( tCp_1 );
+                        val2 = mBoundaryMap( p )[ tpChainAdd ]->getCoefficient( tCp_1 );
+                        mChainsMap( p )[tpChainAdd]->addChainToChain( mChainsMap( p )[tpChainReduced], -val1*val2);
+                        this->remove_kchainFromMap( p, tpChainReduced );
+                        this->remove_kchainFromMap( p - 1, tCp_1);
+                        mBoundaryMap( p )[ tpChainAdd ]->setCoefficient( tCp_1, 0 );
+                        for (const auto & [tId, tCoeff]: mBoundaryMap( p )[ tpChainAdd ]->getSimplicesMap())
+                        {
+                            Q.push(tId);
+                        }
+                        unique(Q);
+
+                    }
+                }
+            }
+        }
+
+        //-----------------------------------------------------------------------------
+
+        // ReduceOmit from Pellikka et al.
+        void
+        SimplicialComplex::reduceOmit()
+        {
+            for (uint p = 2; p > 1; p--)
+            {
+                this->pReduce(p);
+            }
+
+            /*uint tKey;
+            while (this->number_of_ksimplices(2) > 0)
+            {
+                tKey = mChainsMap(2).begin()->first;
+                this->remove_kchainFromMap(2,tKey);
+                for (uint p = 2; p > 1; p--)
+                {
+                    this->pReduce(p);
+                }
+            }*/
+        }
+
+        //-----------------------------------------------------------------------------
+
+        void
+        SimplicialComplex::reduce_complexPellikka()
+        {
+            this->reduceOmit();
+            for (uint p = 2; p >= 1; p--)
+            {
+                this->pCombine(p);
+                this->pReduce(p-1);
+            }
+        }
+
+        //-----------------------------------------------------------------------------
+
+
+        // pReduce from Pellikka et al.
+        bool
+        SimplicialComplex::pCoreduce(const uint p)
+        {
+            bool tRemoved = false;
+            if (p == 3)
+            {
+                return tRemoved;
+            }
+            uint tCount = 0;
+            for ( auto it = mCochainsMap( p+1 ).begin(); it != mCochainsMap( p+1 ).end() ;)
+            {
+                tCount = 0;
+                uint tpChainReduced;
+                uint tp1ChainReduced;
+                for (const auto & [tKey, tpChain]: mCochainsMap( p ))
+                {
+                    if(tpChain->getCoboundary()->getCoefficient(it->first) != 0)
+                    {
+                        tCount += 1;
+                        tpChainReduced = tKey;
+                        tp1ChainReduced = it->first;
+                    }
+                    if (tCount > 1)
+                    {
+                        break;
+                    }
+                }
+
+                if (tCount == 1)
+                {
+                    --it;
+                    this->remove_kcochainFromMap( p + 1, tp1ChainReduced );
+                    this->remove_kcochainFromMap( p, tpChainReduced );
+                    tRemoved = true;
+                }
+                else
+                {
+                    it++;
+                }
+            }
+            return tRemoved;
+        }
+
+        //-----------------------------------------------------------------------------
+
+        // pCombine from Pellikka et al.
+        void
+        SimplicialComplex::pCocombine(const uint p)
+        {
+            int val1;
+            int val2;
+            uint tCount;
+            id_t tpChainAdd;
+            id_t tpChainReduced;
+            id_t tCp_1;
+            Cell< id_t > Q;
+
+            for (const auto & [tKey, tCp]: mCochainsMap( p ))
+            {
+
+                if (p == 3)
+                {
+                    return;
+                }
+                for (const auto & [tId, tCoeff]: tCp->getCoboundary()->getSimplicesMap())
+                {
+                    Q.push(tId);
+                }
+
+                while (Q.size() > 0)
+                {
+                    tCp_1 = Q.pop();
+                    tCount = 0;
+                    for (const auto & [t1Key, tpChain]: mCochainsMap( p ))
+                    {
+                        if ( tpChain->getCoboundary()->getCoefficient( tCp_1 ) != 0 )
+                        {
+                            tCount += 1;
+                            if ( tCount == 1 )
+                            {
+                                tpChainAdd = t1Key;
+                            }
+                            else if ( tCount == 2 )
+                            {
+                                tpChainReduced = t1Key;
+                            }
+
+                        }
+                        if ( tCount > 2 )
+                        {
+                            break;
+                        }
+                    }
+                    if ( tCount == 2)
+                    {
+                        val1 = mCoboundaryMap( p )[ tpChainReduced ]->getCoefficient( tCp_1 );
+                        val2 = mCoboundaryMap( p )[ tpChainAdd ]->getCoefficient( tCp_1 );
+                        mCochainsMap( p )[tpChainAdd]->addCochainToCochain( mCochainsMap( p )[tpChainReduced], -val1*val2);
+                        this->remove_kcochainFromMap( p, tpChainReduced );
+                        this->remove_kcochainFromMap( p + 1, tCp_1);
+                        mCoboundaryMap( p )[ tpChainAdd ]->setCoefficient( tCp_1, 0 );
+                        for (const auto & [tId, tCoeff]: mCoboundaryMap( p )[ tpChainAdd ]->getSimplicesMap())
+                        {
+                            Q.push(tId);
+                        }
+                        unique(Q);
+                    }
+                }
+            }
+        }
+
+        //-----------------------------------------------------------------------------
+
+        // ReduceOmit from Pellikka et al.
+        void
+        SimplicialComplex::coreduceOmit()
+        {
+            id_t tKey = mCochainsMap(0).begin()->first;
+            this->remove_kcochainFromMap(0,tKey);
+            for (uint p = 0; p < 2; p++)
+            {
+                this->pCoreduce(p);
+            }
+
+            /*uint tKey;
+            while (this->number_of_ksimplices(2) > 0)
+            {
+                tKey = mChainsMap(2).begin()->first;
+                this->remove_kchainFromMap(2,tKey);
+                for (uint p = 2; p > 1; p--)
+                {
+                    this->pReduce(p);
+                }
+            }*/
+        }
+
+        //-----------------------------------------------------------------------------
+
+        void
+        SimplicialComplex::coreduce_complexPellikka()
+        {
+            this->coreduceOmit();
+            for (uint p = 0; p <= 1; p++)
+            {
+                this->pCocombine(p);
+                this->pCoreduce(p+1);
+            }
+        }
+
+        //-----------------------------------------------------------------------------
+
         void
         SimplicialComplex::remove_kchainFromMap( const uint k, const id_t aInd )
         {
