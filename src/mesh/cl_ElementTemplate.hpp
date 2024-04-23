@@ -44,6 +44,8 @@ namespace belfem
             //! flag telling if faces have been allocated
             bool mHaveFaces = false ;
 
+            //! bitset stating if the edge orient is plus (true)
+            //! or minus (false)
             Bitset<E> mEdgeOrientations ;
 
 //------------------------------------------------------------------------------

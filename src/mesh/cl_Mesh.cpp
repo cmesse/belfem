@@ -17,6 +17,7 @@
 #include "cl_Logger.hpp"
 #include "commtools.hpp"
 #include "assert.hpp"
+#include "cl_Element_Factory.hpp"
 #include "cl_EdgeFactory.hpp"
 #include "cl_FaceFactory.hpp"
 #include "fn_max.hpp"
@@ -1956,6 +1957,9 @@ namespace belfem
                 tFactory.print();
             }
             this->update_edge_indices() ;
+
+            // todo: make this available in parallel
+            this->compute_edge_orientations() ;
         }
     }
 
