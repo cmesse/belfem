@@ -22,7 +22,8 @@
 #include "cl_FaceFactory.hpp"
 #include "fn_max.hpp"
 #include "cl_Mesh_OrientationChecker.hpp"
-
+#include "fn_cross.hpp"
+#include "fn_norm.hpp"
 namespace belfem
 {
 //------------------------------------------------------------------------------
@@ -2849,6 +2850,97 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+    void
+    Mesh::distribute_edge_orientations()
+    {
+        proc_t tRank = comm_rank() ;
+        proc_t tCommSize = comm_size() ;
+
+        if( tRank == 0 )
+        {
+            Cell< Vector< id_t > > tAllElementIDs( tCommSize, {} );
+            Cell< Vector< short unsigned int > > tAllSigns( tCommSize, {} );
+
+            Vector< proc_t > tCommList( tCommSize, 0 );
+
+            for( proc_t p = 1; p<tCommSize; ++p )
+            {
+                tCommList( p ) = p ;
+
+                index_t tElementCount = 0 ;
+                index_t tEdgeCount = 0 ;
+
+                // count elements
+                for( mesh::Element * tElement : mElements )
+                {
+                    if( tElement->owner() == p )
+                    {
+                        tElementCount += 1 ;
+                        tEdgeCount += tElement->number_of_edges() ;
+                    }
+                }
+
+                Vector< id_t > & tElementIDs = tAllElementIDs( p );
+                tElementIDs.set_size( tElementCount );
+
+                tElementCount = 0 ;
+
+                Vector< short unsigned int > & tSigns = tAllSigns( p );
+                tSigns.set_size( tEdgeCount, 0 );
+
+                tEdgeCount = 0 ;
+
+                for( mesh::Element * tElement : mElements )
+                {
+                    if( tElement->owner() == p )
+                    {
+                        tElementIDs( tElementCount++ ) = tElement->id() ;
+                        for( uint e=0; e<tElement->number_of_edges(); ++e )
+                        {
+                            if( tElement->edge_orientation( e ) )
+                            {
+                                tSigns( tEdgeCount ) = 1 ;
+                            }
+                            tEdgeCount++ ;
+                        }
+                    }
+                }
+            }
+
+            comm_barrier() ;
+
+            send( tCommList, tAllElementIDs );
+            send( tCommList, tAllSigns  );
+
+            comm_barrier() ;
+        }
+        else
+        {
+            comm_barrier() ;
+
+            Vector< id_t > tElementIDs ;
+            Vector< short unsigned int > tSigns ;
+
+            receive( 0, tElementIDs );
+            receive( 0, tSigns );
+
+            index_t tCount = 0 ;
+
+            for( id_t tID : tElementIDs )
+            {
+                mesh::Element * tElement = this->element( tID );
+
+                for( uint e=0; e<tElement->number_of_edges(); ++e )
+                {
+                    tElement->set_edge_orientation( e, tSigns( tCount++) == 1 );
+                }
+            }
+            comm_barrier() ;
+        }
+    }
+
+//------------------------------------------------------------------------------
+
     index_t
     Mesh::check()
     {
@@ -2869,5 +2961,178 @@ namespace belfem
 
         return aCount ;
     }
+
+//------------------------------------------------------------------------------
+
+    void
+    Mesh::save_faces( const string & aPath )
+    {
+        if( comm_rank() == 0 )
+        {
+            // flag the nodes that  we need
+            this->unflag_all_nodes() ;
+
+            Cell< ElementType > tTypes( mFaces.size(), ElementType::UNDEFINED );
+
+            index_t tCount = 0 ;
+
+            for( mesh::Face * tFace : mFaces )
+            {
+                for( uint k=0; k<tFace->number_of_nodes(); ++k )
+                {
+                    tFace->node( k )->flag() ;
+                }
+                tTypes( tCount++ ) = mesh::element_type_from_numnodes( 2, tFace->number_of_nodes() );
+            }
+            unique( tTypes );
+
+
+            // count flagged nodes
+            tCount = 0 ;
+            for( mesh::Node * tNode : mNodes )
+            {
+                if( tNode->is_flagged() )
+                {
+                    tNode->set_index( tCount++ );
+                }
+            }
+
+
+            Mesh * tNewMesh = new Mesh( 3, 2, false );
+
+            Cell< mesh::Node * > & tNodes = tNewMesh->nodes() ;
+            tNodes.set_size( tCount, nullptr );
+
+            Map< ElementType, id_t > tTypeMap ;
+            tCount = 0 ;
+            for( ElementType tType : tTypes )
+            {
+                tTypeMap[ tType ] = tCount++ ;
+            }
+
+            Cell< mesh::Block * > & tBlocks = tNewMesh->blocks() ;
+            Vector< index_t > tNumElemsPerBlock( tCount, 0 );
+            for( mesh::Face * tFace : mFaces )
+            {
+                ++tNumElemsPerBlock( tTypeMap( mesh::element_type_from_numnodes( 2, tFace->number_of_nodes() ) ) );
+            }
+
+
+            tBlocks.set_size( tCount, nullptr );
+
+            for( uint b=0; b<tCount; ++b )
+            {
+                tBlocks( b ) = new mesh::Block( b+1, tNumElemsPerBlock(  b ) );
+            }
+
+
+            tCount = 0 ;
+
+            // create copies of the nodes
+            for( mesh::Node * tNode : mNodes )
+            {
+                if( tNode->is_flagged() )
+                {
+                    tNode->set_index( tCount );
+
+                    std::cout << tNode->id() << " " << tNode->x() << " " << tNode->y() << " " << tNode->z() << std::endl ;
+
+                    mesh::Node * tNewNode = new mesh::Node(
+                            tNode->id(),
+                            tNode->x(),
+                            tNode->y(),
+                            tNode->z() );
+
+                    tNodes( tCount ) = tNewNode ;
+
+                    tNewNode->set_index( tCount++ );
+                }
+            }
+
+            // create elements
+            //Cell< mesh::Element * > & tElements = tNewMesh->elements() ;
+            //tElements.set_size( mFaces.size(), nullptr );
+
+
+
+            tCount = 0 ;
+
+            mesh::ElementFactory tFactory ;
+
+            Vector< real > tA( 3 );
+            Vector< real > tB( 3 );
+            Vector< real > tN( 3 );
+
+            tNumElemsPerBlock.fill( 0 );
+
+            Vector< real > & tX = tNewMesh->create_field( "nx", EntityType::ELEMENT );
+            Vector< real > & tY = tNewMesh->create_field( "ny", EntityType::ELEMENT );
+            Vector< real > & tZ = tNewMesh->create_field( "nz", EntityType::ELEMENT );
+
+            tX.set_size( mFaces.size(), 0 );
+            tY.set_size( mFaces.size(), 0 );
+            tZ.set_size( mFaces.size(), 0 );
+
+            for( mesh::Face * tFace : mFaces )
+            {
+               // determine type of face
+               ElementType tType = mesh::element_type_from_numnodes( 2, tFace->number_of_nodes() );
+
+               // create a new element
+               mesh::Element * tElement = tFactory.create_element( tType, tFace->id() );
+
+               // link nodes
+               for( uint k=0; k<tFace->number_of_nodes(); ++k )
+               {
+                   tElement->insert_node( tNodes( tFace->node( k )->index() ), k );
+               }
+
+               tElement->set_block_id( tTypeMap( tType ) );
+
+
+
+               if( tType == ElementType::TRI3 )
+               {
+                   tA( 0 ) = tElement->node( 1 )->x() - tElement->node( 0 )->x() ;
+                   tA( 1 ) = tElement->node( 1 )->y() - tElement->node( 0 )->y() ;
+                   tA( 2 ) = tElement->node( 1 )->z() - tElement->node( 0 )->z() ;
+
+                   tB( 0 ) = tElement->node( 2 )->x() - tElement->node( 0 )->x() ;
+                   tB( 1 ) = tElement->node( 2 )->y() - tElement->node( 0 )->y() ;
+                   tB( 2 ) = tElement->node( 2 )->z() - tElement->node( 0 )->z() ;
+
+                   tN = cross( tA, tB );
+                   tN /= norm( tN );
+
+                   tX( tCount ) = tN( 0 );
+                   tY( tCount ) = tN( 1 );
+                   tZ( tCount ) = tN( 2 );
+               }
+
+                index_t b = tTypeMap( tType );
+
+                tBlocks( b )->elements()( tNumElemsPerBlock( b )++) = tElement ;
+                ++tCount ;
+            }
+
+            // restore node indices
+            tCount = 0 ;
+            for( mesh::Node * tNode : mNodes )
+            {
+                tNode->set_index( tCount++ );
+            }
+
+            tNewMesh->finalize() ;
+            for( mesh::Element * tElement : tNewMesh->elements() )
+            {
+                std::cout << "element " << tElement->id() << std::endl ;
+
+            }
+            tNewMesh->save( aPath );
+
+            delete tNewMesh ;
+        }
+    }
+
 
 }

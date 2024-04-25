@@ -30,14 +30,31 @@ int main( int    argc,
     // load the mesh
     Mesh * tMesh = new Mesh( "tetsindie.msh" );
 
-    // convert node coordinates from mm to m
-    //tMesh->scale_mesh( 0.001 );
-    tMesh->create_edges( false );
-    tMesh->create_faces( false );
+
 
     // check orientations (optional)
     index_t tCount = tMesh->check() ;
     std::cout << "reoriented " << tCount << " elements." << std::endl ;
+
+
+    // convert node coordinates from mm to m
+    tMesh->scale_mesh( 0.001 );
+    tMesh->create_edges( false );
+    tMesh->create_faces( true );
+
+    std::cout << std::endl ;
+
+    for( mesh::Element * tElement : tMesh->elements() )
+    {
+        std::cout << tElement->id() << " :" ;
+        for( uint k=0; k<tElement->number_of_nodes(); ++k )
+        {
+            std::cout << " " << tElement->node( k )->id() ;
+        }
+        std::cout << std::endl ;
+    }
+
+    std::cout << std::endl ;
 
     mesh::Edge * tEdge = tMesh->edges()(0);
     std::cout << tEdge->number_of_faces() << std::endl ;
@@ -45,7 +62,7 @@ int main( int    argc,
     //mesh::ExodusWriter tWriter( tMesh );
     //tMesh->save( "mesh.vtk" );
     tMesh->save( "mesh.exo" );
-
+    tMesh->save_faces( "faces.exo");
 
     delete tMesh ;
 

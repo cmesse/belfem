@@ -799,5 +799,153 @@ namespace belfem
         }
 
 //------------------------------------------------------------------------------
+
+        ElementType
+        element_type_from_numnodes( const uint aDimension, const uint aNumNodes )
+        {
+            if( aDimension == 1 )
+            {
+                switch( aNumNodes )
+                {
+                    case( 2 ) :
+                    {
+                        return ElementType::LINE2 ;
+                    }
+                    case( 3 ) :
+                    {
+                        return ElementType::LINE3 ;
+                    }
+                    case( 4 ) :
+                    {
+                        return ElementType::LINE4 ;
+                    }
+                    case( 5 ) :
+                    {
+                        return ElementType::LINE5 ;
+                    }
+                    case( 6 ) :
+                    {
+                        return ElementType::LINE6 ;
+                    }
+                    default:
+                    {
+                        BELFEM_ERROR( false, "Invalid number of nodes '%u% for dimension %u",
+                                      ( unsigned int ) aDimension, ( unsigned int ) aNumNodes );
+                        return ElementType::UNDEFINED ;
+                    }
+                }
+            }
+            else if ( aDimension == 2 )
+            {
+                switch( aNumNodes )
+                {
+                    case( 3 ) :
+                    {
+                        return ElementType::TRI3 ;
+                    }
+                    case( 4 ) :
+                    {
+                        return ElementType::QUAD4 ;
+                    }
+                    case( 6 ) :
+                    {
+                        return ElementType::TRI6 ;
+                    }
+                    case( 8 ) :
+                    {
+                        return ElementType::QUAD8 ;
+                    }
+                    case( 9 ) :
+                    {
+                        return ElementType::QUAD9 ;
+                    }
+                    case( 10 ) :
+                    {
+                        return ElementType::TRI10 ;
+                    }
+                    case( 15 ) :
+                    {
+                        return ElementType::TRI15 ;
+                    }
+                    case( 16 ) :
+                    {
+                        return ElementType::QUAD16 ;
+                    }
+                    case( 21 ) :
+                    {
+                        return ElementType::TRI21 ;
+                    }
+                    default:
+                    {
+                        BELFEM_ERROR( false, "Invalid number of nodes '%u% for dimension %u",
+                                      ( unsigned int ) aDimension, ( unsigned int ) aNumNodes );
+                        return ElementType::UNDEFINED ;
+                    }
+                }
+            }
+            else if ( aDimension == 3 )
+            {
+                switch( aNumNodes )
+                {
+                    case( 4 ) :
+                    {
+                        return ElementType::TET4 ;
+                    }
+                    case( 6 ) :
+                    {
+                        return ElementType::PENTA6 ;
+                    }
+                    case( 8 ) :
+                    {
+                        return ElementType::HEX8 ;
+                    }
+                    case( 10 ) :
+                    {
+                        return ElementType::TET10 ;
+                    }
+                    case( 15 ) :
+                    {
+                        return ElementType::PENTA15 ;
+                    }
+                    case( 18 ) :
+                    {
+                        return ElementType::PENTA18 ;
+                    }
+                    case( 20 ) :
+                    {
+                        BELFEM_ERROR( false, "Ambiguous number of nodes '%u% for dimension %u, could be either TET20 or HEX20" );
+                        return ElementType::UNDEFINED ;
+                    }
+                    case( 27 ) :
+                    {
+                        return ElementType::HEX27 ;
+                    }
+                    case( 35 ) :
+                    {
+                        return ElementType::TET35 ;
+                    }
+                    case( 64 ) :
+                    {
+                        return ElementType::HEX64 ;
+                    }
+                    default:
+                    {
+                        BELFEM_ERROR( false, "Invalid number of nodes '%u% for dimension %u",
+                                      ( unsigned int ) aDimension, ( unsigned int ) aNumNodes );
+                        return ElementType::UNDEFINED ;
+                    }
+                }
+            }
+            else
+            {
+
+                BELFEM_ERROR( false, "Invalid number of dimensions %u",
+                              ( unsigned int ) aDimension );
+                return ElementType::UNDEFINED ;
+
+            }
+        }
+
+//------------------------------------------------------------------------------
     }
 }

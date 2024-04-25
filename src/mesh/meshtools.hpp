@@ -96,6 +96,10 @@ namespace belfem
         uint
         number_of_nedelec_dofs( const ElementType aElementType );
 
+//------------------------------------------------------------------------------
+
+        ElementType
+        element_type_from_numnodes( const uint aDimension, const uint aNumNodes );
 
 //------------------------------------------------------------------------------
     }

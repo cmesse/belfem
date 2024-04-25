@@ -382,6 +382,11 @@ namespace belfem
                     // merge tables in order to master mesh synch
                     this->merge_facet_and_connector_tables();
 
+                    if( mMesh->edges_exist() )
+                    {
+                        mMesh->distribute_edge_orientations();
+                    }
+
                     message( 4, "    ... time for distributing           : %u ms\n",
                              ( unsigned int ) tTimer.stop() );
 
@@ -389,6 +394,12 @@ namespace belfem
                 else
                 {
                     this->receive_submesh();
+
+                    if( mMesh->edges_exist() )
+                    {
+                        mMesh->distribute_edge_orientations();
+                    }
+
                 }
             }
 

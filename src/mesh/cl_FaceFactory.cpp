@@ -429,14 +429,29 @@ namespace belfem
                                 // check if owner is present
                                 if ( aMasterIDs( tIndex ) != gNoID )
                                 {
-                                    // shift owner
-                                    aSlaveIDs( tIndex ) = aMasterIDs( tIndex );
-                                    aSlaveIndex( tIndex ) = aMasterIndex( tIndex );
-                                }
+                                    if( tElement->id() < aMasterIDs( tIndex ) )
+                                    {
+                                        // shift old master to slave
+                                        aSlaveIDs( tIndex ) = aMasterIDs( tIndex );
+                                        aSlaveIndex( tIndex ) = aMasterIndex( tIndex );
 
-                                // remember stuff
-                                aMasterIDs( tIndex ) = tElement->id();
-                                aMasterIndex( tIndex ) = f;
+                                        // set master
+                                        aMasterIDs( tIndex ) = tElement->id();
+                                        aMasterIndex( tIndex ) = f;
+                                    }
+                                    else
+                                    {
+                                        // set slave
+                                        aSlaveIDs( tIndex ) = tElement->id();
+                                        aSlaveIndex( tIndex ) = f;
+                                    }
+                                }
+                                else
+                                {
+                                    // remember master
+                                    aMasterIDs( tIndex ) = tElement->id();
+                                    aMasterIndex( tIndex ) = f;
+                                }
                             }
                         }
                         break;
@@ -457,14 +472,29 @@ namespace belfem
                                 // check if owner is present
                                 if ( aMasterIDs( tIndex ) != gNoID )
                                 {
-                                    // shift owner
-                                    aSlaveIDs( tIndex ) = aMasterIDs( tIndex );
-                                    aSlaveIndex( tIndex ) = aMasterIndex( tIndex );
-                                }
+                                    if( tElement->id() < aMasterIDs( tIndex ) )
+                                    {
+                                        // shift old master to slave
+                                        aSlaveIDs( tIndex ) = aMasterIDs( tIndex );
+                                        aSlaveIndex( tIndex ) = aMasterIndex( tIndex );
 
-                                // remember stuff
-                                aMasterIDs( tIndex ) = tElement->id();
-                                aMasterIndex( tIndex ) = f;
+                                        // set master
+                                        aMasterIDs( tIndex ) = tElement->id();
+                                        aMasterIndex( tIndex ) = f;
+                                    }
+                                    else
+                                    {
+                                        // set slave
+                                        aSlaveIDs( tIndex ) = tElement->id();
+                                        aSlaveIndex( tIndex ) = f;
+                                    }
+                                }
+                                else
+                                {
+                                    // remember master
+                                    aMasterIDs( tIndex ) = tElement->id();
+                                    aMasterIndex( tIndex ) = f;
+                                }
                             }
                             for ( uint f = 3; f < 5; ++f )
                             {
@@ -478,14 +508,29 @@ namespace belfem
                                 // check if owner is present
                                 if ( aMasterIDs( tIndex ) != gNoID )
                                 {
-                                    // shift owner
-                                    aSlaveIDs( tIndex ) = aMasterIDs( tIndex );
-                                    aSlaveIndex( tIndex ) = aMasterIndex( tIndex );
-                                }
+                                    if( tElement->id() < aMasterIDs( tIndex ) )
+                                    {
+                                        // shift old master to slave
+                                        aSlaveIDs( tIndex ) = aMasterIDs( tIndex );
+                                        aSlaveIndex( tIndex ) = aMasterIndex( tIndex );
 
-                                // remember stuff
-                                aMasterIDs( tIndex ) = tElement->id();
-                                aMasterIndex( tIndex ) = f;
+                                        // set master
+                                        aMasterIDs( tIndex ) = tElement->id();
+                                        aMasterIndex( tIndex ) = f;
+                                    }
+                                    else
+                                    {
+                                        // set slave
+                                        aSlaveIDs( tIndex ) = tElement->id();
+                                        aSlaveIndex( tIndex ) = f;
+                                    }
+                                }
+                                else
+                                {
+                                    // remember master
+                                    aMasterIDs( tIndex ) = tElement->id();
+                                    aMasterIndex( tIndex ) = f;
+                                }
                             }
                         }
                         break;
@@ -506,14 +551,29 @@ namespace belfem
                                 // check if owner is present
                                 if ( aMasterIDs( tIndex ) != gNoID )
                                 {
-                                    // shift owner
-                                    aSlaveIDs( tIndex ) = aMasterIDs( tIndex );
-                                    aSlaveIndex( tIndex ) = aMasterIndex( tIndex );
-                                }
+                                    if( tElement->id() < aMasterIDs( tIndex ) )
+                                    {
+                                        // shift old master to slave
+                                        aSlaveIDs( tIndex ) = aMasterIDs( tIndex );
+                                        aSlaveIndex( tIndex ) = aMasterIndex( tIndex );
 
-                                // remember stuff
-                                aMasterIDs( tIndex ) = tElement->id();
-                                aMasterIndex( tIndex ) = f;
+                                        // set master
+                                        aMasterIDs( tIndex ) = tElement->id();
+                                        aMasterIndex( tIndex ) = f;
+                                    }
+                                    else
+                                    {
+                                        // set slave
+                                        aSlaveIDs( tIndex ) = tElement->id();
+                                        aSlaveIndex( tIndex ) = f;
+                                    }
+                                }
+                                else
+                                {
+                                    // remember master
+                                    aMasterIDs( tIndex ) = tElement->id();
+                                    aMasterIndex( tIndex ) = f;
+                                }
                             }
                         }
                         break;
@@ -632,6 +692,8 @@ namespace belfem
             BELFEM_ASSERT( tFaces.size() == 0, "Faces of mesh have already been created");
 
             tFaces.set_size( tNumFaces, nullptr );
+
+            Cell< mesh::Node * > tNodes ;
 
             // loop over all faces that are to be created
             for( index_t tIndex = 0; tIndex<tNumFaces; ++tIndex )
