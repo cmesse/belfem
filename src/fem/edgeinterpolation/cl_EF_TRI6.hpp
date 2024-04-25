@@ -232,7 +232,7 @@ namespace belfem
         EF_TRI6::B_curved( const uint aIndex )
         {
             this->compute_J( aIndex );
-            mB = mInvJ * mGroup->dNdXi( aIndex );
+            mB = mInvJ * mGroup->integration()->dNdXi( aIndex );
         }
 
 //------------------------------------------------------------------------------
@@ -240,7 +240,7 @@ namespace belfem
         inline void
         EF_TRI6::B_straight( const uint aIndex )
         {
-            mB = mInvJ * mGroup->dNdXi( aIndex );
+            mB = mInvJ * mGroup->integration()->dNdXi( aIndex );
         }
 
 //------------------------------------------------------------------------------

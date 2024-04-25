@@ -183,6 +183,12 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            // reset dofs into from last timestep
+            void
+            reset_fields();
+
+//------------------------------------------------------------------------------
+
             /**
              * load data from HDF5 field
              */
@@ -900,7 +906,7 @@ namespace belfem
             Vector< real > & aN = mNormal3D ;
 
             Matrix< real > & tJ = mGroup->work_L() ;
-            tJ = mGroup->dNdXi( aIndex ) * mGroup->work_X() ;
+            tJ = mGroup->integration()->dNdXi( aIndex ) * mGroup->work_X() ;
 
 			// normal
             aN( 0 ) =   tJ( 0, 1 ) * tJ( 1, 2 )
@@ -985,18 +991,18 @@ namespace belfem
 
             if( aIndex == 0 )
             {
-                mWorkCurrent( 2 ) = mGroup->integration_weights()( aIndex ) * mWorkCurrentK( 2 ) ;
+                mWorkCurrent( 2 ) = mGroup->integration()->weights()( aIndex ) * mWorkCurrentK( 2 ) ;
             }
-            else if( aIndex == mNumberOfIntegrationPoints )
+            else if( aIndex == mGroup->integration()->number_of_integration_points() )
             {
-                mWorkCurrent( 2 ) += mGroup->integration_weights()( aIndex ) * mWorkCurrentK( 2 ) ;
+                mWorkCurrent( 2 ) += mGroup->integration()->weights()( aIndex ) * mWorkCurrentK( 2 ) ;
                 mWorkCurrent( 2 ) /= mEdgeFunction->sum_w() ;
 
                 mMesh->field_data( "elementJz")( aElement->element()->index() )  = mWorkCurrent( 2 ) ;
             }
             else
             {
-                mWorkCurrent( 2 ) += mGroup->integration_weights()( aIndex ) * mWorkCurrentK( 2 ) ;
+                mWorkCurrent( 2 ) += mGroup->integration()->weights()( aIndex ) * mWorkCurrentK( 2 ) ;
             }
 
             return mWorkCurrent( 2 );
@@ -1007,15 +1013,15 @@ namespace belfem
         inline real
         IWG_Maxwell::compute_current_3d_higher_order( Element * aElement, const uint aIndex  )
         {
-            mWorkCurrentK = mEdgeFunction->C( aIndex ).row( 0 ) * mGroup->work_nedelec() * mGroup->integration_weights()( aIndex );
+            mWorkCurrentK = mEdgeFunction->C( aIndex ).row( 0 ) * mGroup->work_nedelec() * mGroup->integration()->weights()( aIndex );
 
             if( aIndex == 0 )
             {
-                mWorkCurrent = mGroup->integration_weights()( aIndex ) * mWorkCurrentK ;
+                mWorkCurrent = mGroup->integration()->weights()( aIndex ) * mWorkCurrentK ;
             }
-            else if( aIndex == mNumberOfIntegrationPoints )
+            else if( aIndex == mGroup->integration()->number_of_integration_points() )
             {
-                mWorkCurrent +=  mGroup->integration_weights()( aIndex ) * mWorkCurrentK ;
+                mWorkCurrent += mGroup->integration()->weights()( aIndex ) * mWorkCurrentK ;
                 mWorkCurrent /= mEdgeFunction->sum_w() ;
 
                 mMesh->field_data( "elementJx")( aElement->element()->index() )  = mWorkCurrent( 0 ) ;
@@ -1024,7 +1030,7 @@ namespace belfem
             }
             else
             {
-                mWorkCurrent +=  mGroup->integration_weights()( aIndex ) * mWorkCurrentK ;
+                mWorkCurrent +=  mGroup->integration()->weights()( aIndex ) * mWorkCurrentK ;
             }
 
             return norm( mWorkCurrentK );

@@ -3,6 +3,7 @@ set( LIBNAME iwg )
 set( SOURCES
         cl_IWG.cpp
         cl_IWG_Timestep.cpp
+        cl_IWG_TimestepOld.cpp
         cl_IWG_StaticHeatConduction.cpp
         cl_IwgFactory.cpp
         )

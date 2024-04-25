@@ -16,6 +16,7 @@
 #include "cl_FEM_MaxwellBoundaryConditionCurrent.hpp"
 #include "cl_FEM_MaxwellBoundaryConditionMagfield.hpp"
 #include "cl_MaxwellMeshSynch.hpp"
+#include "cl_SimplicialComplex.hpp"
 
 namespace belfem
 {
@@ -69,6 +70,9 @@ namespace belfem
 
             // kernel object for maxwell
             Kernel *           mMagneticKernel = nullptr ;
+
+            // Simplicial Complex for homology computation
+            mesh::SimplicialComplex *  mSimplicialComplex = nullptr ;
 
             // flag telling if we own the mesh
             // (unset if create_mesh() was called )
@@ -209,7 +213,6 @@ namespace belfem
             // kernel object for thermal
             KernelParameters * mThermalParameters = nullptr ;
             Kernel *           mThermalKernel = nullptr ;
-            IWG_TimestepOld *     mFourier = nullptr ;
 
 //------------------------------------------------------------------------------
         public:
@@ -233,6 +236,9 @@ namespace belfem
             DofManager *
             magnetic_field() ;
 
+            mesh::SimplicialComplex *
+            simplicial_complex() ;
+
 //------------------------------------------------------------------------------
 
             bool
@@ -253,9 +259,6 @@ namespace belfem
             MaxwellMeshSynch *
             thermal_synch() ;
 
-            IWG_TimestepOld *
-            fourier() ;
-
 //------------------------------------------------------------------------------
             /**
              * return the name of the exodus file
@@ -274,6 +277,9 @@ namespace belfem
 
             real
             maxtime() const ;
+
+            real
+            maxdt() const ;
 
             uint
             meshdump() const ;
@@ -305,6 +311,16 @@ namespace belfem
             tape_thicknesses();
 
 //------------------------------------------------------------------------------
+
+            void
+            flag_nc_simplices();
+
+// -----------------------------------------------------------------------------
+
+            void
+            unflag_nc_simplices();
+
+// -----------------------------------------------------------------------------
         private:
 //------------------------------------------------------------------------------
 
@@ -315,6 +331,11 @@ namespace belfem
 
             void
             create_thermal();
+
+//------------------------------------------------------------------------------
+
+            void
+            create_simplicial_complex();
 
 //------------------------------------------------------------------------------
 
@@ -627,18 +648,18 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        inline DofManager *
-        MaxwellFactory::thermal_field()
+        inline mesh::SimplicialComplex *
+        MaxwellFactory::simplicial_complex()
         {
-            return mThermalField ;
+            return mSimplicialComplex ;
         }
 
 //------------------------------------------------------------------------------
 
-        inline IWG_TimestepOld *
-        MaxwellFactory::fourier()
+        inline DofManager *
+        MaxwellFactory::thermal_field()
         {
-            return mFourier ;
+            return mThermalField ;
         }
 
 //------------------------------------------------------------------------------

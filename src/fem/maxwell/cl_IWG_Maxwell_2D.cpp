@@ -221,10 +221,10 @@ namespace belfem
                 for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
                 {
                     // Jacobian Matrix
-                    tJ = mGroup->dNdXi( k ) * mGroup->work_X() ;
+                    tJ = mGroup->integration()->dNdXi( k ) * mGroup->work_X() ;
 
                     // gradient operator
-                    tB = inv_J_2d( mGroup ) * mGroup->dNdXi( k );
+                    tB = inv_J_2d( mGroup ) * mGroup->integration()->dNdXi( k );
 
                     // contribution to mass matrix
                     aK += ( mGroup->material()->mu_s( dot( tB, mGroup->work_phi() ))
@@ -238,7 +238,7 @@ namespace belfem
 
                 for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
                 {
-                    tB = tinvJ * mGroup->dNdXi( k );
+                    tB = tinvJ * mGroup->integration()->dNdXi( k );
 
                     // contribution to mass matrix
                     aK += ( mGroup->material()->mu_s( norm( tB* mGroup->work_phi()) )
@@ -278,10 +278,10 @@ namespace belfem
                 for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
                 {
                     // Jacobian Matrix
-                    tJ = mGroup->dNdXi( k ) * mGroup->work_X() ;
+                    tJ = mGroup->integration()->dNdXi( k ) * mGroup->work_X() ;
 
                     // gradient operator
-                    tB = inv_J_2d( mGroup ) * mGroup->dNdXi( k );
+                    tB = inv_J_2d( mGroup ) * mGroup->integration()->dNdXi( k );
                     // contribution to mass matrix
                     aK += ( tW( k ) * this->abs_det_J() ) * trans( tB ) * tB  ;
                 }
@@ -294,7 +294,7 @@ namespace belfem
 
                 for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
                 {
-                    tB = tinvJ * mGroup->dNdXi( k );
+                    tB = tinvJ * mGroup->integration()->dNdXi( k );
 
                     // contribution to stiffness matrix
                     aK += tW( k ) * trans( tB ) * tB  ;
@@ -333,10 +333,10 @@ namespace belfem
                 for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
                 {
                     // Jacobian Matrix
-                    tJ = mGroup->dNdXi( k ) * mGroup->work_X() ;
+                    tJ = mGroup->integration()->dNdXi( k ) * mGroup->work_X() ;
 
                     // gradient operator
-                    tB = inv_J_2d( mGroup ) * mGroup->dNdXi( k );
+                    tB = inv_J_2d( mGroup ) * mGroup->integration()->dNdXi( k );
 
                     // contribution to mass matrix
                     aM += tW( k ) * trans( tB ) * tB * this->abs_det_J();
@@ -350,7 +350,7 @@ namespace belfem
 
                 for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
                 {
-                    tB = tinvJ * mGroup->dNdXi( k );
+                    tB = tinvJ * mGroup->integration()->dNdXi( k );
 
                     aM += tW( k ) * trans( tB ) * tB ;
                 }
@@ -387,10 +387,10 @@ namespace belfem
                 for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
                 {
                     // Jacobian Matrix
-                    tJ = mGroup->dNdXi( k ) * mGroup->work_X() ;
+                    tJ = mGroup->integration()->dNdXi( k ) * mGroup->work_X() ;
 
                     // gradient operator
-                    tB = inv_J_2d( mGroup ) * mGroup->dNdXi( k );
+                    tB = inv_J_2d( mGroup ) * mGroup->integration()->dNdXi( k );
 
                     real tMu0 = mGroup->material()->mu_s( std::abs( dot( tB, mGroup->work_psi() ) ) );
                     real tMu1 = mGroup->material()->mu_s( std::abs( dot( tB, mGroup->work_phi() ) ) );
@@ -410,7 +410,7 @@ namespace belfem
 
                 for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
                 {
-                    tB = tinvJ * mGroup->dNdXi( k );
+                    tB = tinvJ * mGroup->integration()->dNdXi( k );
 
                     real tMu0 = mGroup->material()->mu_s( std::abs( dot( tB, mGroup->work_psi() ) ) );
                     real tMu1 = mGroup->material()->mu_s( std::abs( dot( tB, mGroup->work_phi() ) ) );

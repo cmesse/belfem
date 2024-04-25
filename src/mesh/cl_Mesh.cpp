@@ -1545,6 +1545,9 @@ namespace belfem
             if( mComputeConnectivities )
             {
                 this->connect_nodes_to_elements();
+		
+		this->finalize_edges();
+		this->finalize_faces();
 
                 if( ! mFacetsAreLinked )
                 {
@@ -1676,7 +1679,6 @@ namespace belfem
     void
     Mesh::finalize_edges( Cell< mesh::Element * > & aElements )
     {
-        std::cout << "finalize edges" << std::endl ;
         if( mEdges.size() > 0 )
         {
             // flag edge elements
@@ -1698,7 +1700,6 @@ namespace belfem
     void
     Mesh::finalize_faces()
     {
-        std::cout << "finalize faces" << std::endl ;
         if( mFaces.size() > 0 )
         {
             this->create_face_map();
@@ -1959,7 +1960,6 @@ namespace belfem
             }
             this->update_edge_indices() ;
 
-            // todo: make this available in parallel
             this->compute_edge_orientations() ;
         }
     }

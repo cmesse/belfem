@@ -22,6 +22,7 @@ set( SOURCES
         )
 
 include_directories( ${BELFEM_SOURCE_DIR}/mesh )
+include_directories( ${BELFEM_SOURCE_DIR}/homology )
 include_directories( ${BELFEM_SOURCE_DIR}/fem/interpolation )
 include_directories( ${BELFEM_SOURCE_DIR}/fem/edgeinterpolation )
 include_directories( ${BELFEM_SOURCE_DIR}/fem/iwg )
@@ -46,6 +47,7 @@ set ( LIBLIST
         materials
         iwg
         maxwell
+        homology
         postproc
         kernel
         postproc

@@ -256,7 +256,7 @@ namespace belfem
              * expose the integration data
              */
              const IntegrationData *
-             integration() ;
+             integration() const ;
 
 //------------------------------------------------------------------------------
 
@@ -1336,6 +1336,14 @@ namespace belfem
         Group::element_type() const
         {
             return mElementType;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline const IntegrationData *
+        Group::integration() const
+        {
+            return mCalc->integration() ;
         }
 
 //------------------------------------------------------------------------------

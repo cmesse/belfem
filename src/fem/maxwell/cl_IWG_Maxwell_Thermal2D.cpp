@@ -14,11 +14,13 @@ namespace belfem
 
         IWG_Maxwell_Thermal2D::IWG_Maxwell_Thermal2D() :
                 IWG_TimestepOld( IwgType::TransientHeatConduction,
+                     ModelDimensionality::TwoD,
                      IwgMode::Iterative,
                      SymmetryMode::PositiveDefiniteSymmetric,
                      DofMode::AllBlocksEqual ),
                      mMyRank( comm_rank() )
-        {
+
+    {
             mNumberOfDofsPerNode = 1 ;
             mNumberOfDerivativeDimensions = 1 ;
             mNumberOfRhsCols = 1 ;

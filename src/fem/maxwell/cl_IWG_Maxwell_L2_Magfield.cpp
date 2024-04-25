@@ -221,15 +221,15 @@ namespace belfem
             aJacobian.fill( 0.0 );
 
             // integration weights
-            const Vector< real > & tW = mGroup->integration_weights() ;
+            const Vector< real > & tW = mGroup->integration()->weights() ;
 
             // from the geometry jacobian
             Matrix< real > & tJ = mGroup->work_J() ;
 
-            for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+            for( uint k=0; k<mGroup->integration()->number_of_integration_points(); ++k )
             {
-                tJ = mGroup->dNdXi( k ) * mGroup->node_coords() ;
-                const Matrix< real > & tN = mGroup->Nvector( k );
+                tJ = mGroup->integration()->dNdXi( k ) * mGroup->node_coords() ;
+                const Matrix< real > & tN = mGroup->integration()->Nvector( k );
 
                 aJacobian += ( tW( k ) * std::abs( det( tJ ) ) )
                       * trans( tN ) * tN ;
@@ -248,7 +248,7 @@ namespace belfem
             aJacobian.fill( 0.0 );
 
             // integration weights
-            const Vector< real > & tW = mGroup->integration_weights() ;
+            const Vector< real > & tW = mGroup->integration()->weights() ;
 
             // from the geometry jacobian
             Matrix< real > & tJ    = mGroup->work_J() ;
@@ -258,14 +258,14 @@ namespace belfem
             real tDetJ ;
             uint tCount ;
 
-            for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+            for( uint k=0; k<mGroup->integration()->number_of_integration_points(); ++k )
             {
-                tJ = mGroup->dNdXi( k ) * mGroup->node_coords() ;
+                tJ = mGroup->integration()->dNdXi( k ) * mGroup->node_coords() ;
                 tDetJ = std::abs( det( tJ ) );
 
-                const Matrix< real > & tN = mGroup->Nvector( k );
+                const Matrix< real > & tN = mGroup->integration()->Nvector( k );
 
-                tdNdx = inv( tJ ) * mGroup->dNdXi( k );
+                tdNdx = inv( tJ ) * mGroup->integration()->dNdXi( k );
 
                 // build stiffness matrix
                 tCount = 0 ;
@@ -310,16 +310,16 @@ namespace belfem
             mEdgeFunction->link( aElement, true, false, false );
 
             // integration weights
-            const Vector< real > & tW = mGroup->integration_weights() ;
+            const Vector< real > & tW = mGroup->integration()->weights() ;
 
             Vector< real > & tH = mGroup->work_nedelec();
             this->collect_nedelec_data( aElement, NedelecField::H, tH );
 
             aRHS.fill( 0.0 );
-            for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+            for( uint k=0; k<mGroup->integration()->number_of_integration_points(); ++k )
             {
                 aRHS += ( tW( k ) * mEdgeFunction->abs_det_J() )
-                        * trans( mGroup->Nvector( k ) )
+                        * trans( mGroup->integration()->Nvector( k ) )
                         * mEdgeFunction->E( k ) * tH ;
             }
 
@@ -336,16 +336,16 @@ namespace belfem
             mEdgeFunction->link( aElement, false, true, false );
 
             // integration weights
-            const Vector< real > & tW = mGroup->integration_weights() ;
+            const Vector< real > & tW = mGroup->integration()->weights() ;
 
             Vector< real > & tPhi = mGroup->work_phi();
             this->collect_node_data( aElement, "phi", tPhi );
 
             aRHS.fill( 0.0 );
-            for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+            for( uint k=0; k<mGroup->integration()->number_of_integration_points(); ++k )
             {
                 aRHS += ( tW( k ) * mEdgeFunction->abs_det_J() )
-                        * trans( mGroup->Nvector( k ) )
+                        * trans( mGroup->integration()->Nvector( k ) )
                         * mEdgeFunction->B( k ) * tPhi ;
             }
 
@@ -362,19 +362,19 @@ namespace belfem
             mEdgeFunction->link( aElement, false, true, false );
 
             // integration weights
-            const Vector< real > & tW = mGroup->integration_weights() ;
+            const Vector< real > & tW = mGroup->integration()->weights() ;
 
             Vector< real > & tPhi = mGroup->work_phi();
             this->collect_node_data( aElement, "phi", tPhi );
 
             aRHS.fill( 0.0 );
-            for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+            for( uint k=0; k<mGroup->integration()->number_of_integration_points(); ++k )
             {
                 mH =mEdgeFunction->B( k ) * tPhi  ;
 
                 real tMu = mMaterial->mu_s( norm( mH ) );
                 aRHS -= ( tW( k ) * mEdgeFunction->abs_det_J() * tMu )
-                        * trans( mGroup->Nvector( k ) )
+                        * trans( mGroup->integration()->Nvector( k ) )
                         * mH ;
             }
         }
@@ -389,16 +389,16 @@ namespace belfem
             mEdgeFunction->link( aElement, false, false, true );
 
             // integration weights
-            const Vector< real > & tW = mGroup->integration_weights() ;
+            const Vector< real > & tW = mGroup->integration()->weights() ;
 
             Vector< real > & tAz = mGroup->work_phi();
             this->collect_node_data( aElement, "az", tAz );
 
             aRHS.fill( 0.0 );
-            for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+            for( uint k=0; k<mGroup->integration()->number_of_integration_points(); ++k )
             {
                 aRHS += ( tW( k ) * mEdgeFunction->abs_det_J() )
-                        * trans( mGroup->Nvector( k ) )
+                        * trans( mGroup->integration()->Nvector( k ) )
                         * mEdgeFunction->CA( k ) * tAz ;
             }
         }

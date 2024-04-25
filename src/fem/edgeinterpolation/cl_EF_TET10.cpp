@@ -634,7 +634,7 @@ namespace belfem
             // check if Jacobian is updated
             if( aIndex != mLastJ )
             {
-                mJ = mGroup->dNdXi( aIndex ) * mNodeCoords ;
+                mJ = mGroup->integration()->dNdXi( aIndex ) * mNodeCoords ;
 
                 mDetJ =   mJ( 0, 2 )*( mJ( 1, 0 )*mJ( 2, 1 ) - mJ( 1, 1 )*mJ( 2, 0 ) )
                         - mJ( 0, 1 )*( mJ( 1, 0 )*mJ( 2, 2 ) - mJ( 1, 2 )*mJ( 2, 0 ) )

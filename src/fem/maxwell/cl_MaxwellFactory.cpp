@@ -154,6 +154,7 @@ namespace belfem
                     delete mThermalMesh;
                 }
             }
+            delete mSimplicialComplex;
         }
 
 //------------------------------------------------------------------------------
@@ -183,8 +184,7 @@ namespace belfem
 #endif
 #endif
             // create the edges for this mesh
-            mMesh->create_edges( false, mNedelecBlocks, mNedelecSideSets ) ;
-
+            mMesh->create_edges( false, mBlockIDs, mSideSetIDs );
 
             // check if this is a higher order mesh
             if( mMesh->max_element_order() > 1 )
@@ -193,6 +193,7 @@ namespace belfem
                 mMesh->create_faces( false, mNedelecBlocks, mNedelecSideSets ) ;
             }
 
+            this->create_simplicial_complex() ;
 
             // read the timestepping information
             this->read_timestep() ;
@@ -287,8 +288,9 @@ namespace belfem
             // create the equation
             if( mThermalKernel->mesh()->number_of_dimensions() == 2 )
             {
+                /*
                 // create the equation
-                mFourier = new IWG_Maxwell_Thermal2D();
+                mFourier = nullptr ; // new IWG_Maxwell_Thermal2D();
 
                 IWG_Maxwell_Thermal2D * tFourier = reinterpret_cast<  IWG_Maxwell_Thermal2D * >( mFourier );
 
@@ -305,7 +307,8 @@ namespace belfem
                                                  mThermalKernel->mesh(),
                                                  this->tape_thicknesses() );
 
-
+                */
+                BELFEM_ERROR( false, "2D mesh not implemented!") ;
             }
             else
             {
@@ -327,6 +330,16 @@ namespace belfem
             mThermalKernel->mesh()->create_field( "T").fill( mTinit );
 
 
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        MaxwellFactory::create_simplicial_complex()
+        {
+            this->flag_nc_simplices();
+            mSimplicialComplex = new mesh::SimplicialComplex(mMesh);
+            this->unflag_nc_simplices();
         }
 
 //------------------------------------------------------------------------------
@@ -410,6 +423,16 @@ namespace belfem
         MaxwellFactory::maxtime() const
         {
             return mInputFile.section("timestepping")->get_value("maxtime", "s").first ;
+        }
+
+//------------------------------------------------------------------------------
+
+        real
+        MaxwellFactory::maxdt() const
+        {
+            return mInputFile.section("timestepping")->key_exists("timestepmax") ?
+                   mInputFile.section("timestepping")->get_value("timestepmax", "s").first :
+                   mInputFile.section("timestepping")->get_value("timestep", "s").first ;
         }
 
 //------------------------------------------------------------------------------
@@ -759,7 +782,7 @@ namespace belfem
                         {
                             // get labels
                             const Cell< string > & tTargets
-                                = reinterpret_cast< MaxwellMaterial * >( tMaterial )->domain_labels();
+                                    = reinterpret_cast< MaxwellMaterial * >( tMaterial )->domain_labels();
 
                             // add material to map
                             for ( index_t t = 0; t < tTargets.size(); ++t )
@@ -4393,6 +4416,78 @@ namespace belfem
                 receive( mMagneticKernel->master(), tNumShellsPerNode );
             }
         }
+
+// -----------------------------------------------------------------------------
+
+
+        void
+        MaxwellFactory::flag_nc_simplices()
+        {
+            // Flag the non-conducting simplices for the homology and cohomology
+            for( uint i = 0; i < mBlocks.size(); ++i )
+            {
+                if (mBlocks(i)->type()!= DomainType::Coil && mBlocks(i)->type()!= DomainType::Conductor)
+                {
+                    for( uint j = 0; j < mBlocks(i)->groups().length(); ++j )
+                    {
+                        mMesh->block(mBlocks(i)->groups()(j))->flag_nodes();
+                        mMesh->block(mBlocks(i)->groups()(j))->flag_edges();
+                        mMesh->block(mBlocks(i)->groups()(j))->flag_elements();
+                    }
+                }
+            }
+
+            /*for( uint i = 0; i < mSideSets.size(); ++i )
+            {
+                if (mSideSets(i)->type()!= DomainType::ThinShell)
+                {
+                    for( uint j = 0; j < mSideSets(i)->groups().length(); ++j )
+                    {
+                        mMesh->sideset(mSideSets(i)->groups()(j))->flag_all_nodes();
+                        mMesh->sideset(mSideSets(i)->groups()(j))->flag_edges();
+                    }
+                }
+            }*/
+        }
+
+// -----------------------------------------------------------------------------
+
+        void
+        MaxwellFactory::unflag_nc_simplices()
+        {
+            // Flag the non-conducting simplices for the homology and cohomology
+            for( uint i = 0; i < mBlocks.size(); ++i )
+            {
+                if (mBlocks(i)->type()!= DomainType::Coil && mBlocks(i)->type()!= DomainType::Conductor)
+                {
+                    for( uint j = 0; j < mBlocks(i)->groups().length(); ++j )
+                    {
+                        Cell< mesh::Element * > & tElements = mMesh->block( mBlocks(i)->groups()(j))->elements() ;
+
+                        for( mesh::Element * tElement : tElements )
+                        {
+                            tElement->unflag() ;
+                            tElement->unflag_nodes() ;
+                            tElement->unflag_edges() ;
+                            tElement->unflag_faces() ;
+                        }
+                    }
+                }
+            }
+
+            /*for( uint i = 0; i < mSideSets.size(); ++i )
+            {
+                if (mSideSets(i)->type()!= DomainType::ThinShell)
+                {
+                    for( uint j = 0; j < mSideSets(i)->groups().length(); ++j )
+                    {
+                        mMesh->sideset(mSideSets(i)->groups()(j))->unflag_all_nodes();
+                        mMesh->sideset(mSideSets(i)->groups()(j))->unflag_edges();
+                    }
+                }
+            }*/
+        }
+
 
 // -----------------------------------------------------------------------------
     }

@@ -9,6 +9,7 @@ add_subdirectory( numerics )
 add_subdirectory( physics )
 add_subdirectory( mesh )
 add_subdirectory( fem )
+add_subdirectory( homology )
 
 
 if( USE_MAXWELL )

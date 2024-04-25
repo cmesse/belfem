@@ -12,6 +12,7 @@ include_directories( ${BELFEM_SOURCE_DIR}/fem/postproc )
 include_directories( ${BELFEM_SOURCE_DIR}/math/tools )
 include_directories( ${BELFEM_SOURCE_DIR}/math/graph )
 include_directories( ${BELFEM_SOURCE_DIR}/numerics/integration )
+include_directories( ${BELFEM_SOURCE_DIR}/homology )
 
 if ( USE_GASMODELS )
     include_directories( ${BELFEM_SOURCE_DIR}/physics/gastables )
@@ -33,6 +34,7 @@ if ( USE_GASMODELS )
             kernel
             postproc
             maxwell
+            homology
              )
 else()
     set ( LIBLIST
@@ -48,7 +50,8 @@ else()
             iwg
             kernel
             postproc
-            maxwell )
+            maxwell
+            homology )
 endif()
 
 
@@ -77,4 +80,12 @@ include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
 
 set( EXECNAME newmat )
 set( MAIN newmat.cpp)
+include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
+
+set( EXECNAME testHomology )
+set( MAIN testHomology.cpp)
+include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
+
+set( EXECNAME testHomology3D )
+set( MAIN testHomology3D.cpp)
 include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )

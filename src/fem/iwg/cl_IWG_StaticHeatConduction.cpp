@@ -86,7 +86,7 @@ namespace belfem
             const Vector< real > & tW =  mCalc->integration()->weights();
 
             // nodal temperatures
-            const Vector< real > & tTnodes   = mCalc->node_data("T");
+            const Vector< real > & tTnodes   = mCalc->vector("T");
 
             // loop over all integration points
             for( uint k=0; k<mCalc->num_intpoints(); ++k )
@@ -123,8 +123,8 @@ namespace belfem
             const Vector< real > & tW = mCalc->integration()->weights();
 
             // collect temperatures from last iteration
-            const Vector< real > & tAlphaNodes = mCalc->node_data("alpha");
-            const Vector< real > & tTinfNodes  = mCalc->node_data("Tinf");
+            const Vector< real > & tAlphaNodes = mCalc->vector("alpha");
+            const Vector< real > & tTinfNodes  = mCalc->vector("Tinf");
 
             // loop over all integration points
             for( uint k=0; k<mCalc->num_intpoints(); ++k )
@@ -171,7 +171,7 @@ namespace belfem
 
         // integration weights
         const Vector< real > & tW = mCalc->integration()->weights();
-        const Vector < real > & tdotq = mCalc->node_data("dotQ");
+        const Vector < real > & tdotq = mCalc->vector("dotQ");
 
         real tDotQ ;
 

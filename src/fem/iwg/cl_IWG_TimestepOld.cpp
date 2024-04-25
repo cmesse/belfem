@@ -60,9 +60,9 @@ namespace belfem
             IWG_TimestepOld::compute_Ttheta( const uint aK )
             {
                 return ( 1.0 - mTheta )
-                             * dot( mGroup->n( aK ), mGroup->work_psi() )
+                             * dot( mGroup->integration()->phi( aK ), mGroup->work_psi() )
                         + mTheta
-                             * dot( mGroup->n( aK ), mGroup->work_phi() );
+                             * dot( mGroup->integration()->phi( aK ), mGroup->work_phi() );
             }
 
 //------------------------------------------------------------------------------
@@ -70,7 +70,7 @@ namespace belfem
             real
             IWG_TimestepOld::compute_T0( const uint aK )
             {
-                return dot( mGroup->n( aK ), mGroup->work_psi() );
+                return dot( mGroup->integration()->phi( aK ), mGroup->work_psi() );
             }
 
 //------------------------------------------------------------------------------
@@ -78,7 +78,7 @@ namespace belfem
             real
             IWG_TimestepOld::compute_T1( const uint aK )
             {
-                return dot( mGroup->n( aK ), mGroup->work_phi() );
+                return dot( mGroup->integration()->phi( aK ), mGroup->work_phi() );
             }
 
 //------------------------------------------------------------------------------

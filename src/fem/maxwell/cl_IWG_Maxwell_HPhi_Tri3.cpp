@@ -241,7 +241,7 @@ namespace belfem
 
             // scaling parameter
             real tScale = mGroup->work_det_J() * constant::mu0 * this->timestep() ;
-            /*for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+            /*for( uint k=0; k<mGroup->integration()->number_of_integration_points(); ++k )
             {
                 const Matrix< real > & tE = mEdgeFunction->E( k );
                 const Vector< real > & tN = tNodeFunction->phi( k );
@@ -337,12 +337,12 @@ namespace belfem
             tBm = inv( tMaster->dNdXi( 0 ) * mGroup->work_Xm() )
                                * tMaster->dNdXi( 0 );
 
-            const Vector< real > & tW = mGroup->integration_weights() ;
+            const Vector< real > & tW = mGroup->integration()->weights() ;
 
             tK.fill( 0 );
             tM.fill( 0 );
 
-            for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
+            for ( uint k = 0; k < mGroup->integration()->number_of_integration_points(); ++k )
             {
                 const Vector< real > & tNs = tSlave->phi( k );
                 real tOmega = tW( k ) * mGroup->work_det_J();
@@ -587,8 +587,8 @@ namespace belfem
             const IntegrationData * tSlave =
                     mGroup->slave_integration( aElement->facet()->slave_index() );
 
-            BELFEM_ASSERT( tMaster->weights().length() == mNumberOfIntegrationPoints, "number of integraiton points on master does not match" );
-            BELFEM_ASSERT( tSlave->weights().length() == mNumberOfIntegrationPoints, "number of integraiton points on slave does not match" );
+            BELFEM_ASSERT( tMaster->weights().length() == mGroup->integration()->number_of_integration_points(), "number of integraiton points on master does not match" );
+            BELFEM_ASSERT( tSlave->weights().length() == mGroup->integration()->number_of_integration_points(), "number of integraiton points on slave does not match" );
 
             // gradient operators
             tBm = inv( tMaster->dNdXi( 0 ) * tXm ) * tMaster->dNdXi( 0 ) ;

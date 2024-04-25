@@ -314,7 +314,7 @@ namespace belfem
         EF_TET10::B_curved( const uint aIndex )
         {
             this->compute_jacobian( aIndex );
-            mB = mInvJ * mGroup->dNdXi( aIndex );
+            mB = mInvJ * mGroup->integration()->dNdXi( aIndex );
         }
 
 //------------------------------------------------------------------------------
@@ -322,7 +322,7 @@ namespace belfem
         inline void
         EF_TET10::B_straight( const uint aIndex )
         {
-            mB = mInvJ * mGroup->dNdXi( aIndex );
+            mB = mInvJ * mGroup->integration()->dNdXi( aIndex );
         }
 
 //------------------------------------------------------------------------------

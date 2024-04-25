@@ -314,7 +314,7 @@ namespace belfem
             Matrix< real > & tB    = mGroup->work_B() ;
 
             // get weight functions
-            const Vector< real > & tW = mGroup->integration_weights() ;
+            const Vector< real > & tW = mGroup->integration()->weights() ;
 
             Vector< real > & tnxE  = mGroup->work_tau() ;
             Vector< real > & tnxB  = mGroup->work_sigma() ;
@@ -350,7 +350,8 @@ namespace belfem
                 // this->collect_node_coords( aElement->master(), mGroup->work_Xm() );
                 // this->collect_node_coords( aElement->slave(), mGroup->work_Xs() );
 
-                for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+                for( uint k=0; k<mGroup->integration()->number_of_integration_points()
+; ++k )
                 {
                     // gradient operator for air element
                     tB = inv( tNodeFunction->dNdXi( k ) * mGroup->work_Xs() )
@@ -421,7 +422,8 @@ namespace belfem
                 // normal at integration point ( also computes mGroup->work_det_J() )
                 const Vector< real > & tn = this->normal_straight_2d( aElement );
 
-                for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+                for( uint k=0; k<mGroup->integration()->number_of_integration_points()
+; ++k )
                 {
                     // gradient operator for air element
                     tB = tInvJ * tNodeFunction->dNdXi( k ) ;
@@ -513,7 +515,7 @@ namespace belfem
             Matrix< real > & tK = mGroup->work_K() ;
             Matrix< real > & tM = aJacobian ;
 
-            const Vector< real > & tW = mGroup->integration_weights() ;
+            const Vector< real > & tW = mGroup->integration()->weights() ;
 
             tK.fill( 0.0 );
             tM.fill( 0.0 );
@@ -548,7 +550,8 @@ namespace belfem
 
             //const Material * tFerro = aElement->slave()->material() ;
 
-            for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
+            for ( uint k = 0; k < mGroup->integration()->number_of_integration_points()
+; ++k )
             {
 
                 real tOmega = tW( k ) * mGroup->work_det_J();
@@ -711,9 +714,10 @@ namespace belfem
                 this->collect_node_coords( aElement->master(), mGroup->work_Xm() );
 
                 // integration weights
-                const Vector< real > & tW = mGroup->integration_weights();
+                const Vector< real > & tW = mGroup->integration()->weights();
 
-                for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
+                for ( uint k = 0; k < mGroup->integration()->number_of_integration_points()
+; ++k )
                 {
                     // vector for mass matrix
                     const Matrix< real > & tN = tMaster->N( k );
@@ -934,7 +938,7 @@ namespace belfem
             mEdgeFunctionTS->link( aElement );
 
             // integration weights along edge
-            const Vector< real > & tW = mGroup->integration_weights();
+            const Vector< real > & tW = mGroup->integration()->weights();
 
             // get integration data from master
             const IntegrationData * tIntMaster =
@@ -997,12 +1001,15 @@ namespace belfem
                            ( long unsigned int ) aElement->id() );
 
             // make sure that integration weights make sense
-            BELFEM_ASSERT( tIntMaster->weights().length() == mNumberOfIntegrationPoints,
+            BELFEM_ASSERT( tIntMaster->weights().length() == mGroup->integration()->number_of_integration_points()
+,
                            "number of integraiton points on master does not match" );
-            BELFEM_ASSERT( tIntSlave->weights().length() == mNumberOfIntegrationPoints,
+            BELFEM_ASSERT( tIntSlave->weights().length() == mGroup->integration()->number_of_integration_points()
+,
                            "number of integraiton points on slave does not match" );
 
-            BELFEM_ASSERT( mGroup->thinshell_integration()->weights().length() == mNumberOfIntegrationPoints,
+            BELFEM_ASSERT( mGroup->thinshell_integration()->weights().length() == mGroup->integration()->number_of_integration_points()
+,
                            "number of integraiton points on thin shell does not match" );
 
             // indices
@@ -1029,7 +1036,8 @@ namespace belfem
             // std::cout <<  aElement->element()->id() << " sign " << aElement->edge_direction( 0 ) << " " << aElement->element()->node( 1 )->x() - aElement->element()->node( 0 )->x() << std::endl ;
 
             // loop over all integration points
-            for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
+            for ( uint k = 0; k < mGroup->integration()->number_of_integration_points()
+; ++k )
             {
                 // compute element normal, also writes integration increment
                 // into mGroup->work_det_J()
@@ -1170,9 +1178,10 @@ namespace belfem
             mAHn.fill( 0.0 );
             mBHn.fill( 0.0 );
             // derivative of Hn to xi
-            for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
+            for ( uint k = 0; k < mGroup->integration()->number_of_integration_points()
+; ++k )
             {
-                real tXi = mGroup->integration_points()( 0, k ) ;
+                real tXi = mGroup->integration()->points()( 0, k ) ;
                 mAHn( 0, 0 ) += tW( k ) * tXi * tXi ;
                 mAHn( 1, 0 ) += tW( k ) * tXi ;
                 mAHn( 0, 1 ) += tW( k ) * tXi ;
@@ -1198,7 +1207,8 @@ namespace belfem
                 // initial offset for node coo
                 p = 2 * mNumberOfNodesPerElement ;
 
-                for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
+                for ( uint k = 0; k < mGroup->integration()->number_of_integration_points()
+; ++k )
                 {
 
                     // evaluate points for edge function
@@ -1457,7 +1467,8 @@ namespace belfem
 
 
             // integrate over thickness
-            for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+            for( uint k=0; k<mGroup->integration()->number_of_integration_points()
+; ++k )
             {
                 // derivative of shape function along thickness
                 // const Vector< real > & tPhiXi  = tInteg->dphidxi( k ) ;
@@ -1607,7 +1618,8 @@ namespace belfem
             const real eta = aMaster ? -1.0 : 1.0 ;
 
             // the row in the lookup table
-            const uint   r = aMaster ? 0 : mNumberOfIntegrationPoints-1 ;
+            const uint   r = aMaster ? 0 : mGroup->integration()->number_of_integration_points()
+-1 ;
 
             // grab layer thickness
             const real tThickness = mGroup->thin_shell_thickness( aLayer );
@@ -1690,7 +1702,8 @@ namespace belfem
             //real tC =   tErr  * this->tau() ; /// aXLength ;
 
 
-            for( uint l=0; l<mNumberOfIntegrationPoints; ++l )
+            for( uint l=0; l<mGroup->integration()->number_of_integration_points()
+; ++l )
             {
                 real xi = tXi( 0, l );
                 real tX = 0.5 * ( xi + 1.0 ) * aXLength ;
@@ -1703,7 +1716,8 @@ namespace belfem
                 mdEdxi( 0 ) = - 1.5 ;
                 mdEdxi( 1 ) =   1.5 ;
 
-                for( uint k=0; k<mNumberOfIntegrationPoints; ++k )
+                for( uint k=0; k<mGroup->integration()->number_of_integration_points()
+; ++k )
                 {
 
                     const Vector< real > & tPhi  = tInteg->phi( k ) ;
@@ -1882,7 +1896,7 @@ namespace belfem
             Matrix< real > & tX = mGroup->work_X() ;
             aElement->get_node_coors( tX );
 
-            const Vector< real > & tW = mGroup->integration_weights() ;
+            const Vector< real > & tW = mGroup->integration()->weights() ;
 
             real aI = 0.0 ;
             real tV = 0.0 ;
@@ -1895,7 +1909,8 @@ namespace belfem
             Vector< real > tJz( 1 );
 
             // loop over all integration points
-            for ( uint k = 0; k < mNumberOfIntegrationPoints; ++k )
+            for ( uint k = 0; k < mGroup->integration()->number_of_integration_points()
+; ++k )
             {
                 // get operator for curl function
                 const Matrix< real > & tC = mEdgeFunction->C( k );

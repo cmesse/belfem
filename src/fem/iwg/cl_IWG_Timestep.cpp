@@ -119,7 +119,7 @@ namespace belfem
                      Matrix< real > & aM,
                      Matrix< real > & aK,
                      Vector< real > & aF,
-                     Vector< real > & aQ )
+                     const Vector< real > & aQ )
         {
             BELFEM_ERROR( false, "compute_mkf not implemented for this IWG" );
         }

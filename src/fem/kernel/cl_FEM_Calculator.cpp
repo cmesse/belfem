@@ -407,7 +407,6 @@ namespace belfem
             // dof vectors
             mq0.set_size( tNumDofs, BELFEM_QUIET_NAN );
             mq1.set_size( tNumDofs, BELFEM_QUIET_NAN );
-            mq.set_size( tNumDofs, BELFEM_QUIET_NAN );
 
             // link function to invert J
             switch( tNumDimensions )
