@@ -124,6 +124,8 @@ namespace belfem
                 tNodes( k )->set_owner( tData( k ) );
             }
 
+            mFile.close_active_group();
+
             // set the indices of the nodes in the memory
             mMesh->update_node_indices();
 #endif
@@ -223,9 +225,10 @@ namespace belfem
 
                 // add block to container
                 tBlocks( b ) = tBlock;
+                mFile.close_active_group();
             }
 
-            mFile.close_active_group();
+            //mFile.close_active_group();
 
             // with the blocks read, we collocate the elements and index them
             // ( this is needed for the sidesets to work )
@@ -329,9 +332,11 @@ namespace belfem
 
                 // add sideset to list
                 tSideSets( s ) = tSideSet;
+
+                mFile.close_active_group();
             }
 
-            mFile.close_active_group();
+            //mFile.close_active_group();
 
             // tell the mesh that the faces have been linked
             mMesh->set_facets_are_linked_flag();
@@ -432,9 +437,11 @@ namespace belfem
 
                 // create the global
                 mMesh->create_global_variable( tLabel, tValue, tID );
+
+                mFile.close_active_group();
             }
 
-            mFile.close_active_group();
+            //mFile.close_active_group();
 #endif
         }
 
@@ -482,9 +489,11 @@ namespace belfem
                 {
                     BELFEM_ERROR( false, "don't know how to interpret field %s", tLabel.c_str() );
                 }
+
+                mFile.close_active_group();
             }
 
-            mFile.close_active_group();
+            //mFile.close_active_group();
 #endif
         }
 

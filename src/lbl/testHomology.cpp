@@ -53,7 +53,7 @@ int main( int    argc,
           char * argv[] )
 {
 
-    bool suggHomology = true; //Do we suggest the homology from conductors' boundaries
+    bool suggHomology = false; //Do we suggest the homology from conductors' boundaries
 
     // create communicator
     gComm = Communicator( argc, argv );

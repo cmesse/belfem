@@ -184,7 +184,11 @@ namespace belfem
 #endif
 #endif
             // create the edges for this mesh
-            mMesh->create_edges( false, mBlockIDs, mSideSetIDs );
+            index_t tCount = mMesh->check() ;
+            std::cout << "reoriented " << tCount << " elements." << std::endl ;
+            mMesh->create_edges( false );
+            mMesh->create_faces( false );
+
 
             // check if this is a higher order mesh
             if( mMesh->max_element_order() > 1 )
@@ -2498,7 +2502,8 @@ namespace belfem
                 this->create_symmetries( true ) ;
             }
 
-            this->select_bcs_and_cuts() ;
+            //todo:: Debug the connectivities with bcs and cuts...
+            //this->select_bcs_and_cuts() ;
             this->select_sidesets() ;
         }
 
@@ -4426,13 +4431,16 @@ namespace belfem
             // Flag the non-conducting simplices for the homology and cohomology
             for( uint i = 0; i < mBlocks.size(); ++i )
             {
-                if (mBlocks(i)->type()!= DomainType::Coil && mBlocks(i)->type()!= DomainType::Conductor)
-                {
-                    for( uint j = 0; j < mBlocks(i)->groups().length(); ++j )
-                    {
-                        mMesh->block(mBlocks(i)->groups()(j))->flag_nodes();
-                        mMesh->block(mBlocks(i)->groups()(j))->flag_edges();
-                        mMesh->block(mBlocks(i)->groups()(j))->flag_elements();
+                if (mBlocks(i)->type()!= DomainType::Coil && mBlocks(i)->type()!= DomainType::Conductor) {
+                    for (uint j = 0; j < mBlocks(i)->groups().length(); ++j) {
+                        Cell<mesh::Element *> &tElements = mMesh->block(mBlocks(i)->groups()(j))->elements();
+
+                        for (mesh::Element *tElement: tElements) {
+                            tElement->flag();
+                            tElement->flag_nodes();
+                            tElement->flag_edges();
+                            tElement->flag_faces();
+                        }
                     }
                 }
             }

@@ -84,48 +84,71 @@ namespace belfem
             // 0-cochain
             if (mDim == 0)
             {
-                for (uint i = 0; i < mMesh->node(aInd)->number_of_edges(); i++)
+                Node * tNode = mMesh->node(aInd);
+                for (uint i = 0; i < tNode->number_of_edges(); i++)
                 {
-                    if (mMesh->node(aInd)->edge(i)->node(0)->id() == aInd)
+                    if (tNode->node(0)->id() == aInd)
                     {
-                        mCoboundary->addSimplexToCochain(mMesh->node(aInd)->edge(i)->id(),-1*aCoeff);
+                        mCoboundary->addSimplexToCochain(tNode->edge(i)->id(),-1*aCoeff);
                     }
                     else
                     {
-                        mCoboundary->addSimplexToCochain(mMesh->node(aInd)->edge(i)->id(),1*aCoeff);
+                        mCoboundary->addSimplexToCochain(tNode->edge(i)->id(),1*aCoeff);
                     }
                 }
             }
 
-                // 1-cochain
+            // 1-cochain
             else if (mDim == 1)
             {
-                for (uint i = 0; i < mMesh->edge(aInd)->number_of_elements(); i++)
+                Edge * tEdge = mMesh->edge(aInd);
+                if (mMesh->number_of_dimensions() == 2)
                 {
-
-                    // Probably can be optimized (how to know the orientation of a given edge in a triangle)
-                    int tMul = 0;
-                    for (uint j = 0; j < 3; j++)
+                    for (uint i = 0; i < tEdge->number_of_elements(); i++)
                     {
-                        if (mMesh->edge(aInd)->element(i)->node(j)->id() == mMesh->edge(aInd)->node(0)->id())
+                        int tMul = 0 ;
+                        Element* tElement = tEdge->element(i);
+                        // Probably can be optimized (how to know the orientation of a given edge in a triangle)
+                        if (tElement->edge(0)->id() == tEdge->id())
                         {
-                            if (mMesh->edge(aInd)->element(i)->node((j+1)%3)->id() == mMesh->edge(aInd)->node(1)->id())
-                            {
-                                tMul = 1;
-                                break;
-                            }
-                            else
-                            {
-                                tMul = -1;
-                                break;
-                            }
+                            tMul = (tElement->edge_orientation(0)?1:-1);
                         }
+                        else
+                        {
+                            tMul = (tElement->edge_orientation(1)?1:-1);
+                        }
+                        mCoboundary->addSimplexToCochain(tElement->id(),tMul*aCoeff);
                     }
-                    mCoboundary->addSimplexToCochain(mMesh->edge(aInd)->element(i)->id(),tMul*aCoeff);
+                }
+                else
+                {
+                    for (uint i = 0; i < tEdge->number_of_faces(); i++)
+                    {
+                        int tMul = 0 ;
+                        Face* tFace = tEdge->face(i);
+                        // Probably can be optimized (how to know the orientation of a given edge in a triangle)
+                        if (tFace->edge(0)->id() == tEdge->id())
+                        {
+                            tMul = (tFace->edge_orientation(0)?1:-1);
+                        }
+                        else
+                        {
+                            tMul = (tFace->edge_orientation(1)?1:-1);
+                        }
+                        mCoboundary->addSimplexToCochain(tFace->id(),tMul*aCoeff);
+                    }
                 }
             }
 
-            // todo: do the same with 2-cochain (elements/volumes) when we have 3-D
+            else if (mMesh->number_of_dimensions() == 3 && mDim == 2)
+            {
+                Face * tFace = mMesh->face(aInd);
+                mCoboundary->addSimplexToCochain(tFace->master()->id(),1*aCoeff);
+                if (tFace->slave())
+                {
+                    mCoboundary->addSimplexToCochain(tFace->slave()->id(),-1*aCoeff);
+                }
+            }
 
             //remove the simplex from the map if the coefficient becomes 0
             if (mSimplicesMap[aInd] == 0)

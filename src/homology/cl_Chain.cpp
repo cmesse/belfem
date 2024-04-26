@@ -75,23 +75,38 @@ namespace belfem
                 mBoundary->addSimplexToChain(mMesh->edge(aInd)->node(1)->id(),1*aCoeff);
             }
 
-                // 2-chain
+            // 2-chain
             else if (mDim == 2)
             {
-                for ( int i = 0; i < 3; ++i )
+                if (mMesh->number_of_dimensions() == 2)
                 {
-                    if (mMesh->element(aInd)->edge(i)->node(0)->id() == mMesh->element(aInd)->node(i)->id())
+                    Element * tElement = mMesh->element(aInd);
+                    for ( uint i = 0; i < 3; ++i )
                     {
-                        mBoundary->addSimplexToChain(mMesh->element(aInd)->edge(i)->id(),1*aCoeff);
+                        mBoundary->addSimplexToChain(tElement->edge(i)->id(),
+                                                     (tElement->edge_orientation(i)?1:-1)*aCoeff);
                     }
-                    else
+                }
+                else
+                {
+                    Face * tFace = mMesh->face(aInd);
+                    for ( uint i = 0; i < 3; ++i )
                     {
-                        mBoundary->addSimplexToChain(mMesh->element(aInd)->edge(i)->id(),-1*aCoeff);
+                        mBoundary->addSimplexToChain(tFace->edge(i)->id(),
+                                                     (tFace->edge_orientation(i)?1:-1)*aCoeff);
                     }
                 }
             }
 
-            // todo: do the same with 3-chain (volumes/triangles) when we have 3-D
+            if (mMesh->number_of_dimensions() == 3 && mDim == 3)
+            {
+                Element * tElement = mMesh->element(aInd);
+                for ( uint i = 0; i < 4; ++i )
+                {
+                    mBoundary->addSimplexToChain(tElement->face(i)->id(),
+                                                 (tElement->face(i)->master()->id() == tElement->id()?1:-1)*aCoeff);
+                }
+            }
 
             //remove the simplex from the map if the coefficient becomes 0
             if (mSimplicesMap[aInd] == 0)

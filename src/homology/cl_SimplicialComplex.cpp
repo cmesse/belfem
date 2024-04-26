@@ -94,6 +94,27 @@ namespace belfem
 
             mChains( 2 ).clear();
             mCochains( 2 ).clear();
+
+            // delete map
+            mChainsMap( 3 ).clear();
+            mBoundaryMap( 3 ).clear();
+
+            mCochainsMap( 3 ).clear();
+            mCoboundaryMap( 3 ).clear();
+
+            // delete pointers
+            for ( Chain * tChain: mChains( 3 ))
+            {
+                delete tChain;
+            }
+
+            for ( Cochain * tCochain: mCochains( 3 ))
+            {
+                delete tCochain;
+            }
+
+            mChains( 3 ).clear();
+            mCochains( 3 ).clear();
         }
 
         //------------------------------------------------------------------------------
@@ -107,6 +128,7 @@ namespace belfem
             // initialize counter
             index_t tCount = 0;
 
+            uint tDim = aMesh->number_of_dimensions();
             // allocate memory for 0simplices
             mChains( 0 ).set_size( aMesh->number_of_nodes(), nullptr );
             mCochains( 0 ).set_size( aMesh->number_of_nodes(), nullptr );
@@ -165,33 +187,63 @@ namespace belfem
             // initialize counter
             tCount = 0;
 
-            // allocate memory for 2simplices
-            mChains( 2 ).set_size( aMesh->number_of_elements(), nullptr );
-            mCochains( 2 ).set_size( aMesh->number_of_elements(), nullptr );
+            if (tDim == 3)
+            {
+                mChains( 2 ).set_size( aMesh->number_of_faces(), nullptr );
+                mCochains( 2 ).set_size( aMesh->number_of_faces(), nullptr );
 
+                mChains( 3 ).set_size( aMesh->number_of_elements(), nullptr );
+                mCochains( 3 ).set_size( aMesh->number_of_elements(), nullptr );
+                for ( Face * tFace: aMesh->faces())
+                {
+                    if ( tFace->is_flagged())
+                    {
+                        mChains( 2 )( tCount ) = new Chain( 2, aMesh );
+                        mChains( 2 )( tCount )->addSimplexToChain( tFace->id(), 1 );
+
+                        mCochains( 2 )( tCount ) = new Cochain( 2, aMesh );
+                        mCochains( 2 )( tCount )->addSimplexToCochain( tFace->id(), 1 );
+
+                        // add entry to map
+                        mChainsMap( 2 )[ tFace->id() ] = mChains( 2 )( tCount );
+                        mCochainsMap( 2 )[ tFace->id() ] = mCochains( 2 )( tCount++ );
+
+                        //populate the 2-boundary map
+                        mBoundaryMap( 2 )[ tFace->id() ] = mChainsMap( 2)[ tFace->id() ]->getBoundary();
+                        mCoboundaryMap( 2 )[ tFace->id() ] = mCochainsMap( 2 )[ tFace->id() ]->getCoboundary();
+                        tFace->unflag();
+                    }
+                }
+            }
+            else
+            {
+                mChains( 2 ).set_size( aMesh->number_of_elements(), nullptr );
+                mCochains( 2 ).set_size( aMesh->number_of_elements(), nullptr );
+            }
+
+            // initialize counter
+            tCount = 0;
             // loop over all elements on mesh
             for ( Element * tElement: aMesh->elements())
             {
                 if ( tElement->is_flagged())
                 {
-                    mChains( 2 )( tCount ) = new Chain( 2, aMesh );
-                    mChains( 2 )( tCount )->addSimplexToChain( tElement->id(), 1 );
+                    mChains( tDim )( tCount ) = new Chain( tDim, aMesh );
+                    mChains( tDim )( tCount )->addSimplexToChain( tElement->id(), 1 );
 
-                    mCochains( 2 )( tCount ) = new Cochain( 2, aMesh );
-                    mCochains( 2 )( tCount )->addSimplexToCochain( tElement->id(), 1 );
+                    mCochains( tDim )( tCount ) = new Cochain( tDim, aMesh );
+                    mCochains( tDim )( tCount )->addSimplexToCochain( tElement->id(), 1 );
 
                     // add entry to map
-                    mChainsMap( 2 )[ tElement->id() ] = mChains( 2 )( tCount );
-                    mCochainsMap( 2 )[ tElement->id() ] = mCochains( 2 )( tCount++ );
+                    mChainsMap( tDim )[ tElement->id() ] = mChains( tDim )( tCount );
+                    mCochainsMap( tDim )[ tElement->id() ] = mCochains( tDim )( tCount++ );
 
                     //populate the 2-boundary map
-                    mBoundaryMap( 2 )[ tElement->id() ] = mChainsMap( 2 )[ tElement->id() ]->getBoundary();
-                    mCoboundaryMap( 2 )[ tElement->id() ] = mCochainsMap( 2 )[ tElement->id() ]->getCoboundary();
+                    mBoundaryMap( tDim )[ tElement->id() ] = mChainsMap( tDim )[ tElement->id() ]->getBoundary();
+                    mCoboundaryMap( tDim )[ tElement->id() ] = mCochainsMap( tDim )[ tElement->id() ]->getCoboundary();
                     tElement->unflag();
                 }
             }
-
-            // todo: Same with Volumes when we have 3-D
 
         }
 
