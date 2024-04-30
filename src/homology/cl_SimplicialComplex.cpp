@@ -395,35 +395,36 @@ namespace belfem
                 return tRemoved;
             }
             uint tCount = 0;
-            for ( auto it = mChainsMap( p-1 ).begin(); it != mChainsMap( p-1 ).end() ;)
+            tRemoved = true;
+            while (tRemoved)
             {
-                tCount = 0;
-                uint tpChainReduced;
-                uint tp1ChainReduced;
-                for (const auto & [tKey, tpChain]: mChainsMap( p ))
+                tRemoved = false;
+                for (auto it = mChainsMap( p-1 ).begin();  it != mChainsMap( p-1 ).end(); ++it )
                 {
-                    if(tpChain->getBoundary()->getCoefficient(it->first) != 0)
+                    tCount = 0;
+                    uint tpChainReduced;
+                    uint tp1ChainReduced;
+                    for (const auto & [tKey, tpChain]: mChainsMap( p ))
                     {
-                        tCount += 1;
-                        tpChainReduced = tKey;
-                        tp1ChainReduced = it->first;
+                        if(tpChain->getBoundary()->getCoefficient(it->first) != 0)
+                        {
+                            tCount += 1;
+                            tpChainReduced = tKey;
+                            tp1ChainReduced = it->first;
+                        }
+                        if (tCount > 1)
+                        {
+                            break;
+                        }
                     }
-                    if (tCount > 1)
-                    {
-                        break;
-                    }
-                }
 
-                if (tCount == 1)
-                {
-                    --it;
-                    this->remove_kchainFromMap( p, tpChainReduced );
-                    this->remove_kchainFromMap( p - 1, tp1ChainReduced );
-                    tRemoved = true;
-                }
-                else
-                {
-                    it++;
+                    if (tCount == 1)
+                    {
+                        --it;
+                        this->remove_kchainFromMap( p, tpChainReduced );
+                        this->remove_kchainFromMap( p - 1, tp1ChainReduced );
+                        tRemoved = true;
+                    }
                 }
             }
             return tRemoved;
@@ -443,14 +444,14 @@ namespace belfem
             id_t tCp_1;
             Cell< id_t > Q;
 
-            for (const auto & [tKey, tCp]: mChainsMap( p ))
+            for (auto it = mChainsMap( p ).begin();  it != mChainsMap( p ).end(); ++it )
             {
 
                 if (p == 0)
                 {
                     return;
                 }
-                for (const auto & [tId, tCoeff]: tCp->getBoundary()->getSimplicesMap())
+                for (const auto & [tId, tCoeff]: it->second->getBoundary()->getSimplicesMap())
                 {
                     Q.push(tId);
                 }
@@ -492,9 +493,9 @@ namespace belfem
                             Q.push(tId);
                         }
                         unique(Q);
-
                     }
                 }
+
             }
         }
 
@@ -504,7 +505,7 @@ namespace belfem
         void
         SimplicialComplex::reduceOmit()
         {
-            for (uint p = 2; p > 1; p--)
+            for (uint p = 3; p > 1; p--)
             {
                 this->pReduce(p);
             }
@@ -527,6 +528,7 @@ namespace belfem
         SimplicialComplex::reduce_complexPellikka()
         {
             this->reduceOmit();
+            //this->reduce_complexCCR();
             for (uint p = 2; p >= 1; p--)
             {
                 this->pCombine(p);
@@ -534,8 +536,7 @@ namespace belfem
             }
         }
 
-        //-----------------------------------------------------------------------------
-
+//-----------------------------------------------------------------------------
 
         // pReduce from Pellikka et al.
         bool
@@ -547,35 +548,36 @@ namespace belfem
                 return tRemoved;
             }
             uint tCount = 0;
-            for ( auto it = mCochainsMap( p+1 ).begin(); it != mCochainsMap( p+1 ).end() ;)
+            tRemoved = true;
+            while (tRemoved)
             {
-                tCount = 0;
-                uint tpChainReduced;
-                uint tp1ChainReduced;
-                for (const auto & [tKey, tpChain]: mCochainsMap( p ))
+                tRemoved = false;
+                for (auto it = mCochainsMap( p+1 ).begin();  it != mCochainsMap( p+1 ).end(); ++it )
                 {
-                    if(tpChain->getCoboundary()->getCoefficient(it->first) != 0)
+                    tCount = 0;
+                    uint tpChainReduced;
+                    uint tp1ChainReduced;
+                    for (const auto & [tKey, tpChain]: mCochainsMap( p ))
                     {
-                        tCount += 1;
-                        tpChainReduced = tKey;
-                        tp1ChainReduced = it->first;
+                        if(tpChain->getCoboundary()->getCoefficient(it->first) != 0)
+                        {
+                            tCount += 1;
+                            tpChainReduced = tKey;
+                            tp1ChainReduced = it->first;
+                        }
+                        if (tCount > 1)
+                        {
+                            break;
+                        }
                     }
-                    if (tCount > 1)
-                    {
-                        break;
-                    }
-                }
 
-                if (tCount == 1)
-                {
-                    --it;
-                    this->remove_kcochainFromMap( p + 1, tp1ChainReduced );
-                    this->remove_kcochainFromMap( p, tpChainReduced );
-                    tRemoved = true;
-                }
-                else
-                {
-                    it++;
+                    if (tCount == 1)
+                    {
+                        --it;
+                        this->remove_kcochainFromMap( p, tpChainReduced );
+                        this->remove_kcochainFromMap( p + 1, tp1ChainReduced );
+                        tRemoved = true;
+                    }
                 }
             }
             return tRemoved;
@@ -595,14 +597,14 @@ namespace belfem
             id_t tCp_1;
             Cell< id_t > Q;
 
-            for (const auto & [tKey, tCp]: mCochainsMap( p ))
+            for (auto it = mCochainsMap( p ).begin();  it != mCochainsMap( p ).end(); ++it )
             {
 
                 if (p == 3)
                 {
                     return;
                 }
-                for (const auto & [tId, tCoeff]: tCp->getCoboundary()->getSimplicesMap())
+                for (const auto & [tId, tCoeff]: it->second->getCoboundary()->getSimplicesMap())
                 {
                     Q.push(tId);
                 }
@@ -646,6 +648,7 @@ namespace belfem
                         unique(Q);
                     }
                 }
+
             }
         }
 
@@ -655,23 +658,23 @@ namespace belfem
         void
         SimplicialComplex::coreduceOmit()
         {
-            id_t tKey = mCochainsMap(0).begin()->first;
-            this->remove_kcochainFromMap(0,tKey);
-            for (uint p = 0; p < 2; p++)
+            /*auto it = mChainsMap(0).begin();
+            this->remove_kcochainFromMap(0,it->first);
+            for (uint p = 0; p <= 2; p++)
             {
                 this->pCoreduce(p);
-            }
-
-            /*uint tKey;
-            while (this->number_of_ksimplices(2) > 0)
-            {
-                tKey = mChainsMap(2).begin()->first;
-                this->remove_kchainFromMap(2,tKey);
-                for (uint p = 2; p > 1; p--)
-                {
-                    this->pReduce(p);
-                }
             }*/
+
+            uint tKey;
+            while (this->number_of_kcosimplices(0) > 0)
+            {
+                tKey = mCochainsMap(0).begin()->first;
+                this->remove_kcochainFromMap(0,tKey);
+                for (uint p = 0; p <= 2; p++)
+                {
+                    this->pCoreduce(p);
+                }
+            }
         }
 
         //-----------------------------------------------------------------------------
@@ -680,11 +683,14 @@ namespace belfem
         SimplicialComplex::coreduce_complexPellikka()
         {
             this->coreduceOmit();
-            for (uint p = 0; p <= 1; p++)
+            //this->coreduce_complexCCR();
+            for (uint p = 0; p <= 2; p++)
             {
                 this->pCocombine(p);
                 this->pCoreduce(p+1);
             }
+            //mChainsMap(0)[it->first]->addSimplexToChain(it->first,1);
+            //this->coreduce_complexCCR();
         }
 
         //-----------------------------------------------------------------------------

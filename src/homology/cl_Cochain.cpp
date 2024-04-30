@@ -131,9 +131,13 @@ namespace belfem
                         {
                             tMul = (tFace->edge_orientation(0)?1:-1);
                         }
-                        else
+                        else if (tFace->edge(1)->id() == tEdge->id())
                         {
                             tMul = (tFace->edge_orientation(1)?1:-1);
+                        }
+                        else
+                        {
+                            tMul = (tFace->edge_orientation(2)?1:-1);
                         }
                         mCoboundary->addSimplexToCochain(tFace->id(),tMul*aCoeff);
                     }

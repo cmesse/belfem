@@ -172,8 +172,8 @@ int main( int    argc,
         // Coreduce the simplicial complex
         Timer tTimer2;
         std::cout << "(Co)reducing the complex ..." << std::endl;
-        //tSComplex->coreduce_complexPellikka();
-        tSComplex->coreduce_complexCCR();
+        tSComplex->coreduce_complexPellikka();
+        //tSComplex->coreduce_complexCCR();
         std::cout << "Complex (co)reduced in: "<< tTimer2.stop()*1e-3 << " s" << std::endl;
 
         std::cout << "Number of 0-cochains: " << tSComplex->number_of_kcosimplices(0) <<std::endl;
@@ -203,8 +203,8 @@ int main( int    argc,
             // start timer
             Timer tTimer;
             std::cout << "Reducing the complex ..." << std::endl;
-            //tSComplex->reduce_complexPellikka();
-            tSComplex->reduce_complexCCR();
+            tSComplex->reduce_complexPellikka();
+            //tSComplex->reduce_complexCCR();
             std::cout << "Complex reduced in: "<< tTimer.stop()*1e-3 << " s" << std::endl;
 
             std::cout << "Number of 0-chains: " << tSComplex->number_of_0simplices() <<std::endl;
