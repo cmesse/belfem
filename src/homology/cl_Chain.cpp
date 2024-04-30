@@ -98,6 +98,7 @@ namespace belfem
                 }
             }
 
+            // 3-chain
             if (mMesh->number_of_dimensions() == 3 && mDim == 3)
             {
                 Element * tElement = mMesh->element(aInd);

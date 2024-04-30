@@ -87,7 +87,7 @@ int main( int    argc,
     // --------------------------------------------------------------
     // Creating the edge mesh for homology saving and  vizualization
     // --------------------------------------------------------------
-    Mesh * tMeshEdge = new Mesh( 2 , 0, false );
+    Mesh * tMeshEdge = new Mesh( 3 , 0, false );
     Cell< Node * > & tNodes = tMeshEdge->nodes();
     Map< id_t, Node * > tNodeMap ;
     id_t tNumNodes = tMesh->number_of_nodes();
@@ -153,7 +153,7 @@ int main( int    argc,
     if (file_exists("Homology.hdf5"))
     {
         std::cout << "Homology already exists, loading data" << std::endl;
-        Mesh * tMeshEdgeLoaded = new Mesh( 2 , 0, false );
+        Mesh * tMeshEdgeLoaded = new Mesh( 3 , 0, false );
         HDF5Reader * tReader = new HDF5Reader( "Homology.hdf5", tMeshEdgeLoaded );
 
         tHomology = new Homology(tMesh, tMeshEdgeLoaded);
