@@ -81,7 +81,7 @@ namespace belfem
                 if (mMesh->number_of_dimensions() == 2)
                 {
                     Element * tElement = mMesh->element(aInd);
-                    for ( uint i = 0; i < 3; ++i )
+                    for ( uint i = 0; i < tElement->number_of_edges(); ++i )
                     {
                         mBoundary->addSimplexToChain(tElement->edge(i)->id(),
                                                      (tElement->edge_orientation(i)?1:-1)*aCoeff);
@@ -90,7 +90,7 @@ namespace belfem
                 else
                 {
                     Face * tFace = mMesh->face(aInd);
-                    for ( uint i = 0; i < 3; ++i )
+                    for ( uint i = 0; i < tFace->number_of_edges(); ++i )
                     {
                         mBoundary->addSimplexToChain(tFace->edge(i)->id(),
                                                      (tFace->edge_orientation(i)?1:-1)*aCoeff);
@@ -102,7 +102,7 @@ namespace belfem
             if (mMesh->number_of_dimensions() == 3 && mDim == 3)
             {
                 Element * tElement = mMesh->element(aInd);
-                for ( uint i = 0; i < 4; ++i )
+                for ( uint i = 0; i < tElement->number_of_faces(); ++i )
                 {
                     mBoundary->addSimplexToChain(tElement->face(i)->id(),
                                                  (tElement->face(i)->master()->id() == tElement->id()?1:-1)*aCoeff);
@@ -175,8 +175,9 @@ namespace belfem
         int
         Chain::getCoefficient( const id_t aInd )
         {
-            if (mSimplicesMap.key_exists( aInd )) {
-                return mSimplicesMap[aInd];
+            auto it = mSimplicesMap.find(aInd);
+            if (it != mSimplicesMap.end()) {
+                return it->second;
             }
             else {
                 return 0;

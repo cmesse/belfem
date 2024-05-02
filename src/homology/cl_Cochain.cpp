@@ -203,7 +203,7 @@ namespace belfem
             }
             else
             {
-                std::cout << "Dimensions don't agree, not adding the chains" << std::endl;
+                std::cout << "Dimensions don't agree, not adding the cochain" << std::endl;
             }
         }
 
@@ -220,8 +220,9 @@ namespace belfem
         int
         Cochain::getCoefficient( const id_t aInd )
         {
-            if (mSimplicesMap.key_exists( aInd )) {
-                return mSimplicesMap[aInd];
+            auto it = mSimplicesMap.find(aInd);
+            if (it != mSimplicesMap.end()) {
+                return it->second;
             }
             else {
                 return 0;

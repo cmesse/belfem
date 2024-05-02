@@ -135,6 +135,12 @@ namespace belfem
         {
             return mMap.end();
         }
+
+        typename std::map< Key, Value >::const_iterator
+        find(Key tKey) const
+        {
+            return mMap.find(tKey);
+        }
 //------------------------------------------------------------------------------
 
         void

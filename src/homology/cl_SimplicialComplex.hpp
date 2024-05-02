@@ -21,17 +21,9 @@ namespace belfem
         class SimplicialComplex
         {
 
-            Cell< Cell< Chain * > > mChains;
-
-            Cell< Cell< Cochain * > > mCochains;
-
             Cell< Map< id_t, Chain * > > mChainsMap;
 
             Cell< Map< id_t, Cochain * > > mCochainsMap;
-
-            Cell< Map< id_t, Chain * > > mBoundaryMap;
-
-            Cell< Map< id_t, Cochain * > > mCoboundaryMap;
 
 
 
@@ -68,16 +60,16 @@ namespace belfem
             //-----------------------------------------------------------------------------
 
             void
-            reduce_pair( int k, uint a, uint b );
+            reduce_pair( const uint k, const uint a, const uint b, Chain* aChain );
 
             //-----------------------------------------------------------------------------
 
             void
-            coreduce_pair( int k, uint a, uint b );
+            coreduce_pair( const uint k, const uint a, const uint b, Cochain* aCochain );
 
             //-----------------------------------------------------------------------------
 
-            bool
+            void
             pReduce(const uint p);
 
             //-----------------------------------------------------------------------------
@@ -97,7 +89,7 @@ namespace belfem
 
             //-----------------------------------------------------------------------------
 
-            bool
+            void
             pCoreduce(const uint p);
 
             //-----------------------------------------------------------------------------
@@ -149,16 +141,6 @@ namespace belfem
 
             uint
             number_of_kcosimplices( const uint k ) const;
-
-            //------------------------------------------------------------------------------
-
-            Cell< Map< id_t, Chain * > >
-            get_boundaryMap();
-
-            //------------------------------------------------------------------------------
-
-            Cell< Map< id_t, Cochain * > >
-            get_coboundaryMap();
 
             //------------------------------------------------------------------------------
 

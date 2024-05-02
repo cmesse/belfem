@@ -165,28 +165,20 @@ int main( int    argc,
         // Create the simplicial complex
         std::cout << "Creating the simplicial complex ..." << std::endl;
         SimplicialComplex * tSComplex = tFactory->simplicial_complex();
-        //SimplicialComplex * tSComplex = new SimplicialComplex(tMesh);
 
         std::cout << "Number of 0-chains: " << tSComplex->number_of_0simplices() <<std::endl;
         std::cout << "Number of 1-chains: " << tSComplex->number_of_1simplices() <<std::endl;
         std::cout << "Number of 2-chains: " << tSComplex->number_of_2simplices() <<std::endl;
+        std::cout << "Number of 3-chains: " << tSComplex->number_of_ksimplices(3) <<std::endl;
 
         // Coreduce the simplicial complex
-        Timer tTimer2;
-        std::cout << "(Co)reducing the complex ..." << std::endl;
-        tSComplex->coreduce_complexPellikka();
-        //tSComplex->coreduce_complexCCR();
-        std::cout << "Complex (co)reduced in: "<< tTimer2.stop()*1e-3 << " s" << std::endl;
+        //tSComplex->coreduce_complexPellikka();
+        tSComplex->coreduce_complexCCR();
 
-        std::cout << "Number of 0-cochains: " << tSComplex->number_of_kcosimplices(0) <<std::endl;
-        std::cout << "Number of 1-cochains: " << tSComplex->number_of_kcosimplices(1) <<std::endl;
-        std::cout << "Number of 2-cochains: " << tSComplex->number_of_kcosimplices(2) <<std::endl;
-
-        Timer tTimer4;
         std::cout << "Computing Cohomology ..." << std::endl;
         tCohomology = new Cohomology(tSComplex, tMesh);
-        std::cout << "Cohomology generators computed in: "<< tTimer4.stop() << " ms" << std::endl;
-        //tCohomology->create_kGeneratorsField(1, tMeshEdge);
+        std::cout << tCohomology->get_Generators()(1).size() << " 1-cohomology generators computed" << std::endl;
+        std::cout << std::endl;
 
         // Do we want to suggest a homology?
         if (suggHomology)
@@ -201,23 +193,14 @@ int main( int    argc,
         else // Otherwise, compute the homology as usual
         {
             // Reduce the simplicial complex
-            // start timer
-            Timer tTimer;
-            std::cout << "Reducing the complex ..." << std::endl;
-            tSComplex->reduce_complexPellikka();
-            //tSComplex->reduce_complexCCR();
-            std::cout << "Complex reduced in: "<< tTimer.stop()*1e-3 << " s" << std::endl;
-
-            std::cout << "Number of 0-chains: " << tSComplex->number_of_0simplices() <<std::endl;
-            std::cout << "Number of 1-chains: " << tSComplex->number_of_1simplices() <<std::endl;
-            std::cout << "Number of 2-chains: " << tSComplex->number_of_2simplices() <<std::endl;
+            //tSComplex->reduce_complexPellikka();
+            tSComplex->reduce_complexCCR();
 
             //Compute the homology and cohomology generators
-            Timer tTimer3;
             std::cout << "Computing Homology ..." << std::endl;
             tHomology = new Homology(tSComplex, tMesh);
-            std::cout << "Homology generators computed in: "<< tTimer3.stop() << " ms" << std::endl;
-            //tHomology->create_kGeneratorsField(1, tMeshEdge);
+            std::cout << tHomology->get_Generators()(1).size() << " 1-homology generators computed" << std::endl;
+            std::cout << std::endl;
         }
 
         //Create homology and cohomology fields in mesh
