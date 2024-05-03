@@ -303,9 +303,9 @@ namespace belfem
         //-----------------------------------------------------------------------------
 
         void
-        BeltedTree::create_cohomologyField( )
+        BeltedTree::create_cohomologyField( Mesh* tEdgeMesh )
         {
-            uint tCount = 0;
+            /*uint tCount = 0;
             for(const auto& tCochain : m1CohomologyGenerators)
             {
                 tCount++;
@@ -313,10 +313,32 @@ namespace belfem
                 sprintf (fieldName, "1CohomologyGenerator(BT)%d", tCount);
                 mMesh->create_field( fieldName, EntityType::NODE);
                 Map< id_t, int > tSimplicesMap = tCochain->getSimplicesMap();
-                for( const auto& [tInd, tCoeff] :  tSimplicesMap)
+                for( const auto& [tID, tCoeff] :  tSimplicesMap)
                 {
-                    mMesh->field_data(fieldName)(mMesh->edge(tInd)->node(0)->index()) = 1;
-                    mMesh->field_data(fieldName)(mMesh->edge(tInd)->node(1)->index()) = 1;
+                    mMesh->field_data(fieldName)(mMesh->edge(tID)->node(0)->index()) = 1;
+                    mMesh->field_data(fieldName)(mMesh->edge(tID)->node(1)->index()) = 1;
+                }
+            }*/
+            uint tCount = 0;
+            for(const auto& tCochain : m1CohomologyGenerators)
+            {
+                tCount++;
+                char fieldName [50];
+                /*if (mflagProp)
+                {
+                    sprintf (fieldName, "1CohomologyGenerator%d", tCount);
+                }
+                else
+                {
+                    sprintf (fieldName, "1CohomologyGeneratorComp%d", tCount);
+                }*/
+                sprintf (fieldName, "1CohomologyGenerator(BT)%d", tCount);
+                tEdgeMesh->create_field( fieldName, EntityType::ELEMENT);
+                Map< id_t, int > tSimplicesMap = tCochain->getSimplicesMap();
+                for( const auto& [tID, tCoeff] :  tSimplicesMap)
+                {
+                    tEdgeMesh->field_data(fieldName)(tEdgeMesh->element(tID)->index()) = tCoeff;
+                    //tMesh->field_data(fieldName)(tMesh->edge(tInd)->node(1)->index()) = 1;
                 }
             }
         }

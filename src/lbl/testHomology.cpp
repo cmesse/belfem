@@ -53,7 +53,7 @@ int main( int    argc,
           char * argv[] )
 {
 
-    bool suggHomology = false; //Do we suggest the homology from conductors' boundaries
+    bool suggHomology = true; //Do we suggest the homology from conductors' boundaries
 
     // create communicator
     gComm = Communicator( argc, argv );
@@ -166,10 +166,10 @@ int main( int    argc,
         std::cout << "Creating the simplicial complex ..." << std::endl;
         SimplicialComplex * tSComplex = tFactory->simplicial_complex();
 
-        std::cout << "Number of 0-chains: " << tSComplex->number_of_0simplices() <<std::endl;
-        std::cout << "Number of 1-chains: " << tSComplex->number_of_1simplices() <<std::endl;
-        std::cout << "Number of 2-chains: " << tSComplex->number_of_2simplices() <<std::endl;
-        std::cout << "Number of 3-chains: " << tSComplex->number_of_ksimplices(3) <<std::endl;
+        std::cout << "Number of 0-chains: " << tSComplex->number_of_kcosimplices(0) <<std::endl;
+        std::cout << "Number of 1-chains: " << tSComplex->number_of_kcosimplices(1) <<std::endl;
+        std::cout << "Number of 2-chains: " << tSComplex->number_of_kcosimplices(2) <<std::endl;
+        std::cout << "Number of 3-chains: " << tSComplex->number_of_kcosimplices(3) <<std::endl;
 
         // Coreduce the simplicial complex
         //tSComplex->coreduce_complexPellikka();
@@ -214,11 +214,9 @@ int main( int    argc,
     // save the mesh
     tMesh->save(tOutFile);
 
-    // save the homology
-    tMeshEdge->save("Homology.e-s");
 
     // Create the Belted Tree (extremely slow for now...)
-    /*std::cout << "Creating new simplicial complex for belted tree" << std::endl ;
+    std::cout << "Creating new simplicial complex for belted tree" << std::endl ;
     tFactory->flag_nc_simplices();
     SimplicialComplex * tSComplex2 = new SimplicialComplex(tMesh) ;
     tFactory->unflag_nc_simplices();
@@ -233,7 +231,10 @@ int main( int    argc,
     std::cout << "Computing cohomology from belted tree ..." << std::endl ;
     tBTree->compute_cohomology();
     std::cout << "Cohomology computed in: "<< tTimer6.stop() << " ms" << std::endl;
-    tBTree->create_cohomologyField();*/
+    tBTree->create_cohomologyField( tMeshEdge );
+
+    // save the homology
+    tMeshEdge->save("Homology.e-s");
 
     //delete tBTree ;
 

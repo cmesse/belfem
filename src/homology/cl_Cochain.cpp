@@ -87,7 +87,7 @@ namespace belfem
                 Node * tNode = mMesh->node(aInd);
                 for (uint i = 0; i < tNode->number_of_edges(); i++)
                 {
-                    if (tNode->node(0)->id() == aInd)
+                    if (tNode->edge(i)->node(0)->id() == aInd)
                     {
                         mCoboundary->addSimplexToCochain(tNode->edge(i)->id(),-1*aCoeff);
                     }
@@ -109,13 +109,13 @@ namespace belfem
                         int tMul = 0 ;
                         Element* tElement = tEdge->element(i);
                         // Probably can be optimized (how to know the orientation of a given edge in a triangle)
-                        if (tElement->edge(0)->id() == tEdge->id())
+                        for(uint j = 0; j < tElement->number_of_edges(); j++)
                         {
-                            tMul = (tElement->edge_orientation(0)?1:-1);
-                        }
-                        else
-                        {
-                            tMul = (tElement->edge_orientation(1)?1:-1);
+                            if (tElement->edge(j)->id() == tEdge->id())
+                            {
+                                tMul = (tElement->edge_orientation(j)?1:-1);
+                                break;
+                            }
                         }
                         mCoboundary->addSimplexToCochain(tElement->id(),tMul*aCoeff);
                     }
@@ -127,17 +127,13 @@ namespace belfem
                         int tMul = 0 ;
                         Face* tFace = tEdge->face(i);
                         // Probably can be optimized (how to know the orientation of a given edge in a triangle)
-                        if (tFace->edge(0)->id() == tEdge->id())
+                        for(uint j = 0; j < tFace->number_of_edges(); j++)
                         {
-                            tMul = (tFace->edge_orientation(0)?1:-1);
-                        }
-                        else if (tFace->edge(1)->id() == tEdge->id())
-                        {
-                            tMul = (tFace->edge_orientation(1)?1:-1);
-                        }
-                        else
-                        {
-                            tMul = (tFace->edge_orientation(2)?1:-1);
+                            if (tFace->edge(j)->id() == tEdge->id())
+                            {
+                                tMul = (tFace->edge_orientation(j)?1:-1);
+                                break;
+                            }
                         }
                         mCoboundary->addSimplexToCochain(tFace->id(),tMul*aCoeff);
                     }

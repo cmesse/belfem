@@ -168,8 +168,8 @@ int main( int    argc,
     else
     {
         // Coreduce the simplicial complex
-        tSComplex->coreduce_complexPellikka();
-        //tSComplex->coreduce_complexCCR();
+        //tSComplex->coreduce_complexPellikka();
+        tSComplex->coreduce_complexCCR();
 
         std::cout << "Computing Cohomology ..." << std::endl;
         tCohomology = new Cohomology(tSComplex, tMesh);
@@ -189,8 +189,8 @@ int main( int    argc,
         else // Otherwise, compute the homology as usual
         {
             // Reduce the simplicial complex
-            tSComplex->reduce_complexPellikka();
-            //tSComplex->reduce_complexCCR();
+            //tSComplex->reduce_complexPellikka();
+            tSComplex->reduce_complexCCR();
 
             //Compute the homology and cohomology generators
             std::cout << "Computing Homology ..." << std::endl;
@@ -210,6 +210,24 @@ int main( int    argc,
     // save the mesh
     tMesh->save("Conductors.e-s");
 
+    // Create the Belted Tree (extremely slow for now...)
+    /*std::cout << "Creating new simplicial complex for belted tree" << std::endl ;
+    //tFactory->flag_nc_simplices();
+    SimplicialComplex * tSComplex2 = new SimplicialComplex(tMesh) ;
+    //tFactory->unflag_nc_simplices();
+
+    Timer tTimer5;
+    std::cout << "Creating the belted tree ..." << std::endl ;
+    BeltedTree * tBTree = new BeltedTree(tMesh,  tSComplex2, tHomology->get_Generators()(1)) ;
+    std::cout << "Belted tree computed in: "<< tTimer5.stop()*1e-3 << " s" << std::endl;
+    tBTree->create_TreeField("BeltedTree");
+
+    Timer tTimer6;
+    std::cout << "Computing cohomology from belted tree ..." << std::endl ;
+    tBTree->compute_cohomology();
+    std::cout << "Cohomology computed in: "<< tTimer6.stop() << " ms" << std::endl;
+    tBTree->create_cohomologyField( tMeshEdge );
+*/
     // save the homology
     tMeshEdge->save("Homology.e-s");
 
