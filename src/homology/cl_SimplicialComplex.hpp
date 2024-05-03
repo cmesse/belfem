@@ -110,12 +110,12 @@ namespace belfem
             //-----------------------------------------------------------------------------
 
             void
-            remove_kchainFromMap( const uint k, const id_t aInd );
+            remove_kchainFromMap( const uint k, const id_t aID );
 
             //------------------------------------------------------------------------------
 
             void
-            remove_kcochainFromMap( const uint k, const id_t aInd );
+            remove_kcochainFromMap( const uint k, const id_t aID );
 
             //------------------------------------------------------------------------------
 
@@ -145,7 +145,7 @@ namespace belfem
             //------------------------------------------------------------------------------
 
             Chain *
-            get_kchain( const uint k, const id_t aInd );
+            get_kchain( const uint k, const id_t aID );
 
             //------------------------------------------------------------------------------
 
@@ -160,7 +160,7 @@ namespace belfem
             //------------------------------------------------------------------------------
 
             Chain *
-            boundary_of_kchain( const uint k, const id_t aInd );
+            boundary_of_kchain( const uint k, const id_t aID );
 
             //------------------------------------------------------------------------------
 

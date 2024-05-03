@@ -53,7 +53,7 @@ int main( int    argc,
           char * argv[] )
 {
 
-    bool suggHomology = true; //Do we suggest the homology from conductors' boundaries
+    bool suggHomology = false; //Do we suggest the homology from conductors' boundaries
 
     // create communicator
     gComm = Communicator( argc, argv );
@@ -189,6 +189,25 @@ int main( int    argc,
 
             std::cout << "Updating Cohomology from suggested homology ..." << std::endl;
             tCohomology->updatekGeneratorsFromHomology(tHomology->get_Generators()(1),1);
+
+            // Create the Belted Tree (extremely slow for now...)
+            std::cout << "Creating new simplicial complex for belted tree" << std::endl ;
+            tFactory->flag_nc_simplices();
+            SimplicialComplex * tSComplex2 = new SimplicialComplex(tMesh) ;
+            tFactory->unflag_nc_simplices();
+
+            Timer tTimer5;
+            std::cout << "Creating the belted tree ..." << std::endl ;
+            BeltedTree * tBTree = new BeltedTree(tMesh,  tSComplex2, tHomology->get_Generators()(1)) ;
+            std::cout << "Belted tree computed in: "<< tTimer5.stop()*1e-3 << " s" << std::endl;
+            tBTree->create_TreeField("BeltedTree");
+
+            Timer tTimer6;
+            std::cout << "Computing cohomology from belted tree ..." << std::endl ;
+            tBTree->compute_cohomology();
+            std::cout << "Cohomology computed in: "<< tTimer6.stop() << " ms" << std::endl;
+            tBTree->create_cohomologyField( tMeshEdge );
+            delete tBTree;
         }
         else // Otherwise, compute the homology as usual
         {
@@ -215,28 +234,8 @@ int main( int    argc,
     tMesh->save(tOutFile);
 
 
-    // Create the Belted Tree (extremely slow for now...)
-    std::cout << "Creating new simplicial complex for belted tree" << std::endl ;
-    tFactory->flag_nc_simplices();
-    SimplicialComplex * tSComplex2 = new SimplicialComplex(tMesh) ;
-    tFactory->unflag_nc_simplices();
-
-    Timer tTimer5;
-    std::cout << "Creating the belted tree ..." << std::endl ;
-    BeltedTree * tBTree = new BeltedTree(tMesh,  tSComplex2, tHomology->get_Generators()(1)) ;
-    std::cout << "Belted tree computed in: "<< tTimer5.stop()*1e-3 << " s" << std::endl;
-    tBTree->create_TreeField("BeltedTree");
-
-    Timer tTimer6;
-    std::cout << "Computing cohomology from belted tree ..." << std::endl ;
-    tBTree->compute_cohomology();
-    std::cout << "Cohomology computed in: "<< tTimer6.stop() << " ms" << std::endl;
-    tBTree->create_cohomologyField( tMeshEdge );
-
     // save the homology
     tMeshEdge->save("Homology.e-s");
-
-    //delete tBTree ;
 
     delete tMeshEdge;
 

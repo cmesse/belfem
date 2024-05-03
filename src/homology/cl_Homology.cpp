@@ -197,10 +197,9 @@ namespace belfem
                 sprintf (fieldName, "1HomologyGenerator%d", tCount);
                 tMesh->create_field( fieldName, EntityType::ELEMENT);
                 Map< id_t, int > tSimplicesMap = tChain->getSimplicesMap();
-                for( const auto& [tInd, tCoeff] :  tSimplicesMap)
+                for( const auto& [tID, tCoeff] :  tSimplicesMap)
                 {
-                    tMesh->field_data(fieldName)(tMesh->element(tInd)->index()) = tCoeff;
-                    //mMesh->field_data(fieldName)(mMesh->edge(tInd)->node(1)->index()) = 1;
+                    tMesh->field_data(fieldName)(tMesh->element(tID)->index()) = tCoeff;
                 }
             }
         }

@@ -195,7 +195,7 @@ namespace belfem
 
             //Init
             Cell< Element * > tL ;
-            uint tInd;
+            uint tID;
             uint tCount;
             int tCoeff;
             uint tNumImp;
@@ -237,15 +237,15 @@ namespace belfem
                     }
                 }
 
-                tInd = 0 ;
+                tID = 0 ;
                 tNumImp = mTree.size();
 
                 // Check all the triangles, until all the edges are imposed
                 while (tNumImp < mSimplicialComplex->number_of_1simplices())
                 {
-                    tNum = tSimplexExist(tL(tInd)->edge(0)->id()) +
-                            tSimplexExist(tL(tInd)->edge(1)->id()) +
-                            tSimplexExist(tL(tInd)->edge(2)->id());
+                    tNum = tSimplexExist(tL(tID)->edge(0)->id()) +
+                            tSimplexExist(tL(tID)->edge(1)->id()) +
+                            tSimplexExist(tL(tID)->edge(2)->id());
 
 
                     // Enforce the 0-circulation by computing the third coefficient on triangles with 2 edges imposed
@@ -254,20 +254,20 @@ namespace belfem
                         //Find the orientation of each of the triangle's edges
                         for (uint j = 0; j < 3; j++)
                         {
-                            tOrient(j) = mSimplicialComplex->get_kchainMap(2)[tL(tInd)->id()]->getBoundary()->getCoefficient(tL(tInd)->edge(j)->id()) ;
+                            tOrient(j) = mSimplicialComplex->get_kchainMap(2)[tL(tID)->id()]->getBoundary()->getCoefficient(tL(tID)->edge(j)->id()) ;
                         }
 
                         //Compute the coefficient on the new edge
                         for (uint j = 0; j < 3; ++j)
                         {
-                            if (tSimplexExist(tL(tInd)->edge(j)->id())==0)
+                            if (tSimplexExist(tL(tID)->edge(j)->id())==0)
                             {
 
-                                tCoeff = -1*tOrient(j)*(m1CohomologyGenerators(i)->getCoefficient(tL(tInd)->edge((j+1)%3)->id())*tOrient((j+1)%3)
-                                                        +m1CohomologyGenerators(i)->getCoefficient(tL(tInd)->edge((j+2)%3)->id())*tOrient((j+2)%3)) ;
-                                m1CohomologyGenerators(i)->addSimplexToCochain(tL(tInd)->edge(j)->id(), tCoeff);
+                                tCoeff = -1*tOrient(j)*(m1CohomologyGenerators(i)->getCoefficient(tL(tID)->edge((j+1)%3)->id())*tOrient((j+1)%3)
+                                                        +m1CohomologyGenerators(i)->getCoefficient(tL(tID)->edge((j+2)%3)->id())*tOrient((j+2)%3)) ;
+                                m1CohomologyGenerators(i)->addSimplexToCochain(tL(tID)->edge(j)->id(), tCoeff);
 
-                                tSimplexExist(tL(tInd)->edge(j)->id()) = true ;
+                                tSimplexExist(tL(tID)->edge(j)->id()) = true ;
                                 tNumImp+=1 ;
                                 break ;
                             }
@@ -275,13 +275,13 @@ namespace belfem
                     }
                     else
                     {
-                        tInd += 1;
+                        tID += 1;
                     }
 
-                    if (tInd >= mSimplicialComplex->number_of_2simplices())
+                    if (tID >= mSimplicialComplex->number_of_2simplices())
                     {
                         //restart from zero until all the edges are imposed
-                        tInd = 0;
+                        tID = 0;
                     }
                 }
             }
@@ -338,7 +338,7 @@ namespace belfem
                 for( const auto& [tID, tCoeff] :  tSimplicesMap)
                 {
                     tEdgeMesh->field_data(fieldName)(tEdgeMesh->element(tID)->index()) = tCoeff;
-                    //tMesh->field_data(fieldName)(tMesh->edge(tInd)->node(1)->index()) = 1;
+                    //tMesh->field_data(fieldName)(tMesh->edge(tID)->node(1)->index()) = 1;
                 }
             }
         }

@@ -654,35 +654,35 @@ namespace belfem
         //-----------------------------------------------------------------------------
 
         void
-        SimplicialComplex::remove_kchainFromMap( const uint k, const id_t aInd )
+        SimplicialComplex::remove_kchainFromMap( const uint k, const id_t aID )
         {
             if ( k <= 3 )
             {
-                delete mChainsMap( k )[aInd];
-                mChainsMap( k ).erase_key( aInd );
+                delete mChainsMap( k )[aID];
+                mChainsMap( k ).erase_key( aID );
             }
         }
 
         //------------------------------------------------------------------------------
 
         void
-        SimplicialComplex::remove_kcochainFromMap( const uint k, const id_t aInd )
+        SimplicialComplex::remove_kcochainFromMap( const uint k, const id_t aID )
         {
             if ( k <= 3 )
             {
-                delete mCochainsMap( k )[aInd];
-                mCochainsMap( k ).erase_key( aInd );
+                delete mCochainsMap( k )[aID];
+                mCochainsMap( k ).erase_key( aID );
             }
         }
 
         //------------------------------------------------------------------------------
 
         Chain *
-        SimplicialComplex::get_kchain( const uint k, const id_t aInd )
+        SimplicialComplex::get_kchain( const uint k, const id_t aID )
         {
             if ( k <= 3 )
             {
-                return mChainsMap( k )[ aInd ];
+                return mChainsMap( k )[ aID ];
             }
             else
             {
@@ -709,11 +709,11 @@ namespace belfem
         //------------------------------------------------------------------------------
 
         Chain *
-        SimplicialComplex::boundary_of_kchain( const uint k, const id_t aInd )
+        SimplicialComplex::boundary_of_kchain( const uint k, const id_t aID )
         {
             if ( k <= 3 )
             {
-                return mChainsMap( k )[ aInd ]->getBoundary();
+                return mChainsMap( k )[ aID ]->getBoundary();
             }
             else
             {
@@ -813,10 +813,10 @@ namespace belfem
             for ( const auto & [tKey, tChain]: this->get_kchainMap( k ))
             {
                 Map< id_t, int > tSimplicesMap = tChain->getSimplicesMap();
-                for ( const auto & [tInd, tCoeff]: tSimplicesMap )
+                for ( const auto & [tID, tCoeff]: tSimplicesMap )
                 {
-                    aMesh->field_data( fieldName )( aMesh->edge( tInd )->node( 0 )->index()) = 1;
-                    aMesh->field_data( fieldName )( aMesh->edge( tInd )->node( 1 )->index()) = 1;
+                    aMesh->field_data( fieldName )( aMesh->edge( tID )->node( 0 )->index()) = 1;
+                    aMesh->field_data( fieldName )( aMesh->edge( tID )->node( 1 )->index()) = 1;
                 }
             }
         }
@@ -832,10 +832,10 @@ namespace belfem
                 sprintf( fieldName, "1CochainComplex%d", tKey );
                 aMesh->create_field( fieldName, EntityType::NODE );
                 Map< id_t, int > tSimplicesMap = tChain->getSimplicesMap();
-                for ( const auto & [tInd, tCoeff]: tSimplicesMap )
+                for ( const auto & [tID, tCoeff]: tSimplicesMap )
                 {
-                    aMesh->field_data( fieldName )( aMesh->edge( tInd )->node( 0 )->index()) = 1;
-                    aMesh->field_data( fieldName )( aMesh->edge( tInd )->node( 1 )->index()) = 1;
+                    aMesh->field_data( fieldName )( aMesh->edge( tID )->node( 0 )->index()) = 1;
+                    aMesh->field_data( fieldName )( aMesh->edge( tID )->node( 1 )->index()) = 1;
                 }
             }
         }

@@ -53,17 +53,17 @@ namespace belfem
         //-----------------------------------------------------------------------------
 
         void
-        Chain::addSimplexToChain( const id_t aInd, const int aCoeff )
+        Chain::addSimplexToChain( const id_t aID, const int aCoeff )
         {
 
             // Add to the existing simplex, or create a new one
-            if (mSimplicesMap.key_exists(aInd))
+            if (mSimplicesMap.key_exists(aID))
             {
-                mSimplicesMap[aInd] += aCoeff;
+                mSimplicesMap[aID] += aCoeff;
             }
             else
             {
-                mSimplicesMap[aInd] = aCoeff;
+                mSimplicesMap[aID] = aCoeff;
             }
 
 
@@ -71,8 +71,8 @@ namespace belfem
             // 1-chain
             if (mDim == 1)
             {
-                mBoundary->addSimplexToChain(mMesh->edge(aInd)->node(0)->id(),-1*aCoeff);
-                mBoundary->addSimplexToChain(mMesh->edge(aInd)->node(1)->id(),1*aCoeff);
+                mBoundary->addSimplexToChain(mMesh->edge(aID)->node(0)->id(),-1*aCoeff);
+                mBoundary->addSimplexToChain(mMesh->edge(aID)->node(1)->id(),1*aCoeff);
             }
 
             // 2-chain
@@ -80,7 +80,7 @@ namespace belfem
             {
                 if (mMesh->number_of_dimensions() == 2)
                 {
-                    Element * tElement = mMesh->element(aInd);
+                    Element * tElement = mMesh->element(aID);
                     for ( uint i = 0; i < tElement->number_of_edges(); ++i )
                     {
                         mBoundary->addSimplexToChain(tElement->edge(i)->id(),
@@ -89,7 +89,7 @@ namespace belfem
                 }
                 else
                 {
-                    Face * tFace = mMesh->face(aInd);
+                    Face * tFace = mMesh->face(aID);
                     for ( uint i = 0; i < tFace->number_of_edges(); ++i )
                     {
                         mBoundary->addSimplexToChain(tFace->edge(i)->id(),
@@ -101,7 +101,7 @@ namespace belfem
             // 3-chain
             if (mMesh->number_of_dimensions() == 3 && mDim == 3)
             {
-                Element * tElement = mMesh->element(aInd);
+                Element * tElement = mMesh->element(aID);
                 for ( uint i = 0; i < tElement->number_of_faces(); ++i )
                 {
                     mBoundary->addSimplexToChain(tElement->face(i)->id(),
@@ -110,19 +110,19 @@ namespace belfem
             }
 
             //remove the simplex from the map if the coefficient becomes 0
-            if (mSimplicesMap[aInd] == 0)
+            if (mSimplicesMap[aID] == 0)
             {
-                mSimplicesMap.erase_key(aInd);
+                mSimplicesMap.erase_key(aID);
             }
         }
 
         //------------------------------------------------------------------------------
 
         void
-        Chain::removeSimplexToChain(const id_t aInd)
+        Chain::removeSimplexToChain(const id_t aID)
         {
             //Removing is simply adding a -1 coefficient
-            this->addSimplexToChain(aInd, -1);
+            this->addSimplexToChain(aID, -1);
         }
 
         //-----------------------------------------------------------------------------
@@ -133,9 +133,9 @@ namespace belfem
             if (mDim == aChain->getDim())
             {
                 // Add all the simplices from the input chain
-                for( const auto& [tInd, tCoeff] : aChain->getSimplicesMap() )
+                for( const auto& [tID, tCoeff] : aChain->getSimplicesMap() )
                 {
-                    this->addSimplexToChain(tInd,tCoeff*aCoeff);
+                    this->addSimplexToChain(tID,tCoeff*aCoeff);
                 }
             }
             else
@@ -151,9 +151,9 @@ namespace belfem
         {
             if (mDim == aChain->getDim())
             {
-                for( const auto& [tInd, tCoeff] : aChain->getSimplicesMap() )
+                for( const auto& [tID, tCoeff] : aChain->getSimplicesMap() )
                 {
-                    this->addSimplexToChain(tInd,-1*tCoeff);
+                    this->addSimplexToChain(tID,-1*tCoeff);
                 }
             }
             else
@@ -173,9 +173,9 @@ namespace belfem
         //------------------------------------------------------------------------------
 
         int
-        Chain::getCoefficient( const id_t aInd )
+        Chain::getCoefficient( const id_t aID )
         {
-            auto it = mSimplicesMap.find(aInd);
+            auto it = mSimplicesMap.find(aID);
             if (it != mSimplicesMap.end()) {
                 return it->second;
             }
@@ -203,15 +203,15 @@ namespace belfem
         //-----------------------------------------------------------------------------
 
         void
-        Chain::setCoefficient(const id_t aInd, const int tCoeff)
+        Chain::setCoefficient(const id_t aID, const int tCoeff)
         {
             if (tCoeff == 0)
             {
-                mSimplicesMap.erase_key(aInd);
+                mSimplicesMap.erase_key(aID);
             }
             else
             {
-                mSimplicesMap[aInd] = tCoeff;
+                mSimplicesMap[aID] = tCoeff;
             }
         }
 
@@ -221,14 +221,14 @@ namespace belfem
         Chain::print()
         {
             std::cout << mDim << "-chain:" << std::endl;
-            for(const auto& [tInd, tCoeff] : mSimplicesMap)
+            for(const auto& [tID, tCoeff] : mSimplicesMap)
             {
                 if (tCoeff != 0)
                 {
-                    std::cout << "Simplex ID " << tInd << " Coeff: " << tCoeff ;
+                    std::cout << "Simplex ID " << tID << " Coeff: " << tCoeff ;
                     if (mDim == 1)
                     {
-                        std::cout << " Nodes: " << mMesh->edge(tInd)->node(0)->id() << " to "  << mMesh->edge(tInd)->node(1)->id() << std::endl;
+                        std::cout << " Nodes: " << mMesh->edge(tID)->node(0)->id() << " to "  << mMesh->edge(tID)->node(1)->id() << std::endl;
                     }
                     else
                     {

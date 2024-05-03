@@ -54,11 +54,11 @@ namespace belfem
         {
             int tVal = 0;
             Map< id_t, int > tChainMap = aChain->getSimplicesMap();
-            for( const auto& [tInd, tCoeff] : mSimplicesMap )
+            for( const auto& [tID, tCoeff] : mSimplicesMap )
             {
-                if (tChainMap.key_exists(tInd))
+                if (tChainMap.key_exists(tID))
                 {
-                    tVal += tCoeff*tChainMap(tInd);
+                    tVal += tCoeff*tChainMap(tID);
                 }
             }
             return tVal ;
@@ -67,27 +67,27 @@ namespace belfem
         //-----------------------------------------------------------------------------
 
         void
-        Cochain::addSimplexToCochain( const id_t aInd, const int aCoeff )
+        Cochain::addSimplexToCochain( const id_t aID, const int aCoeff )
         {
 
             // Add to the existing simplex, or create a new one
-            if (mSimplicesMap.key_exists(aInd))
+            if (mSimplicesMap.key_exists(aID))
             {
-                mSimplicesMap[aInd] += aCoeff;
+                mSimplicesMap[aID] += aCoeff;
             }
             else
             {
-                mSimplicesMap[aInd] = aCoeff;
+                mSimplicesMap[aID] = aCoeff;
             }
 
             // Update the coboundary of the cochain from what's just been added
             // 0-cochain
             if (mDim == 0)
             {
-                Node * tNode = mMesh->node(aInd);
+                Node * tNode = mMesh->node(aID);
                 for (uint i = 0; i < tNode->number_of_edges(); i++)
                 {
-                    if (tNode->edge(i)->node(0)->id() == aInd)
+                    if (tNode->edge(i)->node(0)->id() == aID)
                     {
                         mCoboundary->addSimplexToCochain(tNode->edge(i)->id(),-1*aCoeff);
                     }
@@ -101,7 +101,7 @@ namespace belfem
             // 1-cochain
             else if (mDim == 1)
             {
-                Edge * tEdge = mMesh->edge(aInd);
+                Edge * tEdge = mMesh->edge(aID);
                 if (mMesh->number_of_dimensions() == 2)
                 {
                     for (uint i = 0; i < tEdge->number_of_elements(); i++)
@@ -142,7 +142,7 @@ namespace belfem
 
             else if (mMesh->number_of_dimensions() == 3 && mDim == 2)
             {
-                Face * tFace = mMesh->face(aInd);
+                Face * tFace = mMesh->face(aID);
                 mCoboundary->addSimplexToCochain(tFace->master()->id(),1*aCoeff);
                 if (tFace->slave())
                 {
@@ -151,19 +151,19 @@ namespace belfem
             }
 
             //remove the simplex from the map if the coefficient becomes 0
-            if (mSimplicesMap[aInd] == 0)
+            if (mSimplicesMap[aID] == 0)
             {
-                mSimplicesMap.erase_key(aInd);
+                mSimplicesMap.erase_key(aID);
             }
         }
 
         //------------------------------------------------------------------------------
 
         void
-        Cochain::removeSimplexToCochain(const id_t aInd)
+        Cochain::removeSimplexToCochain(const id_t aID)
         {
             //Removing is simply adding a -1 coefficient
-            this->addSimplexToCochain(aInd, -1);
+            this->addSimplexToCochain(aID, -1);
         }
 
         //-----------------------------------------------------------------------------
@@ -174,9 +174,9 @@ namespace belfem
             if (mDim == aCochain->getDim())
             {
                 // Add all the simplices from the input cochain
-                for( const auto& [tInd, tCoeff] : aCochain->getSimplicesMap() )
+                for( const auto& [tID, tCoeff] : aCochain->getSimplicesMap() )
                 {
-                    this->addSimplexToCochain(tInd,tCoeff*aCoeff);
+                    this->addSimplexToCochain(tID,tCoeff*aCoeff);
                 }
             }
             else
@@ -192,9 +192,9 @@ namespace belfem
         {
             if (mDim == aCochain->getDim())
             {
-                for( const auto& [tInd, tCoeff] : aCochain->getSimplicesMap() )
+                for( const auto& [tID, tCoeff] : aCochain->getSimplicesMap() )
                 {
-                    this->addSimplexToCochain(tInd,-1*tCoeff);
+                    this->addSimplexToCochain(tID,-1*tCoeff);
                 }
             }
             else
@@ -214,9 +214,9 @@ namespace belfem
         //------------------------------------------------------------------------------
 
         int
-        Cochain::getCoefficient( const id_t aInd )
+        Cochain::getCoefficient( const id_t aID )
         {
-            auto it = mSimplicesMap.find(aInd);
+            auto it = mSimplicesMap.find(aID);
             if (it != mSimplicesMap.end()) {
                 return it->second;
             }
@@ -244,15 +244,15 @@ namespace belfem
         //-----------------------------------------------------------------------------
 
         void
-        Cochain::setCoefficient(const id_t aInd, const int tCoeff)
+        Cochain::setCoefficient(const id_t aID, const int tCoeff)
         {
             if (tCoeff == 0)
             {
-                mSimplicesMap.erase_key(aInd);
+                mSimplicesMap.erase_key(aID);
             }
             else
             {
-                mSimplicesMap[aInd] = tCoeff;
+                mSimplicesMap[aID] = tCoeff;
             }
         }
 
@@ -262,14 +262,14 @@ namespace belfem
         Cochain::print()
         {
             std::cout << mDim << "-cochain:" << std::endl;
-            for(const auto& [tInd, tCoeff] : mSimplicesMap)
+            for(const auto& [tID, tCoeff] : mSimplicesMap)
             {
                 if (tCoeff != 0)
                 {
-                    std::cout << "Simplex ID " << tInd << " Coeff: " << tCoeff ;
+                    std::cout << "Simplex ID " << tID << " Coeff: " << tCoeff ;
                     if (mDim == 1)
                     {
-                        std::cout << " Nodes: " << mMesh->edge(tInd)->node(0)->id() << " to "  << mMesh->edge(tInd)->node(1)->id() << std::endl;
+                        std::cout << " Nodes: " << mMesh->edge(tID)->node(0)->id() << " to "  << mMesh->edge(tID)->node(1)->id() << std::endl;
                     }
                     else
                     {

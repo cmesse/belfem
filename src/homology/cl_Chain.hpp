@@ -55,12 +55,12 @@ namespace belfem
             //-----------------------------------------------------------------------------
 
             void
-            addSimplexToChain(const id_t aInd, const int aCoeff ) ;
+            addSimplexToChain(const id_t aID, const int aCoeff ) ;
 
             //-----------------------------------------------------------------------------
 
             void
-            removeSimplexToChain(const id_t aInd) ;
+            removeSimplexToChain(const id_t aID) ;
 
             //-----------------------------------------------------------------------------
 
@@ -80,7 +80,7 @@ namespace belfem
             //-----------------------------------------------------------------------------
 
             int
-            getCoefficient(const id_t aInd) ;
+            getCoefficient(const id_t aID) ;
 
             //-----------------------------------------------------------------------------
 
@@ -95,7 +95,7 @@ namespace belfem
             //-----------------------------------------------------------------------------
 
             void
-            setCoefficient(const id_t aInd, const int tCoeff) ;
+            setCoefficient(const id_t aID, const int tCoeff) ;
 
             //-----------------------------------------------------------------------------
 
