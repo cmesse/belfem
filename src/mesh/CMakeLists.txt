@@ -1,6 +1,7 @@
 set( LIBNAME mesh )
 
 set( SOURCES
+        cl_Visualizer.cpp
         meshtools.cpp
         vtktools.cpp
         geometrytools.cpp
@@ -46,4 +47,5 @@ set ( LIBLIST
 
 set( EXECNAME meshtest )
 set( MAIN     main.cpp )
+
 include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )

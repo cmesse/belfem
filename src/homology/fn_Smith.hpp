@@ -102,11 +102,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-    Matrix < int >
-    transpose(Matrix< int > &aMat);
-
-//------------------------------------------------------------------------------
-
     std::tuple< Matrix< int >, Matrix< int > >
     kernelImage(Matrix< int > &aMat);
 

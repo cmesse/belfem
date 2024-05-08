@@ -39,7 +39,6 @@ foreach( LIBITEM ${LIBLIST} )
     set( BELFEM_LIBS "-l${LIBPREFIX}_${LIBITEM} ${BELFEM_LIBS}" )
 endforeach()
 
-
 # tidy up
 string(STRIP "${BELFEM_LIBS}" BELFEM_LIBS)
 
@@ -49,6 +48,11 @@ if ( USE_PROFILER )
 else()
     target_link_libraries( ${EXECNAME} ${BELFEM_LIBS} ${BELFEM_SOLVER_LIBS} ${BELFEM_MATRIX_LIBS} ${BELFEM_IO_LIBS} ${BELFEM_FORTRANLIBS} ${BELFEM_OPENMPLIBS} )
 endif()
+
+
+if ( USE_VTK )
+    target_link_libraries( ${EXECNAME} ${VTK_LIBRARIES} )
+endif ()
 
 
 if( APPLE )

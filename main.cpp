@@ -23,6 +23,16 @@ int main( int    argc,
 
     print_banner();
 
+    Matrix< int > tM( 4,4, 0 );
+
+    for( int k=0; k<4; ++k )
+    {
+        tM( k,k ) = 1 ;
+    }
+
+
+    tM.print("M");
+
     // close communicator
     return gComm.finalize();
 }

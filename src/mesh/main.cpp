@@ -12,6 +12,7 @@
 #include "cl_Mesh_ExodusWriter.hpp"
 #include "cl_Mesh.hpp"
 #include "cl_Mesh_OrientationChecker.hpp"
+#include "cl_Visualizer.hpp"
 
 using namespace belfem;
 
@@ -109,6 +110,8 @@ int main( int    argc,
     //tMesh->save( "mesh.vtk" );
     tMesh->save( "mesh.exo" );
     tMesh->save_faces( "faces.exo");
+
+    Visualizer tV( tMesh );
 
     delete tMesh ;
 

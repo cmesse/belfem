@@ -46,6 +46,8 @@ option( USE_STRUMPACK "Link against STRUMPACK" OFF )
 option( USE_STRUMPACK_CUDA "Link against STRUMPACK with CUDA" OFF )
 option( USE_STRUMPACK_ZFP "Link against STRUMPACK with ZFP" ON )
 
+option( USE_VTK "Use Visualization Toolkit" ON )
+
 # -------------------------------------------------------------------------
 # Global Parameters
 # -------------------------------------------------------------------------
@@ -89,6 +91,17 @@ include( ${BELFEM_CONFIG_DIR}/io/config_exodus.cmake )
 if( USE_GASMODELS )
     list( APPEND BELFEM_DEFS "BELFEM_GASMODELS" )
 endif()
+
+
+if( USE_VTK )
+
+    include(${BELFEM_CONFIG_DIR}/system/find_vtk.cmake)
+    list( APPEND BELFEM_DEFS "BELFEM_VTK" )
+
+    # Find VTK package
+    find_package(VTK REQUIRED)
+endif ()
+
 
 # -------------------------------------------------------------------------
 # profiler
