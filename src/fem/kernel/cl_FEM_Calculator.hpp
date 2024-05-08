@@ -204,6 +204,9 @@ namespace belfem
             // surface increment
             real ( Calculator::*mFundS )( const uint aIndex );
 
+            const Vector< real > &
+            ( Calculator::*mFunCollectNodeData )( const string & aLabel    );
+
             // for theta method
             real mTheta = 1.0 ;
             real mOneMinusTheta = 0.0 ;

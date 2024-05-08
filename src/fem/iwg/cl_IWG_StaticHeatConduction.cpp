@@ -86,7 +86,9 @@ namespace belfem
             const Vector< real > & tW =  mCalc->integration()->weights();
 
             // nodal temperatures
-            const Vector< real > & tTnodes   = mCalc->vector("T");
+            const Vector< real > & tTnodes   = this->collect_node_data( aElement, "T" );
+
+            tTnodes.print("T");
 
             // loop over all integration points
             for( uint k=0; k<mCalc->num_intpoints(); ++k )
@@ -96,11 +98,18 @@ namespace belfem
 
                 real tT = mCalc->node_interp( k, tTnodes );
 
+                tB.print("B");
+                std::cout << " T " << tT << std::endl ;
+
                 // add to integration
                 aK += tW( k ) * trans( tB ) *
                         mMaterial->lambda( tT ) *
                         tB * mCalc->dV( k );
             }
+
+            aK.print("K");
+
+            exit( 0 );
         }
 
 //------------------------------------------------------------------------------
