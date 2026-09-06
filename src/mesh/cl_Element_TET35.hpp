@@ -1,0 +1,300 @@
+/*
+ * BELFEM -- The Berkeley Lab Finite Element Framework
+ * Copyright (c) 2026, The Regents of the University of California,
+ * through Lawrence Berkeley National Laboratory (subject to receipt of any required
+ * approvals from the U.S. Dept. of Energy).  All rights reserved.
+ *
+ * Developers: Christian Messe, Gregory Giard
+ *
+ * See the top-level LICENSE file for the complete license and disclaimer.
+ */
+
+#ifndef BELFEM_CL_ELEMENT_TET35_HPP
+#define BELFEM_CL_ELEMENT_TET35_HPP
+
+#include "typedefs.hpp"
+#include "Mesh_Enums.hpp"
+#include "cl_ElementTemplate.hpp"
+
+namespace belfem
+{
+    namespace mesh
+    {
+//------------------------------------------------------------------------------
+
+        template <>
+        ElementType
+        ElementTemplate< 35, 4, 6, 4, 4 >::type() const
+        {
+            return ElementType::TET35;
+        }
+
+//------------------------------------------------------------------------------
+
+        template <>
+        uint
+        ElementTemplate< 35, 4, 6, 4, 4 >::dimension() const
+        {
+            return 3 ;
+        }
+
+//------------------------------------------------------------------------------
+
+        template <>
+        void
+        ElementTemplate< 35, 4, 6, 4, 4 >::get_nodes_of_facet( const uint aFacetIndex, Cell< Node * > & aNodes )
+        {
+            aNodes.set_size( 15, nullptr );
+
+            switch( aFacetIndex )
+            {
+                case( 0 ):
+                {
+                    aNodes(  0 ) = mNodes[  0 ];
+                    aNodes(  1 ) = mNodes[  1 ];
+                    aNodes(  2 ) = mNodes[  3 ];
+                    aNodes(  3 ) = mNodes[  4 ];
+                    aNodes(  4 ) = mNodes[  5 ];
+                    aNodes(  5 ) = mNodes[  6 ];
+                    aNodes(  6 ) = mNodes[ 21 ];
+                    aNodes(  7 ) = mNodes[ 20 ];
+                    aNodes(  8 ) = mNodes[ 19 ];
+                    aNodes(  9 ) = mNodes[ 13 ];
+                    aNodes( 10 ) = mNodes[ 14 ];
+                    aNodes( 11 ) = mNodes[ 15 ];
+                    aNodes( 12 ) = mNodes[ 25 ];
+                    aNodes( 13 ) = mNodes[ 26 ];
+                    aNodes( 14 ) = mNodes[ 27 ];
+                    break;
+                }
+                case( 1 ):
+                {
+                    aNodes(  0 ) = mNodes[  1 ];
+                    aNodes(  1 ) = mNodes[  2 ];
+                    aNodes(  2 ) = mNodes[  3 ];
+                    aNodes(  3 ) = mNodes[  7 ];
+                    aNodes(  4 ) = mNodes[  8 ];
+                    aNodes(  5 ) = mNodes[  9 ];
+                    aNodes(  6 ) = mNodes[ 18 ];
+                    aNodes(  7 ) = mNodes[ 17 ];
+                    aNodes(  8 ) = mNodes[ 16 ];
+                    aNodes(  9 ) = mNodes[ 19 ];
+                    aNodes( 10 ) = mNodes[ 20 ];
+                    aNodes( 11 ) = mNodes[ 21 ];
+                    aNodes( 12 ) = mNodes[ 32 ];
+                    aNodes( 13 ) = mNodes[ 33 ];
+                    aNodes( 14 ) = mNodes[ 31 ];
+                    break;
+                }
+                case( 2 ):
+                {
+                    aNodes(  0 ) = mNodes[  0 ];
+                    aNodes(  1 ) = mNodes[  3 ];
+                    aNodes(  2 ) = mNodes[  2 ];
+                    aNodes(  3 ) = mNodes[ 15 ];
+                    aNodes(  4 ) = mNodes[ 14 ];
+                    aNodes(  5 ) = mNodes[ 13 ];
+                    aNodes(  6 ) = mNodes[ 16 ];
+                    aNodes(  7 ) = mNodes[ 17 ];
+                    aNodes(  8 ) = mNodes[ 18 ];
+                    aNodes(  9 ) = mNodes[ 10 ];
+                    aNodes( 10 ) = mNodes[ 11 ];
+                    aNodes( 11 ) = mNodes[ 12 ];
+                    aNodes( 12 ) = mNodes[ 28 ];
+                    aNodes( 13 ) = mNodes[ 29 ];
+                    aNodes( 14 ) = mNodes[ 30 ];
+                    break;
+                }
+                case( 3 ):
+                {
+                    aNodes(  0 ) = mNodes[  0 ];
+                    aNodes(  1 ) = mNodes[  2 ];
+                    aNodes(  2 ) = mNodes[  1 ];
+                    aNodes(  3 ) = mNodes[ 12 ];
+                    aNodes(  4 ) = mNodes[ 11 ];
+                    aNodes(  5 ) = mNodes[ 10 ];
+                    aNodes(  6 ) = mNodes[  9 ];
+                    aNodes(  7 ) = mNodes[  8 ];
+                    aNodes(  8 ) = mNodes[  7 ];
+                    aNodes(  9 ) = mNodes[  6 ];
+                    aNodes( 10 ) = mNodes[  5 ];
+                    aNodes( 11 ) = mNodes[  4 ];
+                    aNodes( 12 ) = mNodes[ 22 ];
+                    aNodes( 13 ) = mNodes[ 23 ];
+                    aNodes( 14 ) = mNodes[ 24 ];
+                    break;
+                }
+                default:
+                {
+                    this->throw_facet_error( aFacetIndex );
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        template <>
+        void
+        ElementTemplate< 35, 4, 6, 4, 4 >::get_corner_nodes_of_facet( const uint aFacetIndex, Cell< Node * > & aNodes )
+        {
+            aNodes.set_size( 3, nullptr );
+
+            switch( aFacetIndex )
+            {
+                case( 0 ):
+                {
+                    aNodes( 0 ) = mNodes[ 0 ];
+                    aNodes( 1 ) = mNodes[ 1 ];
+                    aNodes( 2 ) = mNodes[ 3 ];
+                    break;
+                }
+                case( 1 ):
+                {
+                    aNodes( 0 ) = mNodes[ 1 ];
+                    aNodes( 1 ) = mNodes[ 2 ];
+                    aNodes( 2 ) = mNodes[ 3 ];
+                    break;
+                }
+                case( 2 ):
+                {
+                    aNodes( 0 ) = mNodes[ 0 ];
+                    aNodes( 1 ) = mNodes[ 3 ];
+                    aNodes( 2 ) = mNodes[ 2 ];
+                    break;
+                }
+                case( 3 ):
+                {
+                    aNodes( 0 ) = mNodes[ 0 ];
+                    aNodes( 1 ) = mNodes[ 2 ];
+                    aNodes( 2 ) = mNodes[ 1 ];
+                    break;
+                }
+                default:
+                {
+                    this->throw_facet_error( aFacetIndex );
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        template <>
+        void
+        ElementTemplate< 35, 4, 6, 4, 4 >::get_nodes_of_edge( const uint aEdgeIndex, Cell< Node * > & aNodes )
+        {
+            aNodes.set_size( 5, nullptr );
+
+            switch ( aEdgeIndex )
+            {
+                case ( 0 ):
+                {
+                    aNodes( 0 ) = mNodes[ 0 ];
+                    aNodes( 1 ) = mNodes[ 1 ];
+                    aNodes( 2 ) = mNodes[ 4 ];
+                    aNodes( 3 ) = mNodes[ 5 ];
+                    aNodes( 4 ) = mNodes[ 6 ];
+                    break;
+                }
+                case ( 1 ):
+                {
+                    aNodes( 0 ) = mNodes[ 1 ];
+                    aNodes( 1 ) = mNodes[ 2 ];
+                    aNodes( 2 ) = mNodes[ 7 ];
+                    aNodes( 3 ) = mNodes[ 8 ];
+                    aNodes( 4 ) = mNodes[ 9 ];
+                    break;
+                }
+                case ( 2 ):
+                {
+                    aNodes( 0 ) = mNodes[ 2 ];
+                    aNodes( 1 ) = mNodes[ 0 ];
+                    aNodes( 2 ) = mNodes[ 10 ];
+                    aNodes( 3 ) = mNodes[ 11 ];
+                    aNodes( 4 ) = mNodes[ 12 ];
+                    break;
+                }
+                case ( 3 ):
+                {
+                    aNodes( 0 ) = mNodes[ 0 ];
+                    aNodes( 1 ) = mNodes[ 3 ];
+                    aNodes( 2 ) = mNodes[ 13 ];
+                    aNodes( 3 ) = mNodes[ 14 ];
+                    aNodes( 4 ) = mNodes[ 15 ];
+                    break;
+                }
+                case ( 4 ):
+                {
+                    aNodes( 0 ) = mNodes[ 1 ];
+                    aNodes( 1 ) = mNodes[ 3 ];
+                    aNodes( 2 ) = mNodes[ 21 ];
+                    aNodes( 3 ) = mNodes[ 20 ];
+                    aNodes( 4 ) = mNodes[ 19 ];
+                    break;
+                }
+                case ( 5 ):
+                {
+                    aNodes( 0 ) = mNodes[ 2 ];
+                    aNodes( 1 ) = mNodes[ 3 ];
+                    aNodes( 2 ) = mNodes[ 18 ];
+                    aNodes( 3 ) = mNodes[ 17 ];
+                    aNodes( 4 ) = mNodes[ 16 ];
+                    break;
+                }
+                default:
+                {
+                    this->throw_edge_error( aEdgeIndex );
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        template <>
+        void
+        ElementTemplate< 35, 4, 6, 4, 4 >::get_edges_of_facet(
+                const uint aFacetIndex, Cell< Edge * > & aEdges )
+        {
+            aEdges.set_size( 3, nullptr );
+
+            switch( aFacetIndex )
+            {
+                case( 0 ):
+                {
+                    aEdges( 0 ) = mEdges[ 0 ];
+                    aEdges( 1 ) = mEdges[ 4 ];
+                    aEdges( 2 ) = mEdges[ 3 ];
+                    break;
+                }
+                case( 1 ):
+                {
+                    aEdges( 0 ) = mEdges[ 1 ];
+                    aEdges( 1 ) = mEdges[ 5 ];
+                    aEdges( 2 ) = mEdges[ 4 ];
+                    break;
+                }
+                case( 2 ):
+                {
+                    aEdges( 0 ) = mEdges[ 3 ];
+                    aEdges( 1 ) = mEdges[ 5 ];
+                    aEdges( 2 ) = mEdges[ 2 ];
+                    break;
+                }
+                case( 3 ):
+                {
+                    aEdges( 0 ) = mEdges[ 2 ];
+                    aEdges( 1 ) = mEdges[ 1 ];
+                    aEdges( 2 ) = mEdges[ 0 ];
+                    break;
+                }
+                default:
+                {
+                    this->throw_facet_error( aFacetIndex );
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+    } /* namespace mesh */
+} /* namespace belfem */
+
+#endif //BELFEM_CL_ELEMENT_TET35_HPP

@@ -1,0 +1,9 @@
+* tape stack demo -- lumped part of examples/tapestack_circuit ( plan decision 6b )
+* current source drives two thin-shell tape stacks ( terminal pairs Z1/Z2,
+* defined deck-side in input.conf ) in parallel with L and C
+Is live 0 SIN(0 500 10)
+L1 live 0 2.5u
+C1 live 0 100
+* belfem: order L1 2
+* belfem: order C1 2
+.end

@@ -1,0 +1,153 @@
+/*
+ * BELFEM -- The Berkeley Lab Finite Element Framework
+ * Copyright (c) 2026, The Regents of the University of California,
+ * through Lawrence Berkeley National Laboratory (subject to receipt of any required
+ * approvals from the U.S. Dept. of Energy).  All rights reserved.
+ *
+ * Developers: Christian Messe, Gregory Giard
+ *
+ * See the top-level LICENSE file for the complete license and disclaimer.
+ */
+
+#ifndef BELFEM_FN_INTPOINTS_GAUSS_TET20_HPP
+#define BELFEM_FN_INTPOINTS_GAUSS_TET20_HPP
+
+#include "typedefs.hpp"
+#include "cl_Vector.hpp"
+#include "cl_Matrix.hpp"
+// ----------------------------------------------------------------------------
+namespace belfem
+{
+    namespace integration
+    {
+// ----------------------------------------------------------------------------
+
+        // 6th order in the Shunn and Ham numbering ( leading error term delta^6,
+        // their Table 1 ): exact for polynomials up to degree 5. UNUSED:
+        // fn_intpoints.cpp calls no tet20 table.
+        // source Shunn and Ham, 10.1016/j.cam.2012.03.032
+        inline void
+        gauss_tet20(
+                Vector <real> & aWeights,
+                Matrix <real> & aPoints )
+        {
+            aPoints.set_size( 4, 20 );
+
+            aPoints( 0 , 0 ) =  0.9029422158182680 ;
+            aPoints( 1 , 0 ) =  0.0323525947272439 ;
+            aPoints( 2 , 0 ) =  0.0323525947272439 ;
+
+            aPoints( 0 , 1 ) =  0.0323525947272439 ;
+            aPoints( 1 , 1 ) =  0.9029422158182680 ;
+            aPoints( 2 , 1 ) =  0.0323525947272439 ;
+
+            aPoints( 0 , 2 ) =  0.0323525947272439 ;
+            aPoints( 1 , 2 ) =  0.0323525947272439 ;
+            aPoints( 2 , 2 ) =  0.9029422158182680 ;
+
+            aPoints( 0 , 3 ) =  0.0323525947272439 ;
+            aPoints( 1 , 3 ) =  0.0323525947272439 ;
+            aPoints( 2 , 3 ) =  0.0323525947272439 ;
+
+            aPoints( 0 , 4 ) =  0.2626825838877790 ;
+            aPoints( 1 , 4 ) =  0.6165965330619370 ;
+            aPoints( 2 , 4 ) =  0.0603604415251421 ;
+
+            aPoints( 0 , 5 ) =  0.6165965330619370 ;
+            aPoints( 1 , 5 ) =  0.2626825838877790 ;
+            aPoints( 2 , 5 ) =  0.0603604415251421 ;
+
+            aPoints( 0 , 6 ) =  0.2626825838877790 ;
+            aPoints( 1 , 6 ) =  0.0603604415251421 ;
+            aPoints( 2 , 6 ) =  0.6165965330619370 ;
+
+            aPoints( 0 , 7 ) =  0.6165965330619370 ;
+            aPoints( 1 , 7 ) =  0.0603604415251421 ;
+            aPoints( 2 , 7 ) =  0.2626825838877790 ;
+
+            aPoints( 0 , 8 ) =  0.2626825838877790 ;
+            aPoints( 1 , 8 ) =  0.0603604415251421 ;
+            aPoints( 2 , 8 ) =  0.0603604415251421 ;
+
+            aPoints( 0 , 9 ) =  0.6165965330619370 ;
+            aPoints( 1 , 9 ) =  0.0603604415251421 ;
+            aPoints( 2 , 9 ) =  0.0603604415251421 ;
+
+            aPoints( 0 , 10 ) =  0.0603604415251421 ;
+            aPoints( 1 , 10 ) =  0.2626825838877790 ;
+            aPoints( 2 , 10 ) =  0.6165965330619370 ;
+
+            aPoints( 0 , 11 ) =  0.0603604415251421 ;
+            aPoints( 1 , 11 ) =  0.6165965330619370 ;
+            aPoints( 2 , 11 ) =  0.2626825838877790 ;
+
+            aPoints( 0 , 12 ) =  0.0603604415251421 ;
+            aPoints( 1 , 12 ) =  0.2626825838877790 ;
+            aPoints( 2 , 12 ) =  0.0603604415251421 ;
+
+            aPoints( 0 , 13 ) =  0.0603604415251421 ;
+            aPoints( 1 , 13 ) =  0.6165965330619370 ;
+            aPoints( 2 , 13 ) =  0.0603604415251421 ;
+
+            aPoints( 0 , 14 ) =  0.0603604415251421 ;
+            aPoints( 1 , 14 ) =  0.0603604415251421 ;
+            aPoints( 2 , 14 ) =  0.2626825838877790 ;
+
+            aPoints( 0 , 15 ) =  0.0603604415251421 ;
+            aPoints( 1 , 15 ) =  0.0603604415251421 ;
+            aPoints( 2 , 15 ) =  0.6165965330619370 ;
+
+            aPoints( 0 , 16 ) =  0.3097693042728620 ;
+            aPoints( 1 , 16 ) =  0.3097693042728620 ;
+            aPoints( 2 , 16 ) =  0.3097693042728620 ;
+
+            aPoints( 0 , 17 ) =  0.3097693042728620 ;
+            aPoints( 1 , 17 ) =  0.3097693042728620 ;
+            aPoints( 2 , 17 ) =  0.0706920871814129 ;
+
+            aPoints( 0 , 18 ) =  0.3097693042728620 ;
+            aPoints( 1 , 18 ) =  0.0706920871814129 ;
+            aPoints( 2 , 18 ) =  0.3097693042728620 ;
+
+            aPoints( 0 , 19 ) =  0.0706920871814129 ;
+            aPoints( 1 , 19 ) =  0.3097693042728620 ;
+            aPoints( 2 , 19 ) =  0.3097693042728620 ;
+
+            for( uint k=0; k<20; ++k )
+            {
+                aPoints( 3, k ) =  1.0
+                                   - aPoints( 0, k )
+                                   - aPoints( 1, k )
+                                   - aPoints( 2, k );
+            }
+
+            aWeights.set_size( 20 );
+
+            aWeights(  0 ) =  0.00117784579907825 ;
+            aWeights(  1 ) =  0.00117784579907825 ;
+            aWeights(  2 ) =  0.00117784579907825 ;
+            aWeights(  3 ) =  0.00117784579907825 ;
+
+            aWeights(  4 ) =  0.0078331114953146 ;
+            aWeights(  5 ) =  0.0078331114953146 ;
+            aWeights(  6 ) =  0.0078331114953146 ;
+            aWeights(  7 ) =  0.0078331114953146 ;
+            aWeights(  8 ) =  0.0078331114953146 ;
+            aWeights(  9 ) =  0.0078331114953146 ;
+            aWeights( 10 ) =  0.0078331114953146 ;
+            aWeights( 11 ) =  0.0078331114953146 ;
+            aWeights( 12 ) =  0.0078331114953146 ;
+            aWeights( 13 ) =  0.0078331114953146 ;
+            aWeights( 14 ) =  0.0078331114953146 ;
+            aWeights( 15 ) =  0.0078331114953146 ;
+
+            aWeights( 16 ) =  0.0169894863816446 ;
+            aWeights( 17 ) =  0.0169894863816446 ;
+            aWeights( 18 ) =  0.0169894863816446 ;
+            aWeights( 19 ) =  0.0169894863816446 ;
+        }
+
+// ----------------------------------------------------------------------------
+    }
+}
+#endif //BELFEM_FN_INTPOINTS_GAUSS_TET20_HPP

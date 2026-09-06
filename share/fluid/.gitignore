@@ -1,0 +1,14 @@
+# Fluid property tables for the gas models.
+#
+# All four files are generated and redistributable. They are built by the tools in
+# scripts/fluidprop, which record their own provenance in each file header:
+#
+#   thermo.inp     NASA-9 records for the species in species.txt, extracted from the
+#                  NASA CEA database with a generated low temperature interval merged
+#                  into each record where one could be fitted
+#   trans.inp      the matching transport polynomials
+#   gasdata.inp    critical constants and dipole moments, per record sources
+#   cubicalpha.inp alpha function parameters for the species the reader can reach
+#
+# Nothing here is excluded. This file exists to say so, since an empty ignore file
+# in a data directory usually means the opposite.

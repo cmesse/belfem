@@ -1,0 +1,279 @@
+/*
+ * Doxygen topic (module) tree for the BELFEM API reference.
+ *
+ * GENERATED FILE - do not edit by hand.
+ * Run scripts/update_doc_index.py to regenerate it.
+ *
+ * Why it exists: the Classes, Files and Namespaces indices are flat and
+ * alphabetical. With several hundred headers that is a lookup tool, not a map.
+ * These groups give the generated reference the same four-bucket shape the
+ * hand-written catalogue uses, so the two tiers can be read against each other.
+ */
+
+/**
+@defgroup infrastructure Infrastructure
+
+See @ref docmap for the hand-written documentation of these modules.
+*/
+
+/**
+@defgroup grp_core Core
+@ingroup infrastructure
+
+Logging, timing, types, constants and string tools.
+
+Source: `src/core`. Hand-written documentation: @ref core_index
+*/
+
+/**
+@defgroup grp_containers Containers
+@ingroup infrastructure
+
+Cell, Map, Bitset and the other BELFEM container classes.
+
+Source: `src/containers`. Hand-written documentation: @ref containers_index
+*/
+
+/**
+@defgroup grp_linalg Linear Algebra
+@ingroup infrastructure
+
+Backend-agnostic linear algebra API and LAPACK wrappers.
+
+Source: `src/linalg`. Hand-written documentation: @ref linalg_index
+*/
+
+/**
+@defgroup grp_sparse Sparse
+@ingroup infrastructure
+
+Sparse storage and the solver interfaces (UMFPACK, MUMPS, STRUMPACK, PARDISO, PETSc).
+
+Source: `src/sparse`. Hand-written documentation: @ref sparse_index
+*/
+
+/**
+@defgroup grp_io I/O
+@ingroup infrastructure
+
+HDF5, ASCII, CSV, configuration files and XML.
+
+Source: `src/io`. Hand-written documentation: @ref io_index
+*/
+
+/**
+@defgroup grp_comm Communication
+@ingroup infrastructure
+
+MPI communication abstraction layer.
+
+Source: `src/comm`. Hand-written documentation: @ref comm_index
+*/
+
+/**
+@defgroup grp_mesh Mesh
+@ingroup infrastructure
+
+Mesh data structures, I/O (Gmsh, HDF5, Exodus, VTK) and parallel partitioning.
+
+Source: `src/mesh`. Hand-written documentation: @ref mesh_index
+*/
+
+/**
+@defgroup grp_visualizer Visualizer
+@ingroup infrastructure
+
+Optional VTK rendering of meshes and curves (USE_VTK, off by default).
+
+Source: `src/visualizer`. Hand-written documentation: @ref visualizer_index
+*/
+
+/**
+@defgroup mathematics Mathematics
+
+See @ref docmap for the hand-written documentation of these modules.
+*/
+
+/**
+@defgroup grp_math_graph Graph
+@ingroup mathematics
+
+Graph algorithms and partitioning (BFS, DFS, RCM, METIS, SCOTCH).
+
+Source: `src/math/graph`. Hand-written documentation: @ref math_graph_index
+*/
+
+/**
+@defgroup grp_math_tensor Tensor
+@ingroup mathematics
+
+Fourth-order tensor helper.
+
+Source: `src/math/tensor`. Hand-written documentation: @ref math_tensor_index
+*/
+
+/**
+@defgroup grp_math_quaternion Quaternion
+@ingroup mathematics
+
+Quaternion value type for 3D rotations.
+
+Source: `src/math/quaternion`. Hand-written documentation: @ref math_quaternion_index
+*/
+
+/**
+@defgroup grp_numerics_spline Spline
+@ingroup mathematics
+
+Spline interpolation.
+
+Source: `src/numerics/spline`. Hand-written documentation: @ref numerics_spline_index
+*/
+
+/**
+@defgroup grp_numerics_opt Optimizer
+@ingroup mathematics
+
+NLOPT-backed bound-constrained minimisation.
+
+Source: `src/numerics/opt`. Hand-written documentation: @ref numerics_opt_index
+*/
+
+/**
+@defgroup grp_homology Homology
+@ingroup mathematics
+
+Cohomology algorithms, cut generation and theory.
+
+Source: `src/homology`. Hand-written documentation: @ref homology_index
+*/
+
+/**
+@defgroup finite_elements Finite Elements
+
+See @ref docmap for the hand-written documentation of these modules.
+*/
+
+/**
+@defgroup grp_fem FEM Overview
+@ingroup finite_elements
+
+How the finite-element modules fit together.
+
+Source: `src/fem`. Hand-written documentation: @ref fem_index
+*/
+
+/**
+@defgroup grp_fem_kernel FEM Kernel
+@ingroup finite_elements
+
+DOF management, hanging nodes, assembly, time stepping and the nonlinear controller.
+
+Source: `src/fem/kernel`. Hand-written documentation: @ref fem_kernel_index
+*/
+
+/**
+@defgroup grp_fem_interpolation Interpolation
+@ingroup finite_elements
+
+Shape functions, integration points and Nedelec elements.
+
+Source: `src/fem/interpolation`. Hand-written documentation: @ref fem_interpolation_index
+*/
+
+/**
+@defgroup grp_fem_iwg IWG
+@ingroup finite_elements
+
+Integral weak forms (Poisson, heat conduction, elasticity, time stepping).
+
+Source: `src/fem/iwg`. Hand-written documentation: @ref fem_iwg_index
+*/
+
+/**
+@defgroup grp_fem_maxwell Maxwell
+@ingroup finite_elements
+
+Electromagnetics: h-phi formulation, thin shells, HTS, cohomology cuts.
+
+Source: `src/fem/maxwell`. Hand-written documentation: @ref fem_maxwell_index
+*/
+
+/**
+@defgroup grp_fem_thermal Thermal
+@ingroup finite_elements
+
+Transient heat conduction and the magneto-thermal coupling belfem selects for a thermal deck.
+
+Source: `src/fem/thermal`. Hand-written documentation: @ref fem_thermal_index
+*/
+
+/**
+@defgroup grp_fem_postproc Postprocessing
+@ingroup finite_elements
+
+Mesh-level postprocessing: volumes, surfaces, normals, gradients, mesh checks.
+
+Source: `src/fem/postproc`. Hand-written documentation: @ref fem_postproc_index
+*/
+
+/**
+@defgroup physics_and_circuits Physics and Circuits
+
+See @ref docmap for the hand-written documentation of these modules.
+*/
+
+/**
+@defgroup grp_physics_materials Materials
+@ingroup physics_and_circuits
+
+Material property framework (pure metals, HTS, alloys, user-defined).
+
+Source: `src/physics/materials`. Hand-written documentation: @ref physics_materials_index
+*/
+
+/**
+@defgroup grp_physics_database Database
+@ingroup physics_and_circuits
+
+Precomputed lookup tables on tensor grids.
+
+Source: `src/physics/database`. Hand-written documentation: @ref physics_database_index
+*/
+
+/**
+@defgroup grp_physics_gasmodels Gas Models
+@ingroup physics_and_circuits
+
+Equation-of-state and transport models.
+
+Source: `src/physics/gasmodels`. Hand-written documentation: @ref physics_gasmodels_index
+*/
+
+/**
+@defgroup grp_physics_gastables Gas Tables
+@ingroup physics_and_circuits
+
+Tabulated thermophysical property data.
+
+Source: `src/physics/gastables`. Hand-written documentation: @ref physics_gastables_index
+*/
+
+/**
+@defgroup grp_circuit Circuit
+@ingroup physics_and_circuits
+
+Lumped-element circuit simulator coupled to the FEM problem.
+
+Source: `src/circuit`. Hand-written documentation: @ref circuit_index
+*/
+
+/**
+@defgroup grp_executables Executables
+@ingroup physics_and_circuits
+
+belfem and the material, gas and db2exo tools, with their command-line interface.
+
+Source: `src/executables`. Hand-written documentation: @ref executables_index
+*/
+

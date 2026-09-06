@@ -1,0 +1,19 @@
+#!/usr/bin/env python3
+"""Wrapper so the tool runs from anywhere without installation or PYTHONPATH.
+
+    python/belfem-conf drift
+
+Deliberately dependency-light: PyYAML is the only requirement, and no build
+tree is needed. The check must work in a git hook and on a machine that has
+never compiled BELFEM.
+"""
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from belfem_conf.cli import main  # noqa: E402
+
+if __name__ == "__main__":
+    sys.exit(main())

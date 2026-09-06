@@ -1,0 +1,21 @@
+// AUTO-GENERATED. Do not edit or commit. Regenerated on every build.
+#ifndef BELFEM_VERSION_HPP
+#define BELFEM_VERSION_HPP
+
+namespace belfem
+{
+    // semantic version (semver.org), assigned in the top-level CMakeLists.txt
+    inline constexpr int         gVersionMajor       = @VERSION_MAJOR@;
+    inline constexpr int         gVersionMinor       = @VERSION_MINOR@;
+    inline constexpr int         gVersionPatch       = @VERSION_PATCH@;
+    inline constexpr const char* gVersionString      = "@BELFEM_VERSION_STRING@";
+
+    // git provenance of the build
+    inline constexpr bool        gGitAvailable       = @BELFEM_GIT_AVAILABLE@;
+    inline constexpr const char* gGitCommitHash      = "@BELFEM_GIT_HASH@";
+    inline constexpr const char* gGitCommitHashShort = "@BELFEM_GIT_HASH_SHORT@";
+    inline constexpr const char* gGitBranch          = "@BELFEM_GIT_BRANCH@";
+    inline constexpr bool        gGitIsDirty         = @BELFEM_GIT_DIRTY@;
+}
+
+#endif // BELFEM_VERSION_HPP

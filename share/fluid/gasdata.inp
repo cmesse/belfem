@@ -1,0 +1,152 @@
+!
+! gasdata.inp -- critical-point data and molecular properties for the BELFEM gas models
+!
+!------------------------------------------------------------------------------------------------------------------------------------------------
+! FORMAT
+!------------------------------------------------------------------------------------------------------------------------------------------------
+!
+! Fixed column. Offsets are 0-based and must be preserved; they are read in
+! cl_GT_InputData.cpp.
+!
+!   label     0..11   must equal the thermo.inp species label (max 11 characters)
+!   name     12..71
+!   CAS      75..90
+!   M        92..101  g/mol
+!   T_crit  102..110  K
+!   p_crit  112..119  bar
+!   Z_crit  121..128
+!   omega   129..135
+!   dipole  138..145  debye
+!
+! Everything from column 147 onward is provenance and is IGNORED by the reader. Sources
+! are given per field, because a row may draw its values from more than one place:
+!
+!   src(M,T_crit,p_crit,Z_crit) 147..182
+!   src(omega)                 185..220
+!   src(dipole)                223..EOL
+!
+! Source tokens contain no spaces. A DOI is used wherever one exists. Other tokens:
+!
+!   symmetry            dipole is exactly zero by molecular point group; not a measurement
+!   simple-fluid        omega is zero by Pitzer's definition for a monatomic/spherical fluid
+!   estimate-from-<X>   value assumed equal to species X; an estimate, not a measurement
+!   <author>-<year>     a printed source without a DOI
+!   A/Zc:B              fields from A except Z_crit, which is from B
+!   A/pc:B              fields from A except p_crit, which is from B
+!   A/Zc:Pitzer-corr    Z_crit estimated from Pitzer's correlation Zc = 0.291 - 0.08*omega,
+!                       used where a critical volume is not available
+!   A/Zc:computed       Z_crit computed as pc*Vc/(R*Tc) rather than tabulated
+!   <src>-pseudopure    value for the species treated as a pseudo-pure component in
+!                       engineering correlations, not a pure-component measurement.
+!                       NO2 omega is such a case: the pure-component value is far
+!                       lower (~0.06), but the pseudo-pure value is what reproduces
+!                       NO2/N2O4 behaviour in mixture calculations.
+!
+!------------------------------------------------------------------------------------------------------------------------------------------------
+! SOURCES AND LICENCE
+!------------------------------------------------------------------------------------------------------------------------------------------------
+!
+! Critical-point data is generated programmatically from CoolProp 8.0.0
+! (http://www.coolprop.org, MIT licence); Z_crit is computed as
+! p_crit / ( rho_molar_crit * R * T_crit ). Species that CoolProp does not carry take
+! individually cited values from the printed literature. Dipole moments are individual
+! physical constants cited per record.
+!
+! Every value therefore traces to a named origin. Critical data comes from an
+! MIT-licensed library. The remaining values come from the individual primary sources
+! given in each row. A dipole marked "symmetry" is exactly zero by the molecular point
+! group and an omega marked "simple-fluid" is zero by Pitzer's definition; neither is a
+! measurement. Which species appear is decided by the reader: a row is usable only when
+! its label matches a thermo.inp species and fits the eleven character label field.
+!
+!------------------------------------------------------------------------------------------------------------------------------------------------
+! EXTENDING THIS TABLE
+!------------------------------------------------------------------------------------------------------------------------------------------------
+!
+! Add rows in the same columns to extend the table for your own use. Critical constants
+! for further species can be taken from any thermophysical compilation, for example
+! Poling, Prausnitz and O'Connell, "The Properties of Gases and Liquids", 5th ed.
+! (McGraw-Hill, 2001) or Perry's Chemical Engineers' Handbook. Only species whose label
+! matches a thermo.inp entry are reachable by the code.
+!
+! Free atoms and open-shell radicals -- H, O, N, C, OH, CH3, S, SH, SO, ... -- carry no
+! entry by design. A monatomic or radical species has no condensed phase and therefore
+! no critical point; the values sometimes tabulated for "S" belong to bulk elemental
+! sulfur (the S8/S2 melt), a different substance. These species are ideal-gas only,
+! which is also the regime in which they actually occur. The noble gases are entered
+! because they are atoms that do have a genuine condensed phase.
+!
+! Species still wanted: S8, which lacks critical constants entirely.
+!
+! N2O4 is deliberately excluded. It and NO2 are the same reactive system
+! (N2O4 <-> 2 NO2), and NO2 is already entered as a pseudo-pure representative of it.
+! Entering both would double count the association effect in any mixture containing
+! the pair, which an equilibrium calculation will always produce. Note also that the
+! commonly tabulated N2O4 critical volume refers to the dissociating mixture and gives
+! Zc ~ 0.47; that value must not be combined with pure-component constants.
+!
+! Keep the columns aligned when editing. The reader takes each field by its byte
+! offset, so a shifted column is read as the wrong quantity rather than rejected.
+!
+!----------------------------------------------------------------------------------------------------------------------------------------------------------------
+!           label                                                          CAS                      M    T_crit   p_crit  z_crit   omega  dipole   src(M,Tc,pc,Zc)                       src(omega)                            src(dipole)
+!----------------------------------------------------------------------------------------------------------------------------------------------------------------
+He          helium                                                         7440-59-7            4.003     5.195   2.2832  0.3040 -0.3835  0.0      CoolProp-8.0.0                        CoolProp-8.0.0                        symmetry
+Ne          neon                                                           7440-01-9           20.179    44.400  26.6163  0.2992 -0.0355  0.0      CoolProp-8.0.0                        CoolProp-8.0.0                        symmetry
+Ar          argon                                                          7440-37-1           39.948   150.687  48.6300  0.2895 -0.0022  0.0      CoolProp-8.0.0                        CoolProp-8.0.0                        symmetry
+Kr          krypton                                                        7439-90-9           83.798   209.480  55.2543  0.2925 -0.0009  0.0      CoolProp-8.0.0                        CoolProp-8.0.0                        symmetry
+Xe          xenon                                                          7440-63-3          131.293   289.733  58.4191  0.2887  0.0036  0.0      CoolProp-8.0.0                        CoolProp-8.0.0                        symmetry
+H2          hydrogen (normal)                                              1333-74-0            2.016    33.144  12.9636  0.3035 -0.2190  0.0      CoolProp-8.0.0                        CoolProp-8.0.0                        symmetry
+D2          deuterium                                                      7782-39-0            4.028    38.340  16.7955  0.3058 -0.1363  0.0      CoolProp-8.0.0                        CoolProp-8.0.0                        symmetry
+N2          nitrogen                                                       7727-37-9           28.013   126.192  33.9580  0.2894  0.0372  0.0      CoolProp-8.0.0                        CoolProp-8.0.0                        symmetry
+O2          oxygen                                                         7782-44-7           31.999   154.599  50.4641  0.2942  0.0222  0.0      CoolProp-8.0.0                        CoolProp-8.0.0                        symmetry
+F2          fluorine                                                       7782-41-4           37.997   144.414  52.3952  0.2797  0.0449  0.0      CoolProp-8.0.0                        CoolProp-8.0.0                        symmetry
+CO          carbon monoxide                                                630-08-0            28.010   132.860  34.9819  0.2919  0.0497  0.1098   CoolProp-8.0.0                        CoolProp-8.0.0                        10.1006/jmsp.1998.7601
+CO2         carbon dioxide                                                 124-38-9            44.010   304.128  73.7730  0.2746  0.2239  0.0      CoolProp-8.0.0                        CoolProp-8.0.0                        symmetry
+H2O         water                                                          7732-18-5           18.015   647.096 220.6400  0.2294  0.3443  1.8546   CoolProp-8.0.0                        CoolProp-8.0.0                        10.1063/1.1680453
+D2O         water-d2 (heavy water)                                         7789-20-0           20.028   643.847 216.6183  0.2276  0.3642  1.8545   CoolProp-8.0.0                        CoolProp-8.0.0                        10.1063/1.1680453
+NH3         ammonia                                                        7664-41-7           17.031   405.560 113.6339  0.2461  0.2557  1.476    CoolProp-8.0.0                        CoolProp-8.0.0                        10.1063/1.1673524
+SO2         sulfur dioxide                                                 7446-09-5           64.064   430.640  78.8658  0.2727  0.2561  1.62673  CoolProp-8.0.0                        CoolProp-8.0.0                        10.1063/1.437860
+H2S         hydrogen sulfide                                               7783-06-4           34.081   373.101  89.9887  0.2847  0.1005  0.977294 CoolProp-8.0.0                        CoolProp-8.0.0                        10.1016/0022-2852(84)90050-X
+HCl         hydrogen chloride                                              7647-01-0           36.461   324.680  83.1351  0.2594  0.1297  1.1085   CoolProp-8.0.0                        CoolProp-8.0.0                        10.1063/1.1674245
+N2O         nitrous oxide                                                  10024-97-2          44.013   309.521  72.4482  0.2736  0.1613  0.16083  CoolProp-8.0.0                        CoolProp-8.0.0                        10.1063/1.1674355
+COS         carbonyl sulfide                                               463-58-1            60.075   378.770  63.6880  0.2729  0.0978  0.7152   CoolProp-8.0.0                        CoolProp-8.0.0                        10.1063/1.1668024
+CH4         methane                                                        74-82-8             16.043   190.564  45.9920  0.2863  0.0114  0.0      CoolProp-8.0.0                        CoolProp-8.0.0                        symmetry
+C2H4        ethylene (ethene)                                              74-85-1             28.054   282.350  50.4169  0.2812  0.0866  0.0      CoolProp-8.0.0                        CoolProp-8.0.0                        symmetry
+C2H6        ethane                                                         74-84-0             30.069   305.322  48.7220  0.2799  0.0990  0.0      CoolProp-8.0.0                        CoolProp-8.0.0                        symmetry
+C3H8        propane                                                        74-98-6             44.096   369.890  42.5117  0.2765  0.1521  0.083    CoolProp-8.0.0                        CoolProp-8.0.0                        10.1063/1.1731434
+C3H6,cyclo- cyclopropane                                                   75-19-4             42.081   398.692  56.0528  0.2765  0.1305  0.0      CoolProp-8.0.0                        CoolProp-8.0.0                        symmetry
+C6H6        benzene                                                        71-43-2             78.112   562.020  49.0629  0.2691  0.2108  0.0      CoolProp-8.0.0                        CoolProp-8.0.0                        symmetry
+C7H8        toluene (methylbenzene)                                        108-88-3            92.138   591.749  41.2635  0.2647  0.2657  0.375    CoolProp-8.0.0                        CoolProp-8.0.0                        10.1515/zna-1967-0613
+CH3OH       methanol                                                       67-56-1             32.042   513.380  82.1585  0.2191  0.5649  1.7005   CoolProp-8.0.0                        CoolProp-8.0.0                        10.1016/j.molstruc.2015.05.042
+C2H5OH      ethanol                                                        64-17-5             46.068   514.709  62.6791  0.2470  0.6440  1.6795   CoolProp-8.0.0                        CoolProp-8.0.0                        10.1063/1.439723
+CH3OCH3     dimethyl ether                                                 115-10-6            46.068   400.378  53.3666  0.2699  0.1960  1.302    CoolProp-8.0.0                        CoolProp-8.0.0                        10.1063/1.1733585
+SF6         sulfur hexafluoride                                            2551-62-4          146.055   318.723  37.5498  0.2788  0.2100  0.0      CoolProp-8.0.0                        CoolProp-8.0.0                        symmetry
+CF4         tetrafluoromethane (R-14)                                      75-73-0             88.005   227.396  37.6246  0.2793  0.1785  0.0      CoolProp-8.0.0                        CoolProp-8.0.0                        symmetry
+C2F6        hexafluoroethane (R-116)                                       76-16-4            138.012   293.030  30.4766  0.2815  0.2566  0.0      CoolProp-8.0.0                        CoolProp-8.0.0                        symmetry
+CHF3        trifluoromethane (R-23)                                        75-46-7             70.014   299.293  48.3175  0.2582  0.2630  1.6515   CoolProp-8.0.0                        CoolProp-8.0.0                        CRC-Handbook-of-Chemistry-and-Physics
+CH2F2       difluoromethane (R-32)                                         75-10-5             52.024   351.255  57.8265  0.2429  0.2769  1.9785   CoolProp-8.0.0                        CoolProp-8.0.0                        10.1007/BF01010764
+CH3F        fluoromethane (R-41)                                           593-53-3            34.033   317.279  59.0611  0.2408  0.2004  1.79     CoolProp-8.0.0                        CoolProp-8.0.0                        dli.ernet.449089
+CH3Cl       chloromethane (R-40)                                           74-87-3             50.488   418.626  69.2900  0.2942  0.1501  1.869    CoolProp-8.0.0                        CoolProp-8.0.0                        dli.ernet.449089
+CFCl3       trichlorofluoromethane (R-11)                                  75-69-4            137.368   471.110  44.0764  0.2790  0.1888  0.46     CoolProp-8.0.0                        CoolProp-8.0.0                        10.1063/1.1674190
+CF2Cl2      dichlorodifluoromethane (R-12)                                 75-71-8            120.913   385.120  41.3617  0.2764  0.1795  0.51     CoolProp-8.0.0                        CoolProp-8.0.0                        10.1063/1.1749273
+CF3Cl       chlorotrifluoromethane (R-13)                                  75-72-9            104.459   303.050  39.7311  0.2859  0.1746  0.5      CoolProp-8.0.0                        CoolProp-8.0.0                        10.1063/1.1732264
+CHFCl2      dichlorofluoromethane (R-21)                                   75-43-4            102.923   452.720  52.8851  0.2766  0.2061  1.29     CoolProp-8.0.0                        CoolProp-8.0.0                        10.1063/1.1749273
+CHF2Cl      chlorodifluoromethane (R-22)                                   75-45-6             86.468   369.295  49.9000  0.2683  0.2208  1.42     CoolProp-8.0.0                        CoolProp-8.0.0                        10.1063/1.1733119
+Cl2         chlorine                                                       7782-50-5           70.905   417.150  77.1000  0.2750  0.0730  0.0      Perry-Green-2007/Zc:Poling-2001       Perry-Green-2007                      symmetry
+CCl4        tetrachloromethane                                             56-23-5            153.822   556.400  45.6000  0.2710  0.1910  0.0      Perry-Green-2007/Zc:Poling-2001       Perry-Green-2007                      symmetry
+C2F4        tetrafluoroethylene                                            116-14-3           100.016   306.400  39.4400  0.2660  0.2270  0.0      Poling-2001                           Yaws-Thermophysical                   symmetry
+CHCl3       trichloromethane (chloroform)                                  67-66-3            119.377   536.400  54.7200  0.2960  0.2280  1.04     Perry-Green-2007/Zc:Poling-2001       Perry-Green-2007                      10.1063/1.1674190
+C2H2F2      1,1-difluoroethene [CEA label = 1,1/cis/trans equil.]          75-38-7             64.035   303.200  44.3300  0.2700  0.2700  1.389    Poling-2001                           Perry-Green-2007                      CCCBDB
+F2O         oxygen difluoride                                              7783-41-7           53.996   215.200  49.5000  0.2700  0.1820  0.297    Poling-2001                           10.1063/1.461448                      10.1063/1.1732240
+D2S         hydrogen sulfide-d2 (deuterium sulfide)                        13536-94-2          36.094   372.300  89.0000  0.2760  0.1000  0.978325 Poling-2001                           estimate-from-H2S                     10.1016/0022-2852(84)90050-X
+Br2         bromine                                                        7726-95-6          159.808   584.100 103.0000  0.2690  0.1190  0.0      Poling-2001                           Poling-2001                           symmetry
+BrF3        bromine trifluoride                                            7787-71-5          136.899   600.000  49.9000  0.1150  0.4130  1.19     Poling-2001                           Poling-2001                           NSRDS-NBS-10
+CH2O        formaldehyde (methanal)                                        50-00-0             30.026   414.490  67.7830  0.2220  0.2530  2.331    Poling-2001                           Poling-2001                           10.1063/1.3253107
+N2H4        hydrazine                                                      302-01-2            32.045   653.000 147.0000  0.2600  0.3160  1.85     Poling-2001                           Poling-2001                           10.1143/JPSJ.41.2077
+NO2         nitrogen dioxide                                               10102-44-0          46.005   431.000 101.0000  0.2330  0.8500  0.303    Poling-2001/pc:from-N2O4              Chemeo-AP1700-pseudopure              10.1063/1.459879
+O3          ozone                                                          10028-15-6          47.998   261.050  55.7000  0.2290  0.2240  0.5337   Poling-2001                           Poling-2001                           10.1063/1.433909
+H2O2        hydrogen peroxide                                              7722-84-1           34.015   728.000 220.0000  0.2824  0.3560  1.573    Nikitin-1995/Zc:computed              Poling-2001                           10.1063/1.462646
+HI          hydrogen iodide                                                10034-85-2         127.912   423.900  90.0000  0.2880  0.0380  0.4477   Poling-2001/Zc:Pitzer-corr            Poling-2001                           10.1016/0009-2614(70)80043-4
+NO          nitric oxide                                                   10102-43-9          30.006   180.000  64.8000  0.2510  0.5820  0.15740  Poling-2001                           Poling-2001                           10.1139/p75-254
+Rn          radon                                                          10043-92-2         222.018   377.000  63.0000  0.2810  0.0000  0.0      Poling-2001                           simple-fluid                          symmetry

@@ -1,0 +1,2095 @@
+# BELFEM input.conf — machine-readable contract
+#
+# Date:    2026-08-10
+# Purpose: The machine-readable twin of doc/input_file_reference.md. Drives the
+#          configurator GUI, the `belfem-conf check` validator, and the drift
+#          checker. The prose document remains the human reference; this file is
+#          the one programs read.
+#
+# LIVING DOCUMENT — see doc/input_file_reference.md §"Maintenance" and CLAUDE.md.
+# Any change to the input contract (new key, removed key, new default, new alias,
+# changed enum) must update BOTH this file and doc/input_file_reference.md in the
+# same session that lands the code change.
+#
+# ---------------------------------------------------------------------------
+# ANCHOR RULE (why there are no line numbers in this file)
+# ---------------------------------------------------------------------------
+# Every key carries `anchor:` — a literal string that can be grepped for in the
+# named consumer. It NEVER carries a line number.
+#
+# ANCHOR CONVENTION (learned by running the checker against this file):
+#   Prefer the bare quoted key literal — '"simulation time"' — over a full call
+#   expression. An anchor written as 'get_value( "simulation time" )' FAILS to
+#   match the real call `get_value( "simulation time", "s")`, because the extra
+#   argument sits before the closing paren. The quoted literal plus `consumer:`
+#   identifies the site unambiguously and survives refactoring of the call.
+#   Use a call or expression form only for non-key anchors (gates, functions),
+#   and then omit the trailing `)`.
+#   Whitespace inside anchors is not significant: the checker normalizes it,
+#   which it must, because call sites vary between `key_exists("nodes")` and
+#   `key_exists( "nodes" )`.
+#
+# Rationale, measured 2026-08-10: of the 87 file:line citations in
+# doc/input_file_reference.md, 26 were stale, 24 of them shifted by exactly the
+# same +342 lines because cl_FEM_Controller.cpp grew. Worse, the anchors are
+# stale *at authoring time* — in commit bc578b5e the document cites `tolerance`
+# at cl_FEM_Controller.cpp:2569 while that same commit's controller has it at
+# :2911. A line number read from a working copy is wrong by the time it is
+# committed. A searchable token is not.
+#
+# ---------------------------------------------------------------------------
+# TYPE VOCABULARY
+# ---------------------------------------------------------------------------
+#   real int uint bool string path
+#   value        — number, optionally followed by a unit token; `dimension:`
+#                  names the SI dimension checked. Any unit of the right
+#                  dimension is accepted (kA for A, mum for m); unknown token =
+#                  fatal. A BARE NUMBER IS ACCEPTED and treated as already-SI
+#                  and dimensionless — the unit is NOT globally mandatory.
+#                  Where a unit IS mandatory it is marked per key
+#                  (`unit_mandatory: true`), as in layers thicknesses.
+#   id_list      — comma-separated ids. `a:b` expands INCLUSIVELY and ALWAYS
+#                  ASCENDING: `9:4` and `4:9` both give 4,5,6,7,8,9 — writing
+#                  the range backwards does NOT produce a descending list.
+#                  Beyond that expansion the list is NEVER sorted or uniquified
+#                  (sorting broke periodic node pairing), so element order
+#                  between commas is preserved exactly as written.
+#   id_groups    — bracket groups are SEMANTIC: `1,3,5` is three groups,
+#                  `[1,3,5]` is one. A RANGE outside a bracket expands the
+#                  same way, one group per member: `42:48` is seven groups
+#                  (seven boundary conditions), NOT one terminal of seven
+#                  sidesets — write `[42:48]` for that. Each group becomes
+#                  one condition and each condition consumes one cohomology
+#                  generator, so a missing bracket is reported far downstream
+#                  by Cohomology::updatekGeneratorsFromHomology, never by the
+#                  parser.
+#   real_list    — comma-separated reals. WARNING: parsed through std::stoi, so
+#                  fractional components truncate (see background.direction).
+#   signed_id_list — id_list whose SINGLE ids may carry a gmsh-style negative
+#                  sign with per-consumer meaning (thinshell sidesets: flip
+#                  that sideset's facet orientation). `a:b` ranges expand as
+#                  in id_list but MUST be unsigned — a signed range is fatal,
+#                  the sign's scope would be ambiguous. Only keys explicitly
+#                  marked with this format accept signs; everywhere else a
+#                  negative id is undefined behavior of the unsigned parse.
+#   raw_block    — not key/value at all; read line-by-line (see layers).
+#
+# ---------------------------------------------------------------------------
+# runtime_status — "accepted" is not the same as "works"
+# ---------------------------------------------------------------------------
+# The parser accepts strings that the rest of the code then refuses, ignores,
+# or mishandles. A validator that only checks "is this a legal value" will pass
+# decks that cannot run. Every enum value or section whose behavior differs
+# from "parses and works" carries `runtime_status:`
+#
+#   live                     parses and works. The default; omitted.
+#   accepted_then_hard_error parses into the enum, then BELFEM_ERROR at use.
+#                            e.g. timestep scheme crank-nicolson / galerkin.
+#   inert                    parses, yields a type, and nothing consumes it.
+#   silent_noop              parses and is deliberately skipped given mesh state.
+#                            e.g. topology curves when the mesh already has curves.
+#   corrupts                 parses and damages unrelated state.
+#   rejected                 refused at parse with a hard error, on purpose.
+#                            e.g. topology `cut`, bc type `background dirichlet`.
+#
+# Validator policy: `live` passes; `silent_noop` warns; everything else errors.
+#
+# The `inert` and `corrupts` tiers currently have no members: every instance
+# found in the 2026-08-10 audit was fixed on 2026-08-11, either by making the
+# spelling work or by rejecting it. The tiers stay in the vocabulary because
+# they name the failure mode, and nothing prevents it recurring.
+#
+# ---------------------------------------------------------------------------
+# mesh_config_tag — which settings invalidate a cached .bfm
+# ---------------------------------------------------------------------------
+# A .bfm caches the ENRICHED mesh: cohomology cuts, thin-shell layer blocks,
+# edge-coating walls, periodicity pairing, and hanging entities. Reuse requires
+# two matching stamps: the geometric checksum for the base .msh, and the
+# mesh-configuration tag for deck settings that control enrichment. The checksum
+# cannot see an edited deck under an unchanged .msh; the tag cannot see a
+# changed .msh. Both are required.
+#
+# `mesh_config_tag:` records how a section or key reaches that fingerprint:
+#
+#   wholesale   the entire section is walked recursively: every key in the
+#               section and its subsections. A NEW KEY HERE IS COVERED
+#               AUTOMATICALLY. Applies to `topology` and `layers`.
+#   included    this specific key feeds the tag, named individually in the
+#               builder. A sibling key added next to it is NOT covered.
+#   filtered    the section is walked recursively, but only keys matching the
+#               stated rule are taken.
+#   excluded    deliberately not in the tag, so the setting can be retuned
+#               against a cached mesh. A scope decision, not an oversight.
+#
+# Absence of the field means excluded, but say so explicitly wherever a reader
+# might expect otherwise.
+#
+# ** THE RULE THAT MATTERS. ** If you add an input key that changes the enriched
+# mesh, and it is not under a `wholesale` section, you must also add it to the
+# builder in `src/fem/maxwell/fn_mesh_config_tag.hpp`. Otherwise a cached mesh
+# built under the old setting is reused SILENTLY. This rule is load-bearing:
+# explicit additions have already been needed for `homology { algorithm }` and
+# the current-injection terminal ids, and both omissions were caught only by
+# review and by running real decks — nothing detects them on its own.
+#
+# Values are normalized before hashing, so a rewrite that preserves the
+# configuration does not force a rebuild. Quantities become SI magnitudes (`50
+# mum` and `0.05 mm` are one configuration), booleans fold onto one spelling
+# (`on`/`true`/`yes`), spacing and comments do not matter, and sorted lines make
+# unrelated deck section order irrelevant. Two accepted false rebuilds remain:
+# writing `1:3` as `1,2,3`, and reordering same-type sibling sections. The prose
+# half of this is `doc/input_file_reference.md` §3.
+#
+# Key names are lowercased by the parser AND by every accessor
+# (Section::get_string / key_exists both call string_to_lower), so key lookup is
+# case-insensitive from the caller side too. VALUES are not lowercased;
+# `case_sensitive: true` marks values where case matters.
+
+meta:
+  version: 1
+  contract_date: 2026-08-10
+  prose_reference: doc/input_file_reference.md
+  status: >
+    v1, AUDITED 2026-08-10 by Codex and Grok independently (blind), every
+    finding re-verified against the code before it was applied. Built from a
+    mechanical inventory of parse-call literals across the consumer sources.
+    Defaults are now derived from the members in cl_FEM_Controller.hpp rather
+    than from the prose reference. NOT yet sufficient to write a validator
+    from alone — see `audit_todo` at the end of this file for the four
+    blocking gaps.
+  anchor_style: >
+    All key anchors are bare quoted literals; only gates and function names use
+    an expression form. Verified: 116 of 117 anchors resolve, the one failure
+    being prose in this file's own header.
+
+grammar:
+  comment_tokens: ["//", "#"]          # both truncate to end of line; no /* */
+  statement_terminator: ";"
+  section_header: "type [ : label ]"   # type and label both lowercased
+  flag_form: "bare `key ;` stores the string \"true\""
+  duplicate_keys: "later overwrites earlier, EXCEPT in raw_block sections"
+  duplicate_sections:
+    consumer: cl_Input_Section.cpp
+    anchors:
+      - 'mData.push( tSection'
+    storage: >
+      Every child section is stored twice: pushed in file order onto an ordered
+      list that preserves duplicates, and inserted into a by-name map keyed
+      `type` (unlabeled) or `type:label` (labeled). A later section with the
+      same map key overwrites the earlier map entry.
+    access_patterns:
+      index_walk: >
+        num_sections() / section( index ) iterate the ordered list, so every
+        duplicate remains visible. Current consumers of repeatable section sets
+        use this walk: the Maxwell and thermal BC factories, topology domains,
+        materials, top-level layers, and circuit components. Repeated same-type
+        BC sub-sections are therefore legal, and each repeated `current { }`
+        block is consumed; each resulting current/voltage condition consumes
+        one cohomology generator, the same budget as the id_groups expansion.
+      name_lookup: >
+        section( "type" ) / section_exists( "type" ) consult the map and see
+        only the last unlabeled duplicate. No current repeatable-section
+        consumer relies on name lookup, but a future reader written this way
+        would silently drop every earlier same-type sibling, so a new consumer
+        of a repeatable section type must use the index walk.
+  booleans_true: ["true", "on", "yes", "1"]
+  consumer: cl_InputFile.cpp
+  anchors:
+    - 'remove_comments'
+    - 'tidy_up'
+
+sections:
+
+  # -------------------------------------------------------------------------
+  mesh:
+    required: true
+    consumer: cl_MaxwellFactory.cpp
+    anchor: '"mesh"'
+    mesh_config_tag: excluded
+    mesh_config_tag_note: >
+      Excluded because the OTHER stamp already covers it. `file` selects the
+      mesh, and `unit` is applied by `scale_mesh()` BEFORE `checksum()` is
+      taken, so a unit change moves every node coordinate and invalidates the
+      cache through the geometric checksum rather than through the tag. Neither
+      key needs to be in the tag, and adding them would be redundant.
+    keys:
+      file:
+        type: path
+        required: true
+        anchor: '"file"'
+        note: gmsh .msh or BELFEM .bfm
+      unit:
+        type: unit_token
+        required: conditional
+        required_when: "mesh file is NOT .bfm"
+        # the structured form of the line above. `required_unless` names a
+        # SIBLING key and a test on its value; the key is required whenever the
+        # test does not hold. Operators: ends_with | equals | in
+        required_unless: {sibling: file, ends_with: ".bfm"}
+        dimension: length
+        anchor: '"unit"'
+        note: >
+          Scales the mesh to SI on read. On the gmsh path `get_string( "unit" )`
+          is called with NO key_exists guard, so a missing `unit` is FATAL. The
+          .bfm path never reads it. This is a bare unit token, not a number+unit
+          `value` — it is checked via unit_to_si + check_unit( .., "m" ).
+
+  # -------------------------------------------------------------------------
+  solver:
+    required: true
+    consumer: cl_FEM_Controller.cpp
+    anchor: '"solver"'
+    mesh_config_tag: excluded
+    mesh_config_tag_note: >
+      Excluded by design, and the exclusion is the point: retuning the solver,
+      tolerances, timestepping or the Anderson settings must not cost a full
+      mesh rebuild. None of it changes how the mesh is enriched.
+    keys:
+      compute conditioning:
+        type: bool
+        default: false
+        anchor: '"compute conditioning"'
+        note: >
+          Gates the EIGENVALUE conditioning estimate only (the
+          |lambda|max/|lambda|min footer rows). Since 2026-08-30 it no longer
+          controls the MUMPS ADD COND1/COND2 rows -- those have their own key,
+          `mumps error analysis`. The two diagnostics are independent.
+      mumps error analysis:
+        type: bool
+        default: false
+        anchor: '"mumps error analysis"'
+        note: >
+          Arms MUMPS ICNTL(11) error analysis around the first solve of each
+          timestep and prints the Arioli-Demmel-Duff pair as the
+          `MUMPS ADD COND1` / `MUMPS ADD COND2` footer rows. A no-op on any
+          other library (the parser warns, for the magnetic field only). Independent of
+          `compute conditioning`; either may be requested alone.
+    sections:
+
+      linear:
+        section_resolution: first_existing
+        resolution_chains:
+          magnetic: [linear magnetic, linear]
+          thermal:  [linear thermal, linear]
+        required: conditional
+        # structured form of the sentence below: this section is required
+        # unless the SIBLING SECTION of the same field exists. The predicate is
+        # section existence, not a key value, which is why `required_unless`
+        # cannot express it. Per field: the other field's section never
+        # satisfies this one.
+        required_unless_section:
+          magnetic: [linear magnetic]
+          thermal:  [linear thermal]
+        required_when: >
+          `linear` is REQUIRED unless the field-specific section exists, per
+          field. The magnetic factory calls section( "linear" ) unguarded when
+          `linear magnetic` is absent, the thermal factory when `linear thermal`
+          is absent, so absent `linear magnetic` AND absent `linear` is FATAL
+          for a magnetic solve, and likewise on the thermal side.
+        consumer: cl_SolverParameters.cpp
+        note: >
+          These are THREE DISTINCT SECTIONS with a fallback chain, not aliases
+          of one section. A tool that treats them as synonyms will merge
+          settings that the code keeps separate.
+        belfem_mode_selector: >
+          For the `belfem` executable the thermal solver sections double as
+          the physics selector: an unlabeled `linear thermal` or
+          `nonlinear thermal` section requests the coupled h-phi/T problem;
+          without either, belfem solves the magnetic problem only. Labeled
+          sections do not count. Consumer: belfem.cpp,
+          anchor '"linear thermal"'.
+        per_field_override:
+          compute conditioning: "may also appear inside linear magnetic / linear thermal"
+          mumps error analysis: "may also appear inside linear magnetic / linear thermal"
+        keys:
+          library:
+            type: enum
+            values: [strumpack, mumps, umfpack, pardiso, petsc, superlu]
+            value_normalize: lower
+            enum_ref: SolverType
+            anchor: '"library"'
+            resolver: 'solver_type'
+            note: >
+              Lookup is case-insensitive. The default is build-flag dependent,
+              and selecting a solver that was not compiled in is a hard error
+              rather than a fallback.
+          matrix format:
+            type: enum
+            values: [csr, csc, aij]
+            value_normalize: lower
+            enum_ref: DistributedMatrixType
+            anchor: '"matrix format"'
+          krylov method:
+            type: enum
+            values: [preonly, bcgs, cg, cgs, ibcgs, gmres, tfqmr, auto]
+            value_normalize: lower
+            enum_ref: KrylovMethod
+            anchor: '"krylov method"'
+            note: >
+              Consumed by PETSc and STRUMPACK; MUMPS ignores it. On
+              STRUMPACK, auto resolves to factorization-preconditioned
+              GMRES (ruled 2026-08-16, uniform with PETSc semantics;
+              more robust than Richardson refinement on degraded
+              factors), and the unmapped methods cg, cgs, ibcgs, tfqmr
+              are a HARD ERROR at setup since 2026-08-18 (anchor
+              '"STRUMPACK has no mapping"') -- they used to fall through
+              silently to the library's own AUTO, i.e. Richardson
+              REFINE. preonly = no outer iteration at all: an expert
+              setting for measured cases only. On an ill-conditioned
+              matrix the raw factor delivers ~4 digits (DR-88,
+              cond ~ 5e11 measured on tapestack3d) and the outer GMRES
+              is what reaches deep residuals -- the pre-2026-08-17
+              belief that the exact factor is "immune to
+              unmeetable-target stalls" and safe for strict-tolerance
+              decks was retired with the DR-88/A-B evidence.
+          preconditioner:
+            type: enum
+            values: [none, asm, gamg, jacobi, bjacobi, lu, ilu, icc, hmg, spai]
+            value_normalize: lower
+            default: asm
+            enum_ref: Preconditioner
+            anchor: '"preconditioner"'
+            note: >
+              `asm` selects Preconditioner::ASM. GASM shares the same spelling
+              (PETSc uses "asm" for both) and the lookup returns the first
+              match, so GASM is not selectable from a deck.
+              DEFAULT CHANGED 2026-08-12: was `gamg` in parallel and `jacobi`
+              in serial, i.e. the preconditioner depended on the rank count and
+              a serial run solved with different numerics than a parallel one.
+              It is now `asm` at every comm_size. GAMG's smoothed aggregation
+              assumes a symmetric elliptic operator, which describes the Picard
+              thermal system but NOT the Newton tangent (non-symmetric mixed
+              term from mt_thermal_h): measured on tapestack3d, 337k dofs,
+              rtol 1e-8, GAMG took ~74 Krylov iterations per Picard iterate and
+              ~700 per Newton iterate of the same step. ASM costs a little more
+              on the Picard operator (~107) and does not degrade on the Newton
+              one. A deck whose operator is symmetric should still ask for
+              `gamg` explicitly.
+          reordering scheme:
+            type: enum
+            values: [natural, metis, scotch, automatic, parmetis, ptscotch]
+            value_normalize: lower
+            enum_ref: ReorderingMethod
+            anchor: '"reordering scheme"'
+            note: >
+              parmetis / ptscotch (2026-09-04) select the parallel library
+              explicitly. For MUMPS and STRUMPACK, metis / scotch already mean
+              ParMETIS / PT-Scotch at more than one rank and the new values
+              behave identically there; what they add is the BELFEM-side
+              parallel nested dissection on the PETSc path, where metis orders
+              serially on rank 0. A value whose library is not linked is a
+              hard error at solver construction on every rank. Fewer rows than
+              ranks: the ParMETIS path warns and falls back to serial METIS.
+          metis nodendp:
+            type: bool
+            default: true
+            default_member: mUseMetisNodeNDP
+            anchor: '"metis nodendp"'
+            note: >
+              STRUMPACK only, and only under the METIS reordering: selects
+              METIS_NodeNDP, the partitioning entry point STRUMPACK itself
+              declares (it is undocumented in METIS), which flattens the
+              supernodal etree and avoids the stack-overflow risk STRUMPACK
+              warns about on deep trees. `metis nodendp : false` restores
+              plain METIS_NodeND for METIS builds that do not provide NodeNDP.
+              Ignored by PARMETIS and SCOTCH.
+          enum_note: >
+            These are CLOSED enums; an unknown value is fatal, so they must not
+            be offered as free text in a GUI. Each resolves by lowercasing the
+            deck value and comparing it against `to_string( value )` for every
+            enumerator — which makes the `to_string` switch the authority for
+            the list. `enum_ref` names that enum so `belfem-conf drift` can
+            re-derive the values and fail if this list falls out of step;
+            these lists are checked, not merely transcribed.
+          compression scheme:
+            type: enum
+            # "off" MUST stay quoted: YAML 1.1 reads a bare off/on/yes/no as a
+            # boolean, so this list would load as [False, blr, automatic] and a
+            # validator would reject the very value the code expects
+            values: ["off", blr, automatic]
+            value_normalize: lower
+            enum_ref: CompressionMethod
+            anchor: '"compression scheme"'
+            note: >
+              Unified 2026-08-16 (DR-79): automatic means OFF on every
+              library; only explicit blr compresses. Pre-unification MUMPS
+              treated everything except "off" as BLR-on at a silent 1e-8
+              absolute drop tolerance. STRUMPACK's history is the same
+              lesson (2026-07-06, library default 1e-4 stalled Newton).
+          compression cutoff:
+            type: real
+            constraint: "> 0 and finite; rejected at setup otherwise"
+            default: 1.0e-8
+            anchor: '"compression cutoff"'
+            consumed_only_with: "compression scheme : blr"
+            note: >
+              BLR drop tolerance. STRUMPACK reads it as RELATIVE rel_tol,
+              MUMPS as the ABSOLUTE CNTL(7) (MUMPS 5.7.3 sec. 5.19) --
+              one number, two strictnesses. Two tiers at setup (ruled
+              2026-08-16): cutoff >= the field's nonlinear tolerance --
+              stated or inherited default -- is a HARD ERROR (anchor
+              '"impossible compression pairing"'); less than two decades
+              of headroom but positive is a rank-0 warning that even
+              -v 0 does not suppress. Zero (MUMPS lossless BLR) is
+              deliberately not reachable from the deck.
+              See src/sparse/doc/solver_memory_and_compression.md sec. 4.
+          memory budget:
+            type: int
+            unit: MB per process (a bare whole number -- no unit token; unit_to_si knows no bytes)
+            constraint: "> 0, whole; rejected at setup otherwise (1.6 is refused, not rounded); <= INT_MAX of int_t"
+            default: 0 (not stated)
+            anchor: '"memory budget"'
+            consumed_only_with: "library : mumps"
+            note: >
+              Per-process working-memory cap handed to MUMPS as ICNTL(23).
+              STATED: applied from the first factorization. UNSTATED: the
+              wrapper measures the machine once at instance creation
+              (MemAvailable capped by the tightest cgroup limit at the
+              standard /sys/fs/cgroup mount; free + inactive on Darwin) /
+              ranks on the node / live MUMPS instances x 0.5, minimum over
+              all ranks -- and applies it only after a first -9 / -8: if the
+              measurement is >= MUMPS's estimate (INFOG(16), INFOG(36) under
+              BLR) it becomes ICNTL(23) and the factorization repeats; if
+              it is BELOW the estimate the step goes to the controller at
+              once, with no ICNTL(14) climb. Behind a cap in place, the
+              ICNTL(14) ladder (30 -> 60 -> 120 -> 240 -> 480) still runs on
+              a recurring -9 / -8, and on -17 / -20 (MPI send / reception
+              buffer too small: sized from ICNTL(14) alone, ladder only);
+              -19 (cap cannot be met) is the give-up.
+              Unmeasurable on any rank (unknown platform, or a declared
+              cgroup hierarchy not found at the standard mount): the ladder
+              alone, as before. Unstated, the FIRST factorization runs
+              uncapped. Other libraries ignore the key.
+              See src/sparse/doc/solver_memory_and_compression.md sec. 7.
+          relative tolerance:
+            type: real
+            default: 1.0e-10
+            anchor: '"relative tolerance"'
+            note: >
+              PETSc KSP rtol AND STRUMPACK outer-solve rel_tol, both
+              ALWAYS set from this value (STRUMPACK since 2026-08-18).
+              The class default is 1e-10; a normal deck omits the key,
+              stating it is an expert override. Lineage, do not
+              re-litigate without a new measurement: DR-76 (2026-08-15)
+              gated STRUMPACK on have_relative_tolerance because the
+              number was then the REFINE target of an assumed-exact
+              factor, and an unmeetable relative test on a numerically
+              zero RHS hung IterativeRefinementMPI for ~1 h (library
+              maxit 5000). Since 2026-08-16 auto maps to
+              factorization-preconditioned GMRES, not REFINE; since
+              2026-08-17 abs_tol is always 1e-14 (DR-89); maxit is
+              always 50. The have-flag gate is retired: an unstated
+              STRUMPACK block used to inherit the library default 1e-6,
+              and the 2026-08-18 tapestack3d A/B (magnetic 1e-8 vs
+              1e-10, same restart state) proved the loose exit test WAS
+              the printed Picard residual (-85 dB) -- Newton was invoked
+              on exit-test noise and the timestep collapsed; at 1e-10
+              GMRES finishes its dive (~1e-15), steps converge in two
+              Picard iterates, and the collapse disappears. The outer
+              loop stays capped at 50 iterations -- a COST bound, not a
+              named failure: at the cap STRUMPACK returns the
+              best-effort solution as success (source-verified
+              2026-08-16) and the nonlinear loop judges the residual.
+              Unmapped krylov methods (cg, cgs, ibcgs, tfqmr) on a
+              STRUMPACK block are a hard error at setup since 2026-08-18
+              (anchor '"STRUMPACK has no mapping"') -- previously they
+              silently fell through to the library's own AUTO = REFINE.
+              Cross-key constraint (since 2026-08-15):
+              with library petsc, this value must not exceed the field's
+              nonlinear tolerance -- hard error at setup (headroom gate,
+              anchor '"impossible tolerance pairing"'). Every other
+              library is exempt from the gate; STRUMPACK deliberately so,
+              because the WORKING default pairing (linear 1e-10 against a
+              1e-11 nonlinear target) relies on GMRES overshooting its
+              exit test and would fail a lin <= nonlin predicate. A deck
+              whose linear residual crawls rather than dives states a
+              tighter value here. The lossy (blr) case has
+              its own two-tier compression-headroom check (ruled
+              2026-08-16): zero-or-negative headroom is a hard error
+              (anchor '"impossible compression pairing"'), thin-but-
+              positive headroom a rank-0 warning.
+              Default raised from 1e-8 to 1e-10 on 2026-08-13: a transient
+              solved for an ABSOLUTE field accepts an absolute error of
+              ~rtol*|field| per step, so a thermal run in kelvin drifts
+              ~rtol*T every step with nothing to restore it in an adiabatic
+              problem. Measured on a 337k-dof thermal system from a uniform
+              77 K start: 8.6e-5 K of drift in 23 steps at 1e-8 versus
+              2.6e-7 K at 1e-10. The drift is silent. PETSc pays roughly
+              25-40% more Krylov iterations for the tighter default.
+          initial guess:      {type: bool, anchor: '"initial guess"'}
+          absolute tolerance:
+            type: real
+            constraint: "> 0 and finite; violation is fatal at setup"
+            default: "1e-14 for STRUMPACK (always applied since 2026-08-17, DR-89 — the library default 1e-10 was the defect); unset for PETSc (kept at PETSC_DEFAULT unless stated)"
+            anchor: '"absolute tolerance"'
+            consumer: cl_SolverParameters.cpp
+            note: >
+              Absolute exit test of the iterative part of a linear solve.
+              On small right-hand sides a purely relative pairing leaves the
+              library's absolute floor sitting at the nonlinear target and
+              Newton converges only by overshoot (DR-89). The have-flag and
+              value ride synchronize() (12 uints + 3 reals).
+          max iterations:
+            type: int
+            constraint: "> 0, rejected at setup otherwise"
+            anchor: '"max iterations"'
+            consumers: [petsc]
+            note: >
+              LINEAR Krylov iteration budget (since 2026-08-15) -- caps the
+              inner KSP loop, unset keeps PETSc's default of 10000. NOT the
+              nonlinear key of the same name (controller section keys);
+              the per-section namespace separates them. Zero is never
+              passed to PETSc (there max_it 0 means zero iterations).
+              -ksp_max_it on the command line overrides the deck. The
+              parser rounds a real to int, so state whole numbers. Set it
+              from a measured iteration count (info level Verbose prints
+              one per solve), never a guess: a cap below what a legitimate
+              solve needs collapses the timestep with the physics blameless
+              (measured 2026-08-15: 500 failed a thermal block at rtol
+              1e-10 for every dt down to 12.5 ms). The
+              iteration-class divergences (ITS, DTOL, NULL, BREAKDOWN,
+              BREAKDOWN_BICG) are soft failures under the controller
+              (timestep cut, retry); NANORINF, PC_FAILED and unlisted
+              reasons stay hard aborts.
+          matching:
+            type: bool
+            anchor: '"matching"'
+            note: >
+              STRUMPACK MC64 matching is load-bearing for h-phi solves; turning
+              it off is a verified opt-out only.
+
+      nonlinear:
+        aliases: [nonlinear magnetic]
+        alias_precedence: "`nonlinear magnetic` wins if present"
+        required: true
+        consumer: cl_FEM_Controller.cpp
+        keys:
+          tolerance:
+            type: real
+            default: 1.0e-6
+            aliases: [relative tolerance]
+            alias_precedence: "`relative tolerance` consulted only if `tolerance` absent"
+            anchor: '"tolerance"'
+          absolute tolerance:
+            type: real
+            default: 0.0
+            meaning_of_default: disabled
+            anchor: '"absolute tolerance"'
+            note: rejected at setup if negative
+          tolerance switch:
+            type: real
+            default: 1.0e-4
+            anchor: '"tolerance switch"'
+            note: Picard -> Newton promotion threshold
+          algorithm:
+            type: enum
+            values: [Newton, Newton-Raphson, Picard]
+            case_sensitive: true
+            default: Picard
+            anchor: '"algorithm"'
+          max iterations:     {type: int, default: 100, constraint: "> 0, and >= min iterations; rejected at setup since 2026-08-28 (negatives wrapped silently before)", anchor: '"max iterations"'}
+          min iterations:     {type: int, default: 2,   constraint: ">= 0, and <= max iterations; rejected at setup since 2026-08-28", anchor: '"min iterations"', note: "since 2026-08-29 counts BODY solves under the DR-127 certified exit (anchor: 'MAGNETIC HEAD', cl_FEM_Controller.cpp); min 0 = a zero-solve predictor accept is possible; the coupled path now also honors the THERMAL min iterations before a thermal co-certificate"}
+          target iterations:
+            type: int
+            default: 20
+            constraint: "> 0"
+            anchor: '"target iterations"'
+            note: drives dt adaptation; rejected at setup if not positive
+          max relaxation:     {type: real, default: 1.0,   anchor: '"max relaxation"'}
+          min relaxation:     {type: real, default: 0.001, anchor: '"min relaxation"'}
+          stall window:       {type: int,  default: 5, constraint: ">= 0; values 0 and 1 are silently clamped to 2 (negatives rejected at setup since 2026-08-28)", anchor: '"stall window"'}
+          stall tolerance:
+            type: real
+            unit_note: dB
+            default: 0.2
+            anchor: '"stall tolerance"'
+          anderson depth:
+            type: int
+            range: [0, 8]
+            out_of_range: fatal
+            default: 0
+            anchor: '"anderson depth"'
+            note: >
+              If absent, timestep{anderson stabilization : true} fills 3.
+              Anderson must NOT refresh mFieldValues.
+          watchdog window:
+            type: int
+            default: 30
+            disabled_value: 0
+            constraint: ">= 0; negatives rejected at setup since 2026-08-28"
+            anchor: '"watchdog window"'
+            note: >
+              Since 2026-08-21 the fire rule spares an iterate whose relaxation
+              grew since the previous one (evidence of line-search recovery);
+              omega-pinned stalls fire unchanged.
+        sections:
+          coulomb gauge penalty:
+            required: false
+            anchor: '"coulomb gauge penalty"'
+            meaning_of_absence: gauge term OFF (opt-in since 2026-09-01; it was ON at chi = 1e-4 from 2026-08-27 to then, and off before)
+            note: >
+              Sub-blocks are read from the WINNING nonlinear section only
+              (alias rule above); a labeled block is not found. Values
+              0 < chi <= BELFEM_EPSILON parse as on but the kernels skip
+              the term.
+            keys:
+              chi:
+                type: value
+                dimension: dimensionless
+                required: true
+                constraint: ">= 0"
+                default: 0 (block absent = off)
+                meaning_of_default: >
+                  Opt-in since 2026-09-01: gauging runs only when the block
+                  states a positive chi. Reason: on the tape decks the 1e-4
+                  default was invisible to the conditioning estimate (kappa
+                  identical to two digits with and without it) while kappa
+                  tracked the timestep; chi = 0.01 does register (2-3x). An
+                  empty block is fatal. The Newton tangent carries the gauge
+                  j-channel consistently since 2026-08-27.
+                anchor: '"chi"'
+                note: >
+                  Dimensioned values are rejected at setup. On tetrahedral
+                  and thin-shell meshes the gauge term does not affect
+                  conditioning (gauge campaign 2026-08); retained for
+                  hex-dominant meshes and experiments.
+          nitsche ghost penalty:
+            required: false
+            consumer: fn_FEM_ghost_switch.hpp   # parsed there, not in the controller
+            anchor: '"nitsche ghost penalty"'
+            meaning_of_absence: >
+              ghost OFF (opt-in since 2026-09-01): the thin-shell layers share
+              their interface edges and faces, no duplicate dofs and no ghost
+              facets are created. Before that date the absent block meant
+              "built-in defaults stand, ghost active".
+            note: >
+              ONE reader for three consumers (fn_FEM_ghost_switch.hpp): the
+              thin-shell factory (creates the duplicate dofs and ghost facets
+              only when eta > 0), the controller (writes eta into the IWG,
+              0 included) and the mesh cache tag (a flipped switch misses the
+              .bfm cache and rebuilds; an explicitly named .bfm built the
+              other way is refused, a pre-2026-09-01 file counting as ON;
+              a memdump written since 2026-09-01 of the other layout is
+              refused by its edge / face counts, older dumps by the
+              field-length check when an edge field differs). A present
+              block REQUIRES eta.
+            keys:
+              eta:
+                type: value
+                dimension: dimensionless
+                required: true (when the block is present)
+                constraint: ">= 0; 0 = ghost off, > 0 = ghost on with that eta"
+                default: none (absent block = off)
+                anchor: '"eta"'
+                note: >
+                  dimensioned values are rejected at setup. A block without
+                  eta is fatal: k_reg alone does not say whether the ghost
+                  is wanted.
+              k_reg:
+                type: value
+                dimension: resistance
+                unit_mandatory: true
+                required: false
+                constraint: "> 0"
+                default: 1.0e-3
+                anchor: '"k_reg"'
+                consumed_only_with: "eta > 0 (stated with eta : 0 it is ignored with a notice)"
+                note: >
+                  Missing or unknown unit is fatal (unit tokens are
+                  case-sensitive; mOhm/muOhm/nOhm/kOhm and the Ω spelling
+                  convert). Zero is rejected: with mRhoMin = 0 an SC-SC
+                  ghost facet would evaluate 0/0 in the regularized
+                  harmonic mean.
+
+      nonlinear thermal:
+        required: false
+        consumer: cl_FEM_Controller.cpp
+        note: >
+          Shares most keys with `nonlinear` but NOT `target iterations`,
+          `stall window` or `stall tolerance`; adds three of its own.
+          For the `belfem` executable this section (like `linear thermal`)
+          also selects the coupled h-phi/T mode — see the
+          belfem_mode_selector note on the `linear` entry.
+        keys:
+          tolerance:          {type: real, default: 1.0e-6, aliases: [relative tolerance], anchor: '"tolerance"', default_member: mRelativeEpsilonTarget2}
+          absolute tolerance: {type: real, anchor: '"absolute tolerance"'}
+          tolerance switch:   {type: real, default: 1.0e-3, anchor: '"tolerance switch"', default_member: mEpsilonSwitch2,
+                               note: "differs from the magnetic default of 1e-4"}
+          algorithm:          {type: enum, values: [Newton, Newton-Raphson, Picard], case_sensitive: true, anchor: '"algorithm"'}
+          max iterations:
+            type: int
+            default: 100
+            constraint: "> 0, and >= min iterations; rejected at setup since 2026-08-28"
+            anchor: '"max iterations"'
+            note: >
+              counts completed thermal solves (lockstep with the magnetic
+              iterates while the update gate permits; frozen iterates do not
+              count). Enforced in fully-coupled mode only since 2026-08-27
+              (silently inert there before): cuts the timestep only when the
+              budget is spent while the magnetic field has reached its
+              (relative or absolute) target at least once in the attempt --
+              a per-attempt latch since 2026-08-28; before that the magnetic
+              field had to be at target on the same iterate, so continuing
+              thermal updates that perturbed a converged magnetic field
+              disarmed the budget -- and the thermal field is at neither of
+              its own; a flat streak in progress defers the cut, and a
+              latched flat-stall is accepted, not cut. Segregated mode caps
+              the inner thermal sub-loop directly. Floor escalation can
+              raise it up to 4x the deck value, like the magnetic key.
+          min iterations:     {type: int,  constraint: ">= 0, and <= max iterations; rejected at setup since 2026-08-28", anchor: '"min iterations"'}
+          max relaxation:     {type: real, anchor: '"max relaxation"'}
+          min relaxation:     {type: real, default: 0.1, anchor: '"min relaxation"', default_member: mOmegaMin2,
+                               note: "differs from the magnetic default of 0.001"}
+          anderson depth:     {type: int,  range: [0, 8], out_of_range: fatal, anchor: '"anderson depth"',
+                               note: "same 0..8 BELFEM_ERROR as the magnetic key; `out_of_range` was missing here, so the two entries described one C++ check two different ways"}
+          watchdog window:
+            type: int
+            default: 30
+            disabled_value: 0
+            constraint: ">= 0; negatives rejected at setup since 2026-08-28"
+            anchor: '"watchdog window"'
+            note: >
+              same 2026-08-21 relaxation-growth spare as the magnetic key.
+              In fully-coupled mode the effective window is clamped since
+              2026-08-28 to (magnetic max iterations - thermal min
+              iterations - 1), floored at 1, with a setup notice when the
+              clamp engages: with lockstep counting the last iterate that
+              can run the thermal watchdog is the magnetic ceiling itself,
+              so a wider window could never fire first. Conservative policy
+              sized to an early thermal best; 0 stays the disable and
+              segregated decks are not clamped.
+          update gate:
+            type: real
+            default: BELFEM_REAL_MAX
+            meaning_of_default: disabled
+            default_member: mThermalUpdateGate
+            anchor: '"update gate"'
+          coupling:
+            type: enum
+            values: ["fully coupled", "segregated"]
+            case_sensitive: true
+            unknown: fatal
+            default: fully coupled
+            default_member: mIsFullyCoupled
+            anchor: '"coupling"'
+          coupling factor:
+            type: int
+            default: 1
+            constraint: "> 0; rejected at setup since 2026-08-28 (it divides the initial timestep -- 0 divided by zero, a negative flipped the thermal timestep sign)"
+            default_member: mCouplingFactor
+            applies_to_value: segregated
+            anchor: '"coupling factor"'
+            note: >
+              Read with get_int but the member is `real mCouplingFactor`, and it
+              is only consulted under `segregated`.
+
+      timestep:
+        required: true
+        consumer: cl_FEM_Controller.cpp
+        keys:
+          initial timestep:
+            type: value
+            dimension: time
+            required: true
+            anchor: '"initial timestep"'
+            note: >
+              Two roles. (1) the step a cold start begins at. (2) since
+              2026-08-19 it also CAPS the first step after a warm restart
+              (DR-92): load_memdump keeps a dumped delta_time only up to this
+              cap, because measured tapestack3d restarts failed when the first
+              post-restart step was large, and shrinking it after solver
+              initialization did not recover the run. The run then grows
+              back under the existing BDF growth limiter. A deck whose initial
+              timestep sits far below its working step therefore pays a longer
+              recovery after every restart; that is the knob to raise if
+              restarts feel slow — but never straight to the working step, and
+              no ceiling is enforced: an over-raised value re-creates the large
+              first Jacobian the cap mitigates (the cold-start rationale does
+              not transfer to a developed restart state). Validated to lie
+              inside the minimum/maximum window. See
+              src/fem/doc/timestepping_strategy.md sec. 5.
+          maximum timestep: {type: value, dimension: time, default: BELFEM_REAL_MAX, default_member: mDeltaTimeMax, anchor: '"maximum timestep"'}
+          minimum timestep: {type: value, dimension: time, default: 1.0e-10, default_member: mDeltaTimeMin, anchor: '"minimum timestep"'}
+          simulation time:
+            type: value
+            dimension: time
+            required: true
+            anchor: '"simulation time"'
+            note: read unconditionally — no key_exists guard
+          adapt timestep:   {type: bool, default: true, default_member: mAdaptTimestep, anchor: '"adapt timestep"'}
+          save every:       {type: value, dimension: time, anchor: '"save every"'}
+          scheme:
+            type: enum
+            values: [bdf1, bdf2, bdf3, bdf4, bdf5, explicit, crc, crank-nicolson, galerkin]
+            value_aliases: {crc: crank-nicolson}
+            value_normalize: lower
+            value_runtime_status:
+              crank-nicolson: accepted_then_hard_error
+              galerkin: accepted_then_hard_error
+              crc: accepted_then_hard_error
+            runtime_status_note: >
+              CN and Galerkin parse into EulerMethod and then hit
+              BELFEM_ERROR( false, ... ) in cl_IWG_Timestep — the Newton
+              correction assemble_dJdx is exact for the BDF family only. They
+              are deliberately not aliased onto bdf1. A validator must reject
+              them even though the parser accepts them.
+            default: bdf1
+            default_member: mTimeStepping
+            aliases: [method]
+            alias_precedence: "`scheme` is consulted before `method`"
+            anchor: '"scheme"'
+            note: >
+              `scheme` and `method` are read at the same site — genuine aliases.
+              Example decks use `method`. Enum list verified 2026-08-11 against
+              the parse site by both auditors and re-checked here.
+          anderson stabilization:
+            type: bool
+            anchor: '"anderson stabilization"'
+            note: >
+              When true, fills a depth for whichever field left `anderson depth`
+              absent: MAGNETIC gets 3, THERMAL gets 1 — not 3 for both.
+              Kill switch for the known residual false-convergence mode.
+          restart:
+            type: bool
+            default: true
+            default_member: mAllowRestart
+            anchor: '"restart"'
+            note: >
+              Reads back memdump.hdf5 (fixed name) next to the results. It
+              restores time, fields, and BDF history. The dumped delta_time is
+              restored only up to the initial-timestep cap (DR-92). If adapt
+              timestep is false, the cap is permanent because no growth path
+              exists.
+
+              Since 2026-08-30 the BDF triple is MANDATORY: a dump lacking
+              bdf_h / bdf_step_count / bdf_last_dt is refused by name rather
+              than cold-starting the order ramp, and a coupled run also
+              requires the *2 thermal triple. Both checks fire before either
+              integrator history is restored and before dof-manager init;
+              fields and circuit state are already read by then. Escape with
+              restart : false.
+          floor retries:    {type: int, default: 20, default_member: mMaxFloorRetries, anchor: '"floor retries"'}
+
+  # -------------------------------------------------------------------------
+  materials:
+    required: true
+    consumer: cl_MaterialFactory.cpp
+    anchor: '"materials"'
+    mesh_config_tag: excluded
+    mesh_config_tag_note: >
+      **Known accepted gap, not an oversight — do not widen it without a
+      ruling.** Layer material *labels* are in the tag through `layers`, but
+      material *definitions* here are not. ThinShellFactory can derive
+      thin-shell topology from material identity, so a user material that
+      gains or loses a resistivity can change node duplication while every
+      layer label — and therefore the tag — is unchanged. Covering material
+      bodies would force a full cohomology rebuild on any material edit, which
+      is the common case. The blast-radius analysis is in
+      `todo/bfm_stale_cache_detection.md`.
+    subsection_naming:
+      rule: "the material NAME is the subsection TYPE, not its label"
+      anchor: 'tMatSection->type()'
+    # The structured form of `shapes_tested_in_order`: the FIRST selector
+    # present decides the shape. Keys belonging to the other shapes are now a
+    # FATAL error rather than silently unread ( see unknown_input below ). The
+    # single exception is the bare `builtin` key on a section that resolved to
+    # `curve`, which `examples/costheta` and `examples/gantry` carry as inert
+    # documentation and which stays tolerated.
+    select_first:
+      - {selector: curve,   shape: bh_curve_ferromagnet}
+      - {selector: builtin, shape: builtin}
+      - {selector: usermat, shape: usermat}   # a SUBSECTION, not a key
+    # Since 2026-08-29 the factory refuses any key or subsection the resolved
+    # shape does not read, naming the material and the shape ( DR-146 ). The
+    # allow-list is per shape, not a record of what happened to be read: `RRR`
+    # on a ybco IS read and then dropped by the constructor, so only an
+    # explicit contract catches it.
+    unknown_input: fatal
+    unknown_input_rules:
+      rrr_requires: "builtin whose type() is PureMetal ( pure metals and alloys ); refused on ybco, hastelloy, magnesia"
+      hts_exclusive: "file XOR (jc, n [, ec]) -- giving both is refused, not silently resolved to file"
+      usermat_gated: "resistivity type, critical temperature and the defect subsection require the plugin to carry jc"
+      labelled_subsections: "refused -- only unlabelled subsections are ever looked up"
+      duplicate_material_label: fatal
+      curve_exemption: "a section resolving to `curve` may carry the bare key `builtin`; nothing else"
+    shapes_tested_in_order:
+      - name: bh_curve_ferromagnet
+        selected_by: presence of `curve`
+        note: any other key is fatal, except the tolerated bare `builtin`
+      - name: builtin
+        selected_by: >
+          THREE paths, tested in this order:
+          (1) `builtin : <type> ;` inside the material section;
+          (2) the material section is labeled builtin — `copper : builtin { }`;
+          (3) a key at the `materials` level named exactly like the material
+              subsection, with value `builtin` — documented in the prose
+              reference §5 alongside the other two.
+        anchors:
+          - 'key_exists( "builtin" )'
+          - 'string_to_lower( tMatSection->label() ) == "builtin"'
+          - 'aSection->key_exists( tMatLabel )'
+      - name: usermat
+        selected_by: presence of a `usermat` subsection
+      - name: none
+        result: fatal
+    # Refused legacy subsection: the name `usermat` carried until 2026-08-29.
+    # Present in a deck -> fatal with a rename message; a diagnostic, never an
+    # alias -- the old spelling does not load a material.
+    refused_subsections:
+      custom:
+        removed: 2026-08-29
+        renamed_to: usermat
+        # the bare literal is listed too so the key inventory knows `custom`
+        anchor: ['section_exists( "custom" )', '"custom"']
+    # Applies to every `type: path` key in this section: bhfile, the HTS file,
+    # defect.file, heating.file and usermat.file -- and, since 2026-08-31, to the `file` key
+    # of a `userdefined` source function, which is why this block is referenced
+    # from there by id rather than duplicated. Resolved by
+    # material::data_file(), which forwards to belfem::search_data_file().
+    path_resolution:
+      id: material_data_path
+      anchor: 'material::data_file'
+      order:
+        - as written, relative to the run directory or absolute
+        - "$BELFEM_DATA/material/<path as written>"
+        - "$BELFEM_DATA/material/<file name only>"
+      unresolved: passed through unchanged, so the opener names the file as written
+      note: >
+        The run directory wins, so a local copy overrides the shared database.
+        For the .so keys an unresolved name still reaches dlopen -- but dlopen
+        searches the platform loader path ($LD_LIBRARY_PATH on Linux,
+        $DYLD_LIBRARY_PATH on macOS) only for a name carrying no slash, so for
+        a bare plugin name the data directory is now searched first.
+      root_caveat: >
+        The root is the global Communicator::set_globals() fills from
+        $BELFEM_DATA, not the variable itself. On an installed tree it falls
+        back to the compiled-in install data directory when the variable is
+        unset, so an unset $BELFEM_DATA does not imply that only step 1
+        applies. A validator must not assume it does.
+    keys:
+      curve:  {type: string, anchor: '"curve"', note: HDF5 group name}
+      bhfile: {type: path, resolution: material_data_path, default: bhdata.hdf5, anchor: '"bhfile"'}
+      builtin:
+        type: enum_or_pattern
+        pattern_note: >
+          Alloy formulas (Sn40Pb60) are matched by a structured formula parser,
+          not accepted as free text. A validator needs both the enum list and
+          that pattern; neither alone is correct.
+        case_sensitive: false
+        values: [aluminum, aluminium, al, chromium, cr, copper, cu,
+                 nickel, ni, silver, ag, indium, in, lead, pb, tin, sn,
+                 hastelloy, hastelloyc276, ybco, magnesia, mgo, buffer,
+                 iron, ferro, fe]
+        # STRUCTURED so a validator can apply it. It used to be the prose
+        # line `also_accepts: "alloy formula, e.g. Sn40Pb60"`, which no program
+        # could act on -- belfem-conf therefore rejected `builtin : Pb38Sn62`,
+        # a legal solder, on the two shipped decks that use it.
+        also_accepts:
+          id: alloy_formula
+          summary: "alloy formula, e.g. Sn40Pb60 or Pb38Sn62"
+          consumer: cl_MaterialFactory.cpp
+          anchor: 'to_pair( aLabel, tComponents )'
+          token_pattern: '([A-Za-z]+)([0-9]+)'
+          token_pattern_consumer: core/stringtools.hpp
+          token_pattern_anchor: 'to_pair'
+          rule: >
+            Reached only when the name matches no builtin above. Every
+            letters+digits token in the string becomes one component with that
+            mass percentage; ORDER IS NOT SIGNIFICANT and the tokens need not
+            cover the whole string. At least one token must match, or
+            create_material hard-errors. A token named RRR is not a component
+            -- it sets the residual-resistivity ratio.
+          component_must_be: pure_metal
+          # The subset of `values` above whose constructor reports
+          # MaterialType::PureMetal, which Alloy::create_component requires
+          # ( "%s is not a pure metal" ). Ferromagnetic derives from Metal and
+          # passes PureMetal too, so iron and nickel belong here.
+          # NOT re-derivable from the enum list: the type is a property of the
+          # constructor, so this list is transcribed and `belfem-conf drift`
+          # only checks that each entry is also a legal `builtin` value.
+          pure_metals: [aluminum, aluminium, al, chromium, cr, copper, cu,
+                        nickel, ni, silver, ag, indium, in, lead, pb, tin, sn,
+                        iron, ferro, fe]
+          not_pure_metals: [hastelloy, hastelloyc276, ybco, magnesia, mgo, buffer]
+          fractions_are_percent: true
+          balance_rule: >
+            Alloy::set_components OVERWRITES the last fraction with
+            100 - sum( the others ), so the stated numbers need not add to 100
+            and the final one is advisory. A set that misses 100 badly is worth
+            a warning, never an error.
+          rrr_token: RRR
+        unknown: fatal
+        anchor: '"builtin"'
+      RRR:
+        type: real
+        applies_to_material_shape: pure metals and alloys
+        anchor: '"RRR"'
+        note: >
+          create_material drops it for ybco, hastelloy and magnesia, whose
+          constructors take no RRR argument. It used to be accepted and
+          silently inert on those three; it is now REFUSED there. The gate is
+          the constructed type() == PureMetal, which covers the pure metals
+          and the alloys, so a newly added material inherits the right answer.
+      file:   {type: path, resolution: material_data_path, applies_to_material_shape: HTS, anchor: '"file"', note: "Jc(B,theta,T) and n(B,theta,T) tables; sets both"}
+      jc:     {type: value, dimension: current_density, applies_to_material_shape: HTS without file, anchor: '"jc"'}
+      n:      {type: real, applies_to_material_shape: HTS without file, anchor: '"n"'}
+      ec:     {type: value, dimension: electric_field, default: 1.0e-4, anchor: '"ec"'}
+      resistivity type:
+        type: enum
+        values: [powerlaw, power-law, piecewise, riva]
+        case_sensitive: true
+        default: power-law
+        applies_to_material_shape: HTS / usermat superconductor
+        anchor: '"resistivity type"'
+        note: >
+          riva (2026-08-27) is the same Duron-2004 parallel model as powerlaw
+          (power-law channel parallel to the normal-state channel), made total
+          over the full jc/n table range: dead defects and spline
+          under-/overflow fall back to the fully normal branch, and the
+          measured n -> 1 softening near T_crit takes a finite ohmic closed
+          form (ec/jc parallel to rho_n) instead of producing NaN. n is globally floored at
+          1 in Material::n_eval. Works with a (T,B,theta) jc table (the "file"
+          key) or with constant jc/n. Selecting riva validates the n source
+          at setup (2026-08-31): a database n table whose stored minimum is
+          <= 1 anywhere (including above T_crit -- tables are floored at
+          1.02 by the build pipeline) is fatal, and a constant n is fatal
+          unless finite and > 1 (anchors: set_resistivity_law,
+          set_n_function, set_constant); analytic/plugin fits have no cheap
+          bound and pass unchecked, and the stored minimum does not bound
+          the interpolant -- the runtime ohmic fallback covers both.
+          Differs from piecewise above roughly
+          1.4 jc (no Bezier flux-flow blend). Not exactly Riva 2021 Eq. 5.4:
+          BELFEM keeps its rho-floor semantics instead of the additive 1e-17
+          regularization.
+      # Virtual-domain correction. A thin shell carries its own mass but no
+      # geometry, so the meshed volume around it spans the whole tape pitch and
+      # double-counts the shell thickness as filler. Set to gap/pitch so that
+      # volume carries only the thermal mass of the layer really present.
+      # Scales ONE consumer: the density in M += N' rho cp N dV
+      # (mt_thermal_h). NOT applied to any conductivity — an over-thick gap is
+      # wrong by the inverse factor there, and one scalar cannot fix storage
+      # and conduction together.
+      density correction:
+        type: real
+        unit: '-'
+        default: 1.0
+        applies_to: [any material]
+        anchor: '"density correction"'
+      # Overrides the material's own T_crit. Restricted to the usermat shape on
+      # purpose: a builtin consumes its critical temperature at construction
+      # (YBCO bakes it into the Callaway lambda spline sampled by its ctor), so
+      # a late override would move the resistivity gate and leave the thermal
+      # conductivity built around the old value. Fatal rather than silently
+      # inconsistent. Read only by the piecewise and riva resistivity laws --
+      # the default power-law never consults T_crit.
+      critical temperature:
+        type: value
+        dimension: temperature
+        applies_to_material_shape: usermat, and only one carrying jc
+        on_builtin: fatal
+        on_material_without_jc: fatal
+        constraint: 'finite and > 0'
+        comparison: 'strict: the superconducting branch is skipped for T > T_crit only'
+        read_by: [piecewise, riva]
+        not_read_by: [powerlaw, power-law]
+        unit_required: true
+        accepted_units: [K, '°K', C, '°C', '°F', R, '°R']
+        anchor: '"critical temperature"'
+    # Section-level constraint, applied to EACH material subsection. `one_of`
+    # generalizes `xor_with`, which links exactly two keys — here one of the
+    # alternatives is a PAIR, which a key-to-key link cannot express.
+    one_of:
+      - alternatives: [[file], [jc, n]]
+        when: {sibling: builtin, in: [ybco]}
+        note: >
+          An HTS takes either a table file — which sets Jc and n together — or
+          an explicit jc + n. `ec` has a default and belongs to neither
+          alternative. Checked against the decks before this was written:
+          sidecoating uses `file`, corc_periodic_bc / corc_garber_effect / tapestack_circuit use `jc` + `n`.
+    sections:
+      defect:
+        required: false
+        applies_to_material_shape: HTS / usermat superconductor
+        keys:
+          file:  {type: path, resolution: material_data_path, required: true, anchor: '"file"'}
+          label: {type: string, required: true, anchor: '"label"'}
+        note: spatial Jc modulation via .so plugin
+      heating:
+        required: false
+        applies_to_material_shape: builtin or usermat, superconductor or not ( refused beside `curve` )
+        anchor: 'section_exists( "heating" )'
+        keys:
+          file:  {type: path, resolution: material_data_path, required: true, anchor: '"file"'}
+          label: {type: string, required: true, anchor: '"label"'}
+        unit: W/m^3
+        note: >
+          Artificial volumetric heat load via .so plugin: the library exports
+          <label>_init( Material * ), which registers a real f( x, y, z, t )
+          ( meters, seconds ) through Material::set_user_defined_heating. Every
+          block carrying the material adds f to the Joule term of the thermal
+          load vector ( mt_thermal_h.cpp, both Picard and Newton kernels; no
+          tangent, the load does not depend on T ). Inert in a magnetic-only
+          run. One heating plugin per material; a second read_heating is fatal.
+      usermat:
+        required: false
+        keys:
+          file:  {type: path, resolution: material_data_path, required: true, anchor: '"file"'}
+          label: {type: string, required: true, anchor: '"label"'}
+        note: >
+          User material plugins are ABI-fragile — vtable slots and enum values
+          are baked into the .so with no version guard. The name `buffer` is
+          reserved (fatal).
+
+  # -------------------------------------------------------------------------
+  layers:
+    labeled: true
+    label_meaning: tape name; one block per `thinshell` label
+    required: "one per thinshell; a missing block is fatal"
+    consumer: cl_MaxwellFactory.cpp
+    mesh_config_tag: wholesale
+    mesh_config_tag_note: >
+      Every top-level `layers` section feeds the tag. The builder reads the raw
+      section buffer, not the key API, because `read_thin_shell_data()`
+      word-splits raw lines and a key walk would miss thicknesses. For each
+      layer, the tag records the material label, SI thickness and index; it also
+      records layer count, which sets how many layer blocks are built. Material
+      labels are in the tag; material definitions are not — see
+      `materials.mesh_config_tag`.
+    anchor: 'tLayer->buffer()'
+    format: raw_block
+    raw_block_rules:
+      entry_form: "<material> : <thickness with mandatory unit> ;"
+      order_significant: true
+      order_meaning: bottom -> top
+      duplicates_allowed: true
+      unit_mandatory: true
+      unit_missing: fatal
+      materials_must_resolve_in: materials
+    note: >
+      Read line-by-line from the raw buffer, NOT through the key map. This is
+      why repeated material names survive. A tool that round-trips this section
+      through a dict or set destroys it.
+
+  # -------------------------------------------------------------------------
+  homology:
+    required: "when cohomologies are computed (fresh gmsh mesh, or stale .bfm)"
+    missing_when_required: fatal
+    consumer: cl_MaxwellFactory.cpp
+    anchor: '"homology"'
+    mesh_config_tag: filtered
+    mesh_config_tag_rule: 'only the key "algorithm"'
+    keys:
+      algorithm:
+        type: enum
+        values: [pellikka, ccr, "belted tree", "generalized pellikka"]
+        value_normalize: lower
+        unknown: fatal
+        anchor: '"algorithm"'
+        enum_source: src/homology/en_CutAlgorithm.hpp
+        note: an UNDEFINED result is fatal
+        mesh_config_tag: included
+        mesh_config_tag_note: >
+          The cut algorithm changes the cuts baked into the .bfm, so it must
+          invalidate a cached mesh. This is the only `homology` key in the tag,
+          and it is named individually in the builder; any new mesh-affecting
+          sibling key must be added to the builder too.
+
+  # -------------------------------------------------------------------------
+  topology:
+    required: true
+    consumer: cl_MaxwellFactory.cpp
+    anchor: '"topology"'
+    mesh_config_tag: wholesale
+    mesh_config_tag_note: >
+      The whole section is walked recursively: every key in the section and its
+      subsections, at any depth. **A new key anywhere under `topology` is covered
+      automatically** because the walker enumerates keys instead of naming them.
+      Captured settings include which blocks and sidesets are Conductor / Air /
+      Ferro / ThinShell, thin-shell sidesets, `edge coating` and width,
+      `periodic` source and target, and `curves` definitions — everything that
+      decides how the mesh is enriched.
+      Wholesale walking also means an inert key moves the tag: editing an unread
+      `label` key inside a domain section still rebuilds the cached mesh.
+      Reordering same-type sibling sections moves it too. Both are accepted
+      false rebuilds, never stale-cache risks.
+    id_semantics:
+      rule: >
+        Block and sideset ids in the deck are gmsh GEOMETRY (elementary) tags,
+        NOT physical tags. $PhysicalNames is read and discarded.
+      evidence_anchor: 'create_group_ids'
+      consumer: cl_Mesh_GmshReader.cpp
+      corollary: >
+        A $PhysicalNames label is a display convenience, valid only when the
+        physical->geometry map is 1:1. Blocks and sidesets are separate id
+        spaces and may share a number.
+    subsections_are_domain_types: true
+    domain_types:
+      # The COMPLETE set of section-type spellings `domain_type()` accepts, with
+      # what each one becomes and what it then requires. Anything not listed
+      # here fails with "Unknown Domain Type: %s" — which is what makes this the
+      # highest-value check in the section: a typo'd domain type is otherwise
+      # only discovered at runtime, and a *valid-but-inert* one used not to be
+      # discovered at all (see `history` below).
+      anchor: 'domain_type'
+      consumers: [src/mesh/en_DomainType.cpp, cl_FEM_Domain.cpp]
+      unknown: fatal
+      group_key_meaning:
+        blocks:   "reads block / blocks (volume groups)"
+        sidesets: "reads sideset / sidesets"
+        none:     "reads no group key; the section is consumed elsewhere"
+      accepted:
+        # -- volume domains, material NOT read
+        - {spellings: [air, vacuum, void], maps_to: DomainType::Air,   groups: blocks, material: not read}
+        - {spellings: [coil],              maps_to: DomainType::Coil,  groups: blocks, material: not read}
+        # -- volume domains, material REQUIRED (fatal if absent)
+        - {spellings: [conductor, superconductor], maps_to: DomainType::Conductor, groups: blocks, material: required}
+        - {spellings: [ferro, iron],              maps_to: DomainType::Ferro,     groups: blocks, material: required}
+        - {spellings: [buffer],                   maps_to: DomainType::Buffer,    groups: blocks, material: required}
+        # -- surface domains
+        - {spellings: ["background field"],       maps_to: DomainType::BackgroundField,      groups: sidesets, material: not read}
+        - {spellings: ["air symmetry"],           maps_to: DomainType::AirSymmetry,          groups: sidesets, material: not read}
+        - {spellings: ["buffer symmetry"],        maps_to: DomainType::BufferSymmetry,       groups: sidesets, material: not read}
+        - {spellings: ["ferro symmetry"],         maps_to: DomainType::FerroSymmetry,        groups: sidesets, material: not read}
+        - {spellings: ["conductor symmetry"],     maps_to: DomainType::ConductorSymmetry,    groups: sidesets, material: not read}
+        - {spellings: ["air antisymmetry"],       maps_to: DomainType::AirAntiSymmetry,      groups: sidesets, material: not read}
+        - {spellings: ["buffer antisymmetry"],    maps_to: DomainType::BufferAntiSymmetry,   groups: sidesets, material: not read}
+        - {spellings: ["ferro antisymmetry"],     maps_to: DomainType::FerroAntiSymmetry,    groups: sidesets, material: not read}
+        - {spellings: ["conductor antisymmetry"], maps_to: DomainType::ConductorAntiSymmetry, groups: sidesets, material: not read}
+        - {spellings: [thinshell, tape, shell],   maps_to: DomainType::ThinShell,            groups: sidesets, material: "from `layers`",
+           note: "tape and shell became true aliases on 2026-08-11 — see history"}
+        # -- special sections: they carry a DomainType so that constructing a
+        #    Domain over them does not abort, but their content is read by a
+        #    dedicated path, not by the domain machinery
+        - {spellings: [curves, curve], maps_to: DomainType::Curve,    groups: none, material: not read,
+           read_by: "create_curves(), gated on the mesh carrying no curves"}
+        - {spellings: [periodic],      maps_to: DomainType::Periodic, groups: none, material: not read,
+           read_by: "create_periodic(), gated on the mesh carrying no periodicity"}
+      rejected:
+        - spellings: [cut]
+          runtime_status: rejected
+          since: 2026-08-11
+          reason: >
+            No parser path ever read a `topology { cut { } }` section. The
+            string is no longer accepted and now fails with
+            "Unknown Domain Type: cut". DomainType::Cut itself stays live for
+            cuts generated internally from the cohomology.
+          use_instead: "nothing — cuts come from the homology section"
+      not_reachable_from_a_deck:
+        - maps_to: DomainType::Default
+          note: >
+            The Domain constructor handles Default alongside Ferro / Conductor /
+            Buffer and would demand a `material` key, but no spelling maps to
+            it, so a deck cannot select it.
+      symmetry_meaning: >
+        Symmetry versus antisymmetry encodes current polarity: preserved gives
+        B x n = 0, inverted gives B . n = 0 as the natural condition.
+      history: >
+        Until 2026-08-11 `domain_type()` accepted four spellings that no
+        consumer handled. A `tape { }` section parsed, yielded
+        DomainType::ThinShell, and then built NO shell, because
+        read_thin_shell_data() compared the raw string "thinshell". Fixed by
+        dispatching on the enum instead of the spelling, and by dropping the one
+        spelling that had no consumer at all.
+      gate_rule: >
+        Consumers must dispatch on the DomainType enum, never on the section
+        type string, so that every spelling domain_type() accepts actually
+        works. This is the invariant whose violation caused the bug above.
+    domain_keys:
+      consumer: cl_FEM_Domain.cpp
+      anchor_note: >
+        These keys are read through the VARIABLES tGroup / tGroups, never as
+        literal call arguments, so no `key_exists( "blocks" )` string exists in
+        the source. Anchor on the assignment instead.
+      block:    {type: id_list, xor_with: blocks,   anchor: '"block"',    note: volume groups}
+      blocks:   {type: id_list, xor_with: block,    anchor: '"blocks"',   note: volume groups}
+      sideset:  {type: id_list, xor_with: sidesets, anchor: '"sideset"'}
+      sidesets: {type: id_list, xor_with: sideset,  anchor: '"sidesets"'}
+      material:
+        type: string
+        required: conditional
+        required_when: "domain type is ferro / conductor / buffer / default — NOT air or coil"
+        anchor: '"material"'
+      singular_plural_note: >
+        Both spellings are accepted for BOTH group kinds (`block` or `blocks`,
+        `sideset` or `sidesets`) — exactly one of each pair, enforced by xor.
+    xor_enforcement:
+      mechanism: BELFEM_ERROR
+      since: 2026-08-11
+      consumer: cl_FEM_Domain.cpp
+      note: >
+        Both the "a group is defined at all" check and the singular/plural xor
+        are always-active errors. They were BELFEM_ASSERT until 2026-08-11, so
+        release builds silently accepted a domain with neither key (empty group
+        list) or with both. These are input errors, not logic bugs — the error
+        tier follows the call rate, and this is once-per-run setup code.
+    thinshell_keys:
+      sideset:
+        type: signed_id_list
+        required: "xor with `sidesets`; neither or both is fatal"
+        since_signed: 2026-08-12
+        # unquoted: the key literal "sideset" reaches the parser only through
+        # read_signed_sidesets( tSection, "sideset", ... ), so the FUNCTION
+        # name is the anchor — quoting it made it a key literal that resolves
+        # nowhere. Reader: MaxwellFactory::flip_thin_shell_sidesets.
+        anchor: 'read_signed_sidesets'
+        consumer: cl_MaxwellFactory.cpp
+        note: same contract as `sidesets` below
+      sidesets:
+        type: signed_id_list
+        required: "xor with `sideset`; neither or both is fatal"
+        since_signed: 2026-08-12
+        anchor: 'read_signed_sidesets'
+        consumer: cl_MaxwellFactory.cpp
+        example: "sidesets : -5, -6, 7:20 ;"
+        note: >
+          A NEGATIVE id flips the orientation of every facet of that sideset
+          (master/slave swap + winding rewrite), applied after the master
+          normalization in fix_facet_masters — which would otherwise undo it —
+          and before the thin-shell pipeline reads the windings for layer
+          normals. Exists because the domain-type master rule is
+          mirror-symmetric: a stack bounded by air on both faces cannot come
+          out uniform, one outer tape always flips — and which side the
+          layers face is user intent no geometry rule can derive (a corc wrap
+          has no meaningful mean normal). Sign all sidesets of one connected
+          sheet together, or the sheet orientation tears at the shared line
+          and the node-normal averaging cancels to zero there. Downstream
+          consumers see absolute values only (`Protoshell::sidesets()`); the
+          signs live in `Protoshell::flipped_sidesets()`. Unsigned decks take
+          the identical code path as before. Each applied flip is reported at
+          Default level.
+          Since 2026-08-16 (DR-69, anchor '"bn_angle"') the sign is also
+          load-bearing PHYSICS for angle-dependent jc/n tables: the solver's
+          field-to-normal angle is unfolded to [0, pi], measured tables are
+          asymmetric about 90 degrees, and the facet normal's sign selects
+          which lobe the tape reads. Kim-type analytic laws (even in the
+          angle) and constant jc/n are unaffected.
+      edge coating:
+        type: bool
+        anchor: '"edge coating"'
+        note: >
+          Requests side connector walls. Requires 3-D, first-order thin shell.
+          The flag calls create_side_connectors, which is live.
+      edge coating width:
+        type: value
+        dimension: length
+        anchor: '"edge coating width"'
+        default_behaviour: derive from outer layer thickness when absent
+    sections:
+      curves:
+        required: false
+        runtime_status: silent_noop
+        runtime_status_condition: "when the mesh already carries curves"
+        gated_by: "parsed ONLY when the mesh carries no curves"
+        gate_anchor: 'mMesh->curves().size() == 0'
+        note: >
+          Writing this section for a mesh that already has curves is a SILENT
+          NO-OP. Every key is a curve id.
+        entry_forms:
+          2d: "<id> : <sideset list> ;"
+          3d: "<id> : <sidesetA> @ <sidesetB> ;   # intersection"
+      periodic:
+        required: false
+        gated_by: "parsed ONLY when the mesh carries no periodicity"
+        gate_anchor: '! mMesh->has_periodicity()'
+        keys:
+          source:
+            type: id_list
+            exact_count: 3
+            id_kind: vertex ids
+            ordered: true
+            pairs_with: target
+            wrong_count: fatal
+            anchor: '"source"'
+            consumer: cl_MaxwellFactory.cpp
+          target:
+            type: id_list
+            exact_count: 3
+            id_kind: vertex ids
+            ordered: true
+            wrong_count: fatal
+            anchor: '"target"'
+            consumer: cl_MaxwellFactory.cpp
+        id_kind_note: >
+          VERTEX ids, not node ids (corrected 2026-09-03; the entry said "node
+          ids" before). create_periodic hands the six ids to
+          PeriodicityFactory::set_master_plane / set_slave_plane, which resolve
+          them through mMesh->vertex( id )->node( 0 ) (anchor:
+          'mMesh->vertex( A )->node( 0 )', cl_Mesh_PeriodicityFactory.cpp). A
+          vertex is a gmsh type-15 point element; its id is the element's
+          GEOMETRY tag, not its element number and not the node it sits on
+          (anchor: 'tID = tGeometryTag', cl_Mesh_GmshReader.cpp), and the
+          reader keeps only points whose node is also used by some other
+          element (GmshReader::create_vertices). A deck that writes node ids
+          here fails the vertex lookup unless the two id spaces happen to
+          coincide; the pancake generator makes them coincide on purpose by
+          tagging the points 1..6 and numbering their nodes first, which is a
+          convenience, not the contract. The .bfm path carries the vertices
+          with the mesh.
+        note: >
+          Three points define each matched plane. source and target must be in
+          CORRESPONDING order. The periodic map is a general rigid transform
+          (translate + twist + tilt) — never assume axial translation. A
+          sideset is tagged Periodic when ALL its nodes lie in one of the two
+          planes (PeriodicityFactory::tag_periodic_sidesets), so the periodic
+          faces must be their own sidesets, not part of a larger boundary
+          group.
+
+  # -------------------------------------------------------------------------
+  boundary conditions:
+    required: true
+    consumer: cl_MaxwellBoundaryConditionFactory.cpp
+    anchor: '"boundary conditions"'
+    dispatch: >
+      If a `maxwell` subsection exists, Maxwell BCs are built from it, else from
+      the section itself. Thermal BCs come from a `thermal` subsection
+      (cl_ThermalBoundaryConditionFactory.cpp).
+    mesh_globals:
+      # what a block's header label is used for in the Exodus output
+      since: 2026-09-01
+      anchor: 'has_block_global('        # a function, not a key literal
+      terminal_types: [current, voltage, circuit terminal pairs]
+      terminal_rule: >
+        No block global. Controller::save_IV writes one I_<name>/U_<name>
+        pair per condition (imposed value AND response), the same names
+        heading iv_results.csv. <name> is the header label if given, else
+        positional (I_1; zero-padded to the generator count from ten on).
+        A label shared by several conditions gets a running suffix on every
+        occurrence (I_coil1_1, I_coil1_2). Before 2026-09-01 an unlabeled
+        `current { }` also published a `current` global equal to I_1.
+      other_rule: >
+        One global per block, named by the header label, else the type, with
+        a section ordinal on every occurrence of a repeated base
+        (background_1, background_2). Thermal conditions prefix `thermal_`
+        when unlabeled. `bearing` publishes nothing. Duplicate final name:
+        fatal at setup.
+      reserved_labels: [T_max, T_bulk]
+      reserved_note: >
+        The temperature global: T_max (live max of the nodal field T) in a
+        coupled run, T_bulk (gTbulk) in a magnetic-only run; created by
+        Controller::save at the first save. A block labeled either is fatal.
+    subsections:
+      maxwell:
+        required: false
+        anchor: '"maxwell"'
+        consumer: cl_MaxwellFactory.cpp
+        effect: >
+          When present, the Maxwell BCs are built from this subsection instead
+          of from `boundary conditions` itself. The BC-type subsections below
+          then live one level deeper.
+      thermal:
+        required: false
+        anchor: '"thermal"'
+        consumer: cl_ThermalFactory.cpp
+        effect: >
+          Thermal BCs are built from this subsection; see `thermal_subsection`
+          below for which types it supports.
+    mesh_config_tag: filtered
+    mesh_config_tag_rule: 'key name contains "terminal" or "curve"'
+    mesh_config_tag_note: >
+      Walked recursively, but filtered to current-injection ids because they
+      feed cut construction and are mesh-defining. Both live spellings are
+      covered: `input terminals` / `output terminals` and `input curves` /
+      `output curves`. The substring rule covers both spellings without a fixed
+      key list, and recursion also reaches the nested
+      `boundary conditions/maxwell/...` form.
+      **Amplitude, period, phase and waveform are excluded on purpose**, so an
+      excitation can be retuned against a cached mesh. The ids are in; the
+      values are out.
+    subsection_type_is_bc_type: true
+    bc_types:
+      case_sensitive: false
+      values: [neumann, dirichlet, bearing, gauge, current, voltage, background]
+      background_dirichlet:
+        runtime_status: rejected
+        since: 2026-08-11
+        status: DO NOT USE — now refused at parse
+        history: >
+          `background dirichlet` used to parse while the creation switch fell
+          through `default: break` without pushing a BC. The source-function
+          loop still ran and BackgroundDirichlet was in its case list, so it
+          called set_function on mPhysicalBoundaryConditions( tCount - i ) —
+          targeting a PREVIOUSLY created BC, or underflowing the unsigned index
+          when it was the first. It corrupted an unrelated condition rather
+          than merely doing nothing.
+        fix: >
+          The `default:` branch of the creation switch is now a hard error
+          naming the offending type. This closes the whole class: any BC type
+          that is not given a push case can no longer reach the indexing loop.
+        consumer: cl_MaxwellBoundaryConditionFactory.cpp
+    domain_keys:
+      nodes:
+        type: id_list
+        applies_to_bc_type: [bearing, gauge]
+        required: true
+        anchor: '"nodes"'
+      input terminal:  {type: id_groups, aliases: [input terminals],  applies_to_bc_type: [current, voltage], anchor: '"input terminal"'}
+      input curve:     {type: id_groups, aliases: [input curves],     applies_to_bc_type: [current, voltage], anchor: '"input curve"'}
+      output terminal: {type: id_groups, aliases: [output terminals], applies_to_bc_type: [current, voltage], anchor: '"output terminal"'}
+      output curve:    {type: id_groups, aliases: [output curves],    applies_to_bc_type: [current, voltage], anchor: '"output curve"'}
+      sideset:  {type: id_list, xor_with: sidesets, applies_to_bc_type: [background, neumann, dirichlet], anchor: '"sideset"'}
+      sidesets: {type: id_list, xor_with: sideset,  applies_to_bc_type: [background, neumann, dirichlet], anchor: '"sidesets"'}
+      length:
+        type: value
+        dimension: length
+        applies_to_bc_type: [voltage]
+        required_when: 2-D
+        # structured form: the predicate is the MESH dimension, so it can only
+        # be evaluated when the mesh is available. It is the one rule that
+        # migrated from T3 to T4 for exactly that reason.
+        required_when_dimension: 2
+        anchor: '"length"'
+        note: scales by 1/length
+      direction:
+        type: real_list
+        count: 3
+        applies_to_bc_type: [background]
+        anchor: '"direction"'
+        pitfall:
+          severity: HIGH
+          description: >
+            Components are read through std::stoi, so fractional components
+            TRUNCATE — `0, 0.5, 0` becomes `0,0,0`. Use integer component
+            ratios. A GUI must refuse fractional entry outright.
+          anchor: 'get_reals'
+          consumer: cl_Input_Section.cpp
+    terminal_group_rules:
+      - "`curve` forms mark thin-shell terminals"
+      - "bracket groups produce separate BCs; input and output group counts must match"
+      - "absent output list = 2-D; the input list is reused"
+    source_function_keys:
+      applies_to_bc_type: [gauge, current, voltage, background, neumann, dirichlet]
+      does_not_apply_to_bc_type: [bearing]
+      # Two INDEPENDENT axes meet in this section, and they used to share the
+      # field name `applies_to`, which made both unusable by a program:
+      #   applies_to_bc_type  — which boundary-condition type the key belongs to
+      #   applies_to_function — which source-function `type` it belongs to
+      # A key can be constrained on either or both. Splitting them is what lets
+      # a validator reject `length` on a bearing or `fuzzyness` on a ramp;
+      # while they shared a name, every such deck validated clean.
+      function_families:
+        # `applies_to_function` may name a family instead of a single type.
+        # Membership is the branch in cl_MaxwellBoundaryConditionFactory that
+        # reads period-or-frequency and phase together.
+        periodic family: [sine, square, triangle, sawtooth]
+      function_types_without_family: [ramp, sigmoid, constant, userdefined]
+      one_of:
+        - alternatives: [[period], [frequency]]
+          when: {sibling: type, in: [periodic family]}
+          note: >
+            The periodic family takes period OR frequency; `period` wins if
+            both are given. `in` may name a family, which is expanded through
+            `function_families` above.
+      bearing_note: >
+        `bearing` never reads `type` or `amplitude` — its second switch only
+        re-reads `nodes`. As of 2026-08-28 the Maxwell bearing is OPTIONAL:
+        with no bearing section, gauge pinning is automatic — one pin per
+        connected phi component, node farthest from any sideset
+        (MaxwellFactory::find_autopins, DR-126), persisted in the .bfm
+        (anchor: '"pinned"', cl_Mesh_BfmFile.cpp). A deck bearing takes
+        precedence and disables ALL automatic pins (anchor: '"tHaveBearing"',
+        cl_MaxwellFactory.cpp) — buffer patches then float. Writing a bearing
+        by hand is an EXPERT function and is NOT recommended: it names one
+        node and gives up the pins for every phi component the deck does not
+        mention. A pre-autopin .bfm without a bearing warns that the
+        potential is unpinned. The
+        shared imposition path (Bearing::impose_dirichlet) reroutes a pin on
+        a periodically condensed node (single source, unit weight) onto the
+        SOURCE dof; any other condensed shape, a nonexistent point, or a
+        node without dofs is a fatal error on the master rank — never a
+        silent no-op.
+      amplitude_dimension_by_type:
+        note: >
+          Context-dependent: the SAME BC type carries a different amplitude
+          dimension under the maxwell and thermal factories. A single flat map
+          is wrong; key it by consumer.
+        maxwell:
+          current: A
+          voltage: V
+          background:
+            dimension: A/m
+            since: 2026-08-30
+            also_accepts_flux_density:
+              tokens: [T, mT, muT, kT, MT, G]
+              micro_sign: >
+                The micro sign is folded to "mu" before the token is matched,
+                mirroring unit_to_si ( stringtools.cpp:367 ), so the literal
+                "µT" is accepted as well as "muT".
+              converted_by: 'constant::nu0 ( H = B/mu0 )'
+              carried_on: "the condition's scale, applied once in impose_bc"
+              anchor: '"amplitude"'
+              consumer: cl_MaxwellBoundaryConditionFactory.cpp
+              userdefined_note: >
+                For `type: userdefined` the dimension is taken from the `units`
+                KEY, not from `amplitude` -- that branch never reads an
+                amplitude. A validator must inspect the same key the factory
+                does, or it will accept a section the factory rejects.
+              matched_by: token_name_NOT_dimension
+              why_not_dimension: >
+                HISTORICAL, and no longer a correctness constraint. unit_to_si
+                used to code the entire Tesla family with VOLT's exponents
+                ( L=2, M=1, I=-1, T=-3 ) instead of the true M=1, I=-1, T=-2,
+                so a dimension test accepted `1 V` as one tesla and REJECTED a
+                correctly written `V*s/m^2`. Corrected 2026-08-30 under DR-154,
+                with a regression gate in tests/core/test_StringTools.cpp;
+                `check_unit( x, "T" )` is sound again. The factory still matches
+                by NAME because that is the form which was audited. A validator
+                may match either way, but a name match is the STRICTER of the
+                two: it rejects the compound spellings `V*s/m^2` and
+                `kg/(s^2*A)`, which the factory therefore also rejects today.
+              mu0_note: >
+                mu0 is the CODATA value 1.25663706212e-6, so 1 T is 795774.71503
+                A/m, while the Oersted tokens ( defined against the retired exact
+                4*pi*1e-7 ) give 10 kOe = 795774.71546 A/m. A 5.4e-10 relative
+                difference; both spellings are accepted and they are not
+                bit-identical.
+              whitespace_pitfall: >
+                `1T` without a space is read as a bare dimensionless number and
+                then fails against A/m. The value/unit split is by whitespace.
+              ferro_warning: >
+                B = mu0*H is exact only outside a magnetic material. When a
+                flux-density amplitude is used on a sideset bordering a Ferro
+                block, MaxwellFactory warns on rank 0 and the run continues; the
+                imposed H is B/mu0 regardless. Not an error, by decision
+                2026-08-30. BEST EFFORT, NOT A GUARANTEE: it is emitted at
+                InfoLevel::Default ( `-v 0` suppresses it ), and it is skipped
+                for a sideset with no facets, a facet whose master AND slave
+                are both unreadable, or an element whose block is not
+                registered -- the diagnostic stays
+                silent rather than abort the run it is commenting on. A
+                validator must not treat its absence as proof of an air border.
+          gauge: dimensionless
+          neumann: dimensionless
+          dirichlet: dimensionless
+        thermal:
+          dirichlet: K
+          neumann: {dimension: W/m^2, runtime_status: accepted_then_hard_error}
+          gauge: {dimension: K, since: 2026-08-11, note: "a thermal gauge imposes a Dirichlet temperature on its nodes, so its amplitude is a temperature"}
+      keys:
+        type:
+          type: enum
+          values: [ramp, sigmoid, sine, square, triangle, sawtooth, constant, userdefined]
+          case_sensitive: true
+          unknown: fatal
+          effectively_required: true
+          anchor: '"type"'
+          note: >
+            Absent leaves the SourceFunction UNDEFINED — no usable source is
+            selected. Treat as required in practice.
+        amplitude:
+          type: value
+          required_except: [userdefined]
+          anchor: '"amplitude"'
+          sign_convention_current:
+            note: >
+              For a `current` condition the sign of the amplitude selects the
+              direction of the transport current. In 2-D a positive amplitude
+              drives the current along +z (out of the plane), so the field
+              circulates counter-clockwise by the right-hand rule. In 3-D a
+              positive amplitude flows from the `input` terminal to the
+              `output` terminal. Each condition owns one cut, so mixed-polarity
+              models set polarity per condition through this sign. A `voltage`
+              condition drives the same cut and inherits the convention: a
+              positive 2-D voltage amplitude drives a +z current, so current-
+              and voltage-driven models of one geometry agree on polarity.
+            since: 2026-08-28
+            history: >
+              Before 2026-08-28 a positive 2-D amplitude produced a current
+              along -z. The inversion was uniform across bulk and thin-shell
+              conductors, so sign-insensitive magnitudes were unaffected and
+              relative polarity within a model was preserved, but every signed
+              current and field direction reported by an older 2-D run was
+              reversed. Corrected in Homology::reorient_generators; 3-D was
+              never affected.
+            consumer: cl_CutFactory.cpp        # the call site of the correction
+            anchor: 'reorient_generators()'
+        period:
+          type: value
+          dimension: time
+          applies_to_function: [ramp, sigmoid, periodic family]
+          anchor: '"period"'
+          precedence: "if both `period` and `frequency` are present, `period` WINS"
+          required_for: [ramp, sigmoid]
+          required_note: >
+            ramp and sigmoid REQUIRE `period` — there is no frequency fallback
+            on those paths. `frequency` is an alternative to `period` only for
+            the periodic family.
+        frequency:
+          type: value
+          dimension: frequency
+          applies_to_function: [periodic family]
+          anchor: '"frequency"'
+          note: "period = 1/frequency; ignored when `period` is also present"
+        offset:    {type: value, dimension: time, required_for: [ramp, sigmoid], anchor: '"offset"'}
+        phase:     {type: value, dimension: angle, default: 0, applies_to_function: [periodic family], anchor: '"phase"',
+                    sign_convention: advance,
+                    note: "accepts deg; positive advances ( SPICE ), evaluated at t + phase/omega, all four periodic types; NOT a start delay -- that is `offset`, ramp/sigmoid only"}
+        fuzzyness: {type: real, default: 0.01, applies_to_function: [sigmoid], anchor: '"fuzzyness"'}
+        # resolved through the same primitive as the material .so keys since
+        # 2026-08-31; before that it reached dlopen unresolved. The circuit
+        # component `file` key mirrors this entry (see component_keys below)
+        file:      {type: path,   resolution: material_data_path, applies_to_function: [userdefined], required: true, anchor: '"file"'}
+        label:     {type: string, applies_to_function: [userdefined], required: true, anchor: '"label"'}
+        units:     {type: string, applies_to_function: [userdefined], required: true, anchor: '"units"', note: dimension must match}
+      # Refused legacy keys: present in a deck -> fatal, never silently ignored.
+      refused_keys:
+        expk:
+          removed: 2026-08-29
+          was: "parsed and stored, never consumed -- function_sigmoid used fuzzyness and period alone"
+          migration: "DELETE the key to preserve current results; do NOT rewrite it as fuzzyness = 1/(1+expk), which changes the waveform"
+          checked_before: type dispatch, so it is refused on every source shape
+          anchor: '"expk"'
+    thermal_subsection:
+      consumer: cl_ThermalBoundaryConditionFactory.cpp
+      supported: [bearing, gauge, dirichlet]
+      neumann: "recognized but hard-errors — not implemented"
+      keys_note: "same source-function keys; dirichlet amplitude in K"
+
+  # -------------------------------------------------------------------------
+  initial conditions:
+    required: false
+    consumer: cl_MaxwellFactory.cpp
+    anchor: '"initial conditions"'
+    status: COMPLETE — these are the only keys that exist
+    mesh_config_tag: excluded
+    mesh_config_tag_note: >
+      Sets the global bulk temperature for the solve; it does not participate in
+      mesh enrichment, so it may be changed against a cached mesh.
+    keys_are_aliases_of_one_setting: true
+    keys:
+      t:
+        type: value
+        dimension: temperature
+        aliases: [temp, temperature]
+        effect: sets the global bulk temperature gTbulk
+        published_as: >
+          In a magnetic-only run this value appears in the Exodus output as
+          the mesh global `T_bulk` (`T_bulk` since 2026-09-05, `T_fixed` from 2026-09-01, `temperature` before).
+          A coupled run publishes `T_max`, the live maximum of the nodal
+          field, instead. See `boundary conditions` -> mesh_globals.
+        anchor: '"temperature"'
+      note: >
+        The reader loops over all keys and filters by name; only `t`, `temp` and
+        `temperature` are recognized. Any other key in this section is silently
+        ignored. If gTbulk is left NaN -- the section absent, or present with
+        none of the three recognized keys -- `belfem` substitutes 77 K in either
+        mode and prints a console note. A deck carrying thermal boundary
+        conditions without a thermal solver section is rejected as inconsistent.
+        (The retired `hphiTrun` aborted at thermal setup instead; it is no longer
+        built.)
+
+  # -------------------------------------------------------------------------
+  circuit:
+    required: false
+    consumer: cl_ElectricalCircuitFactory.cpp
+    anchor: '"circuit"'
+    status: PARTIAL — inventory extracted, semantics not yet verified
+    mesh_config_tag: filtered
+    mesh_config_tag_rule: 'key name contains "terminal" or "curve"'
+    mesh_config_tag_note: >
+      Same filtered rule and same walker as `boundary conditions`: a `terminal
+      pair` becomes a CircuitVoltage / CircuitCurrent BC domain and reaches cut
+      construction, so its ids are mesh-defining.
+      **A deck can carry its cut-defining ids here and nowhere else** —
+      `examples/tapestack_circuit` declares them as `input curves` under
+      `circuit/topology/terminal pair` with no `boundary conditions` entry at
+      all. Component values, sources and `output` settings are excluded.
+    terminal_pair_2d_length:
+      status: FIXED 2026-08-11
+      history: >
+        A terminal pair sets BoundaryConditionType::CircuitVoltage, but the 2-D
+        fallback branch tested for plain `Voltage`, so it never fired: `length`
+        was never required and never read, and the scale silently stayed 1.0
+        while the prose reference promised 1/length scaling.
+      behaviour_change: >
+        A 2-D terminal pair (one that omits the output terminal/curve list) now
+        REQUIRES `length` and hard-errors without it. Such a deck previously ran
+        and produced unscaled voltages. No deck in this repository is affected —
+        examples/tapestack_circuit is 3-D and supplies both lists.
+      anchor: 'CircuitVoltage'
+      consumer: cl_ElectricalCircuitFactory.cpp
+      found_by: Grok and Codex independently
+    keys:
+      number of nodes:
+        type: int
+        required: classic mode only — FORBIDDEN in hybrid mode
+        anchor: '"number of nodes"'
+        conditional: >
+          Classic mode (no `file`): required. Hybrid mode (`file` set,
+          2026-08-27): the node count is derived from the netlist; setting
+          this key is a hard error. Machine consumers must branch on the
+          presence of `file`.
+      file:
+        type: path
+        required: false
+        anchor: '"file"'
+        consumer: cl_ElectricalCircuitFactory.cpp
+        added: 2026-08-27
+        note: >
+          Path to an ngspice netlist (.cir). When present the factory enters
+          HYBRID mode (read_circuit_from_netlist): the netlist holds the
+          lumped topology (built via NgspiceCircuitFactory), and the deck may
+          contribute ONLY `terminal pair` subsections plus `output`. Any
+          lumped element left in `topology` is a hard error. A `.tran` card
+          in the netlist is ignored with a log line — `solver { timestep }`
+          owns the time integration. In hybrid mode every deck node
+          reference — terminal-pair `node +`/`node -` and `output/voltages` —
+          is a netlist node NAME (string, case-folded; the ground aliases
+          `0` and `gnd` are one node), resolved through the netlist's node
+          map. Raw indices are not accepted: they would be ambiguous against
+          the ground remap (the BELFEM ground is the LAST index, SPICE's is
+          node `0`).
+    required_subsections_classic: [topology]
+    required_subsections_hybrid: []
+    topology_missing: fatal in classic mode; allowed in hybrid mode
+    topology_missing_note: >
+      In hybrid mode (`file` set) `topology` is optional — a deck without
+      terminal pairs builds a purely lumped circuit — and may contain ONLY
+      `terminal pair` subsections.
+    component_section_types:
+      values: [resistor, capacitor, inductor, switch, "voltage source",
+               "current source", diode, superconductor, "terminal pair"]
+      value_normalize: lower
+      forbid_label_in_header: true
+      header_rule: >
+        The component type is taken from the section KEY, so the header must be
+        the bare type — `resistor { }`. A labeled header `resistor : r1 { }`
+        does NOT resolve and fails.
+      enum_source: Component_Enums.cpp
+    keys_by_component_type:
+      resistor:      {required: [value], units: Ohm}
+      capacitor:     {required: [value], optional: [order], units: F}
+      inductor:      {required: [value], optional: [order], units: H}
+      voltage source: {required: [source function family]}
+      current source: {required: [source function family]}
+      switch:        {required: ["initial state", "switch time"]}
+      diode:         {optional: [Is, Vt], defaults: {Is: 0.1e-3 A, Vt: 0.026 V}}
+      superconductor: {required: [Ic, n, Ec, length]}
+      terminal pair:
+        required: [terminal or curve id_groups]
+        conditional: "`length` required in 2-D — see terminal_pair_2d_length"
+        group_count: 1
+        group_count_note: >
+          Frozen 2026-08-15 (DR-75): exactly ONE bracketed group per
+          terminal pair -- more is a hard error at setup (anchor
+          '"terminal pair"' + "bracket groups" in the message). The
+          controller pairs conditions with lumped components by position;
+          extra groups would overrun the component list silently. Beware:
+          an unbracketed comma list parses as one group PER id, so the
+          1:1 form must be written [a,b].
+    universal_component_keys:
+      required: ["node +", "node -"]
+      optional: [label]
+      node_reference_type: >
+        Classic mode: BELFEM node index (int, 0-based, last index = ground).
+        Hybrid mode (`file` set): netlist node NAME (string) — see the `file`
+        key note.
+    component_keys:
+      note: >
+        Read per component subsection. Many mirror the BC source-function keys
+        (type, amplitude, period, frequency, offset, phase, fuzzyness,
+        file, units, label).
+      inventory: [label, "node +", "node -", value, order, length, n,
+                  Ic, Is, Vt, Ec, initial state, switch time,
+                  input terminal, input terminals, input curve, input curves,
+                  output terminal, output terminals, output curve, output curves]
+    sections:
+      output:
+        keys:
+          file:     {type: path,   anchor: '"file"'}
+          currents:
+            type: string
+            anchor: '"currents"'
+            note: >
+              Component labels, comma-separated. Hybrid mode folds them to
+              lower case (netlist labels are the case-folded instance names).
+          voltages:
+            type: id_list (classic) | name_list (hybrid)
+            anchor: '"voltages"'
+            conditional: >
+              Classic mode: BELFEM node indices. Hybrid mode (`file` set): a
+              comma-separated list of netlist node NAMES, resolved through
+              the netlist's node map; the CSV header prints the resolved
+              internal index, and the name→column mapping is logged at
+              startup on rank 0.
+
+# ---------------------------------------------------------------------------
+# NOT A SECTION — recorded so tools do not invent one
+# ---------------------------------------------------------------------------
+absent_sections:
+  output:
+    note: >
+      There is no top-level `output` or `visualization` section. Executables
+      hard-code result file names. The only `output` subsection is under
+      `circuit`. The restart dump is fixed at memdump.hdf5.
+
+# ---------------------------------------------------------------------------
+# WHAT THIS FILE STILL CANNOT DO
+# ---------------------------------------------------------------------------
+# Honest scope statement, from the Grok audit of 2026-08-10. A validator CANNOT
+# yet be written from this file alone; these are the gaps, in priority order.
+audit_todo:
+  note: >
+    These bound what a validator can CHECK; none of them stops one being
+    written. An earlier version of this block was headed
+    "blocking_for_validator", which overstated it.
+  closed:
+    - id: T1
+      what: "value lists for the five linear-solver enums"
+      closed: 2026-08-11
+      how: >
+        Transcribing them would have created a fourth copy to rot. The C++
+        resolves these by comparing the deck value against `to_string( value )`
+        for every enumerator, so the switch is machine-readable and is now the
+        authority: each key carries `enum_ref`, and `belfem-conf drift`
+        re-derives the list from src/ and fails on any difference. Six lists
+        are checked this way.
+      found_while_closing: >
+        `values: [off, ...]` loaded as `[False, ...]` — YAML 1.1 reads a bare
+        off/on/yes/no as a boolean, so the schema had silently lost a legal
+        value for `compression scheme`. Caught by the new check on its first
+        run; the value is now quoted. Worth remembering for any future enum
+        that contains one of those words.
+      also_recorded: >
+        Preconditioner::GASM is not selectable from a deck — ASM and GASM both
+        stringify to "asm" (PETSc convention) and the lookup returns the first.
+    - id: T2
+      what: "the topology domain-type catalog and its aliases"
+      closed: 2026-08-11
+      how: >
+        `topology.domain_types` now enumerates all 24 accepted spellings with
+        the DomainType each becomes, whether it reads block or sideset keys,
+        and whether `material` is required. Verified exhaustively against
+        `domain_type()` in both directions — 24 in the code, 24 in the schema,
+        no difference either way. The previous `section_type_spellings` block
+        was folded into it rather than kept alongside, so there is one list
+        rather than two that can disagree.
+  blocking_for_validator:
+    - id: T3
+      what: "structured conditional-requiredness"
+      status: CLOSED 2026-08-11
+      done:
+        - "`material` by domain type — enforced from the `domain_types` catalog"
+        - "`period` / `offset` for ramp and sigmoid — via `required_for`, which
+           was declared but never read until the validator was wired to it"
+        - "`mesh.unit` unless the file is .bfm — via the new `required_unless`
+           predicate: {sibling: KEY, ends_with|equals|in: X}"
+        - "`xor_with` and `pairs_with` are now read rather than re-implemented
+           in Python; the hardcoded block/blocks check was removed, since it
+           reported the same fault twice once the generic one existed"
+      also_done:
+        - what: "one-of GROUPS, as opposed to pairs"
+          field: "`one_of: [{alternatives: [[file], [jc, n]], when: {...}}]`"
+          rules: ["`period` XOR `frequency` for the periodic family",
+                  "HTS `file` XOR (`jc` + `n`)"]
+          note: >
+            `xor_with` links two keys; neither rule is a pair. `when` reuses
+            the `required_unless` predicate, and `in` expands a family name
+            through `function_families`, so the periodic membership is written
+            once rather than restated.
+        - what: "section fallback"
+          field: "`required_unless_section: [linear magnetic, linear thermal]`"
+          note: "the predicate is the existence of a SIBLING SECTION, not a key value"
+        - what: "ordered material-shape resolution (was a vocabulary gap)"
+          field: "`select_first: [{selector: curve, ...}, ...]`"
+          note: >
+            The first selector present decides the shape and the losers are
+            never read. Needed because `examples/costheta` carries an inert
+            `builtin ;` beside its `curve`; without this the validator called a
+            legal deck broken.
+      moved_to_T4:
+        - what: "`length` required in 2-D"
+          note: "not deck-derivable — 2-D is a property of the mesh"
+    - id: T4
+      what: "structured gate predicates"
+      status: PARTLY CLOSED 2026-08-11
+      done:
+        - what: "mesh introspection, and the id-existence check it enables"
+          note: >
+            `belfem-conf check` now resolves `mesh { file }` relative to the
+            deck, reads a gmsh 2.x mesh, and verifies that every block and
+            sideset id the deck names actually occurs in it. Ids are taken from
+            the ELEMENTARY tag, matching `GmshReader::create_group_ids` —
+            reading `$PhysicalNames` instead would agree with a deck by luck
+            and disagree by design.
+        - what: "dimension, by the same rule the reader uses"
+          note: >
+            2-D versus 3-D comes from the z extent of the nodes, not from
+            topology, because that is what GmshReader does. Matching the rule
+            matters more than being right in the abstract.
+      design_constraint_found_while_building: >
+        **The mesh is usually not there.** The examples ship `.geo` sources and
+        generate the `.msh` with gmsh, so five of the six carry no mesh at all.
+        A missing mesh is therefore NORMAL and must never be an error — it
+        makes a class of check unavailable, and the validator says which class
+        and why rather than passing in silence.
+      also_done:
+        - what: "gmsh 4.x parsing"
+          note: >
+            Not an optional extra. Nothing in the examples pins a mesh format
+            and gmsh has defaulted to 4.1 since 4.0, so every freshly generated
+            mesh is 4.1 — a 2.x-only reader would have checked nothing in
+            practice, and worked on `corc` only because that `.msh` is an old
+            2.2 file kept in git. In 4.1 the elementary tag is the `$Elements`
+            block's entityTag, which is exactly what `GmshReader` passes to
+            `set_geometry_tag`. Verified by converting the real corc mesh and
+            requiring both formats to yield identical block, sideset and
+            dimension results — they do.
+        - what: "`length` required in 2-D"
+          field: "`required_when_dimension: 2`"
+          note: >
+            Verified on a genuinely flat mesh generated for the purpose: the
+            rule fires without `length` and passes with it.
+      remaining:
+        - what: "the mesh-STATE gates themselves"
+          rules: ["`curves` ignored when the mesh already carries curves",
+                  "`periodic` ignored when the mesh already carries periodicity"]
+          note: >
+            Only an enriched `.bfm` can carry either, and reading one means
+            HDF5, so it needs h5py — not installed here, and a dependency this
+            tooling avoids so the checks run in a hook and on a machine that
+            has never built BELFEM. Deferred rather than designed around.
+      hazard_found_while_verifying:
+        what: "converting a mesh 2.2 -> 4.1 through gmsh DROPS the point elements"
+        detail: >
+          The real corc mesh carries 10 type-15 point elements; after
+          `gmsh v22.msh -save -format msh41` there are no dim-0 element blocks
+          at all. BELFEM builds its vertices from those point elements, and a
+          missing vertex surfaces as a singular matrix or a bare
+          "Key not found in map". Generating FRESH from `.geo` at 4.1 keeps
+          them (helix: 132), so this is a conversion hazard only — do not
+          round-trip a BELFEM mesh through a format change.
+      note: >
+        Not one task. The `.bfm`-versus-gmsh third of it turned out to be the
+        same sibling-key predicate as T3 and is now covered by
+        `required_unless`. What is left — a `curves` or `periodic` block being
+        silently ignored because the mesh already carries them — depends on
+        data OUTSIDE the deck, so it cannot be expressed as a predicate over
+        input at all. **T4 is blocked on mesh introspection (R5), not on
+        vocabulary design**, and attempting it earlier would mean inventing a
+        language for data that cannot yet be read.
+  vocabulary_gaps:
+    - "`aliases` is overloaded three ways: key synonyms, section fallback chains, and true renames. A consumer cannot implement one rule for all three — split it."
+    - >
+      CLOSED 2026-08-11. `applies_to` named four different axes at once, which
+      made all of them unusable by a program. Split by axis: `applies_to_bc_type`
+      (boundary-condition type), `applies_to_function` (source-function type,
+      with `function_families` defining `periodic family`), and
+      `applies_to_material_shape` (still prose — "pure metals", "HTS without
+      file" — and therefore still not enforced). The `volume groups` uses became
+      plain notes, since `topology.domain_types` already carries that fact.
+      The first two axes are now enforced: before the split, a `bearing` holding
+      `length`, `direction` and `fuzzyness` validated clean, because none of
+      those keys could be tied to an axis. Only `applies_to_material_shape`
+      remains free-form.
+    - "`case_sensitive` is boolean but the real policy is three-valued: exact, lowercased, or unchecked. Prefer `value_normalize: lower|exact`."
+    - "CLOSED 2026-08-11 — `select_first` now expresses the ordered material-shape resolution, and the validator reads it."
+    - "no way to express raw_block token grammar (layers: material=word0, thickness=word2, unit=word3 after colon spacing)"
+    - "no way to express enforcement tier (debug assert / release none / validator error) — see topology.xor_enforcement"
+  known_false_positive:
+    - claim: "`#` is not a comment token (Grok, 2026-08-10, rated CRITICAL)"
+      verdict: REFUTED
+      evidence: >
+        clean_string does `else if ( tChars[c] == tHash ) { break; }`, and
+        InputFile::remove_comments calls clean_string on every line. Grok read
+        only cl_InputFile.cpp. `#` does truncate to end of line.
+      recorded_to_prevent: re-audit

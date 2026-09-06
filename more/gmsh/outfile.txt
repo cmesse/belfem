@@ -1,0 +1,96 @@
+// FACES
+                case( 0 ):
+                    aNodes( 0 ) = mNodes[ 0 ];
+                    aNodes( 1 ) = mNodes[ 1 ];
+                    aNodes( 2 ) = mNodes[ 4 ];
+                    aNodes( 3 ) = mNodes[ 3 ];
+                    aNodes( 4 ) = mNodes[ 6 ];
+                    aNodes( 5 ) = mNodes[ 10 ];
+                    aNodes( 6 ) = mNodes[ 12 ];
+                    aNodes( 7 ) = mNodes[ 9 ];
+                    aNodes( 8 ) = mNodes[ 15 ];
+                    break;
+                case( 1 ):
+                    aNodes( 0 ) = mNodes[ 1 ];
+                    aNodes( 1 ) = mNodes[ 2 ];
+                    aNodes( 2 ) = mNodes[ 5 ];
+                    aNodes( 3 ) = mNodes[ 4 ];
+                    aNodes( 4 ) = mNodes[ 7 ];
+                    aNodes( 5 ) = mNodes[ 11 ];
+                    aNodes( 6 ) = mNodes[ 13 ];
+                    aNodes( 7 ) = mNodes[ 10 ];
+                    aNodes( 8 ) = mNodes[ 16 ];
+                    break;
+                case( 2 ):
+                    aNodes( 0 ) = mNodes[ 2 ];
+                    aNodes( 1 ) = mNodes[ 0 ];
+                    aNodes( 2 ) = mNodes[ 3 ];
+                    aNodes( 3 ) = mNodes[ 5 ];
+                    aNodes( 4 ) = mNodes[ 8 ];
+                    aNodes( 5 ) = mNodes[ 9 ];
+                    aNodes( 6 ) = mNodes[ 14 ];
+                    aNodes( 7 ) = mNodes[ 11 ];
+                    aNodes( 8 ) = mNodes[ 17 ];
+                    break;
+                case( 3 ):
+                    aNodes( 0 ) = mNodes[ 0 ];
+                    aNodes( 1 ) = mNodes[ 2 ];
+                    aNodes( 2 ) = mNodes[ 1 ];
+                    aNodes( 3 ) = mNodes[ 8 ];
+                    aNodes( 4 ) = mNodes[ 7 ];
+                    aNodes( 5 ) = mNodes[ 6 ];
+                    break;
+                case( 4 ):
+                    aNodes( 0 ) = mNodes[ 3 ];
+                    aNodes( 1 ) = mNodes[ 4 ];
+                    aNodes( 2 ) = mNodes[ 5 ];
+                    aNodes( 3 ) = mNodes[ 12 ];
+                    aNodes( 4 ) = mNodes[ 13 ];
+                    aNodes( 5 ) = mNodes[ 14 ];
+                    break;
+// EDGES
+                case( 0 ):
+                    aNodes( 0 ) = mNodes[ 1 ];
+                    aNodes( 1 ) = mNodes[ 0 ];
+                    aNodes( 2 ) = mNodes[ 6 ];
+                    break;
+                case( 1 ):
+                    aNodes( 0 ) = mNodes[ 2 ];
+                    aNodes( 1 ) = mNodes[ 1 ];
+                    aNodes( 2 ) = mNodes[ 7 ];
+                    break;
+                case( 2 ):
+                    aNodes( 0 ) = mNodes[ 0 ];
+                    aNodes( 1 ) = mNodes[ 2 ];
+                    aNodes( 2 ) = mNodes[ 8 ];
+                    break;
+                case( 3 ):
+                    aNodes( 0 ) = mNodes[ 0 ];
+                    aNodes( 1 ) = mNodes[ 3 ];
+                    aNodes( 2 ) = mNodes[ 9 ];
+                    break;
+                case( 4 ):
+                    aNodes( 0 ) = mNodes[ 1 ];
+                    aNodes( 1 ) = mNodes[ 4 ];
+                    aNodes( 2 ) = mNodes[ 10 ];
+                    break;
+                case( 5 ):
+                    aNodes( 0 ) = mNodes[ 2 ];
+                    aNodes( 1 ) = mNodes[ 5 ];
+                    aNodes( 2 ) = mNodes[ 11 ];
+                    break;
+                case( 6 ):
+                    aNodes( 0 ) = mNodes[ 3 ];
+                    aNodes( 1 ) = mNodes[ 4 ];
+                    aNodes( 2 ) = mNodes[ 12 ];
+                    break;
+                case( 7 ):
+                    aNodes( 0 ) = mNodes[ 4 ];
+                    aNodes( 1 ) = mNodes[ 5 ];
+                    aNodes( 2 ) = mNodes[ 13 ];
+                    break;
+                case( 8 ):
+                    aNodes( 0 ) = mNodes[ 5 ];
+                    aNodes( 1 ) = mNodes[ 3 ];
+                    aNodes( 2 ) = mNodes[ 14 ];
+                    break;

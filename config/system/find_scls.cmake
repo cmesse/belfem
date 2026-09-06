@@ -1,0 +1,22 @@
+# test if environment variable is set
+if( DEFINED ENV{SCLS} )
+    # library directory
+    if( IS_DIRECTORY $ENV{SCLS}/lib64 )
+        list( APPEND BELFEM_RPATH $ENV{SCLS}/lib64 )
+        set( SCLSLIBDIR $ENV{SCLS}/lib64 )
+        link_directories($ENV{SCLS}/lib64)
+    elseif( IS_DIRECTORY $ENV{SCLS}/lib )
+        list( APPEND BELFEM_RPATH $ENV{SCLS}/lib )
+        set( SCLSLIBDIR $ENV{SCLS}/lib )
+        link_directories($ENV{SCLS}/lib)
+    else()
+        message( FATAL_ERROR "Could not find SCLS library directory" )
+    endif()
+
+    # include directory
+    if( IS_DIRECTORY $ENV{SCLS}/include )
+        list( APPEND BELFEM_INCLUDES $ENV{SCLS}/include )
+    else()
+        message( FATAL_ERROR "Could not find SCLS include directory" )
+    endif()
+endif()

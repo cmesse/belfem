@@ -1,0 +1,22 @@
+--- tests/linalg/test_Matrix.cpp
++++ tests/linalg/test_Matrix.cpp
+@@ -164,12 +164,17 @@ TEST( Matrix, ColumnMajorLayout )
+ {
+     belfem::Matrix< belfem::real > tMat = { { 1.0, 2.0, 3.0 },
+                                              { 4.0, 5.0, 6.0 } };
+-    // column-major: data[i + j * n_rows] == (i, j)
++    // column-major: column j starts at data[ j * spacing() ] and is
++    // contiguous. spacing() is the storage stride between columns ( the
++    // BLAS leading dimension ): n_rows() under Armadillo, but >= n_rows()
++    // under Blaze, which pads every column to the SIMD width. Indexing
++    // with n_rows() is only correct when the two coincide.
++    EXPECT_GE( tMat.spacing(), tMat.n_rows() );
+     for( size_t j = 0; j < tMat.n_cols(); ++j )
+     {
+         for( size_t i = 0; i < tMat.n_rows(); ++i )
+         {
+-            EXPECT_NEAR( tMat.data()[ i + j * tMat.n_rows() ],
++            EXPECT_NEAR( tMat.data()[ i + j * tMat.spacing() ],
+                          tMat( i, j ), tEps );
+         }
+     }

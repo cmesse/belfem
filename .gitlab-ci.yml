@@ -1,0 +1,68 @@
+# .gitlab-ci.yml
+#
+# Nightly full-stack build and test of BELFEM against the SCLS runtime.
+#
+# Runs ONLY on the scheduled pipeline (Project > Build > Pipeline schedules,
+# 04:00 America/Los_Angeles) and on a manual "Run pipeline", both on the
+# default branch. Ordinary pushes and merge requests do NOT trigger it, so
+# day-to-day work is unaffected.
+#
+# Executed by the shell runner tagged 'belfem-local', which runs on the GitLab
+# host itself (concurrent=1, so the four matrix jobs run one after another).
+#
+# The single job definition fans out via parallel:matrix into FOUR builds,
+# covering both build types and both matrix backends:
+#
+#     [ DEBUG,   ARMADILLO ]   [ DEBUG,   BLAZE ]
+#     [ RELEASE, ARMADILLO ]   [ RELEASE, BLAZE ]
+#
+# Each job does a clean build (rm -rf build), so no CMake cache leaks between
+# configurations. If ANY of the four fails, the pipeline fails and the
+# Pipeline-status email integration notifies the team.
+
+stages:
+  - check
+
+nightly:make-check:
+  stage: check
+  tags:
+    - belfem-local
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+  timeout: 1h
+  variables:
+    SCLS: /global/home/groups-sw/ac_magnet/scls
+  parallel:
+    matrix:
+      - BUILD_TYPE: DEBUG
+        MATRIX_LIB: ARMADILLO
+      - BUILD_TYPE: DEBUG
+        MATRIX_LIB: BLAZE
+      - BUILD_TYPE: RELEASE
+        MATRIX_LIB: ARMADILLO
+      - BUILD_TYPE: RELEASE
+        MATRIX_LIB: BLAZE
+  script:
+    - export PATH="$SCLS/bin:$PATH"
+    - export LD_LIBRARY_PATH="$SCLS/lib64:$SCLS/lib:${LD_LIBRARY_PATH:-}"
+    - gcc --version | head -1
+    # BUILD_TYPE -> USE_DEBUG ; MATRIX_LIB -> the two mutually-exclusive backend flags
+    - if [ "$BUILD_TYPE" = "DEBUG" ]; then USE_DEBUG=ON; else USE_DEBUG=OFF; fi
+    - if [ "$MATRIX_LIB" = "ARMADILLO" ]; then ARMA=ON; BLAZE=OFF; else ARMA=OFF; BLAZE=ON; fi
+    - echo "config -- build=$BUILD_TYPE (USE_DEBUG=$USE_DEBUG) backend=$MATRIX_LIB"
+    - rm -rf build
+    - mkdir build
+    - cd build
+    - cmake .. -DUSE_TEST=ON -DUSE_DEBUG=$USE_DEBUG -DUSE_MATRIX_ARMADILLO=$ARMA -DUSE_MATRIX_BLAZE=$BLAZE
+    - make -j2 check
+  after_script:
+    # Preserve the ctest logs so a failing run can be inspected from the job page.
+    # parallel:matrix already gives each job a distinct name, so the per-job
+    # artifacts do not collide.
+    - cp -r build/Testing "$CI_PROJECT_DIR/ctest-logs" 2>/dev/null || true
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths:
+      - ctest-logs/

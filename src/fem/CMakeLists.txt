@@ -1,0 +1,8 @@
+add_subdirectory( interpolation )
+add_subdirectory( iwg )
+if( USE_MAXWELL )
+    add_subdirectory( maxwell )
+endif()
+add_subdirectory( thermal )
+add_subdirectory( kernel )
+add_subdirectory( postproc )

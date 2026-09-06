@@ -1,0 +1,167 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+
+# -----------------------------------------------------------------------------
+# Configuration
+# -----------------------------------------------------------------------------
+
+# Prefer the LLDB bundled with CLion, if available.
+CLION_LLDB="$HOME/Applications/clion/bin/lldb/linux/x64/bin/lldb"
+
+
+# -----------------------------------------------------------------------------
+# Select debugger
+# -----------------------------------------------------------------------------
+
+if [[ -x "$CLION_LLDB" ]]; then
+
+    DEBUGGER="$CLION_LLDB"
+    DEBUGGER_TYPE="lldb"
+
+elif command -v lldb >/dev/null 2>&1; then
+
+    DEBUGGER="$(command -v lldb)"
+    DEBUGGER_TYPE="lldb"
+
+elif command -v gdb >/dev/null 2>&1; then
+
+    DEBUGGER="$(command -v gdb)"
+    DEBUGGER_TYPE="gdb"
+
+else
+
+    echo "Error: neither LLDB nor GDB could be found." >&2
+    exit 1
+
+fi
+
+echo "Using $DEBUGGER_TYPE: $DEBUGGER"
+
+
+# -----------------------------------------------------------------------------
+# Command-line arguments
+# -----------------------------------------------------------------------------
+
+if (( $# < 2 )); then
+    echo "Usage: $0 <number_of_processes> <executable> [executable_args...]"
+    exit 1
+fi
+
+NUM_PROCESSES=$1
+EXECUTABLE=$2
+shift 2
+
+
+# -----------------------------------------------------------------------------
+# Helper
+# -----------------------------------------------------------------------------
+
+# Quote an argument for use in the debugger command file.
+debugger_quote()
+{
+    local arg=$1
+
+    arg=${arg//\\/\\\\}
+    arg=${arg//\"/\\\"}
+
+    printf '"%s"' "$arg"
+}
+
+
+# -----------------------------------------------------------------------------
+# Create debugger command file
+# -----------------------------------------------------------------------------
+
+case "$DEBUGGER_TYPE" in
+
+    lldb)
+
+        DEBUG_COMMANDS="Debug.cmds"
+
+        {
+            # Load executable.
+            printf 'target create '
+            debugger_quote "$EXECUTABLE"
+            printf '\n'
+
+            # Launch executable with arguments.
+            printf 'process launch --'
+
+            for arg in "$@"; do
+                printf ' '
+                debugger_quote "$arg"
+            done
+
+            printf '\n'
+
+            # Print stack trace after the process stops.
+            printf 'bt\n'
+
+        } > "$DEBUG_COMMANDS"
+        ;;
+
+
+    gdb)
+
+        DEBUG_COMMANDS="Debug.cmds"
+
+        {
+            # Load executable.
+            printf 'file '
+            debugger_quote "$EXECUTABLE"
+            printf '\n'
+
+            # Set command-line arguments.
+            if (( $# > 0 )); then
+
+                printf 'set args'
+
+                for arg in "$@"; do
+                    printf ' '
+                    debugger_quote "$arg"
+                done
+
+                printf '\n'
+
+            fi
+
+            # Start executable.
+            printf 'run\n'
+
+            # Print stack trace after the process stops.
+            printf 'bt\n'
+
+        } > "$DEBUG_COMMANDS"
+        ;;
+
+esac
+
+
+# -----------------------------------------------------------------------------
+# Launch one debugger per MPI rank
+# -----------------------------------------------------------------------------
+
+case "$DEBUGGER_TYPE" in
+
+    lldb)
+        DEBUGGER_COMMAND="\"$DEBUGGER\" -s \"$DEBUG_COMMANDS\""
+        ;;
+
+    gdb)
+        DEBUGGER_COMMAND="\"$DEBUGGER\" -x \"$DEBUG_COMMANDS\""
+        ;;
+
+esac
+
+
+mpirun -n "$NUM_PROCESSES" \
+    xfce4-terminal \
+        --geometry=80x60 \
+        --color-text='#00ff00' \
+        --color-bg='#000000' \
+        --hide-menubar \
+        -e "/bin/bash -c \
+            'printf \"\033]0;Debugger Rank %s\007\" \"\$OMPI_COMM_WORLD_RANK\"; \
+             $DEBUGGER_COMMAND'"

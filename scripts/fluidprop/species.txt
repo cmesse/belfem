@@ -1,0 +1,116 @@
+# Species carried in the BELFEM fluid property tables.
+#
+# Chosen to cover three cases:
+#   1. high enthalpy air, including the ionised species
+#   2. combustion of hydrogen and methane
+#   3. cooling fluids relevant to space applications
+#
+# One label per line, using the CEA spelling. Lines starting with # are ignored.
+# A species absent from the vendor file is reported rather than skipped silently.
+
+# --- air, neutral ---
+N2
+O2
+Ar
+CO2
+Ne
+NO
+CO
+O3
+N2O
+NO2
+
+# --- air, ionised. High enthalpy flow dissociates and ionises, and these carry
+# --- no transport data upstream, which is expected rather than an omission.
+e-
+Ar+
+C
+C-
+C+
+CO+
+CO2+
+N
+N-
+N+
+N2-
+N2+
+N2O+
+Ne+
+NO+
+NO2-
+O
+O-
+O+
+O2-
+O2+
+
+# --- hydrogen and its combustion products ---
+H2
+H
+OH
+H2O
+HO2
+H2O2
+HNO
+
+# --- methane and its combustion products ---
+CH2
+CH3
+CH4
+HCO
+CH2O
+CH3O
+C2H3
+C2H4
+C2H5
+C2H6
+CH3O2
+
+# --- deuterium, for fusion fuel handling and dissociated flow ---
+# D2 and D2O are ordinary fluids with their own reference data. D and OD are an
+# atom and a radical: no fluid database carries them, and neither does CEA, so
+# their transport is derived from H and OH by isotope scaling. See build_tables.py.
+D2
+D
+D+
+D-
+D2+
+D2-
+HD
+OD
+D2O
+
+# --- coolants and other fluids ---
+He
+NH3
+CH3OH
+C3H6O,acetone
+
+# --- noble gases ---
+# Krypton and xenon are trace constituents of air, and the default composition in
+# Gas::Gas() names both. Without them a default constructed Gas cannot be built.
+Kr
+Xe
+
+# --- propellant decomposition ---
+# Hydrazine. Carries critical constants, so it reaches the cubic equations of state.
+N2H4
+
+# --- parser coverage ---
+# These earn their place by shape rather than by use. A composition line holds up to
+# five element/count pairs, and no species above fills more than three: BrF3 has two
+# elements with a high multiplicity, and the two halons have four each. They keep the
+# fixed column reader under test on records the rest of the table never produces.
+BrF3
+CF2ClBr
+CH2Cl2
+
+# --- reference elements for the formation table. Gas::create_reference_gases
+# --- anchors formation enthalpies on the standard state of each element; for
+# --- the elements above that is the molecule gas itself, except carbon
+# --- ( graphite ) and bromine ( liquid, which is the CEA reference state at
+# --- 298.15 K ). Cl2 covers the chlorinated species. Condensed records carry
+# --- no transport data and get no generated interval, which is expected.
+C(gr)
+Cl2
+Br2(L)

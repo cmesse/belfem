@@ -1,0 +1,88 @@
+# ── Dot files and directories ─────────────────────────────────────────────────
+.DS_Store
+
+# Ignore all dot-prefixed directories by default …
+.*/
+
+# … then re-include .claude/ wholesale (commands, hooks, scripts are all
+# version-controlled) and blacklist only the machine-local state.
+!.claude/   
+.claude/settings.local.json
+.claude/*.lock
+# Machine-local Claude Code state. These used to live only in .git/info/exclude,
+# which does not survive a repository re-initialization; keep them here.
+.claude/worktrees/
+.claude/checkpoints/
+.claude/mailbox/
+.claude/routines/.state/
+.claude/scheduled_tasks.json
+.claude/scheduled_tasks.lock
+.claude/agent-registry.json
+.claude/agent-memory-local
+.claude/assistant-daemon-state.json
+.claude/first-run
+# hook bookmark for the ai_exchange delta reader (per machine)
+.claude/ai_exchange_pos.txt
+
+.codex
+
+# ── Non-public modules and external trees ─────────────────────────────────────
+nonfree/
+archive/
+literature/
+tmp/
+
+# AI-only, ephemeral per-task exchange scratch — must never be committed.
+# (Covered by tmp/ above; kept explicit so it survives any future narrowing of that rule.)
+tmp/ai_exchange/
+
+# sometimes created in this directory
+octave-workspace
+
+# ── Build artifacts ────────────────────────────────────────────────────────────
+build/
+cmake-build/
+cmake-build-*/
+# auto-generated version header (also lives inside the build dir above)
+belfem_version.hpp
+
+# ── C/C++ object and library files ────────────────────────────────────────────
+*.d
+*.slo
+*.lo
+*.o
+*.obj
+*.gch
+*.pch
+*.so
+*.dylib
+*.dll
+*.mod
+*.smod
+*.lai
+*.la
+*.a
+*.lib
+*.exe
+*.out
+*.app
+*.log
+
+# results
+*.vtk
+*.e-s.*
+*.msh
+*.bfm
+
+# … except the per-element-type gmsh fixtures, which are part of the tree
+!more/gmsh/*.msh
+
+# profiler dumps, patch leftovers
+perf.data
+perf.data.old
+*.rej
+*.orig
+
+# python tooling
+__pycache__/
+*.pyc

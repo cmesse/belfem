@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+#
+# BELFEM example cleaner — shared by every deck in examples/.
+#
+# Removes what a run produces, and NOTHING a user authored: input.conf,
+# run.conf, the .geo and any hand-written material files stay.
+#
+# Usage, from a deck directory:
+#     ./Allclean            remove run output
+#     ./Allclean --mesh     also remove the generated .msh ( kept by default:
+#                           meshing a 3D deck can take minutes )
+
+set -u
+
+REMOVE_MESH=false
+for arg in "$@"; do
+    case "$arg" in
+        --mesh) REMOVE_MESH=true ;;
+        -h|--help) sed -n '2,12p' "${BASH_SOURCE[0]}" | sed 's:^# \?::'; exit 0 ;;
+        *) echo "Unknown option: $arg" >&2; exit 1 ;;
+    esac
+done
+
+# exodus / results
+rm -vf ./*.exo ./*.e-s.* ./*.csv
+
+# cached processed mesh, restart dump, logs
+rm -vf ./*.bfm memdump.hdf5 belfem.log out.txt err.txt
+
+# circuit outputs ( missed by the per-deck cleaners )
+rm -vf CircuitResults.txt
+
+# slurm
+rm -vf slurm-*.out slurm-*.err
+
+if $REMOVE_MESH; then
+    # only meshes that have a .geo beside them: a deck shipping a mesh
+    # WITHOUT its geometry cannot regenerate it, so that one is a source
+    # file, not output
+    for geo in ./*.geo; do
+        [ -e "$geo" ] || continue
+        rm -vf "${geo%.geo}.msh"
+    done
+fi

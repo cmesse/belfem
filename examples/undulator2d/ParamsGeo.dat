@@ -1,0 +1,36 @@
+// Gregory Giard 07/19/2023
+// Undulator benchmark geometric parameters
+
+m = 1;
+cm = 10^-2;
+mm = 10^-3;
+um = 10^-6;
+
+air_r = 100*mm; //air radius
+core_h = 20*mm; //core height
+pole_h = 2.35*mm; //pole/groove height
+pole_w = 3.15*mm; //pole width
+groove_w = 4.4*mm; //groove width
+n_tapes_int = 30; //number of tapes in interior grooves
+n_tapes_ext = 30; //number of tapes in exterior grooves
+n_groove = 6; //number of grooves (quarter geometry, must be even)
+n_coils = n_tapes_int*(n_groove-2) + n_tapes_ext*2;
+gap = 5*mm; //gap between top and bottom region
+G10_h = 0*mm; //offset of the tapes inside groove
+tape_w = 4*mm; //tape width;
+tape_h = 30*um; //tape height (for physic, not the geometry);
+tape_space_int = (pole_h-G10_h)/(n_tapes_int); //space between tapes
+tape_space_ext = (pole_h-G10_h)/(n_tapes_ext); //space between tapes
+
+// domain mesh size
+e = 5*mm ;
+sf_sc = tape_w/200;
+sf_sc_center = tape_w/20;
+sf_core = 1*mm;
+
+
+
+
+
+
+

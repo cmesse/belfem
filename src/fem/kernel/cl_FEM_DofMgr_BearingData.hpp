@@ -1,0 +1,107 @@
+/*
+ * BELFEM -- The Berkeley Lab Finite Element Framework
+ * Copyright (c) 2026, The Regents of the University of California,
+ * through Lawrence Berkeley National Laboratory (subject to receipt of any required
+ * approvals from the U.S. Dept. of Energy).  All rights reserved.
+ *
+ * Developers: Christian Messe, Gregory Giard
+ *
+ * See the top-level LICENSE file for the complete license and disclaimer.
+ */
+
+#ifndef BELFEM_CL_FEM_DOFMGR_BEARINGDATA_HPP
+#define BELFEM_CL_FEM_DOFMGR_BEARINGDATA_HPP
+
+#include "typedefs.hpp"
+#include "cl_Cell.hpp"
+#include "cl_Map.hpp"
+#include "cl_Vector.hpp"
+#include "cl_IWG.hpp"
+
+namespace belfem
+{
+    class Mesh;
+
+    namespace fem
+    {
+        class Bearing;
+
+        class Kernel;
+
+        class DofManager;
+
+        namespace dofmgr
+        {
+            class BearingData
+            {
+                //! the parent object
+                DofManager * mParent;
+
+                //! the kernel
+                Kernel * mKernel;
+
+                //! the mesh this problem runs on
+                Mesh * mMesh;
+
+                // my rank
+                const proc_t mCommRank;
+
+                Cell< Bearing * > mBearings;
+
+                Bearing * mEmptyBearing = nullptr;
+
+                Map< id_t, Bearing * > mBearingMap;
+
+//------------------------------------------------------------------------------
+            public:
+//------------------------------------------------------------------------------
+
+                BearingData( DofManager * aParent );
+
+//------------------------------------------------------------------------------
+
+                ~BearingData();
+
+//------------------------------------------------------------------------------
+
+                //! called by dof manager
+                void
+                create_bearings();
+
+//------------------------------------------------------------------------------
+
+                /**
+                 * return one specific bearing
+                 */
+                 Bearing *
+                 bearing( const id_t aID );
+
+//------------------------------------------------------------------------------
+
+                void
+                reset();
+
+//------------------------------------------------------------------------------
+            };
+
+//------------------------------------------------------------------------------
+
+            inline Bearing *
+            BearingData::bearing( const id_t aID )
+            {
+                if ( mBearingMap.key_exists( aID ) )
+                {
+                    return mBearingMap( aID );
+                }
+                else
+                {
+                    return mEmptyBearing ;
+                }
+            }
+
+//-----------------------------------------------------------------------------
+        } /* end namespace dofmgr */
+    } /* end namespace fem */
+} /* end namespace belfem */
+
+#endif //BELFEM_CL_FEM_DOFMGR_BEARINGDATA_HPP

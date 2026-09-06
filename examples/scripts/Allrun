@@ -1,0 +1,475 @@
+#!/usr/bin/env bash
+#
+# BELFEM example launcher — shared by every deck in examples/.
+#
+# Usage, from a deck directory:
+#     ./Allrun              run locally
+#     ./Allrun --slurm      submit to Slurm, then run under it
+#     ./Allrun --dry-run    print the plan and exit, touching nothing
+#
+# Every default below can be overridden by a `run.conf` in the deck
+# directory, as KEY=value lines ( see the whitelist in read_run_conf ).
+# run.conf is PARSED, not sourced: a shipped example must not execute
+# arbitrary shell before it has even printed what it intends to do.
+#
+# See doc/parallel_execution.md for the rank/thread policy this encodes.
+
+set -u -o pipefail
+
+# -----------------------------------------------------------------------------
+# defaults ( run.conf overrides only what it sets )
+# -----------------------------------------------------------------------------
+
+MPIRUN=mpirun
+GMSH=gmsh
+EXECUTABLE=                 # empty = belfem, which reads the mode from input.conf
+LOGFILE=belfem.log
+NTHREADS=2                  # OpenMP threads per rank; see the policy note below
+NRANKS=                     # empty = derive from the physical core count
+RANK_POLICY=even            # even | power2 | fixed ( fixed uses NRANKS verbatim )
+EXTRA_ARGS=                 # e.g. -v
+MESH_BEFORE_SUBMIT=true     # generate the mesh on the login node, not in the job
+
+BELFEM_SLURM_PARTITION=lr4
+BELFEM_SLURM_ACCOUNT=ac_magnet
+BELFEM_SLURM_QOS=lr_normal
+BELFEM_SLURM_WALLTIME=01:00:00
+BELFEM_SLURM_NODES=1
+BELFEM_SLURM_CORES_PER_NODE=24
+BELFEM_SLURM_ACTIVATE=/global/home/groups-sw/ac_magnet/scls/share/scls/activate.sh
+BELFEM_SLURM_BIN=/global/home/groups-sw/ac_magnet/belfem/bin
+
+# NOTE on the variable names: everything Slurm-related is BELFEM_SLURM_*,
+# never bare SLURM_* ( Slurm populates that namespace inside the job and we
+# re-exec into it ) and never SBATCH_* ( those silently override sbatch
+# options ).
+
+SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+# -----------------------------------------------------------------------------
+# run.conf
+# -----------------------------------------------------------------------------
+
+read_run_conf()
+{
+    [ -f run.conf ] || return 0
+
+    local key value line
+    while IFS= read -r line || [ -n "$line" ]; do
+        line=${line%%#*}                                  # strip comments
+        line=$( printf '%s' "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' )
+        [ -z "$line" ] && continue
+
+        key=${line%%=*}
+        value=${line#*=}
+        key=$( printf '%s' "$key" | sed 's/[[:space:]]*$//' )
+        value=$( printf '%s' "$value" | sed 's/^[[:space:]]*//;s/^"//;s/"$//' )
+
+        case "$key" in
+            MESH_BEFORE_SUBMIT)
+                case "$value" in
+                    true|false) printf -v "$key" '%s' "$value" ;;
+                    *) echo "run.conf: MESH_BEFORE_SUBMIT must be true or false," \
+                            "got '$value'" >&2; exit 1 ;;
+                esac
+                ;;
+            NTHREADS|NRANKS)
+                case "$value" in
+                    ''|*[!0-9]*) echo "run.conf: $key must be a number, got '$value'" >&2
+                                 exit 1 ;;
+                    *) printf -v "$key" '%s' "$value" ;;
+                esac
+                ;;
+            MPIRUN|GMSH|EXECUTABLE|LOGFILE|RANK_POLICY|\
+            EXTRA_ARGS|\
+            BELFEM_SLURM_PARTITION|BELFEM_SLURM_ACCOUNT|BELFEM_SLURM_QOS|\
+            BELFEM_SLURM_WALLTIME|BELFEM_SLURM_NODES|BELFEM_SLURM_CORES_PER_NODE|\
+            BELFEM_SLURM_BIN)
+                printf -v "$key" '%s' "$value"
+                ;;
+            BELFEM_SLURM_ACTIVATE)
+                # DELIBERATELY NOT settable from a deck: this path is SOURCED
+                # inside the allocation, so honouring it here would reopen the
+                # arbitrary-shell hole that parsing run.conf exists to close.
+                echo "run.conf: BELFEM_SLURM_ACTIVATE is not deck-settable" \
+                     "( it is sourced ); set it in the shared script." >&2
+                ;;
+            *)
+                echo "run.conf: ignoring unknown key '$key'" >&2
+                ;;
+        esac
+    done < run.conf
+}
+
+# -----------------------------------------------------------------------------
+# which executable does this deck need?
+# -----------------------------------------------------------------------------
+
+pick_executable()
+{
+    [ -n "$EXECUTABLE" ] && return 0
+
+    # `belfem` reads the deck and selects the physics itself: an unlabeled
+    # `linear thermal` or `nonlinear thermal` solver section requests the
+    # coupled h-phi/T problem, otherwise it runs magnetic-only, announcing
+    # the choice at startup. The launcher therefore no longer discriminates.
+    # EXECUTABLE= in run.conf still overrides this, but hphirun / hphiTrun are
+    # no longer built ( their Add_Executable blocks are commented out in
+    # src/executables/CMakeLists.txt ), so pointing it at either finds nothing.
+    #
+    # A circuit{} section is not a hint either: decks with one are ordinary
+    # belfem runs ( magnetic-only or coupled, as the deck decides ) whose
+    # section is consumed by ElectricalCircuitFactory inside belfem.
+    EXECUTABLE=belfem
+}
+
+# -----------------------------------------------------------------------------
+# ranks and threads
+# -----------------------------------------------------------------------------
+
+physical_cores()
+{
+    case "$( uname -s )" in
+        Linux)  lscpu -p=CORE,SOCKET | grep -v '^#' | sort -u | wc -l ;;
+        Darwin) sysctl -n hw.physicalcpu ;;
+        *)      echo "Unsupported operating system: $( uname -s )" >&2; return 1 ;;
+    esac
+}
+
+# Rank policy. Assembly is serial per rank and is ~75% of a step, so ranks
+# are what buys throughput; the factorization is already saturated by its
+# threads and barely cares. Hence: fill the machine, but keep the rank count
+# EVEN.
+#
+# WHY even: STRUMPACK maps subtrees of the elimination tree onto ranks in
+# proportion to their estimated WORK ( ProportionalMapping ), not by
+# bisecting the communicator. With an odd rank count the top-level split
+# cannot come out balanced -- measured at 5 ranks, the sibling groups ran
+# at 127.7 vs 185.4 GFLOP/s and the faster side waited. An even count does
+# not GUARANTEE balance ( uneven work can still split 3-vs-5 on 8 ranks ),
+# it only removes the case where imbalance is forced.
+#
+# power2 is available for factorization-dominated runs but is NOT the
+# default: on a 24-core node it would idle 8 cores to help the phase that
+# does not scale.
+# derive_ranks_for <cores>: prints the rank count for that many cores.
+# Pure: no globals written, so both the local and the Slurm path can use it.
+derive_ranks_for()
+{
+    local cores=$1 avail
+    avail=$(( cores / NTHREADS ))
+    [ "$avail" -lt 1 ] && avail=1
+
+    local n
+    case "$RANK_POLICY" in
+        fixed)
+            [ -n "$NRANKS" ] || { echo "RANK_POLICY=fixed needs NRANKS" >&2; return 1; }
+            n=$NRANKS
+            ;;
+        power2)
+            local p=1
+            while [ $(( p * 2 )) -le "$avail" ]; do p=$(( p * 2 )); done
+            n=$p
+            ;;
+        even)
+            n=$(( 2 * (avail / 2) ))
+            [ "$n" -lt 1 ] && n=1
+            ;;
+        *)
+            echo "Unknown RANK_POLICY '$RANK_POLICY' ( even | power2 | fixed )" >&2
+            return 1
+            ;;
+    esac
+
+    if [ $(( n * NTHREADS )) -gt "$cores" ]; then
+        echo "Refusing to oversubscribe: ${n} ranks x ${NTHREADS} threads" \
+             "exceeds ${cores} physical cores. See doc/parallel_execution.md." >&2
+        return 1
+    fi
+    printf '%s' "$n"
+}
+
+derive_ranks()
+{
+    local cores
+    cores=$( physical_cores ) || exit 1
+    NRANKS=$( derive_ranks_for "$cores" ) || exit 1
+}
+
+# -----------------------------------------------------------------------------
+# mesh
+# -----------------------------------------------------------------------------
+
+mesh_file()
+{
+    # Anchored to the mesh{} block: other sections carry `file` keys too
+    # ( material databases, defect tables ), so a bare grep for 'file' or
+    # 'msh' is a coincidence waiting to break.
+    sed 's://.*::' input.conf \
+    | awk '
+        /^[[:space:]]*mesh[[:space:]]*$/ { inblock = 1; next }
+        inblock && /\{/                  { depth++;      next }
+        inblock && /\}/                  { exit }
+        inblock && /^[[:space:]]*file[[:space:]]*:/ {
+            sub( /^[^:]*:/, "" ); sub( /;.*$/, "" )
+            gsub( /^[[:space:]]+|[[:space:]]+$/, "" )
+            print; exit
+        }'
+}
+
+# A deck that builds its mesh in Python rather than gmsh. Only main.py is
+# recognised, and only one level down: guessing more widely would name an
+# unrelated helper script as the thing to run.
+mesh_generator()
+{
+    local candidate
+    for candidate in ./main.py ./*/main.py; do
+        [ -f "$candidate" ] && { echo "$candidate"; return 0; }
+    done
+    return 1
+}
+
+ensure_mesh()
+{
+    local msh geo
+    msh=$( mesh_file )
+
+    if [ -z "$msh" ]; then
+        echo "Could not read the mesh file name from the mesh{} block of input.conf." >&2
+        exit 1
+    fi
+    [ -f "$msh" ] && return 0
+
+    # gmsh is only ONE way a deck gets its mesh, and the launcher must not
+    # assume it. corc_solder builds its cable in python/main.py -- there is no
+    # .geo to mesh and never will be -- so a missing .geo is not necessarily a
+    # broken deck, and saying "its geometry is not present" sends the reader
+    # looking for a file that was never meant to exist. Name the generator the
+    # deck actually ships instead.
+    geo="${msh%.*}.geo"
+    if [ ! -f "$geo" ]; then
+        local gen
+        gen=$( mesh_generator )
+        if [ -n "$gen" ]; then
+            echo "The mesh '$msh' is not there, and this deck has no '$geo'." >&2
+            echo "It generates its mesh with a script -- run it first:" >&2
+            echo "    ( cd $( dirname "$gen" ) && python3 $( basename "$gen" ) )" >&2
+        else
+            echo "Neither the mesh '$msh' nor its geometry '$geo' is present," >&2
+            echo "and this deck ships no mesh generator script." >&2
+        fi
+        exit 1
+    fi
+
+    # Always -3, and there is no deck knob for it. gmsh meshes dimension by
+    # dimension UP TO the number given, so on a geometry that declares no
+    # volume the 3D pass finds nothing and exits -- measured at 31 microseconds
+    # on 2D_tapestack.geo, with output byte-identical to `gmsh -2`. The old
+    # NDIMS key could therefore only do harm: the value it existed to set was a
+    # no-op, while the opposite mistake ( -2 on a 3D deck ) writes a .msh with
+    # every tetrahedron missing and exits 0 -- helix.geo gives 26084 triangles
+    # and no tets -- which sails straight past the check below and reaches the
+    # solver as a surface-only mesh.
+    echo "Generating mesh '$msh' from '$geo'..."
+    "$GMSH" -3 "$geo" || exit 1
+
+    if [ ! -f "$msh" ]; then
+        echo "gmsh did not produce '$msh' from '$geo'." >&2
+        exit 1
+    fi
+}
+
+# -----------------------------------------------------------------------------
+# main
+# -----------------------------------------------------------------------------
+
+USE_SLURM=false
+DRY_RUN=false
+
+for arg in "$@"; do
+    case "$arg" in
+        --slurm)   USE_SLURM=true ;;
+        --dry-run) DRY_RUN=true ;;
+        -h|--help)
+            sed -n '2,14p' "${BASH_SOURCE[0]}" | sed 's:^# \?::'
+            exit 0 ;;
+        *) echo "Unknown option: $arg" >&2; exit 1 ;;
+    esac
+done
+
+[ -f input.conf ] || { echo "No input.conf in $( pwd )." >&2; exit 1; }
+
+read_run_conf
+pick_executable
+
+if $USE_SLURM && [ -n "${SLURM_JOB_ID:-}" ]; then
+    # running INSIDE the allocation: Slurm is the source of truth
+    source "$BELFEM_SLURM_ACTIVATE"
+    export PATH="$BELFEM_SLURM_BIN:$PATH"
+    # Slurm does not always export SLURM_CPUS_PER_TASK ( it is absent unless
+    # --cpus-per-task was given ); fall back to our own value rather than
+    # aborting under set -u
+    NTHREADS="${SLURM_CPUS_PER_TASK:-$NTHREADS}"
+    NRANKS="${SLURM_NTASKS:-$NRANKS}"
+    if [ -z "$NRANKS" ] || [ -z "$NTHREADS" ]; then
+        echo "Running under Slurm but neither SLURM_NTASKS/SLURM_CPUS_PER_TASK" \
+             "nor local defaults give a rank/thread count." >&2
+        exit 1
+    fi
+    # The allocation is not automatically sane: `salloc` without --ntasks
+    # hands back SLURM_NTASKS=1, which would silently serialise a whole
+    # node, and a site could export a rank count that oversubscribes the
+    # cores it gave us. Say something in both directions -- but do not
+    # refuse, because inside an allocation Slurm is the authority.
+    slurm_cores=${SLURM_CPUS_ON_NODE:-0}
+    if [ "$slurm_cores" -gt 0 ] \
+       && [ $(( NRANKS * NTHREADS )) -gt $(( slurm_cores * ${SLURM_JOB_NUM_NODES:-1} )) ]
+    then
+        echo "WARNING: ${NRANKS} ranks x ${NTHREADS} threads exceeds the" \
+             "$(( slurm_cores * ${SLURM_JOB_NUM_NODES:-1} )) cores in this allocation." >&2
+    fi
+    if [ "$NRANKS" -eq 1 ] && [ "$slurm_cores" -gt "$NTHREADS" ]; then
+        echo "NOTE: running 1 rank in an allocation of $slurm_cores cores per node." \
+             "Did you mean sbatch --ntasks, or ./Allrun --slurm from outside?" >&2
+    fi
+elif $USE_SLURM; then
+    if [ $(( BELFEM_SLURM_CORES_PER_NODE % NTHREADS )) -ne 0 ]; then
+        echo "NTHREADS=$NTHREADS does not divide the" \
+             "$BELFEM_SLURM_CORES_PER_NODE cores of a node." >&2
+        exit 1
+    fi
+    # RANK_POLICY applies here too: deriving ranks-per-node as a plain
+    # cores/threads division would silently submit an odd rank count
+    # ( 24 cores / 8 threads = 3 ), which is exactly what the policy exists
+    # to avoid. derive_ranks() works on a core count, so feed it the node's.
+    RANKS_PER_NODE=$( NTHREADS="$NTHREADS" RANK_POLICY="$RANK_POLICY" \
+                      NRANKS="$NRANKS" \
+                      derive_ranks_for "$BELFEM_SLURM_CORES_PER_NODE" ) || exit 1
+    NRANKS=$(( BELFEM_SLURM_NODES * RANKS_PER_NODE ))
+else
+    derive_ranks
+fi
+
+# an existing dump means the next run WARM STARTS -- say so, because a
+# forgotten memdump silently changes what the run is
+if [ -f memdump.hdf5 ]; then
+    echo "NOTE: memdump.hdf5 is present -- this run will WARM START from it."
+    echo "      Delete it for a run from t = 0."
+fi
+
+if $DRY_RUN; then
+    echo "deck        : $( pwd )"
+    echo "executable  : $EXECUTABLE $EXTRA_ARGS"
+    echo "mesh        : $( mesh_file )"
+    echo "ranks       : $NRANKS x $NTHREADS threads   ( policy: $RANK_POLICY )"
+    echo "slurm       : $USE_SLURM"
+    echo "logfile     : $LOGFILE"
+    exit 0
+fi
+
+# submit, then re-enter this script inside the allocation
+if $USE_SLURM && [ -z "${SLURM_JOB_ID:-}" ]; then
+    # string test, not command execution: MESH_BEFORE_SUBMIT is deck data
+    [ "$MESH_BEFORE_SUBMIT" = true ] && ensure_mesh
+
+    echo "Submitting to Slurm: $BELFEM_SLURM_NODES node(s)," \
+         "$NRANKS ranks x $NTHREADS threads"
+    sbatch \
+        --job-name=belfem \
+        --partition="$BELFEM_SLURM_PARTITION" \
+        --account="$BELFEM_SLURM_ACCOUNT" \
+        --qos="$BELFEM_SLURM_QOS" \
+        --nodes="$BELFEM_SLURM_NODES" \
+        --ntasks="$NRANKS" \
+        --ntasks-per-node="$RANKS_PER_NODE" \
+        --cpus-per-task="$NTHREADS" \
+        --time="$BELFEM_SLURM_WALLTIME" \
+        --output="slurm-%j.out" \
+        --error="slurm-%j.err" \
+        --chdir="$PWD" \
+        "$SCRIPT_DIR/Allrun" --slurm
+    exit $?
+fi
+
+ensure_mesh
+
+export OMP_NUM_THREADS="$NTHREADS"
+: "${MALLOC_ARENA_MAX:=2}"          # see doc/parallel_execution.md
+export MALLOC_ARENA_MAX
+
+# BELFEM mixes std::cout with fprintf(stdout); through a pipe that is fully
+# buffered and the log looks frozen. stdbuf fixes it where available.
+# NOTE the empty-string element rather than an empty array: stock macOS ships
+# Bash 3.2, where "${arr[@]}" on an EMPTY array aborts under set -u. Using a
+# single empty element keeps the expansion legal on every shell, and the
+# command below is invoked via a helper that drops it.
+if command -v stdbuf > /dev/null 2>&1; then
+    LINEBUF=( stdbuf -oL )
+else
+    LINEBUF=( )
+    echo "NOTE: stdbuf not found -- $LOGFILE will update in blocks, not lines."
+fi
+
+# stdbuf above only fixes the LINE-oriented output. The progress bar redraws
+# in place with '\r' and never writes a newline, so line buffering cannot help
+# it: Open MPI holds the child's stdout in its I/O forwarder and releases it
+# when the job ends, so the bar appears as a finished 100% bar and nothing
+# before it. --stream-buffering 0 turns that off.
+#
+# Measured on Open MPI 5.0.10, a 40-frame bar: without the flag it is
+# delivered in ONE chunk at exit, with it in ~90. Note it has to be the
+# COMMAND LINE option -- exporting the MCA variable it sets in the child
+# ( OMPI_MCA_ompi_stream_buffering=0 ) reaches the rank but does NOT stream,
+# so the flag evidently also carries a forwarder-side setting.
+#
+# The probe is '--version', not a real launch: it validates the option and
+# exits without spawning ranks ( ~4 ms, and safe inside an allocation ).
+# srun has no equivalent, so the Slurm path below does not get it.
+STREAM_BUFFERING=
+if ! $USE_SLURM; then
+    if "$MPIRUN" --stream-buffering 0 --version > /dev/null 2>&1; then
+        STREAM_BUFFERING="--stream-buffering 0"
+    else
+        echo "NOTE: $MPIRUN does not accept --stream-buffering;" \
+             "the progress bar will arrive in bursts."
+    fi
+fi
+
+# run_solver <launcher...> -- keeps the LINEBUF expansion out of the pipeline
+# so an empty array never reaches a Bash 3.2 set -u expansion
+run_solver()
+{
+    if [ ${#LINEBUF[@]} -gt 0 ]; then
+        "$@" "${LINEBUF[@]}" "$EXECUTABLE" $EXTRA_ARGS
+    else
+        "$@" "$EXECUTABLE" $EXTRA_ARGS
+    fi
+}
+
+echo "Running $EXECUTABLE: $NRANKS rank(s) x $NTHREADS thread(s)"
+
+if $USE_SLURM; then
+    run_solver srun --mpi=pmix -n "$NRANKS" 2>&1 | tee "$LOGFILE"
+else
+    run_solver "$MPIRUN" $STREAM_BUFFERING -np "$NRANKS" 2>&1 | tee "$LOGFILE"
+fi
+
+# pipefail is set at the top: without it, tee's success would mask a solver
+# abort, an MPI failure or an OOM kill -- and a Slurm job would be recorded
+# as completed
+# PIPESTATUS[0] is the solver's status; [1] is tee's. A tee failure ( full
+# disk, unwritable log ) must not pass silently either, but the solver's
+# status is the one that decides the exit code.
+#
+# COPY THE WHOLE ARRAY FIRST. Bash rewrites PIPESTATUS after every command,
+# and a plain assignment is a command: reading [0] into a variable leaves a
+# one-element PIPESTATUS behind, so a following ${PIPESTATUS[1]} is unbound
+# and set -u kills the script here -- taking the exit below with it, which
+# is precisely the masked-failure case the comment above is about.
+pipe_status=( "${PIPESTATUS[@]}" )
+status=${pipe_status[0]}
+tee_status=${pipe_status[1]:-0}
+[ "$tee_status" -ne 0 ] && echo "warning: tee failed writing '$LOGFILE'" \
+                                "( status $tee_status ) -- the log may be incomplete" >&2
+[ "$status" -ne 0 ] && echo "$EXECUTABLE exited with status $status" >&2
+exit "$status"

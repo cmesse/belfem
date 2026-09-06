@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: >-
+  If you use BELFEM in academic work, please cite the paper below
+  (preferred-citation). The DOI record carries the complete author list.
+type: software
+title: "BELFEM: Berkeley Lab Finite Element Framework"
+abstract: >-
+  A special-purpose C++17 finite element framework for high-performance
+  computing, focused on the magnetodynamic modeling of high-temperature
+  superconductors: h-phi formulation with thin-shell elements, automatically
+  generated cohomology cuts, coupled thermal and lumped-circuit physics, and
+  MPI-parallel sparse direct solvers.
+authors:
+  - family-names: Messe
+    given-names: Christian
+    affiliation: Lawrence Berkeley National Laboratory
+version: 0.9.0
+date-released: "2026-09-04"
+preferred-citation:
+  type: article
+  title: >-
+    BELFEM: a special purpose finite element code for the magnetodynamic
+    modeling of high-temperature superconductor tapes
+  authors:
+    - family-names: Messe
+      given-names: Christian
+      affiliation: Lawrence Berkeley National Laboratory
+  journal: Superconductor Science and Technology
+  year: 2023
+  doi: 10.1088/1361-6668/acf7f9

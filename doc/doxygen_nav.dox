@@ -1,0 +1,356 @@
+/*
+ * Doxygen page hierarchy for the BELFEM markdown documentation.
+ *
+ * GENERATED FILE - do not edit by hand.
+ * Run scripts/update_doc_index.py to regenerate it after adding,
+ * renaming or removing a document under doc/ or src/<module>/doc/.
+ */
+
+/**
+@page docmap Module Documentation
+
+Hand-written documentation for each module: usage guides, algorithm
+descriptions and theory notes.  The class, file and namespace indices in
+the navigation bar cover the generated API reference separately.
+
+@section docmap_infrastructure Infrastructure
+
+- @subpage mod_core &mdash; Logging, timing, types, constants and string tools
+- @subpage mod_containers &mdash; Cell, Map, Bitset and the other BELFEM container classes
+- @subpage mod_linalg &mdash; Backend-agnostic linear algebra API and LAPACK wrappers
+- @subpage mod_sparse &mdash; Sparse storage and the solver interfaces (UMFPACK, MUMPS, STRUMPACK, PARDISO, PETSc)
+- @subpage mod_io &mdash; HDF5, ASCII, CSV, configuration files and XML
+- @subpage mod_comm &mdash; MPI communication abstraction layer
+- @subpage mod_mesh &mdash; Mesh data structures, I/O (Gmsh, HDF5, Exodus, VTK) and parallel partitioning
+- @subpage mod_visualizer &mdash; Optional VTK rendering of meshes and curves (USE_VTK, off by default)
+
+@section docmap_mathematics Mathematics
+
+- @subpage mod_math_graph &mdash; Graph algorithms and partitioning (BFS, DFS, RCM, METIS, SCOTCH)
+- @subpage mod_math_tensor &mdash; Fourth-order tensor helper
+- @subpage mod_math_quaternion &mdash; Quaternion value type for 3D rotations
+- @subpage mod_numerics_spline &mdash; Spline interpolation
+- @subpage mod_numerics_opt &mdash; NLOPT-backed bound-constrained minimisation
+- @subpage mod_homology &mdash; Cohomology algorithms, cut generation and theory
+
+@section docmap_finite_elements Finite Elements
+
+- @subpage mod_fem &mdash; How the finite-element modules fit together
+- @subpage mod_fem_kernel &mdash; DOF management, hanging nodes, assembly, time stepping and the nonlinear controller
+- @subpage mod_fem_interpolation &mdash; Shape functions, integration points and Nedelec elements
+- @subpage mod_fem_iwg &mdash; Integral weak forms (Poisson, heat conduction, elasticity, time stepping)
+- @subpage mod_fem_maxwell &mdash; Electromagnetics: h-phi formulation, thin shells, HTS, cohomology cuts
+- @subpage mod_fem_thermal &mdash; Transient heat conduction and the magneto-thermal coupling belfem selects for a thermal deck
+- @subpage mod_fem_postproc &mdash; Mesh-level postprocessing: volumes, surfaces, normals, gradients, mesh checks
+
+@section docmap_physics_and_circuits Physics and Circuits
+
+- @subpage mod_physics_materials &mdash; Material property framework (pure metals, HTS, alloys, user-defined)
+- @subpage mod_physics_database &mdash; Precomputed lookup tables on tensor grids
+- @subpage mod_physics_gasmodels &mdash; Equation-of-state and transport models
+- @subpage mod_physics_gastables &mdash; Tabulated thermophysical property data
+- @subpage mod_circuit &mdash; Lumped-element circuit simulator coupled to the FEM problem
+- @subpage mod_executables &mdash; belfem and the material, gas and db2exo tools, with their command-line interface
+
+*/
+
+/**
+@page mod_circuit Circuit
+
+Module source: `src/circuit`
+
+@subpage circuit_index
+@subpage circuit_circuit_usage_guide
+@subpage circuit_notes
+*/
+
+/**
+@page mod_comm Communication
+
+Module source: `src/comm`
+
+@subpage comm_index
+@subpage comm_comm_usage_guide
+*/
+
+/**
+@page mod_containers Containers
+
+Module source: `src/containers`
+
+@subpage containers_index
+@subpage containers_container_usage_guide
+*/
+
+/**
+@page mod_core Core
+
+Module source: `src/core`
+
+@subpage core_index
+@subpage core_core_usage_guide
+*/
+
+/**
+@page mod_executables Executables
+
+Module source: `src/executables`
+
+@subpage executables_index
+*/
+
+/**
+@page mod_fem FEM Overview
+
+Module source: `src/fem`
+
+@subpage fem_index
+@subpage fem_timestepping_strategy
+*/
+
+/**
+@page mod_fem_interpolation Interpolation
+
+Module source: `src/fem/interpolation`
+
+@subpage fem_interpolation_index
+@subpage fem_interpolation_interpolation_usage_guide
+@subpage fem_interpolation_nedelec
+@subpage fem_interpolation_nedelec_derivation
+@subpage fem_interpolation_nedelec_thinshell
+*/
+
+/**
+@page mod_fem_iwg IWG
+
+Module source: `src/fem/iwg`
+
+@subpage fem_iwg_index
+@subpage fem_iwg_iwg_usage_guide
+*/
+
+/**
+@page mod_fem_kernel FEM Kernel
+
+Module source: `src/fem/kernel`
+
+@subpage fem_kernel_index
+@subpage fem_kernel_anderson_acceleration_theory
+@subpage fem_kernel_bdf_timestepping_theory
+@subpage fem_kernel_bearing_gauge_eigenmode
+@subpage fem_kernel_dof_manager_usage_guide
+@subpage fem_kernel_hanging_dofs_static_condensation
+@subpage fem_kernel_nonlinear_controller_theory
+*/
+
+/**
+@page mod_fem_maxwell Maxwell
+
+Module source: `src/fem/maxwell`
+
+@subpage fem_maxwell_index
+@subpage fem_maxwell_buffer_cut_topology
+@subpage fem_maxwell_contact_impedance_theory
+@subpage fem_maxwell_coulomb_gauge_penalty_theory
+@subpage fem_maxwell_ghost_penalty_stabilization
+@subpage fem_maxwell_maxwell_usage_guide
+@subpage fem_maxwell_maxwell_weak_forms
+@subpage fem_maxwell_postprocessor_recovery_theory
+@subpage fem_maxwell_side_coating_wall_element
+@subpage fem_maxwell_thin_shell_facet_orientation
+@subpage fem_maxwell_thin_shell_virtual_domains
+@subpage fem_maxwell_thinshell_postprocessor_node_sharing
+*/
+
+/**
+@page mod_fem_postproc Postprocessing
+
+Module source: `src/fem/postproc`
+
+@subpage fem_postproc_index
+*/
+
+/**
+@page mod_fem_thermal Thermal
+
+Module source: `src/fem/thermal`
+
+@subpage fem_thermal_index
+*/
+
+/**
+@page mod_homology Homology
+
+Module source: `src/homology`
+
+@subpage homology_index
+@subpage homology_cohomology_algorithms
+@subpage homology_cohomology_theory_and_implementation
+@subpage homology_homology_usage_guide
+@subpage homology_thick_thin_cuts_and_conjugate_edges
+@subpage homology_thin_cut_nonunit_rectification
+*/
+
+/**
+@page mod_io I/O
+
+Module source: `src/io`
+
+@subpage io_index
+@subpage io_io_usage_guide
+*/
+
+/**
+@page mod_linalg Linear Algebra
+
+Module source: `src/linalg`
+
+@subpage linalg_index
+@subpage linalg_lapack_usage_guide
+@subpage linalg_linalg_usage_guide
+*/
+
+/**
+@page mod_math_graph Graph
+
+Module source: `src/math/graph`
+
+@subpage math_graph_index
+@subpage math_graph_graph_usage_guide
+*/
+
+/**
+@page mod_math_quaternion Quaternion
+
+Module source: `src/math/quaternion`
+
+@subpage math_quaternion_index
+@subpage math_quaternion_quaternion_usage_guide
+*/
+
+/**
+@page mod_math_tensor Tensor
+
+Module source: `src/math/tensor`
+
+@subpage math_tensor_index
+@subpage math_tensor_tensor_usage_guide
+*/
+
+/**
+@page mod_mesh Mesh
+
+Module source: `src/mesh`
+
+@subpage mesh_index
+@subpage mesh_bfm_file_format
+@subpage mesh_mesh_contracts_and_invariants
+@subpage mesh_mesh_usage_guide
+@subpage mesh_periodicity
+@subpage mesh_thin_shell_geometry_and_periodicity
+*/
+
+/**
+@page mod_numerics_opt Optimizer
+
+Module source: `src/numerics/opt`
+
+@subpage numerics_opt_index
+*/
+
+/**
+@page mod_numerics_spline Spline
+
+Module source: `src/numerics/spline`
+
+@subpage numerics_spline_index
+@subpage numerics_spline_spline_usage_guide
+*/
+
+/**
+@page mod_physics_database Database
+
+Module source: `src/physics/database`
+
+@subpage physics_database_index
+@subpage physics_database_database_usage_guide
+*/
+
+/**
+@page mod_physics_gasmodels Gas Models
+
+Module source: `src/physics/gasmodels`
+
+@subpage physics_gasmodels_index
+@subpage physics_gasmodels_gasmodels_usage_guide
+*/
+
+/**
+@page mod_physics_gastables Gas Tables
+
+Module source: `src/physics/gastables`
+
+@subpage physics_gastables_index
+@subpage physics_gastables_gastables_usage_guide
+*/
+
+/**
+@page mod_physics_materials Materials
+
+Module source: `src/physics/materials`
+
+@subpage physics_materials_index
+@subpage physics_materials_alloy_homogenization
+@subpage physics_materials_callaway_thermal_conductivity
+@subpage physics_materials_material_property_sources
+@subpage physics_materials_materials_contracts_and_invariants
+@subpage physics_materials_materials_usage_guide
+@subpage physics_materials_resistivity_laws
+@subpage physics_materials_thermal_expansion_from_heat_capacity
+*/
+
+/**
+@page mod_sparse Sparse
+
+Module source: `src/sparse`
+
+@subpage sparse_index
+@subpage sparse_solver_memory_and_compression
+@subpage sparse_sparse_usage_guide
+*/
+
+/**
+@page mod_visualizer Visualizer
+
+Module source: `src/visualizer`
+
+@subpage visualizer_index
+*/
+
+/**
+@page doc_example_decks Example decks
+
+One page per shipped deck: what it shows, what it needs, and how to run it.
+Meshing, plugins and the shared launcher are covered in the
+@ref doc_examples "examples overview".
+
+@subpage doc_examples_corc_garber_effect
+@subpage doc_examples_corc_periodic_bc
+@subpage doc_examples_corc_twolayer
+@subpage doc_examples_costheta
+@subpage doc_examples_dipole
+@subpage doc_examples_disk_pulse
+@subpage doc_examples_disk_ramp
+@subpage doc_examples_gantry
+@subpage doc_examples_helix
+@subpage doc_examples_pancake
+@subpage doc_examples_racetrack_usermat
+@subpage doc_examples_rlc_circuit
+@subpage doc_examples_tape_quench_usermat
+@subpage doc_examples_tapestack2d_layered
+@subpage doc_examples_tapestack2d_racetrack
+@subpage doc_examples_tapestack3d
+@subpage doc_examples_tapestack_circuit
+@subpage doc_examples_undulator2d
+*/
+

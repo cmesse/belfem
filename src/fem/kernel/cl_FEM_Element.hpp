@@ -1,0 +1,732 @@
+/*
+ * BELFEM -- The Berkeley Lab Finite Element Framework
+ * Copyright (c) 2026, The Regents of the University of California,
+ * through Lawrence Berkeley National Laboratory (subject to receipt of any required
+ * approvals from the U.S. Dept. of Energy).  All rights reserved.
+ *
+ * Developers: Christian Messe, Gregory Giard
+ *
+ * See the top-level LICENSE file for the complete license and disclaimer.
+ */
+
+#ifndef BELFEM_CL_FEM_ELEMENT_HPP
+#define BELFEM_CL_FEM_ELEMENT_HPP
+
+#include "cl_Bitset.hpp"
+#include "cl_Element.hpp"
+#include "cl_FEM_Dof.hpp"
+#include "cl_FEM_DofManagerBase.hpp"
+#include "cl_FEM_Group.hpp"
+#include "cl_FEM_Tmatrix.hpp"
+#include "cl_Matrix.hpp"
+#include "cl_Vector.hpp"
+#include "en_IWG_SideSetDofLinkMode.hpp"
+#include "typedefs.hpp"
+
+namespace belfem
+{
+    namespace fem
+    {
+        class Field;
+
+        class DofManager;
+
+        class Block;
+
+        class SideSet;
+
+//------------------------------------------------------------------------------
+
+        class Element
+        {
+            // parent block of this element
+            Group * mParent;
+
+            // pointer to master, if this is a side element
+            Element * mMaster = nullptr;
+
+            // pointer to slave, if this is a side element
+            Element * mSlave = nullptr;
+
+            // Facet in mesh, if this is a side element
+            mesh::Facet * mFacet = nullptr;
+
+            // helper, special purpose for reference
+            Element * mReferenceElement = nullptr;
+
+            // pointer to element on mesh
+            mesh::Element * mElement;
+
+            // contains the dofs that are connected to this element
+            Dof ** mDOFs = nullptr;
+            uint mNumberOfDofs = 0;
+
+            // contains the independent that are connected to this element
+            Dof ** mLocalDofs = nullptr;
+            uint mNumberOfLocalDofs = 0;
+
+            // T-matrix if it exists
+            Tmatrix * mTmatrix = nullptr;
+
+            // pointer to L-Matrix function
+            void
+            ( Element::*mL )( Matrix< real > & aJ, Matrix< real > & aL );
+
+            real * mRotationData = nullptr;
+
+            // edge directions, if this is a Nedelec element
+            Bitset< 12 > mEdgeDirections;
+
+//------------------------------------------------------------------------------
+        public:
+//------------------------------------------------------------------------------
+
+            Element(  Block * aParent,
+                      DofManager * aDofManager,
+                      mesh::Element * aElement );
+
+            // aura element without dofs
+            Element(  Block * aParent,  mesh::Element * aElement );
+
+//------------------------------------------------------------------------------
+
+            // constructor for test
+            Element( mesh::Element * aElement );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * constructor for facet
+             */
+            Element(
+                    SideSet * aParent,
+                    DofManager * aDofManager,
+                    mesh::Facet * aFacet,
+                    const SideSetDofLinkMode aSideSetDofLinkMode,
+                    Element * aMaster,
+                    Element * aSlave );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * constructor for thin shells
+             */
+            Element(
+                    SideSet * aParent,
+                    DofManager * aDofManager,
+                    mesh::Facet * aFacet,
+                    Cell< mesh::Facet * > & aLayers,
+                    const id_t aMasterBlockID,
+                    const id_t aSlaveBlockID );
+
+//------------------------------------------------------------------------------
+
+            virtual ~Element();
+
+//------------------------------------------------------------------------------
+
+            /**
+             * expose the underlying element on the mesh
+             */
+            mesh::Element *
+            element();
+
+//------------------------------------------------------------------------------
+
+            /**
+             * expose a specific dof
+             */
+            Dof *
+            dof( const index_t aIndex );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * expose the number of dofs
+             */
+            uint
+            number_of_dofs() const;
+
+//------------------------------------------------------------------------------
+
+            /**
+             * expose a specific dof
+             */
+            Dof *
+            local_dof( const index_t aIndex );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * expose the number of dofs
+             */
+            uint
+            number_of_local_dofs() const;
+
+//------------------------------------------------------------------------------
+
+            /**
+             * flag all dofs that are connected to this element
+             */
+            void
+            flag_dofs();
+
+//------------------------------------------------------------------------------
+
+            /**
+             * unflag all dofs that are connected to this element
+             */
+            void
+            unflag_dofs();
+
+            /**
+             * tell if this element has rotation properties
+             */
+            bool
+            has_rotation() const;
+
+//------------------------------------------------------------------------------
+
+            void
+            get_node_coors( Matrix< real > & aNodeCoords );
+
+            /**
+             * set the rotation axes
+             */
+            void
+            set_rotation_data( const Matrix< real > & aRotationAxes, const Vector< real > & aRotationAngles );
+
+            void
+            get_rotation_data( Matrix< real > & aRotationAxes, Vector< real > & aRotationAngles );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * expose container for edge directions (obsolete)
+             */
+            // void
+            // edge_directions( Vector< real > & aEdgeDirections ) const ;
+
+//------------------------------------------------------------------------------
+
+            /**
+             * expose container for edge directions (obsolete)
+             */
+            void
+            edge_directions( real * aEdgeDirections ) const;
+
+//------------------------------------------------------------------------------
+
+            /**
+             * expose container for edge directions
+             */
+            void
+            edge_directions( Bitset< 12 > & aEdgeDirections ) const;
+
+//------------------------------------------------------------------------------
+
+            /**
+             * expose container for edge directions
+             */
+            bool
+            edge_direction( const index_t aIndex ) const;
+
+//------------------------------------------------------------------------------
+
+            /**
+             * return the id of the underlying mesh element
+             */
+            id_t
+            id() const;
+
+//------------------------------------------------------------------------------
+
+            /**
+             * return the master element, only for sidesets
+             */
+            Element *
+            master();
+
+//------------------------------------------------------------------------------
+
+            /**
+             * return the slave element, only for sidesets, returns null if
+             * there is none
+             */
+            Element *
+            slave();
+
+//------------------------------------------------------------------------------
+
+            mesh::Facet *
+            facet();
+
+//------------------------------------------------------------------------------
+
+            const mesh::Facet *
+            facet() const;
+
+//------------------------------------------------------------------------------
+
+            Element *
+            reference();
+
+//------------------------------------------------------------------------------
+
+            const Element *
+            reference() const;
+
+//------------------------------------------------------------------------------
+
+            void
+            set_facet( mesh::Facet * aFacet );
+
+//------------------------------------------------------------------------------
+
+            void
+            set_reference( Element * aElement );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * return the material of this element
+             */
+            const Material *
+            material() const;
+
+//------------------------------------------------------------------------------
+
+            void
+            add_t_matrix( const Matrix< real > & aT );
+
+//------------------------------------------------------------------------------
+
+            bool
+            has_t_matrix() const;
+
+//------------------------------------------------------------------------------
+
+            const Tmatrix *
+            t_matrix() const ;
+
+//------------------------------------------------------------------------------
+
+            void
+            relink_dofs( Cell< Dof * > & aGlobalDofs,
+                         Cell< Dof * > & aLocalDofs,
+                         const Matrix< real > & aTmatrix );
+
+//------------------------------------------------------------------------------
+
+            bool
+            has_hanging_dofs() const ;
+
+//------------------------------------------------------------------------------
+
+            Group *
+            parent() ;
+
+//------------------------------------------------------------------------------
+        private:
+//------------------------------------------------------------------------------
+
+            void
+            link_dofs(
+                    DofManager * aDofManager,
+                    const SideSetDofLinkMode aMode,
+                    const id_t aSideSetID,
+                    const id_t aMasterBlockID,
+                    const id_t aSlaveBlockID );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * connect element with dofs of field
+             */
+            void
+            link_dofs( DofManager * aDofManager, const id_t aBlockID );
+
+//------------------------------------------------------------------------------
+
+            void
+            link_dofs_facet_only(
+                    DofManager * aDofManager,
+                    const Vector< index_t > & aMasterNodeDofTypes,
+                    const Vector< index_t > & aSlaveNodeDofTypes,
+                    const Vector< index_t > & aMasterEdgeDofTypes,
+                    const Vector< index_t > & aSlaveEdgeDofTypes,
+                    const Vector< index_t > & aMasterFaceDofTypes,
+                    const Vector< index_t > & aSlaveFaceDofTypes,
+                    const Vector< index_t > & aLambdaDofTypes );
+
+//------------------------------------------------------------------------------
+
+            void
+            link_dofs_facet_and_master(
+                    DofManager * aDofManager,
+                    const Vector< index_t > & aMasterNodeDofTypes,
+                    const Vector< index_t > & aSlaveNodeDofTypes,
+                    const Vector< index_t > & aMasterEdgeDofTypes,
+                    const Vector< index_t > & aSlaveEdgeDofTypes,
+                    const Vector< index_t > & aMasterFaceDofTypes,
+                    const Vector< index_t > & aSlaveFaceDofTypes,
+                    const Vector< index_t > & aLambdaDofTypes );
+
+//------------------------------------------------------------------------------
+
+            void
+            link_dofs_facet_and_slave(
+                    DofManager * aDofManager,
+                    const Vector< index_t > & aMasterNodeDofTypes,
+                    const Vector< index_t > & aSlaveNodeDofTypes,
+                    const Vector< index_t > & aMasterEdgeDofTypes,
+                    const Vector< index_t > & aSlaveEdgeDofTypes,
+                    const Vector< index_t > & aMasterFaceDofTypes,
+                    const Vector< index_t > & aSlaveFaceDofTypes,
+                    const Vector< index_t > & aLambdaDofTypes );
+
+//------------------------------------------------------------------------------
+
+            void
+            link_dofs_master_and_slave(
+                    DofManager * aDofManager,
+                    const Vector< index_t > & aFacetOnlyNodeDofTypes,
+                    const Vector< index_t > & aMasterNodeDofTypes,
+                    const Vector< index_t > & aSlaveNodeDofTypes,
+                    const Vector< index_t > & aMasterEdgeDofTypes,
+                    const Vector< index_t > & aSlaveEdgeDofTypes,
+                    const Vector< index_t > & aMasterFaceDofTypes,
+                    const Vector< index_t > & aSlaveFaceDofTypes,
+                    const Vector< index_t > & aLambdaDofTypes );
+
+//------------------------------------------------------------------------------
+
+            void
+            link_dofs_thin_shell(
+                    DofManager * aDofManager,
+                    Cell< mesh::Facet * > & aLayers,
+                    const SideSetDofLinkMode aMode,
+                    const id_t aMasterBlockID,
+                    const id_t aSlaveBlockID );
+
+//------------------------------------------------------------------------------
+
+            void
+            link_dofs_thin_shell_master_and_slave(
+                    DofManager * aDofManager,
+                    Cell< mesh::Facet * > & aLayers,
+                    const Vector< index_t > & aFacetNodeDofTypes,
+                    const Vector< index_t > & aMasterNodeDofTypes,
+                    const Vector< index_t > & aSlaveNodeDofTypes,
+                    const Vector< index_t > & aThinShellEdgeDofTypes,
+                    const Vector< index_t > & aThinShellFaceDofTypes,
+                    const Vector< index_t > & aLambdaDofTypes );
+
+//------------------------------------------------------------------------------
+
+            void
+            link_dofs_thin_shell_facet_only(
+                    DofManager * aDofManager,
+                    Cell< mesh::Facet * > & aLayers,
+                    const Vector< index_t > & aThinShellNodeDofTypes,
+                    const Vector< index_t > & aThinShellEdgeDofTypes,
+                    const Vector< index_t > & aThinShellFaceDofTypes );
+
+//------------------------------------------------------------------------------
+
+            void
+            grab_edge_directions_for_facet( Element * aReferenceElement );
+
+//------------------------------------------------------------------------------
+
+            void
+            link_node_dofs(
+                    DofManager * aDofManager,
+                    const Vector< index_t > & aDofTypes,
+                    mesh::Element * aReferenceElement,
+                    const uint aNumberOfNodesPerElement,
+                    index_t & aCount );
+
+//------------------------------------------------------------------------------
+
+            void
+            link_edge_dofs(
+                    DofManager * aDofManager,
+                    const Vector< index_t > & aDofTypes,
+                    mesh::Element * aReferenceElement,
+                    const uint aNumberOfEdgesPerElement,
+                    index_t & aCount );
+
+//------------------------------------------------------------------------------
+
+            void
+            link_face_dofs(
+                    DofManager * aDofManager,
+                    const Vector< index_t > & aDofTypes,
+                    mesh::Element * aReferenceElement,
+                    const uint aNumberOfFacesPerElement,
+                    index_t & aCount );
+
+//------------------------------------------------------------------------------
+
+            void
+            link_edge_dofs_thin_shell(
+                    DofManager * aDofManager,
+                    const Vector< index_t > & aDofTypes,
+                    Cell< mesh::Facet * > & aLayers,
+                    index_t & aCount );
+
+//------------------------------------------------------------------------------
+
+            void
+            link_face_dofs_thin_shell(
+                    DofManager * aDofManager,
+                    const Vector< index_t > & aDofTypes,
+                    Cell< mesh::Facet * > & aLayers,
+                    index_t & aCount );
+
+//------------------------------------------------------------------------------
+
+            void
+            link_lambda_dofs( DofManager * aDofManager,
+                              const Vector< index_t > & aDofTypes,
+                              index_t & aCount );
+
+//------------------------------------------------------------------------------
+
+            void
+            compute_edge_directions();
+
+//------------------------------------------------------------------------------
+
+            void
+            compute_edge_directions_thinshell();
+
+//------------------------------------------------------------------------------
+
+            /*
+             * special function needed for Surface class
+             */
+            void
+            set_element( mesh::Element * aElement );
+
+//------------------------------------------------------------------------------
+
+        };
+
+//------------------------------------------------------------------------------
+
+        inline Element *
+        Element::master()
+        {
+            return mMaster;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline Element *
+        Element::slave()
+        {
+            return mSlave;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline mesh::Facet *
+        Element::facet()
+        {
+            return mFacet;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline const mesh::Facet *
+        Element::facet() const
+        {
+            return mFacet;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline void
+        Element::set_facet( mesh::Facet * aFacet )
+        {
+            mFacet = aFacet;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline void
+        Element::set_reference( Element * aElement )
+        {
+            mReferenceElement = aElement;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline const Material *
+        Element::material() const
+        {
+            return mParent->material();
+        }
+
+//------------------------------------------------------------------------------
+
+        inline mesh::Element *
+        Element::element()
+        {
+            return mElement;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline Dof *
+        Element::dof( const index_t aIndex )
+        {
+            return mDOFs[ aIndex ];
+        }
+
+//------------------------------------------------------------------------------
+
+        inline uint
+        Element::number_of_dofs() const
+        {
+            return mNumberOfDofs;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline Dof *
+        Element::local_dof( const index_t aIndex )
+        {
+            return mNumberOfLocalDofs == 0 ? mDOFs[ aIndex ] : mLocalDofs[ aIndex ];
+        }
+
+//------------------------------------------------------------------------------
+
+        inline uint
+        Element::number_of_local_dofs() const
+        {
+            return mNumberOfLocalDofs == 0 ? mNumberOfDofs : mNumberOfLocalDofs ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline bool
+        Element::has_rotation() const
+        {
+            return mRotationData != nullptr;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline void
+        Element::edge_directions( real * aEdgeDirections ) const
+        {
+            for ( uint e = 0; e < mElement->number_of_edges(); ++e )
+            {
+                aEdgeDirections[ e ] = mEdgeDirections.test( e ) ? 1.0 : -1.0;
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+
+        inline void
+        Element::edge_directions( Bitset< 12 > & aEdgeDirections ) const
+        {
+            for ( uint e = 0; e < mElement->number_of_edges(); ++e )
+            {
+                if ( mEdgeDirections.test( e ))
+                {
+                    aEdgeDirections.set( e );
+                }
+                else
+                {
+                    aEdgeDirections.reset( e );
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        inline bool
+        Element::edge_direction( const index_t aIndex ) const
+        {
+            return mEdgeDirections.test( aIndex );
+        }
+
+//------------------------------------------------------------------------------
+
+        inline id_t
+        Element::id() const
+        {
+            return mElement->id();
+        }
+
+//------------------------------------------------------------------------------
+
+        inline void
+        Element::get_node_coors( Matrix< real > & aNodeCoords )
+        {
+            uint tN = aNodeCoords.n_rows();
+            uint tD = aNodeCoords.n_cols();
+
+            for ( uint i = 0; i < tD; ++i )
+            {
+                for ( uint k = 0; k < tN; ++k )
+                {
+                    aNodeCoords( k, i ) = mElement->node( k )->x( i );
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        inline bool
+        Element::has_t_matrix() const
+        {
+            return mTmatrix != nullptr ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline const Tmatrix *
+        Element::t_matrix() const
+        {
+            return mTmatrix ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline void
+        Element::set_element( mesh::Element * aElement )
+        {
+            mElement = aElement;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline Group *
+        Element::parent()
+        {
+            return mParent;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline Element *
+        Element::reference()
+        {
+            return mReferenceElement;
+        }
+
+        inline const Element *
+        Element::reference() const
+        {
+            return mReferenceElement;
+        }
+
+    }
+}
+#endif //BELFEM_CL_FEM_ELEMENT_HPP

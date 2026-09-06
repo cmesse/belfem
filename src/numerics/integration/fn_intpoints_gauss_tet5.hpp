@@ -1,0 +1,76 @@
+/*
+ * BELFEM -- The Berkeley Lab Finite Element Framework
+ * Copyright (c) 2026, The Regents of the University of California,
+ * through Lawrence Berkeley National Laboratory (subject to receipt of any required
+ * approvals from the U.S. Dept. of Energy).  All rights reserved.
+ *
+ * Developers: Christian Messe, Gregory Giard
+ *
+ * See the top-level LICENSE file for the complete license and disclaimer.
+ */
+
+#ifndef BELFEM_FN_INTPOINTS_GAUSS_TET5_HPP
+#define BELFEM_FN_INTPOINTS_GAUSS_TET5_HPP
+
+#include "typedefs.hpp"
+#include "cl_Vector.hpp"
+#include "cl_Matrix.hpp"
+
+namespace belfem
+{
+    namespace integration
+    {
+// ----------------------------------------------------------------------------
+
+        inline void
+        gauss_tet5(
+                Vector <real> & aWeights,
+                Matrix <real> & aPoints )
+        {
+            real tBeta = 1.0 / 6.0;
+
+            aPoints.set_size( 4, 5 );
+
+            aPoints( 0, 0 ) = 0.25;
+            aPoints( 1, 0 ) = 0.25;
+            aPoints( 2, 0 ) = 0.25;
+
+            aPoints( 0, 1 ) = 0.5;
+            aPoints( 1, 1 ) = tBeta;
+            aPoints( 2, 1 ) = tBeta;
+
+            aPoints( 0, 2 ) = tBeta;
+            aPoints( 1, 2 ) = 0.5;
+            aPoints( 2, 2 ) = tBeta;
+
+            aPoints( 0, 3 ) = tBeta;
+            aPoints( 1, 3 ) = tBeta;
+            aPoints( 2, 3 ) = 0.5;
+
+            aPoints( 0, 4 ) = tBeta;
+            aPoints( 1, 4 ) = tBeta;
+            aPoints( 2, 4 ) = tBeta;;
+
+            for( uint k=0; k<5; ++k )
+            {
+                aPoints( 3, k ) =  1.0
+                                   - aPoints( 0, k )
+                                   - aPoints( 1, k )
+                                   - aPoints( 2, k );
+            }
+
+            aWeights.set_size( 5 );
+
+
+            aWeights( 0 ) = -4.0/30;
+            aWeights( 1 ) = 0.075;
+            aWeights( 2 ) = 0.075;
+            aWeights( 3 ) = 0.075;
+            aWeights( 4 ) = 0.075;
+
+        }
+// ----------------------------------------------------------------------------
+    } /* namespace integration */
+} /* namespace belfem */
+
+#endif //BELFEM_FN_INTPOINTS_GAUSS_TET5_HPP
