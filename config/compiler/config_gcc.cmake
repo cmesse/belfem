@@ -65,14 +65,17 @@ if( USE_WARNINGS )
     # -Wno-long-long       Do not issue a warning if a long long variable type is used.
     # -Wno-error=maybe-uninitialized
     #                      Do not issue an error if a maybe-uninitialized warning is thrown
+    # -Wfloat-conversion   Warn where a floating-point value is silently narrowed to an
+    #                      integer, e.g. a double passed to the C int abs(). Warning only
+    #                      (-Wno-error=float-conversion) so existing sites do not break the build.
     # -fno-strict-aliasing Do not enforce strict aliasing.
     #                      Strict aliasing means that pointer arguments in a function are assumed to not alias.
     #                      For example, the following code would not compile: foo * a; bar * b; b = (foo *) a;
     #                      Because the pointers point to fundamentally different types.
     if ( BELFEM_USE_CLANG )
-        set( BELFEM_CXXFLAGS "${BELFEM_CXXFLAGS} -Wall -Werror=uninitialized" )
+        set( BELFEM_CXXFLAGS "${BELFEM_CXXFLAGS} -Wall -Werror=uninitialized -Wfloat-conversion" )
     else()
-        set( BELFEM_CXXFLAGS "${BELFEM_CXXFLAGS} -Wall -Werror -Wno-long-long -pedantic-errors -Wno-error=maybe-uninitialized" )
+        set( BELFEM_CXXFLAGS "${BELFEM_CXXFLAGS} -Wall -Werror -Wno-long-long -pedantic-errors -Wno-error=maybe-uninitialized -Wfloat-conversion -Wno-error=float-conversion" )
     endif()
 endif()
 #-------------------------------------------------------------------------------

@@ -11,6 +11,7 @@
 
 #include "cl_Matrix.hpp"
 #include <tuple>
+#include <cstdlib>
 #include "fn_trans.hpp"
 
 #ifndef BELFEM_FN_SMITH_HPP
@@ -178,7 +179,7 @@ namespace belfem
         const uint m = aMat.n_rows();
         for(uint i = k+1; i < m+1; ++i)
         {
-            const int q = floor(aMat(i-1,l-1)/aMat(k-1,l-1));
+            const int q = aMat(i-1,l-1)/aMat(k-1,l-1);
             rowAddOperation(aMat,aQ,aQ_,i,k,-q);
         }
     }
@@ -192,7 +193,7 @@ namespace belfem
         const uint n = aMat.n_cols();
         for(uint i = l+1; i < n+1; ++i)
         {
-            const int q = floor(aMat(k-1,i-1)/aMat(k-1,l-1));
+            const int q = aMat(k-1,i-1)/aMat(k-1,l-1);
             columnAddOperation(aMat,aR,aR_,l,i,-q);
         }
     }
@@ -203,19 +204,19 @@ namespace belfem
     std::pair<uint, uint>
     smallestNonzero(Vector< T > &v, uint k)
     {
-        uint alpha = abs(v(k-1));
+        uint alpha = std::abs(v(k-1));
         uint i0 = k;
         while (alpha == 0 && k < v.length())
         {
             k+=1;
-            alpha = abs(v(k-1));
+            alpha = std::abs(v(k-1));
             i0 = k;
         }
         for(uint i = k; i < v.length(); ++i)
         {
-            if (abs(v(i)) < alpha && abs(v(i)) != 0)
+            if (std::abs(v(i)) < alpha && std::abs(v(i)) != 0)
             {
-                alpha = abs(v(i));
+                alpha = std::abs(v(i));
                 i0 = i+1;
             }
         }

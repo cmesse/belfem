@@ -13,6 +13,7 @@
 
 #include "cl_Timer.hpp"
 #include "cl_Logger.hpp"
+#include <cstdlib>
 
 //#define PERFORMANCE_CHECK
 
@@ -552,7 +553,7 @@ namespace belfem {
                         {
                             int tCoeff = it->second->getBoundary()->getCoefficient(a);
                             // Reduce if a is a boundary of b
-                            if (abs(tCoeff) == 1)
+                            if (std::abs(tCoeff) == 1)
                             {
                                 this->reduce_pair(k, a, it, tCoeff);
                                 found = true;
@@ -605,7 +606,7 @@ namespace belfem {
                         {
                             int tCoeff = it->second->getCoboundary()->getCoefficient(a);
                             // Reduce if a is a coboundary of b
-                            if (abs(tCoeff) == 1)
+                            if (std::abs(tCoeff) == 1)
                             {
                                 this->coreduce_pair(k, a, it, tCoeff);
                                 found = true;
@@ -648,7 +649,7 @@ namespace belfem {
             {
                 val2 = it->second->getBoundary()->getCoefficient( a );
                 // Add the b to the k-chain if a is a boundary
-                if ( abs( val2 ) == 1 and it->first != b)
+                if ( std::abs( val2 ) == 1 and it->first != b)
                 {
                     it->second->addChainToChain( bChain, -aCoeff*val2);
                 }
@@ -676,7 +677,7 @@ namespace belfem {
                 val2 = it->second->getCoboundary()->getCoefficient(a);
 
                 // Add the b to the k-cochain if a is a coboundary
-                if (abs(val2) == 1 and it->first != b) {
+                if (std::abs(val2) == 1 and it->first != b) {
                     it->second->addCochainToCochain(bCochain, -aCoeff * val2);
                 }
 
@@ -872,7 +873,7 @@ namespace belfem {
                     // Find the first simplex ID that correspond to a (k-1)-chain of the complex
                     auto it2 = tSimplicesMap.begin();
                     while ( !mChainsMap( p - 1 ).key_exists( it2->first ) or
-                            abs( tChainReduce->getBoundary()->getCoefficient( it2->first )) != 1 )
+                            std::abs( tChainReduce->getBoundary()->getCoefficient( it2->first )) != 1 )
                     {
                         ++it2;
                     }
@@ -1137,7 +1138,7 @@ namespace belfem {
                     auto it2 = --tSimplicesMap.end(); //remove the lowest gradient
                     bool tOut = false;
                     while ( !mCochainsMap( p + 1 ).key_exists( it2->first ) or
-                            abs( it2->second ) != 1 )
+                            std::abs( it2->second ) != 1 )
                     {
                         if (it2 == tSimplicesMap.begin())
                         {

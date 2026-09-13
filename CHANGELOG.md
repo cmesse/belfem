@@ -41,6 +41,20 @@ Both problems are fixed. Input files and output formats are unchanged.
     with `"%s"`.
   - `sprint()` (`fn_sprint.hpp`) forwards a caller-supplied format by design, and its GCC
     pragma block now also suppresses `-Wformat-security`.
+- **`Matrix<T>` fill constructor took the fill value as `double`.** For integer matrices the
+  value made a `double` round trip. That was exact for every in-tree caller on default builds,
+  but with `USE_MKL_64BIT_API` (`index_t` = `uint64_t`) filling with the sentinel `gNoIndex`
+  (2⁶⁴−1) went through a `double` that cannot hold it, which is undefined behaviour. The
+  constructor now takes `T` and passes the value through unchanged.
+
+### Changed
+
+- GCC and Clang builds now warn on implicit floating-point to integer narrowing
+  (`-Wfloat-conversion`). It is a warning only, not an error, so it cannot fail a build; it
+  is there to catch the `abs` class of defect above at compile time.
+- Homology: the Smith normal form no longer routes integer divisions through `floor()` (a
+  no-op on `int` operands), and its integer `abs` calls are spelled `std::abs`. Reviewed by
+  two independent auditors as behaviour-preserving; the coefficient arithmetic is unchanged.
 
 ## [0.9.0] — 2026-09-06
 

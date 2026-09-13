@@ -67,7 +67,7 @@ namespace belfem
         {
             for(uint j = k; j < n; ++j)
             {
-                q = floor(aMat(i,j)/aMat(k-1,k-1));
+                q = aMat(i,j)/aMat(k-1,k-1);
                 if (q*aMat(k-1,k-1) != aMat(i,j))
                 {
                     return std::tuple< bool, uint, uint, int >(false, i+1, j+1, q);
