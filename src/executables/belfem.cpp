@@ -276,7 +276,7 @@ int main( int    argc,
                 continue ;
             }
 
-            while ( abs(tControl->time() -  tControl->time_thermal()) > (1e-12))
+            while ( std::abs(tControl->time() -  tControl->time_thermal()) > (1e-12))
             {
 
                 tControl->initialize_thermal() ;

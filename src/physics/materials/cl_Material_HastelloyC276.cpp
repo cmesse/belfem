@@ -133,7 +133,7 @@ namespace belfem
             real f = dpolyval( mRhoPolys( 1 ), x );
             real df = ddpolyval( mRhoPolys( 1 ), x );
 
-            while ( abs( f ) > BELFEM_EPSILON )
+            while ( std::abs( f ) > BELFEM_EPSILON )
             {
                 x -= f/df;
                 f = dpolyval( mRhoPolys( 1 ), x );

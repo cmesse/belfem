@@ -261,7 +261,7 @@ namespace belfem
             real f = dpolyval( p, x );
             real df ;
 
-            while ( abs( f ) > BELFEM_EPSILON )
+            while ( std::abs( f ) > BELFEM_EPSILON )
             {
                 f = dpolyval( p, x );
                 df = ddpolyval( p, x );
@@ -366,7 +366,7 @@ namespace belfem
             real f = f1 ;
             real x = 0.5 * ( x0 + x1 );
 
-            while ( abs( f ) > BELFEM_EPSILON )
+            while ( std::abs( f ) > BELFEM_EPSILON )
             {
                 f = ddpolyval( p2, x );
                 if ( f0 * f < 0 )

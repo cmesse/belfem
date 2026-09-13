@@ -47,7 +47,7 @@ namespace belfem
                 // loop over all columns
                 for ( uint j = 0; j < mNumCols; ++j )
                 {
-                    if ( abs( aMatrix( i, j )) > BELFEM_EPSILON )
+                    if ( std::abs( aMatrix( i, j )) > BELFEM_EPSILON )
                     {
                         // write column
                         mIndices[ tStep ] = j;
@@ -85,7 +85,7 @@ namespace belfem
             {
                 for( uint j=0; j<aMatrix.n_cols(); ++j )
                 {
-                    if( abs( aMatrix( i, j )) > BELFEM_EPSILON )
+                    if( std::abs( aMatrix( i, j )) > BELFEM_EPSILON )
                     {
                         ++aNNZ ;
                     }

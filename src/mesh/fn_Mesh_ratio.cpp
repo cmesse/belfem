@@ -33,7 +33,7 @@ namespace belfem
 
         index_t tCount = 0;
 
-        while ( abs( tF ) > 1e-12 )
+        while ( std::abs( tF ) > 1e-12 )
         {
             tRatio = tR0 - tF0 * ( tR1 - tR0 ) / ( tF1 - tF0 );
             tF = _check_ratio( aDeltaX0, aLength, aNumCells, tRatio );

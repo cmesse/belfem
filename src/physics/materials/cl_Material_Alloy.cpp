@@ -667,7 +667,7 @@ namespace belfem
 
             real f = 1 ;
 
-            while ( abs( f ) > 1e-8 )
+            while ( std::abs( f ) > 1e-8 )
             {
                 real K0 = Km ;
                 real G0 = Gm ;

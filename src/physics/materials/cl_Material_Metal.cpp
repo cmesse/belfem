@@ -244,7 +244,7 @@ namespace belfem
             real x = 0.5 * ( x0 + x1 ) ;
 
             uint it = 0 ;
-            while (  abs( f ) > 1e-12 )
+            while (  std::abs( f ) > 1e-12 )
             {
                 x = ( x0 * f1 - x1 * f0 ) / ( f1 - f0 ) ;
                 this->set_constant( MaterialProperty::rho_0, x );
@@ -496,7 +496,7 @@ namespace belfem
             x = x0 ;
             f = f0 ;
 
-            while ( k++ < 100 && abs( f ) > 1e-12 )
+            while ( k++ < 100 && std::abs( f ) > 1e-12 )
             {
                 x -= 0.95*f0 *( x1-x0)/( f1-f0 );
                 if ( x < x0 || x > x1 )
