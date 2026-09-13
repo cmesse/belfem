@@ -123,7 +123,7 @@ namespace belfem
                         aFormat.c_str(),
                         aArgs ... ) + "\n";
 
-                std::fprintf( mStream, tMessage.c_str() );
+                std::fprintf( mStream, "%s", tMessage.c_str() );
             }
         }
 

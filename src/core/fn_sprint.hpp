@@ -23,6 +23,7 @@
 #elif BELFEM_GCC
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat"
+#pragma GCC diagnostic ignored "-Wformat-security"
 #elif BELFEM_INTEL
 #pragma warning push
 #pragma warning disable 1595
