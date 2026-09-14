@@ -193,6 +193,11 @@ consistency, **AI reviewer agreement — weakest**.
 - Striking the design does not retire the run gate — the status column is never struck. `L-05`
 - A stale row is **not** reliably pessimistic; it has been found worse than recorded. `L-05`
 
+**Before writing a floating-point math call**
+- `abs`, `floor`, `sqrt`, `pow`, `exp` on a `real` take `std::`; the unqualified name may be the C
+  `int` version on the next toolchain and truncate silently. A `-Wfloat-conversion` warning on a
+  math call is this defect, not noise. `L-23`
+
 **Before releasing**
 - Every `file:line` in a shipped document is advisory; anchors are greppable tokens. `L-08`
 - Input-key changes land in `doc/input_file_reference.md` **and** `doc/input_schema.yaml`
@@ -223,6 +228,7 @@ consistency, **AI reviewer agreement — weakest**.
 | **An audit "verified" something that later broke** | The word, not the auditor. | Re-read what gate actually ran. `L-03` |
 | **A performance cost is "obviously" in X** | Attribution without measurement. | Profile before attributing. (annex, N5) |
 | **A pooled resource exhausts at a suspiciously exact count** | The allocator, not the consumer. High-water counters never recycle freed slots while one instance stays alive. | Read the free path: does it rescan, or only reset when ALL are free? Count = held + per-step burns (INC-555). `L-16` |
+| **A golden test is off by a fraction of a percent on one platform only** | Overload resolution, not physics. An unqualified C math name on a `double` bound to the `int` overload and truncated the argument. | `static_assert` the return type of `abs( -0.5 )` in that translation unit; grep the loop's exit test for an unqualified `abs`. `L-23` |
 | **A fix landed, runs, and changed nothing measurable** | Its own guard or fallback may be swallowing it — executing is not working. | Assert the new effect differs from old behavior at one point where they must differ (INC-549). `L-01` |
 
 ## Escalation triggers — stop and route to Christian
@@ -574,6 +580,16 @@ lacks the operation you need is the work item.
 **Enforcement:** For the cohomology core, ENFORCED BY POLICY rather than by tooling — `doc/ai_collaboration_protocol.md` §7.1 closes **six units** (not the directory) to AI edits outright, liftable only by the module owner's named authorization relayed by Christian and recorded in a devlog. Elsewhere the rule is unenforced; a pre-edit tripwire on files whose module documentation cites a preprint or "in preparation" would generalize it. `Status: proposed (policy-enforced for the six-unit cohomology core only)`
 **Applicability:** Any code whose algorithm is unpublished, in draft, or deliberately modified from a published one. **Not** a general license to avoid unfamiliar code — it is specifically about the *near miss*: the hazard peaks where the code closely resembles something famous and differs in a small deliberate way. Genuinely alien code produces visible uncertainty, which is safe because it gets flagged.
 **Exceptions:** Consulting the primary source and deriving independently are the paths that have worked. Removing "dead" code is **not** one of them: the one clean-looking instance was human-guided, and the thing that made it safe — knowing that the greedy rectifier is load-bearing inside the SPFA path — is exactly what an AI reading the same code does not have (INC-564). The rule bites on reasoning alone, and "this looks redundant" is reasoning.
+
+## L-23 An unqualified math call on a floating-point argument is platform-dependent
+**Domain:** ENG
+**Trigger:** Writing or reviewing `abs(`, `floor(`, `sqrt(`, `pow(`, `exp(` — any C math name — on a `real` inside `namespace belfem` without `std::`; porting to a new toolchain; a golden test failing by a fraction of a percent on one platform only.
+**Rule:** Qualify every floating-point math call with `std::` (or bring the `<cmath>` overload set in explicitly). Unqualified `abs` on a `double` resolves to whatever the include chain happens to declare at global scope: with libstdc++ that is often only the C `int abs(int)`, which truncates the argument silently; libc++ and other include orders expose `::abs(double)` and the same source is correct. `-Wall -Werror` does not catch it — GCC's `-Wabsolute-value` is C-only. Since 0.9.1 the build carries `-Wfloat-conversion` (warning-only) precisely so the narrowing is reported; treat any such warning on a math call as this defect, not as noise.
+**Failure signature:** A convergence loop exits immediately (`while ( abs( f ) > 1e-12 )` with |f| < 1 is `0 > 1e-12`), a threshold test drops every entry with magnitude below 1, a golden value is off by ~1 % at one temperature and by less further away → the residual was truncated to an integer → `static_assert( std::is_same_v< decltype( abs( -0.5 ) ), double > )` in the translation unit is the discriminator; it fails on the integer path.
+**Evidence:** INC-565 (2026-09-13, `dl20260913_ybco_test_int_abs.md`): `YBCOThermalConductivity.RepresentativeTemperaturesAreFinitePositive` failed on Ubuntu 24.04 / GCC 13.3 by −0.94 % at 20 K; `Metal::set_RRR`'s secant loop never ran, so every metal on that toolchain carried its initial `rho_0`. Eleven sites in eight files had the same shape, including the `Tmatrix` sparsity test and the `belfem` thermal/electromagnetic clock sync. The goldens had been baked on a toolchain where the same source found the `double` overload, so the suite was green there and the defect invisible. Same release, same class: `cl_Logger.hpp` passing a formatted message as a `printf` format string, latent UB on every platform, surfaced only by Ubuntu's injected `-Wformat-security`.
+**Enforcement:** `-Wfloat-conversion` in `config/compiler/config_gcc.cmake` (warning, not error, since 0.9.1). Unenforced beyond that: a grep for `[^:]\babs(` / `floor(` / `sqrt(` on non-integer arguments outside `std::` would make it mechanical. `Status: proposed (warning-enforced)`
+**Applicability:** Any translation unit; the hazard is strongest in `src/physics` and `src/math`, where the naming exemption encourages code that reads like the equation and the unqualified name looks natural. Integer `abs` on integer coefficients (the cohomology core) is the intended overload and is exempt.
+**Exceptions:** None found. A build that is green on one toolchain is not evidence for another; the nightly matrix runs one toolchain.
 
 # ANNEX — candidates not promoted to cards
 

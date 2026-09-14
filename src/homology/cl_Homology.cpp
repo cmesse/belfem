@@ -357,8 +357,8 @@ namespace belfem
 
                         //If the output terminal is the same as the input terminal, the geometry loops on itself and the inbound/outbound logic is reverted for the output terminal
                         tTotalChain->removeChainFromChain(tTotalChain2);
-                        real tCoeff = -1.0 ;
-                        if (tTotalChain->getSimplicesMap().size()==0) tCoeff = 1.0 ;
+                        int tCoeff = -1 ;
+                        if (tTotalChain->getSimplicesMap().size()==0) tCoeff = 1 ;
 
                         //The suggested homology is simply the boundary of the input terminal
                         mGenerators(1)(mGenerators(1).size()-1)->addChainToChain(tTotalChain2->getBoundary(),tCoeff) ;
