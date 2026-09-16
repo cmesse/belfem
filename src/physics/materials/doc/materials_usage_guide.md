@@ -2,7 +2,7 @@
 
 **Module:** `src/physics/materials`
 **Purpose:** How to create materials, query their properties, extend the roster, and understand the physical models behind every curve
-**Date:** 2026-08-25
+**Date:** 2026-09-15
 **Revision:** 2.0
 
 ---
@@ -14,6 +14,7 @@
 | 2026-01-16 | 1.0 | Initial documentation (reorganized from README.md) |
 | 2026-07-14 | 1.1 | Assembly contract: full-signature policy for jc/n dependency routing; undeformed-mesh density rule |
 | 2026-08-25 | 2.0 | Rewritten against the current source: real roster and API, RRR-at-construction and the cached lookup tables, cryogenic α, Wachtman moduli, per-metal Kohler curves, formula alloys; the invented `Material_Metal` sketch, `populate_rho_lambda_databases`, `debye_cp` and the textbook-only model formulas removed |
+| 2026-09-15 | 2.1 | Elastic moduli: quasi-harmonic K and G on the thermal strain replace the Wachtman E and the constant-Grüneisen ν (§9.7); served moduli are isothermal; Nickel's ΔE dip retired; polycrystalline basis stated |
 
 ---
 
@@ -116,7 +117,7 @@ that label resolves to `Magnesia` and is not checked.
 ```
 Material                                   property routing, constants, dependencies, jc/n, B-H curve
 └── SplineLookupTable                      per-property cubic splines on a uniform T grid
-    ├── Metal                              Bloch–Grüneisen ρ, Hust λ, Kohler, c_p, cryo α, Wachtman E, lookup tables
+    ├── Metal                              Bloch–Grüneisen ρ, Hust λ, Kohler, c_p, cryo α, quasi-harmonic E and ν curves, lookup tables
     │   ├── Copper, Silver, Aluminum, Chromium, Indium, WhiteTin, Lead
     │   ├── Ferromagnetic                  magnon resistivity, reduced magnetization, Debye from ρ
     │   │   ├── Iron
@@ -251,7 +252,7 @@ implementation. The order matters because later steps read earlier curves:
    amplitude.
 5. `set_lambda_coefficients()` — the Hust form of λ(T) (§9.2).
 6. `create_kohler()` — the longitudinal and transverse magnetoresistance curves (§9.5).
-7. `create_mech()` — Wachtman E(T) and the Grüneisen-derived ν(T) (§9.7).
+7. `create_mech()` — the quasi-harmonic E(T) and ν(T) curves from the thermal strain (§9.7).
 8. `set_RRR()` if an RRR was given — fixes ρ₀ and, with tables enabled, builds
    `<label>_RRR<n>.hdf5`.
 
@@ -268,9 +269,9 @@ All nine metals provide c_p, α, E, ν, ρ(T), λ(T), θ_D(T), density, and a Ko
 
 Add to `Metal`: a reduced-magnetization curve (Crangle & Goodman 1971), the magnon term of the
 resistivity below the Curie point (`rho_mag`), a Debye curve inverted from measured resistivity
-with that term removed, and a Bloch–Grüneisen exponent of 4.5 instead of 5. Nickel's E(T)
-carries the ΔE dip across the Curie point as two Wachtman branches joined by a Bézier bridge.
-Neither class supplies a B-H curve of its own; assign one with `load_bh_curve()` if the magnetic
+with that term removed, and a Bloch–Grüneisen exponent of 4.5 instead of 5. Nickel's elastic
+moduli are those of the magnetically saturated state; the ΔE dip of demagnetized nickel is not
+represented (the class header of `cl_Material_Nickel.hpp` explains why). Neither class supplies a B-H curve of its own; assign one with `load_bh_curve()` if the magnetic
 solver needs it.
 
 ### 4.3 Lookup alloy — `HastelloyC276`
@@ -582,19 +583,67 @@ J_c(B, θ) = Jc0 / [ 1 + √(k² sin²θ + cos²θ) · B/B0 ]^α
 — the anisotropic Kim–Anderson form; the factory's four arguments map to (Jc0, B0, k², α) in
 that order. Tabulated J_c and n come from `JcFunctionDatabase`.
 
-### 9.7 Elastic moduli — Wachtman E and a Grüneisen-derived ν
+### 9.7 Elastic moduli — quasi-harmonic K and G on the thermal strain
 
-E(T) = E₀ − b·T·exp(−T₀/T), fitted per metal (mostly against Blanke, *Thermophysikalische
-Stoffgrößen*, 1989; Chromium against Armstrong & Brown 1964; Indium against Kim & Ledbetter
-1998). ν(T) is not tabulated: `Metal::create_mech( E₀, b, T₀, T₂, ν₂ )` takes one anchor
-(T₂, ν₂), forms K_T = E/(3(1 − 2ν)), the adiabatic K_S = K_T / (1 − T α_V² K_T /(ρ c_p)) and the
-Grüneisen parameter γ = α_V K_S / (ρ c_p), holds γ constant, and recovers ν(T) = ½ − E/(6K_T(T))
-along the spline grid with K_S(T) = γ ρ c_p / α_V. The 0 K value is extrapolated with zero
-slope; the result is checked to stay inside (−1, ½). Nickel supplies its own E(T) (two Wachtman
-branches and a Bézier bridge across the Curie point) and only the ν construction.
+The nine pure metals share one closure, `Metal::create_mech( E₂, ν₂, T₂, δ_K, δ_G )`. It uses a
+quasi-harmonic picture: an elastic modulus depends on the volume of the lattice, not on the
+temperature directly, and its logarithmic volume derivative is a material constant. Garai & Laugier
+2007 (10.1063/1.2424535, Eq. 8–10) derive this form for the isothermal bulk modulus with a constant
+Anderson–Grüneisen parameter; BELFEM applies the same form to the shear modulus, which is a modelling
+choice, not a result of that paper. Using the logarithmic volumetric strain that the expansion curve
+already integrates for the density,
 
-Isothermal versus adiabatic: the tabulated moduli are dynamic (adiabatic); the difference on E is
-0.3–0.5 % at room temperature and vanishes at cryogenic temperatures, and is not corrected.
+    ε(T) = 3 ∫₀ᵀ α dT = 3 ln( l(T)/l(0) ),
+    K(T) = K₀ exp(−δ_K ε),   G(T) = G₀ exp(−δ_G ε),
+    E = 9KG/(3K + G),        ν = (3K − 2G)/(6K + 2G).
+
+The two softening constants and the anchor (T₂, E₂, ν₂) are fitted offline per metal to measured
+elastic constants over 0–300 K (the data span 4 K to room temperature; single-crystal sets are
+Hill-averaged to the isotropic polycrystal; the sources with DOIs are listed in `material_property_sources.md`). The form
+determines three properties independently of the fit: E and ν have zero slope at 0 K because α
+does; ν rises with temperature exactly when the shear modulus softens faster than the bulk modulus
+(δ_G > δ_K), which measurement shows for every metal in the roster except iron, whose isothermal ν
+is flat; and K and G stay positive, so ν stays inside (−1, ½). The constructor samples the served
+curves over the whole temperature range and rejects constants that make ν fall by more than 1e-3.
+
+**Isothermal.** The served moduli are the isothermal ones, which a quasi-static stress analysis
+needs. Ultrasonic data are adiabatic; the shear modulus is unchanged between the two descriptions, the bulk
+modulus is converted with the exact identity K_T = K_S/(1 + α_V² T K_S/(ρ c_p)) before the fit,
+using the material's own α, ρ and c_p. For copper the difference is 3 % on K and 0.004 on ν at room
+temperature and vanishes at low temperature.
+
+**Polycrystalline basis.** Every metal in the roster represents an isotropic polycrystal. Where the
+source is a single-crystal measurement, the constants are Hill-averaged (Voigt–Reuss mean of the
+shear modulus; the bulk modulus of a cubic crystal is unique). For soft, strongly anisotropic
+metals the Hill average is far above the static polycrystalline value, because the shear modulus relaxes at
+low frequency; lead is therefore served with static-level moduli (crystal bulk modulus, Blanke's E), see its
+class header.
+
+**Two metals require special treatment.** Nickel is fitted to constants measured in a saturating field, because
+the deep minimum of demagnetized nickel's Young's modulus below the Curie point is a domain-wall
+effect that vanishes at saturation, and BELFEM's nickel sits in tesla-level fields; the class
+header of `cl_Material_Nickel.hpp` documents this decision. Chromium's spin-density-wave anomalies
+collapse its bulk modulus by 20 % toward the Néel point; no smooth monotone closure follows that,
+so chromium is served with δ_G = δ_K, a constant ν = 0.2371 taken from its cryogenic plateau, and
+the anomaly is documented as unrepresented in `cl_Material_Chromium.hpp`.
+
+**Sources and validity ceilings.** Measured sources with data points (Ledbetter, Neighbours & Alers,
+Kamm & Alers, Rayne & Chandrasekhar, Alers et al., Palmer & Lee, Kim & Ledbetter) set the levels and the
+softening constants. Blanke's compilation cites no sources and shows no data points; it is used only to
+bound the range: where the quasi-harmonic E(T) departs from Blanke's curve by more than 5 % in shape
+(both normalized at room temperature), the material's `T_max` is lowered to that temperature — copper
+1000 K, silver 900 K, chromium 570 K, white tin 400 K. Iron (855 K) and aluminum (never beyond 10 %)
+keep their ceilings. All served moduli are dynamic moduli made isothermal; static moduli, which an
+elastostatic calculation would prefer, are lower for metals with anelastic relaxation at low frequency;
+lead, where the difference is 50 %, is served at the static level; for the others it is a few percent.
+
+The Grüneisen parameter is no longer part of the closure. It is printed by the `material` tool as a
+diagnostic, γ = α_V K_S/(ρ c_p) at 298.15 K, the temperature of the printed density, and retains its
+role for the expansion curve: an independent cross-check that reads about 2 for a metal whose α, c_p, ρ
+and K are mutually consistent. Evaluated along the temperature axis from the served moduli it rises
+gently from its low-temperature value to the room-temperature one (copper 1.88 → 2.03, silver 2.30 →
+2.43, lead 2.42 → 2.74, iron 1.46 → 1.74 between 20 and 293 K) and ends inside the literature range for
+every metal in the roster.
 
 ### 9.8 Callaway phonon conductivity
 

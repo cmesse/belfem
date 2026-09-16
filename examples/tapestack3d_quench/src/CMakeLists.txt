@@ -1,21 +1,24 @@
 # =============================================================================
-# BELFEM user plugins for the tape_quench example
+# BELFEM user plugins for the tapestack3d_quench example
 # =============================================================================
-# Builds the two shared libraries this deck loads:
+# Builds the ONE shared library this deck loads:
 #
-#   usermat.so     -- the material library    ( matlib.cpp )
-#   userdefect.so  -- the defect and the current source ( defect.cpp, current.cpp )
+#   userdefect.so  -- the Ic defect AND the transport current
+#                     ( defect.cpp, current.cpp; both read src/ramps.hpp )
+#
+# The name says "defect" because that is the deck key it was written for; the
+# current source rides in the same object so the two share one time programme.
 #
 # Build:
 #   mkdir build && cd build
 #   cmake -DBELFEM_DIR=/path/to/belfem .. && make
 #
-# The deck refers to them as build/usermat.so and build/userdefect.so.
+# The deck refers to it as src/build/userdefect.so.
 # =============================================================================
 
 cmake_minimum_required(VERSION 4.0)
 
-project(TapeQuenchUserPlugins CXX)
+project(Tapestack3dQuenchUserPlugins CXX)
 
 # -----------------------------------------------------------------------------
 # USER CONFIGURATION
@@ -25,8 +28,10 @@ project(TapeQuenchUserPlugins CXX)
 #   cmake -DBELFEM_DIR=/home/you/codes/belfem ..
 set(BELFEM_DIR "$ENV{HOME}/codes/belfem" CACHE PATH "BELFEM source or install root")
 
-# Where the plugins read their measured tables from. Compiled in, so the
-# libraries work regardless of the directory the solver is launched from.
+# Where a plugin would read measured tables from. Compiled in as
+# BELFEM_USER_DATA_DIR, so a library works regardless of the directory the
+# solver is launched from. This deck's plugins are analytic and read no
+# tables, so nothing uses it -- it is kept for decks derived from this one.
 set(USER_DATA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../data" CACHE PATH "Measured data tables")
 
 # -----------------------------------------------------------------------------
@@ -93,14 +98,15 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 
 # -----------------------------------------------------------------------------
-# The two libraries
+# The library
 # -----------------------------------------------------------------------------
-# No "lib" prefix: the deck names them exactly as they appear on disk.
+# No "lib" prefix: the deck names the file exactly as it appears on disk.
+# The foreach is a one-entry loop on purpose -- a second plugin ( a user
+# material, say ) is added by listing it here.
 
-add_library(usermat    MODULE matlib.cpp)
 add_library(userdefect MODULE defect.cpp current.cpp)
 
-foreach(TARGET usermat userdefect)
+foreach(TARGET userdefect)
     target_include_directories(${TARGET} PRIVATE ${BELFEM_INCLUDE_DIRS})
     target_compile_definitions(${TARGET} PRIVATE
         BELFEM_USER_DATA_DIR="${USER_DATA_DIR}/")
@@ -117,10 +123,8 @@ foreach(TARGET usermat userdefect)
     endif()
 endforeach()
 
-install(TARGETS usermat userdefect LIBRARY DESTINATION lib)
-
 message(STATUS "==================================================")
 message(STATUS "BELFEM  : ${BELFEM_DIR}")
 message(STATUS "Data    : ${USER_DATA_DIR}")
-message(STATUS "Targets : usermat, userdefect")
+message(STATUS "Targets :  userdefect")
 message(STATUS "==================================================")

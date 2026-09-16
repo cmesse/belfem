@@ -56,7 +56,7 @@
 # =============================================================================
 
 # 3.13 for target_link_options(), used in the APPLE branch below.
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 4.0)
 
 # =============================================================================
 # USER CONFIGURATION - Edit these variables

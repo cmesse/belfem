@@ -356,7 +356,8 @@ print_tables( const Material * aMaterial, Vector< real > & aT, real tB, real tBe
 
     if ( aMaterial->is_constant( MaterialProperty::grueneisen ) )
     {
-        printf( "Grüneisen param. γ : %5.4f\n", aMaterial->constant_property( MaterialProperty::grueneisen ) );
+        // diagnostic, not a prescribed value: alpha_V K_S / ( rho cp ) at the temperature of the density above
+        printf( "Grüneisen param. γ @ %3.2f K : %5.4f\n", BELFEM_TREF, aMaterial->constant_property( MaterialProperty::grueneisen ) );
     }
 }
 

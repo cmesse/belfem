@@ -32,11 +32,11 @@ namespace belfem
 {  0.0, 9.17539017e-7, 2.04951604,  1.08209240e3, -0.438026164,
              78.1833995,  1.77403741,  0.0  } );
 
-            // Nickel needs two Wachtman curves and a transition
-            this->create_young();
-
-            // from Wolfram Cloud, skipping the Wachtman data
-            this->create_mech( 0., 0., 0., 293.15, 0.31 );
+            // quasi-harmonic K and G, fitted to the saturated-state ( 10 kOe ) single-crystal
+            // constants of Alers, Neighbours and Sato 1960, 10.1016/0022-3697(60)90125-6,
+            // Table 2, Hill-averaged, 0-300 K, adiabatic -> isothermal; see the class header
+            // for why the demagnetized Delta-E dip is not represented
+            this->create_mech( 222.35, 0.2935, 300., 6.14, 10.88 );
 
             // must run after create_debye_and_rho(), which sets rho_i_ref —
             // with rho_i_ref unset, the regula falsi in set_RRR() exits
@@ -52,7 +52,6 @@ namespace belfem
             delete mReducedMagnetization;
             delete mThermalExpansion;
             if ( mKohlerLongBezier != nullptr ) delete mKohlerLongBezier ;
-            if ( mYoungBezier != nullptr ) delete mYoungBezier ;
         }
 
         void
@@ -290,54 +289,6 @@ namespace belfem
 
             // Pippard's angular interpolation formula
             return Along * c2 + Atrans * s2 ;
-        }
-
-        void Nickel::create_young()
-        {
-            mYoungData.set_size( 2, {} );
-
-            Vector< real > & p0 = mYoungData( 0 );
-            Vector< real > & p1 = mYoungData( 1 );
-
-            // Wachtman data fit against Blanke, Thermophysikalische Stoffgrößen, Springer 1989
-            // poisson ratio at room temperature from Wolfram Cloud
-
-            p0 = { 213.721e9, 0.51216e9, 474.73 };
-            p1 = { 204.627e9, 0.17663e9, 1664.71 };
-
-
-
-            Vector< real > x = { 465.4, 527.3, 631.8, 637.};
-
-
-            real T = x(0);
-            real E0 = p0( 0 );
-            real  b = p0( 1 );
-            real T0 = p0( 2 );
-
-            real z = b * std::exp( - T0 / T ) ;
-            real y0  = E0 - T * z ;
-            real dy0 = -z*( T + T0 ) / T ;
-            real y1 = y0 + dy0 * ( x( 1 ) - x( 0 ) );
-
-            T = x(3);
-            E0 = p1( 0 );
-            b = p1( 1 );
-            T0 = p1( 2 );
-
-            z = b * std::exp( - T0 / T ) ;
-            real y3  = E0 - T * z ;
-            real dy3 = -z*( T + T0 ) / T ;
-
-            real y2 = y3 - dy3 * ( x( 3 ) - x( 2 ) );
-
-            Vector< real > y( { y0, y1, y2, y3 } );
-
-            mYoungBezier = new Bezier( x, y );
-
-            // the E spline itself is built by Metal::create_mech(), which also
-            // supplies the 0 K slope
-            this->set_have( MaterialProperty::E );
         }
 
     }

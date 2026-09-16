@@ -12,7 +12,7 @@
 # The deck refers to it as src/build/usersource.so.
 # =============================================================================
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 4.0)
 
 project(Undulator2dUserPlugins CXX)
 

@@ -1,6 +1,6 @@
 # Material property literature sources {#physics_materials_material_property_sources}
 
-**Date:** 2026-08-28
+**Date:** 2026-09-15 (first version 2026-08-28)
 **Purpose:** One table per property family naming the literature behind every material fit, with the full bibliography
 **Module:** src/physics/materials
 
@@ -16,21 +16,38 @@ law are in `resistivity_laws.md`; sources for homogenization are in
 
 Property symbols: `alpha` denotes thermal expansion, `cp` specific heat, `rho`
 electrical resistivity (the quantity stored by the `rho` group of a generated
-database), `E` Young's modulus, and `nu` Poisson ratio.
+database), `E` Young's modulus, and `nu` Poisson's ratio.
+
+The nine pure metals represent isotropic polycrystals. Their E and nu are obtained from
+the quasi-harmonic closure of `Metal::create_mech` (bulk and shear modulus as
+exponentials of the logarithmic thermal strain; Garai-Laugier 2007 derive the
+form for the bulk modulus, BELFEM applies it to the shear modulus as well), fit
+over 0..300 K to the elastic data named in the E column, which span 4 K to room
+temperature; data from single-crystal sources are Hill-averaged, ultrasonic (adiabatic) bulk moduli
+are converted to isothermal values with the material's own alpha, cp and rho
+before the fit. The resulting served moduli are isothermal (dynamic
+moduli, not static ones). Blanke 1989 is a compilation without sources or
+data points; it is not used for any level or slope, only as the citable
+reference for the temperature ceiling: `T_max` of copper, silver, chromium
+and white tin is set where the quasi-harmonic E(T) departs from Blanke's curve
+by more than 5 % in shape. In the overlap below room temperature Blanke lies
+2..4 % above the ultrasonic literature for Cu, Al, Ag and within 1 % for Fe;
+its lead value (16 GPa at 300 K) is a static-type modulus, 33 % below the
+dynamic Hill average, and is the one exception where Blanke sets a level.
 
 ## Main table
 
 | Material | alpha | cp | rho | E | nu |
 |---|---|---|---|---|---|
-| Copper | Touloukian TPRC | Touloukian TPRC | Matula 1979 (Bloch-Grueneisen, 273.15 K anchor); Kohler: De Launay 1959, Benz 1969, Arentz 1982, Clausecker 1969, Strom-Olsen 1967 | Wachtman fit vs Blanke 1989 | copper.org / Wolfram Cloud (RT value) |
-| Aluminum | Touloukian TPRC | Touloukian TPRC | Hust-Lankford 1984 anchor; Debye curve: Desai 1984, Cook 1975; Kohler: Luethi 1960, Fickett 1972 | Wachtman fit vs Blanke 1989 | Grueneisen-consistent, RT value Wolfram Cloud |
-| Chromium | e3sconf 2024 (primary), Touloukian TPRC (secondary) | unnamed literature spread (sanity: cp(293 K) = 451 vs 449) | White-Woods 1959 anchor; Debye: Anderson 1970; Kohler: Kozlova-Kondorskii 1963, Arajs-Dunmyre 1965 | Armstrong-Brown 1964 (scaled to 279 GPa at RT) | Wolfram Cloud (RT value) |
-| Silver | Touloukian TPRC | Touloukian TPRC | Matula 1979 (273.15 K anchor); Kohler: Luethi 1960, Strom-Olsen 1967, Stout 1939, Iwasa 1993, Li 2015 | Wachtman fit vs Blanke 1989 | Wolfram Cloud (RT value) |
-| Indium | Touloukian TPRC (6..374 K, rms 0.005%) | Touloukian TPRC; low-T gamma/beta: TPRC curve 3 | White-Sondheimer via PhysRevB 23 3845 anchor; Kohler: Luethi 1960, PhysRev 120 1167 | Kim-Ledbetter 1998 | Kim-Ledbetter 1998 |
-| White tin | Touloukian TPRC | Touloukian TPRC; Sommerfeld/Debye: O'Neil 1965 | White 1968 via Hariharan 1979 anchor; Debye high-T: Meaden 1965 via Hall 1968; Kohler: Luethi 1960 | Wachtman fit vs Blanke 1989 | Wolfram Cloud (RT value) |
-| Lead | Touloukian TPRC | Touloukian TPRC | White 1968 via Hariharan 1979 anchor; Debye high-T: Meaden 1965 via Hall 1968; Kohler: Luethi 1960 | Wachtman fit vs Blanke 1989 | Wolfram Cloud (RT value) |
-| Iron | Touloukian TPRC | Touloukian TPRC (Curie anomaly smoothed) | White-Woods 1959 (T < 295 K, RRR 40..104), Arajs-Colvin 1964 (300..1300 K), magnetization: Crangle-Goodman 1971; Kohler: Klaffky-Coleman 1974, Luethi 1960; valid to 860 K | Wachtman fit vs Blanke 1989 | Wolfram Cloud (RT value) |
-| Nickel | Touloukian TPRC | Touloukian TPRC; gamma/beta: TPPM | White-Woods 1959, Farrell-Greig 1968; magnetization: Crangle-Goodman 1971; Kohler: Luethi 1960 | Wachtman fit vs Blanke 1989 (two curves across the Curie point) | Wolfram Cloud (RT value) |
+| Copper | Touloukian TPRC | Touloukian TPRC | Matula 1979 (Bloch-Grueneisen, 273.15 K anchor); Kohler: De Launay 1959, Benz 1969, Arentz 1982, Clausecker 1969, Strom-Olsen 1967 | Ledbetter 1981 (polycrystalline material, 5..295 K); quasi-harmonic fit | Ledbetter 1981 |
+| Aluminum | Touloukian TPRC | Touloukian TPRC | Hust-Lankford 1984 anchor; Debye curve: Desai 1984, Cook 1975; Kohler: Luethi 1960, Fickett 1972 | Kamm-Alers 1964 (single-crystal data, Hill average); quasi-harmonic fit | Kamm-Alers 1964 |
+| Chromium | e3sconf 2024 (primary), Touloukian TPRC (secondary) | unnamed literature spread (sanity: cp(293 K) = 451 vs 449) | White-Woods 1959 anchor; Debye: Anderson 1970; Kohler: Kozlova-Kondorskii 1963, Arajs-Dunmyre 1965 | Palmer-Lee 1971 cryogenic plateau (single-crystal data, Hill average); a common softening constant; the spin-density-wave anomalies are not represented | Palmer-Lee 1971, held at 0.2371 |
+| Silver | Touloukian TPRC | Touloukian TPRC | Matula 1979 (273.15 K anchor); Kohler: Luethi 1960, Strom-Olsen 1967, Stout 1939, Iwasa 1993, Li 2015 | Neighbours-Alers 1958 (single-crystal data, Hill average); quasi-harmonic fit | Neighbours-Alers 1958 |
+| Indium | Touloukian TPRC (6..374 K, rms 0.005%) | Touloukian TPRC; low-T gamma/beta: TPRC curve 3 | White-Sondheimer via PhysRevB 23 3845 anchor; Kohler: Luethi 1960, PhysRev 120 1167 | Kim-Ledbetter 1998 (polycrystalline Varshni-fit data); quasi-harmonic fit | Kim-Ledbetter 1998 |
+| White tin | Touloukian TPRC | Touloukian TPRC; Sommerfeld/Debye: O'Neil 1965 | White 1968 via Hariharan 1979 anchor; Debye high-T: Meaden 1965 via Hall 1968; Kohler: Luethi 1960 | Rayne-Chandrasekhar 1960 (tetragonal single-crystal data at 4.2, 77, 300 K, Voigt-Reuss-Hill); quasi-harmonic fit | Rayne-Chandrasekhar 1960 |
+| Lead | Touloukian TPRC | Touloukian TPRC | White 1968 via Hariharan 1979 anchor; Debye high-T: Meaden 1965 via Hall 1968; Kohler: Luethi 1960 | K from Waldorf-Alers 1962 (single-crystal data); E level and shape from Blanke 1989 (static-type curve, 95..300 K) - static moduli by decision, see the class header | derived from K and E: 0.435 at 300 K (handbook 0.44) |
+| Iron | Touloukian TPRC | Touloukian TPRC (Curie anomaly smoothed) | White-Woods 1959 (T < 295 K, RRR 40..104), Arajs-Colvin 1964 (300..1300 K), magnetization: Crangle-Goodman 1971; Kohler: Klaffky-Coleman 1974, Luethi 1960; valid to 860 K | Rayne-Chandrasekhar 1961 (single-crystal data, zero field, Hill average); quasi-harmonic fit | Rayne-Chandrasekhar 1961 (isothermal nu flat) |
+| Nickel | Touloukian TPRC | Touloukian TPRC; gamma/beta: TPPM | White-Woods 1959, Farrell-Greig 1968; magnetization: Crangle-Goodman 1971; Kohler: Luethi 1960 | Alers-Neighbours-Sato 1960 (single-crystal data at 10 kOe, Hill average); quasi-harmonic fit; the demagnetized Delta-E dip is not represented | Alers-Neighbours-Sato 1960 |
 | Magnesia (MgO) | Simon 1994, Durand 1936 | Touloukian TPRC curve 4 + Simon 1994 | n/a (insulator) | Blanke 1989 (Simon 1994 judged too low for HTS tapes) | Simon 1994 |
 | Hastelloy C-276 | Lu 2008 | Lu 2008 (15..120 K); RT Debye tail anchored at unnamed literature cp = 427 | Lu 2008 (log-log above 10.73 K) | Cryogenics 2006 + MATWEB | Cryogenics 2006 + MATWEB |
 | YBCO | Salomons 1987 | Baak 1989 (T < 20 K), Lang 1988 (50..350 K) | Sommerfeld 2003 (Bloch-Grueneisen, RRR ~ 50) | Lei-Ledbetter 1991 (normalized curve, user-scaled) | Lei-Ledbetter 1991 |
@@ -76,6 +93,17 @@ construction.
 | Stout 1939 | J. W. Stout et al. | 1939 | J. Am. Chem. Soc. | 10.1021/ja01871a006 |
 | Iwasa 1993 | Y. Iwasa et al. | 1993 | Cryogenics | 10.1016/0011-2275(93)90199-X |
 | Kim-Ledbetter 1998 | S. Kim, H. Ledbetter | 1998 | Mater. Sci. Eng. A | 10.1016/S0921-5093(98)00490-0 |
+| Ledbetter 1981 | H. M. Ledbetter | 1981 | phys. stat. sol. (a) 66, 477 (polycrystalline copper, 5..295 K) | 10.1002/pssa.2210660209 |
+| Ledbetter-Naimon 1974 | H. M. Ledbetter, E. R. Naimon | 1974 | J. Phys. Chem. Ref. Data 3, 897 (copper review) | 10.1063/1.3253150 |
+| Ledbetter-Reed 1973 | H. M. Ledbetter, R. P. Reed | 1973 | J. Phys. Chem. Ref. Data 2, 531 (iron, nickel, Fe-Ni; section 15 on the Delta-E effect) | 10.1063/1.3253127 |
+| Kamm-Alers 1964 | G. N. Kamm, G. A. Alers | 1964 | J. Appl. Phys. 35, 327 (aluminum single crystal, 0..300 K) | 10.1063/1.1713309 |
+| Neighbours-Alers 1958 | J. R. Neighbours, G. A. Alers | 1958 | Phys. Rev. 111, 707 (silver and gold single crystals, 0..300 K) | 10.1103/PhysRev.111.707 |
+| Waldorf-Alers 1962 | D. L. Waldorf, G. A. Alers | 1962 | J. Appl. Phys. 33, 3266 (lead single crystal, 0..300 K) | 10.1063/1.1931149 |
+| Rayne-Chandrasekhar 1960 | J. A. Rayne, B. S. Chandrasekhar | 1960 | Phys. Rev. 120, 1658 (beta tin single crystal, 4.2..300 K) | 10.1103/PhysRev.120.1658 |
+| Rayne-Chandrasekhar 1961 | J. A. Rayne, B. S. Chandrasekhar | 1961 | Phys. Rev. 122, 1714 (iron single crystal, 4.2..300 K) | 10.1103/PhysRev.122.1714 |
+| Alers-Neighbours-Sato 1960 | G. A. Alers, J. R. Neighbours, H. Sato | 1960 | J. Phys. Chem. Solids 13, 40 (nickel single crystal at 10 kOe, 0..760 K) | 10.1016/0022-3697(60)90125-6 |
+| Palmer-Lee 1971 | S. B. Palmer, E. W. Lee | 1971 | Phil. Mag. 24, 311 (chromium single crystal, 4.2..345 K, zero field) | 10.1080/14786437108227390 |
+| Garai-Laugier 2007 | J. Garai, A. Laugier | 2007 | J. Appl. Phys. 101, 023514 (isothermal bulk modulus as an exponential of the integrated thermal expansion) | 10.1063/1.2424535 |
 | O'Neil 1965 | H. R. O'Neal et al. | 1965 | Phys. Rev. 137, A748 (in-code cited as 1964) | 10.1103/PhysRev.137.A748 |
 | White 1968 | G. K. White | 1968 | Experimental Techniques in Low Temperature Physics (book) | via Hariharan 1979 |
 | Hariharan 1979 | Hariharan et al. | 1979 | Pramana 13, 117 | 10.1007/BF02872130 |
@@ -108,11 +136,18 @@ construction.
   "typical values" without a source.
 - The Debye curve for Indium and the Debye temperature of 275 K for YBCO are
   bare fits.
-- "Wolfram Cloud" is the room-temperature Poisson source for seven metals,
-  although it is a lookup service rather than a primary reference.
+- Lead is the one metal served with static-level moduli (E, G, nu from
+  Blanke's static-type curve with the crystal's bulk modulus); the dynamic
+  Hill average of the same crystal is 24 GPa against the static 16 GPa at
+  300 K, because lead's shear modulus relaxes strongly at low frequency.
+- White tin's two softening constants are based on three temperatures.
+- Chromium's spin-density-wave anomalies (bulk modulus and Poisson ratio) and
+  nickel's demagnetized Delta-E dip are deliberately not represented; the
+  class headers document these omissions.
 - Base-class model names such as Bloch-Grueneisen, Matthiessen, Kohler,
-  Wachtman, Pippard, and Wiedemann-Franz are used throughout, but none has a
-  bibliographic entry anywhere in the tree.
+  Pippard, and Wiedemann-Franz are used throughout, but none has a
+  bibliographic entry in the tree; the quasi-harmonic elastic closure cites
+  Garai-Laugier 2007.
 
 ## Citation defects in the sources (typos worth a cleanup pass)
 

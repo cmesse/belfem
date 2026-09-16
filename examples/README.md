@@ -15,7 +15,7 @@ cd examples/helix
 gmsh -3 helix.geo -o helix.msh
 ```
 
-Sixteen of the eighteen decks ship a `.geo` file. `corc_twolayer` and `pancake` build their
+Seventeen of the nineteen decks ship a `.geo` file. `corc_twolayer` and `pancake` build their
 meshes with `python/main.py` instead, run from the deck directory. `examples/scripts/Allrun`
 handles both cases. Each deck has a `README.md` describing what it shows and how to run it.
 
@@ -81,7 +81,7 @@ Nothing extra is needed — a first parallel run builds any missing material dat
 
 ## 5. The decks
 
-Each of the eighteen decks has its own `input.conf` and `README.md`. The columns show which
+Each of the nineteen decks has its own `input.conf` and `README.md`. The columns show which
 BELFEM features each deck exercises.
 
 | deck | dim | conductors | thermal | periodic | circuit | plugins | mesh from |
@@ -98,6 +98,7 @@ BELFEM features each deck exercises.
 | `rlc_circuit` | 3D | bulk copper inductor | | | inline RLC | | `.geo` |
 | `tapestack_circuit` | 3D | 2 thin-shell tapes | | | SPICE netlist | | `.geo` |
 | `tapestack3d` | 3D | 8 thin-shell tapes + solder | coupled | yes | | | `.geo` |
+| `tapestack3d_quench` | 3D | 8 thin-shell tapes + solder | coupled | yes | | defect, source | `.geo` |
 | `pancake` | 3D | 8-tape pancake coil | | yes | | | `python/main.py` |
 | `corc_periodic_bc` | 3D | 1-layer CORC, 3 tapes | | translated | | | `.geo` |
 | `corc_garber_effect` | 3D | 1-layer CORC, 3 tapes | | twisted | | | `.geo` |
@@ -108,13 +109,16 @@ BELFEM features each deck exercises.
 **Where to start.** Start with `dipole`, the smallest complete deck. Then try `helix` for
 periodic bulk conductors, `disk_ramp` for a bulk superconductor, `tapestack2d_layered` for
 thin shells, `corc_periodic_bc` for periodic thin shells, `rlc_circuit` for a lumped circuit,
-or `tapestack3d` for the coupled thermal problem.
+or `tapestack3d` for the coupled thermal problem. The two quench studies come last:
+`tape_quench_usermat` on a single tape, and `tapestack3d_quench`, which quenches the
+eight-tape stack and shows the current sharing on the way there.
 
 ### Decks that load a plugin
 
-`disk_pulse`, `racetrack_usermat`, `tape_quench_usermat` and `undulator2d` name a shared
-object in their deck (`file : src/build/usermat.so ;` and siblings), so the two-step recipe
-above is not enough. Build the deck's `src/` first, pointing it at this clone:
+`disk_pulse`, `racetrack_usermat`, `tape_quench_usermat`, `tapestack3d_quench` and
+`undulator2d` name a shared object in their deck (`file : src/build/usermat.so ;` and
+siblings), so the two-step recipe above is not enough. Build the deck's `src/` first,
+pointing it at this clone:
 
 ```bash
 cd examples/<deck>/src

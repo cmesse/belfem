@@ -30,9 +30,9 @@ namespace belfem
          * dataset, the effective Debye temperature curve against Desai 1984 and
          * Cook 1975, the resistivity anchor against Hust 1984, the Kohler
          * magnetoresistance against Lüthi 1960 and Fickett 1972, and the
-         * elastic moduli as a Wachtman curve against Blanke 1989 with the
-         * Poisson ratio derived from a constant Grueneisen parameter
-         * ( Metal::create_mech ). The implied Grueneisen parameter of the
+         * elastic moduli as quasi-harmonic K and G on the thermal strain
+         * ( Metal::create_mech ) fitted to the single-crystal constants of Kamm
+         * and Alers 1964 ( 10.1063/1.1713309 ). The implied Grueneisen parameter of the
          * cryogenic expansion branch reads 2.19 at the split temperature,
          * against a literature 2.1 - 2.2 for aluminum.
          */

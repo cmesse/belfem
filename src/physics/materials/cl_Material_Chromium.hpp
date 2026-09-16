@@ -27,10 +27,13 @@ namespace belfem
          * Registered in cl_MaterialFactory as "chromium", "cr". Thermal
          * expansion, heat capacity, the Debye curve, the resistivity anchor, the
          * thermal conductivity and the Kohler magnetoresistance are fitted; the
-         * elastic moduli are a Wachtman curve against Armstrong and Brown 1964
-         * with the Poisson ratio derived from a constant Grueneisen parameter
-         * ( Metal::create_mech ). The elastic anomaly at the Neel point is not
-         * represented, see below.
+         * elastic moduli are the quasi-harmonic K and G of Metal::create_mech
+         * on the cryogenic plateau of Palmer and Lee 1971
+         * ( 10.1080/14786437108227390 ) with a constant Poisson ratio of 0.2371.
+         * The spin-density-wave anomalies of the elastic constants - the bulk
+         * modulus collapses by 20 % toward the Neel point and the Poisson ratio
+         * falls to 0.196 there - are not represented, see below and the
+         * constructor.
          *
          * MAGNETIC TRANSITIONS - WHAT IS AND IS NOT REPRESENTED
          *

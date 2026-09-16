@@ -13,6 +13,7 @@
 #define BELFEM_CL_MATERIAL_METAL_HPP
 
 
+#include <cmath>
 #include "cl_Material_SplineLookupTable.hpp"
 #include "cl_Database.hpp"
 #include "cl_BhCurve.hpp"
@@ -90,7 +91,12 @@ namespace belfem
             Bezier * mCpBezierMedium  = nullptr ;
             Bezier * mCpBezierHigh    = nullptr ;
 
-            Vector< real > mWachtmanYoung ;
+            //! quasi-harmonic elastic constants ( Metal::create_mech ); K0, G0 at 0 K, the deltas dimensionless
+            real mK0     = BELFEM_QUIET_NAN ;   // isothermal bulk modulus at 0 K [Pa]
+            real mG0     = BELFEM_QUIET_NAN ;   // shear modulus at 0 K [Pa]
+            real mDeltaK = BELFEM_QUIET_NAN ;   // softening constant of the isothermal bulk modulus
+            real mDeltaG = BELFEM_QUIET_NAN ;   // softening constant of the shear modulus
+            real mL0     = BELFEM_QUIET_NAN ;   // l( 0 K ), cached: eps( T ) = 3 ln( l( T ) / mL0 )
 
 //------------------------------------------------------------------------------
         public:
@@ -483,13 +489,50 @@ namespace belfem
                 const Vector< real > & Ry = {} );
 
             real
-            E_custom(const real T) const override;
+            E_custom( const real T ) const override ;
 
             real
-            dEdT_custom(const real T) const override;
+            nu_custom( const real T ) const override ;
 
+            /**
+             * logarithmic volumetric thermal strain from 0 K,
+             * eps( T ) = 3 int_0^T alpha dT = 3 ln( l( T ) / l( 0 ) ) = ln( V / V0 )
+             */
+            real
+            eps( const real T ) const ;
+
+            /**
+             * Elastic moduli in the quasi-harmonic approximation: a modulus depends on the
+             * volume, not on the temperature, and its logarithmic volume derivative is a
+             * material constant ( Garai and Laugier 2007, 10.1063/1.2424535, eq. 10 with a
+             * constant Anderson-Grueneisen parameter ),
+             *
+             *   K( T ) = K0 exp( -deltaK eps( T ) ),   G( T ) = G0 exp( -deltaG eps( T ) ),
+             *   E = 9 K G / ( 3 K + G ),               nu = ( 3 K - 2 G ) / ( 6 K + 2 G ),
+             *
+             * with eps( T ) the strain the thermal expansion curve already integrates for the
+             * density. K is the ISOTHERMAL bulk modulus, the one a quasi-static stress
+             * analysis wants; G is the same in the adiabatic and isothermal description.
+             * The anchor ( T2, E2, nu2 ) must therefore be isothermal as well: ultrasonic
+             * data are adiabatic and are converted with K_T = K_S / ( 1 + alpha_V^2 T K_S /
+             * ( rho cp ) ) in the offline fit that also produces deltaK and deltaG. The
+             * analytic curve passes through the anchor; the served spline reproduces it to
+             * the interpolation accuracy of its 4 K grid.
+             *
+             * Structural properties: E and nu have zero slope at 0 K because alpha does;
+             * nu rises with T iff deltaG > deltaK; K and G stay positive. A sampled check
+             * over the whole served range refuses constants that make nu fall by more than
+             * 1e-3 anywhere ( a genuine inversion is ten times that; iron's isothermal nu is
+             * flat within 1e-4 and passes ).
+             *
+             * @param E2      isothermal Young's modulus at the anchor temperature [GPa]
+             * @param nu2     isothermal Poisson's ratio at the anchor
+             * @param T2      anchor temperature [K], the one used in the offline fit
+             * @param deltaK  softening constant of the isothermal bulk modulus ( > 0 )
+             * @param deltaG  softening constant of the shear modulus ( > 0 )
+             */
             void
-            create_mech( const real E0, const real b, const real T1, const real T2, const real nu2 );
+            create_mech( const real E2, const real nu2, const real T2, const real deltaK, const real deltaG );
 
 //------------------------------------------------------------------------------
         private:
@@ -836,32 +879,31 @@ namespace belfem
         }
 
         inline real
-        Metal::E_custom( const real T ) const
+        Metal::eps( const real T ) const
         {
-            BELFEM_ASSERT( mWachtmanYoung.length() >= 3,
-                "Wachtman coefficients not assigned for %s",
+            BELFEM_ASSERT( std::isfinite( mL0 ),
+                "elastic constants not assigned for %s - call create_mech() first",
                 this->label().c_str() );
 
-            if ( T < BELFEM_EPSILON ) return  mWachtmanYoung( 0 );
-
-            real E0 = mWachtmanYoung( 0 );
-            real  b = mWachtmanYoung( 1 );
-            real T0 = mWachtmanYoung( 2 );
-            return E0 - b * T * std::exp( - T0/T );
+            return 3.0 * std::log( this->l( T ) / mL0 );
         }
 
         inline real
-        Metal::dEdT_custom( const real T ) const
+        Metal::E_custom( const real T ) const
         {
-            BELFEM_ASSERT( mWachtmanYoung.length() >= 3,
-               "Wachtman coefficients not assigned for %s",
-               this->label().c_str() );
+            real e = this->eps( T );
+            real K = mK0 * std::exp( -mDeltaK * e );
+            real G = mG0 * std::exp( -mDeltaG * e );
+            return 9.0 * K * G / ( 3.0 * K + G );
+        }
 
-            if ( T < BELFEM_EPSILON ) return  0 ;
-
-            real  b = mWachtmanYoung( 1 );
-            real T0 = mWachtmanYoung( 2 );
-            return - b *  std::exp( - T0/T ) * ( T + T0 ) / T ;
+        inline real
+        Metal::nu_custom( const real T ) const
+        {
+            real e = this->eps( T );
+            real K = mK0 * std::exp( -mDeltaK * e );
+            real G = mG0 * std::exp( -mDeltaG * e );
+            return ( 3.0 * K - 2.0 * G ) / ( 6.0 * K + 2.0 * G );
         }
 
     }

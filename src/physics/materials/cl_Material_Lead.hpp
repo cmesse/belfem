@@ -19,6 +19,27 @@ namespace belfem
 {
     namespace material
     {
+        /**
+         * @brief Lead ( Pb ), face centered cubic
+         *
+         * ELASTIC MODULI - STATIC LEVEL, WHY
+         *
+         * The moduli follow the quasi-harmonic closure of Metal::create_mech. The bulk
+         * modulus and its softening constant are those of the single crystal of Waldorf
+         * and Alers 1962 ( 10.1063/1.1931149, Table I ); a bulk modulus is not relaxed
+         * by anelasticity, so its static and dynamic values coincide. Young's modulus,
+         * and with it the shear modulus and the Poisson ratio, is anchored on the
+         * static-type curve of Blanke 1989 rather than on the dynamic Hill average of
+         * the same crystal: lead's Zener anisotropy is 4.1 and its shear modulus relaxes
+         * strongly at low frequency, so the ultrasonic Hill average ( E = 24 GPa at
+         * 300 K ) is far above what a slow, elastostatic loading sees ( tensile handbooks:
+         * E 16, G 5.6 GPa, nu 0.44 ). With the crystal's K and Blanke's E the served
+         * values at 300 K are E 16.25, G 5.66 GPa, nu 0.435, and nu rises monotonically
+         * from 0.43 at 95 K. Formula alloys that contain lead inherit this through
+         * cl_Material_Alloy. For the other metals of the roster the static and dynamic
+         * moduli differ by only a few percent and the dynamic ( ultrasonic ) data are
+         * served. Decision: Christian Messe, 2026-09-15.
+         */
         class Lead : public Metal
         {
             // debye temperature

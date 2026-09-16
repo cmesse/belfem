@@ -350,6 +350,7 @@ Meshing, plugins and the shared launcher are covered in the
 @subpage doc_examples_tapestack2d_layered
 @subpage doc_examples_tapestack2d_racetrack
 @subpage doc_examples_tapestack3d
+@subpage doc_examples_tapestack3d_quench
 @subpage doc_examples_tapestack_circuit
 @subpage doc_examples_undulator2d
 */

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 4.0)
 
 # Use the SCLS toolchain when no compiler was explicitly requested.
 #

@@ -41,9 +41,10 @@ namespace belfem
 
             this->create_kohler();
 
-            // Wachtman data fit against Blanke, Thermophysikalische Stoffgrößen, Springer 1989
-            // poisson ratio at room temperature from Wolfram Cloud
-            this->create_mech( 75.706, 0.07071, 649.62, 293.15, 0.35 );
+            // quasi-harmonic K and G on the thermal strain ( Metal::create_mech ): isothermal anchor and softening
+            // constants fitted 0-300 K to Kamm and Alers 1964, 10.1063/1.1713309, Table I ( single crystal,
+            // Hill average ), adiabatic -> isothermal with this class's alpha, cp, rho
+            this->create_mech( 69.51, 0.3409, 300., 6.88, 9.72 );
 
             if ( ! std::isnan( RRR ) )
             {

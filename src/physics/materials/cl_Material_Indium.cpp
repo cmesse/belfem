@@ -28,8 +28,10 @@ namespace belfem
 
             this->create_kohler();
 
-            // fitted against Kim and Ledbetter, 1998, 10.1016/S0921-5093(98)00490-0
-            this->create_mech( 19.603, 0.02701, 44.60, 295, 0.4498 );
+            // quasi-harmonic K and G on the thermal strain ( Metal::create_mech ): isothermal anchor and softening
+            // constants fitted 0-300 K to Kim and Ledbetter 1998, 10.1016/S0921-5093(98)00490-0, Table 1
+            // ( polycrystal, Varshni fits 5-300 K ), adiabatic -> isothermal with this class's alpha, cp, rho
+            this->create_mech( 12.85, 0.4464, 295., 7.61, 20.56 );
 
             if ( ! std::isnan( RRR ) )
             {

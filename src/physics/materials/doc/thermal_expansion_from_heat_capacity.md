@@ -145,11 +145,14 @@ cross-check on four separately fitted quantities. It reads O(2) for every metal,
 only on the anchor, not on the extrapolation below it. Below T\*, α = C·c_p makes γ nearly
 constant by construction, so a flat γ there is not confirmation of anything.
 
-The K it uses comes from the same E(T) and ν(T) the solver sees: since 2026-08-24 these are
-the Wachtman modulus and the Grüneisen-derived Poisson ratio of `Metal::create_mech`
-(`cl_Material_Metal.cpp:1105`), fitted against Blanke 1989
-for most metals. It is checked rather than enforced because the elastic data of several
-materials is still provisional. The assertion uses a deliberately wide 0.2–10 band: that is a scale check, not a
+The K it uses comes from the same E(T) and ν(T) the solver sees: since 2026-09-15 the
+corresponding quasi-harmonic bulk and shear moduli are those of `Metal::create_mech` (search for
+that name in `cl_Material_Metal.cpp`). These moduli soften exponentially with the strain ∫α dT
+discussed in this document and are fitted per metal to measured elastic constants
+(`materials_usage_guide.md` §9.7). The diagnostic and the closure therefore share α, but not γ:
+the closure no longer holds γ constant, so an incorrect softening constant appears here as an
+unphysical γ. It is checked rather than
+enforced because the elastic data of several materials is still provisional. The assertion uses a deliberately wide 0.2–10 band: that is a scale check, not a
 precision check. It is not printed during construction — the natural place to surface it is the
 material report alongside density, molar mass and the Sommerfeld coefficient.
 

@@ -42,9 +42,11 @@ namespace belfem
 
             this->create_kohler();
 
-            // Wachtman data fit against Blanke, Thermophysikalische Stoffgrößen, Springer 1989
-            // poisson ratio at room temperature from Wolfram Cloud
-            this->create_mech( 63.532, 0.21789,600.08, 293.15, 0.36 );
+            // quasi-harmonic K and G on the thermal strain ( Metal::create_mech ): isothermal anchor and softening
+            // constants fitted 0-300 K to Rayne and Chandrasekhar 1960, 10.1103/PhysRev.120.1658, Table IV
+            // ( tetragonal single crystal at 4.2, 77 and 300 K, Voigt-Reuss-Hill ), adiabatic -> isothermal
+            // with this class's alpha, cp, rho; three temperatures for two exponents, the weakest dataset
+            this->create_mech( 48.29, 0.3471, 300., 7.12, 21.54 );
 
             if ( ! std::isnan( RRR ) )
             {
@@ -60,8 +62,11 @@ namespace belfem
 
         void WhiteTin::set_constants()
         {
-            // set the melting temperature
-            this->set_constant( MaterialProperty::T_max, 505.08 );
+            // validity ceiling, not the melting point ( 505.08 K ): above this temperature the quasi-harmonic
+            // E( T ) departs by more than 5 % in shape from the dynamic modulus curve of Blanke 1989
+            // ( Thermophysikalische Stoffgroessen, uncited compilation, used here for the ceiling only );
+            // decided 2026-09-15, Christian Messe
+            this->set_constant( MaterialProperty::T_max, 400. );
 
             this->set_constant( MaterialProperty::ref_density, 7289. );
             this->set_constant( MaterialProperty::T_ref_density, 293.15 );

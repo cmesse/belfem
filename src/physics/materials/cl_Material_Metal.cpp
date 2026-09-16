@@ -10,6 +10,7 @@
  */
 
 #include "debye.hpp"
+#include <algorithm>
 #include "cl_Material_Metal.hpp"
 
 #include "commtools.hpp"
@@ -1119,7 +1120,7 @@ namespace belfem
         }
 
         void
-        Metal::create_mech( const real E0, const real b, const real T1, const real T2, const real nu2 )
+        Metal::create_mech( const real E2, const real nu2, const real T2, const real deltaK, const real deltaG )
         {
             // once-per-material setup: the checks stay active in release builds
             BELFEM_ERROR( this->have( MaterialProperty::alpha ),
@@ -1128,105 +1129,124 @@ namespace belfem
                 "Need cp table for %s", this->label().c_str() );
             BELFEM_ERROR( this->have( MaterialProperty::ref_density ),
                 "Need reference density for %s", this->label().c_str() );
+            BELFEM_ERROR( this->have( MaterialProperty::T_max ),
+                "Need maximum temperature for %s", this->label().c_str() );
 
-            // Wachtman form E = E0 - b * T * exp( -T0 / T ), stored in Pa. A subclass
-            // that brings its own E( T ) ( Nickel ) passes E0 = 0 and must have
-            // declared the property; the decision is made on the parameters, not on
-            // the have-flag, which an earlier set_custom( E ) could have raised.
-            if ( E0 > 0.0 )
+            // the strain integral must start on the cryogenic alpha branch ( alpha = C cp ),
+            // otherwise eps( T ) at low T inherits a fitted Bezier slope and dE/dT( 0 ),
+            // dnu/dT( 0 ) are no longer zero
+            BELFEM_ERROR( this->alpha_switch_temperature() > 0.0,
+                "%s: create_mech() needs the cryogenic alpha branch, but the split temperature is %g K",
+                this->label().c_str(), ( double ) this->alpha_switch_temperature() );
+
+            BELFEM_ERROR( std::isfinite( E2 ) && E2 > 0.0,
+                "%s: Young's modulus at the anchor must be positive, reads %g GPa",
+                this->label().c_str(), ( double ) E2 );
+            BELFEM_ERROR( nu2 > -1.0 && nu2 < 0.5,
+                "%s: Poisson ratio at the anchor must lie in ( -1, 1/2 ), reads %g",
+                this->label().c_str(), ( double ) nu2 );
+            BELFEM_ERROR( std::isfinite( deltaK ) && deltaK > 0.0 && std::isfinite( deltaG ) && deltaG > 0.0,
+                "%s: softening constants must be positive, read deltaK = %g, deltaG = %g",
+                this->label().c_str(), ( double ) deltaK, ( double ) deltaG );
+
+            const real Tmax = this->constant_property( MaterialProperty::T_max );
+            BELFEM_ERROR( std::isfinite( T2 ) && T2 > 0.0 && T2 <= Tmax,
+                "%s: anchor temperature %g K is outside ( 0, %g ]",
+                this->label().c_str(), ( double ) T2, ( double ) Tmax );
+
+            // reference length at 0 K, cached: eps( T ) = 3 ln( l( T ) / l( 0 ) )
+            mL0 = this->l( 0.0 );
+            BELFEM_ERROR( std::isfinite( mL0 ) && mL0 > 0.0,
+                "%s: relative length at 0 K reads %g - the alpha integral is not usable",
+                this->label().c_str(), ( double ) mL0 );
+
+            mDeltaK = deltaK ;
+            mDeltaG = deltaG ;
+
+            // anchor: isotropic identities, stored in Pa, then back to 0 K along the exponential
+            const real E  = E2 * 1e9 ;
+            const real K2 = E / ( 3.0 - 6.0 * nu2 );
+            const real G2 = E / ( 2.0 + 2.0 * nu2 );
+            const real e2 = this->eps( T2 );
+
+            mK0 = K2 * std::exp( deltaK * e2 );
+            mG0 = G2 * std::exp( deltaG * e2 );
+
+            BELFEM_ERROR( std::isfinite( mK0 ) && mK0 > 0.0 && std::isfinite( mG0 ) && mG0 > 0.0,
+                "%s: elastic constants at 0 K read K0 = %g Pa, G0 = %g Pa",
+                this->label().c_str(), ( double ) mK0, ( double ) mG0 );
+
+            // the report constant: the Grueneisen parameter as a DIAGNOSTIC, gamma = alpha_V K_S / ( rho cp ),
+            // evaluated at the reference temperature of the printed density ( or at the anchor if the
+            // material does not reach it ), with the adiabatic bulk modulus recovered exactly from the
+            // isothermal one, K_S = K_T / ( 1 - alpha_V^2 T K_T / ( rho cp ) ). It is not prescribed
+            // anywhere: it is what the served K, alpha, cp and rho imply, so an inconsistent set shows
+            // up here as a value outside the O( 2 ) the metals share
             {
-                mWachtmanYoung = { E0 * 1e9, b * 1e9, T1 };
-                this->set_have( MaterialProperty::E );
+                const real Tg     = BELFEM_TREF <= Tmax ? BELFEM_TREF : T2 ;
+                const real Kg     = mK0 * std::exp( -mDeltaK * this->eps( Tg ) );
+                const real alphaV = 3.0 * this->alpha( Tg );
+                const real rho    = this->density( Tg );
+                const real cp     = this->cp( Tg );
+                const real q      = alphaV * alphaV * Tg * Kg / ( rho * cp );
+
+                BELFEM_ERROR( q < 1.0,
+                    "%s: thermoelastic correction %g at %g K is not physical - check alpha, cp and rho there",
+                    this->label().c_str(), ( double ) q, ( double ) Tg );
+
+                const real Ks = Kg / ( 1.0 - q );
+                this->set_constant( MaterialProperty::grueneisen, alphaV * Ks / ( rho * cp ) );
             }
-            else
+
+            // the served splines sample E_custom and nu_custom on the 4 K grid; both slopes
+            // at 0 K are exactly zero because alpha( 0 ) = 0
+            this->set_have( MaterialProperty::E );
+            this->set_have( MaterialProperty::nu );
+            this->create_spline( MaterialProperty::E, 0.0 );
+            this->create_spline( MaterialProperty::nu, 0.0 );
+
+            // sampled guards over the whole served range: alpha >= 0, nu inside ( -1, 1/2 ), and nu
+            // non-decreasing within data accuracy. The analytic curve is checked at the spline knots,
+            // the served spline half-way between them ( a cubic reproduces its knots, so only the
+            // midpoints can reveal an overshoot ). With pure exponentials a drop of 1e-3 is a sign
+            // error in the constants; the 1e-4 drift of a metal whose isothermal Poisson ratio is
+            // flat ( iron ) passes
+            const real   dT  = 4.0 ;
+            const real   tol = 1e-3 ;
+            const size_t n   = static_cast< size_t >( std::ceil( Tmax / dT ) ) + 1 ;
+            real numax = -1.0 ;
+            real T = 0.0 ;
+            for ( size_t k = 0; k < n; ++k )
             {
-                BELFEM_ERROR( this->have( MaterialProperty::E ),
-                    "%s: create_mech() called without Wachtman data, but no E( T ) was provided",
-                    this->label().c_str() );
-            }
+                BELFEM_ERROR( this->alpha( T ) >= 0.0,
+                    "%s: negative thermal expansion %g at %g K - the quasi-harmonic closure assumes alpha >= 0",
+                    this->label().c_str(), ( double ) this->alpha( T ), ( double ) T );
 
-            if ( this->spline( MaterialProperty::E ) == nullptr )
-            {
-                this->create_spline( MaterialProperty::E, 0.0 );
-            }
+                const real nu = this->nu_custom( T );
 
+                BELFEM_ERROR( nu > -1.0 && nu < 0.5,
+                    "Poisson ratio of %s reads %g at %g K - check the anchor and the softening constants",
+                    this->label().c_str(), ( double ) nu, ( double ) T );
 
-            Spline * Esp = this->spline( MaterialProperty::E );
+                numax = std::max( numax, nu );
 
-            BELFEM_ERROR( Esp != nullptr && Esp->x_min() < BELFEM_EPSILON,
-                "Spline for E of %s must exist and start at 0 K", this->label().c_str() );
+                BELFEM_ERROR( numax - nu <= tol,
+                    "Poisson ratio of %s falls with temperature ( %g at %g K, %g before ) - "
+                    "the shear modulus must not soften more slowly than the bulk modulus",
+                    this->label().c_str(), ( double ) nu, ( double ) T, ( double ) numax );
 
-            // Grueneisen parameter from the anchor ( T2, nu2 ): with E and nu
-            // taken as isothermal, K_T = E / ( 3 ( 1 - 2 nu ) ), the adiabatic
-            // K_S = K_T / ( 1 - T alpha_V^2 K_T / ( rho cp ) ) and
-            // gamma = alpha_V K_S / ( rho cp ). gamma is then held constant in T.
-            real T     = T2 ;
-            real Et    = this->E_custom( T );
-            real alpha = 3. * this->alpha( T );  // volumetric expansion
-            real rho   = this->density( T );
-            real cp    = this->cp( T );
+                const real Tmid = T + 0.5 * dT ;
+                if ( Tmid <= Tmax )
+                {
+                    const real numid = this->nu( Tmid );   // the served spline
 
-            real Kt = Et / ( 3. - 6. * nu2 );                                  // isothermal bulk modulus
-            real Ks = Kt * cp * rho / ( cp * rho - Kt * T * alpha * alpha );   // adiabatic bulk modulus
+                    BELFEM_ERROR( numid > -1.0 && numid < 0.5 && numax - numid <= tol,
+                        "served Poisson ratio of %s reads %g at %g K between the spline knots ( %g before )",
+                        this->label().c_str(), ( double ) numid, ( double ) Tmid, ( double ) numax );
+                }
 
-            real gamma = alpha * Ks / ( rho * cp );
-            this->set_constant( MaterialProperty::grueneisen, gamma );
-
-            // nu( T ) on the spline grid from the constant gamma:
-            // K_S( T ) = gamma rho cp / alpha_V, back to K_T, nu = 1/2 - E / ( 6 K_T ).
-            // The 0 K point is extrapolated, because alpha and cp both vanish there
-            // ( their ratio stays finite: the cryogenic branch has alpha = C cp ).
-            real    dT = Esp->delta_x() ;
-            index_t  n = Esp->coefficients().n_cols() ;
-
-            Vector< real > nu( n ) ;
-            Vector< real > theta( n );
-
-            T = Esp->x_min() ;
-            theta( 0 ) = T ;
-
-            for ( index_t k = 1; k < n; k++ )
-            {
                 T += dT ;
-
-                Et    = this->E_custom( T );
-                rho   = this->density( T );
-                alpha = 3. * this->alpha( T );
-                cp    = this->cp( T );
-
-                Ks = gamma * rho * cp / alpha ;
-                Kt = Ks / ( 1. + Ks * T * alpha * alpha / ( rho * cp ) );
-
-                nu( k )    = 0.5 - Et / ( 6. * Kt ) ;
-                theta( k ) = T ;
             }
-            theta( n - 1 ) = Esp->x_max() ; // catch rounding error
-
-            // extrapolate to 0 K with zero slope: quadratic through nu( dT ), nu( 2 dT )
-            Matrix< real > V( { { 0., 1., 0 },  { dT*dT, dT, 1.} , { 4*dT*dT, 2.*dT, 1. } } );
-            Vector< real > f( { 0., nu( 1 ), nu( 2 ) } );
-            Vector< int_t > p( 3 );
-            gesv( V, f, p );
-            nu( 0 ) = f( 2 );
-
-            // a bad anchor or a bad Wachtman parameter shows up here, not downstream
-            for ( index_t k = 0; k < n; k++ )
-            {
-                BELFEM_ERROR( nu( k ) > -1.0 && nu( k ) < 0.5,
-                    "Poisson ratio of %s reads %g at %g K - check nu2, T2 and the Wachtman parameters",
-                    this->label().c_str(), ( double ) nu( k ), ( double ) theta( k ) );
-            }
-
-            SpMatrix H ;
-            spline::create_helpmatrix(
-                n,
-                dT,
-                H,
-                spline::SplineBC::Tangent,
-                spline::SplineBC::NoCurvature );
-
-            this->set_spline( MaterialProperty::nu,
-                new Spline( theta, nu, H, spline::SplineBC::Tangent, spline::SplineBC::NoCurvature ) );
         }
 
     }

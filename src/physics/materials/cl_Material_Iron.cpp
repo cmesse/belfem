@@ -36,9 +36,12 @@ namespace belfem
 
             this->create_kohler();
 
-            // Wachtman data fit against Blanke, Thermophysikalische Stoffgrößen, Springer 1989
-            // poisson ratio at room temperature from Wolfram Cloud
-           this->create_mech( 214.886, 0.18823, 998.94, 293.15, 0.29 );
+            // quasi-harmonic K and G on the thermal strain ( Metal::create_mech ): isothermal anchor and softening
+            // constants fitted 0-300 K to Rayne and Chandrasekhar 1961, 10.1103/PhysRev.122.1714, Table I
+            // ( single crystal, zero field, Hill average ), adiabatic -> isothermal with this class's alpha,
+            // cp, rho. Iron's isothermal Poisson ratio is flat ( 0.2845 -> 0.2844 over 0-300 K ): deltaG
+            // is slightly below deltaK, which the sampled guard in create_mech() tolerates by design
+            this->create_mech( 212.20, 0.2844, 300., 7.91, 7.84 );
 
             if ( ! std::isnan( RRR ) )
             {

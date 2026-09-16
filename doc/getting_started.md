@@ -9,9 +9,11 @@ point is the [Coding Philosophy](@ref doc_coding_philosophy).
 
 ## 1. Build
 
-BELFEM requires CMake (≥ 3.11), a C++17 compiler, a Fortran compiler, and —
-for parallel runs — **Open MPI**. Open MPI is the only supported MPI: MPICH
-and Intel MPI are untested and the configure step refuses them (see
+BELFEM requires CMake (≥ 4.0), a C++17 compiler, a Fortran compiler, and —
+for parallel runs — **Open MPI**. A distribution's CMake is often older than
+that; use the one from the toolchain you build against. Open MPI is the only
+supported MPI: MPICH and Intel MPI are untested and the configure step
+refuses them (see
 [MPI support](@ref doc_mpi_support)). The generator is pinned to Unix
 Makefiles.
 

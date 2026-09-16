@@ -141,6 +141,20 @@ one of the two must be retired before either is worked.
 
 ---
 
+## Added 2026-09-15
+
+### [elastic_moduli_quasiharmonic.md](elastic_moduli_quasiharmonic.md) — ν(T) and E(T) from the thermal strain instead of the constant-γ inversion
+
+Copper's Poisson ratio falls with T in the tree (0.363 → 0.344) where measurement rises
+(0.338 → 0.345): `Metal::create_mech` holds γ constant and inverts K = γρc_p/α_V, copying the
+unknown variation of γ into K. Plan: K = K₀·exp(−δ_K ε_V), G = G₀·exp(−δ_G ε_V) on the existing
+thermal-strain integral, two fitted constants per metal, E and ν derived; dν/dT(0) = 0 and monotone
+ν (δ_G > δ_K) structural. Status: PLAN rev. 4, jury-audited at rev. 2 (Codex + Grok, 2026-09-15); O1 (data: every metal
+covered), O2 (isothermal served) and O3 (Nickel loses its ΔE dip — wrong magnetic state for a magnet code)
+and O4 (log strain, exponential) resolved the same day; round 2 at xhigh sent rev. 5 back (conversion
+moved from serve time into the R1 fit); O5–O7 ruled; R2 implemented, jury-fixed, built; `test_physics` 14/14 green with the new `MetalElastic`
+tests; R3 probed; **COMPLETE 2026-09-15**, awaiting commit: ceilings from Blanke's shape comparison, γ diagnostic at 298.15 K, `make check` 17/17 after the final rebuild.
+
 ## Added 2026-09-02
 
 ### [cut_representative_options.md](deferred/cut_representative_options.md) — non-tight cohomology generators: tighten, go cut-free, or multi-sheet

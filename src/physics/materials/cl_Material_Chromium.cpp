@@ -49,16 +49,17 @@ namespace belfem
 
             this->create_kohler();
 
-            // dynamic modulus taken from paper, scaled to the literature
-            // 279 GPa at 293.15 K, ignoring the hump at room temperature
-
-            // P. E. Armstrong and H. L. Brown
-            // "Dynamic Young's Modulus Measurements Above 1000°C
-            //  on Some Pure Polycrystalline Metals and Commercial Graphites"
-            // Trans. AIME, 1964
-
-            // poisson value at room temperature from Wolfram Cloud
-            this->create_mech(279.837, 0.08741, 900.83, 293.15, 0.21 );
+            // quasi-harmonic K and G on the thermal strain ( Metal::create_mech ) with a CONSTANT Poisson
+            // ratio: deltaG = deltaK. Palmer and Lee 1971, 10.1080/14786437108227390 ( zero-field single
+            // crystal, 4.2-345 K ) show the spin-density-wave anomalies in the elastic constants: the bulk
+            // modulus rises to 192 GPa at 175 K, collapses to 151 GPa at the Neel point ( 311 K ) and
+            // recovers to 171 GPa above it, and the Hill Poisson ratio falls from 0.237 ( 0-120 K ) to 0.196
+            // at 310 K. No smooth monotone closure can follow that, and with only 0.3 % thermal strain at
+            // 300 K the softening constants are ill-conditioned. K0 and G0 come from the cryogenic plateau
+            // ( 0-120 K ), the common softening constant from the shear modulus over 0-120 K and the
+            // paramagnetic 315-330 K points; nu = 0.237 is the cryogenic value ( isothermal 0.2371 ) and is
+            // held at every temperature. Decision: Christian Messe, 2026-09-15.
+            this->create_mech( 298.67, 0.2371, 100., 15.8, 15.8 );
 
             if ( ! std::isnan( RRR ) )
             {
@@ -83,8 +84,11 @@ namespace belfem
         void
         Chromium::set_constants()
         {
-            // melting temperature
-            this->set_constant( MaterialProperty::T_max, 2180. );
+            // validity ceiling, not the melting point ( 2180 K ): above this temperature the quasi-harmonic
+            // E( T ) departs by more than 5 % in shape from the dynamic modulus curve of Blanke 1989
+            // ( Thermophysikalische Stoffgroessen, uncited compilation, used here for the ceiling only );
+            // decided 2026-09-15, Christian Messe
+            this->set_constant( MaterialProperty::T_max, 570. );
 
             // reference density at room temperature
             this->set_constant( MaterialProperty::ref_density, 7150. );

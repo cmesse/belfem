@@ -46,9 +46,17 @@ namespace belfem
 
             this->create_kohler();
 
-            // Wachtman data fit against Blanke, Thermophysikalische Stoffgrößen, Springer 1989
-            // poisson ratio at room temperature from Wolfram Cloud
-            this->create_mech( 19.011, 0.03196, 383.6, 293.15, 0.44 );
+            // quasi-harmonic K and G on the thermal strain ( Metal::create_mech ), STATIC level: the bulk
+            // modulus and its softening constant come from the single crystal of Waldorf and Alers 1962,
+            // 10.1063/1.1931149, Table I ( adiabatic -> isothermal with this class's alpha, cp, rho; the bulk
+            // modulus is not relaxed by anelasticity, so its static and dynamic values coincide ); Young's
+            // modulus level and shape come from the static-type curve of Blanke 1989 ( Thermophysikalische
+            // Stoffgroessen ), 95-300 K, which reproduces the tensile handbook values ( E 16, G 5.6 GPa,
+            // nu 0.44; Koester and Franz 1961, 10.1179/mtlr.1961.6.1.1, Table IX: 0.45 ). The dynamic Hill
+            // average of the same crystal gives E = 24 GPa at 300 K; the difference is the anelastic
+            // relaxation of the shear modulus at low frequency, and the static value is the one wanted for
+            // elastostatic design. See the class header. Decision: Christian Messe, 2026-09-15.
+            this->create_mech( 16.25, 0.4347, 300., 7.31, 11.20 );
 
             if ( ! std::isnan( RRR ) )
             {

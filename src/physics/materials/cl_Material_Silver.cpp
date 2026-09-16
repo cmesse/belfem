@@ -30,7 +30,7 @@ namespace belfem
          *
          * Data sources:
          * - Constants: Smith and Fickett (10.6028/jres.100.012)
-         * - Mechanical: Fitted against experimental data
+         * - Mechanical: Neighbours and Alers 1958 (10.1103/PhysRev.111.707), quasi-harmonic closure of Metal::create_mech
          * - Thermal expansion: Touloukian dataset
          * - Specific heat: Touloukian dataset
          * - Resistivity: Matula, Bloch-Grüneisen model with reference at 273.15K
@@ -77,9 +77,10 @@ namespace belfem
 
             this->create_kohler();  // Magnetoresistance curves
 
-            // Wachtman data fit against Blanke, Thermophysikalische Stoffgrößen, Springer 1989
-            // poisson ratio at room temperature from Wolfram Cloud
-            this->create_mech( 86.647, 0.06298, 587.35, 293.15, 0.37 );
+            // quasi-harmonic K and G on the thermal strain ( Metal::create_mech ): isothermal anchor and softening
+            // constants fitted 0-300 K to Neighbours and Alers 1958, 10.1103/PhysRev.111.707, Table I
+            // ( single crystal, Hill average ), adiabatic -> isothermal with this class's alpha, cp, rho
+            this->create_mech( 80.40, 0.3652, 300., 6.97, 8.58 );
 
             if ( ! std::isnan( RRR ) )
             {
@@ -98,8 +99,11 @@ namespace belfem
         {
             // constants taken from from Smith and Fickett, 0.6028/jres.100.012
 
-            // set the melting temperature
-            this->set_constant( MaterialProperty::T_max, 1235.08 );
+            // validity ceiling, not the melting point ( 1235.08 K ): above this temperature the quasi-harmonic
+            // E( T ) departs by more than 5 % in shape from the dynamic modulus curve of Blanke 1989
+            // ( Thermophysikalische Stoffgroessen, uncited compilation, used here for the ceiling only );
+            // decided 2026-09-15, Christian Messe
+            this->set_constant( MaterialProperty::T_max, 900. );
 
             // reference density at room temperature
             this->set_constant( MaterialProperty::ref_density, 10492. );

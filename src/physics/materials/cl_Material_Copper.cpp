@@ -32,7 +32,7 @@ namespace belfem
          * Copper material property implementation
          *
          * Data sources:
-         * - Mechanical: copper.org, Blanke (Thermophysikalische Stoffgrößen, Springer 1989)
+         * - Mechanical: Ledbetter 1981 (10.1002/pssa.2210660209), quasi-harmonic closure of Metal::create_mech
          * - Thermal expansion: Touloukian dataset
          * - Specific heat: Touloukian dataset
          * - Resistivity: Matula, Bloch-Grüneisen model with reference at 273.15K
@@ -59,9 +59,10 @@ namespace belfem
 
             this->create_kohler() ;  // Magnetoresistance curves
 
-            // Wachtman data fit against Blanke, Thermophysikalische Stoffgrößen, Springer 1989
-            // poisson ratio at room temperature from Copper.org and Wolfram Cloud
-            this->create_mech( 134.447, 0.11492, 922.14, 293.15, 0.344 );
+            // quasi-harmonic K and G on the thermal strain ( Metal::create_mech ): isothermal anchor and softening
+            // constants fitted 0-300 K to Ledbetter 1981, 10.1002/pssa.2210660209, Table 2 ( polycrystal,
+            // 5-295 K ), adiabatic -> isothermal with this class's alpha, cp, rho
+            this->create_mech( 127.45, 0.3433, 295., 6.47, 8.60 );
 
             if ( ! std::isnan( RRR ) )
             {
@@ -80,8 +81,11 @@ namespace belfem
         void
         Copper::set_constants()
         {
-            // set the melting temperature
-            this->set_constant( MaterialProperty::T_max, 1358.);
+            // validity ceiling, not the melting point ( 1358 K ): above this temperature the quasi-harmonic
+            // E( T ) departs by more than 5 % in shape from the dynamic modulus curve of Blanke 1989
+            // ( Thermophysikalische Stoffgroessen, uncited compilation, used here for the ceiling only );
+            // decided 2026-09-15, Christian Messe
+            this->set_constant( MaterialProperty::T_max, 1000. );
 
             // reference density at room temperature
             this->set_constant( MaterialProperty::ref_density, 8933. );

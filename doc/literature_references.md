@@ -293,6 +293,65 @@ a strategy toward resilience"
 
 See `src/physics/materials/doc/resistivity_laws.md` for how these map onto the three laws.
 
+### Tier 6: Elastic Constants of the Pure Metals
+
+This section covers the `Metal::create_mech` closure and the datasets used to fit its constants
+(`src/physics/materials/doc/materials_usage_guide.md` §9.7, `material_property_sources.md`).
+
+**Garai & Laugier 2007** — "The temperature dependence of the isothermal bulk modulus at 1 bar pressure"
+- J. Appl. Phys. 101, 023514
+- B_T(T) = B_T(0)·exp(−∫α_V δ_T dT), Eq. 8–10, derived for the isothermal bulk modulus; BELFEM uses this
+  form with constant δ for K and, as its own extension, for G
+- **DOI:** 10.1063/1.2424535
+
+**Ledbetter 1981** — "Elastic constants of polycrystalline copper at low temperatures"
+- phys. stat. sol. (a) 66, pp. 477–484
+- Polycrystalline Cu, 5–295 K: longitudinal and shear modulus, E, B, ν (Table 2); the copper anchor
+- **DOI:** 10.1002/pssa.2210660209
+
+**Ledbetter & Naimon 1974** — "Elastic properties of metals and alloys. II. Copper"
+- J. Phys. Chem. Ref. Data 3, pp. 897–935
+- Review; room-temperature polycrystal averages (Table 10)
+- **DOI:** 10.1063/1.3253150
+
+**Ledbetter & Reed 1973** — "Elastic properties of metals and alloys, I. Iron, nickel, and iron-nickel alloys"
+- J. Phys. Chem. Ref. Data 2, pp. 531–618
+- Compilation; §15 on the ΔE effect (saturated vs demagnetized moduli), the basis for Nickel's data choice
+- **DOI:** 10.1063/1.3253127
+
+**Alers, Neighbours & Sato 1960** — "Temperature dependent magnetic contributions to the high field elastic constants of nickel and an Fe-Ni alloy"
+- J. Phys. Chem. Solids 13, pp. 40–55
+- Ni single-crystal constants at 10 kOe, 0–760 K (Table 2); the data used for nickel
+- **DOI:** 10.1016/0022-3697(60)90125-6
+
+**Kamm & Alers 1964** — "Low-temperature elastic moduli of aluminum"
+- J. Appl. Phys. 35, pp. 327–330 — Al single-crystal data 0–300 K (Table I)
+- **DOI:** 10.1063/1.1713309
+
+**Neighbours & Alers 1958** — "Elastic constants of silver and gold"
+- Phys. Rev. 111, pp. 707–712 — Ag single-crystal data 0–300 K (Table I)
+- **DOI:** 10.1103/PhysRev.111.707
+
+**Waldorf & Alers 1962** — "Low-temperature elastic moduli of lead"
+- J. Appl. Phys. 33, pp. 3266–3269 — Pb single-crystal data 0–300 K (Table I); interim source, see Lead's header
+- **DOI:** 10.1063/1.1931149
+
+**Rayne & Chandrasekhar 1960** — "Elastic constants of β tin from 4.2°K to 300°K"
+- Phys. Rev. 120, pp. 1658–1663 — six tetragonal constants at 300, 77, 4.2 K (Table IV)
+- **DOI:** 10.1103/PhysRev.120.1658
+
+**Rayne & Chandrasekhar 1961** — "Elastic constants of iron from 4.2 to 300°K"
+- Phys. Rev. 122, pp. 1714–1716 — smoothed zero-field constants (Table I)
+- **DOI:** 10.1103/PhysRev.122.1714
+
+**Palmer & Lee 1971** — "The elastic constants of chromium"
+- Phil. Mag. 24, pp. 311–318 — zero-field constants 4.2–345 K through the spin-flip and Néel transitions
+- **DOI:** 10.1080/14786437108227390
+
+**Kim & Ledbetter 1998** — "Low-temperature elastic coefficients of polycrystalline indium"
+- Mater. Sci. Eng. A 252, pp. 139–143 — Varshni fits of C_l, G, B, E, ν, 5–300 K (Table 1); the indium dataset
+- **DOI:** 10.1016/S0921-5093(98)00490-0
+
 ---
 
 ## BELFEM FVM Papers
