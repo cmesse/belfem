@@ -7,7 +7,7 @@
 **Codex Audit Confidence:** high (plan: "do not approve unchanged", 6 findings; code: "request changes", 3 findings — all adjudicated below)
 **Grok Audit Confidence:** high (plan: 7 challenges; code: "ship the code, fix the prose", 4 refutations)
 **Literature References:** none — build system and mechanical conversions
-**Verification:** probe level — all nine affected translation units (plus `test_StringTools.cpp` after the guard round) compile with `-fsyntax-only` under their module's real `flags.make` (`-Wall -Werror -Wfloat-conversion`) with zero warnings; the new CMake include block exercised with `cmake -P` on a synthetic list (duplicates, trailing slash, a builtin dir, empty list). `check_doc_claims.py` 38/38. **Not built, not tested**: the reconfigure, `make` and `make check` in the shared tree are Christian's gate; the new `StringTools.UnitToSiExponentGuard` test has never run. Reviewed, not verified.
+**Verification:** probe level — all nine affected translation units (plus `test_StringTools.cpp` after the guard round) compile with `-fsyntax-only` under their module's real `flags.make` (`-Wall -Werror -Wfloat-conversion`) with zero warnings; the new CMake include block exercised with `cmake -P` on a synthetic list (duplicates, trailing slash, a builtin dir, empty list). `check_doc_claims.py` 38/38. **Then verified — focused regression:** Christian reconfigured and rebuilt `cmake-build-debug` (GCC 11, `USE_DEBUG=ON`, mkl flavor) at `14bb703` and ran `make check`: **17/17 passed** (fast 8, mpi 4). `flags.make` of the rebuilt tree carries `-isystem` with the SCLS dir once and no per-test `BEFORE` include, so the new include block was in effect; `test_core` was rebuilt after the commit and `UnitToSiExponentGuard` appears in `LastTest.log`, so the new guard test ran. Not reported: the rebuild's warning count, which is the direct falsifier for the `-isystem` claim. Not run: any other platform.
 
 ## Summary
 
@@ -41,7 +41,7 @@ Two classes of warning. The 48 foreign ones came through `config/compiler/finali
 
 ## Open Questions
 
-- **Executable gate owed (Christian):** reconfigure + `make` in `cmake-build-debug` — expect zero `warning:` lines from `src/` and `/opt/scls/`, the two gfortran lines remain; then `make check` (not `check-fast`). Falsifier for the `-isystem` change: any `/opt/scls/.../warning:` line.
+- **Gate passed:** `make check` 17/17 at `14bb703` (see Verification). Still to confirm from the same build: zero `warning:` lines from `src/` and `/opt/scls/` (the two gfortran rank-mismatch lines remain by design).
 - **SemVer:** the `create_helpmatrix` signature change is a public API break in an installed header; by SemVer the next release carrying it would be 0.10.0 (Codex). **Christian's ruling (same day): the next release stays 0.9.2** — pre-1.0, static library by default, the CHANGELOG line that consumers must recompile is sufficient.
 - **Two product choices in the exponent guard for Christian to veto:** the cap `|e| ≤ 32` (any bound ≪ INT_MAX/4 closes the overflow; 32 is far above any physical unit), and rejecting fractional exponents instead of truncating them (no deck or test in the tree uses one; supporting them would mean making `tPower` a `real`, a feature, not this fix).
 - **Still unchecked, out of scope:** `Section::create_key` admits `inf` into the real keys (`!isnan`, not `isfinite`, `cl_Input_Section.cpp:161-171`), so `get_real` can still return inf; `get_int` now refuses it. No `Section` test fixture exists, so the `get_int` abort path has no test.
