@@ -76,8 +76,8 @@ namespace belfem
 
 
             real M = this->constant_property( MaterialProperty::M ) ;
-            real gamma = 1.78e-3 / M ; // J/(kg K²) // O'Neil et al, 1964 10.1103/PhysRev.137.A748, Fig. 10
-            real beta = 0.246e-3 / M ; // J/(kg K⁴) // O'Neil et al, 1964 10.1103/PhysRev.137.A748, Fig. 10
+            real gamma = 1.78e-3 / M ; // J/(kg K²) // O'Neal et al. 1965, 10.1103/PhysRev.137.A748, Fig. 10
+            real beta = 0.246e-3 / M ; // J/(kg K⁴) // O'Neal et al. 1965, 10.1103/PhysRev.137.A748, Fig. 10
 
             this->set_constant( MaterialProperty::gamma, gamma );
             this->set_constant( MaterialProperty::beta, beta );
@@ -86,7 +86,7 @@ namespace belfem
             real theta0 = std::pow( ( 12. * std::pow( constant::pi, 4 ) * R  / ( 5. * beta ) ) , 1./3. ) ;
             this->set_constant( MaterialProperty::debye0K, theta0);
 
-            // referene value from White: "Experimental Techniques in Low Temperature Physics", 1968
+            // reference value from White: "Experimental Techniques in Low Temperature Physics", 1968
             //                     via Hariharan,1979 10.1007/BF02872130
             this->set_rho_i_ref( 273.15, 10.1e-8, 160. );
 

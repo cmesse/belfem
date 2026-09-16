@@ -100,7 +100,7 @@ namespace belfem
             // fitted so that theta = 400 K @ T = 295 K
 
             // values > 295 K fitted against
-            // Arays and Colvin 1964
+            // Arajs and Colvin 1964
             // "Electrical Resistivity of High Purity Iron from 300 to 1300 °K"
             // 10.1002/pssb.19640060317
 
@@ -168,7 +168,7 @@ namespace belfem
             this->set_custom( MaterialProperty::debye );
 
 
-            // value from0.1098/rsta.1959.0004
+            // value from 10.1098/rsta.1959.0004
             real T = 295. ;
             real theta = this->debye( T );
             real rho = 9.8e-8 - this->rho_mag( T );

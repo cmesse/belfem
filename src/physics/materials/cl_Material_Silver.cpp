@@ -97,7 +97,7 @@ namespace belfem
         void
         Silver::set_constants()
         {
-            // constants taken from from Smith and Fickett, 0.6028/jres.100.012
+            // constants taken from Smith and Fickett, 10.6028/jres.100.012
 
             // validity ceiling, not the melting point ( 1235.08 K ): above this temperature the quasi-harmonic
             // E( T ) departs by more than 5 % in shape from the dynamic modulus curve of Blanke 1989

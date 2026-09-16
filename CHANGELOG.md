@@ -68,8 +68,6 @@ All notable changes to BELFEM are recorded here. The format follows
   at most 32, and anything else stops with an error naming the unit. Rounding in `get_int` is
   unchanged. Both checks run once while the input file is read and are active in every build.
 
-### Fixed
-
 - **Poisson's ratio of the pure metals fell with temperature; it now rises, as measured.** The
   elastic closure of `Metal::create_mech` held the Grüneisen parameter constant and inverted the
   Grüneisen relation for the bulk modulus, which copied the unknown temperature dependence of γ
@@ -89,7 +87,6 @@ All notable changes to BELFEM are recorded here. The format follows
   modulus by 20 % toward the Néel point and no smooth closure follows that. Iron's isothermal ν is
   flat within 1e-4. Construction refuses constants that let ν fall by more than 1e-3 anywhere.
   New regression test `tests/physics/test_MetalElastic.cpp`.
-
 
 ## [0.9.1] — 2026-09-13
 

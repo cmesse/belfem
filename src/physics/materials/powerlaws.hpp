@@ -44,8 +44,9 @@
  *    resistive transition on composite inhomogeneity in multifilamentary
  *    wires," IEEE Trans. Magn. 23 (2) (1987) pp. 1179–1182. — phenomenology
  *    of the n-value characterizing the transition sharpness.
- *  - C. Messe et al., "BELFEM: a finite-element framework for HTS magnet
- *    quench analysis," Supercond. Sci. Technol. 36 (2023) 114001. — BELFEM
+ *  - C. Messe et al., "BELFEM: a special purpose finite element code for the
+ *    magnetodynamic modeling of high-temperature superconducting tapes,"
+ *    Supercond. Sci. Technol. 36 (2023) 114001, 10.1088/1361-6668/acf7f9. — BELFEM
  *    material database (Sec. 2.6) and the convergence strategy that drives
  *    the residual below \f$10^{-11}\f$ (Sec. 2.7) for which these
  *    derivatives are required.

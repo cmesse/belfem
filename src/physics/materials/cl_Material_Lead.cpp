@@ -98,7 +98,7 @@ namespace belfem
             this->set_constant( MaterialProperty::debye0K, theta0 );
             this->set_constant( MaterialProperty::rho_0, 0 );
 
-            // referene value from White: "Experimental Techniques in Low Temperature Physics", 1968
+            // reference value from White: "Experimental Techniques in Low Temperature Physics", 1968
             //                     via Hariharan,1979 10.1007/BF02872130
             this->set_rho_i_ref( 273.15, 19.3e-8, 90);
 

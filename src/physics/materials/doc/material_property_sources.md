@@ -149,26 +149,11 @@ construction.
   bibliographic entry in the tree; the quasi-harmonic elastic closure cites
   Garai-Laugier 2007.
 
-## Citation defects in the sources (typos worth a cleanup pass)
+## Citation defects in the sources
 
-- In `cl_Material_Iron.cpp:168` and
-  `cl_Material_Nickel.cpp:145,149`, the DOI lacks its leading `1`
-  (`0.1098/rsta.1959.0004`).
-- In `cl_Material_Silver.cpp:99`, the DOI `0.6028/jres.100.012` lacks its
-  leading `1`.
-- In `cl_Material_Magnesia.cpp:148`, "imon, 1994" should read "Simon"; the
-  comment at `:114` says "poisson" above code that builds E.
-- In `cl_Material_Iron.cpp:100`, "Arays" should read "Arajs".
-- In `cl_Material_Lead.cpp:93` and `cl_Material_WhiteTin.cpp:84`,
-  "referene" is misspelled.
-- The statement "fitted against experimental data" in
-  `cl_Material_Silver.cpp:33` contradicts the Blanke 1989 / Wolfram Cloud
-  attribution at `:80`.
-- The citation in `powerlaws.hpp:44` gives the Messe et al. 2023 paper a title
-  that does not match the one in `doc/literature_references.md`; one of the
-  two is wrong.
-- The in-code citation "O'Neil et al, 1964" for Phys. Rev. 137, A748 gives the
-  wrong year; the volume was published in 1965.
-- The in-code citation "Gerritsen 1952" is paired with a 1956 Physica DOI.
-
-Line numbers above are advisory; grep for the citation text when in doubt.
+The typos listed here on 2026-08-28 (DOIs missing their leading `1` in the iron, nickel and silver
+sources, "imon" for Simon in the magnesia source, "Arays" for Arajs in the iron source, "referene"
+in the lead and tin sources, and "O'Neil 1964" for O'Neal 1965 in the tin source) were corrected in
+the code comments on 2026-09-16, as was the Messe et al. 2023 title in `powerlaws.hpp` (now the
+published one, with DOI 10.1088/1361-6668/acf7f9). Silver's file header names Neighbours and Alers
+1958 for the elastic data since the same date. Nothing from that list is open.

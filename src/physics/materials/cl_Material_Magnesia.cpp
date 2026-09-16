@@ -145,7 +145,7 @@ namespace belfem
             }
 
             mCpPolys.set_size( 6, {} );
-            // fitted against Touloukian TPRC and  imon, 1994 : NISTIR-5030
+            // fitted against Touloukian TPRC and Simon, 1994 : NISTIR-5030
 
             // 2 < theta < 4.5
             mCpPolys( 1 ) = { 1.5577e-1, + 2.2610, - 8.1909};

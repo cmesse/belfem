@@ -140,11 +140,11 @@ namespace belfem
         void
         Nickel::create_debye_and_rho()
         {
-            // calibrated against White and Woods, 1959, 0.1098/rsta.1959.0004, and Farrell and Greig, 1968 10.1088/0022-3719/1/5/326
+            // calibrated against White and Woods, 1959, 10.1098/rsta.1959.0004, and Farrell and Greig, 1968 10.1088/0022-3719/1/5/326
             mDebyePoly = {- 1.57719731763856E-15 , 0, 1.21020850554333E-09, 0.,- 8.52190158963375E-04, 0., this->constant_property( MaterialProperty::debye0K ) };
             this->set_custom( MaterialProperty::debye );
 
-            // value from0.1098/rsta.1959.0004
+            // value from 10.1098/rsta.1959.0004
             real T = 295. ;
             real theta = polyval( mDebyePoly, T ); // ca. 390.
             real rho = 7.0e-8 - this->rho_mag( T );

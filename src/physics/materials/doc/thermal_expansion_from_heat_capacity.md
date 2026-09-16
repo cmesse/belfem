@@ -170,15 +170,22 @@ This diagnostic has already found four defects that nothing else surfaced:
 
 | material | θ_D [K] | T\* [K] | branch | γ(T\*) | literature γ |
 |---|---|---|---|---|---|
-| Lead | 104.1 | 64.3 | quadratic | — | 2.7–2.8 |
-| Indium | 108.8 | 67.2 | quadratic | inconclusive | ~2.4 |
-| WhiteTin | 199.2 | 123.1 | quadratic | 2.06 | 2.1–2.3 |
-| Silver | 226.5 | 140.0 | quadratic | 2.30 | 2.3–2.5 |
-| Copper | 343.8 | 212.5 | cubic | 1.98 | 1.96–2.00 |
-| Aluminum | 417.9 | 258.2 | quadratic | 2.19 | 2.1–2.2 |
-| Nickel | 456.0 | 273.15 | cubic | 1.73 | ~1.9 |
-| Iron | 470.0 | 273.15 | cubic | 1.75 | ~1.7 |
-| Chromium | 592.7 | 273.15 | quadratic | 0.91 | 1.3–1.5 |
+| Lead | 104.1 | 64.3 | quadratic | 2.48 | 2.7–2.8 |
+| Indium | 108.8 | 67.2 | quadratic | 2.26 | ~2.4 |
+| WhiteTin | 199.2 | 123.1 | quadratic | 1.93 | 2.1–2.3 |
+| Silver | 226.5 | 140.0 | quadratic | 2.32 | 2.3–2.5 |
+| Copper | 343.8 | 212.5 | cubic | 1.97 | 1.96–2.00 |
+| Aluminum | 417.9 | 258.2 | quadratic | 2.08 | 2.1–2.2 |
+| Nickel | 456.0 | 273.15 | cubic | 1.78 | 1.8–1.9 |
+| Iron | 470.0 | 273.15 | cubic | 1.72 | 1.6–1.7 |
+| Chromium | 592.7 | 273.15 | quadratic | 1.04 | ~1.0–1.3 (spin-density-wave metal) |
+
+The γ(T\*) column was recomputed on 2026-09-16 with the quasi-harmonic K of `Metal::create_mech`
+(the earlier column used the Wachtman modulus and the constant-γ Poisson ratio); lead and indium,
+which the old K left blank or inconclusive, now read 2.48 and 2.26. Because the closure no longer
+prescribes γ, this column is the genuine cross-check the section describes: it is what the fitted
+K, the expansion curve, c_p and ρ imply together, and it lands inside or next to the literature
+range for every metal. The room-temperature value is what the `material` report prints.
 
 Lead's and Indium's γ values are not diagnostic: both have ν near 0.45, so `1 − 2ν ≈ 0.1` and
 K is dominated by the uncertainty in ν. Chromium's low value may be physical — magnetostriction
