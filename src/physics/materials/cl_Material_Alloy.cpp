@@ -263,7 +263,7 @@ namespace belfem
         {
             const real dT = 4.0 ; // temperature step
 
-            size_t tNumPoints = std::ceil( this->constant_property( MaterialProperty::T_max ) / dT )  + 1 ;
+            size_t tNumPoints = static_cast< size_t >( std::ceil( this->constant_property( MaterialProperty::T_max ) / dT ) + 1 ) ;
 
             Vector< real > tT( tNumPoints );
             Vector< real > tE( tNumPoints );
@@ -423,7 +423,7 @@ namespace belfem
             spline::SplineBC tEndBC = spline::SplineBC::Parabolic  ;
 
             SpMatrix tA ;
-            spline::create_helpmatrix( tNumPoints, dT, tA, tStartBC, tEndBC );
+            spline::create_helpmatrix( static_cast< index_t >( tNumPoints ), dT, tA, tStartBC, tEndBC );
 
             this->set_spline( MaterialProperty::E, new Spline( tT, tE, tA, tStartBC, tEndBC, 0.0 ) );
 
@@ -440,7 +440,7 @@ namespace belfem
             this->set_spline( MaterialProperty::rho, new Spline( tT, tRho, tA, tStartBC, tEndBC, 0.0 ) );
 
             tStartBC = spline::SplineBC::Parabolic  ;
-            spline::create_helpmatrix( tNumPoints, dT, tA, tStartBC, tEndBC );
+            spline::create_helpmatrix( static_cast< index_t >( tNumPoints ), dT, tA, tStartBC, tEndBC );
             this->set_spline( MaterialProperty::alpha, new Spline( tT, tAlpha, tA, tStartBC, tEndBC ) );
 
             this->spline( MaterialProperty::alpha )->create_integral( this->constant_property( MaterialProperty::T_ref_density ), 0.0 );

@@ -170,7 +170,9 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             /**
-             * get the int value of a key
+             * get the int value of a key. The stored real is rounded; a
+             * non-finite value, or one that does not fit an int after
+             * rounding, is a BELFEM_ERROR ( input-file defect, always active )
              */
             int
             get_int( const string & aKey ) const;

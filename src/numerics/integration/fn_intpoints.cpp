@@ -9,6 +9,8 @@
  * See the top-level LICENSE file for the complete license and disclaimer.
  */
 
+#include <cmath>
+
 #include "assert.hpp"
 #include "fn_intpoints.hpp"
 #include "fn_intpoints_gauss_tri1.hpp"
@@ -543,7 +545,7 @@ namespace belfem
                 {
                     case ( GeometryType::LINE ) :
                     {
-                        int tN = ceil( 0.5 * ( aOrder + 3 ));
+                        int tN = static_cast< int >( std::ceil( 0.5 * ( aOrder + 3 ) ) );
                         aWeights.set_size( tN );
                         aPoints.set_size( 1, tN );
                         Vector< real > tPoints( tN );
@@ -582,7 +584,7 @@ namespace belfem
                 Vector <real> & aWeights,
                 Matrix <real> & aPoints )
         {
-            int tN = ceil( 0.5 * ( aOrder ) + 1 );
+            int tN = static_cast< int >( std::ceil( 0.5 * ( aOrder ) + 1 ) );
             aWeights.set_size( tN );
 
             // points as vector
@@ -607,7 +609,7 @@ namespace belfem
                 Vector <real> & aWeights,
                 Matrix <real> & aPoints )
         {
-            int tNi = ceil( 0.5 * ( aOrder ) + 1 );
+            int tNi = static_cast< int >( std::ceil( 0.5 * ( aOrder ) + 1 ) );
 
             // 1D points
             Vector <real> tWeights( tNi );
@@ -642,7 +644,7 @@ namespace belfem
                 Vector <real> & aWeights,
                 Matrix <real> & aPoints )
         {
-            int tNi = ceil( 0.5 * ( aOrder ) + 1 );
+            int tNi = static_cast< int >( std::ceil( 0.5 * ( aOrder ) + 1 ) );
 
             // 1D points
             Vector <real> tWeights( tNi );

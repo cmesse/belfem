@@ -9,6 +9,9 @@
  * See the top-level LICENSE file for the complete license and disclaimer.
  */
 
+#include <cmath>
+#include <limits>
+
 #include "cl_Input_Section.hpp"
 #include "stringtools.hpp"
 #include "fn_check_unit.hpp"
@@ -373,7 +376,17 @@ namespace belfem
         int
         Section::get_int( const string & aKey ) const
         {
-            return round( this->get_real( aKey ) );
+            const real tValue   = this->get_real( aKey );
+            const real tRounded = std::round( tValue );
+
+            // input-file value: the rounded number must be one an int can hold
+            BELFEM_ERROR( std::isfinite( tValue )
+                          && tRounded >= static_cast< real >( std::numeric_limits< int >::min() )
+                          && tRounded <= static_cast< real >( std::numeric_limits< int >::max() ),
+                          "Key %s in section %s : value %g is non-finite or out of range for an int",
+                          aKey.c_str(), mLabel.c_str(), ( double ) tValue );
+
+            return static_cast< int >( tRounded );
         }
 
 //------------------------------------------------------------------------------

@@ -4,6 +4,42 @@ All notable changes to BELFEM are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and version numbers follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **Third-party headers are system headers for diagnostics.** The include directories of the
+  linked libraries (SCLS, MKL, STRUMPACK, PETSc, HDF5, …) are passed to the C++ compiler with
+  `-isystem` instead of `-I`. A warning raised inside one of these headers no longer appears in
+  a BELFEM build and cannot become an error under `-Wall -Werror`. This is preventative: the
+  0.9.0 build failure on Ubuntu came from two BELFEM headers and was fixed in 0.9.1, but the
+  same mechanism (Ubuntu's GCC injecting `-Wformat-security`) would turn the next vendor-header
+  warning into a build failure. BELFEM's own headers keep ordinary `-I` and are diagnosed as
+  before; a directory the compiler already searches by default also stays `-I`. The per-test
+  `BEFORE` include of `$SCLS/include` was removed as redundant, so the tests now search
+  BELFEM's headers before SCLS, as the library always did. Plugins built from the
+  `User*Template.cmake` templates are not affected; they still receive ordinary include paths.
+- **`spline::create_helpmatrix` takes its size as `const index_t` and its spacing as
+  `const real`**, both by value (previously `const real &` for both). Every caller in the tree
+  already passed an integer count. A separately built consumer must be recompiled.
+
+### Fixed
+
+- **The remaining `-Wfloat-conversion` warnings in the library and the test headers are
+  cleared.** The flag was added in 0.9.1; the implicit floating-point-to-integer conversions it
+  reported — `std::ceil`/`std::round` results assigned to integers in the integration-point
+  tables, `Section::get_int`, the `Alloy`, `Metal` and `SplineLookupTable` spline setups,
+  `Genome::encode`, and two string helpers — are now explicit casts of the same expressions.
+  Results are unchanged for the inputs the code is given in the tree. `<cmath>` is included
+  directly in the three files that previously used `ceil`/`round` unqualified.
+- **Input-file integers are range-checked.** `Section::get_int` rounded the stored real and
+  converted it to `int` unchecked, which is undefined behaviour for a non-finite or huge value;
+  it now stops with an error naming the key and section. A unit exponent (`m^2`, `s^-1`) was
+  parsed with `std::stod` and truncated to `int` unchecked, so `m^1.5` silently became `m^1` and
+  `m^abc` escaped as an uncaught exception; the exponent must now be an integer with magnitude
+  at most 32, and anything else stops with an error naming the unit. Rounding in `get_int` is
+  unchanged. Both checks run once while the input file is read and are active in every build.
+
 ## [0.9.1] — 2026-09-13
 
 A portability release. BELFEM 0.9.0 did not build on Ubuntu 24.04 (GCC 13.3), and once it

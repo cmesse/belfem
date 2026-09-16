@@ -6,9 +6,34 @@ include( ${BELFEM_CONFIG_DIR}/globals.cmake )
 # add compiler flags
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${BELFEM_CXXFLAGS}" )
 
-# add includes
+# Third-party include directories go in as system headers, so a warning raised inside a
+# vendor header is suppressed and cannot trip -Werror. This is preventative: Ubuntu's GCC
+# driver injects -Wformat-security, which under -Wall -Werror broke the 0.9.0 build in two
+# BELFEM headers (fixed in 0.9.1); the same mechanism would turn the next vendor-header
+# warning into a build failure. Only directories in this list are covered -- mpi.h, for one,
+# comes through the compiler wrapper. BELFEM's own directories never pass through this list:
+# they are added with include_directories() in config/scripts/Add_*.cmake and stay ordinary
+# -I, so their diagnostics are unaffected.
+# A directory the compiler already searches by default keeps -I (which it then ignores):
+# -isystem on such a directory would move it ahead of the standard library headers.
+# normalize first (several TPL configs append the same SCLS dir, some with a trailing
+# slash), so the deduplicated list is what both the C++ and the Fortran loop see
+set( _BELFEM_INCS )
 foreach( ITEM ${BELFEM_INCLUDES} )
-    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${ITEM}" )
+    string( REGEX REPLACE "/+$" "" ITEM "${ITEM}" )
+    list( APPEND _BELFEM_INCS "${ITEM}" )
+endforeach()
+if( _BELFEM_INCS )
+    list( REMOVE_DUPLICATES _BELFEM_INCS )
+endif()
+set( BELFEM_INCLUDES ${_BELFEM_INCS} )
+unset( _BELFEM_INCS )
+foreach( ITEM ${BELFEM_INCLUDES} )
+    if( ITEM IN_LIST CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES )
+        set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${ITEM}" )
+    else()
+        set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -isystem ${ITEM}" )
+    endif()
 endforeach()
 
 # tidy up

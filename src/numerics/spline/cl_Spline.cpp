@@ -37,8 +37,8 @@ namespace belfem
         
         void
         create_helpmatrix(
-                const real & aSize,
-                const real & aDeltaX,
+                const index_t aSize,
+                const real    aDeltaX,
                 SpMatrix   & aA,
                 const SplineBC aStartBC,
                 const SplineBC aEndBC )

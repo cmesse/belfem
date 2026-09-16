@@ -11,6 +11,14 @@ endif()
 # Compiler Optimization flags
 #-------------------------------------------------------------------------------
 
+# -fallow-argument-mismatch (both configurations) is deliberate. The Fortran solver
+# wrappers call F77-era entry points -- PARDISO today; MUMPS and ARPACK are the same
+# vintage -- through implicit interfaces, passing a scalar dummy where a phase needs no
+# array, which is the vendor-documented idiom. gfortran >= 10 rejects that rank mismatch
+# as an error; this flag demotes it to the "Rank mismatch between actual argument"
+# warning seen for src/sparse/pardisotools.f90. Do not remove it, and do not try to
+# silence the warning: it is the flag doing its job.
+
 # test if debug flags are used
 if( USE_DEBUG )
     list( APPEND BELFEM_DEFS "DEBUG" )

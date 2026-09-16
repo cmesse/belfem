@@ -364,6 +364,30 @@ TEST( StringTools, UnitToSiDimensionless )
 }
 
 //------------------------------------------------------------------------------
+
+TEST( StringTools, UnitToSiExponentGuard )
+{
+    // a unit exponent must be an integer with |e| <= 32; anything else is a
+    // BELFEM_ERROR, which test_core_main turns into a std::runtime_error
+    for ( const string & tSpec : { string( "m^inf" ), string( "m^nan" ),
+                                   string( "m^1.5" ), string( "m^abc" ),
+                                   string( "m^" ),    string( "m^40" ),
+                                   string( "m^-40" ) } )
+    {
+        EXPECT_THROW( unit_to_si( tSpec ), std::runtime_error ) << tSpec;
+    }
+
+    // negative and boundary integer exponents stay legal
+    for ( const string & tSpec : { string( "m^-2" ), string( "m^32" ), string( "m^-32" ) } )
+    {
+        EXPECT_NO_THROW( unit_to_si( tSpec ) ) << tSpec;
+    }
+
+    // and an ordinary exponent still lands in the length slot
+    EXPECT_NEAR( unit_to_si( "m^2" ).second[ 0 ], 2.0, 1e-12 );
+}
+
+//------------------------------------------------------------------------------
 // unit_to_si -- magnetic flux density
 //------------------------------------------------------------------------------
 

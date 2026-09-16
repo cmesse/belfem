@@ -9,6 +9,8 @@
  * See the top-level LICENSE file for the complete license and disclaimer.
  */
 
+#include <cmath>
+
 #include "stringtools.hpp"
 #include "assert.hpp"
 #include "units.hpp"
@@ -246,7 +248,7 @@ namespace belfem
         }
 
         std::string result;
-        result.reserve(aString.length() * 1.5); // Reasonable estimate
+        result.reserve( aString.length() + aString.length() / 2 ); // Reasonable estimate
 
         size_t lastPos = 0;
         size_t findPos = 0;
@@ -391,13 +393,28 @@ namespace belfem
             for ( string & tUnit: tUnits )
             {
                 // real tValue ;
-                int tPower = s == 0 ? 1.0 : -1.0;
+                int tPower = s == 0 ? 1 : -1;
 
                 // get power
                 tSplit = tUnit.find( "^", 0 );
                 if ( tSplit < tUnit.length())
                 {
-                    tPower *= std::stod( tUnit.substr( tSplit + 1, tUnit.length()));
+                    // to_real() returns NaN when nothing parses, so a malformed exponent
+                    // lands in the error below instead of an uncaught std::stod exception
+                    const real tExponent = to_real( tUnit.substr( tSplit + 1, tUnit.length()));
+
+                    // unit string from an input file: tPower is an int that the bookkeeping
+                    // below multiplies by small factors ( tPower * 2, * 3, * 4 ), so the
+                    // exponent must be an integer -- a fraction would be truncated silently --
+                    // and small enough that those products cannot overflow. No physical unit
+                    // gets anywhere near |32|.
+                    BELFEM_ERROR( std::isfinite( tExponent )
+                                  && tExponent == std::trunc( tExponent )
+                                  && std::abs( tExponent ) <= 32.0,
+                                  "Unit %s : exponent %g is not an integer in [-32, 32]",
+                                  tUnit.c_str(), ( double ) tExponent );
+
+                    tPower = static_cast< int >( tPower * tExponent );
                     tUnit = tUnit.substr( 0, tSplit );
                 }
 

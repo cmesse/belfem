@@ -55,7 +55,7 @@ Approximate tolerances used for non-linear functions with natural BCs.
 
 - `create_entropy` is **private** — activate via constructor with `aXref > 0`
 - `create_integral` is **public** — call after construction
-- `create_helpmatrix` takes `const real&` for size, not `index_t`
+- `create_helpmatrix` takes the size as `const index_t` and the spacing as `const real`, both by value
 - Equidistant spacing required (asserted with 1e-9 relative tolerance)
 - `entropy(x)` requires `x > 0` (uses `log(x)`)
 - `update_data()` only runs on rank 0 — caller must synchronize

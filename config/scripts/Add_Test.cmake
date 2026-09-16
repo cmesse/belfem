@@ -205,8 +205,6 @@ else()
 
 endif()
 
-target_include_directories( test_${TESTNAME} BEFORE PRIVATE $ENV{SCLS}/include )
-
 # the whole framework is one library target ( Add_BelfemLibrary.cmake ) that
 # carries its third-party link interface; LIBLIST is no longer consulted
 target_link_libraries( test_${TESTNAME} ${LIBTARGET} -lgtest -lgtest_main )

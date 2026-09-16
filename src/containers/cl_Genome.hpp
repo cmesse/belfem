@@ -12,6 +12,7 @@
 #ifndef BELFEM_CL_DNA_HPP
 #define BELFEM_CL_DNA_HPP
 
+#include <cmath>
 #include <algorithm>
 
 #include "typedefs.hpp"
@@ -75,7 +76,7 @@ namespace belfem
                 tValue = ( tValue - tMin ) / ( tMax - tMin );
 
                 // scale to [0, 2^B - 1] and encode
-                encode( i, std::round( tValue * ( ( 1u << B ) - 1 ) ) );
+                encode( i, static_cast< uint >( std::round( tValue * ( ( 1u << B ) - 1 ) ) ) );
             }
         }
 
@@ -169,7 +170,7 @@ namespace belfem
                 tValue = ( tValue - tMin ) / ( tMax - tMin );
 
                 // encode
-                encode( i, std::round( tValue * ( ( 1u << B ) - 1 ) ) );
+                encode( i, static_cast< uint >( std::round( tValue * ( ( 1u << B ) - 1 ) ) ) );
             }
         }
 

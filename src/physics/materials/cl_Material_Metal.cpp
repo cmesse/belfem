@@ -317,7 +317,7 @@ namespace belfem
             int p = 20 ;
 
             // number of points
-            int q  = std::ceil( ( 1271.736 / n + 329.095 ) / n + 78.162 ) ;
+            int q  = static_cast< int >( std::ceil( ( 1271.736 / n + 329.095 ) / n + 78.162 ) ) ;
 
 
             tZ.set_size( q );
@@ -347,7 +347,7 @@ namespace belfem
 
             SpMatrix * tA = new SpMatrix ;
             spline::create_helpmatrix(
-                q,
+                static_cast< index_t >( q ),
                 tZ(1),
                 *tA,
                 spline::SplineBC::Tangent,

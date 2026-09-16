@@ -585,7 +585,7 @@ const string & get_string(const string & aKey) const;
 bool get_bool(const string & aKey) const;
 real get_real(const string & aKey) const;
 value get_value(const string & aKey, const string & aUnit) const;  // With unit conversion
-int get_int(const string & aKey) const;
+int get_int(const string & aKey) const;      // Rounds; non-finite or out-of-int-range aborts
 string get_units(const string & aKey) const;
 
 // Array parsing

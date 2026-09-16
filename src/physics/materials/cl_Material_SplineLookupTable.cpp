@@ -130,7 +130,7 @@ namespace belfem
             // we always make steps in 4-K width, we need to be equidistant and with 4 K, Helium is captured properly
             const real dT = 4.0 ;
 
-            size_t tNumPoints = std::ceil( this->constant_property( MaterialProperty::T_max ) / dT ) + 1 ;
+            size_t tNumPoints = static_cast< size_t >( std::ceil( this->constant_property( MaterialProperty::T_max ) / dT ) + 1 ) ;
 
             Vector< real > tX( tNumPoints );
             Vector< real > tY( tNumPoints );
@@ -147,7 +147,7 @@ namespace belfem
             spline::SplineBC tStartBC = static_cast< spline::SplineBC >( aStartBC );
             spline::SplineBC tEndBC = static_cast< spline::SplineBC >( aEndBC );
             SpMatrix tA ;
-            spline::create_helpmatrix( tNumPoints, dT, tA, tStartBC, tEndBC );
+            spline::create_helpmatrix( static_cast< index_t >( tNumPoints ), dT, tA, tStartBC, tEndBC );
             this->set_spline(  aProperty, new Spline( tX, tY, tA, tStartBC, tEndBC, adYdX0, adYdX1 ) );
         }
         void
