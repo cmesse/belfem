@@ -38,14 +38,11 @@ extern"C" {
                          const belfem::int_t    * aIndices,
                          const double * aValues,
                          double       * aLHS,
-                         const double * aRHS,
+                         double       * aRHS,   // MKL declares the right-hand side INTENT( INOUT )
                          belfem::int_t          * aInfo   );
 
     belfem::int_t
     pardisotools_free() ;
-
-    double
-    pardisotools_get_determinant() ;
 
 #ifdef __cplusplus
 }

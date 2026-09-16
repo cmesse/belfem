@@ -40,8 +40,7 @@ namespace belfem
             * 6: Reordering       : fill-in reducing ordering,
             *                       passed to iparm(2)
             *
-            * 7: Compute Determinant : 0 - off
-            *                          1 - on
+            * 7: reserved ( formerly compute determinant; MKL PARDISO returns none ) : 0
             */
             Vector< int_t > mParameters ;
 
@@ -53,8 +52,7 @@ namespace belfem
              * 4 : CGS diagnostic                                 ( #20 )
              * 5 : Number of positive eigenvalues                 ( #22 )
              * 6 : Number of negative eigenvalues                 ( #23 )
-             * 7 : compute-determinant flag as seen by PARDISO      ( #33 )
-             *     the value itself is dparm( 33 ), see get_determinant()
+             * 7 : iparm( 33 ), reserved in MKL PARDISO, always 0
              */
             Vector< int_t > mInfo ;
 

@@ -10,8 +10,20 @@
 
 !> see also https://software.intel.com/content/www/us/en/develop/articles/pardiso-parameter-table.html
 
+!> MKL's own Fortran interface for pardiso ( sixteen arguments, assumed-size arrays ), included the
+!> way mumpstools.f90 includes dmumps_struc.h: the vendor header is the source of truth, and every
+!> call below is checked against it at compile time. It declares default INTEGER throughout, which
+!> is the LP64 MKL this project links; Intel's ILP64 story for Fortran is -fdefault-integer-8, which
+!> BELFEM does not pass, so the ILP64 combination is refused below instead of compiling silently.
+include 'mkl_pardiso.f90'
+
+#ifdef BELFEM_INT64
+#error "MKL PARDISO with USE_MKL_64BIT_API is not supported by pardisotools.f90: the vendor interface declares default INTEGER and would need -fdefault-integer-8"
+#endif
+
 module pardisotools
     use, intrinsic :: iso_c_binding
+    use mkl_pardiso
 #ifdef OMP
     use omp_lib
 #endif
@@ -43,11 +55,8 @@ module pardisotools
     !> verbosity flag
     integer :: gInfoLevel
 
-    !>  memory pointers
-    integer*8, dimension( 64 ) :: gMemoryPointers
-
-    !> output variables
-    double precision, dimension( 64 ) :: gDPARM
+    !>  memory pointers ( MKL's opaque handle, one 64-bit word each )
+    type( MKL_PARDISO_HANDLE ), dimension( 64 ) :: gMemoryPointers
 
     integer :: gMaxNumFactors
     integer :: gNumFactors
@@ -76,8 +85,8 @@ end module pardisotools
 !> 7: Flag that selects the reduce ordering
 !>
 !>
-!> 8: Compute Determinant : 0 - off
-!>                          1 - on
+!> 8: reserved ( was "compute determinant"; MKL PARDISO returns no determinant and
+!>    documents iparm( 33 ) as reserved, so the value is read and ignored )
 
 function pardisotools_initialize_parameters( aParameters ) bind( c ) result( aStatus )
     use pardisotools
@@ -101,7 +110,7 @@ function pardisotools_initialize_parameters( aParameters ) bind( c ) result( aSt
     ! refinement step limit
     integer( int_t ) :: tMaxNumRefinementSteps
 
-    ! flag that tells if the determinant is to be computer
+    ! kept for the C interface ( parameter 8 ); MKL PARDISO has no determinant
     integer( int_t ) :: tComputeDeterminant
 
     ! iterator
@@ -197,8 +206,8 @@ function pardisotools_initialize_parameters( aParameters ) bind( c ) result( aSt
     gParameters( 27 ) = 1
 #endif
 
-    ! 33: Determinant of a matrix.
-    gParameters( 33 ) = tComputeDeterminant
+    ! 33: reserved in MKL PARDISO ( must stay 0 ); the Panua/Schenk determinant flag does not exist here
+    gParameters( 33 ) = 0
 
     ! 1-based/0-based input data indexing
     gParameters( 35 ) = 1 - tIndexingBase
@@ -233,9 +242,11 @@ function pardisotools_symbolic_factorization( &
     ! the phase of the current call
     integer( int_t ) :: tPhase
 
-    ! some dummy values
-    integer( int_t ) :: tIntDummy
-    real*8  :: tRealDummy
+    ! placeholders for the arguments this phase does not use; one object per dummy argument
+    ! that MKL declares INTENT( INOUT ) or INTENT( OUT ), so no actual is bound twice
+    integer :: tPerm( 1 ) = 0
+    real*8  :: tB( 1 ) = 0.0d0
+    real*8  :: tX( 1 ) = 0.0d0
 
     !  Reordering and Symbolic Factorization, This step also allocates
     ! all memory that is necessary for the factorization
@@ -246,7 +257,7 @@ function pardisotools_symbolic_factorization( &
     gNumFactors    = 1
 
     !  Initiliaze the internal solver memory pointer.
-    forall( k = 1:64 ) gMemoryPointers( k ) = 0
+    forall( k = 1:64 ) gMemoryPointers( k )%DUMMY = 0
 
     call pardiso ( &
             gMemoryPointers, &
@@ -258,12 +269,12 @@ function pardisotools_symbolic_factorization( &
             aValues, &
             aPointers, &
             aIndices, &
-            tIntDummy, &
+            tPerm, &
             aNRHS, &
             gParameters, &
             gInfoLevel, &
-            tRealDummy, &
-            tRealDummy, &
+            tB, &
+            tX, &
             aStatus )
 
 end function pardisotools_symbolic_factorization
@@ -290,7 +301,9 @@ function pardisotools_solve( &
     integer( int_t ), intent( in ),    dimension( aNNZ )      :: aIndices
     real( c_double ), intent( in ),    dimension( aNNZ )      :: aValues
     real( c_double ), intent( inout ), dimension( aN, aNRHS ) :: aLHS
-    real( c_double ), intent( in ),    dimension( aN, aNRHS ) :: aRHS
+    ! MKL declares the right-hand side INTENT( INOUT ) ( it is overwritten when iparm( 6 ) = 1,
+    ! which this wrapper never sets ), so the Fortran intent has to say inout as well
+    real( c_double ), intent( inout ), dimension( aN, aNRHS ) :: aRHS
     integer( int_t ), intent( out ) ,  dimension( 8 )         :: aInfo
     integer( int_t )                                          :: aStatus
 
@@ -300,9 +313,10 @@ function pardisotools_solve( &
     ! the phase of the current call
     integer( int_t ) :: tPhase
 
-    ! some dummy values
-    integer( int_t ) :: tIntDummy
-    real*8  :: tRealDummy
+    ! placeholders for the arguments the factorization does not use, one object per dummy
+    integer :: tPerm( 1 ) = 0
+    real*8  :: tB( 1 ) = 0.0d0
+    real*8  :: tX( 1 ) = 0.0d0
 
     ! local copy of parameters
     integer, dimension( 64 ) :: tParameters
@@ -331,12 +345,12 @@ function pardisotools_solve( &
             aValues, &
             aPointers, &
             aIndices, &
-            tIntDummy, &
+            tPerm, &
             aNRHS, &
             tParameters, &
             gInfoLevel, &
-            tRealDummy, &
-            tRealDummy, &
+            tB, &
+            tX, &
             aStatus )
 
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -346,11 +360,8 @@ function pardisotools_solve( &
     ! check of factorization was successful
     if( aStatus .eq. 0 ) then
 
-        ! initialize parameters
-        forall( k=1:64 ) gDPARM( k ) = 0.0
-
         !  Back substitution and iterative refinement
-        tPhase = 33 ! only factorization
+        tPhase = 33
 
         call pardiso ( &
                 gMemoryPointers, &
@@ -362,14 +373,13 @@ function pardisotools_solve( &
                 aValues, &
                 aPointers, &
                 aIndices, &
-                tIntDummy, &
+                tPerm, &
                 aNRHS, &
                 tParameters, &
                 gInfoLevel, &
                 aRHS, &
                 aLHS, &
-                aStatus, &
-                gDPARM )
+                aStatus )
     end if
 
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -396,7 +406,7 @@ function pardisotools_solve( &
     ! Number of negative eigenvalues
     aInfo( 7 ) = tParameters( 23 )
 
-    ! compute-determinant flag ( iparm 33 ); the determinant is in gDPARM( 33 )
+    ! iparm( 33 ) is reserved in MKL PARDISO and stays 0; slot 8 is kept for the C interface
     aInfo( 8 ) = tParameters( 33 )
 
 end function pardisotools_solve
@@ -409,9 +419,14 @@ function pardisotools_free() bind( c ) result( aStatus )
 
     integer( int_t ) :: aStatus
 
-    ! dummy values
-    integer( int_t ) :: tIntDummy
-    real*8  :: tRealDummy
+    ! placeholders: the release phase reads none of them, but MKL declares perm, b and x as
+    ! INTENT( INOUT ) / INTENT( OUT ), so each gets its own object
+    real*8  :: tA( 1 ) = 0.0d0
+    integer :: tIA( 1 ) = 0
+    integer :: tJA( 1 ) = 0
+    integer :: tPerm( 1 ) = 0
+    real*8  :: tB( 1 ) = 0.0d0
+    real*8  :: tX( 1 ) = 0.0d0
     integer :: tPhase = -1
 
     call pardiso ( &
@@ -421,26 +436,15 @@ function pardisotools_free() bind( c ) result( aStatus )
             gMatrixType, &
             tPhase, &
             gN, &
-            tRealDummy, &
-            tIntDummy, &
-            tIntDummy, &
-            tIntDummy, &
+            tA, &
+            tIA, &
+            tJA, &
+            tPerm, &
             gNRHS, &
             gParameters, &
             gInfoLevel, &
-            tRealDummy, &
-            tRealDummy, &
+            tB, &
+            tX, &
             aStatus )
     
 end function pardisotools_free
-
-!------------------------------------------------------------------------------
-
-function pardisotools_get_determinant() bind( c ) result( aDet )
-    use pardisotools
-    implicit none
-    real( c_double ) :: aDet
-
-    aDet = gDPARM( 33 )
-
-end function pardisotools_get_determinant

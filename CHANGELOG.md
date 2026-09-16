@@ -53,6 +53,16 @@ All notable changes to BELFEM are recorded here. The format follows
 
 ### Fixed
 
+- **`pardisotools.f90` calls MKL PARDISO through MKL's own Fortran interface** (`include 'mkl_pardiso.f90'`,
+  the pattern `mumpstools.f90` uses for MUMPS). This removes the two gfortran argument-mismatch warnings and
+  exposed two defects the implicit interface had hidden: the solve phase passed a seventeenth argument that
+  exists only in the Panua/Schenk PARDISO API, and `PARDISO::get_determinant()` read a value MKL never
+  writes. The extra argument is gone and `get_determinant()` now raises an error for PARDISO (MKL computes
+  no determinant; use MUMPS). `USE_MKL_64BIT_API` together with `USE_PARDISO` is refused at compile time,
+  because MKL's Fortran interface declares default `INTEGER` and the ILP64 library would need
+  `-fdefault-integer-8`; before, that combination compiled with mismatched integer widths.
+
+
 - **The remaining `-Wfloat-conversion` warnings in the library and the test headers are
   cleared.** The flag was added in 0.9.1; the implicit floating-point-to-integer conversions it
   reported — `std::ceil`/`std::round` results assigned to integers in the integration-point

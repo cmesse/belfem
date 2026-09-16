@@ -307,6 +307,20 @@ TEST( SolverSolve, PARDISOSolveTridiagonal )
     solve_tridiag_and_verify( belfem::SolverType::PARDISO );
 }
 
+// MKL PARDISO returns no determinant: the wrapper must say so rather than hand back a number
+TEST( SolverSolve, PARDISODeterminantIsUnsupported )
+{
+    belfem::Matrix< belfem::real > tK = make_tridiag( 4 );
+    belfem::SpMatrix tM( tK, belfem::SpMatrixType::CSR );
+    belfem::Vector< belfem::real > tB( 4, 1.0 );
+    belfem::Vector< belfem::real > tX( 4, 0.0 );
+
+    belfem::Solver tSolver( belfem::SolverType::PARDISO );
+    tSolver.solve( tM, tX, tB );
+
+    EXPECT_THROW( tSolver.wrapper()->get_determinant(), std::runtime_error );
+}
+
 #endif
 
 // NOTE: PETSc and STRUMPACK may need MPI init. If they fail here,

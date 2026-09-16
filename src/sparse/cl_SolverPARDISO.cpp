@@ -189,9 +189,10 @@ namespace belfem
         PARDISO::get_determinant() const
         {
 #ifdef BELFEM_PARDISO
-            return mParameters( 7 ) == 0 ?
-                    BELFEM_SIGNALING_NAN :
-                    pardisotools_get_determinant() ;
+            // MKL PARDISO returns no determinant ( the dparm( 33 ) of the Panua/Schenk PARDISO does
+            // not exist in MKL's sixteen-argument interface ); say so instead of returning a NaN
+            BELFEM_ERROR( false, "MKL PARDISO does not compute a determinant - use MUMPS for get_determinant()" );
+            return BELFEM_SIGNALING_NAN ;
 #else
             BELFEM_ERROR( false, "We are not linked against PARDISO" );
             return BELFEM_SIGNALING_NAN ;
@@ -292,7 +293,7 @@ namespace belfem
             // reduced odering scheme
             mParameters( 6 ) = 0 ;
 
-            // do not compute determinant
+            // parameter 8 of the Fortran interface, reserved ( MKL PARDISO has no determinant )
             mParameters( 7 ) = 0 ;
 
             // create the parameter list

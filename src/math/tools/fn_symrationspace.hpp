@@ -29,7 +29,7 @@ namespace belfem
         aX.set_size( aN );
 
         // number of steps per height
-        index_t tN = 0.5 * ( aN - 1 ) ;
+        index_t tN = ( aN - 1 ) / 2 ;
 
         // stepper
         T tDeltaX = 1.0 ;
