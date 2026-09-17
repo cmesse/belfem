@@ -68,7 +68,7 @@ else
     # the round exiting 0 with a synthetic "Audit FAILED" entry that reads like a vendor
     # outage. Refuse the whole round here instead, before anything is dispatched.
     case "$CODEX_MODEL" in
-        gpt-5.6-sol|gpt-5.6-terra|gpt-5.6-luna|gpt-5.5|gpt-5.4|gpt-5.4-mini) ;;
+        gpt-6-astra|gpt-5.6-sol|gpt-5.6-terra|gpt-5.6-luna|gpt-5.5|gpt-5.4|gpt-5.4-mini) ;;
         *) echo "cross_review.sh: bad CODEX_MODEL '$CODEX_MODEL' (see the depth table)" >&2; exit 1 ;;
     esac
     case "$GROK_MODEL" in

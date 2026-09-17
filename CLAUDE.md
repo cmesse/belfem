@@ -356,6 +356,20 @@ line search, a rejected timestep: these return a status and trigger the retry pa
 algorithm that has a retry policy above it is a design error — it turns a recoverable state into a
 run abort. See `doc/coding_philosophy.md`.
 
+### Comments
+
+Comments state only what the code cannot: intent, a contract (ownership, units, layout,
+preconditions, call order, MPI collectiveness), a literature citation
+(`// Messe et al. 2023, Eq. 13`), a warning, an invariant, or the symbol a kernel statement
+stands for. Never narrate the next statement (`// loop over all blocks`), never restate a name in
+Doxygen (`@brief Constructor`), never leave commented-out code, and **never put history in
+source**: no dates, no reviewer credits, no `Decision: <name>, <date>`, no incident or
+debt-register IDs, no `tmp/` paths — git holds the when and the who. One comment per idea, above
+the block. Cite; do not reproduce derivations. If a named constant, a predicate, or a
+`BELFEM_ASSERT` could replace the comment, replace it. Edit or delete a comment in the same diff
+that changes the code it describes. The full rules, with worked rewrites and the sweep gates, are
+in `doc/commenting_guidelines.md`.
+
 ### Thread Safety
 
 **BELFEM is deliberately NOT thread-safe internally:**
@@ -693,6 +707,8 @@ The `./nonfree/` repository, when present, carries an additional reference libra
 | "How do I implement element X?" | Hughes 2000 Ch. 5, Bathe 2016 Ch. 5 |
 | "Why is my element locking?" | Hughes 2000 Ch. 4, Bathe 2016 §4.3–4.5 |
 | "What's the formula for Z?" | Bronshtein |
+| "What may a comment say, and why no TODO / byline / dead code?" | Martin 2025 Ch. 5; Thomas & Hunt 2020 Topic 7 (Tip 13), Topic 9 |
+| "Assertion or error? Who frees what?" | Thomas & Hunt 2020 Topics 23–26; Oliveira & Stewart 2006 §9.4, §9.7 |
 
 **Step 2: use the index files** (when `./literature/` is present). `literature/README.md` holds the
 master decision flowcharts; `papers/fem/index.md`, `papers/fvm/index.md`, `papers/topology/index.md`,

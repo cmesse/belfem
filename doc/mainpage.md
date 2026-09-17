@@ -63,6 +63,7 @@ each of these.
 - @subpage docmap
 - @subpage doc_index
 - @subpage doc_coding_philosophy
+- @subpage doc_commenting_guidelines
 - @subpage doc_literature_references
 
 ### Project process

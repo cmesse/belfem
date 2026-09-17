@@ -206,6 +206,45 @@ DOI:10.1051/m2an/2010034
 
 ---
 
+## Software Craft
+
+The four books behind `doc/coding_philosophy.md` and `doc/commenting_guidelines.md`. Two are about
+scientific code, two are general craft books. All four are in `literature/books/coding/` when that
+directory is present; its `index.md` routes questions to chapter, section, Topic or Tip.
+
+**Oliveira, S. and Stewart, D.E.** *Writing Scientific Software: A Guide to Good Style*. Cambridge
+University Press, 2006. ISBN 978-0-521-85896-0. DOI: 10.1017/CBO9780511617973
+- Cited for: comments and documentation (§7.9–7.10), interface design and scratch space (§7.6),
+  memory management (Ch. 14–15), array layout and cache (§8.3, §12.5), testing and debugging (Ch. 9)
+- Cite as: "Oliveira & Stewart 2006, §7.9"
+
+**Rouson, D., Xia, J., and Xu, X.** *Scientific Software Design: The Object-Oriented Way*. Cambridge
+University Press, 2011. ISBN 978-0-521-88813-4. DOI: 10.1017/CBO9780511977381
+- Cited for: style rules (§1.7, Rules 1.1–1.3), comment intent as complexity grows (§7.2.1),
+  design patterns for solvers (Ch. 5–9), C++/Fortran interoperability (Ch. 11)
+- Cite as: "Rouson et al. 2011, §1.7"
+
+**Martin, R.C.** *Clean Code: A Handbook of Agile Software Craftsmanship*, 2nd ed. Pearson, 2025.
+ISBN 978-0-13-539857-9
+- Cited for: naming (Ch. 4), comments (Ch. 5, pp. 89–116), the small-function position BELFEM
+  declines inside numerical kernels (Ch. 7, Ch. 10), the debate with Ousterhout (Appendix)
+- **Edition note:** BELFEM documents cite this second edition. The first edition (Prentice Hall,
+  2008) numbers the comments chapter as Ch. 4; sections are unnumbered in both, so cite the chapter
+  and the section title, with the printed page when precision matters
+- Cite as: "Martin 2025, Ch. 5 'Journal Comments', p. 102"
+
+**Thomas, D. and Hunt, A.** *The Pragmatic Programmer: Your Journey to Mastery*, 20th anniversary
+ed. Addison-Wesley, 2020. ISBN 978-0-13-595705-9
+- Cited for: documentation built in, non-API comments discuss *why* (Topic 7, Tip 13); DRY as a rule
+  about knowledge, duplication in documentation (Topic 9); design by contract (Topic 23); crash
+  early (Topic 24); assertions check the impossible and stay on (Topic 25); resource ownership
+  (Topic 26); regression tests and automation (Topic 51)
+- Cite by Topic (1–53) and Tip (1–100), never by page: the local extraction's page markers are
+  reflow pages
+- Cite as: "Thomas & Hunt 2020, Topic 25" or "Thomas & Hunt 2020, Tip 39"
+
+---
+
 ## BELFEM Research Papers
 
 ### Tier 1: Core BELFEM

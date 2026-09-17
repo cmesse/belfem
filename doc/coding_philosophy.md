@@ -821,6 +821,7 @@ Until a `benchmarks/` suite exists, treat any performance number outside this do
 - **`src/comm/doc/comm_module_overview.md`** — MPI communication patterns
 
 ### External References
+- **Martin, _Clean Code_, 2nd ed. (2025)** — Ch. 5 "Comments" is the taxonomy behind `doc/commenting_guidelines.md`; Ch. 4 for names; Ch. 7 and Ch. 10 state the small-function position this document declines for kernels, and its Appendix carries Ousterhout's objection to it
 - **Ousterhout, _A Philosophy of Software Design_** — deep modules (`Cell`, the comm layer, the backend wrappers are exactly this); "define errors out of existence" is the `data()`-valid-when-empty principle
 - **Lakos, _Large-Scale C++ Software Design_** — physical design and levelization for a 300k-line codebase
 - **Drepper, "What Every Programmer Should Know About Memory"** — the cited source for cache-line and locality heuristics in this document

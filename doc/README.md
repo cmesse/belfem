@@ -6,6 +6,7 @@ Index of general project documentation.
 
 - [documentation_guidelines.md](documentation_guidelines.md) - How to organize and name documentation files
 - [coding_philosophy.md](coding_philosophy.md) - **BELFEM coding philosophy** (nomenclature, memory management, container selection, performance patterns)
+- [commenting_guidelines.md](commenting_guidelines.md) - **What a source comment may say and where it goes**: contract, reason, citation, warning; no narration, no dates, no review provenance, no history; Doxygen documents the contract, not the name. Proposed; jury round 1 folded in
 - [literature_references.md](literature_references.md) - Reference guide to literature used in BELFEM development
 - [ai_collaboration_protocol.md](ai_collaboration_protocol.md) - Two-AI review protocol, exchange format and confidence calibration
 - [ai_workflow_best_practices.md](ai_workflow_best_practices.md) - **Experience report on the multi-AI method**: which practices were adopted, what changed after each, what they cost, and a five-item minimum adoption set — written to be readable outside this project
