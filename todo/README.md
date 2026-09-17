@@ -143,9 +143,13 @@ one of the two must be retired before either is worked.
 
 ## Added 2026-09-16
 
-### [comment_cleanup_sweep_2.md](comment_cleanup_sweep_2.md) — add the missing contracts on the public entry points, correct the comments the code contradicts, finish the narration tail
+### [code_findings_from_comment_sweeps.md](code_findings_from_comment_sweeps.md) — defects the comment auditors found while reading for contracts, parked for a code session
 
-**PLAN, pending approval.** Reconciled from three independent second-tier lists over the swept tree (Codex astra/high, Grok 4.6/high, a Claude subagent). Nine batches: `commtools` first (send/receive/share/distribute collectiveness, the deleted tag-protocol reason restored), then containers and linalg (`Cell<T*>` non-owning, `Cell( aReserve )`, `data()`), mesh ownership and the collective constructor, kernel and dof-manager collectiveness and the false "owns the mesh" brief, IWG units and hidden broadcasts, solver status semantics per backend, the contradicted comments, the narration tail. Seven code findings routed to Christian, one of them a live defect (the sideset integral broadcasts the rank number instead of the value).
+**OPEN, parked by ruling.** The sideset integral broadcasts the master rank instead of the value (non-master ranks return zero); an `IWG::N` declared and never defined; wrapper `mX`/`mY` never assigned; `IWG::collect_node_coords` writes `nDim + 1` columns; a double include guard; `tests/` dated lines; closed-core narration for Gregory. Each goes through the plan + audit → code + audit loop.
+
+### [closed/comment_cleanup_sweep_2.md](closed/comment_cleanup_sweep_2.md) — add the missing contracts on the public entry points, correct the comments the code contradicts, finish the narration tail
+
+**CLOSED 2026-09-17 (make check both trees; comment-only over 54 files).** Reconciled from three independent second-tier lists over the swept tree (Codex astra/high, Grok 4.6/high, a Claude subagent). Nine batches: `commtools` first (send/receive/share/distribute collectiveness, the deleted tag-protocol reason restored), then containers and linalg (`Cell<T*>` non-owning, `Cell( aReserve )`, `data()`), mesh ownership and the collective constructor, kernel and dof-manager collectiveness and the false "owns the mesh" brief, IWG units and hidden broadcasts, solver status semantics per backend, the contradicted comments, the narration tail. Seven code findings routed to Christian, one of them a live defect (the sideset integral broadcasts the rank number instead of the value).
 
 ### [closed/matlab_derivations_recovery.md](closed/matlab_derivations_recovery.md) — recover the MATLAB generator and verifier scripts from the pre-reset `tmp/` into the module `doc/` trees
 
