@@ -150,7 +150,7 @@ namespace belfem
                 if( aAutoTimestep )
                 {
                     // adapt timestep
-                    if ( tolb > 0 ) // todo: why is this zero ?
+                    if ( tolb > 0 ) // TODO(cm): identify the cases where tolb is zero
                     {
                         h *= 0.9 * std::pow( aEpsilon / tolb, 0.25 );
                     }

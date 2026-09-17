@@ -1,6 +1,13 @@
-//
-// Created by christian on 12/3/21.
-//
+/*
+ * BELFEM -- The Berkeley Lab Finite Element Framework
+ * Copyright (c) 2026, The Regents of the University of California,
+ * through Lawrence Berkeley National Laboratory (subject to receipt of any required
+ * approvals from the U.S. Dept. of Energy).  All rights reserved.
+ *
+ * Developers: Christian Messe, Gregory Giard
+ *
+ * See the top-level LICENSE file for the complete license and disclaimer.
+ */
 
 #include "cl_EdgeFunctionFactory.hpp"
 
@@ -77,7 +84,9 @@ namespace belfem
                     // through to this error until EF_QUAD9TS / EF_PENTA18TS
                     // are derived from the hierarchical p=2 Nédélec space
                     // and the thin-shell reduction in Messe et al. 2023.
-                    // See todo/deferred/edge_function_quadratic_shells.md.
+                    // TODO(cm): implement the quadratic thin-shell edge functions
+                    // ( plan: todo/deferred/edge_function_quadratic_shells.md ) and
+                    // remove this error
                     BELFEM_ERROR( false,
                         "Edge function for quadratic thin shell %s is not "
                         "implemented. Use linear shells (QUAD4TS/PENTA6TS/HEX8TS) "

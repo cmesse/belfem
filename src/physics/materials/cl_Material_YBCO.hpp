@@ -89,9 +89,7 @@ namespace belfem
              */
             YBCO();
 
-            /**
-             * @brief Destructor - deletes Bezier curve for Young's modulus
-             */
+            /** Deletes the owned Bezier curve of the Young's modulus. */
             ~YBCO() override;
 
             /**

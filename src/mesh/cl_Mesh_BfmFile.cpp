@@ -2330,7 +2330,6 @@ namespace belfem
                     tThick( b ) = tThicknesses[ s ][ b ];
                     // no set_thickness here: ThinShell::set_thicknesses below
                     // propagates the vector onto the layer blocks
-                    //tBlock->set_thickness( tThick( b ) );
                     tMats.push( tMaterials( tCount++) );
                 }
                 tThinShell->set_thicknesses( tThick );
@@ -2539,7 +2538,6 @@ namespace belfem
             mFile->save_data( "sidesets", tSideSets, true );
             mFile->save_data( "types", tTypes );
             mFile->save_data( "closed", tClosed );
-            //tEdgeIDs.save();
             tSegmentIDs.save();
             tLengths.save();
             tTopology.save();

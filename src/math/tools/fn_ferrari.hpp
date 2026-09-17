@@ -46,10 +46,6 @@ namespace  belfem
      *   robustness at double roots matters (e.g. grazing-eclipse
      *   detection), prefer a 4x4 companion-matrix eigensolve instead.
      *
-     * (Implementation completed + three-way verified 2026-07-23:
-     *  the resolvent/factorization formulas were derived independently by
-     *  Claude and Codex and agree; validated numerically against known
-     *  quartics and random-coefficient sweeps.)
      */
     template < typename T >
     void
@@ -85,8 +81,8 @@ namespace  belfem
 
         // the biquadratic path handles q ~ 0. It also serves as the
         // fallback when roundoff collapses the clamped resolvent root
-        // s^2 to zero on an ill-conditioned cubic (Grok audit 2026-07-23:
-        // q/s would go Inf/NaN) — in exact arithmetic that only happens
+        // s^2 to zero on an ill-conditioned cubic. Then q/s would be Inf/NaN.
+        // In exact arithmetic, that occurs only
         // when q is negligible anyway
         bool biquadratic = std::abs( q ) < BELFEM_EPSILON ;
 

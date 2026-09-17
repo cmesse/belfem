@@ -74,8 +74,6 @@ namespace belfem
 
 #endif
 
-
-
 // Forward declaration (full definition only needed in implementation files)
 
 #include "cl_JcFunction.hpp"
@@ -114,9 +112,6 @@ namespace belfem
         NonMetal
     };
 
-    /**
-     * @brief Dependencies that material properties can have
-     */
     enum class MaterialDependency
     {
         T         = 0,    // temperature [K]
@@ -130,9 +125,6 @@ namespace belfem
         UNDEFINED = 8
     };
 
-    /**
-     * @brief Bitset for tracking material property dependencies
-     */
     typedef Bitset< static_cast< size_t > ( MaterialDependency::UNDEFINED ) > MaterialDependencyBitset ;
 
     /**
@@ -201,20 +193,11 @@ namespace belfem
      */
     constexpr size_t gNumNonConstantMaterialProperties = static_cast< size_t >( MaterialProperty::T_crit ) ;
 
-    /**
-     * @brief Total number of material properties
-     */
     constexpr size_t gNumMaterialProperties = static_cast< size_t >( MaterialProperty::UNDEFINED ) ;
 
-    /**
-     * @brief Convert material property enum to string
-     */
     string
     to_string( const MaterialProperty aProperty ) ;
 
-    /**
-     * @brief Get the SI unit for a material property
-     */
     unit
     get_unit( const MaterialProperty aProperty ) ;
 
@@ -297,7 +280,6 @@ namespace belfem
         Cell< real > mConstantProperties ;  // Storage for constant property values
 
         Cell< MaterialDependencyBitset * > mPropertyDependencies ;  // Tracks dependencies for each property
-
 
         //Piecewise resistivity parameters
         real mNff = 3.0 ;
@@ -418,16 +400,9 @@ namespace belfem
     public:
 //------------------------------------------------------------------------------
 
-        /**
-         * @brief Constructor
-         * @param aType Material type (Ferro, HTS, PureMetal, etc.)
-         * @param aIsIsotropic True if material properties are isotropic (default)
-         */
         Material( const MaterialType aType, const bool aIsIsotropic=true ) ;
 
-        /**
-         * @brief Destructor - deletes owned B-H curves and Jc/n functions
-         */
+        /** Deletes the owned B-H curves and Jc/n functions. */
         virtual ~Material() ;
 
         // Non-copyable and non-movable (Rule of Five)
@@ -440,64 +415,27 @@ namespace belfem
 // Property Checks
 //------------------------------------------------------------------------------
 
-        /**
-         * @brief Check if a material property is available
-         * @param aProperty The property to check
-         * @return True if the property is implemented for this material
-         */
         bool
         have( const MaterialProperty aProperty ) const ;
 
-        /**
-         * @brief Check if the material has a defect
-         * @return True if a defect function was defined
-         */
         bool
         have_defect() const ;
 
-        /**
-         * @brief Check if the material has a heating function
-         * @return True if a heating function was defined
-         */
         bool
         have_heating() const ;
 
-
-        /**
-         * @brief Check if we use piecewise instead of power-law
-         * @return True if a we use piecewise resistivity
-         */
         bool
         use_piecewise() const ;
 
-        /**
-         * @brief Check if a property depends on a specific variable
-         * @param aProperty The material property
-         * @param aDependency The dependency to check (T, B, angle, etc.)
-         * @return True if the property depends on the specified variable
-         */
         bool
         depends( const MaterialProperty aProperty, const MaterialDependency aDependency ) const ;
 
-        /**
-         * @brief Get all dependencies for a property
-         * @param aProperty The material property
-         * @return Pointer to bitset containing all dependencies
-         */
         const MaterialDependencyBitset *
         dependencies( const MaterialProperty aProperty ) const ;
 
-        /**
-         * @brief Check if material is isotropic
-         * @return True if all properties are isotropic
-         */
         bool
         is_isotropic() const ;
 
-        /**
-         * @brief Get the material type
-         * @return Material type (Ferro, HTS, PureMetal, etc.)
-         */
         MaterialType
         type() const ;
 
@@ -505,17 +443,10 @@ namespace belfem
 // Parameters and Tools
 //------------------------------------------------------------------------------
 
-        /**
-         * @brief Get material label
-         * @return Material label string (e.g., "Copper", "YBCO")
-         */
         const string &
         label() const ;
 
-        /**
-         * @brief Get material number/identifier
-         * @return Material number if it exists, empty string otherwise
-         */
+        /** Empty if the material has no number. */
         const string &
         number() const ;
 
@@ -531,37 +462,19 @@ namespace belfem
         void
         load_bh_curve( const material::BhCurve * aCurve );
 
-        /**
-         * @brief Set flag (multi-purpose flag used by Kernel)
-         */
         void
         flag( const uint8_t aIndex = 0 );
 
-        /**
-         * @brief Clear flag
-         */
         void
         unflag( const uint8_t aIndex = 0 );
 
-        /**
-         * @brief Check if material is flagged
-         * @return True if flag is set
-         */
         bool
         is_flagged( const uint8_t aIndex = 0 ) const ;
 
-        /**
-         * @brief Check if a property is constant (temperature-independent)
-         * @param aProperty The property to check
-         * @return True if the property is constant
-         */
         bool
         is_constant( const MaterialProperty aProperty ) const ;
 
-        /**
-         * @brief Set the residual resistivity ratio (for noble metals)
-         * @param RRR Residual resistivity ratio (ρ(273K)/ρ(0K))
-         */
+        /** RRR = rho( 273 K ) / rho( 0 K ); noble metals only. */
         virtual void
         set_RRR( const real RRR ) ;
 
@@ -589,10 +502,7 @@ namespace belfem
         real
         ref_density() const ;
 
-        /**
-         * @brief Molar mass
-         * @return Molar mass [kg/mol]
-         */
+        /** Molar mass [kg/mol]. */
         real
         M() const ;
 
@@ -624,7 +534,6 @@ namespace belfem
 
         virtual real
         dlambdadT( const real T=gTroom ) const ;
-
 
         /**
          * @brief Thermal conductivity for noble metals with magnetoresistance
@@ -663,7 +572,6 @@ namespace belfem
 
         virtual real
         dlambdadT( const real T, const real B_par, const real B_perp, const real J ) const ;
-
 
 //------------------------------------------------------------------------------
 // Electric Properties
@@ -970,7 +878,7 @@ namespace belfem
          * @return dρ/d|B| [Ω·m/T]
          *
          * Exact per regime where the regime's law permits, staged where it
-         * does not ( 2026-08-13 audit, C5 accepted by both voices ):
+         * does not:
          * - power-law regime ( J ≤ j1 ): dp/d|B| WITHOUT the parallel
          *   factor, because rho_piecewise returns the RAW power law there —
          *   consistency is with the residual, not with drho_powerlaw_dB.
@@ -1293,7 +1201,6 @@ namespace belfem
         read_heating( const string & aLibraryPath,
                     const string & aLabel ) ;
 
-
         /**
          * @brief Evaluate a polynomial for a given property (for UserDefinedMaterial)
          *
@@ -1315,7 +1222,6 @@ namespace belfem
         evaluate_derivative_of_polynomial(
             const MaterialProperty  Property,
             const real T ) const ;
-
 
         /**
          * @brief Set a polynomial function for a property (for UserDefinedMaterial)
@@ -1360,51 +1266,27 @@ namespace belfem
         void
         set_label( const string & aLabel ) ;
 
-        /**
-         * @brief Set material number/identifier (for derived classes)
-         */
         void
         set_number( const string & aNumber ) ;
 
-        /**
-         * @brief Mark a property as available
-         */
         void
         set_have( const MaterialProperty aProperty, const bool aHave=true ) ;
 
-        /**
-         * @brief Reset all dependencies for a property
-         */
         void
         reset_dependencies( const MaterialProperty aProperty );
 
-        /**
-         * @brief Add a dependency to a property
-         */
         void
         set_dependency( const MaterialProperty aProperty, const MaterialDependency aDependency ) ;
 
-        /**
-         * @brief Define a property as constant
-         */
         void
         set_constant( const MaterialProperty aProperty, const real aValue ) ;
 
-        /**
-         * @brief Mark property as using custom evaluation function
-         */
         void
         set_custom( const MaterialProperty aProperty ) ;
 
-        /**
-         * @brief Get constant property value
-         */
         real
         constant_property( const MaterialProperty aProperty ) const ;
 
-        /**
-         * @brief Evaluate property using spline interpolation
-         */
         virtual real
         spline_property( const MaterialProperty aProperty, const real aX ) const ;
 
@@ -1460,15 +1342,15 @@ namespace belfem
          * based on how the property is defined.
          */
 
-
         /**
-        * @brief Create spline for a property with optional boundary derivatives
-        */
+         * A NaN end derivative selects a parabolic end condition; a finite
+         * one is imposed as the tangent. Requires the property and T_max
+         * to be set.
+         */
         void
         create_spline(  const MaterialProperty aProperty,
             const real adYdX0=BELFEM_QUIET_NAN,
             const real adXdX1=BELFEM_QUIET_NAN ) ;
-
 
         /**
          * @brief Temperature below which alpha is taken from the Grueneisen branch
@@ -1514,7 +1396,6 @@ namespace belfem
 
         real
         d2cpdT2_spline( const real T ) const ;
-
 
         virtual real
         cp_custom( const real T ) const ;
@@ -1697,7 +1578,6 @@ namespace belfem
         return mType ;
     }
 
-
     inline void
     Material::flag( const uint8_t aIndex )
     {
@@ -1705,7 +1585,6 @@ namespace belfem
                                   ( unsigned int ) aIndex );
         mFlags |= ( 1 << aIndex );
     }
-
 
     inline void
     Material::unflag( const uint8_t aIndex )
@@ -1846,7 +1725,6 @@ namespace belfem
        return ( this->*mFunctionCp )( T );
     }
 
-
     inline real
     Material::cp_const( real T ) const
     {
@@ -1904,7 +1782,6 @@ namespace belfem
     {
         return this->ddspline_property( MaterialProperty::cp, T );
     }
-
 
 //------------------------------------------------------------------------------
 
@@ -2004,7 +1881,6 @@ namespace belfem
         return 0.;
     }
 
-
 //------------------------------------------------------------------------------
 
     inline real
@@ -2043,7 +1919,6 @@ namespace belfem
 
        return ( this->*mFunctionRho )( T ) ;
     }
-
 
     inline real
     Material::drhodT( const real T ) const
@@ -2264,8 +2139,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-
-
 //------------------------------------------------------------------------------
 
     inline real
@@ -2327,7 +2200,6 @@ namespace belfem
     }
 
 //------------------------------------------------------------------------------
-
 
     inline real
     Material::alpha_switch_temperature() const

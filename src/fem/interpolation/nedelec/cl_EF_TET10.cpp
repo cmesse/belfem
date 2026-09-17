@@ -1,6 +1,13 @@
-//
-// Created by christian on 12/1/21.
-//
+/*
+ * BELFEM -- The Berkeley Lab Finite Element Framework
+ * Copyright (c) 2026, The Regents of the University of California,
+ * through Lawrence Berkeley National Laboratory (subject to receipt of any required
+ * approvals from the U.S. Dept. of Energy).  All rights reserved.
+ *
+ * Developers: Christian Messe, Gregory Giard
+ *
+ * See the top-level LICENSE file for the complete license and disclaimer.
+ */
 
 #include "nedelec/cl_EF_TET10.hpp"
 #include "assert.hpp"
@@ -271,10 +278,8 @@ namespace belfem
                 mNzeta( 8, k ) = 4. - xi4 - eta4 - zeta4 - zeta4 ;
                 mNzeta( 9, k ) = -eta4 ;
 
-                // tables corrected 2026-08-14: eta and zeta exchanged relative
-                // to the original transcription, which followed the naive node
-                // map (EXODUS trap: node 1 carries zeta, node 2 carries eta).
-                // Source of truth: tmp/tet10/tet10_function.m / tet10_derivatives.m
+                // The EXODUS node order places zeta at node 1 and eta at node 2.
+                // The tables are generated symbolically, not transcribed by hand.
                 mG(  0, k ) = xi4*(xi2-1.);
                 mG(  1, k ) = xi2*(zeta4-1.);
                 mG(  2, k ) = zeta4*(zeta2-1.);

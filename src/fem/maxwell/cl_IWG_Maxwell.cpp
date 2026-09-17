@@ -48,7 +48,7 @@ namespace belfem
             // first two used by ghost, third used by gauging. These are
             // FALLBACKS for paths that never reach Controller::set_params
             // ( the hand-built test stacks ), not the production defaults:
-            // since 2026-09-01 the controller writes every slot from the
+            // the controller writes every slot from the
             // deck, and an absent block means 0 for eta and for chi
             // ( opt-in; see fn_FEM_ghost_switch.hpp and the input reference )
             mPenalty = { 4.0 , 1e-3, 1.0e-4 };
@@ -543,7 +543,8 @@ namespace belfem
                 aCalc->create_matrix( "D-", d, e );
             }
 
-            // todo: move the lines below into calculator class
+            // TODO(cm): move the enrichment block below into the Calculator
+            // once it has an enrichment hook
             if ( ! mUseEnrichment || ! aCalc->group()->has_enrichment() ) return ;
 
             // number of enriched functions

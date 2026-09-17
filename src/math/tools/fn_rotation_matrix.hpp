@@ -96,15 +96,12 @@ namespace belfem
 
         aMatrix( 0, 0 ) = aAxis( 0 ) * aAxis ( 0 ) * d + c;
         aMatrix( 1, 0 ) = aAxis( 1 ) * aAxis ( 0 ) * d + aAxis( 2 ) * s;
-        //aMatrix( 2, 0 ) = aAxis( 2 ) * aAxis ( 0 ) * d - aAxis( 1 ) * s;
 
         aMatrix( 0, 1 ) = aAxis( 0 ) * aAxis ( 1 ) * d - aAxis( 2 ) * s;
         aMatrix( 1, 1 ) = aAxis( 1 ) * aAxis ( 1 ) * d + c;
-        //aMatrix( 2, 1 ) = aAxis( 2 ) * aAxis ( 1 ) * d + aAxis( 0 ) * s;
 
         aMatrix( 0, 2 ) = aAxis( 0 ) * aAxis ( 2 ) * d + aAxis( 1 ) * s;
         aMatrix( 1, 2 ) = aAxis( 1 ) * aAxis ( 2 ) * d - aAxis( 0 ) * s;
-        //aMatrix( 2, 2 ) = aAxis( 2 ) * aAxis ( 2 ) * d + c;
     }
 
 //------------------------------------------------------------------------------

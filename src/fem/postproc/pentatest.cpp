@@ -1,6 +1,13 @@
-//
-// Created by Christian Messe on 27.06.20.
-//
+/*
+ * BELFEM -- The Berkeley Lab Finite Element Framework
+ * Copyright (c) 2026, The Regents of the University of California,
+ * through Lawrence Berkeley National Laboratory (subject to receipt of any required
+ * approvals from the U.S. Dept. of Energy).  All rights reserved.
+ *
+ * Developers: Christian Messe, Gregory Giard
+ *
+ * See the top-level LICENSE file for the complete license and disclaimer.
+ */
 
 #include <iostream>
 
@@ -28,12 +35,10 @@ int main( int    argc,
     gComm.init( argc, argv );
 
 
-    // print_banner();
 
     Mesh * tMesh2 = new Mesh( "cube.msh" );
     tMesh2->scale_mesh( 0.001 );
 
-    // mesh::compute_surface_normals( tMesh2, { 2 } );
 
     // compute the volume
     real tVolume = mesh::compute_volume( tMesh2, 1 );
@@ -44,7 +49,6 @@ int main( int    argc,
     std::cout << "Volume: " << tVolume << std::endl ;
     std::cout << "Surface: " << tSurface << std::endl ;
 
-    //tMesh2->save("mesh.exo");
 
     delete tMesh2 ;
 
@@ -82,7 +86,6 @@ int main( int    argc,
 
     delete tMesh ;
 
-    // exit( 0 );
 
 
 

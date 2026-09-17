@@ -53,7 +53,6 @@ namespace belfem
                     mEmptyBlock = nullptr ;
                 }
 
-
                 for( Block * tBlock : mBlocks )
                 {
                     delete tBlock ;
@@ -68,18 +67,14 @@ namespace belfem
             void
             BlockData::create_blocks()
             {
-                // restore factory settings
                 this->reset() ;
 
-                // for good measure, we also reset element indices
                 mMesh->update_element_indices() ;
                 mMesh->unflag_all_elements() ;
                 mMesh->unflag_all_facets() ;
 
-                // check which blocks have been selected
                 const Vector< id_t > & tBlockIDs = mParent->iwg()->selected_blocks() ;
 
-                // We use key_exists to check if a block is selected
                 index_t tCount = 0 ;
                 Map< id_t, index_t > tBlockIndices ;
                 for ( id_t tID : tBlockIDs )
@@ -92,7 +87,6 @@ namespace belfem
 
                 Vector< id_t> tAllSelectedThinShellFacets ;
                 this->collect_thin_shell_facet_ids( tBlockIndices, tAllSelectedThinShellFacets );
-
 
                 const Vector< id_t > & tSideSetIDs = mParent->iwg()->selected_sidesets() ;
 
@@ -118,7 +112,6 @@ namespace belfem
 
                 for ( id_t b : tBlockIDs )
                 {
-                    // skip of block doesn't exist on this proc
                     if ( ! tBlockIndices.key_exists( b  ) ) continue ;
 
                     const Vector< index_t > & tOwnedIndices = tOwnedElementIndices( tBlockIndices( b ) ) ;
@@ -136,7 +129,6 @@ namespace belfem
                     }
                 }
 
-                // empty block class. Might not be necessary
                 mEmptyBlock = new Block( mParent ) ;
 
                 if ( tAllSelectedThinShellFacets.length() > 0 )
@@ -144,7 +136,6 @@ namespace belfem
                     this->link_thin_shell_facets() ;
                 }
 
-                // might not be needed but can't hurt
                 comm_barrier();
             }
 
@@ -155,7 +146,6 @@ namespace belfem
             {
                 if ( mCommRank == 0 )
                 {
-                    // counter for selected thin shell facets
                     index_t tCount = 0 ;
                     for ( mesh::ThinShell * tShell : mMesh->thin_shells() )
                     {
@@ -169,7 +159,6 @@ namespace belfem
                         }
                     }
 
-                    // now we collect the IDs for all thin shell facets
                     aAllSelectedThinShellFacets.set_size( tCount );
                     tCount = 0 ;
                     for ( mesh::ThinShell * tShell : mMesh->thin_shells() )
@@ -190,7 +179,6 @@ namespace belfem
                 }
             }
 
-
              void
              BlockData::collect_element_indices(
                    const Map< id_t, index_t > & aBlockIndexMap,
@@ -205,12 +193,10 @@ namespace belfem
                 Cell< index_t > tFacetIndices ;
                 for ( id_t f : aAllSelectedThinShellFacets )
                 {
-                    // check if the facet exists on the current mesh
                     if ( mMesh->facet_exists( f ) )
                     {
                         mesh::Facet * tFacet = mMesh->facet( f ) ;
 
-                        // check if we own it
                         if ( tFacet->owner() == mCommRank )
                         {
                             tFacetBitset.set( tFacet->index() );
@@ -222,11 +208,9 @@ namespace belfem
                     }
                 }
 
-
                 // first we select the elements that we own
                 for ( auto tPair : aBlockIndexMap )
                 {
-                    // grab the block
                     mesh::Block * tBlock = mMesh->block( tPair.first ) ;
 
                     for ( mesh::Element * tElement : tBlock->elements() )
@@ -245,7 +229,6 @@ namespace belfem
                 // next, we check the elements that belong to the facets
                 for ( auto tPair : aSideSetIndexMap )
                 {
-                    // grab the sideset
                     mesh::SideSet * tSideSet = mMesh->sideset( tPair.first ) ;
 
                     for ( mesh::Facet * tFacet : tSideSet->facets() )
@@ -398,39 +381,30 @@ namespace belfem
                 aOwnedElementIndices.set_size( tNumBlocks, {} );
                 aAuraElementIndices.set_size( tNumBlocks, {} );
 
-
-                // count elements
                 Vector< index_t > tElementCounters( tNumBlocks );
 
                 for ( uint k=0; k<2; ++k )
                 {
                     Cell< Vector< index_t > > & tIndices = ( k==0 ) ? aOwnedElementIndices : aAuraElementIndices ;
 
-                    // reset counters
                     tElementCounters.fill( 0 );
 
-                    // count elements
                     for ( index_t e : tElementIndices )
                     {
                         ++tElementCounters( aBlockIndexMap( tElements( e )->block_id() ) );
                     }
 
-                    // allocate memory
                     for ( uint b=0; b<tNumBlocks; ++b )
                     {
                         tIndices( b ).set_size( tElementCounters( b ) );
                     }
 
-                    // reset counters
                     tElementCounters.fill( 0 );
 
-                    // populate indices
                     for ( index_t e : tElementIndices )
                     {
-                        // get block index
                         uint b = aBlockIndexMap( tElements( e )->block_id() ) ;
 
-                        // add element index to table
                         tIndices( b )( tElementCounters( b )++ ) = e ;
                     }
 
@@ -469,13 +443,10 @@ namespace belfem
             {
                 for ( mesh::ThinShell * tShell : mMesh->thin_shells() )
                 {
-                    // grab the facets
                     Cell< mesh::Facet * > & tFacets = tShell->facets();
 
-                    // loop over all blocks
                     for ( mesh::Block * tMeshBlock : tShell->blocks() )
                     {
-                        // get the fem block
                         Block * tBlock = mBlockMap( tMeshBlock->id() ) ;
 
                         index_t tCount = 0 ;
@@ -490,7 +461,6 @@ namespace belfem
 
                     for ( mesh::Block * tMeshBlock : tShell->side_connector_blocks() )
                     {
-                        // get the fem block
                         Block * tBlock = mBlockMap( tMeshBlock->id() ) ;
 
                         for ( mesh::Element * tElement : tMeshBlock->elements() )
@@ -532,7 +502,6 @@ namespace belfem
                     index_t tCount = 0 ;
                     for ( mesh::ThinShell * tShell : mMesh->thin_shells() )
                     {
-                        // loop over all blocks
                         for ( mesh::Block * tMeshBlock : tShell->blocks() )
                         {
                             tCount += tMeshBlock->elements().size() ;
@@ -542,22 +511,17 @@ namespace belfem
                     tData.set_size( 2 * tCount );
                     tCount = 0 ;
 
-                    // populate data
                     for ( mesh::ThinShell * tShell : mMesh->thin_shells() )
                     {
-                        // grab the facets
                         Cell< mesh::Facet * > & tFacets = tShell->facets();
 
-                        // loop over all blocks
                         for ( mesh::Block * tBlock : tShell->blocks() )
                         {
                             index_t k = 0 ;
                             for ( mesh::Element * tElement : tBlock->elements() )
                             {
-                                // write element id
                                 tData( tCount++ ) = tElement->id();
 
-                                // write facet id
                                 tData( tCount++ ) = tFacets( k++ )->id();
                             }
                         }
@@ -568,7 +532,6 @@ namespace belfem
                     tCount = 0 ;
                     for ( mesh::ThinShell * tShell : mMesh->thin_shells() )
                     {
-                        // loop over all blocks
                         for ( mesh::Block * tMeshBlock : tShell->side_connector_blocks() )
                         {
                             tCount += tMeshBlock->elements().size() ;
@@ -578,7 +541,6 @@ namespace belfem
                     tCount = 0 ;
                     for ( mesh::ThinShell * tShell : mMesh->thin_shells() )
                     {
-                        // loop over all blocks
                         for ( mesh::Block * tMeshBlock : tShell->side_connector_blocks() )
                         {
                             for ( mesh::Element * tMeshElement : tMeshBlock->elements() )
@@ -684,7 +646,6 @@ namespace belfem
                     tWall->set_reference(
                         mBlockMap( tMaster->block_id() )->element( tMaster->id() ) );
                 }
-
 
             }
 

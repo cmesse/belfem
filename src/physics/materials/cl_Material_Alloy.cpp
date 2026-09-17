@@ -253,7 +253,6 @@ namespace belfem
 
             // we don't call set_RRR because this would initialize lookup tables
             // which we don't need
-            //aMetal->set_RRR( RRR );
 
             return aMetal ;
         }

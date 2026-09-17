@@ -35,28 +35,20 @@ namespace belfem
                 mIndex( aIndex )
         {
 
-            // create the parameter object
             mParams = new dofmgr::Parameters( aParent );
 
-            // create the dof data object
             mDofData = new dofmgr::DofData( this, mParams ) ;
 
-            // create the block data object
             mBlockData = new dofmgr::BlockData( this );
 
-            // create the sideset data object
             mSideSetData = new dofmgr::SideSetData( this );
 
-            // create the bearing object
             mBearingData = new dofmgr::BearingData( this );
 
-            // create the data object that manages field data
             mFieldData = new dofmgr::FieldData( this );
 
-            // create the solver data object
             mSolverData = new dofmgr::SolverData( this, mDofData, mBlockData, mSideSetData );
 
-            // crate the eigenvalue object
             mEigenValues = new dofmgr::EigenValues( this );
 
         }
@@ -65,34 +57,25 @@ namespace belfem
 
         DofManager::~DofManager()
         {
-            // delete the postprocessors
             for ( Postprocessor * tProc : mPostprocessors )
             {
                 delete tProc;
             }
 
-            // delete the solver object
             delete mSolverData ;
 
-            // delete the field data object
             delete mFieldData ;
 
-            // delete the bearing object
             delete mBearingData ;
 
-            // delete the sideset data object
             delete mSideSetData ;
 
-            // delete the block data object
             delete mBlockData ;
 
-            // delete the dof data object
             delete mDofData ;
 
-            // delete the parameter object
             delete mParams ;
 
-            // delete the eigenvalue object
             delete mEigenValues ;
         }
 
@@ -103,26 +86,20 @@ namespace belfem
         {
             BELFEM_ERROR( aIWG->is_initialized(), "equation must be initialized before linking to field object" );
 
-            // restore factory settings
             this->reset() ;
 
             comm_barrier() ;
 
-            // link to equation object
             mIWG = aIWG ;
 
-            // backwards link
             aIWG->set_field( this );
 
-            // create the dofs
             mDofData->create_dofs( aIWG );
 
-            // create the blocks
             mBlockData->create_blocks() ;
 
             this->create_element_map() ;
 
-            // create the side sets if they exist
             if( aIWG->selected_sidesets().length() > 0 )
             {
                 mSideSetData->create_sidesets() ;
@@ -130,7 +107,6 @@ namespace belfem
 
             mBearingData->create_bearings() ;
 
-            // create the field information
             mFieldData->collect_node_owners() ;
             mFieldData->collect_element_owners() ;
 
@@ -184,24 +160,18 @@ namespace belfem
         void
         DofManager::create_fields( IWG * aIWG )
         {
-            // number of fields on the IWG
             index_t tNumFields = aIWG->number_of_fields() ;
 
-            // loop over all fields on the IWG
             for ( index_t f=0; f<tNumFields; ++f )
             {
-                // get the field label
                 const string & tLabel = aIWG->field( f );
 
-                // check if this could be an edge field
                 EntityType tType = belfem::entity_type( tLabel );
 
-                // create the field if it doesn't exist yet
                 Vector< real > & tField = mMesh->field_exists( tLabel ) ?
                         mMesh->field_data( tLabel ) :
                         mMesh->create_field( tLabel, tType );
 
-                // compute size of field
                 index_t tFieldSize ;
                 switch( tType )
                 {
@@ -251,12 +221,10 @@ namespace belfem
                 }
             }
 
-            // with the fields created, we create the map on the dof data
             mDofData->create_field_map( aIWG );
 
             // tell exodus which fields are not to be written to exodus
             aIWG->hide_fields_from_exodus( mMesh );
-
 
         }
 
@@ -265,18 +233,15 @@ namespace belfem
         void
         DofManager::init_dofs( const bool aSeedFreeDofsOnly )
         {
-            // check if user has set the wetted sidesets
             mSideSetData->collect_wetted_sidesets() ;
 
             // count how many nodes are wet ( so that the convection table is not needed )
             mSideSetData->count_wetted_nodes() ;
 
-            // synchronize dof-relevant fields
             mFieldData->distribute( mIWG->dof_fields() );
 
             mSideSetData->create_alpha_fields() ;
 
-            // collect node field data from other procs
             const Cell< string > & tFields = mIWG->all_fields() ;
             uint tNumFields = tFields.size() ;
             for( uint f=0; f<tNumFields; ++f )
@@ -292,11 +257,8 @@ namespace belfem
 
             comm_barrier() ;
 
-
-            // send information back
             mFieldData->distribute( mIWG->all_fields() );
 
-            // set values for dofs
             mDofData->init_dof_values( aSeedFreeDofsOnly ) ;
         }
 
@@ -305,7 +267,6 @@ namespace belfem
         void
         DofManager::init_work()
         {
-            // loop over all blocks
             for ( Block * tBlock : mBlockData->blocks() )
             {
                 if( tBlock->calculator() != nullptr )
@@ -314,7 +275,6 @@ namespace belfem
                 }
             }
 
-            // loop over all sidesets
             for( SideSet * tSideSet : mSideSetData->sidesets() )
             {
                 if( tSideSet->calculator() != nullptr )
@@ -344,31 +304,23 @@ namespace belfem
             BELFEM_ASSERT( mIWG->is_initialized(), "initialize iwg first");
             BELFEM_ASSERT( mSolverData->solver() != nullptr, "set solver first" );
 
-            // create the field list
             this->create_fields( mIWG );
 
-            // link dofs with fields on mesh
             mFieldData->update_field_indices( mDofData->dofs() );
             mFieldData->update_field_indices( mDofData->hanging_dofs() );
 
-            // initialize degrees of freedom
             this->init_dofs( aSeedFreeDofsOnly );
 
-            // initialize work memory for the groups
             this->init_work() ;
 
-            // allocate the matrices
             this->init_matrices();
 
-            // auto set blocks for other fields
             this->auto_set_materials() ;
 
-            // this information is not needed anymore, tyding up!
             mDofData->disconnect_dofs_from_mesh() ;
 
             mInitializedFlag = true ;
 
-            // initialize postprocessors, if they exist
             this->initialize_postprocessors();
         }
 
@@ -403,7 +355,6 @@ namespace belfem
         void
         DofManager::init_matrices()
         {
-            // initialize timer
             Timer tTimer;
             if ( mCommRank == 0 )
             {
@@ -412,7 +363,6 @@ namespace belfem
 
             Cell< graph::Vertex * > tFreeDofs ;
             Cell< graph::Vertex * > tFixedDofs ;
-
 
             mDofData->synchronize_dirichlet_bcs();
             Vector< id_t > * tGraphData = new Vector< id_t >();
@@ -440,7 +390,6 @@ namespace belfem
         void
         DofManager::compute_jacobian( const bool aReset )
         {
-            // initialize the dof manager if it hasn't been done already
             this->initialize();
 
             Timer tTimer;
@@ -454,15 +403,12 @@ namespace belfem
 
             if( mIWG->compute_jacobian_on_block() )
             {
-                // loop over all blocks
                 for ( Block * tBlock : mBlockData->blocks() )
                 {
-                    // get the number of dofs per element
                     uint tN = mDofData->num_dofs_per_element( tBlock->id() );
 
                     BELFEM_ASSERT( tN > 0, "No dofs for block %lu", ( long unsigned int ) tBlock->id() );
 
-                    // allocate matrix
                     Matrix< real > tJ( tN, tN );
                     Matrix< real > tTJT ;
 
@@ -470,10 +416,8 @@ namespace belfem
 
                     mIWG->link_to_group( tBlock );
 
-                    // get elements on block
                     Cell< Element * > & tElements = tBlock->elements();
 
-                    // loop over all elements
                     for ( Element * tElement : tElements )
                     {
                         if( tElement->has_t_matrix() )
@@ -481,7 +425,6 @@ namespace belfem
                             mIWG->compute_jacobian( tElement, tJ );
                             tElement->t_matrix()->project( tJ, tTJT );
 
-                            // add contribution to system matrix
                             tElement->t_matrix()->project( mIWG->matrices()->dJdx(), tTdJT );
 
                             mSolverData->assemble_jacobian( tElement, tTJT);
@@ -489,10 +432,8 @@ namespace belfem
                         }
                         else
                         {
-                            // compute element contribution
                             mIWG->compute_jacobian( tElement, tJ );
 
-                            // add contribution to system matrix
                             mSolverData->assemble_jacobian( tElement, tJ);
                             mSolverData->assemble_newton( tElement, mIWG->matrices()->dJdx() ) ;
                         }
@@ -503,13 +444,10 @@ namespace belfem
 
             if( mIWG->compute_jacobian_on_sideset() )
             {
-                // loop over all sidesets
                 for ( SideSet * tSideSet : mSideSetData->sidesets() )
                 {
-                    // get the number of dofs per element
                     uint tN = mDofData->num_dofs_per_facet( tSideSet->id() );
 
-                    // allocate matrix
                     Matrix< real > tJ( tN, tN );
                     Matrix< real > tTJT ;
 
@@ -517,17 +455,14 @@ namespace belfem
 
                     mIWG->link_to_group( tSideSet );
 
-                    // get elements on sideset
                     Cell< Element * > & tElements = tSideSet->elements();
 
-                    // loop over all elements
                     for ( Element * tElement : tElements )
                     {
                         if( tElement->has_t_matrix() )
                         {
                             mIWG->compute_jacobian( tElement, tJ );
                             tElement->t_matrix()->project( tJ, tTJT );
-                            // add contribution to system matrix
                             tElement->t_matrix()->project( mIWG->matrices()->dJdx(), tTdJT );
 
                             mSolverData->assemble_jacobian( tElement, tTJT);
@@ -535,10 +470,8 @@ namespace belfem
                         }
                         else
                         {
-                            // compute element contribution
                             mIWG->compute_jacobian( tElement, tJ );
 
-                            // add contribution to system matrix
                             mSolverData->assemble_jacobian( tElement, tJ );
                             mSolverData->assemble_newton( tElement, mIWG->matrices()->dJdx()) ;
                         }
@@ -576,37 +509,28 @@ namespace belfem
 
             if( mIWG->num_rhs_cols() == 1 )
             {
-                // check if we want to reset the vector
                 if( aReset )
                 {
                     mSolverData->reset_rhs_vector() ;
                 }
 
-                // compute and assemble the vector
                 this->compute_rhs_vector() ;
 
-                // wait for other procs to finish
                 comm_barrier() ;
 
-
-                // collect the contributions from the other procs
                 mSolverData->collect_rhs_vector() ;
             }
             else
             {
-                // check if we want to reset the vector
                 if( aReset )
                 {
                     mSolverData->reset_rhs_matrix() ;
                 }
 
-                // compute and assemble the matrix
                 this->compute_rhs_matrix() ;
 
-                // wait for other procs to finish
                 comm_barrier() ;
 
-                // collect the contributions from the other procs
                 mSolverData->collect_rhs_matrix() ;
             }
 
@@ -643,38 +567,29 @@ namespace belfem
                 mSolverData->reset_rhs_vector() ;
             }
 
-            // loop over all blocks
             for ( Block * tBlock : mBlockData->blocks() )
             {
-                // jump to next block if this block is not used
                 if( ! tBlock->is_active() )
                 {
                     continue ;
                 }
 
-                // get the number of dofs per element
                 uint tN = mDofData->num_dofs_per_element( tBlock->id() );
 
-                // allocate matrix
                 Matrix< real > tJ( tN, tN );
                 Matrix< real > tTJT ;
 
-                // allocate element RHS
                 Vector< real > tB( tN );
                 Vector< real > tTB ;
 
                 Matrix< real > tTdJT ;
 
-                // link IWG to block
                 mIWG->link_to_group( tBlock );
 
-                // get elements on block
                 Cell< Element * > & tElements = tBlock->elements();
 
-                // loop over all elements
                 for ( Element * tElement : tElements )
                 {
-                    // compute element contribution
                     mIWG->compute_jacobian_and_rhs( tElement, tJ, tB );
 
                     if( tElement->has_t_matrix() )
@@ -689,7 +604,6 @@ namespace belfem
                     }
                     else
                     {
-                        // add contribution to system matrix
                         mSolverData->assemble_jacobian( tElement, tJ );
                         mSolverData->assemble_newton( tElement, mIWG->matrices()->dJdx()) ;
                         mSolverData->assemble_rhs( tElement, tB );
@@ -699,39 +613,30 @@ namespace belfem
 
             for ( SideSet * tSideSet : mSideSetData->sidesets() )
             {
-                // jump to next sideset if this block is not used
                 if( ! tSideSet->is_active() || tSideSet->bc_type( 0 ) == BoundaryConditionImposing::Neumann )
                 {
                     continue ;
                 }
 
-                // link IWG to block
                 mIWG->link_to_group( tSideSet );
 
-                // get the number of dofs per element
                 uint tN = mIWG->number_of_dofs_per_element( tSideSet );
 
-                // allocate matrix
                 Matrix< real > tJ( tN, tN );
                 Matrix< real > tTJT ;
 
-                // allocate element RHS
                 Vector< real > tB( tN );
                 Vector< real > tTB ;
 
                 Matrix< real > tTdJT ;
 
-                // get elements on block
                 Cell< Element * > & tElements = tSideSet->elements();
 
-                // loop over all elements
                 for ( Element * tElement : tElements )
                 {
 
-
                     if( tElement->has_t_matrix() )
                     {
-                        // compute element contribution
                         mIWG->compute_jacobian_and_rhs( tElement, tJ, tB );
 
                         tElement->t_matrix()->project( tJ, tTJT );
@@ -745,10 +650,8 @@ namespace belfem
                     }
                     else
                     {
-                        // compute element contribution
                         mIWG->compute_jacobian_and_rhs( tElement, tJ, tB );
 
-                        // add contribution to system matrix
                         mSolverData->assemble_jacobian( tElement, tJ );
                         mSolverData->assemble_newton( tElement, mIWG->matrices()->dJdx() ) ;
                         mSolverData->assemble_rhs( tElement, tB );
@@ -765,23 +668,17 @@ namespace belfem
                         continue ;
                     }
 
-                    // check if this is an alpha BC
                     if ( tSideSet->bc_type( 0 ) == BoundaryConditionImposing::Neumann )
                     {
-                        // link this IWG with the group
                         mIWG->link_to_group( tSideSet ) ;
 
-                        // get number of dofs per element
                         uint tN = mesh::number_of_nodes( tSideSet->element_type() );
 
-                        // allocate element RHS
                         Vector< real > tB( tN );
                         Vector< real > tTB ;
 
-                        // get elements on Sideset
                         Cell< Element * > & tElements = tSideSet->elements();
 
-                        // loop over all elements on this sideset
                         for ( Element * tElement : tElements )
                         {
                             if( tElement->has_t_matrix() )
@@ -801,16 +698,13 @@ namespace belfem
                 }
             }
 
-            // unite matrix with values from other procs
             mSolverData->collect_matrices();
 
-            // unite rhs with values from other procs
             mSolverData->collect_rhs_vector() ;
 
             // needed for computing the residual later on
             // this field only exists on the master
             mSolverData->update_field_values() ;
-
 
             if ( mCommRank == 0 )
             {
@@ -851,7 +745,6 @@ namespace belfem
             }
             for ( Block * tBlock : mBlockData->blocks() )
             {
-                // jump to next block if this block is not used
                 if( ! tBlock->is_active() )
                 {
                     continue ;
@@ -860,17 +753,12 @@ namespace belfem
                 Matrix< real > tTKT ;
                 Matrix< real > tTMT ;
 
-
-                // link IWG to block
                 mIWG->link_to_group( tBlock );
 
-                // get elements on block
                 Cell< Element * > & tElements = tBlock->elements();
 
-                // loop over all elements
                 for ( Element * tElement : tElements )
                 {
-                    // compute element contribution
                     mIWG->compute_mkf( tElement );
 
                     if( tElement->has_t_matrix() )
@@ -882,7 +770,6 @@ namespace belfem
                     }
                     else
                     {
-                        // add contribution to system matrix
                         mSolverData->assemble_full_matrices( tElement, mIWG->matrices()->M(), mIWG->matrices()->K() );
                     }
                 }
@@ -930,23 +817,17 @@ namespace belfem
 
             for ( Block * tBlock : mBlockData->blocks() )
             {
-                // check if block has an RHS
                 if ( tBlock->has_rhs() )
                 {
-                    // get the number of dofs per element
                     uint tN = mDofData->num_dofs_per_element( tBlock->id());
 
-                    // allocate element RHS
                     Vector< real > tRHS( tN );
                     Vector< real > tTRHS ;
 
-                    // link IWG to block
                     mIWG->link_to_group( tBlock );
 
-                    // get elements on block
                     Cell< Element * > & tElements = tBlock->elements();
 
-                    // loop over all elements
                     for ( Element * tElement : tElements )
                     {
                         if( tElement->has_t_matrix() )
@@ -975,25 +856,19 @@ namespace belfem
             {
                 this->initialize();
             }
-            // number of cols in rhs matrix
             uint tNumCols = mIWG->num_rhs_cols();
 
             for ( Block * tBlock : mBlockData->blocks() )
             {
-                // get the number of dofs per element
                 uint tN = mDofData->num_dofs_per_element( tBlock->id());
 
-                // allocate element RHS
                 Matrix< real > tRHS( tN, tNumCols );
                 Matrix< real > tTRHS ;
 
-                // link IWG to block
                 mIWG->link_to_group( tBlock );
 
-                // get elements on block
                 Cell< Element * > & tElements = tBlock->elements();
 
-                // loop over all elements
                 for ( Element * tElement : tElements )
                 {
                     if( tElement->has_t_matrix() )
@@ -1032,7 +907,6 @@ namespace belfem
             comm_barrier() ;
         }
 
-
 //-----------------------------------------------------------------------------
 
         void
@@ -1041,13 +915,10 @@ namespace belfem
             BELFEM_ERROR( mJacobianIsUpToDate,
                 "You need to compute or update the Jacobian matrix before calling solve()!" );
 
-            // solve the system
             mSolverData->solve();
 
-            // make result available to other procs
             mFieldData->distribute( mIWG->all_fields() );
 
-            // wait for other procs
             comm_barrier();
 
             // the solve/distribute exchange ends here
@@ -1082,10 +953,8 @@ namespace belfem
             // phase 2: linear solve + update on the residual phase 1 left
             mSolverData->solve_from_residual();
 
-            // make result available to other procs
             mFieldData->distribute( mIWG->all_fields() );
 
-            // wait for other procs
             comm_barrier();
 
             // the solve/distribute exchange ends here
@@ -1141,18 +1010,14 @@ namespace belfem
         {
             if( mIndex > 0 )
             {
-                // loop over all blocks
                 for( Block * tBlock : mBlockData->blocks() )
                 {
-                    // check if material is empty
                     if( tBlock->material() == nullptr )
                     {
-                        // get material of block on first field
                         const Material * tMaterial =  mParent->dofmgr( 0 )->block( tBlock->id() )->material() ;
 
                         if( tMaterial != nullptr )
                         {
-                            // set the material type
                             tBlock->set_material( tMaterial->label() );
                         }
                     }
@@ -1205,35 +1070,26 @@ namespace belfem
             BELFEM_ASSERT( mIWG->num_rhs_cols() <= 1,
                 "can't compute volume loads if RHS is a matrix");
 
-            // get volume vector
             Vector< real > & tVolumeLoads = mSolverData->volume_loads() ;
 
-            // make sure that vector is allocated
             if( tVolumeLoads.length() != mSolverData->my_number_of_free_dofs() )
             {
                 tVolumeLoads.set_size( mSolverData->my_number_of_free_dofs() );
             }
 
-            // reset the vector
             tVolumeLoads.fill( 0.0 );
 
-            // loop over all blocks
             for( id_t tBlockID : aBlockIDs )
             {
-                // get block
                 Block * tBlock = mBlockData->block( tBlockID );
 
-                // check if block has elements
                 if( tBlock->number_of_elements() > 0 )
                 {
-                    // link IWG to block
                     mIWG->link_to_group( tBlock );
 
-                    // rhs vector
                     Vector< real > tRHS( mIWG->number_of_dofs_per_element( tBlock ) );
                     Vector< real > tTRHS;
 
-                    // loop over all elements on block
                     for( Element * tElement : tBlock->elements() )
                     {
                         if( tElement->has_t_matrix() )
@@ -1251,13 +1107,10 @@ namespace belfem
                 }
             }
 
-            // scale loads with timestep of IWG
             tVolumeLoads *= mIWG->delta_time() ;
 
-            // wait for other procs
             comm_barrier() ;
 
-            // synchronize data
             mSolverData->collect_vector( tVolumeLoads );
         }
 
@@ -1331,7 +1184,6 @@ namespace belfem
                 {
                     tPostproc->projector()->initialize() ;
                     tPostproc->projector()->disconnect_dofs_from_mesh();
-                    //tPostproc->projector()->initialize() ;
                 }
                 for ( const string & tField : tPostproc->source_fields() )
                 {
@@ -1363,7 +1215,6 @@ namespace belfem
                 tProjector->run();
                 comm_barrier();
             }
-            //this->collect_fields( mPostprocessorTargetFields );
 
             // where the historical stray message was born -- the postprocess
             // exchanges must leave the fabric empty
@@ -1396,14 +1247,12 @@ namespace belfem
         void
         DofManager::consolidate_dofs( Element * aElement )
         {
-            // collect local dofs
             Cell< Dof * > tLocalDofs( aElement->number_of_dofs(), nullptr );
             for( uint k=0; k<aElement->number_of_dofs(); ++k )
             {
                 tLocalDofs( k ) = aElement->dof( k ) ;
             }
 
-            // count sources and hanging dofs
             index_t tNumFreeDofs = 0 ;
             index_t tNumHangingDofs = 0 ;
             index_t tNumSources = 0 ;
@@ -1424,7 +1273,6 @@ namespace belfem
                 return;
             }
 
-            // collect global dofs
             Cell< Dof * > tGlobalDofs( tNumFreeDofs + tNumSources, nullptr );
             index_t tCount = 0 ;
             for( Dof * tDof : tLocalDofs )
@@ -1448,7 +1296,6 @@ namespace belfem
             {
                 tIndex[ tDof->id()] = tCount++ ;
             }
-
 
             Matrix< real > tT( tLocalDofs.size(), tGlobalDofs.size(), 0. );
 
@@ -1492,21 +1339,17 @@ namespace belfem
                 // they are connected to. We need to collect and share
                 // this information
 
-                // count the memory size for the dof table
                 tCount = 3 * mMesh->vertices().size() ;
                 for( mesh::Element * tVertex : mMesh->vertices() )
                 {
                     tCount += tVertex->node( 0 )->number_of_dofs() ;
                 }
 
-                // allocate lookup table
                 tTable.set_size( tCount, 0 );
                 tCount = 0 ;
 
-                // populate message
                 for( mesh::Element * tVertex : mMesh->vertices() )
                 {
-                    // get the node
 
                     mesh::Node * tNode = tVertex->node( 0 );
 
@@ -1523,18 +1366,14 @@ namespace belfem
             broadcast( tTable );
             tCount = 0 ;
 
-            // loop over all entries
             while( tCount < tTable.length() )
             {
-                // get the bearing id
                 id_t tVertexID = tTable( tCount++ );
 
                 id_t tNodeID   = tTable( tCount++ );
 
-                // get the number of bearings
                 index_t tNumDofs = tTable( tCount++ );
 
-                // check if we know this node
                 if( mMesh->node_exists( tNodeID ) && tNumDofs > 0 )
                 {
                     Bearing * tBearing = mBearingData->bearing( tVertexID );
@@ -1546,7 +1385,6 @@ namespace belfem
                     }
                     if( mMesh->node( tNodeID )->number_of_dofs() > 0 )
                     {
-                        // link dofs with bearing
                         tBearing->allocate_dof_container( tNumDofs );
                         for( index_t k=0; k<tNumDofs; ++k )
                         {
@@ -1555,16 +1393,13 @@ namespace belfem
                     }
                     else
                     {
-                        // jump to next dof
                         tCount += tNumDofs ;
                     }
                 }
                 else
                 {
-                    // jump to next dof
                     tCount += tNumDofs ;
                 }
-
 
             }
         }

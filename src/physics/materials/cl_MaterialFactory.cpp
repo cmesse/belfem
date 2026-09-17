@@ -264,11 +264,11 @@ namespace belfem
             }
             else if (tMatSection->section_exists( "custom" ))
             {
-                // The subsection was called 'custom' until 2026-08-29. Without
-                // this arm such a deck matches no shape at all and dies on the
-                // message below, which never mentions the subsection sitting in
-                // the same block. This is a DIAGNOSTIC, not an alias: the old
-                // spelling still does not load a material.
+                // An older deck may still call this subsection 'custom'. Without
+                // this branch, it matches no shape and reaches the error below.
+                // The error does not mention the subsection in the same block.
+                // This is a diagnostic, not an alias. The old spelling does not
+                // load a material.
                 BELFEM_ERROR( false,
                     "Material '%s' has a 'custom' subsection. That subsection was renamed to 'usermat' "
                     "( BELFEM 0.9.0 ) -- rename it in the input file.",

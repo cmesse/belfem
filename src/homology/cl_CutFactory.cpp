@@ -107,7 +107,6 @@ namespace belfem
             mPeriodicFactory = aPeriodicFactory ;
         }
 
-
 //-----------------------------------------------------------------------------
 
         void
@@ -127,14 +126,12 @@ namespace belfem
                     mMesh->finalize_faces() ;
                 }
 
-                //Create periodicity with full mesh
                 if ( mPeriodicFactory != nullptr )
                 {
                     mMesh->set_periodicity( mPeriodicFactory->create_periodicity() ) ;
                     mMesh->periodicity()->backup_node_pairs();
                 }
 
-                // assign edges to segments
                 for ( Curve * tCurve : mMesh->curves() )
                 {
                     tCurve->assign_edges();
@@ -158,7 +155,6 @@ namespace belfem
 
                 gLog.message( InfoLevel::Detailed, "    creating thin cuts ... " );
 
-
                 this->compute_thin_cuts_and_duplicate_interface_nodes() ;
                 this->restore_thin_shell_sidesets();
 
@@ -168,14 +164,10 @@ namespace belfem
                 // which will be needed for the thin shell factory
                 this->compute_element_adjacencies();
 
-
                 mMesh->unfinalize() ;
                 mMesh->reset_edges() ;
                 mMesh->reset_faces() ;
                 mMesh->finalize() ;
-
-                //mMesh->save("cut.exo");
-
 
             }
             comm_barrier() ;
@@ -293,7 +285,6 @@ namespace belfem
                     mCohomology = new Cohomology( mSimplicialComplex, mMesh );
                     gLog.message( InfoLevel::Detailed, "    ... done. Computation time : %.3f s\n", tTimer.stop() * 1e-3 );
 
-
                     break ;
                 }
                 case( CutAlgorithm::CCR ) :
@@ -352,11 +343,6 @@ namespace belfem
                 }
             } // end switch
 
-
-            // for debugging
-
-            //this->write_debug_cohomology( tSuggestedHomology ) ;
-
             //Isolating the cuts
             if ( mSuggestHomologies )
             {
@@ -366,10 +352,6 @@ namespace belfem
                 mCohomology->clean();
             }
 
-            // for debugging
-            //this->write_debug_cohomology( tSuggestedHomology ) ;
-
-            // tidy up
             if( tSuggestedHomology != nullptr )
             {
                 delete tSuggestedHomology;
@@ -388,36 +370,28 @@ namespace belfem
             id_t tNumNodes = mMesh->number_of_nodes();
             id_t tNumEdges = mMesh->number_of_edges();
 
-            // allocate node memory
             tNodes.set_size( tNumNodes, nullptr );
             for ( uint k=0; k<tNumNodes; ++k)
             {
-                // grab data
                 id_t id = mMesh->nodes()(k)->id();
                 real x = mMesh->nodes()(k)->x();
                 real y = mMesh->nodes()(k)->y();
                 real z = mMesh->nodes()(k)->z();
 
-                // create a new node
                 Node * tNode =  new Node( id, x, y, z );
 
-                // add node to container
                 tNodes( k ) = tNode ;
 
-                // add node to map
                 tNodeMap[ id ] = tNode ;
 
             }
 
             Block * tBlock = new Block( 1, tNumEdges );
             tBlock->label() = "Edges";
-            // create element factory
             ElementFactory tElementFactory ;
 
-            // grab element container
             Cell< mesh::Element * > & tEdges = tBlock->elements();
 
-            //Cell< mesh::Edge * > & tEdges = tMesh->edges();
             tEdges.set_size( tNumEdges, nullptr );
             for ( uint e=0; e<tNumEdges; ++e)
             {
@@ -433,7 +407,6 @@ namespace belfem
 
             }
 
-            // add the block to the mesh
             tMeshEdge->blocks().push( tBlock );
             tMeshEdge->finalize();
 
@@ -457,7 +430,6 @@ namespace belfem
             // need to backup this number since the CutProcessor will change it
             index_t tNumOriginalSidesets = mMesh->number_of_sidesets() ;
 
-            // create the processor
             CutProcessor tProc( mMesh, mCohomology, mTopology->phi_block_ids(),
                                 mTopology->non_phi_block_ids(),
                                 mTopology->phi_interface_ids(),
@@ -504,7 +476,6 @@ namespace belfem
                 }
                 else
                 {
-                    // delete temporary facets on mesh
                     for ( Facet * tFacet : tSideSet->facets() )
                     {
                         delete tFacet;
@@ -548,11 +519,8 @@ namespace belfem
             return aType ;
         }
 
-
-
 //-----------------------------------------------------------------------------
 
-        // for debugging
         void
         CutFactory::save_edges( const uint aIndex )
         {
@@ -567,7 +535,6 @@ namespace belfem
             index_t tEdgeCount = 0 ;
             index_t tNodeCount = 0 ;
 
-            // count edges
             for ( const auto & pair: tMap )
             {
                 tOldEdges( pair.first )->flag() ;
@@ -584,7 +551,6 @@ namespace belfem
             }
 
             Mesh * tMesh = new Mesh( 3, 0, false);
-
 
             Cell< Node * > & tNewNodes = tMesh->nodes();
             tNewNodes.set_size( tNodeCount, nullptr );
@@ -628,9 +594,7 @@ namespace belfem
             delete tMesh ;
         }
 
-
 //-----------------------------------------------------------------------------
-
 
         void
         CutFactory::collect_nodes_and_elements_on_blocks(
@@ -640,7 +604,6 @@ namespace belfem
         {
             index_t tCount = 0 ;
 
-            // count elements
             for ( id_t tID : aBlockIDs )
             {
                 Cell< Element * > & tElements =  mMesh->block( tID )->elements();
@@ -658,7 +621,6 @@ namespace belfem
                 }
             }
 
-            // collect elements
             aElements.set_size( tCount, nullptr );
             tCount = 0 ;
             for ( id_t tID : aBlockIDs )
@@ -673,7 +635,6 @@ namespace belfem
                 }
             }
 
-            // count nodes temporarily
             tCount = 0 ;
             for ( Node * tNode : mMesh->nodes() )
             {
@@ -683,7 +644,6 @@ namespace belfem
                 }
             }
 
-            // collect nodes temporarily
             Cell< Node * > tNodes( tCount, nullptr );
             tCount = 0 ;
             for ( Node * tNode : mMesh->nodes() )
@@ -701,7 +661,6 @@ namespace belfem
                 tElement->flag_nodes();
             }
 
-            // count nodes that are linked to these elements
             tCount = 0 ;
             for ( Node * tNode : tNodes )
             {
@@ -711,7 +670,6 @@ namespace belfem
                 }
             }
 
-            // collect nodes that are linked to these elements
             aNodes.set_size( tCount, nullptr );
             tCount = 0 ;
             for ( Node * tNode : tNodes )
@@ -719,7 +677,6 @@ namespace belfem
                 aNodes( tCount++ ) = tNode ;
             }
 
-            // tidy up flags
             for ( Element * tElement : aElements )
             {
                 tElement->unflag_nodes();
@@ -730,7 +687,6 @@ namespace belfem
             }
 
         }
-
 
 //-----------------------------------------------------------------------------
 
@@ -748,8 +704,6 @@ namespace belfem
             id_t tID = mMesh->max_element_id() ;
             ElementFactory tFactory ;
 
-
-            // flag all elements in this group
             mMesh->unflag_all_elements() ;
             mMesh->unflag_all_edges();
 
@@ -766,7 +720,6 @@ namespace belfem
                 }
             }
 
-            // count edges
             index_t tCount = 0 ;
             for( Edge * tEdge : mMesh->edges() )
             {
@@ -787,7 +740,6 @@ namespace belfem
                 }
             }
 
-            // collect master and slave in temporary containers
             Cell< Element * > tMasters( tNumEdges, nullptr );
             Cell< Element * > tSlaves( tNumEdges, nullptr );
             Vector< uint > tMasterIndices( tNumEdges, gNoIndex );
@@ -857,7 +809,6 @@ namespace belfem
                 }
             }
 
-            // create vertices
             Graph tGraph( tCount, nullptr );
             tCount = 0 ;
             for( Edge * tEdge : tEdges )
@@ -872,7 +823,6 @@ namespace belfem
                 }
             }
 
-            // connect vertices
             for( graph::Vertex * tVertex : tGraph )
             {
                 Edge * tEdge = tEdges( tVertex->index() );
@@ -918,7 +868,6 @@ namespace belfem
 
             index_t tNumFacets = graph::find_connected_partitions( tGraph );
 
-            // correct Vertex indices
             tCount = 0 ;
             for( Edge * tEdge : tEdges )
             {
@@ -950,7 +899,6 @@ namespace belfem
                 }
             }
 
-            // create sideset
             SideSet * aSideSet = new SideSet( ++tSideSetID, tCount );
             string tFormat = "cut_" + format_with_leading_zeros( mAbstractNodes.size() );
             aSideSet->label() =  sprint( tFormat.c_str(), aIndex + 1) ;
@@ -1003,23 +951,17 @@ namespace belfem
                 const Vector< int > & aCases )
         {
 
-
             id_t tSideSetID = mMesh->max_block_and_sideset_id() ;
             id_t tID = mMesh->max_element_id() ;
 
-
             ElementFactory tFactory ;
 
-
-            // flag all elements in this group
             mMesh->unflag_all_elements() ;
             for( Element * tElement : aElements )
             {
                 tElement->flag();
             }
-            // unflag all elements on the air block
 
-            // count faces
             index_t tNumElements = aElements.size();
             index_t tCount = 0 ;
             for( index_t e=0; e<tNumElements; ++e )
@@ -1039,10 +981,8 @@ namespace belfem
                 }
             }
 
-
             Cell< Face * > tFaces( tCount, nullptr );
 
-            // collect faces and make sure that they are unflagged
             tCount = 0 ;
             for( index_t e=0; e<tNumElements; ++e )
             {
@@ -1062,8 +1002,7 @@ namespace belfem
                 }
             }
 
-            // here we need to crate a graph and identify the number of disconnected subgraphs
-            // unflag all faces
+            // build the face graph and count its disconnected subgraphs
             mMesh->unflag_all_faces() ;
 
             tCount = 0 ;
@@ -1073,8 +1012,6 @@ namespace belfem
                 tFace->set_index( tCount++ );
             }
 
-
-            // collect create graph
             Graph tGraph( tCount, nullptr );
             tCount = 0 ;
             for( Face * tFace : tFaces )
@@ -1087,16 +1024,13 @@ namespace belfem
                 tGraph( tCount++ ) = tVertex ;
             }
 
-            // connect vertices
             for( graph::Vertex * tVertex : tGraph )
             {
-                // get face
                 Face * tFace = tFaces( tVertex->index() );
 
                 // temporary unflag to exclude face self-connection
                 tFace->unflag() ;
 
-                // count memory
                 tCount = 0 ;
                 for( uint e=0; e<tFace->number_of_edges(); ++e )
                 {
@@ -1110,7 +1044,6 @@ namespace belfem
                     }
                 }
 
-                // connect faces
                 Graph tVertices( tCount, nullptr );
                 tCount = 0 ;
                 for( uint e=0; e<tFace->number_of_edges(); ++e )
@@ -1133,7 +1066,6 @@ namespace belfem
                     tVertex->insert_vertex( tNeighbor );
                 }
 
-                // set face flag back to true
                 tFace->flag();
             }
 
@@ -1152,7 +1084,6 @@ namespace belfem
 
             for( index_t f=0; f<tNumFacets; ++f )
             {
-                // grab face
                 Face * tFace = tFaces( tGraph( f )->index() ) ;
 
                 if( ! tFace->master()->is_flagged() && ! tFace->slave()->is_flagged() )
@@ -1161,7 +1092,6 @@ namespace belfem
                 }
             }
 
-            // create sideset
             SideSet * aSideSet = new SideSet( ++tSideSetID, tCount );
             string tFormat = "cut_" + format_with_leading_zeros( mAbstractNodes.size() );
             aSideSet->label() =  sprint( tFormat.c_str(), aIndex + 1) ;
@@ -1172,28 +1102,23 @@ namespace belfem
 
             for( index_t f=0; f<tNumFacets; ++f )
             {
-                // grab face
                 Face * tFace = tFaces( tGraph( f )->index() ) ;
 
                 if( ! tFace->master()->is_flagged() && ! tFace->slave()->is_flagged() )
                 {
-                    // create element from face
                     Element * tElement = tFactory.create_element(  mesh::element_type_of_facet(aType, tFace->index_on_master() ), ++tID );
                     Facet * tFacet = new Facet( tElement );
 
-                    // link master and slave elements
                     tFacet->set_master( tFace->master(), tFace->index_on_master(), true );
                     if( tFace->slave() != nullptr )
                     {
                         tFacet->set_slave( tFace->slave(), tFace->index_on_slave(), tFace->orientation_on_slave() );
                     }
 
-                    // add element to sideset
                     tFacets( tCount++ ) = tFacet ;
                 }
             }
 
-            // tidy up memory
             for( graph::Vertex * tVertex : tGraph )
             {
                 delete tVertex ;
@@ -1206,18 +1131,15 @@ namespace belfem
 
 //-----------------------------------------------------------------------------
 
-
         bool
         CutFactory::create_thin_shell_cuts()
         {
-            // grab max id from mesh
             mMaxID = mMesh->max_element_id();
 
             const Vector< id_t > & tThinShellSideSets = mTopology->groups( DomainType::ThinShell );
 
             if( tThinShellSideSets.length() == 0 )
             {
-                // nothing to do here, return false indicating that we don't have thin shells
                 return false ;
             }
 
@@ -1243,7 +1165,6 @@ namespace belfem
 
             this->close_terminal_loops();
 
-            // add duplicate nodes to mesh
             append_move( mMesh->nodes(), mThinShellDuplicates );
 
             // ensure proper curve orientation
@@ -1254,7 +1175,6 @@ namespace belfem
 
             mMesh->update_node_indices() ;
 
-            // return true, indicating that we have thin shells
             return true ;
         }
 
@@ -1363,7 +1283,6 @@ namespace belfem
                         }
                         tCurve->set_closed_flag( !tOpen ) ;
 
-                        //Unflag node
                         for ( Node* tNode : tCurve->nodes() )
                         {
                             tNode->unflag();
@@ -1389,7 +1308,6 @@ namespace belfem
                 }
             }
 
-            // grab the nodes that are to be duplicated
             Cell< index_t > tIndices ;
             tBitset.where( tIndices );
 
@@ -1397,8 +1315,6 @@ namespace belfem
 
             mThinShellDuplicates.set_size( tIndices.size(), nullptr );
 
-
-            // we select the nodes again, this tome for the originals
             for( id_t tID : mTopology->groups( DomainType::ThinShell ) )
             {
                 Cell< Facet * > & tFacets = mMesh->sideset( tID )->facets() ;
@@ -1428,15 +1344,6 @@ namespace belfem
 
                 Node * tDuplicate = new Node( ++tID, tOriginal->x(), tOriginal->y(), tOriginal->z() );
 
-
-                //#EYE eye hack for visualization
-                /*
-                real x = tOriginal->x() ;
-                real y = 0.05*(1-x*x);
-                real z = tOriginal->z() ;
-                tOriginal->set_coords( x, -y, z );
-                tDuplicate->set_coords( x, y, z ); */
-
                 mThinShellDuplicates( tCount++ ) = tDuplicate ;
             }
 
@@ -1463,7 +1370,6 @@ namespace belfem
 
                         tPeriodicity->add_node_pair_to_backup( tC, tD );
 
-                        // flags for master and slave sets
                         if ( tA->is_flagged( 1 ) ) tC->flag( 1 );
                         if ( tA->is_flagged( 2 ) ) tC->flag( 2 );
                         if ( tB->is_flagged( 1 ) ) tD->flag( 1 );
@@ -1485,7 +1391,6 @@ namespace belfem
 
                 mThinShellMasterNodes( tCount ) = tNode ;
 
-                // check if duplicate exists
                 if ( tNode->index() != gNoIndex )
                 {
                     mThinShellSlaveNodes( tCount++ ) = mThinShellDuplicates( tNode->index() ) ;
@@ -1495,7 +1400,6 @@ namespace belfem
                     mThinShellSlaveNodes( tCount++ ) = tNode ;
                 }
             }
-
 
         }
 
@@ -1528,14 +1432,12 @@ namespace belfem
                 tBlockBitset.reset();
                 SideSet * tSideSet = mMesh->sideset( tID ) ;
 
-
                 Cell<Facet * > & tFacets = tSideSet->facets() ;
 
                 for( Facet * tFacet : tFacets )
                 {
                     tBlockBitset.set( mMesh->block( tFacet->slave()->block_id() )->index() );
                 }
-
 
                 tBlockBitset.where( tIndices );
                 for ( index_t b : tIndices )
@@ -1571,7 +1473,6 @@ namespace belfem
                         Node * tNode = tElement->node( k ) ;
                         if ( tNode->is_flagged() && tNode->index() != gNoIndex )
                         {
-                            // tag that this element has been altered
                             tElement->flag( 1 );
                             tElement->insert_node( mThinShellDuplicates( tNode->index() ), k );
                         }
@@ -1580,7 +1481,6 @@ namespace belfem
                 tSideSet->unflag_all_nodes();
             }
         }
-
 
         void
         CutFactory::duplicate_and_relink_facets()
@@ -1592,13 +1492,10 @@ namespace belfem
                 // first we create a temporary sideset
                 SideSet * tSideSet = new SideSet( tID, mMesh->sideset( tID )->number_of_facets() );
 
-                // remember sideset for later
                 mTemporaryThinShellSidesets.push( tSideSet );
 
-                // move the original facets
                 tSideSet->facets().vector_data() = std::move( mMesh->sideset( tID )->facets().vector_data() );
 
-                // get the originals
                 Cell< Facet * > & tOriginals = tSideSet->facets() ;
                 Cell< Facet * > & tDuplicates = mMesh->sideset( tID )->facets() ;
 
@@ -1614,7 +1511,6 @@ namespace belfem
 
                 for ( Facet * tOrg : tOriginals )
                 {
-                    // create a new facet
                     Facet * tA = new Facet( tFactory.create_element( tOrg->element()->type(), ++tFacetIdA ) );
                     Facet * tB = new Facet( tFactory.create_element( tOrg->element()->type(), ++tFacetIdB ) );
 
@@ -1625,7 +1521,6 @@ namespace belfem
                     tOrg->master()->flag( 1 );
                     tOrg->slave()->flag( 1 );
 
-                    // add duplicates to container
                     tDuplicates( tCountA++ ) = tA ;
                     tDuplicates( tCountB++ ) = tB ;
 
@@ -1656,6 +1551,7 @@ namespace belfem
                 if ( ! tMaster->is_flagged( 1 ) ) continue;
 
                 // we can skip facets that have been processed by
+
                 // duplicate_and_relink_facets
                 if ( tFacet->is_flagged( 1 ) )
                 {
@@ -1665,7 +1561,6 @@ namespace belfem
 
                 tMaster->get_nodes_of_facet( tFacet->index_on_master(), tNodes );
 
-                // relink the facet
                 uint k = 0 ;
                 Element * tElement = tFacet->element();
                 for ( Node * tNode : tNodes )
@@ -1686,26 +1581,20 @@ namespace belfem
             {
                 for ( Curve * tCurve : tProtoshell->terminal_curves() )
                 {
-                    // container for originals
                     Cell< Segment * > & tSegments = tCurve->segments() ;
 
                     if ( tSegments.size() == 0 ) continue ;
 
-                    // container for duplicate segments
                     Cell< Segment * > tDuplicates( tSegments.size(), nullptr );
 
-                    // get first element type
                     ElementType tType = tSegments( 0 )->element()->type() ;
 
                     index_t tCount = tSegments.size() ;
 
-                    // create new segments
                     for ( Segment * tOrg : tSegments )
                     {
-                        // create a new segment
                         Segment * tDup = new Segment( tFactory.create_element( tType, ++mMaxID ) );
 
-                        // collect nodes
                         uint n = tOrg->number_of_nodes();
                         for ( uint k=0; k<n; ++k )
                         {
@@ -1713,31 +1602,25 @@ namespace belfem
                             tDup->element()->insert_node( tNode, n-1-k );
                         }
 
-                        // add duplicate to temporary container
                         tDuplicates( --tCount ) = tDup ;
                     }
 
-                    // fix the arc length coordinates
                     switch ( tType )
                     {
                         case( ElementType::LINE2 ) :
                         {
-                            // Get initial arclengths and segment count
                             index_t n = tCurve->segments().size();
                             Vector<real >& tS = tCurve->arclength();
                             Vector<real> tS0( tS ); // Copy initial arclengths
 
-                            // Resize arclength array
                             tS.set_size(2 * n + 1);
 
-                            // Copy initial arclengths
                             index_t c = 0;
                             for (real s : tS0)
                             {
                                 tS(c++) = s;
                             }
 
-                            // Append cumulative arclengths
                             real s = tS(c - 1);
                             for (index_t k = 0; k < n; ++k)
                             {
@@ -1749,21 +1632,17 @@ namespace belfem
                         }
                         case( ElementType::LINE3 ) :
                         {
-                            // Get initial arclengths and segment count
                             index_t n = tCurve->segments().size();
                             Vector<real>& tS = tCurve->arclength();
                             Vector<real> tS0( tS ); // Copy initial arclengths
 
-                            // Resize arclength array
                             tS.set_size(4 * n + 1);
 
-                            // Copy initial arclengths
                             index_t c = 0;
                             for (real s : tS0) {
                                 tS(c++) = s;
                             }
 
-                            // Append cumulative arclengths with midpoints
                             real s = tS(c - 1);
                             for (index_t k = 0; k < n; ++k)
                             {
@@ -1781,10 +1660,8 @@ namespace belfem
                         }
                     }
 
-                    // append duplicates to segmnent list
                     append_move( tSegments, tDuplicates );
 
-                    // fix the node container
                     Cell< Node * > & tNodes = tCurve->nodes() ;
 
                     switch ( tType )
@@ -1846,10 +1723,8 @@ namespace belfem
                 Cell< Curve * > & tCurves = tProtoshell->terminal_curves() ;
                 for ( Curve * tCurve : tCurves )
                 {
-                    // grab the first segment of the curve
                     Segment * tSegment = tCurve->segments()( 0 );
 
-                    // compute the tangential vector
                     tT( 0 ) = tSegment->node( 1 )->x() - tSegment->node( 0 )->x();
                     tT( 1 ) = tSegment->node( 1 )->y() - tSegment->node( 0 )->y();
                     tT( 2 ) = tSegment->node( 1 )->z() - tSegment->node( 0 )->z();
@@ -1864,11 +1739,9 @@ namespace belfem
                     // this is the surface for the boundary
                     this->orient_terminal_curves_sub( tCurve->sideset_b(), tP, tQ, tS );
 
-                    // tidy up
                     tSegment->node( 0 )->unflag();
                     tSegment->node( 1 )->unflag();
 
-                    // this is the direction vector
                     tR = cross( tS, tB );
                     tR /= norm( tR );
 
@@ -1894,7 +1767,6 @@ namespace belfem
             Facet * tFacet = nullptr ;
             for ( Facet * tF : aSideSet->facets() )
             {
-                // count flagged nodes
                 uint tCount = 0 ;
                 for ( uint k=0; k<tF->number_of_corner_nodes(); ++k )
                 {
@@ -1946,10 +1818,8 @@ namespace belfem
                 Cell< Curve * > & tCurves = tProtoshell->terminal_curves() ;
                 for ( Curve * tCurve : tCurves )
                 {
-                    // grab the first segment of the curve
                     Segment * tSegment = tCurve->segments()( 0 );
 
-                    // compute the tangential vector
                     tT( 0 ) = tSegment->node( 1 )->x() - tSegment->node( 0 )->x();
                     tT( 1 ) = tSegment->node( 1 )->y() - tSegment->node( 0 )->y();
                     tT( 2 ) = tSegment->node( 1 )->z() - tSegment->node( 0 )->z();
@@ -1962,7 +1832,6 @@ namespace belfem
 
                     for ( Facet * tF : tCurve->sideset_a()->facets() )
                     {
-                        // count flagged nodes
                         uint tCount = 0 ;
                         for ( uint k=0; k<tF->number_of_corner_nodes(); ++k )
                         {
@@ -1989,11 +1858,9 @@ namespace belfem
                     tB(1) = tP(0) ;
                     tB /= norm( tB );
 
-                    // tidy up
                     tSegment->node( 0 )->unflag();
                     tSegment->node( 1 )->unflag();
 
-                    // this is the direction vector
                     tR = cross( tS, tB );
                     tR /= norm( tR );
 
@@ -2019,11 +1886,9 @@ namespace belfem
             mMesh->create_curve_map();
         }
 
-
         void
         CutFactory::collect_boundary_sidesets( Vector< id_t > & aIDs )
         {
-            // count sidesets
             index_t tCount = 0 ;
             for ( SideSet * tSideSet : mMesh->sidesets() )
             {
@@ -2038,11 +1903,9 @@ namespace belfem
                 }
             }
 
-            // allocate memory
             aIDs.set_size( tCount );
             tCount = 0 ;
 
-            // collect sidesets
             for ( SideSet * tSideSet : mMesh->sidesets() )
             {
 
@@ -2057,7 +1920,6 @@ namespace belfem
             }
         }
 
-
         void
         CutFactory::create_side_curves_for_thinshells_3d()
         {
@@ -2070,11 +1932,9 @@ namespace belfem
 
             for ( Protoshell * tProtoshell : mProtoshells )
             {
-                // create the side curves for the sidesets
                  tProtoshell->side_curves() = tFactory.thin_shell_side_curves( tProtoshell->sidesets(), tBoundaries ) ;
             }
 
-            // set labels for side curves
             tCount = 0 ;
 
             for ( Protoshell * tProtoshell : mProtoshells )
@@ -2085,7 +1945,6 @@ namespace belfem
                 }
             }
 
-            //Add side curves to the mesh
             Cell< Curve * > & tCurves = mMesh->curves() ;
             for ( Protoshell * tProtoshell : mProtoshells )
             {
@@ -2118,7 +1977,6 @@ namespace belfem
 
             if ( mMesh->number_of_dimensions() == 2 )
             {
-                // reindex nodes
 
                 for( Node * tNode : tNodes )
                 {
@@ -2128,7 +1986,6 @@ namespace belfem
                     }
                 }
 
-                // count facets per node
                 Vector< uint > tNumFacets( aCount, 0 );
                 for( Facet * tFacet : mMesh->facets() )
                 {
@@ -2161,7 +2018,6 @@ namespace belfem
             }
             else
             {
-                // remove nodes on tape edges
                 for ( Protoshell * tProtoshell : mProtoshells )
                 {
                     for ( Curve * tCurve : tProtoshell->side_curves() )
@@ -2173,7 +2029,6 @@ namespace belfem
                     }
                 }
 
-                // count flagged nodes
                 for( Node * tNode : tNodes )
                 {
                     if( tNode->is_flagged() )
@@ -2205,7 +2060,6 @@ namespace belfem
             {
                 Cell< Node * > tNodes ;
 
-                // reset nodes of this child
                 for ( Element * tCandidate: aCandidates )
                 {
                     tCandidate->unflag_nodes();
@@ -2255,10 +2109,8 @@ namespace belfem
         bool
         CutFactory::connect_facet_to_slave( Facet * aFacet )
         {
-            // get number of nodes from this facet
             uint tNumNodes = aFacet->element()->number_of_corner_nodes();
 
-            // count max size of candidates
             uint tCount = 0;
             for ( uint k = 0; k < tNumNodes; ++k )
             {
@@ -2267,13 +2119,10 @@ namespace belfem
                 tCount += tNode->number_of_elements();
             }
 
-            // create list of Element candidates
             Cell<mesh::Element *> tCandidates( tCount, nullptr );
 
-            // reset counter
             tCount = 0;
 
-            // populate candidates
             for ( uint k = 0; k < tNumNodes; ++k )
             {
                 mesh::Node * tNode = aFacet->node( k );
@@ -2284,7 +2133,6 @@ namespace belfem
                 }
             }
 
-            // make result unique
             unique( tCandidates );
 
             Cell<mesh::Node *> tNodes;
@@ -2340,7 +2188,6 @@ namespace belfem
             mMesh->unflag_all_nodes() ;
             Cell< Node * > & tNodes = mMesh->nodes();
 
-            // count hanging nodes
             index_t tCount = 0 ;
             for ( Node * tNode : tNodes )
             {
@@ -2349,7 +2196,6 @@ namespace belfem
                     ++tCount ;
                     for ( uint s=0; s<tNode->number_of_sources(); ++s )
                     {
-                        // check if this source is a node
                         if ( tNode->source( s )->entity_type() == EntityType::NODE )
                         {
                             tNode->source( s )->flag();
@@ -2364,7 +2210,6 @@ namespace belfem
                 tNode->unflag();
             }
 
-            // collect hanging nodes
             Cell< Node * > tDuplicates( tCount, nullptr );
             tCount = 0 ;
             for ( Node * tNode : tNodes )
@@ -2375,7 +2220,6 @@ namespace belfem
                 }
             }
 
-            // count source nodes
             tCount = 0 ;
             for ( Node * tNode : tNodes )
             {
@@ -2385,7 +2229,6 @@ namespace belfem
                 }
             }
 
-            // collect source nodes
             Cell< Node * > tOriginals( tCount, nullptr );
             tCount = 0 ;
             for ( Node * tNode : tNodes )
@@ -2396,13 +2239,11 @@ namespace belfem
                 }
             }
 
-            // count duplicates per node
             Vector< uint > tNumDuplicates( tCount, 0 );
             for ( Node * tNode : tDuplicates )
             {
                 for ( uint s=0; s<tNode->number_of_sources(); ++s )
                 {
-                    // check if this source is a node
                     if ( tNode->source( s )->entity_type() == EntityType::NODE && tNode->source( s )->is_flagged() )
                     {
                         ++tNumDuplicates( tNode->source( s )->index() );
@@ -2410,8 +2251,6 @@ namespace belfem
                 }
             }
 
-
-            // allocate duplicate containers
             for ( Node * tNode : tOriginals )
             {
                 tNode->allocate_duplicate_container( tNumDuplicates( tNode->index() ) );
@@ -2421,13 +2260,10 @@ namespace belfem
             {
                 for ( uint s=0; s<tDup->number_of_sources(); ++s )
                 {
-                    // check if this source is a node
                     if ( tDup->source( s )->entity_type() == EntityType::NODE && tDup->source( s )->is_flagged() )
                     {
-                        // grab node
                         Node * tOrg = reinterpret_cast< Node * >( tDup->source( s ) ) ;
 
-                        // link node with original
                         tOrg->original()->add_duplicate( tDup );
                         tDup->set_original( tOrg->original() );
                     }
@@ -2619,8 +2455,6 @@ namespace belfem
                             }
                         }
                     }
-
-
 
                     for ( SideSet * tSideSet : mMesh->sidesets() )
                     {

@@ -46,28 +46,23 @@ namespace belfem
         compute_facet_index( Facet * aFacet, Element * aElement, Cell< Node * > & aNodes )
         {
             uint tNumNodes = aFacet->element()->number_of_corner_nodes() ;
-            // loop over all facets of element
             for( uint k=0; k<aElement->number_of_facets(); ++k )
             {
                 aFacet->unflag_nodes();
 
-                // get nodes from face
                 aElement->get_corner_nodes_of_facet( k, aNodes );
 
-                // flag all nodes from this face
                 for ( Node * tNode: aNodes )
                 {
                     tNode->flag();
                 }
 
-                // count how many nodes are flagged
                 uint tCount = 0;
 
                 for ( uint i = 0; i < tNumNodes; ++i )
                 {
                     if ( aFacet->node( i )->is_flagged() )
                     {
-                        // increment node counter
                         ++tCount;
                     }
                 }
@@ -138,11 +133,9 @@ namespace belfem
 
         if( mCommRank == aMasterProc )
         {
-            // start a timer
             Timer tTimer;
 
             string tType = string_to_lower( filetype( aPath ));
-
 
             message( InfoLevel::Default, "    Reading mesh from %s...",
                      filename( aPath ).c_str() );
@@ -185,8 +178,6 @@ namespace belfem
             message( InfoLevel::Default, "    Time %u ms.\n",
                      ( unsigned int ) tTime );
 
-
-
             if( gComm.size() > 1 && aParallelMode )
             {
                 comm_barrier() ;
@@ -209,7 +200,6 @@ namespace belfem
             delete mPeriodicity;
         }
 
-        // delete global variables
         for( auto tVariable: mGlobalVariables )
         {
             delete tVariable;
@@ -235,49 +225,35 @@ namespace belfem
             delete tThinShell;
         }
 
-        // delete fields
         for( auto tField : mFields )
         {
             delete tField;
         }
 
-        // delete edges
         for( auto tEdge: mEdges )
         {
             delete tEdge ;
         }
 
-        // delete faces
         for( auto tFace: mFaces )
         {
             delete tFace ;
         }
 
         // facets are deleted by sideset
-        //for ( auto tFacet: mFacets )
-        //{
-        //    delete tFacet;
-        //}
 
         // elements are deleted by block
-        //for ( auto tElement: mElements )
-        //{
-        //    delete tElement;
-        //}
 
-        // delete nodes
         for ( auto tNode: mNodes )
         {
             delete tNode;
         }
 
-        // delete bearings
         for( auto tVertex : mVertices )
         {
             delete tVertex;
         }
 
-        // delete control points
         for ( auto tControlPoint : mControlPoints )
         {
             delete tControlPoint;
@@ -299,34 +275,27 @@ namespace belfem
         // temporary container for coords, must always be of dimension 3
         Vector< real > tCoords( 3, 0.0 ) ;
 
-        // loop over all nodes
         for( mesh::Node * tNode : mNodes )
         {
-            // poulate coordinate vector
             for( uint k=0; k<tNumDim; ++k )
             {
                 tCoords( k ) = tNode->x( k );
             }
 
-            // scale vector
             tCoords *= aFactor ;
 
-            // write coords back into node
             tNode->set_coords( tCoords );
         }
 
         for ( mesh::ControlPoint * tControlPoint : mControlPoints )
         {
-            // poulate coordinate vector
             for( uint k=0; k<tNumDim; ++k )
             {
                 tCoords( k ) = tControlPoint->x( k );
             }
 
-            // scale vector
             tCoords *= aFactor ;
 
-            // write coords back into control point
             tControlPoint->set_coords(
                 tCoords( 0 ),
                 tCoords( 1 ),
@@ -343,7 +312,6 @@ namespace belfem
         {
             BELFEM_ASSERT( mIsFinalized, "Can't save an unfinalized mesh");
 
-            // start the timer
             Timer tTimer;
 
             message( InfoLevel::Default, "\n    Saving Mesh to %s ...", filename( aFilePath ).c_str() );
@@ -357,20 +325,16 @@ namespace belfem
             }
             else if( tType == "vtk" && mCommRank == mMasterProc )
             {
-                // create writer object and save file
                 mesh::VtkWriter tWriter( aFilePath, this );
             }
             else if(  tType == "exo" )
             {
-                // create writer object
                  mesh::ExodusWriter tWriter( this );
 
-                // write mesh to file
                 tWriter.save( aFilePath );
             }
             else if(  tType == "e-s" )
             {
-                // create writer object
                 mesh::ExodusWriter tWriter( this );
 
                 string tFilePath;
@@ -397,7 +361,6 @@ namespace belfem
                     tFilePath = sprint("%s.%5u", aFilePath.c_str(), ( unsigned int ) mTimeStep );
 		        }
 
-                // write mesh to file
                 tWriter.save( tFilePath );
             }
             else
@@ -516,8 +479,6 @@ namespace belfem
         BELFEM_ASSERT( ! mFieldMap.key_exists( aLabel ),
             "Field %s already exists on mesh.", aLabel.c_str() );
 
-
-        // create field object
         mesh::Field * tField;
 
         if ( aID == 0 )
@@ -541,15 +502,12 @@ namespace belfem
                     FieldType::SCALAR );
         }
 
-        // add entry into map
         mFieldMap[ aLabel ] = tField;
 
         mFields.push( tField );
 
-        // increment field counter
         ++mNumberOfFields;
 
-        // return ref to data object
         return tField->data();
     }
 
@@ -561,14 +519,12 @@ namespace belfem
             const real aValue,
             const id_t aID )
     {
-        // increment variable counter
         ++mNumberOfGlobalVariables;
 
         mesh::GlobalVariable * tVariable;
 
         if ( aID == 0 )
         {
-            // auto set the id
             tVariable = new mesh::GlobalVariable(
                     aLabel,
                     mNumberOfGlobalVariables,
@@ -585,12 +541,10 @@ namespace belfem
         // add entry into maps. The ID map must key on the ID the variable
         // actually carries: with auto-ID ( aID == 0 ) the argument is NOT
         // the assigned ID, and keying on it filed every auto-created
-        // variable under 0, so any later lookup of a real ID aborted
-        // ( found 2026-08-15 )
+        // variable under 0. A later lookup of a real ID would then abort.
         mGlobalVariableMap[ aLabel ] = tVariable ;
         mGlobalVariableIDMap[ tVariable->id() ] = tVariable;
 
-        // add entry to container
         mGlobalVariables.push( tVariable );
 
         return tVariable->value();
@@ -605,10 +559,8 @@ namespace belfem
         BELFEM_ERROR( mElements.size() == 0,
             "collect_elements_from_blocks() must not be called if elements container is already filled" );
 
-        // initialize counters
         index_t tCount = 0;
 
-        // count number of elements
         for(  mesh::Block * tBlock : mBlocks )
         {
             tCount += tBlock->number_of_elements();
@@ -616,10 +568,8 @@ namespace belfem
 
         if( tCount > 0 )
         {
-            // allocate element container
             mElements.set_size( tCount, nullptr );
 
-            // reset element counter
             tCount = 0;
 
             for ( mesh::Block * tBlock: mBlocks )
@@ -644,16 +594,13 @@ namespace belfem
 
         index_t tCount = 0;
 
-        // count number of sidesets
         for(  mesh::SideSet * tSideSet : mSideSets )
         {
             tCount += tSideSet->number_of_facets();
         }
 
-        // allocate facet container
         mFacets.set_size( tCount, nullptr );
 
-        // reset facet counter
         tCount = 0;
 
         for(  mesh::SideSet * tSideSet : mSideSets )
@@ -712,12 +659,10 @@ namespace belfem
 
         this->unflag_all_elements();
 
-        // count elements on group
         index_t tCount = 0;
 
         if ( aType == ElementType::EMPTY  )
         {
-            // collect all elements from this groip
             for( mesh::Element * tElement : mElements )
             {
                 if( tElement->geometry_tag() == aGroupId )
@@ -729,7 +674,6 @@ namespace belfem
         }
         else
         {
-            // only collect elements from this type
             for( mesh::Element * tElement : mElements )
             {
                 if( tElement->geometry_tag() == aGroupId )
@@ -794,7 +738,6 @@ namespace belfem
                 this->collect_facets_from_sidesets();
             }
 
-            // update indices of facets
             this->update_facet_indices();
             this->update_facet_nodes();
 
@@ -814,7 +757,6 @@ namespace belfem
                     tCalc.connect_facets_to_elements();
                 }
 
-                // make sure that all facets are flagged
                 // this is needed for the node to facets stem to work
                 for( mesh::Facet * tFacet : mFacets )
                 {
@@ -823,11 +765,7 @@ namespace belfem
 
                 tCalc.connect_nodes_to_facets() ;
 
-                //tCalc.connect_facets_to_facets();
-
                 tCalc.connect_nodes_to_nodes() ;
-
-                //tCalc.connect_elements_to_elements() ;
 
                 tCalc.connect_thin_shells_to_thin_shells() ;
 
@@ -886,7 +824,6 @@ namespace belfem
                 tSideset->reset_node_container();
             }
 
-            // reset the element-to-element links
             // we don't do this because it is expensive to compute
             // we assume that we don't add elements before next finalize
             // ( except for thin shell elements, which are handled differntly )
@@ -929,7 +866,6 @@ namespace belfem
             for ( mesh::Edge * tVertex : mEdges )
             {
                 tVertex->reset_vertex_container();
-                //tVertex->reset_node_container();
                 tVertex->reset_edge_container();
                 tVertex->reset_face_container();
                 tVertex->reset_element_container();
@@ -946,7 +882,6 @@ namespace belfem
             for ( mesh::Face * tVertex : mFaces )
             {
                 tVertex->reset_vertex_container();
-                //tVertex->reset_node_container();
                 tVertex->reset_edge_container();
                 tVertex->reset_face_container();
                 tVertex->reset_facet_container();
@@ -954,7 +889,6 @@ namespace belfem
             }
 
             this->reset_connectivity( Connectivity::EdgeToVertex );
-            //this->reset_connectivity( Connectivity::EdgeToNode );
             this->reset_connectivity( Connectivity::EdgeToEdge );
             this->reset_connectivity( Connectivity::EdgeToFace );
             this->reset_connectivity( Connectivity::EdgeToElement );
@@ -982,7 +916,6 @@ namespace belfem
     {
         if( mEdges.size() > 0 )
         {
-            // flag edge elements
             this->unflag_all_elements() ;
 
             if( this->test_connectivity( Connectivity::Compute ) )
@@ -990,7 +923,6 @@ namespace belfem
                 mesh::ConnectivityCalculator tCalc( this );
                 tCalc.connect_nodes_to_edges();
                 tCalc.connect_edges_to_elements( aElements );
-                //tCalc.connect_edges_to_ghost_facets();
                 tCalc.connect_edges_to_edges();
             }
             this->compute_edge_directions();
@@ -1028,7 +960,6 @@ namespace belfem
             {
                 mesh::ConnectivityCalculator tCalc( this );
                 tCalc.connect_faces_to_edges_and_edges_to_faces() ;
-                //tCalc.connect_faces_to_ghost_facets();
                 tCalc.connect_faces_to_faces();
             }
         }
@@ -1073,7 +1004,6 @@ namespace belfem
         this->unflag_all_vertices( aFlagIndex ) ;
         this->unflag_all_control_points( aFlagIndex ) ;
     }
-
 
 //------------------------------------------------------------------------------
 
@@ -1252,13 +1182,11 @@ namespace belfem
             // assume that all elements are part of the mesh
             this->unflag_all_elements() ;
 
-            // flag all blocks
             for( mesh::Block * tBlock : mBlocks )
             {
                 tBlock->flag_elements() ;
             }
 
-            // create a partitioner
             mesh::Partitioner(
                 this,
                 aNumberOfPartitions,
@@ -1289,7 +1217,6 @@ namespace belfem
 
             if( aSelectedBlocks.length() > 0 )
             {
-                // flag elements on selected blocks
                 for( id_t tID : aSelectedBlocks )
                 {
                     this->block( tID )->flag_elements() ;
@@ -1297,14 +1224,12 @@ namespace belfem
             }
             else
             {
-                // flag all blocks
                 for( mesh::Block * tBlock : mBlocks )
                 {
                     tBlock->flag_elements() ;
                 }
             }
 
-            // create a partitioner
             mesh::Partitioner( this,
                 aNumberOfPartitions,
                 aSetProcOwners,
@@ -1333,7 +1258,6 @@ namespace belfem
             // assume that all elements are part of the mesh
             this->unflag_all_elements() ;
 
-            // flag elements on selected blocks
             for( id_t tID : aSelectedBlocks )
             {
                 this->block( tID )->flag_elements() ;
@@ -1341,7 +1265,6 @@ namespace belfem
 
             for( id_t tID : aSelectedSideSets )
             {
-                // loop over all facets
                 Cell< mesh::Facet * > & tFacets = this->sideset( tID )->facets() ;
                 for( mesh::Facet * tFacet : tFacets )
                 {
@@ -1356,7 +1279,6 @@ namespace belfem
                 }
             }
 
-            // create a partitioner
             mesh::Partitioner( this,
                                aNumberOfPartitions,
                                aSetProcOwners,
@@ -1378,11 +1300,9 @@ namespace belfem
     {
         if( mCommRank == mMasterProc )
         {
-            // create the factory
             mesh::EdgeFactory tFactory( this );
             tFactory.create_edges( aNedelecBlocks, aNedelecSideSets, aCreateEdgesOnAllSideSet );
 
-            // print for debugging
             if( aPrint )
             {
                 tFactory.print();
@@ -1491,7 +1411,6 @@ namespace belfem
             }
             this->reset_connectivity( Connectivity::EdgeToFace );
 
-
             mFaceMap.clear();
             for ( mesh::Face * tFace : mFaces )
             {
@@ -1514,12 +1433,9 @@ namespace belfem
         if( mCommRank == mMasterProc )
         {
 
-
-            // create the factory
             mesh::FaceFactory tFactory( this );
             tFactory.create_faces( aNedelecBlocks, aNedelecSideSets ) ;
 
-            // print for debugging
             if( aPrint )
             {
                 tFactory.print();
@@ -1533,41 +1449,30 @@ namespace belfem
     void
     Mesh::create_maps()
     {
-        // reset node map
         mNodeMap.clear();
 
-        // loop over all nodes
         for( mesh::Node * tNode : mNodes )
         {
-            // add node to map
             mNodeMap[ tNode->id() ] = tNode;
         }
 
-        // reset element map
         mElementMap.clear();
 
-        // loop over all elements
         for( mesh::Element * tElement : mElements )
         {
-            // add element to map
             mElementMap[ tElement->id() ] = tElement;
         }
 
-        // reset the facet map
         mFacetMap.clear() ;
 
-        // loop over all facets
         for( mesh::Facet * tFacet : mFacets )
         {
-            // add element to map
             mFacetMap[ tFacet->id() ] = tFacet;
         }
 
-        // reset group maps
         this->update_block_map();
         this->update_sideset_map();
 
-        // reset vertex map
         mVertexMap.clear();
 
         for( mesh::Element * tVertex : mVertices )
@@ -1575,7 +1480,6 @@ namespace belfem
             mVertexMap[ tVertex->id() ] = tVertex;
         }
 
-        // reset control point map
         mControlPointMap.clear();
 
         for( mesh::ControlPoint * tControlPoint : mControlPoints )
@@ -1583,7 +1487,6 @@ namespace belfem
             mControlPointMap[ tControlPoint->id() ] = tControlPoint;
         }
 
-        // reset curve map
         mCurveMap.clear();
         for ( mesh::Curve * tCurve : mCurves )
         {
@@ -1609,13 +1512,10 @@ namespace belfem
     void
     Mesh::create_edge_map()
     {
-        // reset edge map
         mEdgeMap.clear();
 
-        // loop over all nodes
         for( mesh::Edge * tEdge : mEdges )
         {
-            // add edge to map
             mEdgeMap[ tEdge->id() ] = tEdge;
         }
     }
@@ -1625,13 +1525,10 @@ namespace belfem
     void
     Mesh::create_face_map()
     {
-        // reset edge map
         mFaceMap.clear();
 
-        // loop over all nodes
         for( mesh::Face * tFace : mFaces )
         {
-            // add node to map
             mFaceMap[ tFace->id() ] = tFace;
         }
     }
@@ -1644,7 +1541,6 @@ namespace belfem
         mMaxElementOrder = 0;
         for ( mesh::Block * tBlock : mBlocks )
         {
-            // get order of elements on block
             uint tOrder = mesh::interpolation_order_numeric ( tBlock->element_type() );
 
             mMaxElementOrder = tOrder > mMaxElementOrder ? tOrder : mMaxElementOrder ;
@@ -1685,7 +1581,6 @@ namespace belfem
             }
         }
 
-        // set edge ownerships
         for ( mesh::Edge * tEdge : mEdges )
         {
             proc_t tOwner =
@@ -1694,7 +1589,6 @@ namespace belfem
             tEdge->set_owner( tOwner ) ;
         }
 
-        // set face ownerships
         for ( mesh::Face * tFace : mFaces )
         {
             proc_t tOwner =  mCommSize ;
@@ -1727,10 +1621,8 @@ namespace belfem
     Mesh::set_vertex_owners()
     {
 
-        // loop over all vertices
         for ( mesh::Element * tVertex : mVertices )
         {
-            // set owner to owner of node
             tVertex->set_owner( tVertex->node( 0 )->owner() );
         }
     }
@@ -1742,13 +1634,10 @@ namespace belfem
     {
         for ( mesh::Block * tBlock : mBlocks )
         {
-            // get id of block
             id_t tID = tBlock->id() ;
 
-            // grab elements of block
             Cell< mesh::Element * > & tElements = tBlock->elements() ;
 
-            // loop over all elements of block
             for( mesh::Element * tElement : tElements )
             {
                 tElement->set_block_id( tID );
@@ -1763,13 +1652,10 @@ namespace belfem
     {
         for ( mesh::SideSet * tSideSet : mSideSets )
         {
-            // get id of block
             id_t tID = tSideSet->id() ;
 
-            // grab elements of block
             Cell< mesh::Facet * > & tFacets = tSideSet->facets() ;
 
-            // loop over all elements of block
             for( mesh::Facet * tFacet : tFacets )
             {
                 tFacet->set_sideset_id( tID );
@@ -1806,16 +1692,12 @@ namespace belfem
     void
     Mesh::flag_curved_elements()
     {
-        //Timer tTimer ;
-
-        //proc_t tRank = mCommRank ;
 
         /*if( tRank == 0 )
         {
             message( InfoLevel::Verbose, "\n    Flagging curved elements ...\n"  );
         }*/
 
-        // check curved elements
         mesh::CurvedElementChecker tChecker( mNumberOfDimensions, mBlocks, mSideSets );
         tChecker.flag_curved_elements();
 
@@ -1888,7 +1770,6 @@ namespace belfem
                 index_t tElementCount = 0 ;
                 index_t tEdgeCount = 0 ;
 
-                // count elements
                 for( mesh::Element * tElement : mElements )
                 {
                     if( tElement->owner() == p && tElement->has_edges() )
@@ -1964,7 +1845,6 @@ namespace belfem
     {
         if( mCommRank == 0 )
         {
-            // flag the nodes that  we need
             this->unflag_all_nodes() ;
 
             Cell< ElementType > tTypes( mFaces.size(), ElementType::UNDEFINED );
@@ -1981,8 +1861,6 @@ namespace belfem
             }
             unique( tTypes );
 
-
-            // count flagged nodes
             tCount = 0 ;
             for( mesh::Node * tNode : mNodes )
             {
@@ -1991,7 +1869,6 @@ namespace belfem
                     tNode->set_index( tCount++ );
                 }
             }
-
 
             Mesh * tNewMesh = new Mesh( 3, 2, false );
 
@@ -2012,7 +1889,6 @@ namespace belfem
                 ++tNumElemsPerBlock( tTypeMap( mesh::element_type_from_numnodes( 2, tFace->number_of_nodes() ) ) );
             }
 
-
             tBlocks.set_size( tCount, nullptr );
 
             for( uint b=0; b<tCount; ++b )
@@ -2020,10 +1896,8 @@ namespace belfem
                 tBlocks( b ) = new mesh::Block( b+1, tNumElemsPerBlock(  b ) );
             }
 
-
             tCount = 0 ;
 
-            // create copies of the nodes
             for( mesh::Node * tNode : mNodes )
             {
                 if( tNode->is_flagged() )
@@ -2041,12 +1915,6 @@ namespace belfem
                     tNewNode->set_index( tCount++ );
                 }
             }
-
-            // create elements
-            //Cell< mesh::Element * > & tElements = tNewMesh->elements() ;
-            //tElements.set_size( mFaces.size(), nullptr );
-
-
 
             tCount = 0 ;
 
@@ -2068,21 +1936,16 @@ namespace belfem
 
             for( mesh::Face * tFace : mFaces )
             {
-               // determine type of face
                ElementType tType = mesh::element_type_from_numnodes( 2, tFace->number_of_nodes() );
 
-               // create a new element
                mesh::Element * tElement = tFactory.create_element( tType, tFace->id() );
 
-               // link nodes
                for( uint k=0; k<tFace->number_of_nodes(); ++k )
                {
                    tElement->insert_node( tNodes( tFace->node( k )->index() ), k );
                }
 
                tElement->set_block_id( tTypeMap( tType ) );
-
-
 
                if( tType == ElementType::TRI3 )
                {
@@ -2108,7 +1971,6 @@ namespace belfem
                 ++tCount ;
             }
 
-            // restore node indices
             tCount = 0 ;
             for( mesh::Node * tNode : mNodes )
             {
@@ -2366,8 +2228,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-
-    // compute and return the checksum
     std::size_t
     Mesh::checksum()
     {
@@ -2422,7 +2282,6 @@ namespace belfem
 
         mHash += this->number_of_dimensions() ;
 
-        // add nodes
         mHash += this->number_of_nodes() ;
 
         if ( this->number_of_dimensions() == 2 )
@@ -2443,7 +2302,6 @@ namespace belfem
             }
         }
 
-        // add elements
         mHash += this->number_of_elements() ;
 
         for ( mesh::Element * tElement : mElements )
@@ -2572,12 +2430,10 @@ namespace belfem
     {
         BELFEM_ERROR( this->thin_shells().size() > 0 , "Can't extract thin shells of a mesh that doesn't have any." );
 
-        // make sure that data is healthy
         this->update_node_indices() ;
 
         DynamicBitset tNodeFlags( this->number_of_nodes() ) ;
 
-        // count elements and flag nodes
         index_t tNumBlocks = 0 ;
 
         for ( mesh::ThinShell * tShell : this->thin_shells() )
@@ -2596,15 +2452,12 @@ namespace belfem
             }
         }
 
-        // creating the output mesh
         Mesh * aMesh = new Mesh( this->number_of_dimensions(), this->master() ) ;
 
-        // grab the nodes indices that are relevant
         Cell< index_t > tIndices ;
         tNodeFlags.where( tIndices );
         key_t tNumNodes = tIndices.size() ;
 
-        // temporary node map for output mesh
         Map< id_t, mesh::Node * > tNodeMap ;
 
         Cell< mesh::Node * > & tNodes = aMesh->nodes() ;
@@ -2696,7 +2549,6 @@ namespace belfem
             return ;
         }
 
-        // count possible keys
         index_t tCount = 0 ;
         Cell< key128_t > tKeys ;
 
@@ -2776,7 +2628,6 @@ namespace belfem
             {
                 for ( uint f=0; f<tElement->number_of_facets(); ++f )
                 {
-                    // get the facet
                     graph::Vertex * tFacet = tFacets(
                         find_index_in_unique_cell( tUniqueKeys, tKeys( tCount++ ) ) );
                     tFacet->insert_vertex( tElement );
@@ -2793,7 +2644,6 @@ namespace belfem
 
                 for ( uint f=0; f<tElement->number_of_facets(); ++f )
                 {
-                    // get the facet
                     graph::Vertex * tFacet = tFacets(
                         find_index_in_unique_cell( tUniqueKeys, tKeys( tCount++ ) ) );
 
@@ -2810,7 +2660,6 @@ namespace belfem
             }
         }
 
-        // tidy up
         for ( graph::Vertex * tFacet : tFacets )
         {
             delete tFacet ;
@@ -2835,7 +2684,6 @@ namespace belfem
     {
         size_t aMem = sizeof( Mesh );
 
-        // Path string
         aMem += mPath.capacity() * sizeof( char );
         aMem += mConfigText.capacity() * sizeof( char );
 
@@ -2995,42 +2843,6 @@ namespace belfem
         return aMem;
     }
 
-    /*void
-    Mesh::save_fields( const string & aFilename, const uint aRunningTimestep )
-    {
-        BELFEM_ERROR( comm_rank() == 0 , "save_fields can only be called by rank 0");
-
-        HDF5 tFile( aFilename, FileMode::NEW );
-
-        tFile.create_group( "meta" );
-
-        tFile.save_data( "timestep", mTimeStep );
-        tFile.save_data( "timestamp", mTimeStamp );
-        tFile.save_data( "running_timestep", aRunningTimestep );
-
-        tFile.save_data( "checksum", this->checksum() );
-
-        tFile.close_active_group();
-
-        tFile.create_group( "fields" );
-
-
-        Cell< string > tLabels( mFields.size() );
-        Cell< uchar > tTypes( mFields.size() );
-        for ( mesh::Field * tField : mFields )
-        {
-            tLabels.push( tField->label() );
-            tTypes.push( static_cast< uchar >( tField->entity_type() ) );
-
-            tFile.save_data( tField->label(), tField->data() );
-        }
-
-        tFile.save_data( "labels", tLabels );
-        tFile.save_data( "types", tTypes );
-        tFile.close_active_group();
-        tFile.close();
-    }*/
-
     void
     Mesh::save_meta( hid_t aFile, const uint aRunningTimestep )
     {
@@ -3063,8 +2875,7 @@ namespace belfem
 
         BELFEM_ERROR( tChecksum == this->checksum(), "Memdump checksum mismatch" );
 
-        // dumps written before 2026-09-01 carry no counts; those are accepted
-        // on the checksum alone, as before
+        // Older dumps without counts are accepted based on the checksum alone.
         if (    hdf5::dataset_exists( aFile, "num_edges" )
              && hdf5::dataset_exists( aFile, "num_faces" ) )
         {
@@ -3164,7 +2975,7 @@ namespace belfem
                 // keep the auto-ID counter in sync: a later
                 // create_global_variable() with auto-ID must not reuse an
                 // ID this dump just occupied ( latent until a caller
-                // creates globals after a load — audited 2026-08-15 )
+                // creates global variables after loading a dump )
                 mNumberOfGlobalVariables =
                     mNumberOfGlobalVariables < tID ? tID : mNumberOfGlobalVariables ;
             }
@@ -3173,36 +2984,6 @@ namespace belfem
 
         mGlobalVariables.shrink_to_fit();
     }
-
-    /*uint
-    Mesh::load_fields( const string & aFilename )
-    {
-        BELFEM_ERROR( comm_rank() == 0 , "load_fields can only be called by rank 0");
-
-        HDF5 tFile( aFilename, FileMode::OPEN_RDONLY );
-
-        tFile.select_group( "meta" );
-        size_t tChecksum ;
-        tFile.load_data( "checksum", tChecksum );
-        BELFEM_ERROR( tChecksum == this->checksum(), "Checksum mismatch" );
-
-        tFile.load_data( "timestep", mTimeStep );
-        tFile.load_data( "timestamp", mTimeStamp );
-
-        uint aRunningTimestep = 0 ;
-        tFile.load_data( "running_timestep", aRunningTimestep );
-
-        tFile.close_active_group();
-        tFile.select_group( "fields" );
-
-
-
-
-        tFile.close_active_group();
-        tFile.close();
-
-        return aRunningTimestep ;
-    }*/
 
     void
     Mesh::load_fields( hid_t aFile )
@@ -3216,7 +2997,6 @@ namespace belfem
         hsize_t tSize = hdf5::get_array_size( aFile,"types" );
         tTypes.set_size( tSize,  0 );
         hdf5::load_array_from_file( aFile, "types", tTypes.data(), tSize, tStatus );
-
 
         uint f = 0 ;
         for ( const string & tLabel : tLabels )

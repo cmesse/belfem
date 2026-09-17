@@ -74,7 +74,6 @@ namespace belfem
         { 0.00934, 0.78084, 0.20942 },
                           GasModel::IDGAS ); */
 
-        //this->initialize( {"Ar", "N2", "O2", "Ar", "CO2"}
         // { 0.78084, 0.209476, 0.009365, 0.000319 } );
 
     }
@@ -183,19 +182,16 @@ namespace belfem
 
     Gas::~Gas()
     {
-        // delete components
         for ( gastables::RefGas * tRefGas : mComponents )
         {
             delete tRefGas;
         }
 
-        // delete reference gases that are not in component list
         for ( gastables::RefGas * tRefGas : mExtra )
         {
             delete tRefGas;
         }
 
-        // delete viscosity table
         for ( gastables::RefGas * tRefGas : mViscosityInteractionRefgas )
         {
             delete tRefGas;
@@ -206,7 +202,6 @@ namespace belfem
             delete mTransport ;
         }
 
-        // delete the equation of state
         delete mEoS;
     }
 
@@ -218,22 +213,17 @@ namespace belfem
             const Vector<real> & aMolarFractions,
             const GasModel aGasModel )
     {
-            // remember gas model
             mGasModel = aGasModel ;
 
-            // number of components
             mNumberOfComponents = aSpecies.size();
 
-            // create the reference gas factory
             gastables::RefGasFactory tFactory;
 
-            // make sure that molar fractions fit
             BELFEM_ASSERT( mNumberOfComponents == aMolarFractions.length(),
                           "Length of Gas names and molar fractions does not match ( %u and %u )",
                           ( unsigned int ) mNumberOfComponents,
                           ( unsigned int ) aMolarFractions.length() );
 
-            // allocate work matrix
             mWorkMatrix.set_size( mNumberOfComponents, mNumberOfComponents, 0.0 );
             mWorkVector.set_size( mNumberOfComponents, 0.0 );
             mWorkVector2.set_size( mNumberOfComponents, 0.0 );
@@ -241,16 +231,12 @@ namespace belfem
             // create the reference gases
             this->create_reference_gases( tFactory, aSpecies );
 
-            // create the viscosity table
             this->create_viscosity_table( tFactory );
 
-            // set number of mass fractions
             mMassFractions.set_size( mNumberOfComponents );
 
-            // allocate mass fractions and molar masses and populate latter
             this->create_mass_properties( aMolarFractions );
 
-            // create the help matrix for remixing
             tFactory.create_helpmatrix( mHelpMatrix );
 
             // reserve memory for heat spline. remix_heat() fills it through
@@ -259,7 +245,6 @@ namespace belfem
             mHeatSpline.matrix_data().set_size( 5, gastables::gNumberOfSplinePoints );
             mHeatSpline.set_extra_mode( spline::ExtraMode::Entropy );
 
-            // allocate memory for working vectors
             mWorkMu.set_size( gastables::gNumberOfSplinePoints );
             mWorkLambda.set_size( gastables::gNumberOfSplinePoints );
 
@@ -268,16 +253,12 @@ namespace belfem
             mFlowResidual.set_size( 3, BELFEM_QUIET_NAN );
             mFlowPivot.set_size( 3, 0 );
 
-            // create equation of state
             this->create_eos( aGasModel );
 
-            // make sure that thermo exisis for all components
             this->check_thermo_exists();
 
-            // create the mixture
             this->remix( aMolarFractions, true, true );
 
-            // remember initialization values
             mMolarFractions0 = aMolarFractions ;
     }
 
@@ -289,7 +270,6 @@ namespace belfem
             const Cell<string> & aLables )
     {
 
-        // temporary map to remember which gases have been created
         Map<string, uint> tRefgasMap;
 
         // create the reference gases
@@ -302,15 +282,12 @@ namespace belfem
             // test if entry exists already ( some gases may exist twice, eg reacting and intert H2 )
             if ( !tRefgasMap.key_exists( tLabel ))
             {
-                // add entry to temporary map
                 tRefgasMap[ tLabel ] = k;
             }
 
-            // create the new component
             mComponents( k ) = aFactory.create_refgas( tLabel );
         }
 
-        // create list of components for formation enthalpy
         Cell<string> tFormation;
 
         for ( gastables::RefGas * tRefGas : mComponents )
@@ -327,7 +304,6 @@ namespace belfem
         mElements.set_size( tFormation.size(), nullptr );
         mElementNames.set_size( tFormation.size(), "" );
 
-        // count extra elements
         uint tExtraCount = 0;
         for ( string tLabel : tFormation )
         {
@@ -343,32 +319,25 @@ namespace belfem
 
         for ( string tLabel : tFormation )
         {
-            // get name of reference element
             string tReferenceName = reference_element( element_to_molecule( tLabel ));
 
-            // remember original name of element
             mElementNames( tCount ) = tLabel;
 
-            // test if gas has already been created
             if ( tRefgasMap.key_exists( tReferenceName ))
             {
                 mElements( tCount++ ) = mComponents( tRefgasMap( tReferenceName ));
             }
             else
             {
-                // create a new gas
                 gastables::RefGas * tRefGas = aFactory.create_refgas( tReferenceName );
 
-                // add new gas to elements list
                 mElements( tCount++ ) = tRefGas;
 
-                // add gas to extra list
                 mExtra( tExtraCount++ ) = tRefGas;
             }
 
         }
 
-        // create the lookup table for formation enthalpy and entropy
         this->create_formation_table();
 
     }
@@ -577,11 +546,8 @@ namespace belfem
                 mNumberOfComponents,
                 BELFEM_UINT_MAX );
 
-
-        // reset counter
         uint tCount = 0;
 
-        // loop over all gases
         for ( uint k = 0; k < mNumberOfComponents; ++k )
         {
             const string & tA = mComponents( k )->label();
@@ -590,17 +556,14 @@ namespace belfem
             {
                 const string & tB = mComponents( i )->label();
 
-                // test if interaction table exists
                 if ( aFactory.interaction_viscosity_exists( tA, tB ))
                 {
                     mViscosityInteractionRefgas.push(
                             aFactory.create_interaction_viscosity( tA, tB ));
 
-                    // set counter into table
                     mViscosityInteractionTable( i, k ) = tCount;
                     mViscosityInteractionTable( k, i ) = tCount;
 
-                    // increment counter
                     ++tCount;
                 }
             }
@@ -632,7 +595,6 @@ namespace belfem
         // reset work temperature value ( needed for viscosity calculation )
         mWorkTemperature = BELFEM_REAL_MAX;
 
-        // recalculate R and M
         this->remix_R( aMolarFractions );
 
         if ( aRemixHeat )
@@ -648,7 +610,6 @@ namespace belfem
 
         if ( aRemixTransport )
         {
-            // remix transport spline
             this->remix_transport();
         }
     }
@@ -659,12 +620,10 @@ namespace belfem
                      bool aRemixHeat,
                      bool aRemixTransport )
     {
-        // make sure that input is OK
         BELFEM_ASSERT( aMassFractions.length() == mNumberOfComponents,
                       "size of mass vector does not match ( %u vs %u )",
                       ( unsigned int ) aMassFractions.length(),
                       ( unsigned int ) mNumberOfComponents );
-
 
         // reset work temperature value ( needed for viscosity calculation )
         mWorkTemperature = BELFEM_REAL_MAX;
@@ -674,7 +633,6 @@ namespace belfem
 
         mMassFractions = aMassFractions / sum( aMassFractions );
 
-        // compute new molar fractions
         for( uint k=0; k<mNumberOfComponents; ++k )
         {
             mMolarFractions( k ) = mMassFractions( k ) / mMolarMasses( k );
@@ -683,21 +641,16 @@ namespace belfem
         // make molar fractions partition of unity
         mMolarFractions /= sum( mMolarFractions );
 
-        // fixme: use inline multiplication instead
         mMassFractions = mMolarFractions % mMolarMasses;
 
-        // molar mass
         mStatevals.set( BELFEM_STATEVAL_M, sum( mMassFractions ) );
 
-        // mass fractions, part 2
         mMassFractions /= mM;
 
-        // gas constant
         mStatevals.set( BELFEM_STATEVAL_R, constant::Rm / mM );
 
         if( aRemixHeat )
         {
-            // remix equation of state
             mEoS->remix();
 
             // remix heat spline
@@ -729,7 +682,6 @@ namespace belfem
         return mR;
     }
 
-
 //------------------------------------------------------------------------------
 
     real
@@ -743,17 +695,14 @@ namespace belfem
     void
     Gas::remix_R( const Vector<real> & aMolarFractions )
     {
-        // make sure that input is OK
         BELFEM_ASSERT( aMolarFractions.length() == mNumberOfComponents,
                       "size of molar vector does not match ( %u vs %u )",
                       ( unsigned int ) aMolarFractions.length(),
                       ( unsigned int ) mNumberOfComponents );
 
-
         // the composition changes, so every cached state value is stale
         mStatevals.reset();
 
-        // copy molar fractions
         mMolarFractions = aMolarFractions;
 
         // make molar fractions partition of unity
@@ -761,19 +710,15 @@ namespace belfem
 
         mMassFractions = mMolarFractions % mMolarMasses;
 
-        // molar mass
         mStatevals.set( BELFEM_STATEVAL_M, sum( mMassFractions ) );
 
-        // mass fractions, part 2
         mMassFractions /= mM;
 
-        // gas constant
         mStatevals.set( BELFEM_STATEVAL_R, constant::Rm / mM );
     }
 
 //------------------------------------------------------------------------------
 
-    // create eos
     void
     Gas::create_eos( const GasModel & aGasModel )
     {
@@ -801,7 +746,6 @@ namespace belfem
                 mStatevals.set( BELFEM_STATEVAL_M, mComponents( 0 )->M() ) ;
                 mStatevals.set( BELFEM_STATEVAL_R, constant::Rm / mComponents( 0 )->M() ) ;
 
-                // allocate mass and molar fractions
                 mMassFractions.set_size( 1, 1.0 );
                 mMolarFractions.set_size( 1, 1.0 );
                 mMolarFractions0.set_size( 1, 1.0 );
@@ -820,7 +764,6 @@ namespace belfem
                          * tables are isomer aware, see the class header */
                         mTransport = new gasmodels::HelmholtzTransport_Hydrogen(
                                 *this, mHelmholzModel );
-
 
                         break ;
                     }
@@ -871,19 +814,14 @@ namespace belfem
     void
     Gas::remix_heat()
     {
-        // get data object
         Matrix<real> & tData = mHeatSpline.matrix_data();
 
-        // reset heat spline
         tData.fill( 0.0 );
 
-        // loop over all gases
         for ( size_t k = 0; k < mNumberOfComponents; ++k )
         {
-            // get component data
             Matrix<real> & tRefGasData = mComponents( k )->heat_spline()->matrix_data();
 
-            // loop over all temperature steps
             for ( size_t j = 0; j < gastables::gNumberOfSplinePoints; ++j )
             {
                 for ( size_t i = 0; i < 5; ++i )
@@ -927,20 +865,15 @@ namespace belfem
     {
         real tT = 0;
 
-        // loop over all points
         for ( uint k = 0; k < gastables::gNumberOfSplinePoints; ++k )
         {
-            // evaluate viscosity
             mWorkMu( k ) = this->cea_mu( tT );
 
-            // evaluate thermal conductivity
             mWorkLambda( k ) = this->cea_lambda( tT );
 
-            // increment t
             tT += gastables::gDeltaT;
         }
 
-        // update splines
         mViscositySpline.update_data( mHelpMatrix, mWorkMu );
         mConductivitySpline.update_data( mHelpMatrix, mWorkLambda );
     }
@@ -1140,9 +1073,7 @@ namespace belfem
     {
         // Entropy includes an ideal gas pressure term; enthalpy and heat capacity do not.
         // The ideal gas change is:
-        //
         //     s2^0 - s1^0 = int cp^0/T dT - R ln( p2/p1 )
-        //
         // Therefore mR*log( gPref/p ) belongs to the IDEAL GAS contribution,
         // referenced to gPref = 1 bar. It is not a departure term and is not sdep.
         // See the reference pressure note above Gas::realgas_cp.
@@ -1320,7 +1251,6 @@ namespace belfem
             // read-only handle: this pass only evaluates the components
             const gastables::RefGas * tComponent_i = mComponents( i );
 
-            // evaluate Interaction
             if ( tComponent_i->has_viscosity() )
             {
                 const double & tM_i = tComponent_i->data()->M();
@@ -1338,7 +1268,6 @@ namespace belfem
                             const double & tMu_j = mWorkVector( j );
 
                             k = mViscosityInteractionTable( i, j );
-                            // test if interaction parameter exists
                             if ( k != BELFEM_UINT_MAX )
                             {
                                 // NASA RP-1311 ( 5.7 )
@@ -1377,7 +1306,6 @@ namespace belfem
             }
         } // end i-loop
 
-        // remember temperature
         mWorkTemperature = T;
     }
 
@@ -1392,7 +1320,7 @@ namespace belfem
         }
 
         // - - - - - - - - - - - - - - - - - - - -
-        // Step 1: Updatem Conductiviies
+        // Step 1: Update Conductivities
         // - - - - - - - - - - - - - - - - - - - -
         for ( uint k = 0; k < mNumberOfComponents; ++k )
         {
@@ -1408,7 +1336,6 @@ namespace belfem
 
             if ( tComponent_i->has_conductivity() && tComponent_i->has_viscosity())
             {
-                //const double & tMu_i = mWorkVector( i );
                 const double & tM_i = tComponent_i->data()->M();
 
                 for ( uint j = 0; j < mNumberOfComponents; ++j )
@@ -1419,18 +1346,14 @@ namespace belfem
 
                         if ( tComponent_j->has_conductivity() && tComponent_j->has_viscosity())
                         {
-                            //const double & tMu_j = mWorkVector( j );
                             const double & tM_j = tComponent_j->data()->M();
                             // NASA RP-1311 ( 5.6 )
                             mWorkMatrix( i, j ) *= 1.0 + 2.41 * ( tM_i - tM_j )
                                                          * ( tM_i - 0.142 * tM_j ) /
                                                          std::pow( tM_i + tM_j, 2 );
 
-                            // alternative approach, but worse that Gordon/McBride
-                            // Wassiljeva, Mason, Saxena, see VDI D1 ( 108a )
-                            //mWorkMatrix( i, j ) = std::pow( 1.0 + std::sqrt( tMu_i / tMu_j
-                            // * std::sqrt( tM_j / tM_i) ), 2 ) /
-                            //        std::sqrt( 8.0 *( 1.0 + tM_i / tM_j ) );
+                            // The Wassiljeva/Mason/Saxena form ( VDI D1, 108a ) is rejected.
+                            // It is worse than the Gordon and McBride form.
                         }
                         else
                         {
@@ -1453,7 +1376,6 @@ namespace belfem
             }
         }
 
-        // overwrite work temperature
         mWorkTemperature = BELFEM_REAL_MAX;
     }
 
@@ -1467,10 +1389,8 @@ namespace belfem
 
         const Vector<real> & tX = mMolarFractions;
 
-        // calculate value
         real mu = 0.0;
 
-        // temporary vector for mixing
         mWorkVector2 = mWorkMatrix * tX;
 
         for ( uint i = 0; i < mNumberOfComponents; ++i )
@@ -1498,10 +1418,8 @@ namespace belfem
 
         const Vector<real> & tX = mMolarFractions;
 
-        // calculate value
         real lambda = 0.0;
 
-        // temporary vector for mixing
         mWorkVector = mWorkMatrix * tX;
 
         for ( uint i = 0; i < mNumberOfComponents; ++i )
@@ -1519,7 +1437,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-
 //------------------------------------------------------------------------------
 // Thermodynamic States
 //------------------------------------------------------------------------------
@@ -1529,7 +1446,6 @@ namespace belfem
     {
         mStatevals.update_Tv( T, v );
 
-        // check if values are up to date
         if ( !mStatevals.test( BELFEM_STATEVAL_P ))
         {
             mStatevals.set(
@@ -1801,7 +1717,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-    // create the table needed for formation enthalpy
     void
     Gas::create_formation_table()
     {
@@ -1832,17 +1747,14 @@ namespace belfem
     void
     Gas::Hf( const real T, Vector<real> & aHf ) const
     {
-        // reset vector
         aHf.fill( 0.0 );
 
-        // add species enthalpies to vector
         uint tCount = 0;
         for ( gastables::RefGas * tSpecie: mComponents )
         {
             aHf( tCount++ ) +=  tSpecie->H( T ) -  tSpecie->H_ref() + tSpecie->data()->Hf();
         }
 
-        // calculate element enthalpies
         tCount = 0;
         for ( gastables::RefGas * tElement: mElements )
         {
@@ -1857,34 +1769,28 @@ namespace belfem
     void
     Gas::Gibbs( const real T, Vector<real> & aGibbs ) const
     {
-        // write species entropies into vector
         uint tCount = 0;
         for ( gastables::RefGas * tSpecie: mComponents )
         {
             aGibbs( tCount++ ) = -tSpecie->S( T );
         }
 
-        // calculate element entropies
         tCount = 0;
         for ( gastables::RefGas * tElement: mElements )
         {
             mFormationWork( tCount++ ) = tElement->S( T );
         }
 
-        // add entropies to vector
         aGibbs.vector_data() += mFormationTable * mFormationWork;
 
-        // multiply vector with temperatures
         aGibbs *= T;
 
-        // add species enthalpies to vector
         tCount = 0;
         for ( gastables::RefGas * tSpecie: mComponents )
         {
             aGibbs( tCount++ ) +=  tSpecie->H( T ) -  tSpecie->H_ref() + tSpecie->data()->Hf();
         }
 
-        // calculate element enthalpies
         tCount = 0;
         for ( gastables::RefGas * tElement: mElements )
         {
@@ -1900,14 +1806,12 @@ namespace belfem
     Gas::dGibbsdT( const real T, Vector< real > & aGibbs ) const
     {
 
-        // calculate entropy term for species
         uint tCount = 0;
         for ( gastables::RefGas * tSpecie: mComponents )
         {
             aGibbs( tCount++ ) = -( tSpecie->S( T ) + T * tSpecie->dSdT( T ) );
         }
 
-        // calculate element entropies
         tCount = 0;
         for ( gastables::RefGas * tElement: mElements )
         {
@@ -1916,14 +1820,12 @@ namespace belfem
 
         aGibbs.vector_data() += mFormationTable * mFormationWork;
 
-        // add specific heats to vector
         tCount = 0;
         for ( gastables::RefGas * tSpecie: mComponents )
         {
             aGibbs( tCount++ ) += tSpecie->Cp( T );
         }
 
-        // calculate specific heats
         tCount = 0;
         for ( gastables::RefGas * tElement: mElements )
         {
@@ -1943,16 +1845,13 @@ namespace belfem
             // minuimum composition a gas may have
             real tEpsilon = 1E-9;
 
-            // maximum number of iterations
             uint tMaxNumIterations = 1000;
 
-            // relaxation factor
             real tOmega0 = 0.9;
 
             // we reset the work temperature, so that we can use the work vectors safely
             mWorkTemperature = BELFEM_REAL_MAX;
 
-            // step 0: allocate memory
             const uint tNumElements = mElements.size();
 
             if ( mPivotRAND.length() != tNumElements + 1 )
@@ -1973,26 +1872,20 @@ namespace belfem
             // Gibbs potential at given pressure
             Vector< real > & tMu = mWorkVector2;
 
-            // chemical potential
             const Vector< real > & tPsi = mWorkVectorRAND0;
 
-            // value for last equation
             const real & tU = mWorkVectorRAND0( tNumElements );
 
-            // formation table
             Matrix< real > & tA = mFormationTable;
 
             // System of Equations
             Matrix< real > & tM = mWorkMatrixRAND;
 
-            // Right hand side of system
             Vector< real > & tRHS = mWorkVectorRAND0;
 
-            // Element abundance vectors
             Vector< real > & tB0 = mWorkVectorRAND1;
             Vector< real > & tB = mWorkVectorRAND2;
 
-            // change vector for X
             Vector< real > tDeltaX = mWorkVector2;
 
             // Step 2 : initial computations
@@ -2002,11 +1895,8 @@ namespace belfem
             // compute mass balance constraint
             tB0 = trans( tA ) * aX;
 
-            // start loop
             uint tCount = 0;
 
-
-            //real tSumX ;
             real tNorm = 1.0;
 
             // avoid having zero components
@@ -2021,19 +1911,15 @@ namespace belfem
             while ( tNorm > tEpsilon )
             {
                 // compute sum of X ( may be > 1 )
-                //tSumX = sum( tX );
 
-                // compute Gibbs potential at reference pressure
                 for ( uint k = 0; k < mNumberOfComponents; ++k )
                 {
                     tMu( k ) = tMu0( k ) + constant::Rm * T * std::log( p / gastables::gPref * aX( k ));
                 }
 
-
                 // compute mass balance constraint
                 tB = trans( tA ) * aX;
 
-                // compute matrix to be solved
                 tM.fill( 0.0 );
 
                 for ( uint i = 0; i < tNumElements; ++i )
@@ -2051,7 +1937,6 @@ namespace belfem
 
                 tM( tNumElements, tNumElements ) = 0.0;
 
-                // compute RHS
                 for ( uint i = 0; i < tNumElements; ++i )
                 {
                     tRHS( i ) = tB0( i ) - tB( i );
@@ -2062,10 +1947,8 @@ namespace belfem
                 }
                 tRHS( tNumElements ) = dot( aX, tMu ) / ( constant::Rm * T );
 
-                // solve system
                 gesv( mWorkMatrixRAND, mWorkVectorRAND0, mPivotRAND );
 
-                // compute change of Mols
                 for ( uint k = 0; k < mNumberOfComponents; ++k )
                 {
                     tDeltaX( k ) = tU - tMu( k ) / ( constant::Rm * T );
@@ -2078,7 +1961,6 @@ namespace belfem
                 real tMinDeltaX = std::abs( min( tDeltaX ));
                 real tMaxDeltaX = std::abs( max( tDeltaX ));
 
-                // relaxation factor
                 real tOmega = tMaxDeltaX > tMinDeltaX ? tMaxDeltaX : tMinDeltaX;
                 if ( tOmega > tOmega0 )
                 {
@@ -2089,7 +1971,6 @@ namespace belfem
                     tOmega = tOmega0;
                 }
 
-                // adapt X
                 for ( uint k = 0; k < mNumberOfComponents; ++k )
                 {
                     tDeltaX( k ) *= aX( k );
@@ -2099,13 +1980,10 @@ namespace belfem
 
                 aX += tOmega * tDeltaX;
 
-
-                // check for infitite loop
                 BELFEM_ERROR( tCount++ < tMaxNumIterations,
                              "To many iterations while trying to find chemical equilibrium." );
             }
 
-            // cleanup
             for ( uint k = 0; k < mNumberOfComponents; ++k )
             {
                 if ( aX( k ) < tEpsilon )
@@ -2114,7 +1992,6 @@ namespace belfem
                 }
             }
 
-            // remix values
             aX /= sum( aX );
         }
         else
@@ -2142,10 +2019,8 @@ namespace belfem
     real
     Gas::mu_dep( const real & mu, const real T, const real p ) const
     {
-        // cutoff value
         real tMuMax = 10.0 * mu;
 
-        // reduced temperature
         real tTr = T / mTcrit;
         real tPr = p / mPcrit;
 
@@ -2155,7 +2030,6 @@ namespace belfem
                     + 0.34 * std::exp( -4.058 * tTr )
                     + 0.018 ) * 1e-7;
 
-        // correction factor
         real tFid = mu * mXi / tX;
 
         if ( tTr < 1.0 )
@@ -2214,13 +2088,11 @@ namespace belfem
         return tX * ( tC1 + tX * ( tC2 + tX * ( tC3 + tX * ( tC4 + tX * tC5 )))) / mGamma;
     }
 
-
 //------------------------------------------------------------------------------
 
     real
     Gas::T_from_h( const real & h, const real p ) const
     {
-        // reference temperature
         real tTref ;
 
         if( this->is_idgas() )
@@ -2232,12 +2104,10 @@ namespace belfem
             tTref = mTcrit ;
         }
 
-        // reference enthalpy
         real tHref = this->h( tTref, p );
 
         real tCp = this->cp( tTref, p );
 
-        // initial guess
         real T = ( h - tHref ) / tCp + tTref;
 
         uint tCount = 0;
@@ -2250,13 +2120,10 @@ namespace belfem
 
         while( std::abs( tT - T ) > BELFEM_EPSILON_T  )
         {
-            // shift t
             tT = T;
 
-            // newton step
             T -= tOmega * ( this->h( T, p ) - h ) / this->cp( T, p );
 
-            // increment counter
             if( tCount++ == 100 )
             {
                 // fallback: bisection over the full table range
@@ -2297,7 +2164,6 @@ namespace belfem
                 break;
             }
 
-
            BELFEM_ERROR( tCount < 1000,
                     "T_from_h did not converge for h=%12.3f, p=%12.3f",
                     h, p );
@@ -2311,10 +2177,8 @@ namespace belfem
     real
     Gas::isen_T( const real T0, const real p0, const real p1 ) const
     {
-        // guess value for new temperature
         real T1 = T0 * std::pow( p1 / p0, this->R( T0, p0 ) / this->cp( T0, p0 ));
 
-        // entropy at this state
         real tS = this->s( T0, p0 );
 
         real tT1 = 0.0;
@@ -2336,7 +2200,6 @@ namespace belfem
 
             ++tCount;
 
-
             BELFEM_ERROR( tCount < 1000,
                          "Too many iterations for isen_T ( T0=%f, p0=%f, p1=%f)",
                          ( float ) T0, ( float ) p0, ( float ) p1 );
@@ -2345,16 +2208,13 @@ namespace belfem
         return T1;
     }
 
-
 // -----------------------------------------------------------------------------
 
     real
     Gas::isen_p( const real T0, const real p0, const real T1 ) const
     {
-        // guess value for new pressure
         real p1 = p0 * std::pow( T1 / T0, this->idgas_cp( T0, p0 ) / this->R( T0, p0 ) );
 
-        // entropy at this state
         real tS = this->s( T0, p0 );
 
         real tP1 = 0.0;
@@ -2382,52 +2242,37 @@ namespace belfem
     Gas::total( const real T, const real p, const real & u,
                 real & aTt, real & aPt ) const
     {
-        // maximum temperature
         real tTmax = gastables::gTmax - BELFEM_EPSILON_T ;
 
-        // Initial guesses
         real tCp = this->idgas_cp( T, p );
 
-        // gas constant
         real tR = this->R( T, p );
 
-        // guess ratio of specific heats
         real tGamma = tCp / ( tCp - tR );
 
-        // guess speed of sound
         real tC = std::sqrt( tGamma * tR * T );
 
-        // guess mach number
         real tMa = u / tC;
 
-        // solution vector
         Vector<real> tX( 2 );
 
         real & tTt = tX( 0 );
         real & tPt = tX( 1 );
 
-        // RHS
         Vector<real> tF( 2, 1.0 );
 
-        // Jacobian
         Matrix<real> tJ( 2, 2 );
 
-        // Pivot
         Vector< int_t > tPivot( 2 );
 
-        // guess total temperature
         tTt = std::min( T * ( 1.0 + 0.5 * ( tGamma - 1.0 ) * tMa * tMa ), tTmax -100.0 );
 
-        // guess total preassure
         tPt = p * std::pow( tTt / T, tCp / tR );
 
-        // calculate entropy
         real tS = this->s( T, p );
 
-        // calculate enthalpy
         real tH = this->h( T, p ) + 0.5 * u * u;
 
-        // initialize loop counter
         uint tCount = 0;
 
         aTt = 0.0;
@@ -2439,28 +2284,23 @@ namespace belfem
 
         while ( true )
         {
-            // shift result
             aTt = tX( 0 );
             aPt = tX( 1 );
 
-            // calculate right hand side
             tF( 0 ) = ( this->h( tTt, tPt ) - tH );
             tF( 1 ) = this->s( tTt, tPt ) - tS;
 
-            // calculate Jacobian
             tJ( 0, 0 ) = this->cp( tTt, tPt );
             tJ( 1, 0 ) = this->dsdT( tTt, tPt );
             tJ( 0, 1 ) = this->dhdp( tTt, tPt );
             tJ( 1, 1 ) = this->dsdp( tTt, tPt );
 
-            // solve system
             gesv( tJ, tF, tPivot );
 
             tOmega1 = 0.9 * std::abs( ( tX( 0 ) - tTmax ) / tF( 0 ) );
 
             tOmega = tOmega1 < tOmega0 ? tOmega1 : tOmega0 ;
 
-            // correct result
             tX -= tOmega * tF;
 
             ++tCount;
@@ -2469,17 +2309,14 @@ namespace belfem
 
             tOmega0 *= 0.99 ;
 
-            // check abort condition
             if ( std::abs( tTt - aTt ) < BELFEM_EPSILON_T &&
                  std::abs( tPt - aPt ) < BELFEM_EPSILON_P )
             {
-                // copy result into output
                 aTt = tX( 0 );
                 aPt = tX( 1 );
                 break;
             }
         }
-
 
     }
 
@@ -2549,7 +2386,6 @@ namespace belfem
                          A2 / A1 );
         }
 
-        // total temperature of the frozen gamma gas
         real tTt = T1 * ( 1.0 + 0.5 * ( k - 1.0 ) * Ma1 * Ma1 );
 
         T2 = tTt / ( 1.0 + 0.5 * ( k - 1.0 ) * Ma2 * Ma2 );
@@ -2578,7 +2414,6 @@ namespace belfem
 
         while ( true )
         {
-            // inverse density
             real tV2 = this->v( T2, p2 );
 
             // RHS. the entropy row is scaled with R and not with the entropy
@@ -2623,7 +2458,6 @@ namespace belfem
             // d(energy)/du
             tJ( 2, 2 ) = u2 / aEnergy ;
 
-            // solve system
             gesv( tJ, tF, mFlowPivot );
 
             T2 -= tOmega * tF( 0 );
@@ -2671,29 +2505,22 @@ namespace belfem
 
             real tOmega = 0.9;
 
-            // mass
             real tMass = this->rho( T1, p1 ) * u1 * A1;
 
-            // momentum
             real tMomentum = tMass * u1 + p1 * A2; // <-- A2, not A1 !
 
             real tEntropy = this->s( T1, p1 );
 
             real tEnergy = this->h( T1, p1 ) + 0.5 * u1 * u1;
 
-            // simplified constans for ideal gas
-
 
             real tMa1 = u1 / this->c( T1, p1 );
 
-            // RHS
             Vector<real> & tF = mFlowResidual;
             tF.fill( 0.0 );
 
-            // Jacobian
             Matrix<real> & tJ = mFlowJacobian;
 
-            // Pivot
             Vector< int_t > & tPivot = mFlowPivot;
 
             real tV2;
@@ -2702,13 +2529,11 @@ namespace belfem
 
             real tError = 1.0;
 
-            // initial guess
             if( tMa1 < 1.0 )
             {
                 real tK = this->gamma( T1, p1 );
                 real tCp = this->cp( T1, p1 );
 
-                // calculate a Borda-Carnot Shock
                 // Rist: Dynamik Realer Gase, Kap. 9.1.1
 
                 // Eq. ( 9.15 )
@@ -2718,21 +2543,17 @@ namespace belfem
                      ( 1.0 + 2.0 * tK * tMa1 * tMa1 + A2 / A1 ) ) ) /
                      ( ( tK + 1.0 ) * tMa1 * tMa1 );
 
-
                 real tHt = tCp * T1 + 0.5 * u1 * u1;
 
                 T2 = ( tHt - 0.5 * u2 * u2 ) / tCp;
                 p2 = ( tMass * ( u1 - u2 ) + p1 * A2 ) / A2;
 
-
                 while ( tError > 1e-6 )
                 {
-                    // get values
                     T2 -= tOmega * tF( 0 );
                     p2 -= tOmega * tF( 1 );
                     u2 -= tOmega * tF( 2 );
 
-                    // calculate inverse density
                     tV2 = this->v( T2, p2 );
 
                     // Jacobian Terms
@@ -2765,18 +2586,14 @@ namespace belfem
                     // d(energy)/du
                     tJ( 2, 2 ) = u2 / tEnergy;
 
-
-                    // RHS
                     tF( 0 ) = ( u2 * A2 / tV2 - tMass ) / tMass;
                     tF( 1 ) = ( u2 * u2 * A2 / tV2 + p2 * A2 - tMomentum ) / tMomentum;
                     tF( 2 ) = ( this->h( T2, p2 ) + 0.5 * u2 * u2 - tEnergy ) / tEnergy;
 
                     tError = norm( tF );
 
-                    // solve system
                     gesv( tJ, tF, tPivot );
 
-                    // increment counter
                     ++tCount;
 
                     BELFEM_ERROR( tCount < 100,
@@ -2800,7 +2617,6 @@ namespace belfem
 
                 this->isentropic_duct( tMass, tEntropy, tEnergy, A2, T2, p2, u2 );
 
-                // check mach number
                 BELFEM_ERROR( u2 / this->c( T2, p2 ) > 1.0,
                              "Could not find supersonic solution for T1=%12.3f, p1=%12.3f, u1=%12.3f, A1=%12.3f, A2=%12.3f",
                              T1,
@@ -2841,7 +2657,6 @@ namespace belfem
                          A1,
                          A2 );
 
-            // mass
             real tMass = this->rho( T1, p1 ) * u1 * A1;
 
             real tEntropy = this->s( T1, p1 );
@@ -3386,7 +3201,6 @@ namespace belfem
         if( mGaussWeights.length() == 0 )
         {
 
-
             int_t n = 14 ;
             mGaussPoints.set_size( n );
             mGaussWeights.set_size( n );
@@ -3450,7 +3264,6 @@ namespace belfem
             Tguess = Tt / ( 1.0 + 0.5 * ( k - 1. ) * Ma * Ma );
         }
 
-        // exact turn
         T2 = tWave.solve_T( alpha, Tguess );
 
         // pressure decouples and follows from ds = 0
@@ -3469,12 +3282,10 @@ namespace belfem
     Gas::shock(  const real T1, const real p1, const real & u1,
                        real & T2,       real & p2,       real & u2 ) const
     {
-        // relaxation factor
         real tOmega0 = 0.9;
         real tOmega1 ;
         real tOmega ;
 
-        // mach number before shock
         real tMa1 = u1 / this->c( T1, p1 );
 
         if ( tMa1 < 1.001 )
@@ -3485,7 +3296,6 @@ namespace belfem
         }
         else
         {
-            // total enthalpy
             real tHt = this->h( T1, p1 ) + 0.5 * u1 * u1;
 
             real tGamma = this->gamma( T1, p1 );
@@ -3496,60 +3306,43 @@ namespace belfem
             real & tU2 = tX( 1 );
             real & tT2 = tX( 2 );
 
-            // total temperature
             real tTt = T1 * ( 1.0 + 0.5 * ( tGamma - 1.0 ) * tMa1 * tMa1 );
 
-            // initial guess for Ma2
             real tMa2 = std::sqrt(
                     ( tTt / T1 ) / ( tGamma * tMa1 * tMa1 - 0.5 * ( tGamma - 1.0 )));
 
-
-
-            // initial guess for temperature
             tT2 = tTt / ( 1.0 + 0.5 * ( tGamma - 1.0 ) * tMa2 * tMa2 );
 
-            // check for temperature limit
             if( tT2 > gastables::gTmax - 1000.0 )
             {
                 tT2 = gastables::gTmax - 1000.0 ;
             }
 
-            // initial guess for pressure
             p2 = p1 * std::pow( tT2 / T1, tGamma / ( tGamma - 1.0 ));
 
-            // initial guess for density
             tRho2 = this->rho( tT2, p2 );
 
-            // initial guess for velocity
             tU2 = tMa2 * std::sqrt( this->R( tT2, p2 ) * tGamma * tT2 );
 
-            // mass
             real tM = this->rho( T1, p1 ) * u1;
 
-            // momentum
             real tI = p1 + tM * u1;
 
-            // Jacobian
             Matrix< real > tJ( 3, 3 );
 
-            // right hand side
             Vector< real > tY( 3 );
 
             real tResiduum = BELFEM_REAL_MAX;
 
-            // counter for the loop
             uint tCount = 0;
 
-            // for solver
             Vector< int_t > tPivot( 3 );
 
             real tTmax = gastables::gTmax - 1.0 ;
 
             while ( tResiduum > 1.0e-9 )
             {
-                // compute Jacobian
                 tJ( 0, 0 ) = tU2;
-                //tJ( 1, 0 ) = 1.0 / ( this->kappa( tT2, p2 ) * tRho2 ) + tU2 * tU2 ;
                 tJ( 1, 0 ) = ( this->R( tT2, p2 ) * tT2 + tU2 * tU2 );
 
                 tJ( 2, 0 ) = 0.0;
@@ -3560,50 +3353,41 @@ namespace belfem
 
                 tJ( 0, 2 ) = 0.0;
 
-                //tJ( 1, 2 ) = this->beta( tT2, p2 ) ;
                 tJ( 1, 2 ) = this->R( tT2, p2 ) * tRho2;
                 tJ( 2, 2 ) = this->cp( tT2, p2 );
 
-                // compute right hand side
                 p2 = this->p( tT2, 1.0 / tRho2 );
 
                 tY( 0 ) = ( tRho2 * tU2 - tM );
                 tY( 1 ) = ( p2 + tRho2 * tU2 * tU2 - tI );
                 tY( 2 ) = ( this->h( tT2, p2 ) + 0.5 * tU2 * tU2 - tHt );
 
-                // compute residuum
                 tResiduum = std::sqrt(
                         std::pow( tY( 0 ) / tM, 2 )
                         + std::pow( tY( 1 ) / tI, 2 )
                         + std::pow( tY( 2 ) / tHt, 2 ));
 
-                // solve system
                 gesv( tJ, tY, tPivot );
 
-                // limit relaxation
                 tOmega1 = std::abs( 0.9 * ( tX( 2 ) - tTmax ) / tY( 2 ) );
                 tOmega = tOmega1 < tOmega0 ? tOmega1 : tOmega0 ;
 
-                // detect failure
                 if ( tOmega < 1e-6 )
                 {
                     this->total( T1, p1, u1, T2, p2 ) ;
 
-                    // pressure
                     p2 = this->p( tX( 2 ), 1.0 / tX( 0 ));
 
                     u2 = tX( 1 );
 
                     return ;
                 }
-                // perform Newton Step
                 tX -= tOmega * tY;
 
                 BELFEM_ERROR( tCount++ < 1000,
                              "Infinite loop in Gas::shock" );
             }
 
-            // postprocess output values
             T2 = tX( 2 );
             p2 = this->p( tX( 2 ), 1.0 / tX( 0 ));
             u2 = tX( 1 );
@@ -3620,14 +3404,12 @@ namespace belfem
         // Step 1: indentify min and max possible beta-angle
         // - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        // compute mach number
         real tMa1 = u1 / this->c( T1, p1 );
 
         BELFEM_ERROR( tMa1 > 0.0,
             "Mach number must be > 0 ( is %f )",
                      ( float ) tMa1 );
 
-        // mach angle
         real tBetaA = std::asin( 1.0 / tMa1 );
 
         // - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -3648,13 +3430,10 @@ namespace belfem
 
         while( tFB > 0.0 )
         {
-            // shift F
             tFA = tFB;
 
-            // shift Beta
             tBetaA = tBetaB;
 
-            // increment beta
             tBetaB += tDeltaB;
 
             tFB = this->shock_beta_simple( T1, p1, u1, alpha, T2, p2, u2, tBetaB );
@@ -3666,13 +3445,10 @@ namespace belfem
         // one more step for safety
         tBetaB += tDeltaB;
 
-
         // - - - - - - - - - - - - - - - - - - - - - - - - -
         // Step 2: initial iteration using bisection
         // - - - - - - - - - - - - - - - - - - - - - - - - -
 
-
-        // loop counter
         uint tCount = 0;
         beta  = tBetaB;
 
@@ -3681,14 +3457,10 @@ namespace belfem
         while ( std::abs( tF ) > 1.0e-3 )
         {
 
-            // new beta
             beta = 0.5 * ( tBetaA + tBetaB );
 
-
-            // call beta function
             tF = this->shock_beta( T1, p1, u1, alpha, T2, p2, u2, beta );
 
-            // test result
             if( tFA * tF > 0 )
             {
                 tBetaA = beta;
@@ -3699,13 +3471,10 @@ namespace belfem
                 tBetaB = beta;
             }
 
-            // increment counter
             BELFEM_ERROR( tCount++ < 1000, "too many iterations" );
         }
 
-
     }
-
 
 //------------------------------------------------------------------------------
     real
@@ -3816,7 +3585,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-    // use the property functions from the equation of state
     void
     Gas::link_to_helmholtz_property_functions()
     {
@@ -3895,7 +3663,6 @@ namespace belfem
         real tU2;
         real tK = 1.4;
 
-        // compute oblique shock for perfect gas
         real tMa1 = u1 / std::sqrt( tK * this->R( T1, p1 ) * T1 );
         real tTt  = T1 * ( 1.0 + 0.5 * ( tK - 1.0 ) * tMa1 * tMa1 );
 
@@ -3905,10 +3672,8 @@ namespace belfem
         p2 = p1 * std::pow( ( T2 / T1 ), tK / ( tK - 1.0 ) );
         tU2 = tMa2 * std::sqrt( tK * this->R( T1, p1 ) * T2 );
 
-        // compute the velocity
         u2 = std::sqrt( tU2 * tU2 + tV * tV );
 
-        // return the function
         return tU2 / tU1 - std::tan( beta - alpha ) / std::tan( beta );
     }
 
@@ -3929,7 +3694,6 @@ namespace belfem
         real tU1 = u1 * std::sin( beta );
         real tU2;
 
-        // compute oblique shock
         if( tU1 > this->c( T1, p1 ) )
         {
             this->shock( T1, p1, tU1, T2, p2, tU2 );
@@ -3941,10 +3705,8 @@ namespace belfem
             tU2 = tU1;
         }
 
-        // compute the velocity
         u2 = std::sqrt( tU2 * tU2 + tV * tV );
 
-        // return the function
         return tU2 / tU1 - std::tan( beta - alpha ) / std::tan( beta );
     }
 

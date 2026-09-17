@@ -72,7 +72,6 @@ namespace belfem
                 const Vector< id_t > aNedelecSideSets,
                 const bool aCreateEdgesOnAllSideSets )
         {
-            // start timer
             Timer tTimer;
 
             if ( mCommRank == 0 )
@@ -81,12 +80,10 @@ namespace belfem
 
                 message( InfoLevel::Default, "    Creating edges ...");
 
-                // collect the elements from these blocks
                 Cell< Element * > tElements ;
 
                 this->collect_elements( aNedelecBlocks, aNedelecSideSets, aCreateEdgesOnAllSideSets );
 
-                // create the edge IDs
                 Vector< key_t > tEdgeKeys ;
                 this->create_edge_keys( tEdgeKeys );
 
@@ -95,9 +92,6 @@ namespace belfem
                 this->set_edge_ids();
 
                 this->link_elements_to_edges() ;
-
-                //std::cout << "#warning: curves are not linked to edges" << std::endl ;
-                //this->link_curves_to_edges() ;
 
                 this->compute_edge_ownerships() ;
 
@@ -118,16 +112,12 @@ namespace belfem
         EdgeFactory::get_all_block_ids( Vector< id_t > & aBlockIDs )
         {
 
-            // grab all ids from this block
             Cell< Block * > & tBlocks = mMesh.blocks();
 
-            // ids for the blocks
             aBlockIDs.set_size( tBlocks.size() );
 
-            // initialize counter
             uint tCount = 0 ;
 
-            // collect the ids
             for ( Block * tBlock : tBlocks )
             {
                 aBlockIDs( tCount++ ) = tBlock->id() ;
@@ -146,17 +136,14 @@ namespace belfem
             mMesh.unflag_all_elements() ;
             mMesh.unflag_all_facets() ;
 
-            // reset element order
             mElementOrder = 0 ;
 
-            // count number of elements
             if( aBlockIDs.length() == 0 && aSideSetIDs.length() == 0 )
             {
                 for( Block * tBlock : mMesh.blocks() )
                 {
                     tBlock->flag_elements() ;
 
-                    // get order
                     uint tOrder = interpolation_order_numeric( tBlock->element_type() );
 
                     mElementOrder = tOrder > mElementOrder ?
@@ -170,7 +157,6 @@ namespace belfem
                 {
                     mMesh.block( tID )->flag_elements();
 
-                    // get order
                     uint tOrder = interpolation_order_numeric( mMesh.block( tID )->element_type());
 
                     mElementOrder = tOrder > mElementOrder ?
@@ -191,7 +177,6 @@ namespace belfem
                         {
                             tFacet->flag();
 
-                            // get order
                             uint tOrder = interpolation_order_numeric( tSideSet->element_type() );
 
                             mElementOrder = tOrder > mElementOrder ?
@@ -213,7 +198,6 @@ namespace belfem
 
                     if ( tFacets.size() > 0 )
                     {
-                        // get order
                         uint tOrder = interpolation_order_numeric( mMesh.sideset( tID )->element_type());
 
                         mElementOrder = tOrder > mElementOrder ?
@@ -222,10 +206,8 @@ namespace belfem
                 }
             }
 
-            // initialize counter
             index_t tCount = 0 ;
 
-            // count flagged elements
             Cell< Element * > & tAllElements = mMesh.elements() ;
             for( Element * tElement : tAllElements )
             {
@@ -235,7 +217,6 @@ namespace belfem
                 }
             }
 
-            // count flagged facets
             Cell< Facet * > & tAllFacets = mMesh.facets() ;
             for( Facet * tFacet : tAllFacets )
             {
@@ -245,10 +226,8 @@ namespace belfem
                 }
             }
 
-            // allocate memory
             mElements.set_size( tCount, nullptr );
 
-            // reset counter
             tCount = 0 ;
 
             for( Element * tElement : tAllElements )
@@ -259,12 +238,10 @@ namespace belfem
                 }
             }
 
-            // add remaining facets
             for( Facet* tFacet : tAllFacets )
             {
                 if( tFacet->is_flagged() )
                 {
-                    // increment the counter
                     mElements( tCount++ ) = tFacet->element();
                 }
             }
@@ -279,25 +256,19 @@ namespace belfem
         void
         EdgeFactory::create_edge_keys( Vector< key_t >    & aKeys )
         {
-            // count maximum number of edges
             index_t tCount = 0 ;
 
-            // loop over all elements
             for ( Element * tElement : mElements )
             {
                 tCount += tElement->number_of_edges();
             }
 
-            // allocate memory
             aKeys.set_size( tCount );
 
-            // reset counter
             tCount = 0 ;
 
-            // work array for nodes
             Cell< Node * > tNodes ;
 
-            // loop over all elements
             for ( Element * tElement : mElements )
             {
                 uint tNumEdges = tElement->number_of_edges();
@@ -308,7 +279,6 @@ namespace belfem
 
             }
 
-            // make edges unique
             unique( aKeys );
         }
 
@@ -320,10 +290,8 @@ namespace belfem
                 const uint          aEdgeIndex,
                 Cell< Node * >    & aNodes )
         {
-            // grab nodes from edge
             aElement->get_nodes_of_edge( aEdgeIndex, aNodes );
 
-            // grab indices from corner nodes
             key_t tA = aNodes( 0 )->index();
             key_t tB = aNodes( 1 )->index();
 
@@ -349,41 +317,31 @@ namespace belfem
 
             tEdges.set_size( aKeys.length(), nullptr );
 
-            // reset map
             mMap.clear() ;
 
-            // edge counter
             index_t tCount = 0 ;
 
-            // container for nodes
             Cell< Node * > tNodes ;
-
 
             for( key_t tKey : aKeys )
             {
-                // create a new edge
                 Edge * tEdge = new Edge() ;
 
                 tEdge->set_index( tCount );
 
-                // grab nodes from edge
                 this->grab_nodes( tKey, tNodes );
 
-                // get number of nodes from edge
                 uint tNumNodes = tNodes.size() ;
 
                 tEdge->allocate_node_container( tNumNodes );
 
-                // link edge to nodes
                 for( uint k=0; k< tNumNodes; ++k )
                 {
                     tEdge->insert_node( tNodes( k ), k );
                 }
 
-                // add edge to map
                 mMap[ tKey ] = tEdge ;
 
-                // add edge to array
                 tEdges( tCount++ ) = tEdge ;
             }
         }
@@ -402,7 +360,6 @@ namespace belfem
                 tElement->allocate_edge_container();
                 for ( index_t k = 0; k < tNumEdges; ++k )
                 {
-                    // grab edge from map and insert
                     tElement->insert_edge( mMap( this->edge_key(
                             tElement, k, tNodes )), k );
 
@@ -428,13 +385,10 @@ namespace belfem
                     key_t tKey = tA > tB ? tA * mNumberOfNodes + tB
                         : tB * mNumberOfNodes + tA ;
 
-                    // find the edge
                     Edge * tEdge = mMap( tKey ) ;
 
-                    // add edge to container
                     tEdges( tCount++ ) = tEdge ;
 
-                    // link edge to segment
                     tSegment->insert_edge(  tEdge );
                 }
             }
@@ -445,7 +399,6 @@ namespace belfem
         void
         EdgeFactory::compute_edge_ownerships()
         {
-            // grab container
             Cell< Edge * > & tEdges = mMesh.edges() ;
 
             if( comm_size() == 1 )
@@ -461,7 +414,6 @@ namespace belfem
                 proc_t tOwnerB ;
                 for( Edge * tEdge : tEdges )
                 {
-                    // grab owners from nodes
                     tOwnerA = tEdge->node( 0 )->owner() ;
                     tOwnerB = tEdge->node( 1 )->owner() ;
 
@@ -476,7 +428,6 @@ namespace belfem
         void
         EdgeFactory::grab_nodes( const key_t aKey, Cell< Node* > & aNodes )
         {
-            // compute first and second node ids
             index_t tNodeA = aKey % mNumberOfNodes ;
             index_t tNodeB = ( aKey - tNodeA ) / mNumberOfNodes ;
 
@@ -484,7 +435,6 @@ namespace belfem
 
             if( mElementOrder == 1 )
             {
-                // trival
                 aNodes.set_size( 2, nullptr );
                 aNodes( 0 ) = tNodes( tNodeA );
                 aNodes( 1 ) = tNodes( tNodeB );
@@ -542,7 +492,6 @@ namespace belfem
             }
         }
 
-
 //------------------------------------------------------------------------------
 
         void
@@ -554,13 +503,11 @@ namespace belfem
                 {
                     for( mesh::Facet * tFacet : mMesh.facets() )
                     {
-                        // // compute key
                         key_t tA = tFacet->element()->node( 0 )->index();
                         key_t tB =tFacet->element()->node( 1 )->index();
                         key_t tKey = tA > tB ? tA * mNumberOfNodes + tB
                                              :  tB * mNumberOfNodes + tA ;
 
-                        // get facet if it has been created
                         if( mMap.key_exists( tKey ) )
                         {
                             mesh::Edge * tEdge = mMap[ tKey ];
@@ -574,13 +521,11 @@ namespace belfem
                 {
                     for( mesh::Element * tBoundaryEdge : mMesh.boundary_edges() )
                     {
-                        // // compute key
                         key_t tA = tBoundaryEdge->node( 0 )->index();
                         key_t tB = tBoundaryEdge->node( 1 )->index();
                         key_t tKey = tA > tB ? tA * mNumberOfNodes + tB
                                              :  tB * mNumberOfNodes + tA ;
 
-                        // get edge if it has been created
                         if( mMap.key_exists( tKey ) )
                         {
                             mesh::Edge * tEdge = mMap[ tKey ];
@@ -596,7 +541,6 @@ namespace belfem
                 }
             }
 
-            // compute the maximum ID so far
             id_t tMaxID = 0 ;
             for( mesh::Element * tEdge : mMesh.boundary_edges() )
             {
@@ -625,7 +569,6 @@ namespace belfem
                 }
             }
 
-            // resort the array
             sort( tEdges, opVertexID );
 
         }

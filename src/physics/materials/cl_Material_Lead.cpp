@@ -55,7 +55,7 @@ namespace belfem
             // nu 0.44; Koester and Franz 1961, 10.1179/mtlr.1961.6.1.1, Table IX: 0.45 ). The dynamic Hill
             // average of the same crystal gives E = 24 GPa at 300 K; the difference is the anelastic
             // relaxation of the shear modulus at low frequency, and the static value is the one wanted for
-            // elastostatic design. See the class header. Decision: Christian Messe, 2026-09-15.
+            // elastostatic design. See the class header.
             this->create_mech( 16.25, 0.4347, 300., 7.31, 11.20 );
 
             if ( ! std::isnan( RRR ) )

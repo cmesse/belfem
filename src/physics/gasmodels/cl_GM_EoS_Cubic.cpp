@@ -351,8 +351,6 @@ namespace belfem
 
             real tdVdP =  - mParent.kappa( T, p ) * tV ;
 
-            // p * tV - mR * T + ( T * this->dadT( T ) - this->a( T )) *
-            //                    this->chi( tV );
 
             return  tV + p * tdVdP + ( T * this->dadT( T ) - this->a( T )) *
                 this->dchidp( T, p , tV );
@@ -558,7 +556,6 @@ namespace belfem
 
             mWorkA.set_size( 4 );
 
-            // mVM.set_size( mParent.number_of_components(), 0.0 );
 
             mComponentHDEP.set_size( mParent.number_of_components(), 0.0 );
             mComponentCPDEP.set_size( mParent.number_of_components(), 0.0 );

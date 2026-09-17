@@ -338,7 +338,7 @@ namespace belfem
 
                 // synchronize the verdict: STRUMPACK propagates front errors
                 // locally and does NOT reduce the return code across ranks
-                // ( verified in the STRUMPACK sources, round-5 audit ), so
+                // ( verified in the STRUMPACK sources ), so
                 // codes can diverge; a split between the soft return and
                 // collect_lhs would deadlock
                 int tFailLocal  = ( tReturnCode == strumpack::ReturnCode::SUCCESS ) ? 0 : 1 ;

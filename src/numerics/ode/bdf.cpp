@@ -62,7 +62,6 @@ int main( int    argc,
 
         real tY_guess = tSolver.eval( tY, tF );
 
-        // tSolver.deval( tY, false );
 
         real tY_exact = std::sin( tT * tC );
 

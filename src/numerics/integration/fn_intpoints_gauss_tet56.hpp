@@ -23,8 +23,8 @@ namespace belfem
 // ----------------------------------------------------------------------------
 
         // 9th order in the Shunn and Ham numbering ( leading error term delta^9,
-        // their Table 1 ): exact for polynomials up to degree 8. UNUSED since
-        // 2026-09-03: requested order 9 is served by the degree-10 Witherden and
+        // their Table 1 ): exact for polynomials up to degree 8. This table is unused:
+        // requested order 9 uses the degree-10 Witherden and
         // Vincent table ( fn_intpoints.cpp ), because "order" means the exactness
         // degree there and this table falls one short of it.
         // source Shunn and Ham, 10.1016/j.cam.2012.03.032

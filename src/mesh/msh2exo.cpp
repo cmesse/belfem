@@ -1,10 +1,3 @@
-//
-// Created by christian on 9/1/26.
-//
-//
-// Created by christian on 8/28/26.
-//
-
 /*
  * BELFEM -- The Berkeley Lab Finite Element Framework
  * Copyright (c) 2026, The Regents of the University of California,

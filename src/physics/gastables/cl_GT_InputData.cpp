@@ -95,7 +95,6 @@ namespace belfem
                         aData->label().c_str() );
 
                 // copy data to data struct ( with right case )
-                //aData->set_label( clean_string( tLine.substr( 0, 12 ) ) );
 
                 // copy the name
                 aData->set_name( clean_string( tLine.substr( 12, 60 ) ) );

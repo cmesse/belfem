@@ -338,13 +338,11 @@ namespace belfem
                     // mNumMaxIter is a FLOOR, not a value to be replaced. The
                     // budget may only ever RAISE the restart cap.
                     //
-                    // This cost a cycle on 2026-08-28: the budget was
-                    // calibrated on a 2026-08-10 measurement at n = 10428 and
-                    // applied unguarded to a matrix nine times larger, which
-                    // cut the exterior run from 300 restarts to 95 and broke an
-                    // end that had been converging. A heuristic that can weaken
-                    // a working configuration is not a heuristic, it is a
-                    // regression with a formula in front of it
+                    // A budget calibrated at one matrix size and applied
+                    // unguarded at another can cut a restart cap that was
+                    // converging. A heuristic that can weaken a working
+                    // configuration is a regression with a formula in front
+                    // of it.
                     aNumMaxIter = std::max( tDerived, mNumMaxIter );
                 }
 
@@ -1208,28 +1206,16 @@ namespace belfem
                     mShiftInvertSolver = new Solver( SolverType::MUMPS );
 
                     // UNSYMMETRIC ( SYM = 0 ), even though the matrix is
-                    // symmetric and MUMPS could halve the factor memory.
-                    //
-                    // BELFEM stores the FULL matrix and hands it to MUMPS
-                    // whole: nothing anywhere extracts a triangle
-                    // ( cl_SolverMUMPS.cpp passes SymmetryMode straight into
-                    // SYM ). MUMPS with SYM = 1 or 2 expects only the lower
-                    // triangle, so a full matrix double-counts every
-                    // off-diagonal and the factorization is of a DIFFERENT
-                    // matrix. It does not fail -- it returns a plausible
-                    // wrong answer.
-                    //
-                    // Measured 2026-08-29 on a 1D Laplacian with an analytic
-                    // spectrum: SYM = 2 gave a first-solve residual
-                    // ||Ax-b||/||b|| = 7.4e16 and a converged lambda_min of
-                    // -2.5e-19 against a true 2.46e-6, with ARPACK reporting
-                    // info 0 and nconv 1 throughout. SYM = 0 on the same
-                    // matrix gives residual 1.3e-12 and lambda_min correct to
-                    // 6e-12.
-                    //
-                    // This is the whole production convention too -- every
-                    // BELFEM solve runs SYM = 0. Do not "optimize" it without
-                    // first making the caller supply a triangle
+                    // symmetric and MUMPS could halve the factor memory:
+                    // BELFEM hands MUMPS the FULL matrix, and under SYM != 0
+                    // MUMPS sums the two copies of every off-diagonal and
+                    // factorizes a different matrix without failing. The
+                    // wrapper refuses SYM != 0; the failure measured on this
+                    // eigen path is in src/sparse/doc/sparse_usage_guide.md,
+                    // "Exploit Symmetry". Every MUMPS solve in BELFEM runs
+                    // SYM = 0.
+                    // Do not "optimize" this without first making the caller
+                    // supply a triangle
                     mShiftInvertSolver->set_symmetry_mode(
                             SymmetryMode::Unsymmetric );
                 }
@@ -1567,14 +1553,10 @@ namespace belfem
                 {
                     // EVERY enumerator gets its own arm, and the default names
                     // the unmatched value instead of reading as a diagnosis.
-                    // Until 2026-08-29 Infeasible had no arm: it WAS the
-                    // default, so SolverFailed -- added to the enum later --
-                    // inherited the basis-budget sentence, and every failed or
-                    // exhausted solver was reported to the user as "no legal
-                    // Krylov subspace fits the basis budget". Wrong subsystem,
-                    // in the one message a user reads when the diagnostic goes
-                    // quiet. A default that cannot be mistaken for a reason is
-                    // what stops the next enumerator repeating it
+                    // Each outcome needs an explicit case. Otherwise, a later
+                    // outcome could inherit the Infeasible message and report a
+                    // solver failure as a basis-budget limit. The default must
+                    // identify an unhandled outcome, not provide a diagnosis.
                     char tUnhandled[ 96 ];
                     std::snprintf( tUnhandled, sizeof( tUnhandled ),
                         "unhandled eigen outcome %i - a missing arm, not a diagnosis",

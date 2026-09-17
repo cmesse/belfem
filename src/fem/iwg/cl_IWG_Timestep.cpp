@@ -812,7 +812,6 @@
 
             this->compute_mkf(aElement);
 
-            //mTimeStepMatrices->assemble_J( mDeltaTime ) ;
             mTimeStepMatrices->assemble_dJdx( mDeltaTime, mAlpha ) ;
 
             this->compute_timestep( aJacobian, aRHS ) ;

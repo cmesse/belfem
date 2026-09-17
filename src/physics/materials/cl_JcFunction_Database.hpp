@@ -519,7 +519,7 @@ namespace belfem
             {
                 // every internal caller sits behind mHaveSelfField; a future
                 // external caller must not turn an empty curve into an
-                // out-of-bounds read ( code-audit, Grok finding 4 )
+                // out-of-bounds read
                 BELFEM_ASSERT( mHaveSelfField,
                     "self_field() called on a table without a self-field curve" );
                 return interp_curve( mSelfFieldT, mSelfFieldValue, T, dJ0dT ) ;
@@ -639,12 +639,15 @@ namespace belfem
              *     d(value)/dB = value · ln10 · (∂f/∂u) · du/dB
              *                 = value · (∂f/∂u) / B          — ln10 CANCELS.
              *
-             * ( Verified independently by both audit voices 2026-08-13; an
-             * earlier plan note carried a spurious ln10 here. ) When |B| is
+             * When |B| is
              * outside the table window, eval() returns the CLAMPED value,
              * which is constant in |B| — the consistent tangent is exactly
              * zero, and the derivative implements that clamp decision
-             * itself rather than trusting a caller to.
+             * itself rather than trusting a caller to. One exception: with
+             * a /source group, |B| below Bmin takes the self-field bridge
+             * instead of the clamp ( first branch below ), and the tangent
+             * is the bridge's own -- zero only where the bridge is idle
+             * because the table edge already exceeds the self-field level.
              */
             real
             deval_dB( const real normB, const real angle, const real T ) const override

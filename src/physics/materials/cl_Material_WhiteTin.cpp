@@ -64,8 +64,7 @@ namespace belfem
         {
             // validity ceiling, not the melting point ( 505.08 K ): above this temperature the quasi-harmonic
             // E( T ) departs by more than 5 % in shape from the dynamic modulus curve of Blanke 1989
-            // ( Thermophysikalische Stoffgroessen, uncited compilation, used here for the ceiling only );
-            // decided 2026-09-15, Christian Messe
+            // ( Thermophysikalische Stoffgroessen, an uncited compilation used only for this ceiling ).
             this->set_constant( MaterialProperty::T_max, 400. );
 
             this->set_constant( MaterialProperty::ref_density, 7289. );

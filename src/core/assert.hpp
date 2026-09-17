@@ -95,8 +95,8 @@ namespace belfem
          * DO NOT make the debug reaction depend on the rank count. It is
          * tempting: a BELFEM_ERROR inside an `if ( rank == 0 )` block throws
          * on one rank and leaves the others in their collective, and aborting
-         * would end the job cleanly. It was proposed and rejected on
-         * 2026-08-30. The parallel debugging workflow is one debugger per
+         * would end the job cleanly. The parallel debugging workflow,
+         * though, is one debugger per
          * rank ( mpirun launching an lldb per process, each in its own
          * terminal ), and a throw is what stops that rank's debugger with a
          * live backtrace while its peers are still inspectable. MPI_Abort

@@ -80,12 +80,10 @@ namespace belfem
                 Vector< id_t > tNedelecBlocks;
                 if( aNedelecBlocks.length() == 0 && aNedelecSideSets.length() == 0 )
                 {
-                    // select all blocks
                     this->get_all_block_ids( tNedelecBlocks );
                 }
                 else
                 {
-                    // select given blocks
                     tNedelecBlocks = aNedelecBlocks ;
                 }
 
@@ -101,7 +99,6 @@ namespace belfem
 
                     Timer tTimer ;
 
-                    // count faces and crate a temporary map
                     Map< key128_t, index_t > tFaceMap;
                     index_t tNumFaces = this->count_faces( tNedelecBlocks, aNedelecSideSets, tFaceMap );
 
@@ -120,8 +117,6 @@ namespace belfem
                             tSlave,
                             tIndexOnSlave );
 
-
-                    // allocate containers of elements
                     this->allocate_face_containers( tNedelecBlocks );
 
                     mMesh.unflag_all_elements() ;
@@ -136,11 +131,9 @@ namespace belfem
                             tSlave,
                             tIndexOnSlave );
 
-                    // compute the face IDs
                     this->set_face_ids( aNedelecSideSets, tFaceMap );
 
                     mMesh.finalize_faces();
-
 
                     message( InfoLevel::Detailed, "    ... number of faces                 : %lu",
                              ( long unsigned int ) mMesh.number_of_faces() );
@@ -166,7 +159,6 @@ namespace belfem
             {
                 index_t tNumElems = mMesh.block( tID )->number_of_elements() ;
 
-                // num faces
                 switch( geometry_type( mMesh.block( tID )->element_type() ) )
                 {
                     case( GeometryType::TET ) :
@@ -196,18 +188,14 @@ namespace belfem
                 tCount += mMesh.sideset( tID )->number_of_facets() ;
             }
 
-            // allocate vector
             Cell< key128_t > tFaceKeys( tCount, 0 );
 
-            // reset counter
             tCount = 0 ;
 
             Cell< Node * > tWork ;
 
-            // populate vector
             for( id_t tID : aBlockIDs )
             {
-                // get block
                 Block * tBlock = mMesh.block( tID );
 
                 uint n = number_of_faces( tBlock->element_type() );
@@ -223,36 +211,27 @@ namespace belfem
                 }
             }
 
-
             for( id_t tID : aSideSetIDs )
             {
-                // get facets on sideset
                 Cell< Facet * > & tFacets = mMesh.sideset( tID )->facets() ;
 
-                // loop over all facets
                 for( Facet * tFacet : tFacets )
                 {
-                   // compute face ID
                    tFaceKeys( tCount++ ) = this->face_key_2d(
                            tFacet->element(),
                            tWork );
                 }
             }
 
-            // make sure that we have computed all faces
             BELFEM_ASSERT( tCount == tFaceKeys.size(), "Unknown Error" );
 
-            // make ids unique
             unique( tFaceKeys );
 
-            // reset the counter
             index_t aCount = 0 ;
 
-            // create the map
             aFaceMap.clear() ;
             for( key128_t tKey : tFaceKeys )
             {
-                // write index into map
                 aFaceMap[ tKey ] = aCount++ ;
             }
 
@@ -265,16 +244,12 @@ namespace belfem
         FaceFactory::get_all_block_ids( Vector< id_t > & aBlockIDs )
         {
 
-            // grab all ids from this block
             Cell< Block * > & tBlocks = mMesh.blocks();
 
-            // ids for the blocks
             aBlockIDs.set_size( tBlocks.size() );
 
-            // initialize counter
             uint tCount = 0 ;
 
-            // collect the ids
             for ( Block * tBlock : tBlocks )
             {
                 aBlockIDs( tCount++ ) = tBlock->id() ;
@@ -296,15 +271,12 @@ namespace belfem
                     // sizes it to the facet at hand ( 3 or 4 ) -- size it here too
                     aWork.set_size( 3, nullptr );
 
-                    // collect nodes
                     aWork( 0 ) = aElement->node( 0 ) ;
                     aWork( 1 ) = aElement->node( 1 ) ;
                     aWork( 2 ) = aElement->node( 2 ) ;
 
-                    // sort the nodes
                     sort( aWork,opVertexIndex );
 
-                    // return the ID
                     return (   aWork( 2 )->index() * mNumberOfNodes
                              + aWork( 1 )->index() ) * mNumberOfNodes
                              + aWork( 0 )->index() ;
@@ -340,14 +312,10 @@ namespace belfem
                 const uint          aFaceIndex,
                 Cell< Node * >    & aWork )
         {
-            // grab face
             aElement->get_corner_nodes_of_facet( aFaceIndex, aWork );
 
-
-            // sort the nodes
             sort( aWork,opVertexIndex  );
 
-            // return the ID
             return ( aWork( 2 )->index() * mNumberOfNodes
                       + aWork( 1 )->index() ) * mNumberOfNodes
                       + aWork( 0 )->index() ;
@@ -366,7 +334,6 @@ namespace belfem
                 Vector< id_t >              & aSlaveIDs,
                 Vector< index_t >           & aSlaveIndex   )
         {
-            // allocate memory
             aMasterIDs.set_size( aNumFaces, gNoID );
             aSlaveIDs.set_size( aNumFaces, gNoID );
             aMasterIndex.set_size( aNumFaces, gNoIndex );
@@ -374,10 +341,8 @@ namespace belfem
 
             Cell< Node * > tWork ;
 
-            // loop over all blocks
             for( id_t tBlockID : aBlockIDs )
             {
-                // get block
                 Block * tBlock = mMesh.block( tBlockID );
 
                 uint n = number_of_faces( tBlock->element_type() );
@@ -386,35 +351,29 @@ namespace belfem
                 {
                     for ( uint f = 0; f < n; ++f )
                     {
-                        // get the index
                         index_t tIndex = aFaceMap( this->face_key_3d(
                                 tElement,
                                 f,
                                 tWork ) );
 
-                        // check if owner is present
                         if ( aMasterIDs( tIndex ) != gNoID )
                         {
                             if( tElement->id() < aMasterIDs( tIndex ) )
                             {
-                                // shift old master to slave
                                 aSlaveIDs( tIndex ) = aMasterIDs( tIndex );
                                 aSlaveIndex( tIndex ) = aMasterIndex( tIndex );
 
-                                // set master
                                 aMasterIDs( tIndex ) = tElement->id();
                                 aMasterIndex( tIndex ) = f;
                             }
                             else
                             {
-                                // set slave
                                 aSlaveIDs( tIndex ) = tElement->id();
                                 aSlaveIndex( tIndex ) = f;
                             }
                         }
                         else
                         {
-                            // remember master
                             aMasterIDs( tIndex ) = tElement->id();
                             aMasterIndex( tIndex ) = f;
                         }
@@ -422,26 +381,22 @@ namespace belfem
                 }
             }
 
-            // loop over all sidesets
             for( id_t tSideSetID : aSideSetIDs )
             {
-                // get facet
                 Cell< Facet * > & tFacets = mMesh.sideset( tSideSetID )->facets() ;
 
                 for( Facet * tFacet : tFacets )
                 {
-                    // get the index
                     index_t tIndex = aFaceMap(
                             this->face_key_2d(
                             tFacet->element(),
                             tWork ) );
 
-                    // check if facet has been claimed
                     if( aMasterIDs( tIndex ) == gNoID )
                     {
                         aMasterIDs( tIndex ) = tFacet->id();
 
-                        // we deliberateley don't write an index here
+                        // we deliberately don't write an index here
                     }
                 }
             } // end loop over all sidesets
@@ -451,10 +406,8 @@ namespace belfem
         void
         FaceFactory::allocate_face_containers( Vector< id_t > & aBlockIDs )
         {
-            // loop over all blocks
             for( id_t tBlockID : aBlockIDs )
             {
-                // get block
                 Block * tBlock = mMesh.block( tBlockID );
 
                 for( Element * tElement : tBlock->elements() )
@@ -475,7 +428,6 @@ namespace belfem
 
             BELFEM_ASSERT( tFaces.size() == 0, "Faces of mesh have already been created");
 
-            // count elements
             index_t tCount = 0 ;
 
             for( id_t b  : aBlockIDs )
@@ -483,33 +435,26 @@ namespace belfem
                 tCount += mMesh.block( b )->number_of_elements() ;
             }
 
-            // allocate container
             tFaces.set_size( tCount, nullptr );
             tCount = 0 ;
 
             for( id_t b  : aBlockIDs )
             {
-                // get elements
                 Cell< Element * > & tElements = mMesh.block( b )->elements() ;
 
                 for( Element * tElement : tElements )
                 {
-                    // create new face
                     Face * tFace =  new Face( tElement ) ;
 
                     // in 2D, ids of elements and faces are identical
                     tFace->set_id( tElement->id() );
 
-                    // set the index of the face
                     tFace->set_index( tCount );
 
-                    // allocate memory
                     tElement->allocate_face_container();
 
-                    // link face to element container
                     tElement->insert_face( tFace, 0 );
 
-                    // add face to container
                     tFaces( tCount++ ) = tFace ;
                 }
             }
@@ -533,17 +478,14 @@ namespace belfem
 
             Cell< Node * > tNodes ;
 
-            // loop over all faces that are to be created
             for( index_t tIndex = 0; tIndex<tNumFaces; ++tIndex )
             {
 
                 if( aSlaveIDs( tIndex ) < gNoIndex ) // face has primary and secondary elements
                 {
-                    // get primary element
                     Element * tMaster
                             = mMesh.element( aMasterIDs( tIndex ) );
 
-                    // get secondary element
                     Element * tSlave
                             = mMesh.element( aSlaveIDs( tIndex ) );
 
@@ -558,58 +500,45 @@ namespace belfem
                         aSlaveIndex( tIndex ) = gNoIndex ;
                     }
 
-                    // create new face
                     Face * tFace =  new Face(
                             tMaster,
                             aMasterIndex( tIndex ),
                             tSlave,
                             aSlaveIndex( tIndex ) ) ;
 
-
-                    // link face to primary element
                     tMaster->insert_face( tFace, aMasterIndex( tIndex ) );
 
-                    // link face to secondary element
                     if ( tSlave != nullptr )
                     {
                         tSlave->insert_face( tFace, aSlaveIndex( tIndex ) );
                     }
 
-                    // add face to container
                     tFaces( tIndex ) = tFace ;
 
                 }
                 else if ( aMasterIndex( tIndex ) < gNoIndex ) // face is only connected to one element
                 {
-                    // get primary element
                     Element * tMaster
                             = mMesh.element( aMasterIDs( tIndex ) );
 
-                    // create new face
                     Face * tFace =  new Face(
                             tMaster,
                             aMasterIndex( tIndex ),
                             nullptr,
                             gNoIndex) ;
 
-                    // link face to primary element
                     tMaster->insert_face( tFace, aMasterIndex( tIndex ) );
 
-                    // add face to container
                     tFaces( tIndex ) = tFace ;
                 }
                 else
                 {
-                    // get Facet Element
                     Element * tElement = mMesh.facet( aMasterIDs( tIndex ) )->element() ;
 
-                    // create a new face
                     Face * tFace = new Face( tElement, 0, nullptr, gNoIndex );
 
-                    // link face to primary element
                     tElement->insert_face( tFace, aMasterIndex( tIndex ) );
 
-                    // add face to container
                     tFaces( tIndex ) = tFace ;
                 }
         }
@@ -626,13 +555,10 @@ namespace belfem
 
             Cell< Face * > & tFaces = mMesh.faces() ;
 
-            // loop over all sidesets
             for ( id_t s : aSideSets )
             {
-                // grab sideset
                 SideSet * tSideSet = mMesh.sideset( s );
 
-                // loop over all facets on this sideset
                 for( Facet * tFacet : tSideSet->facets() )
                 {
                     // The key MUST come from face_key_2d, the same function that
@@ -648,18 +574,14 @@ namespace belfem
                     const key128_t tKey =
                             this->face_key_2d( tFacet->element(), tWork );
 
-                    // get index for face
                     index_t tIndex = aFaceMap( tKey ) ;
 
-                    // set id of face to be identical to facet
                     tFaces( tIndex )->set_id( tFacet->id() );
 
-                    // flag this face
                     tFaces( tIndex )->flag() ;
                 }
             }
 
-            // compute the maximum ID so far
             id_t tMaxID = 0 ;
             for( Element * tEdge : mMesh.boundary_edges() )
             {
@@ -686,7 +608,6 @@ namespace belfem
                 }
             }
 
-            // resort the array
             sort( tFaces, opVertexID );
         }
 

@@ -46,7 +46,6 @@ namespace belfem
         {
             mPenalty.set_size( 1, 1. );
 
-            // set default value for solver algorithm
             switch( aMode )
             {
                 case( IwgMode::Direct ) :
@@ -72,10 +71,8 @@ namespace belfem
 
         IWG::~IWG()
         {
-            // delete block dof tables if they have been created
             this->delete_block_dof_tables();
 
-            // delete sideset dof tables if they have been created
             this->delete_sideset_dof_tables();
         }
 
@@ -86,8 +83,6 @@ namespace belfem
         {
             BELFEM_ERROR( mMode == IwgMode::Iterative,
                          "algorithm can only be set for iterative solvers" );
-
-
 
             BELFEM_ERROR( aAlgorithm !=  SolverAlgorithm::Direct,
                          "forbidden algorithm for iterative solvers: SolverAlgorithm::Direct" );
@@ -116,32 +111,25 @@ namespace belfem
         void
         IWG::set_wetted_sidesets( const Vector< id_t > & aSideSets )
         {
-            // count sidesets that exist on thos proc
             uint tCount = 0;
 
             for ( id_t tID : aSideSets )
             {
 
-                // check of sideset exists on this proc
                 if ( mField->sideset_exists( tID ) && mField->mesh()->sideset_exists( tID ) )
                 {
-                    // increment counter
                     ++tCount;
                 }
             }
 
-            // allocate container
             mWettedSidesets.set_size( tCount );
 
-            // reset counter
             tCount = 0;
 
             for ( id_t tID : aSideSets )
             {
-                // check of sideset exists on this proc
                 if ( mField->sideset_exists( tID ) && mField->mesh()->sideset_exists( tID ) )
                 {
-                    // increment counter
                     mWettedSidesets( tCount++ ) = tID;
                 }
             }
@@ -154,10 +142,8 @@ namespace belfem
         void
         IWG::collect_nodes_on_wetted_sitdesets( Mesh * aMesh, const Vector< id_t > & aSideSets )
         {
-            // unflag all nodes on the mesh
             aMesh->unflag_all_nodes() ;
 
-            // loop over all wedded sidesets
             for( id_t tID : aSideSets )
             {
                 if( aMesh->sideset_exists( tID ) )
@@ -166,33 +152,24 @@ namespace belfem
                 }
             }
 
-            // get node contailer
             Cell< mesh::Node * > & tNodes = aMesh->nodes() ;
 
-            // initialize counter
             index_t tCount = 0 ;
 
-            // count flagged nodes
             for( mesh::Node * tNode : tNodes )
             {
-                // check if node is flagged
                 if( tNode->is_flagged() )
                 {
-                    // increment counter
                     ++tCount ;
                 }
             }
 
-            // allocate memory
             mNodesOnWettedSidesets.set_size( tCount );
 
-            // reset counter
             tCount = 0 ;
 
-            // now loop again and add the indices to the container
             for( mesh::Node * tNode : tNodes )
             {
-                // check if node is flagged
                 if( tNode->is_flagged() )
                 {
                    mNodesOnWettedSidesets( tCount++ ) = tNode->index() ;
@@ -238,10 +215,8 @@ namespace belfem
         void
         IWG::select_block( const id_t aBlockID )
         {
-            // remember block IDs
             mBlockIDs.set_size( 1, aBlockID );
 
-            // populate map
             mBlockIndices.clear() ;
 
             index_t tCount = 0 ;
@@ -255,7 +230,6 @@ namespace belfem
                 this->assign_dofs_per_block( mBlockIDs );
             }
 
-            // allocate memory
             this->create_block_dof_tables( tCount );
         }
 
@@ -264,10 +238,8 @@ namespace belfem
         void
         IWG::select_blocks( const Vector< id_t > & aBlockIDs )
         {
-            // remember block IDs
             mBlockIDs = aBlockIDs ;
 
-            // populate map
             mBlockIndices.clear() ;
 
             index_t tCount = 0 ;
@@ -281,7 +253,6 @@ namespace belfem
                 this->assign_dofs_per_block( aBlockIDs );
             }
 
-            // allocate memory
             this->create_block_dof_tables( tCount );
         }
 
@@ -290,10 +261,8 @@ namespace belfem
         void
         IWG::select_sidesets( const Vector< id_t > & aSideSetIDs )
         {
-            // remember sideset IDs
             mSideSetIDs = aSideSetIDs ;
 
-            // populate map
             mSideSetIndices.clear() ;
 
             index_t tCount = 0 ;
@@ -307,7 +276,6 @@ namespace belfem
                 this->assign_dofs_per_sideset( aSideSetIDs );
             }
 
-            // allocate memory
             this->create_sideset_dof_tables( aSideSetIDs.length() );
         }
 
@@ -406,7 +374,6 @@ namespace belfem
                     case ( DofMode::AllBlocksEqual ) :
                     {
 
-
                         mNumberOfNodeDofsPerElement =  mNumberOfNodesPerElement *
                                                        mNumberOfDofsPerNode;
 
@@ -470,7 +437,6 @@ namespace belfem
                                             + mNumberOfFacesPerElement * mNumberOfDofsPerFace;
                                 }
 
-
                                 // the element may contain lambda-dofs,
                                 // so we look it up in our table
                                 mNumberOfDofsPerElement =
@@ -498,8 +464,6 @@ namespace belfem
                     mNumberOfRhsEdgeDofsPerElement = mNumberOfEdgeDofsPerElement ;
                 }
 
-                // todo: we want to get rid of these matrices!
-                // this->allocate_work_matrices( aGroup );
             }
         }
 
@@ -508,7 +472,6 @@ namespace belfem
         uint
         IWG::number_of_dofs_per_element( Block * aBlock ) const
         {
-            // get block index from map
             index_t tBlockIndex = mBlockIndices( aBlock->id() );
 
             return aBlock->number_of_nodes_per_element()
@@ -525,7 +488,6 @@ namespace belfem
         uint
         IWG::number_of_nodes_per_element( SideSet * aSideSet ) const
         {
-            // check if this is an empty sideset
             if ( aSideSet->number_of_elements() == 0 )
             {
                 return 0 ;
@@ -571,7 +533,6 @@ namespace belfem
         uint
         IWG::number_of_edges_per_element( SideSet * aSideSet ) const
         {
-            // check if this is an empty sideset
             if ( aSideSet->number_of_elements() == 0 )
             {
                 return 0 ;
@@ -604,7 +565,6 @@ namespace belfem
         uint
         IWG::number_of_faces_per_element( SideSet * aSideSet ) const
         {
-            // check if this is an empty sideset
             if ( aSideSet->number_of_elements() == 0 )
             {
                 return 0 ;
@@ -688,7 +648,6 @@ namespace belfem
                 }
                 else
                 {
-                    // update number of dofs
                     uint tNumberOfDofsPerEdge = mSideSetDofs( tIndex )->Edge.length() * mEdgeDofMultiplicity ;
                     uint tNumberOfDofsPerFace = mSideSetDofs( tIndex )->Face.length() * mFaceDofMultiplicity ;
 
@@ -777,14 +736,12 @@ namespace belfem
             uint tN = aFieldLabels.size();
             for( uint j=0; j<tN; ++j )
             {
-                // get ref to field on mesh
                 Vector< real > & tField = mMesh->field_data( aFieldLabels( j ) );
 
                 BELFEM_ASSERT(
                         mMesh->field( aFieldLabels( j ) )->entity_type() == EntityType::NODE,
                         "Field '%s' is not a node field", aFieldLabels( j ).c_str() );
 
-                // loop over all nodes
                 for( uint i=0; i< mNumberOfNodesPerElement; ++i )
                 {
                     aData( i, j ) = tField( aElement->element()->node( i )->index() );
@@ -801,16 +758,13 @@ namespace belfem
         {
             for( const string & tFieldLabel : aFieldLabels )
             {
-                // get ref to field on mesh
                 Vector< real > & tField = mMesh->field_data( tFieldLabel );
 
                 BELFEM_ASSERT(
                         mMesh->field( tFieldLabel )->entity_type() == EntityType::NODE,
                         "Field '%s' is not a node field", tFieldLabel.c_str() );
 
-                // grab data container from work
                 Vector< real > & tData = mCalc->vector( tFieldLabel );
-                // loop over all nodes
                 for( uint i=0; i< mNumberOfNodesPerElement; ++i )
                 {
                     tData( i ) = tField( aElement->element()->node( i )->index() );
@@ -826,16 +780,13 @@ namespace belfem
                 const string   & aFieldLabel )
         {
 
-            // get ref to field on mesh
             Vector< real > & tField = mMesh->field_data( aFieldLabel );
 
             BELFEM_ASSERT(
                     mMesh->field( aFieldLabel )->entity_type() == EntityType::NODE,
                     "Field '%s' is not a node field", aFieldLabel.c_str() );
 
-            // grab data container from work
             Vector< real > & tData = mCalc->vector( aFieldLabel );
-            // loop over all nodes
             for( uint i=0; i< mNumberOfNodesPerElement; ++i )
             {
                 tData( i ) = tField( aElement->element()->node( i )->index() );
@@ -858,15 +809,12 @@ namespace belfem
                     ( unsigned int ) aData.length(),
                     ( unsigned int ) tNumNodes );
 
-
-            // get ref to field on mesh
             Vector< real > & tField = mMesh->field_data( aFieldLabel );
 
             BELFEM_ASSERT(
                     mMesh->field( aFieldLabel )->entity_type() == EntityType::NODE,
                     "Field '%s' is not a node field", aFieldLabel.c_str() );
 
-            // loop over all nodes
             for( uint i=0; i< tNumNodes; ++i )
             {
                 aData( i  ) = tField( aElement->element()->node( i )->index() );
@@ -890,15 +838,12 @@ namespace belfem
                     ( unsigned int ) aData.length(),
                     ( unsigned int ) tNumNodes );
 
-
-            // get ref to field on mesh
             Vector< real > & tField = mMesh->field_data( aFieldLabel );
 
             BELFEM_ASSERT(
                     mMesh->field( aFieldLabel )->entity_type() == EntityType::NODE,
                     "Field '%s' is not a node field", aFieldLabel.c_str() );
 
-            // loop over all nodes
             for( uint i=0; i< tNumNodes; ++i )
             {
                 aData( aOffset++  ) = tField( aElement->element()->node( i )->index() );
@@ -929,10 +874,8 @@ namespace belfem
                     mMesh->field( aEdgeFieldLabel )->entity_type() == EntityType::EDGE,
                     "Field '%s' is not an edge field", aEdgeFieldLabel.c_str() );
 
-            // get ref to field on mesh
             Vector< real > & tField = mMesh->field_data( aEdgeFieldLabel );
 
-            // loop over all edges
             for( uint e=0; e< mNumberOfEdgesPerElement; ++e )
             {
                 aData( e ) = tField( aElement->element()->edge( e )->index() );
@@ -954,29 +897,23 @@ namespace belfem
             BELFEM_ASSERT( mNumberOfRhsDofsPerFace == 2,
                           "this function can be used for quadratic interpolation only ( two dofs per face )" );
 
-            // check length of memory container
             BELFEM_ASSERT(
                     aData.length() >= 2 * ( mNumberOfEdgesPerElement + mNumberOfFacesPerElement ),
                     "Length of vector does not fit ( is %u, but need at least %u )",
                     ( unsigned int ) aData.length(),
                     ( unsigned int ) 2 * ( mNumberOfEdgesPerElement + mNumberOfFacesPerElement ) );
 
-            // get ref to edge field on mesh
             Vector< real > & tEdgeField = mMesh->field_data( aEdgeFieldLabel );
 
-            // get ref to face field on mesh
             Vector< real > & tFaceField = mMesh->field_data( aFaceFieldLabel );
 
-            // initialize counter
             uint tCount = 0 ;
 
             for( uint e=0; e< mNumberOfEdgesPerElement; ++e )
             {
 
-                // get index of edge
                 index_t tIndex = aElement->element()->edge( e )->index() ;
 
-                // check direction of edge
                 if( aElement->edge_direction( e ) )
                 {
                     aData( tCount ++ ) = tEdgeField( tIndex + tIndex );
@@ -989,13 +926,11 @@ namespace belfem
                 }
             }
 
-            // face dofs orientation are handeled differently in 3D, we can just populate here
+            // face dofs orientation are handled differently in 3D, we can just populate here
             for( uint f=0; f<mNumberOfFacesPerElement; ++f )
             {
-                // get index of face
                 index_t tIndex = aElement->element()->face( f )->index() ;
 
-                // write data into container
                 aData( tCount++ ) = tFaceField( tIndex + tIndex );
                 aData( tCount++ ) = tFaceField( tIndex + tIndex + 1 );
             }
@@ -1009,7 +944,6 @@ namespace belfem
              const string   & aFieldLabel,
              real & aData )
         {
-            // get ref to field on mesh
             Vector< real > & tField = mMesh->field_data( aFieldLabel );
 
             BELFEM_ASSERT(
@@ -1024,16 +958,13 @@ namespace belfem
         void
         IWG::allocate_work_matrices( Group * aGroup )
         {
-            // get number of dimensions per element
             mNumberOfSpatialDimensions = mesh::dimension( aGroup->element_type() );
 
             if ( aGroup->type() == GroupType::SIDESET )
             {
-                // get number of nodes per element
                 mNumberOfNodesPerElement = this->number_of_nodes_per_element(
                         reinterpret_cast< SideSet * >( aGroup ) );
 
-                // get number of edges per element
                 mNumberOfEdgesPerElement = mesh::number_of_edges( aGroup->element_type() );
 
                 aGroup->node_coords().set_size(
@@ -1042,18 +973,14 @@ namespace belfem
             }
             else if ( aGroup->type() == GroupType::BLOCK )
             {
-                // get number of nodes per element
                 mNumberOfNodesPerElement = mesh::number_of_nodes( aGroup->element_type() );
 
-                // get number of edges per element
                 mNumberOfEdgesPerElement = mesh::number_of_edges( aGroup->element_type() );
 
-                // node coordinate vector
                 aGroup->node_coords().set_size(
                         mNumberOfNodesPerElement,
                         mNumberOfSpatialDimensions );
             }
-
 
         }
 
@@ -1105,22 +1032,17 @@ namespace belfem
         void
         IWG::add_fields( const Cell< string > & aFieldLabels )
         {
-            // get number of fields
             uint tNumFields = aFieldLabels.size() ;
 
-            // loop over all fields
             for( uint k=0; k<tNumFields; ++k )
             {
-                // get string
                 const string & tLabel = aFieldLabels( k );
 
-                // set the alpha flag if this is an alpha-heatflux-boundary condition
                 if( tLabel == "alpha" )
                 {
                     mHasConvection = true ;
                 }
 
-                // check if field exists on field list
                 bool tFlag = false ;
                 for( string & tField : mOtherFields )
                 {
@@ -1131,7 +1053,6 @@ namespace belfem
                     }
                 }
 
-                // add field to others and all
                 if( ! tFlag )
                 {
                     mOtherFields.push( tLabel );
@@ -1161,10 +1082,8 @@ namespace belfem
             // initialize activation maps (can be overridden by derived classes)
             this->init_activation_maps();
 
-            // collect mAllFields
             this->concatenate_field_lists();
 
-            // check if dofmap has been built
             if( mDofMap.size() == 0 )
             {
                 this->unique_and_rearrange( mDofFields, true );
@@ -1192,21 +1111,17 @@ namespace belfem
         void
         IWG::create_doftype_map()
         {
-            // reset the map
             mDofTypeMap.clear() ;
             mDofFieldMap.clear() ;
 
-            // initialize counter
             uint tCount = 0 ;
             uint tEdgeCount = 0 ;
             uint tFaceCount = 0 ;
             uint tFieldCount = 0 ;
 
-
             mEdgeFieldIndices.set_size( BELFEM_MAX_DOFTYPES, gNoIndex );
             mFaceFieldIndices.set_size( BELFEM_MAX_DOFTYPES, gNoIndex );
 
-            // remember #shell here
             for( string tDofLabel : mDofFields )
             {
                 mDofTypeMap[ tDofLabel ] = tCount ;
@@ -1244,7 +1159,6 @@ namespace belfem
                         for( uint i=0; i<mCellDofMultiplicity ; ++i )
                         {
                             mDofFieldMap[ tCount ] = tFieldCount ;
-                            // mCellFieldIndices( tCount++ ) = ...
                             ++tCount ;
                         }
                         break ;
@@ -1254,7 +1168,6 @@ namespace belfem
                         for( uint i=0; i<mLambdaDofMultiplicity ; ++i )
                         {
                             mDofFieldMap[ tCount ] = tFieldCount ;
-                            // mLambdaFieldIndices( tCount++ ) = ...
                             ++tCount ;
                         }
                         break ;
@@ -1277,7 +1190,6 @@ namespace belfem
 
             mDofEntityTypes.set_size( tCount , 0 );
 
-            // reset counter
             tCount = 0 ;
 
             for( string tDofLabel : mDofFields )
@@ -1373,7 +1285,6 @@ namespace belfem
         void
         IWG::create_block_dof_tables( const uint aNumBlocks )
         {
-            // reset
             this->delete_block_dof_tables() ;
 
             mBlockDofs.set_size( aNumBlocks, nullptr );
@@ -1388,7 +1299,6 @@ namespace belfem
         void
         IWG::create_sideset_dof_tables(const uint aNumSideSets )
         {
-            // reset
             this->delete_sideset_dof_tables() ;
 
             mSideSetDofs.set_size( aNumSideSets, nullptr );
@@ -1416,42 +1326,33 @@ namespace belfem
                 Bitset< BELFEM_MAX_DOFTYPES > & aBitset,
                 const bool                      aUseBitset )
         {
-            // grab vectors
             Vector< index_t > & tDofsPerNode = aDofTable->Node ;
             Vector< index_t > & tDofsPerEdge = aDofTable->Edge ;
             Vector< index_t > & tDofsPerFace = aDofTable->Face ;
             Vector< index_t > & tDofsPerCell = aDofTable->Cell ;
             Vector< index_t > & tLambdaDofs  = aDofTable->Lambda ;
 
-            // allocate memory
             tDofsPerNode.set_size( aCount( static_cast< uint >( EntityType::NODE ) ) );
             tDofsPerEdge.set_size( aCount( static_cast< uint >( EntityType::EDGE ) ) );
             tDofsPerFace.set_size( aCount( static_cast< uint >( EntityType::FACE ) ) );
             tDofsPerCell.set_size( aCount( static_cast< uint >( EntityType::CELL) ) );
             tLambdaDofs.set_size(  aCount( static_cast< uint >( EntityType::FACET ) ) );
 
-            // reset counter
             aCount.fill( 0 );
 
-            // loop over all dofs
             for( index_t tDofNum : aDofsPerSideSet )
             {
-                // check for flag
                 if( aBitset.test( tDofNum ) && aUseBitset )
                 {
                     continue;
                 }
 
-                // get the label of the dof
                 const string & tDofLabel = mDofLabels( tDofNum );
 
-                // get the Entity Type
                 EntityType tEntityType =  entity_type( tDofLabel );
 
-                // get the type number of the dof
                 uint tDofType = mDofMap( tDofLabel );
 
-                // check what it is
                 switch ( tEntityType )
                 {
                     case( EntityType::NODE ) :
@@ -1489,7 +1390,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-
         void
         IWG::assign_dofs_per_block( const Vector< id_t > & aBlockIDs )
         {
@@ -1499,7 +1399,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-
         void
         IWG::assign_dofs_per_sideset( const Vector< id_t > & aSideSetIDs )
         {
@@ -1507,34 +1406,25 @@ namespace belfem
             mDofsPerSideSet.set_size( aSideSetIDs.length(), mDefaultDofTypes );
         }
 
-
 //------------------------------------------------------------------------------
 
         void
         IWG::count_dofs_per_block()
         {
-            // #reindex
-            // counter for all types
             Vector< uint > tCount( 4 );
 
-            // get number of blocks
             uint tNumBlocks = mDofsPerBlock.size() ;
 
-            // loop over all blocks
             for( uint b=0; b<tNumBlocks; ++b )
             {
-                // reset counter
                 tCount.fill( 0 );
 
                 Vector< index_t > & tDofsPerBlock = mDofsPerBlock( b );
 
-                // loop over all dofs
                 for( uint tDofNum : tDofsPerBlock )
                 {
-                    // get the Entity Type
                     EntityType tEntityType = entity_type( mDofLabels( tDofNum ) );
 
-                    // check what it is
                     switch ( tEntityType )
                     {
                         case( EntityType::NODE ) :
@@ -1564,34 +1454,26 @@ namespace belfem
                     }
                 }
 
-                // grab vectors
                 Vector< index_t > & tDofsPerNode = mBlockDofs( b )->Node ;
                 Vector< index_t > & tDofsPerEdge = mBlockDofs( b )->Edge ;
                 Vector< index_t > & tDofsPerFace = mBlockDofs( b )->Face ;
                 Vector< index_t > & tDofsPerCell = mBlockDofs( b )->Cell ;
 
-                // allocate memory
                 tDofsPerNode.set_size( tCount( 0 ) );
                 tDofsPerEdge.set_size( tCount( 1 ) );
                 tDofsPerFace.set_size( tCount( 2 ) );
                 tDofsPerCell.set_size( tCount( 3 ) );
 
-                // reset counter
                 tCount.fill( 0 );
 
-                // loop over all dofs
                 for( uint tDofNum : tDofsPerBlock )
                 {
-                    // get the label of the dof
                     const string & tDofLabel = mDofLabels( tDofNum );
 
-                    // get the Entity Type
                     EntityType tEntityType =  entity_type( tDofLabel );
 
-                    // get the type number of the dof
                     uint tDofType = mDofMap( tDofLabel );
 
-                    // check what it is
                     switch ( tEntityType )
                     {
                         case( EntityType::NODE ) :
@@ -1628,12 +1510,10 @@ namespace belfem
         void
         IWG::count_dofs_per_sideset()
         {
-            // #reindex
 
             // the following information is needed for enrichment on sidesets
             Bitset< BELFEM_MAX_DOFTYPES > tBlockDofs ;
 
-            // flag all dofs that sit on blocks
             uint tNumBlocks = mDofsPerBlock.size() ;
 
             for( uint b=0; b<tNumBlocks; ++b )
@@ -1645,33 +1525,24 @@ namespace belfem
                }
             }
 
-            // counter for all types
             Vector< uint > tCount( 5 );
 
-            // counter for sideset only types
             Vector< uint > tSideSetOnlyCount( 5 );
 
-            // get number of sidesets
             uint tNumSideSets = mDofsPerSideSet.size() ;
 
-            // loop over all sidesets
             for( uint s=0; s<tNumSideSets; ++s )
             {
-                // reset counters
                 tCount.fill( 0 );
                 tSideSetOnlyCount.fill( 0 ) ;
 
                 Vector< index_t > & tDofsPerSideSet = mDofsPerSideSet( s );
 
-                // loop over all dofs
                 for( uint tDofNum : tDofsPerSideSet )
                 {
-                    // get the Entity Type
                     EntityType tEntityType = ( EntityType ) mDofEntityTypes( tDofNum ) ;
 
-                    // convert entity type to position
                     uint tType = static_cast< uint >( tEntityType );
-
 
                     ++tCount( tType );
 
@@ -1748,7 +1619,6 @@ namespace belfem
         void
         IWG::collect_node_coords( Element * aElement, Matrix< real > & aX )
         {
-            // get master element
             mesh::Element * tElement = aElement->element() ;
 
             for( uint i=0; i<=mNumberOfSpatialDimensions; ++i )
@@ -1828,7 +1698,6 @@ namespace belfem
         void
         IWG::unique_and_rearrange( Cell< string > & aDofs, const bool aMakeMap )
         {
-            // catch special case
             if ( aDofs.size() == 0 ) return ;
 
             // note: the difference between cell and element is
@@ -1836,15 +1705,12 @@ namespace belfem
             // cells can have more. Element fields are wirtten to exodus
             // cell fields are not
 
-            // temporary cells
             Cell< string > tNodeDofs ;
             Cell< string > tFaceDofs ;
             Cell< string > tEdgeDofs ;
             Cell< string > tCellDofs ;
             Cell< string > tElementDofs ;
             Cell< string > tLambdaDofs ;
-
-
 
             // maps to make sure the resulting list is unique
             // we don't want to use a unique command because
@@ -1858,10 +1724,8 @@ namespace belfem
             {
                if( ! tDofMap.key_exists( tDof ) )
                {
-                   // remember this dof
                    tDofMap[ tDof ] = tCount++;
 
-                   // get type of entity
                    switch ( entity_type( tDof ))
                    {
                        case ( EntityType::NODE ) :
@@ -1933,16 +1797,12 @@ namespace belfem
 
             BELFEM_ASSERT( tCount = aDofs.size(), "Error when rearranging dof cell");
 
-            // special function to create labels for printout
             if( aMakeMap )
             {
-                // reset counter
                 tCount = 0 ;
 
-                // reset map
                 mDofMap.clear();
 
-                // reset label cell
                 mDofLabels.clear();
 
                 for( const string & tDof : tNodeDofs )
@@ -2014,7 +1874,6 @@ namespace belfem
                     std::cout << "        M: " << aElement->master()->id() << " ( " << aElement->facet()->index_on_master() << ")" ;
                 }
 
-
                 if( aElement->slave() != nullptr )
                 {
                     std::cout << "        S: " << aElement->slave()->id() << " ( " << aElement->facet()->index_on_slave() << ")" ;
@@ -2029,7 +1888,6 @@ namespace belfem
             {
                 Dof * tDof = aLocal ? aElement->local_dof( d ) : aElement->dof( d );
 
-                // get label
                 const string & tLabel = mDofLabels( tDof->type_id() ) ;
 
                 int tN = 6 - tLabel.length() ;
@@ -2085,7 +1943,6 @@ namespace belfem
                 );
             }
         }
-
 
 //---------------------------------------------------------------------------------
 
@@ -2180,7 +2037,6 @@ namespace belfem
 
             for( mesh::Node * tNode : mAbstractNodes )
             {
-                // grab dof
                 Dof * tDof = reinterpret_cast< Dof * > ( tNode->dof( 0 ) );
 
                 // abstract dofs are always fixed as they contain a current BC

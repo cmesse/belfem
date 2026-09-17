@@ -141,7 +141,6 @@ namespace belfem
                                             tTreeV.push(tEdges(tID)->node(0)->index()) ;
                                             tTreeV.push(tEdges(tID)->node(1)->index()) ;
                                         }
-                                        //unique(tTreeV);
                                     }
                                     tvisited(i) = true;
                                 }
@@ -157,7 +156,6 @@ namespace belfem
             {
                 mTree.push(mBeltFasteners(i)->index()) ;
             }
-            //unique(mTree);
 
             gLog.message( InfoLevel::Detailed, "    ... belted tree created in %.3f s\n", tTimer.stop() * 1e-3 );
 
@@ -178,8 +176,6 @@ namespace belfem
             tOrient.set_size(3,0);
             Map<index_t,bool> tSimplexExist;
 
-            //Put all triangles in a container
-            //tL.set_size(mSimplicialComplex->number_of_2simplices(), nullptr) ;
 
             //Loop over all belt fasteners (number of cohomology cuts)
             Cell < Element * > & tElements = mMesh->elements();
@@ -315,7 +311,6 @@ namespace belfem
             for( index_t tE :  mTree)
             {
                 aEdgeMesh->field_data(tFieldName)(tElements(tE)->index()) = 1;
-                //tMesh->field_data(fieldName)(tMesh->edge(tID)->node(1)->index()) = 1;
             }
         }
 
@@ -324,40 +319,17 @@ namespace belfem
         void
         BeltedTree::create_cohomologyField( Mesh* tEdgeMesh )
         {
-            /*uint tCount = 0;
-            for(const auto& tCochain : m1CohomologyGenerators)
-            {
-                tCount++;
-                char fieldName [50];
-                sprintf (fieldName, "1CohomologyGenerator(BT)%d", tCount);
-                mMesh->create_field( fieldName, EntityType::NODE);
-                Map< index_t, int > tSimplicesMap = tCochain->getSimplicesMap();
-                for( const auto& [tID, tCoeff] :  tSimplicesMap)
-                {
-                    mMesh->field_data(fieldName)(mMesh->edge(tID)->node(0)->index()) = 1;
-                    mMesh->field_data(fieldName)(mMesh->edge(tID)->node(1)->index()) = 1;
-                }
-            }*/
             uint tCount = 0;
             for(const auto& tCochain : m1CohomologyGenerators)
             {
                 tCount++;
                 char fieldName [50];
-                /*if (mflagProp)
-                {
-                    sprintf (fieldName, "1CohomologyGenerator%d", tCount);
-                }
-                else
-                {
-                    sprintf (fieldName, "1CohomologyGeneratorComp%d", tCount);
-                }*/
                 sprintf (fieldName, "1CohomologyGenerator(BT)%d", tCount);
                 tEdgeMesh->create_field( fieldName, EntityType::ELEMENT);
                 OrderedMap< index_t, int > & tSimplicesMap = tCochain->getSimplicesMap();
                 for( const auto& [tID, tCoeff] :  tSimplicesMap)
                 {
                     tEdgeMesh->field_data(fieldName)(tEdgeMesh->element(tID)->index()) = tCoeff;
-                    //tMesh->field_data(fieldName)(tMesh->edge(tID)->node(1)->index()) = 1;
                 }
             }
         }

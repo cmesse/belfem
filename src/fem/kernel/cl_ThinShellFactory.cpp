@@ -72,7 +72,6 @@ namespace belfem
 
             this->reset_node_indices();
 
-            // get the sidesets that are connected to this shell
             Cell< SideSet * > tSideSets;
             this->collect_sidesets( aProtoShell->sidesets(), tSideSets );
 
@@ -124,7 +123,6 @@ namespace belfem
             uint tOrder = interpolation_order_numeric( tElementType );
             this->compute_distances( tOrder, aProtoShell->thicknesses(), tDistances );
 
-            // create the temporary layer objects
             uint tNumLayers = tDistances.length() ;
             Cell< Layer * > tLayers( tNumLayers, nullptr );
 
@@ -163,7 +161,6 @@ namespace belfem
                 }
             }
 
-            // create the nodes on the layers
             mMesh->unflag_all_nodes( 0 );
             mMesh->unflag_all_nodes( 1 );
             mMesh->unflag_all_nodes( 2 );
@@ -215,29 +212,20 @@ namespace belfem
                 }
             }
 
-
-
             for ( Facet * tFacet : tFacets )
             {
-                // set facet id to thin shell id
                 tFacet->set_sideset_id( tSideSet->id() );
             }
-
-
-            // this->write_normals_to_mesh( tNodes, tNodeNormals );
 
             tCount = 0 ;
 
             Cell< id_t > tBlockIDs( tBlocks.size() );
             for ( Block * tBlock : tBlocks )
             {
-                // set block type
                 tBlock->set_domain_type( DomainType::ThinShell );
 
-                // add block elements to mesh
                 append( mMesh->elements(), tBlock->elements() );
 
-                // set the thickness of the block
                 tBlock->set_thickness( aProtoShell->thicknesses()( tCount++ ) );
 
                 tBlockIDs.push( tBlock->id() );
@@ -251,22 +239,18 @@ namespace belfem
             {
                 this->create_ghost_facets( tOrder, tFacets, tLayers, tBlocks );
 
-
                 for ( Layer * tLayer : tLayers )
                 {
                     g += tLayer->GhostFacets.size() ;
                 }
             }
 
-            // ghost
             SideSet * tGhostSideset = nullptr ;
             if ( g > 0 )
             {
-                // make a new sideset
                 tGhostSideset = new SideSet(  ++mMaxGroupID, g );
                 tGhostSideset->set_domain_type( DomainType::Ghost );
 
-                // populate the sideset
                 for ( Layer * tLayer : tLayers )
                 {
                     for ( Facet * tFacet : tLayer->GhostFacets )
@@ -295,19 +279,14 @@ namespace belfem
                 }
             }
 
-            // create the thin shell object
             ThinShell * aThinShell = new ThinShell( tSideSet, tGhostSideset );
 
-            // move blocks into thin shell object
             aThinShell->blocks().vector_data() = std::move( tBlocks.vector_data() );
 
-            // set the thicknesses
             aThinShell->set_thicknesses( aProtoShell->thicknesses() );
 
-            // add thin shell to mesh
             mMesh->thin_shells().push( aThinShell );
 
-            // also add sideset with facets to mesh container
             mMesh->sidesets().push( tSideSet );
 
             if ( tGhostSideset != nullptr )
@@ -315,8 +294,6 @@ namespace belfem
                 mMesh->sidesets().push( tGhostSideset );
             }
 
-
-            // #BEGIN SIDE CONNECTOR MOD
             if ( mMesh->number_of_dimensions() == 3 )
             {
                 // per-tape opt-in from the input file ( edge coating : on );
@@ -344,7 +321,6 @@ namespace belfem
                     this->create_edge_map(
                         tNumNodes,
                         tEdges, tEdgeMap );
-
 
                     if ( mFuseEdges )
                     {
@@ -377,8 +353,6 @@ namespace belfem
                 }
             }
             
-            // #END SIDE CONNECTOR MOD
-
 
             for ( Layer * tLayer : tLayers )
             {
@@ -401,7 +375,6 @@ namespace belfem
                 }
             }
 
-            // delete the temporary layer containers
             for ( Layer * tLayer : tLayers )
             {
                 delete tLayer;
@@ -553,9 +526,9 @@ namespace belfem
                 Cell< Element * > & tElements = tSign == 1.0 ? tRightCoatings : tLeftCoatings ;
                 tElements.reserve( tElements.size() + n*m );
 
-
-                // @AI: this is a bit risky because we are linking the same sideset to multiple
-                //      thin shell blocks. We don't store this sideset in the exodus file to avoid issues
+                // one sideset is linked to several thin-shell blocks; it is hidden
+                // from the exodus file, because writing a sideset that several
+                // blocks share has caused trouble there
                 SideSet * tSideSet = new SideSet( ++mMaxGroupID, n * m );
                 tSideSet->hide();
 
@@ -563,10 +536,8 @@ namespace belfem
                 {
                     Block * tOtherBlock = mMesh->block( aBlockIDs( j ) );
 
-                    // bottom layer
                     SideLayer * tBm = tSideLayers( j );
 
-                    // top layer
                     SideLayer * tTp = tSideLayers( j + 1 );
 
                     Cell< Edge * > & tInnerEdgesBottom = tBm->InnerEdgeDuplicates.size() == 0 ? tBm->InnerEdges : tBm->InnerEdgeDuplicates ;
@@ -578,8 +549,6 @@ namespace belfem
 
                     Cell< Edge * > & tC = tSign == 1.0 ? tTp->OuterEdges : tTp->InnerEdges ;
                     Cell< Edge * > & tD = tSign == 1.0 ? tTp->InnerEdges : tTp->OuterEdges ;
-
-
 
                     for ( uint i=0; i<n; ++i )
                     {
@@ -643,7 +612,6 @@ namespace belfem
                         auto tPair = tEdgeToFacetMap( e->index() );
                         Element * tMaster = tOtherBlock->elements()( tPair.first );
 
-
                         Facet * tFacet = new Facet( tFace );
 
                         // linking writes the master face nodes onto the QUAD4 in
@@ -671,8 +639,6 @@ namespace belfem
                         tSideSet->insert_facet( tFacet );
                     }
                 }
-
-
 
                 // register once per curve: the sideset spans all layer gaps,
                 // and the mesh would delete a multiply-pushed pointer m times
@@ -789,7 +755,6 @@ namespace belfem
             }
         }
 
-
         ElementType
         ThinShellFactory::collect_facets( Cell< SideSet * > & aSideSets, Cell< Facet * > & aFacets )
         {
@@ -849,7 +814,6 @@ namespace belfem
         ThinShellFactory::collect_nodes(
             Cell< Facet * > & aFacets, Cell< Node * > & aNodes )
         {
-            // select nodes
             DynamicBitset tBitset( mMasterNodes.size() );
 
             // flag nodes and count facets
@@ -876,7 +840,6 @@ namespace belfem
 
             tBitset.where( mNodeIndices );
 
-            // populate node container
             aNodes.set_size( mNodeIndices.size(), nullptr );
             index_t tCount = 0 ;
             for ( Node * tNode : mMasterNodes )
@@ -907,14 +870,11 @@ namespace belfem
             const Cell< Node * >  & aNodes,
                 Matrix< real >    & aNodeNormals )
         {
-            // the node coordinates
             Vector< real > tA( 2 );
             Vector< real > tB( 2 );
 
-            // the normal
             Vector< real > tN( 3, 0.0 );
 
-            // the center
             Vector< real > tM( 2 );
 
             index_t tNumFacets = aFacets.size();
@@ -935,7 +895,6 @@ namespace belfem
                 tB( 0 ) = tFacet->node( 1 )->x();
                 tB( 1 ) = tFacet->node( 1 )->y();
 
-                // center of line
                 tM = tA + tB ;
                 tM *= 0.5 ;
 
@@ -1000,16 +959,12 @@ namespace belfem
             const Cell< Node * >  & aNodes,
             Matrix< real >        & aNodeNormals )
         {
-            // node 0
             Vector< real > tA( 2 );
 
-            // node 1
             Vector< real > tB( 2 );
 
-            // node 2
             Vector< real > tC( 2 );
 
-            // normal
             Vector< real > tN( 2 );
 
             aNodeNormals.set_size( 3, aNodes.size(), 0.0 );
@@ -1017,10 +972,8 @@ namespace belfem
             real tR ;
             index_t i ;
 
-            // process the facets
             for ( Facet * tFacet : aFacets )
             {
-                // grab the coordinates
                 tA( 0 ) = tFacet->node( 0 )->x();
                 tA( 1 ) = tFacet->node( 0 )->y();
 
@@ -1030,7 +983,6 @@ namespace belfem
                 tC( 0 ) = tFacet->node( 2 )->x();
                 tC( 1 ) = tFacet->node( 2 )->y();
 
-                // node 0
                 tR = norm( tC-tA );
                 tN( 0 ) = 4.*tC(1) - tB(1) - 3.*tA(1) ; //  dy/dxi
                 tN( 1 ) =  tB(0) + 3.*tA(0) - 4.*tC(0) ; // -dx/dxi
@@ -1039,7 +991,6 @@ namespace belfem
                 aNodeNormals( i, 0 ) += tN( 0 );
                 aNodeNormals( i, 1 ) += tN( 1 );
 
-                // node 1 :
                 tR = norm( tC-tB );
                 tN( 0 ) =  tA(1) + 3.*tB(1) - 4.*tC(1) ;
                 tN( 1 ) =  4.*tC(0)-tA(0) - 3.*tB(0) ;
@@ -1048,7 +999,6 @@ namespace belfem
                 aNodeNormals( i, 0 ) += tN( 0 );
                 aNodeNormals( i, 1 ) += tN( 1 );
 
-                // node 2
                 tN( 0 ) =  tB(1) - tA(1) ;
                 tN( 1 ) =  tA(0) - tB(0) ;
                 tN /= norm( tN );
@@ -1057,7 +1007,6 @@ namespace belfem
                 aNodeNormals( i, 1 ) += tN( 1 );
             }
 
-            // normalize the normals
             for ( Node * tNode : aNodes )
             {
                 tN = aNodeNormals.col( tNode->index() );
@@ -1072,19 +1021,15 @@ namespace belfem
             const Cell< Node * >  & aNodes,
                 Matrix< real > & aNodeNormals )
         {
-            // the node coordinates
             Vector< real > tA( 3 );
             Vector< real > tB( 3 );
             Vector< real > tC( 3 );
 
-            // the first and the second edge
             Vector< real > tP( 3 );
             Vector< real > tQ( 3 );
 
-            // the normal
             Vector< real > tN( 3 );
 
-            // the center
             Vector< real > tM( 3 );
 
             index_t tNumFacets = aFacets.size();
@@ -1111,7 +1056,6 @@ namespace belfem
                 tC( 1 ) = tFacet->node( 2 )->y();
                 tC( 2 ) = tFacet->node( 2 )->z();
 
-                // center of triangle
                 tM = tA + tB + tC ;
                 tM /= 3.0;
 
@@ -1183,27 +1127,20 @@ namespace belfem
             Matrix< real > tFacetCenters;
             tFacetCenters.set_size( 3, aFacets.size() );
 
-            // node coordinates
             Vector< real > tX( 6 );
             Vector< real > tY( 6 );
             Vector< real > tZ( 6 );
 
-            // normals
             Vector< real  > tN(3);
 
-            // centers
             Vector< real  > tM(3);
 
-            // coordinaters of node
             Vector< real > tP( 3 );
 
-            // allocate memory
             aNodeNormals.set_size( 3, aNodes.size() );
 
-            // process the facets
             for ( Facet * tFacet : aFacets )
             {
-                // grab the coordinates
                 for ( uint k=0; k<6; ++k )
                 {
                     tX( k ) = tFacet->node( k )->x();
@@ -1211,7 +1148,6 @@ namespace belfem
                     tZ( k ) = tFacet->node( k )->z();
                 }
 
-                // get the normal vector
                 Matrix< real > & tMat = tFacetNormals( tFacet->index() );
 
                 tMat.set_size( 3, 6 );
@@ -1253,7 +1189,6 @@ namespace belfem
                 tN/=norm(tN);
                 tMat.set_col( 5, tN );
 
-                // center
                 tM(0) = (4.*(tX(3)+tX(4)+tX(5))-tX(1)-tX(2)-tX(0))/9.;
                 tM(0) = (4.*(tY(3)+tY(4)+tY(5))-tY(1)-tY(2)-tY(0))/9.;
                 tM(0) = (4.*(tZ(3)+tZ(4)+tZ(5))-tZ(1)-tZ(2)-tZ(0))/9.;
@@ -1261,8 +1196,6 @@ namespace belfem
                 tFacetCenters.set_col( tFacet->index(), tM );
             }
 
-
-            // loop over all nodes
             for ( mesh::Node * tNode : aNodes )
             {
                 tN.fill( 0.0 );
@@ -1271,24 +1204,19 @@ namespace belfem
                 tP( 1 ) = tNode->y();
                 tP( 2 ) = tNode->z();
 
-                // loop over all facets
                 for ( uint f=0; f<tNode->number_of_facets(); ++f )
                 {
                     Facet * tFacet = tNode->facet( f );
                     if ( tNode->facet( f )->is_flagged() )
                     {
-                        // get the matrix for the facet
                         Matrix< real > & tMat = tFacetNormals( tFacet->index() );
 
-                        // find which node it is
                         for ( uint i=0; i<tFacet->number_of_nodes(); ++i )
                         {
                             if ( tFacet->node( i )->original()->id() == tNode->original()->id() )
                             {
-                                // compute the distance of this facet to the node
                                 real tR = norm( tP - tFacetCenters.col( tFacet->index() ) );
 
-                                // add the normal value scaled with the distance to the center
                                 tN += tMat.col( i ) / ( tR * tR );
                                 break ;
                             }
@@ -1303,18 +1231,14 @@ namespace belfem
                         Facet * tFacet = tDup->facet( f );
                         if ( tDup->facet( f )->is_flagged() )
                         {
-                            // get the matrix for the facet
                             Matrix< real > & tMat = tFacetNormals( tFacet->index() );
 
-                            // find which node it is
                             for ( uint i=0; i<tFacet->number_of_nodes(); ++i )
                             {
                                 if ( tFacet->node( i )->original()->id() == tNode->original()->id() )
                                 {
-                                    // compute the distance of this facet to the node
                                     real tR = norm( tP - tFacetCenters.col( tFacet->index() ) );
 
-                                    // add the normal value scaled with the distance to the center
                                     tN += tMat.col( i ) / ( tR * tR );
                                     break ;
                                 }
@@ -1322,7 +1246,6 @@ namespace belfem
                         }
                     }
                 }
-                // normalize
                 tN /= norm( tN );
                 tP /= norm( tP );
 
@@ -1353,15 +1276,12 @@ namespace belfem
                 {
                     real tA = tB ; // shift
 
-                    // center
                     aDistances( tCount++ ) = tA + 0.5 * tT ;
 
-                    // next
                     tB = tA + tT ;
                     aDistances( tCount++ ) = tB ;
                 }
             }
-
 
             aDistances -= 0.5 * aDistances( tNumLayers-1 );
         }
@@ -1378,7 +1298,6 @@ namespace belfem
             index_t tNumNodes = aNodes.size();
             index_t tCount = 0 ;
 
-            // count nodes that have duplicates
             Cell< uint > tNumDuplicates( tNumNodes, 0 );
 
             const real tTolerance
@@ -1419,28 +1338,21 @@ namespace belfem
 
             Vector< real > tX( 3, 0.0 );
 
-            // loop over all layers
             for ( uint l=0; l<aLayers.size(); ++l )
             {
                 Cell< Node * > & tNodes = aLayers(l)->Nodes ;
                 tNodes.set_size( tNumNodes, nullptr );
 
-                // get the distance
                 real tD = aDistances( l );
 
-                // create the new nodes
                 for ( index_t k=0; k<tNumNodes; ++k )
                 {
-                    // get the original node coordinates
                     for ( uint i=0; i<mNumDimensions; ++i )
                     {
                         tX( i ) = aNodes( k )->x( i );
                     }
 
-                    // add the node normal
                     tX += tD * aNodeNormals.col( k );
-
-                    // create the node
 
                     Node * tNode = new Node( ++tID, tX( 0 ), tX( 1 ), tX( 2 ) );
                     tNode->set_index( k );
@@ -1510,7 +1422,6 @@ namespace belfem
 
                         tPeriodicity->add_node_pair_to_backup( tC, tD, tTolerance );
 
-                        // flags for master and slave sets
                         if ( tA->is_flagged( 1 ) ) tC->flag( 1 );
                         if ( tA->is_flagged( 2 ) ) tC->flag( 2 );
                         if ( tB->is_flagged( 1 ) ) tD->flag( 1 );
@@ -1519,15 +1430,7 @@ namespace belfem
                 }
             }
 
-            // restore node indices
-            /*tCount = 0 ;
-            for ( Node * tNode : aNodes )
-            {
-                tNode->set_index( tNodeIndices( tCount++ ) );
-                tNode->unflag();
-            }*/
         }
-
 
 //------------------------------------------------------------------------------
 
@@ -1546,7 +1449,6 @@ namespace belfem
 
             ElementFactory tFactory ;
 
-            // loop over all facets
             for ( index_t b=0; b<tNumBlocks; ++b )
             {
                 Layer * tBottom = aLayers( b );
@@ -1591,7 +1493,6 @@ namespace belfem
 
             ElementFactory tFactory ;
 
-            // loop over all facets
             for ( index_t b=0; b<tNumBlocks; ++b )
             {
                 Layer * tBottom = aLayers( tCount );
@@ -1686,7 +1587,6 @@ namespace belfem
 
             ElementFactory tFactory ;
 
-            // loop over all facets
             for ( index_t b=0; b<tNumBlocks; ++b )
             {
                 Layer * tBottom = aLayers( tCount );
@@ -1748,7 +1648,6 @@ namespace belfem
             index_t tCount = 0 ;
             Cell< Node * > tNodes( tNumEdgesPerFacet, nullptr );
 
-            // create the keys
             for ( Facet * tFacet : aFacets )
             {
 
@@ -1794,7 +1693,6 @@ namespace belfem
                 aEdges( tCount++ ) = tEdge ;
             }
 
-            // create a map for the keys
             tCount = 0 ;
             mEdgeMap.clear();
             for ( key_t tKey : tEdgeKeys )
@@ -1815,10 +1713,8 @@ namespace belfem
 
                     key_t tKey = tA > tB ? tA * tNumNodes + tB : tB * tNumNodes + tA;
 
-                    // grab the edge
                     Edge * tEdge = aEdges( mEdgeMap( tKey ) );
 
-                    // insert the edge into the facet
                     tFacet->element()->insert_edge(  tEdge , e );
                 }
             }
@@ -1838,7 +1734,6 @@ namespace belfem
 
                         key_t tKey = tA > tB ? tA * tNumNodes + tB : tB * tNumNodes + tA;
 
-                        // grab the edge
                         Edge * tEdge = aEdges( mEdgeMap( tKey ) );
 
                         if ( ! tEdge->is_flagged() )
@@ -1878,17 +1773,14 @@ namespace belfem
                     {
                         Edge * tDup = new Edge();
 
-                        // populate edges with node copies
                         tDup->allocate_node_container( tOrg->number_of_nodes() );
                         for ( uint k=0; k<tOrg->number_of_nodes(); ++k )
                         {
                             tDup->insert_node( tNodes( tOrg->node( k )->original()->index() ), k );
                         }
 
-                        // set id
                         tDup->set_id( ++aEdgeID );
 
-                        // add edge to container
                         tEdges( tCount++ ) = tDup ;
                     }
 
@@ -1947,7 +1839,6 @@ namespace belfem
             Cell< Layer * > & aLayers,
             Cell< Block * > & aBlocks )
         {
-            // get interpolation order
             uint tOrder = interpolation_order_numeric( aFacets( 0 )->element()->type() );
 
             if ( tOrder == 1 )
@@ -2053,7 +1944,6 @@ namespace belfem
         {
             index_t n = aBlocks.size() ;
 
-
             for ( Layer * tLayer : aLayers )
             {
                 for ( Edge * tEdge : tLayer->Edges )
@@ -2133,7 +2023,6 @@ namespace belfem
                 Block * tMasterBlock = aBlocks( b-1 ) ;
                 Block * tSlaveBlock = aBlocks( b ) ;
 
-
                 if ( tMasterBlock->domain_type() == DomainType::Buffer || tSlaveBlock->domain_type() == DomainType::Buffer ) continue ;
 
                 Cell< Facet * > & tFacets = tLayer->GhostFacets ;
@@ -2142,14 +2031,11 @@ namespace belfem
 
                 for ( index_t f = 0; f < nf; ++f )
                 {
-                    // original facet for reference
                     Facet * tOrg = aFacets( f ) ;
 
-                    // new element
                     Element * tElement = tFactory.create_element(
                         tOrg->element()->type(),++mMaxElementID );
 
-                    // new facet
                     Facet * tGhost = new Facet( tElement );
 
                     // Ghost facet sits at the interface between the lower
@@ -2170,7 +2056,6 @@ namespace belfem
                 }
             }
         }
-
 
 //------------------------------------------------------------------------------
 
@@ -2273,7 +2158,6 @@ namespace belfem
             // search below fails loudly if no anchor exists, which also
             // covers closed-loop tapes.
 
-            // Help vectors
             Vector< real > P( 3 );  // point 0
             Vector< real > Q( 3 );  // point 1
             Vector< real > R( 3 );  // point 2
@@ -2286,17 +2170,13 @@ namespace belfem
             // first, we must figure out on which side of the curve the tape is.
             // we must do this over the terminals
 
-            // get the first node of the curve
             Node * tStart = tCurveNodes.first() ;
 
-            // get the normal direction of the tape
             N = aNormals.col( tStart->index() ) ;
 
-            // get the direction vector of the curve
             tStart->get_coords( P ) ;
             tCurveNodes(1)->get_coords( Q );
 
-            // compute the tangent vector
             T = Q - P ;
             T /= norm( T );
 
@@ -2340,7 +2220,6 @@ namespace belfem
 
             real aSign = tProjection > 0.0  ? -1.0 :  1.0 ;
 
-            // create additional nodes
             index_t n = aCurve->nodes().size() ;
 
             Matrix< real > M(3,3);
@@ -2402,14 +2281,11 @@ namespace belfem
                 }
                 T/=norm(T);
 
-                // now we get the normal
                 N = aNormals.col( tCurveNodes( i )->index() ) ;
 
-                // binomial vector
                 B = cross( T, N );
                 B/=norm(B);
 
-                // tidy up
                 for ( uint j=0; j<3; ++j )
                 {
                     if ( std::abs( B( j )) < BELFEM_EPSILON )  B( j ) = 0.0 ;
@@ -2426,7 +2302,6 @@ namespace belfem
         ThinShellFactory::create_edge_map( const key_t aNumNodes, Cell< Edge * > & aEdges, Map< key_t, index_t > & aEdgeMap )
         {
 
-            // create edge map
             for ( Edge * tEdge : aEdges )
             {
                 key_t tA = tEdge->node( 0)->original()->index();
@@ -2483,7 +2358,6 @@ namespace belfem
                 ++tCount ;
             }
 
-            // cleanup
             for ( Facet * tFacet : aFacets )
             {
                 for ( uint e=0; e<tFacet->number_of_edges(); ++e )
@@ -2502,10 +2376,8 @@ namespace belfem
                 const uint                    aEdgeOrder,
                 Cell< index_t >             & aEdgeIndices )
         {
-            // number of nodes
             index_t n = aCurve->nodes().size();
 
-            // number of edges
             index_t m = ( n - 1 )/aEdgeOrder ;
 
             BELFEM_ERROR( n >= aEdgeOrder+1,
@@ -2851,8 +2723,6 @@ namespace belfem
             }
         }
 
-
-
         void
         ThinShellFactory::update_node_facet_tables( Cell< Node * > & aNodes, Cell< Facet * > & aFacets )
         {
@@ -2936,7 +2806,6 @@ namespace belfem
             }
         }
 
-
         void
         ThinShellFactory::flag_periodic_nodes()
         {
@@ -2961,7 +2830,6 @@ namespace belfem
             mMesh->unflag_all_nodes( 4 );
             mMesh->unflag_all_nodes( 5 );
         }
-
 
         void
         ThinShellFactory::flag_layer_nodes( Cell< Node * > & aNodes, Cell< Layer * > & aLayers )
@@ -2991,7 +2859,6 @@ namespace belfem
         {
             BELFEM_ERROR( mMesh->max_element_order() == 1, "only linear elements supported for periodic sidesets" );
             uint tFlag = aMaster ? 4 : 5 ;
-
 
             id_t tGroup = ++mMaxGroupID ;
 

@@ -37,8 +37,8 @@ namespace belfem
             // that determines them ( mH, mStepCount ) are private on purpose.
             // The production writers are shift_fields, reset_fields,
             // restore_savepoint — each needing an initialized DofManager —
-            // and, since 2026-08-15, the validated memdump seam
-            // restore_history_state ( which needs none ). Without this
+            // and restore_history_state, the validated memdump function that
+            // needs no DofManager. Without this
             // declaration the
             // variable-step coefficient formulas below are reachable by no
             // test at all: they are pure arithmetic, but their inputs cannot
@@ -246,9 +246,9 @@ namespace belfem
             /**
              * Export the multi-step integrator state for the memdump, so a
              * warm restart can resume at full BDF order instead of
-             * re-anchoring the ramp at order 1 ( the restart cliff observed
-             * 2026-08-15: a BDF1 re-entry into an active state is a
-             * different tangent and detonated the Newton promotion ).
+             * re-anchoring the ramp at order 1. A BDF1 re-entry into an
+             * active state has a different tangent and breaks the Newton
+             * promotion.
              *
              * The triple is ( mH, mStepCount, mDeltaTime ) and the third
              * member is load-bearing: at save time this object's mDeltaTime

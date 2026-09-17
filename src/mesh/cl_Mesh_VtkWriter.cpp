@@ -30,8 +30,8 @@ namespace belfem
                 mFile( aFilePath, std::ios::binary )
         {
             this->write_header();
-            // causes a bug in new ParaView
-            //this->write_time();
+            // write_time() is not called because its time record causes a bug
+            // in recent ParaView versions.
             this->write_nodes();
             this->write_elements();
             this->write_element_fields() ;
@@ -45,7 +45,6 @@ namespace belfem
         VtkWriter::write_header()
         {
 
-            // dump header information
             mFile << "# vtk DataFile Version 3.0" << std::endl;
             mFile << "GO BUFFS!" << std::endl;
             mFile << "BINARY" << std::endl;
@@ -58,7 +57,6 @@ namespace belfem
         VtkWriter::write_time()
         {
 
-            // dump time information
             mFile << "DATASET POLYDATA" << std::endl;
             mFile << "FIELD FieldData 2" << std::endl;
             mFile << "TIME 1 1 double" << std::endl;
@@ -81,54 +79,39 @@ namespace belfem
             // only use nodes that are connected to elements
             mMesh->unflag_all_nodes();
 
-            // get elements from mesh
             Cell< mesh::Element * > & tElements = mMesh->elements();
 
-            // loop over elements and flag used nodes
             for ( mesh::Element * tElement : tElements )
             {
                 tElement->flag_nodes();
             }
 
-            // grab node container
             Cell< mesh::Node * > & tNodes = mMesh->nodes();
 
-            // node counter
             mNumberOfNodes = 0;
 
-            // backup original node indices
             for ( mesh::Node * tNode : tNodes )
             {
-                // check if node is used
                 if ( tNode->is_flagged() )
                 {
-                    // increment counter
                     ++mNumberOfNodes;
                 }
             }
 
-            // specify grid type
             mFile << "DATASET UNSTRUCTURED_GRID" << std::endl;
 
-            // write number of nodes to file
             mFile << "POINTS " << mNumberOfNodes << " float" << std::endl;
 
-            // float container
             float tFChar;
 
-            // reset counter
             mNumberOfNodes = 0;
 
-            // loop over all nodes
             for ( mesh::Node * tNode : mMesh->nodes() )
             {
-                // check if node is used
                 if ( tNode->is_flagged() )
                 {
-                    // remember index of this node
                     mNodeMap[ tNode->id() ] = mNumberOfNodes++;
 
-                    // write node coordinates
                     tFChar = vtk::swap_byte_endian(( float ) tNode->x());
                     mFile.write(( char * ) &tFChar, sizeof( float ));
                     tFChar = vtk::swap_byte_endian(( float ) tNode->y());
@@ -138,7 +121,6 @@ namespace belfem
                 }
             }
 
-            // create new line
             mFile << std::endl;
 
         }
@@ -148,61 +130,43 @@ namespace belfem
         void
         VtkWriter::write_elements()
         {
-            // get block container of mesh
             Cell< mesh::Block * > & tBlocks = mMesh->blocks();
 
-            // count memory index that is required by vtk
             int tCount = 0;
 
-            // number of elements in total
             mNumberOfElements = 0 ;
 
-            // loop over all blocks
             for ( mesh::Block * tBlock : tBlocks )
             {
-                // get number of nodes from this element
                 index_t tNumNodesPerElement = mesh::number_of_nodes( tBlock->element_type() );
 
-                // add elements of this block to counter
                 mNumberOfElements += tBlock->number_of_elements();
 
-                // add to memory counter
                 tCount += tNumNodesPerElement * tBlock->number_of_elements() + tBlock->number_of_elements();
             }
 
-            // write header for cells
             mFile << "CELLS " << mNumberOfElements << " " << tCount << std::endl;
 
-            // integer container
             int tIChar;
 
-            // loop over all blocks
             for ( mesh::Block * tBlock : tBlocks )
             {
-                // get element type from block
                 ElementType tType = tBlock->element_type();
 
-                // get number of nodes from this element
                 uint tNumNodesPerElement = mesh::number_of_nodes( tType );
 
-                // get element container from this block
                 Cell< mesh::Element * > & tElements = tBlock->elements();
 
-                // container with node IDS
                 Vector< id_t > tNodeIDs( tNumNodesPerElement );
                 Vector< uint > tNodeIndices( tNumNodesPerElement );
 
-                // loop over all elements from this block
                 for ( mesh::Element * tElement : tElements )
                 {
-                    // write number of nodes
                     tIChar = vtk::swap_byte_endian(( int ) tNumNodesPerElement );
                     mFile.write(( char * ) &tIChar, sizeof( int ));
 
-                    // populate node IDs
                     vtk::get_node_ids( tElement, tNodeIDs );
 
-                    // write node ID
                     for ( uint k = 0; k < tNumNodesPerElement; ++k )
                     {
                         tIChar = vtk::swap_byte_endian(( int ) mNodeMap( tNodeIDs( k ) ) );
@@ -211,7 +175,6 @@ namespace belfem
                 }
             }
 
-            // create new line
             mFile << std::endl;
 
         }
@@ -221,44 +184,34 @@ namespace belfem
         void
         VtkWriter::write_element_fields()
         {
-            // get block container of mesh
             Cell< mesh::Block * > & tBlocks = mMesh->blocks();
 
             mFile << "CELL_TYPES " << mNumberOfElements << std::endl;
 
-            // integer container
             int tIChar ;
             float tFChar ;
 
-            // write cell types
             for ( mesh::Block * tBlock : tBlocks )
             {
-                // get type
                 tIChar = vtk::swap_byte_endian(( int ) vtk::vtk_type( tBlock->element_type()));
 
-                // populate data
                 for ( index_t k = 0; k < tBlock->number_of_elements(); ++k )
                 {
                     mFile.write(( char * ) &tIChar, sizeof( int ));
                 }
             }
 
-            // create new line
             mFile << std::endl;
 
-            // write element data
             mFile << "CELL_DATA " << mNumberOfElements << std::endl;
 
-            // write element ID
             mFile << "SCALARS ELEMENT_ID int" << std::endl;
             mFile << "LOOKUP_TABLE default" << std::endl;
 
             for ( mesh::Block * tBlock : tBlocks )
             {
-                // get element container from this block
                 Cell< mesh::Element * > & tElements = tBlock->elements();
 
-                // populate data
                 for ( mesh::Element * tElement : tElements )
                 {
                     tIChar =  vtk::swap_byte_endian( ( int ) tElement->id() );
@@ -266,19 +219,15 @@ namespace belfem
                 }
             }
 
-            // create new line
             mFile << std::endl;
 
-            // write element ID
             mFile << "SCALARS ELEMENT_OWNER int" << std::endl;
             mFile << "LOOKUP_TABLE default" << std::endl;
 
             for ( mesh::Block * tBlock : tBlocks )
             {
-                // get element container from this block
                 Cell< mesh::Element * > & tElements = tBlock->elements();
 
-                // populate data
                 for ( mesh::Element * tElement : tElements )
                 {
                     tIChar =  vtk::swap_byte_endian( ( int ) tElement->owner() );
@@ -286,34 +235,27 @@ namespace belfem
                 }
             }
 
-            // create new line
             mFile << std::endl;
 
-            // write block ID
             mFile << "SCALARS BLOCK_ID int" << std::endl;
             mFile << "LOOKUP_TABLE default" << std::endl;
 
             for ( mesh::Block * tBlock : tBlocks )
             {
-                // get ID of Block
                 tIChar =  vtk::swap_byte_endian( ( int ) tBlock->id() );
 
-                // populate data
                 for ( index_t e=0; e<tBlock->number_of_elements(); ++e )
                 {
                     mFile.write(( char * ) &tIChar, sizeof( int ));
                 }
             }
 
-            // create new line
             mFile << std::endl;
 
-            // get number of fields
             uint tNumFields = mMesh->number_of_fields() ;
 
             for( uint k=0; k<tNumFields; ++k )
             {
-                // get field
                 mesh::Field * tField = mMesh->field( k ) ;
 
                 if( tField->entity_type() == EntityType::ELEMENT )
@@ -323,20 +265,17 @@ namespace belfem
                     mFile << "SCALARS " << tLabel << " float" << std::endl;
                     mFile << "LOOKUP_TABLE default" << std::endl;
 
-                    // get data container
                     Vector< real > & tData = tField->data() ;
 
                     for( mesh::Block * tBlock : mMesh->blocks() )
                     {
                         for( mesh::Element * tElement : tBlock->elements() )
                         {
-                            // convert value of node into float
                             tFChar = vtk::swap_byte_endian( static_cast< float > ( tData( tElement->index() ) ) );
                             mFile.write( ( char * ) &tFChar, sizeof( float ));
                         }
                     }
 
-                    // create new line
                     mFile << std::endl;
                 }
             }
@@ -353,49 +292,38 @@ namespace belfem
             mFile << "SCALARS NODE_ID int" << std::endl;
             mFile << "LOOKUP_TABLE default" << std::endl;
 
-            // integer container
             int tIChar;
             float tFChar;
 
-            // loop over all nodes
             for ( mesh::Node * tNode : mMesh->nodes() )
             {
-                // check if node is used
                 if ( tNode->is_flagged() )
                 {
-                    // write node coordinates
                     tIChar = vtk::swap_byte_endian(( int ) tNode->id() );
                     mFile.write( ( char * ) &tIChar, sizeof( int ));
                 }
             }
 
-            // create new line
             mFile << std::endl;
 
             mFile << "SCALARS NODE_OWNER int" << std::endl;
             mFile << "LOOKUP_TABLE default" << std::endl;
 
-            // loop over all nodes
             for ( mesh::Node * tNode : mMesh->nodes() )
             {
-                // check if node is used
                 if ( tNode->is_flagged() )
                 {
-                    // write node owner
                     tIChar = vtk::swap_byte_endian(( int ) tNode->owner() );
                     mFile.write( ( char * ) &tIChar, sizeof( int ));
                 }
             }
 
-            // create new line
             mFile << std::endl;
 
-            // get number of fields
             uint tNumFields = mMesh->number_of_fields() ;
 
             for( uint k=0; k<tNumFields; ++k )
             {
-                // get field
                 mesh::Field * tField = mMesh->field( k ) ;
 
                 if( tField->entity_type() == EntityType::NODE )
@@ -405,21 +333,17 @@ namespace belfem
                     mFile << "SCALARS " << tLabel << " float" << std::endl;
                     mFile << "LOOKUP_TABLE default" << std::endl;
 
-                    // get data container
                     Vector< real > & tData = tField->data() ;
 
                     for( mesh::Node * tNode : mMesh->nodes() )
                     {
-                        // check if node is used
                         if( tNode->is_flagged() )
                         {
-                            // convert value of node into float
                             tFChar = vtk::swap_byte_endian( static_cast< float > ( tData( tNode->index() ) ) );
                             mFile.write( ( char * ) &tFChar, sizeof( float ));
                         }
                     }
 
-                    // create new line
                     mFile << std::endl;
                 }
             }

@@ -62,7 +62,6 @@ int main( int    argc,
 
 
 
-    // tField->block( 5 )->set_material( MaterialType::Aluminum );
 
 
 

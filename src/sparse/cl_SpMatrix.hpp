@@ -872,7 +872,6 @@ namespace belfem
         // revisited, re-measure on the production nodes rather than trusting
         // either of those numbers. Both agree the difference is small next to
         // what the assembly restructure targets.
-        // See devlog/dl20260818_spmatrix_accessor.md.
         //
         // ( indices within a slice are sorted, see sort_entries )
         const int_t * tFound = std::lower_bound( tIndices + tBegin,

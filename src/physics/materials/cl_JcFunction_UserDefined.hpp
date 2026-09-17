@@ -31,12 +31,10 @@ namespace belfem
          * - MatFunc2: f(Material*, normB, angle) - Field and angle dependent
          * - MatFunc3: f(Material*, normB, angle, T) - Field, angle, and temperature dependent
          *
-         * ANGLE CONTRACT (changed 2026-08-16): the angle is the
-         * UNFOLDED field-to-tape-normal angle θ ∈ [0, π] — before that change it
-         * arrived folded into [0, π/2]. A user function that is even in θ
-         * (cos², sin² only) is unaffected; one that used cos(θ) linearly or
-         * assumed θ ≤ π/2 must fold internally now. Plugins compiled against
-         * the old contract get the new angle silently — recompile and review.
+         * ANGLE CONTRACT: The angle is the unfolded field-to-tape-normal
+         * angle θ ∈ [0, π], not a folded angle in [0, π/2]. A function even
+         * in θ (cos² and sin² only) is unchanged. A function that uses cos(θ)
+         * linearly or assumes θ ≤ π/2 must fold the angle internally.
          *
          * The user provides a function pointer that will be called to evaluate the property.
          * This allows complete customization while maintaining compatibility with the

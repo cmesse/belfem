@@ -79,7 +79,6 @@ namespace belfem
 
             if ( mCommRank == 0 )
             {
-                //mMesh->set_node_owners();
 
                 this->create_bitsets();
 

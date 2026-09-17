@@ -423,7 +423,6 @@ namespace belfem
                 //! while add_rho_field_tangent differentiates bj_angle
                 //! ( field to current, the metal Kohler variable ) — binding
                 //! the beta channel would apply the wrong ∂β/∂q rows
-                //! ( 2026-08-13 audit, both voices, C1 refuted for β )
                 real
                 compute_drhodb_powerlaw_ts( const uint aIndex );
 
@@ -448,12 +447,9 @@ namespace belfem
                 real
                 compute_drhodb_piecewise_bulk_defect( const uint aIndex );
 
-                //! HTS drho/dT family ( T-leg, 2026-08-13 ): the
-                //! quench-feedback tangent, consumed by T_h_newton only.
-                //! Replaces the retired compute_drhodT_hts, whose
-                //! b = a·c/(c−a) reconstruction was sign-flipped and
-                //! diverged at the flux-flow crossover — the closed forms
-                //! live in Material::drho_{powerlaw,piecewise}_dT
+                //! HTS drho/dT family: quench-feedback tangent for T_h_newton.
+                //! The closed forms are in Material::drho_{powerlaw,piecewise}_dT.
+                //! They are not reconstructed from the parallel value.
                 real
                 compute_drhodT_powerlaw_ts( const uint aIndex );
 
@@ -478,7 +474,7 @@ namespace belfem
                 real
                 compute_drhodT_piecewise_bulk_defect( const uint aIndex );
 
-                //! riva law ( 2026-08-27 ): the Duron parallel model made
+                //! riva law: the Duron parallel model made
                 //! total over the full jc/n table range, see powerlaws.hpp
                 real
                 compute_rho_riva_ts( const uint aIndex );
@@ -2540,8 +2536,8 @@ namespace belfem
             norm_b = norm( b ) ;
             BELFEM_ASSERT( std::abs( norm( n ) - 1.0 ) < 1e-6, "tape normal must be normalized" ) ;
 
-            // UNFOLDED angle between field and tape normal, [ 0, pi ]
-            // ( 2026-08-16 ). theta < pi/2 iff b has a component
+            // UNFOLDED angle between field and tape normal, [ 0, pi ].
+            // theta < pi/2 iff b has a component
             // along +n; n is the outward normal of the mid-surface facet's
             // MASTER volume element ( master -> slave ), which is also the
             // layer-stack direction — a minus prefix on the thinshell
@@ -2909,13 +2905,13 @@ namespace belfem
                 // law above already computed it ): a cached rho would
                 // otherwise leave the flag at whatever index last touched
                 // compute_T — same self-sufficiency contract as
-                // compute_dcpdT ( Grok phase-3 hardening, 2026-08-13 )
+                // compute_dcpdT
                 this->compute_T( aIndex );
 
                 // consistent tangent: a clamped rho has zero derivative, and
                 // a clamped T iterate zeroes ALL dT derivatives — same
                 // contract as compute_dcpdT / compute_dlambdadT ( Newton
-                // must not push on a flat clamp; 2026-08-13 audit )
+                // must not push on a flat clamp )
                 mdRhodT = ( mTClamped || mRhoClamped ) ? 0.0 : ( this->*mFundRhodT )( aIndex );
                 this->set( MaxwellDataValue::drhodT, aIndex );
             }
@@ -3289,7 +3285,7 @@ namespace belfem
         }
 
 //------------------------------------------------------------------------------
-// riva-law wrappers ( 2026-08-27 ), mirroring the piecewise family
+// Riva-law wrappers mirror the piecewise family.
 //------------------------------------------------------------------------------
 
         inline real

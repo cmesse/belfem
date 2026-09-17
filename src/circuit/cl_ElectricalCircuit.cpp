@@ -400,9 +400,6 @@ namespace belfem
             mComponents.push(tFEMTwoTerminals) ;
 
             //The voltage source is also an unknown current value
-            //tFEMTwoTerminals->set_index(mNumberOfNodes+mNumberOfUnknownCurrents-1) ;
-            //mVertices.push(tFEMTwoTerminals) ;
-            //mComponentsUnknown.push(tFEMTwoTerminals) ;
 
             //Increment the number of components and unknown currents
             ++mNumberOfComponents ;
@@ -951,7 +948,6 @@ namespace belfem
             Vector< real > tdX = Vector< real > (mNumberOfNodes+mNumberOfUnknownCurrents-1, 0.0) ;
 
             // compute the residual as r = A * x - b and write it into RHS vector
-            //mJ->multiply( mX, mRHS, 1.0, -1.0 );
 
             mSolver.solve(*mJ,tdX,mRHS) ;
 

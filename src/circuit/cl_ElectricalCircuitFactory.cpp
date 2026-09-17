@@ -31,7 +31,7 @@ namespace belfem
         {
             if (mInputFile->section_exists("circuit") )
             {
-                // hybrid path ( plan decision 6b ): the netlist holds the
+                // hybrid path: the netlist holds the
                 // lumped topology, the deck holds terminal pairs and output
                 if ( mInputFile->section("circuit")->key_exists("file") )
                 {
@@ -48,7 +48,6 @@ namespace belfem
             }
         }
 
-
 //----------------------------------------------------------------------------
 
         ElectricalCircuitFactory::~ElectricalCircuitFactory() = default;
@@ -60,7 +59,6 @@ namespace belfem
         void
         ElectricalCircuitFactory::read_circuit( const input::Section * aSection )
         {
-            //First, read the topology of the circuit
             BELFEM_ERROR(aSection->section("topology"), "No topology defined for the circuit") ;
             const input::Section * tTopologySection = aSection->section("topology") ;
 
@@ -72,14 +70,12 @@ namespace belfem
                 const input::Section * tComponentSection = tTopologySection->section(i) ;
                 ComponentType tComponentType = component_type(tComponentSection->key()) ;
 
-                //Read the label if it exists
                 string tLabel = "" ;
                 if(tComponentSection->key_exists("label"))
                 {
                     tLabel = tComponentSection->get_string("label") ;
                 }
 
-                //Read the nodes of the component
                 BELFEM_ERROR(tComponentSection->key_exists("node +"), "Every electrical component in the circuit must have a node +") ;
                 BELFEM_ERROR(tComponentSection->key_exists("node -"), "Every electrical component in the circuit must have a node -") ;
                 Vector< id_t > tNodes =  Vector< id_t >(2,0);
@@ -92,7 +88,6 @@ namespace belfem
                 BELFEM_ERROR(tNodes(1) < mCircuit->number_of_nodes(), "Invalid node - index for %s in circuit",
                              to_string(tComponentType).c_str()) ;
 
-                //Insert the correct component in the circuit
                 switch (tComponentType)
                 {
                     case ComponentType::RESISTOR :
@@ -175,12 +170,10 @@ namespace belfem
 
                         if ( tFType == "ramp" )
                         {
-                            //First check if the required data is there
                             BELFEM_ERROR( tComponentSection->key_exists( "amplitude" ), "Amplitude not defined for the source in the circuit" ) ;
                             BELFEM_ERROR( tComponentSection->key_exists( "period" ), "Period not defined for the source in the circuit" ) ;
                             BELFEM_ERROR( tComponentSection->key_exists( "offset" ), "Offset not defined for the source in the circuit" ) ;
 
-                            //Then check the units
                             string tUnitDef = tComponentSection->get_units( "amplitude" );
                             value tValue = unit_to_si( tUnitDef );
                             BELFEM_ERROR(
@@ -200,20 +193,16 @@ namespace belfem
                                     check_unit( tValue, "s" ),
                                     "required unit for the offset of the source in the circuit is: s" );
 
-
-                            //Then set the function
                             tFunction->set_ramp( tComponentSection->get_value( "amplitude",tUnits ).first,
                                                  tComponentSection->get_value( "period","s" ).first,
                                                  tComponentSection->get_value( "offset","s" ).first ) ;
                         }
                         else if ( tFType == "sigmoid" )
                         {
-                            //First check if the required data is there
                             BELFEM_ERROR( tComponentSection->key_exists( "amplitude" ), "Amplitude not defined for the source in the circuit" ) ;
                             BELFEM_ERROR( tComponentSection->key_exists( "period" ), "Period not defined for the source in the circuit" ) ;
                             BELFEM_ERROR( tComponentSection->key_exists( "offset" ), "Offset not defined for the source in the circuit" ) ;
 
-                            //Then check the units
                             string tUnitDef = tComponentSection->get_units( "amplitude" );
                             value tValue = unit_to_si( tUnitDef );
                             BELFEM_ERROR(
@@ -233,7 +222,6 @@ namespace belfem
                                     check_unit( tValue, "s" ),
                                     "required unit for the offset of the source in the circuit is: s" );
 
-                            //Then set the function
                             tFunction->set_sigmoid( tComponentSection->get_value( "amplitude",tUnits ).first,
                                                     tComponentSection->get_value( "period","s" ).first,
                                                     tComponentSection->get_value( "offset","s" ).first,
@@ -243,10 +231,8 @@ namespace belfem
                                   tFType == "triangle" || tFType == "sawtooth" )
                         {
 
-                            //First check if the required data is there
                             BELFEM_ERROR( tComponentSection->key_exists( "amplitude" ), "Amplitude not defined for the source in the circuit" ) ;
 
-                            //Then check the units
                             string tUnitDef = tComponentSection->get_units( "amplitude" );
                             value tValue = unit_to_si( tUnitDef );
                             BELFEM_ERROR(
@@ -280,7 +266,6 @@ namespace belfem
                                 BELFEM_ERROR( false,"Period or frequency undefined for the source in the circuit" ) ;
                             }
 
-                            //Then set the function
                             tFunction->set_periodic( boundary_condition_function_type( tFType ),
                                                      tComponentSection->get_value( "amplitude",tUnits ).first,
                                                      tPeriod,
@@ -289,10 +274,8 @@ namespace belfem
                         else if ( tFType == "constant" )
                         {
 
-                            //First check if the required data is there
                             BELFEM_ERROR( tComponentSection->key_exists( "amplitude" ), "Amplitude not defined for the source in the circuit" ) ;
 
-                            //Then check the units
                             string tUnitDef = tComponentSection->get_units( "amplitude" );
                             value tValue = unit_to_si( tUnitDef );
                             BELFEM_ERROR(
@@ -300,13 +283,11 @@ namespace belfem
                                     "required unit for the amplitude of the source in the circuit is: %s",
                                     tUnits.c_str() );
 
-                            //Then set the function
                             tFunction->set_constant( tComponentSection->get_value( "amplitude",tUnits ).first ) ;
                         }
                         else if ( tFType == "userdefined" )
                         {
 
-                            //First check if the required data is there
                             BELFEM_ERROR( tComponentSection->key_exists( "file" ), "File not defined for user-defined function in the boundary condition" ) ;
                             BELFEM_ERROR( tComponentSection->key_exists( "label" ), "Label not defined for user-defined function in the boundary condition" ) ;
                             BELFEM_ERROR( tComponentSection->key_exists( "units" ), "Units not defined for user-defined function in the boundary condition" ) ;
@@ -320,7 +301,6 @@ namespace belfem
                             mPhysicalBoundaryConditions( tCount-i )->set_units( tValue.second ) ;
                             mPhysicalBoundaryConditions( tCount-i )->scale()*=tValue.first ;
 
-                            //Then set the function
                             tFunction->read_user_defined(tComponentSection->get_string( "file" ), tComponentSection->get_string( "label" )) ;
                         }
                         else
@@ -334,7 +314,6 @@ namespace belfem
                     }
                     case ComponentType::SWITCH:
                     {
-                        //First get the initial state of the switch
                         BELFEM_ERROR(tComponentSection->key_exists("initial state"), "Undefined initial state of the %s in the circuit",
                                      to_string(tComponentType).c_str()) ;
 
@@ -353,7 +332,6 @@ namespace belfem
                             BELFEM_ERROR(false,"The switch state is either open or closed") ;
                         }
 
-                        //Then get the switch time
                         BELFEM_ERROR(tComponentSection->key_exists("switch time"), "Undefined switch time for the %s in the circuit",
                                      to_string(tComponentType).c_str()) ;
                         string tUnits = "s";
@@ -410,7 +388,6 @@ namespace belfem
                         real tEc ;
                         real tLength ;
 
-                        //Get the Ic value
                         BELFEM_ERROR(tComponentSection->key_exists("Ic"), "Undefined Ic in the circuit");
                         string tUnitsIc = "A";
                         string tUnitDefIc = tComponentSection->get_units( "Ic" );
@@ -422,7 +399,6 @@ namespace belfem
 
                         tIc = tComponentSection->get_value( "Ic",tUnitsIc ).first ;
 
-                        //Get the n value
                         BELFEM_ERROR(tComponentSection->key_exists("n"), "Undefined n for the %s in the circuit",
                                      to_string(tComponentType).c_str()) ;
                         string tUnitsn = "";
@@ -435,7 +411,6 @@ namespace belfem
 
                         tn = tComponentSection->get_value( "n",tUnitsn ).first ;
 
-                        //Get the Ec value
                         BELFEM_ERROR(tComponentSection->key_exists("Ec"), "Undefined Ec for the %s in the circuit",
                                      to_string(tComponentType).c_str()) ;
                         string tUnitsEc = "V/m";
@@ -448,7 +423,6 @@ namespace belfem
 
                         tEc = tComponentSection->get_value( "Ec",tUnitsEc ).first ;
 
-                        //Get the length value
                         BELFEM_ERROR(tComponentSection->key_exists("length"), "Undefined length for the %s in the circuit",
                                      to_string(tComponentType).c_str()) ;
                         string tUnitsLength = "m";
@@ -478,7 +452,6 @@ namespace belfem
                 }
             }
 
-            //Then, read the output
             this->read_output( aSection, nullptr );
         }
 
@@ -501,10 +474,8 @@ namespace belfem
             uint & tCount = aCount;
                     {
 
-                        //Create the terminal pair in the circuit
                         mCircuit->create_terminal_pair(aNodePlus, aNodeMinus,tLabel);
 
-                        // The terminal pair represents a pair of terminals in the FEM problem.
                         // Therefore, they are associated with boundary conditions that we create here
                         string tKey ;
                         bool tIsThinShell = false ;
@@ -534,8 +505,6 @@ namespace belfem
                         Vector < id_t > tDomains ;
                         fem::BoundaryConditionType tType = fem::BoundaryConditionType::CircuitVoltage;
 
-
-                        //Look for output terminals
                         bool tOutputExists = true ;
                         string tKey2 ;
                         if (tComponentSection->key_exists( "output terminal" ))
@@ -559,11 +528,10 @@ namespace belfem
                             tOutputExists = false ;
                         }
 
-                        //Separate the groups defined with []. Each group becomes one boundary condition
                         Cell<Cell < id_t > >tDomainGroupsIn ;
                         tComponentSection->get_id_groups(tKey,tDomainGroupsIn) ;
 
-                        // FROZEN GRAMMAR ( 2026-08-15 ): a terminal
+                        // A terminal
                         // pair creates ONE lumped component
                         // ( create_terminal_pair above runs once ), but this
                         // walk creates one boundary condition PER bracket
@@ -623,10 +591,8 @@ namespace belfem
                             }
                         }
 
-
                         for(uint k = 0; k < tDomainGroupsIn.size(); ++k)
                         {
-                            //Grouping the input and output terminals all into tDomains
                             tDomains.set_size(tDomainGroupsIn(k).size()+tDomainGroupsOut(k).size(),0) ;
                             for(uint j = 0 ; j < tDomainGroupsIn(k).size();++j)
                             {
@@ -667,18 +633,16 @@ namespace belfem
             {
                 const input::Section * tOutputSection = aSection->section("output") ;
 
-                //first set the output file name
                 BELFEM_ERROR(tOutputSection->key_exists("file"),"Undefined file name for circuit outputs") ;
                 mCircuit->set_file( tOutputSection->get_string("file")) ;
 
-                // Then list the components and nodes for current/voltage output
                 if (tOutputSection->key_exists("currents"))
                 {
                     Cell< string > tCurrents = string_to_words(
                             search_and_replace( search_and_replace(
                                     tOutputSection->get_string("currents"), " ","" ),","," "));
 
-                    // netlist labels are case-folded instance names ( O5 );
+                    // netlist labels are case-folded instance names ;
                     // fold the deck side so the lookup cannot miss on case
                     if ( aNetlist != nullptr )
                     {
@@ -700,7 +664,7 @@ namespace belfem
                     }
                     else
                     {
-                        // hybrid grammar ( O5 ): voltages are netlist node
+                        // hybrid grammar: voltages are netlist node
                         // NAMES, resolved through the same map as the
                         // terminal pairs -- never raw indices, which would
                         // be ambiguous against the ground remap
@@ -747,7 +711,7 @@ namespace belfem
             NetlistParser tNetlist( tPath );
             NgspiceCircuitFactory tNetlistFactory( tNetlist );
 
-            // O7: the deck's solver{timestep{}} owns time integration; a
+            // the deck's solver{timestep{}} owns time integration; a
             // .tran card is stored by the parser but deliberately unused
             if ( tNetlist.controls().size() > 0 && comm_rank() == 0 )
             {
@@ -763,7 +727,7 @@ namespace belfem
             uint tCount = mPhysicalBoundaryConditions.size() ;
 
             // the deck may only contribute terminal pairs -- lumped elements
-            // live in the netlist ( O6 )
+            // live in the netlist
             if ( aSection->section_exists("topology") )
             {
                 const input::Section * tTopologySection = aSection->section("topology") ;
@@ -780,8 +744,7 @@ namespace belfem
                                   tComponentSection->key().c_str(),
                                   tPath.c_str() );
 
-                    // hybrid mode is case-insensitive throughout ( O5,
-                    // one fold policy ): the label folds like the netlist
+                    // hybrid mode is case-insensitive throughout ( one fold policy ): the label folds like the netlist
                     // instance names, so the currents lookup cannot miss
                     string tLabel = "" ;
                     if(tComponentSection->key_exists("label"))
@@ -804,7 +767,7 @@ namespace belfem
                         }
                     }
 
-                    // hybrid grammar ( O5 ): node references are netlist
+                    // hybrid grammar: node references are netlist
                     // node NAMES ( "0"/"gnd" included ), resolved through
                     // the netlist's map -- never raw indices
                     BELFEM_ERROR(tComponentSection->key_exists("node +"), "Every electrical component in the circuit must have a node +") ;

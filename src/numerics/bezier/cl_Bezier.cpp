@@ -111,7 +111,6 @@ namespace belfem
         // start bisection
         while( std::abs( tF ) > 1e-12 )
         {
-            // aXi = tXi0 - tF0 * ( tXi1 - tXi0 ) / ( tF1 - tF0 );
             aXi = 0.5 * ( tXi0 + tXi1 );
 
             tF = this->x_by_xi( aXi ) - aX ;
@@ -124,7 +123,6 @@ namespace belfem
             else
             {
                 tXi1 = aXi ;
-                //tF1 = tF ;
             }
 
             BELFEM_ERROR( tCount++ < 100, "Too many iterations.");
@@ -156,7 +154,6 @@ namespace belfem
         // start bisection
         while( std::abs( tF ) > 1e-12 )
         {
-            //aXi = tXi0 - tF0 * ( tXi1 - tXi0 ) / ( tF1 - tF0 );
             aXi = 0.5 * ( tXi0 + tXi1 );
             tF = this->y_by_xi( aXi ) - aY ;
 
@@ -168,7 +165,6 @@ namespace belfem
             else
             {
                 tXi1 = aXi ;
-                //tF1 = tF ;
             }
 
             BELFEM_ERROR( tCount++ < 100, "Too many iterations.");

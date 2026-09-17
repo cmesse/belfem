@@ -69,7 +69,6 @@ namespace belfem
                         // brace, so it must lie inside this section's own scan
                         // range -- that is the invariant, and mStartFlag is
                         // where the range begins.
-                        //
                         // At the root mStartFlag is 0, and k - 1 then wraps:
                         // index_t is unsigned, so mBuffer( k - 1 ) reads out of
                         // bounds -- a debug assert, and undefined behaviour in
@@ -79,7 +78,6 @@ namespace belfem
                         // blank lines: a deck whose first section header is
                         // lost to an edit begins its buffer with '{'. Observed
                         // when examples/corc_solder lost its "mesh" header.
-                        //
                         // Nested, the same read is in bounds but reaches the
                         // PARENT's brace and names the child "{". Not a crash,
                         // so it survived unnoticed; one predicate covers both,
@@ -100,13 +98,10 @@ namespace belfem
                     --tSectionCount ;
                     if( tSectionCount == 0 )
                     {
-                        // create a new section
                         Section * tSection = new Section( this, mBuffer, tLabel, tStart, k );
 
-                        // add section to data container
                         mData.push( tSection );
 
-                        // add section to map
                         if ( tSection->label() == "" )
                         {
                             mSections[ tSection->type() ] = tSection ;
@@ -151,20 +146,15 @@ namespace belfem
 
             mKeys[ tKey ] = tString ;
 
-            // add key to cell container
             mKeyLabels.push( tKey );
 
-
-            // check if this could be a numerical value with unit
             Cell< string > tWords = string_to_words( tString );
 
             real tReal = to_real( tString );
 
-            // check if value is numeric
             if( ! std::isnan( tReal ) )
             {
 
-                // check if value has a unit
                 if( tWords.size() == 1 )
                 {
                     // assume SI unit
@@ -178,13 +168,11 @@ namespace belfem
                 {
                     const string & tUnit = tWords( 1 );
 
-                    // check if second word is not numeric
                     if( std::isnan( to_real( tUnit ) ) )
                     {
 
                         value tValue = unit_to_si("K");
 
-                        // catch temperature
                         if( tUnit == "C" || tUnit == "°C" )
                         {
                             tReal += 273.15 ;
@@ -204,7 +192,6 @@ namespace belfem
                             tValue = unit_to_si( tUnit );
                         }
 
-                        // convert units
                         tValue.first *= tReal ;
                         tReal = tValue.first ;
 
@@ -329,10 +316,8 @@ namespace belfem
                              this->error_key_not_real( aKey ).c_str() );
             }
 
-            // get key
             value aValue = mValueKeys( tKey );
 
-            // check unit
             BELFEM_ERROR( check_unit( aValue, aUnit ),
                          "Invalid unit for value %s, expect %s or same dimension",
                          aKey.c_str(), aUnit.c_str() );
@@ -420,7 +405,6 @@ namespace belfem
         }
 
 //------------------------------------------------------------------------------
-
 
         const Section *
         Section::parent() const
@@ -518,7 +502,6 @@ namespace belfem
                 aLine.substr( aLine.find( ":" ) + 1, aLine.length() ) : "" ) );
         }
 
-
 //------------------------------------------------------------------------------
 
         void
@@ -570,7 +553,6 @@ namespace belfem
             {
                 if ( tWord.find( "@" ) < tWord.length() )
                 {
-                    // check for the name
                     if ( tWord.substr( tWord.find( "@" ) + 1, tWord.length() )  == aTape )
                     {
                         Vector< id_t > tIds ;
@@ -583,11 +565,6 @@ namespace belfem
                 }
             }
 
-
-            // make sure that IDs are unique
-            //unique( tIDs );
-
-            // convert to Vector
             aIDs.set_size( tIDs.size() );
             for( id_t k = 0; k<tIDs.size(); ++k )
             {
@@ -608,7 +585,6 @@ namespace belfem
 
             for( string & tWord : tWords )
             {
-                // let's check if this string contains a colon
                 auto tColon = tWord.find( ":" );
                 if( tColon != string::npos )
                 {
@@ -661,8 +637,6 @@ namespace belfem
                 }
             }
 
-            //unique( tGroupIDs );
-
             aIDs.set_size( tGroupIDs.size() );
             for( id_t k = 0; k<tGroupIDs.size(); ++k )
             {
@@ -695,16 +669,13 @@ namespace belfem
                 }
                 else if (tWord == "]") // close the terminal group and add the ids from the group
                 {
-                    //unique( tGroupIDs );
                     aIDs.push(tGroupIDs);
                     tGroupIDs.clear() ;
 
-                    //Reset the group flag to false
                     tGroup = false;
                 }
                 else
                 {
-                    // let's check if this string contains a colon
                     auto tColon = tWord.find( ":" );
                     if( tColon != string::npos )
                     {
@@ -718,7 +689,6 @@ namespace belfem
                                       "Error reading id list in section %s : %s",
                                       mLabel.c_str(), tWordB.c_str() );
 
-
                         id_t tA = std::stoi( tWordA );
                         id_t tB = std::stoi( tWordB );
 
@@ -729,7 +699,6 @@ namespace belfem
                             tGroupIDs.push(tID) ;
                             if(!tGroup)
                             {
-                                //unique( tGroupIDs );
                                 aIDs.push(tGroupIDs);
                                 tGroupIDs.clear() ;
                             }
@@ -744,7 +713,6 @@ namespace belfem
                         tGroupIDs.push( std::stoi( tWordA ) );
                         if(!tGroup)
                         {
-                            //unique( tGroupIDs );
                             aIDs.push(tGroupIDs);
                             tGroupIDs.clear() ;
                         }
@@ -753,7 +721,6 @@ namespace belfem
             }
 
         }
-
 
 //------------------------------------------------------------------------------
 
@@ -773,7 +740,6 @@ namespace belfem
                 string tWordA = tWord.substr( 0, string::npos );
                 tGroupReals.push( std::stoi( tWordA ) );
             }
-
 
             aReals.set_size( tGroupReals.size() );
             for( id_t k = 0; k<tGroupReals.size(); ++k )

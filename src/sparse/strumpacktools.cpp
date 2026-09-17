@@ -133,8 +133,7 @@ namespace belfem
 
                     // STRUMPACK's default BLR tolerance ( 1e-4 ) makes the
                     // factorization a lossy preconditioner whose GMRES can
-                    // stagnate silently; that noise stalls the Newton loop
-                    // ( observed 2026-07-06, N = 72k, all rank counts ).
+                    // stagnate silently; that noise stalls the Newton loop.
                     aOpts.BLR_options().set_rel_tol(
                         aParams.compression_cutoff() );
                     break;
@@ -154,9 +153,9 @@ namespace belfem
                 {
                     // GMRES preconditioned by the factorization, NOT
                     // STRUMPACK's own AUTO ( which picks Richardson-style
-                    // REFINE on the exact path ). Ruled 2026-08-16 for
-                    // uniform krylov-method semantics across libraries,
-                    // and because GMRES is strictly more robust here: on
+                    // REFINE on the exact path ), for uniform krylov-method
+                    // semantics across libraries and because GMRES is
+                    // strictly more robust here: on
                     // a well-conditioned matrix the first preconditioned
                     // iterate lands near machine precision ( same cost ),
                     // while on an ill-conditioned one ( cond ~ 5e11 on
@@ -214,23 +213,15 @@ namespace belfem
                         to_string( aParams.krylov_method() ).c_str() );
                 }
             }
-            // ALWAYS apply the shared relative tolerance ( class default
-            // 1e-10 ), mirroring the abs_tol treatment below. Until
-            // 2026-08-18 this was gated on have_relative_tolerance(): a
-            // REFINE-era stall fix ( an unmeetable relative target
-            // on a numerically zero RHS ground IterativeRefinementMPI
-            // against the library's 5000-iteration cap ). That geometry is
-            // gone: AUTO maps to PREC_GMRES since 2026-08-16, maxit is
-            // capped at 50 below, and abs_tol provides the small-RHS
-            // escape. The gate's cost was real: an unstated deck inherited
-            // the library rel_tol 1e-6, and the tapestack3d A/B
-            // ( 2026-08-18, 1e-8 vs 1e-10 from the same restart ) proved
-            // the loose exit test WAS the printed nonlinear residual —
-            // Picard "stalled" at the linear exit ( -85 dB ), Newton was
-            // invoked on exit-test noise, and the timestep collapsed. At
-            // 1e-10 the same solves finish their dive ( ~1e-15 ), steps
-            // converge in two Picard iterates, and the collapse never
-            // happens. Do not re-introduce the guard.
+            // Always apply the shared relative tolerance ( class default
+            // 1e-10 ), as for abs_tol below. A have_relative_tolerance()
+            // guard here once protected IterativeRefinementMPI from an
+            // unmeetable target on a zero right-hand side. AUTO now uses
+            // PREC_GMRES, maxit is capped at 50, and abs_tol handles a small
+            // right-hand side. Without this assignment an unstated deck uses
+            // the library rel_tol 1e-6, and at 1e-6 the linear exit test
+            // becomes the printed nonlinear residual and the timestep
+            // collapses. Do not restore the guard.
             aOpts.set_rel_tol( aParams.relative_tolerance() );
 
             // ALWAYS override the library's absolute tolerance: STRUMPACK
@@ -239,16 +230,15 @@ namespace belfem
             // exactly at a 1e-11 RELATIVE nonlinear target — the outer
             // GMRES then stops a factor ~300 short of what the Newton
             // loop needs and convergence degenerates into an overshoot
-            // lottery ( jury 2026-08-17: measured linear finals
-            // clustered at 6e-11..1.4e-10 with the stall entry at
-            // floor/||b|| = -85 dB exactly as predicted ). 1e-14 restores
+            // lottery, with the linear finals clustering just above the
+            // floor. 1e-14 restores
             // the headroom; the maxit cap below bounds what it may cost
             aOpts.set_abs_tol( aParams.absolute_tolerance() );
 
             // bound the outer loop either way: an unmeetable deck-stated
             // target must cost minutes, not grind toward the library cap
-            // of 5000 ( the hour-long refinement stall ). NOTE the cap's real semantics,
-            // source-verified 2026-08-16: STRUMPACK returns SUCCESS at
+            // of 5000 ( the hour-long refinement stall ). NOTE the cap's real
+            // semantics ( STRUMPACK source ): STRUMPACK returns SUCCESS at
             // maxit with the best-effort solution ( the GMRES kernels
             // return only the residual and the callers discard it ) — so
             // the cap is a cost bound, NOT a named failure; the nonlinear

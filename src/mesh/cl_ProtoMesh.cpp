@@ -135,7 +135,6 @@ namespace belfem
 
             index_t tCount = 0 ;
 
-            // populate node IDs
             Cell< id_t > & tIDs = mNodeData->mIDs ;
             tIDs.set_size( tNumNodes );
             for ( Node * tNode : tNodes )
@@ -143,7 +142,6 @@ namespace belfem
                 tIDs( tCount++ ) = tNode->id();
             }
 
-            // populate node coordinates
             Matrix< real > & tCoords = mNodeData->mCoords ;
             tCoords.set_size( tNumDim, tNumNodes );
             tCount = 0 ;
@@ -178,22 +176,16 @@ namespace belfem
 
             index_t tNumNodes = mNodeData->mIDs.size();
 
-            // allocate container
             tNodes.set_size( tNumNodes, nullptr );
 
-            // create the node entities
             for ( index_t k=0; k<tNumNodes; ++k )
             {
-                // create node
                 Node * tNode = new Node( mNodeData->mIDs( k ) );
 
-                // set node index
                 tNode->set_index( k );
 
-                // add node to map
                 mNodeMap[ tNode->id() ] = tNode ;
 
-                // add node to container
                 tNodes( k ) = tNode;
             }
 
@@ -201,12 +193,10 @@ namespace belfem
             {
                 for ( index_t k=0; k<tNumNodes; ++k )
                 {
-                    // set node owner
                     tNodes( k )->set_owner( mNodeData->mOwners( k ) );
                 }
             }
 
-            // set node coordinates
             if ( mMesh->number_of_dimensions() == 2 )
             {
                 for ( index_t k=0; k<tNumNodes; ++k )
@@ -227,29 +217,22 @@ namespace belfem
                 }
             }
 
-            // assign node duplicates
             index_t tCount = 0 ;
 
             if ( mNodeData->mDuplicateData.size() > 0 )
             {
-                // get the number of originals
                 index_t tNumOrignals = mNodeData->mDuplicateData( tCount++ );
 
-                // assign duplicate and original data
                 for ( index_t i=0; i<tNumOrignals; ++i )
                 {
-                    // get the original node
                     Node * tOrg = mNodeMap( mNodeData->mDuplicateData( tCount++ ) ) ;
 
-                    // get the number of duplicates
                     uint tNumDuplicates = mNodeData->mDuplicateData( tCount++ );
 
-                    // allocate duplicate container
                     tOrg->allocate_duplicate_container( tNumDuplicates );
 
                     for ( uint d=0; d<tNumDuplicates; ++d )
                     {
-                        // get the duplicate node
                         Node * tDup = mNodeMap( mNodeData->mDuplicateData( tCount++ ) ) ;
                         tOrg->add_duplicate( tDup );
                         tDup->set_original( tOrg );
@@ -257,7 +240,6 @@ namespace belfem
                 }
             }
 
-            // delete the node data
             delete mNodeData ;
             mNodeData = nullptr ;
         }
@@ -267,7 +249,6 @@ namespace belfem
         void
         ProtoMesh::reset_node_data()
         {
-            // delete the node data
             delete mNodeData ;
             mNodeData = nullptr ;
         }
@@ -341,7 +322,6 @@ namespace belfem
                 }
             }
 
-
             if ( aPopulateTopology )
             {
                 Cell< id_t >   & tTopo   = mElementData->mTopology ;
@@ -378,8 +358,8 @@ namespace belfem
         {
             bool tHavePhys = false;
 
-            // we need to count the number of facets
-            // over the sidesets, because mMesh->facets() also contains thin shell facets.
+            // count the facets over the sidesets, because mMesh->facets() also contains
+            // thin shell facets.
 
             index_t tNumFacets = 0 ;
             for ( SideSet * tSideSet : mMesh->sidesets() )
@@ -402,8 +382,6 @@ namespace belfem
             Cell< id_t >   & tIDs    = mFacetData->mIDs ;
             tIDs.set_size( tNumFacets );
 
-
-
             for ( Facet * tFacet : mMesh->facets() )
             {
                 if ( tFacet->physical_tag() != 0 )
@@ -413,7 +391,6 @@ namespace belfem
                 }
 
             }
-
 
             index_t tCount = 0 ;
             for ( SideSet * tSideSet : mMesh->sidesets() )
@@ -480,7 +457,6 @@ namespace belfem
                 {
                     Cell< Facet * > & tFacets = tSideSet->facets();
 
-
                     index_t n = number_of_nodes( tSideSet->element_type() );
 
                     for ( Facet * tFacet : tFacets )
@@ -539,7 +515,6 @@ namespace belfem
 
             Cell< Edge * > & tEdges = mMesh->edges();
 
-            // count memory
             index_t tCount = tEdges.size();
             Cell< id_t > & tIDs = mEdgeData->mIDs;
             tIDs.set_size( tCount, 0 );
@@ -683,7 +658,6 @@ namespace belfem
         void
         ProtoMesh::reset_element_data()
         {
-            // delete the node data
             delete mElementData ;
             mElementData = nullptr ;
         }
@@ -741,13 +715,11 @@ namespace belfem
             Cell< uint >   & tPhys   = mElementData->mPhysicalTags ;
             Cell< id_t >   & tTopo   = mElementData->mTopology ;
 
-
             if ( tTypes.size() > 0 ) // used by mesh distributor
             {
                 for ( index_t e=0; e<tNumElements; ++e )
                 {
 
-                    // create a new element
                     tElements( e ) = tFactory.create_element(
                         static_cast< ElementType >( tTypes( e ) ), tIDs( e ) );
                 }
@@ -763,7 +735,6 @@ namespace belfem
 
                 for ( index_t e=0; e<tNumElements; ++e )
                 {
-                    // create a new element
                     tElements( e ) = tFactory.create_element( tTypeMap( tGeo( e ) ), tIDs( e ) );
                 }
             }
@@ -773,19 +744,15 @@ namespace belfem
             {
                 Element * tElement = tElements( e ) ;
 
-                // set the local index
                 tElement->set_index( e );
 
-                // set block id
                 tElement->set_geometry_tag( tGeo( e ) );
 
-                // connect element with nodes
                 for ( uint k=0; k<tElement->number_of_nodes(); ++k )
                 {
                     tElement->insert_node( mNodeMap( tTopo( tCount++ ) ), k );
                 }
 
-                // add element to map
                 mElementMap[ tElement->id() ] = tElement ;
             }
 
@@ -807,7 +774,6 @@ namespace belfem
                 }
             }
 
-            // clear data container
             delete mElementData ;
             mElementData = nullptr ;
         }
@@ -828,7 +794,6 @@ namespace belfem
             Cell< Edge * > & tEdges = mMesh->edges();
             BELFEM_ASSERT( tEdges.size() == 0, "Edges are already allocated" );
 
-            // allocate container
             tEdges.set_size( tNumEdges, nullptr );
 
             index_t tCount = 0 ;
@@ -837,11 +802,9 @@ namespace belfem
             {
                 Edge * tEdge = new Edge ;
 
-                // set id and index
                 tEdge->set_id( tIDs( e ) );
                 tEdge->set_index( e );
 
-                // connect nodes
                 uint n = tTopo( tCount++ );
                 tEdge->allocate_node_container( n );
                 for ( uint k=0; k<n; ++k )
@@ -849,10 +812,8 @@ namespace belfem
                     tEdge->insert_node( mNodeMap( tTopo( tCount++ ) ) , k );
                 }
 
-                // add edge to map
                 mEdgeMap[ tEdge->id() ] = tEdge ;
 
-                // add edge to container
                 tEdges( e ) = tEdge;
             }
 
@@ -865,7 +826,6 @@ namespace belfem
                 }
             }
 
-            // clear data container
             delete mEdgeData ;
             mEdgeData = nullptr ;
         }
@@ -974,31 +934,25 @@ namespace belfem
 
                      tElement->set_geometry_tag( tGeo( f ) );
 
-                     // link element with nodes
                      for ( index_t k=0; k<tElement->number_of_nodes(); ++k )
                      {
                          tElement->insert_node( mNodeMap( tTopo( tCount++ ) ), k );
                      }
 
-                     // create facet
                      Facet * tFacet = new Facet( tElement );
 
-                     // set master
                      if ( tMIDs( f ) != gNoID )
                      {
                          tFacet->set_master( mElementMap( tMIDs( f ) ), tMIdx( f ), false );
                      }
 
-                     // set slave
                      if ( tSIDs( f ) != gNoID )
                      {
                          tFacet->set_slave( mElementMap( tSIDs( f ) ), tSIdx( f ),tSors( f ) );
                      }
 
-                     // add facet to map
                      mFacetMap[ tFacet->id() ] = tFacet ;
 
-                     // add facet to container
                      tFacets( f ) = tFacet;
                  }
              }
@@ -1013,22 +967,18 @@ namespace belfem
 
                      Facet * tFacet = new Facet( tElement );
 
-                     // set master
                      BELFEM_ASSERT( tMIDs( f ) != gNoID, "Facet %lu has neither master nor topology assigned",
                           ( long unsigned int ) tElement->id() );
 
                      tFacet->set_master( mElementMap( tMIDs( f ) ), tMIdx( f ), true );
 
-                     // set slave
                      if ( tSIDs( f ) != gNoID )
                      {
                          tFacet->set_slave( mElementMap( tSIDs( f ) ), tSIdx( f ),tSors( f ) );
                      }
 
-                     // add facet to map
                      mFacetMap[ tFacet->id() ] = tFacet ;
 
-                     // add facet to container
                      tFacets( f ) = tFacet;
                  }
              }
@@ -1148,7 +1098,6 @@ namespace belfem
                 {
                     Element * tElement = mElementMap( tNData( tCount++ ) );
 
-
                     uint n = tNData( tCount++ ) ;
                     tElement->allocate_element_container( n );
 
@@ -1184,7 +1133,6 @@ namespace belfem
                 tCount = 0 ;
             }
 
-            // curved elements, if they exist
             if ( mElementExtra->mCurvedElementIDs.size() > 0 )
             {
                 for ( id_t tID : mElementExtra->mCurvedElementIDs )
@@ -1239,7 +1187,6 @@ namespace belfem
                 }
             }
 
-            // curved facets, if they exist
             for ( id_t tID : mFacetExtra->mCurvedFacetIDs )
             {
                 mFacetMap( tID )->element()->set_curved_flag();
@@ -1296,52 +1243,41 @@ namespace belfem
         void
         ProtoMesh::edge()
         {
-             // get the data size
             uint tNumBlocks = mBlockData.size();
 
-            // create a temporary index map
             Map< id_t, index_t > tIndex ;
             for ( uint b=0; b<tNumBlocks; ++b )
             {
                 tIndex[ mBlockData( b ).mID ] = b ;
             }
 
-            // allocate the element counter
             Cell< index_t > tCount( tNumBlocks, 0 );
 
-            // count elements per block
             Cell< Element * > & tElements = mMesh->elements();
 
-            // note: using this counter seems overkill when the elements
-            // are already sorted by block.
             for ( Element * tElement : tElements )
             {
                 ++tCount( tIndex( tElement->block_id() ) ) ;
             }
 
-            // create a temporary block container
             Cell< Block * > tBlocks( tNumBlocks, nullptr );
 
-            // create the blocks
             index_t tElemCount = 0 ;
 
             for ( uint b=0; b<tNumBlocks; ++b )
             {
                 proto::GroupData & tData = mBlockData( b );
 
-                // create a new block
                 Block * tBlock = new Block( tData.mID, tCount( b ) );
 
                 if ( tData.mLabel.size() > 0 ) tBlock->label() = tData.mLabel;
 
-                // set the domain type
                 tBlock->set_domain_type(  tData.mDomainType );
 
                 // physical thickness ( NaN for volume blocks — same
                 // semantics as a freshly created serial block )
                 tBlock->set_thickness( tData.mThickness );
 
-                // add block to container
                 tBlocks( b ) = tBlock ;
 
                 index_t n = tCount( b );
@@ -1355,15 +1291,12 @@ namespace belfem
                 }
             }
 
-            // check for element flags
             for ( uint b=0; b<tNumBlocks; ++b )
             {
-                // get the block
                 Block * tBlock = tBlocks( b );
 
                 if ( tBlock->number_of_elements() > 0 )
                 {
-                    // get the first element
                     Element * tElement = tBlock->elements().first();
 
                     if ( tElement->has_edges() )
@@ -1375,7 +1308,6 @@ namespace belfem
                         tBlock->set_faces_flag();
                     }
 
-                    // add block to map
                     mBlockMap[ tBlock->id() ] = tBlock ;
 
                     mMesh->blocks().push( tBlock );
@@ -1396,17 +1328,14 @@ namespace belfem
             Cell< SideSet * > tSideSets ;
             tSideSets.set_size( tNumSideSets, nullptr );
 
-            // create a temporary index map
             Map< id_t, index_t > tIndex ;
             for ( uint s=0; s<tNumSideSets; ++s )
             {
                 tIndex[ mSideSetData( s ).mID ] = s ;
             }
 
-            // allocate the facet counter
             Cell< index_t > tCount( tNumSideSets, 0 );
 
-            // count elements per block
             Cell< Facet * > & tFacets = mMesh->facets();
 
             for ( Facet * tFacet : tFacets )
@@ -1446,7 +1375,6 @@ namespace belfem
                 {
                     mMesh->sidesets().push( tSideSet );
 
-                    // add sideset to mesh
                     mSideSetMap[ tSideSet->id() ] = tSideSet ;
 
                 }
@@ -1468,7 +1396,6 @@ namespace belfem
 
             if ( m==0 ) return ;
 
-            // count thin shells that are visible to this proc
             uint tCount = 0 ;
             for ( uint k=0; k<m; ++k )
             {
@@ -1499,11 +1426,9 @@ namespace belfem
 
                 uint n = mThinShellData( k ).mBlocksIDs.size() ;
 
-                // create the shell object
                 SideSet * tGhost = mSideSetMap.key_exists( mThinShellData( k ).mGhostSideSetID ) ? mSideSetMap( mThinShellData( k ).mGhostSideSetID ) : nullptr;
                 ThinShell * tShell = new ThinShell( mSideSetMap( mThinShellData( k ).mSideSetID ) , tGhost );
 
-                // set the blocks
                 Cell< Block * > & tBlocks = tShell->blocks();
                 tBlocks.set_size( n, nullptr );
                 for ( uint b=0; b<n; ++b )
@@ -1514,8 +1439,6 @@ namespace belfem
                     }
                 }
 
-                // convert thicknesses to vector and set
-
                 Vector< real > tThicknesses( n );
                 for ( uint b=0; b<n; ++b )
                 {
@@ -1523,13 +1446,10 @@ namespace belfem
                 }
                 tShell->set_thicknesses( tThicknesses );
 
-                // set the material labels
                 tShell->set_materials( mThinShellData( k ).mMaterials );
 
-                // add shell to map
                 mThinShellMap[ tShell->id() ] = tShell ;
 
-                // add shell to container
                 tThinShells.push( tShell );
             }
         }
@@ -1753,7 +1673,6 @@ namespace belfem
 
 #if !defined( NDEBUG ) || defined( DEBUG )
 
-            // sanity check
             for ( proto::GroupData & tData : mBlockData )
             {
                 if ( tData.mHasEdges )
@@ -1890,7 +1809,6 @@ namespace belfem
 
 #if !defined( NDEBUG ) || defined( DEBUG )
 
-            // sanity check
             for ( proto::GroupData & tData : mBlockData )
             {
                 if ( tData.mHasFaces )

@@ -891,7 +891,7 @@ namespace belfem
             b = mB + bn ;
 
             // field magnitude and angle through the assembly's own convention
-            // ( bn_angle, unfolded [ 0, pi ] since 2026-08-16 ), so the displayed
+            // ( bn_angle, unfolded [ 0, pi ] ), so the displayed
             // J/Jc uses the same jc evaluation as the resistivity in the solve
             real norm_b ;
             real beta = mCalculator->bn_angle( b, n, norm_b ) ;

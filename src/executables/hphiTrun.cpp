@@ -95,8 +95,6 @@ int main( int    argc,
     // check if backup exists
     tControl->load_memdump( "memdump.hdf5" );
 
-    // this is needed if we want to compute the matrix conditioning in mumps
-    //tKernel->dofmgr()->solver()->set_mumps_error_analysis( MumpsErrorAnalysis::Full );
 
 
     if (tControl->is_fullycoupled())

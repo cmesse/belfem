@@ -29,9 +29,8 @@ namespace belfem
          * zeta = 0, apex ( 0, 0, 1 ), as in cl_IF_PYRA5.hpp ): 4-point Gauss-Legendre
          * in xi and eta, scaled by ( 1 - zeta ), times 4-point Gauss-Jacobi(2,0) in
          * zeta, which absorbs the ( 1 - zeta )^2 volume factor. Exact for polynomials
-         * up to degree 7; the weights sum to 4/3. Regenerated 2026-09-03: the
-         * stored coordinates did not integrate degree 1 ( the weights already were
-         * these ). Construction as in 10.1108/02644400410554362
+         * up to degree 7. The weights sum to 4/3.
+         * Construction: 10.1108/02644400410554362
          */
         inline void
         gauss_pyra64(

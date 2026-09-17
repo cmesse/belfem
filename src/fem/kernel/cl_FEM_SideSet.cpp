@@ -113,16 +113,13 @@ namespace belfem
                 this->set_domain_type( aParent->mesh()->sideset( aID )->domain_type() );
             }
 
-            // get the number of dofs per node
             uint tNumDofTypes =  aParent->iwg()->dof_entity_types().length() ;
 
-            // allocate set-wise boundary conditions
             mBcValues.set_size( tNumDofTypes, 0.0 );
             mBcTypes.set_size( tNumDofTypes, BoundaryConditionImposing::Free );
 
             if( mElementType != ElementType::UNDEFINED )
             {
-                // set the number of nodes per element
                 mNumberOfNodesPerElement = mesh::number_of_nodes( mElementType );
 
                 this->initialize_elements( aFacets );
@@ -164,9 +161,7 @@ namespace belfem
                 mMasterType( aMasterType ),
                 mSlaveType( aSlaveType )
         {
-            // set the number of nodes per element
             mNumberOfNodesPerElement = mesh::number_of_nodes( mElementType );
-
 
             // initialize lookup tables for integration of master and slave
             if ( mParent != nullptr )
@@ -205,15 +200,12 @@ namespace belfem
         void
         SideSet::initialize_elements( Cell< mesh::Facet * > & aFacets  )
         {
-            // get size of container
             index_t tNumberOfFacets = aFacets.size();
 
-            // allocate memory
             mElements.set_size( tNumberOfFacets, nullptr );
 
             DofManager * tParent = reinterpret_cast< DofManager * >( mParent );
 
-            // flag relevant elements on master block
             tParent->mesh()->unflag_all_elements() ;
 
             for ( mesh::Facet * tFacet: aFacets )
@@ -230,7 +222,6 @@ namespace belfem
                 }
             }
 
-            // initialize counter
             index_t tCount = 0;
 
             // the block map tells which element sits on which block
@@ -246,13 +237,10 @@ namespace belfem
                 }
             }
 
-            // get the linking mode
             SideSetDofLinkMode tMode = mParent->iwg()->sideset_dof_link_mode();
 
-            // loop over all facets
             for ( mesh::Facet * tFacet: aFacets )
             {
-                // get master ID
                 id_t tMasterBlockID = 0 ;
                 id_t tSlaveBlockID = 0 ;
 
@@ -263,7 +251,6 @@ namespace belfem
 
                 if( tFacet->has_slave() )
                 {
-                    // check if slave block is selected
                     if( tBlockMap.key_exists( tFacet->slave()->id() ) )
                     {
                         tSlaveBlockID = tBlockMap( tFacet->slave()->id() );
@@ -306,17 +293,13 @@ namespace belfem
         void
         SideSet::collect_nodes( Cell< mesh::Facet * > & aFacets )
         {
-            // reset node container
             mParent->mesh()->unflag_all_nodes();
 
-            // flag all nodes that belong to this set
             for ( mesh::Facet * tFacet : aFacets )
             {
                 tFacet->flag_nodes();
             }
 
-
-            // count flagged nodes
             index_t tCount = 0;
             for( mesh::Node * tNode : mParent->mesh()->nodes() )
             {
@@ -326,21 +309,16 @@ namespace belfem
                 }
             }
 
-            // allocate container
             mNodes.set_size( tCount, nullptr );
 
-            // reset counter
             tCount = 0;
 
-            // collect nodes
             for( mesh::Node * tNode : mParent->mesh()->nodes() )
             {
                 if ( tNode->is_flagged() )
                 {
-                    // write node into container
                     mNodes( tCount ++ ) = tNode;
 
-                    // tidy up
                     tNode->unflag();
                 }
             }
@@ -351,15 +329,12 @@ namespace belfem
         void
         SideSet::impose_dirichlet( const real aValue, const uint aDofType )
         {
-            // set value
             mBcValues( aDofType ) = aValue ;
 
-            // set type
             mBcTypes( aDofType ) = BoundaryConditionImposing::Dirichlet ;
 
             index_t tNumFirstFlips = 0 ;
 
-            // loop over all nodes of this mesh
             for ( mesh::Node * tNode : mNodes )
             {
                 Dof * tDof = mParent->dof(
@@ -400,7 +375,6 @@ namespace belfem
                     ( long unsigned int ) tNumFirstFlips );
             }
 
-            // set domain type of this shell
             this->set_domain_type( DomainType::Dirichlet );
 
             // Dirichlet sidesets need calculators for geometry but no DOF allocation
@@ -412,7 +386,6 @@ namespace belfem
         void
         SideSet::impose_neumann( const real aValue, const uint aDofType )
         {
-            // set value
             mBcValues( aDofType ) = aValue ;
 
             mBcTypes( aDofType ) = BoundaryConditionImposing::Neumann ;
@@ -427,27 +400,23 @@ namespace belfem
         void
         SideSet::impose_alpha( const real aAlpha, const real aTinf )
         {
-            // remember value of alpha
             mBcValues( 0 ) = aAlpha ;
 
             mBcTypes( 0 ) = BoundaryConditionImposing::Alpha ;
             mTinf = std::abs( aTinf ) >= 0 ? aTinf : BELFEM_TREF ;
 
-            // create the fields if they don't exist already
             if( ! mParent->mesh()->field_exists( "alpha") )
             {
                 Vector< real > & tAlpha = mParent->mesh()->create_field( "alpha" ) ;
                 tAlpha.fill( 0.0 );
             }
 
-            // create field for reference temperature
             if( ! mParent->mesh()->field_exists( "Tinf") )
             {
                 Vector< real > & tTinf = mParent->mesh()->create_field( "Tinf" ) ;
                 tTinf.fill( mTinf );
             }
 
-            // set domaon type of this shell
             this->set_domain_type( DomainType::ThermalAlpha );
 
             this->activate( true );
@@ -465,12 +434,10 @@ namespace belfem
                 mBcTypes( k ) = BoundaryConditionImposing::Free ;
             }
 
-            // loop over all nodes of this set
             for ( mesh::Node * tNode : mNodes )
             {
                 for( uint k=0; k<n; ++k )
                 {
-                    // grab dof and free value
                     mParent->dof( mParent->calculate_dof_id( tNode, k ) )->free();
                 }
             }
@@ -503,12 +470,10 @@ namespace belfem
                     }
                     case( BoundaryConditionImposing::Neumann ) :
                     {
-                        // grab surface field
                         Vector< real > & tField
                                 = mParent->field_data( mParent->iwg()->field(
                                         tNumDofsPerNode + k ) );
 
-                        // loop over all nodes of this mesh
                         for ( mesh::Node * tNode : mNodes )
                         {
                             tField( tNode->index() ) = mBcValues( k );
@@ -517,11 +482,9 @@ namespace belfem
                     }
                     case( BoundaryConditionImposing::Alpha ) :
                     {
-                        // grab surface field
                         Vector< real > & tAlpha  = mParent->field_data( "alpha" );
                         Vector< real > & tTinf   = mParent->field_data( "Tinf" );
 
-                        // loop over all nodes of this mesh
                         for ( mesh::Node * tNode : mNodes )
                         {
                             tAlpha( tNode->index() ) = mBcValues( 0 );
@@ -544,19 +507,15 @@ namespace belfem
         SideSet::initialize_lookup_tables( const uint aIntegrationOrder )
 
         {
-            // determine integration order
             uint tIntegrationOrder = aIntegrationOrder ;
             InterpolationType tType = mParent == nullptr ? InterpolationType::LAGRANGE : mParent->iwg()->interpolation_type();
             IntegrationScheme tScheme = mParent == nullptr ? IntegrationScheme::GAUSSCLASSIC : mParent->integration_scheme() ;
 
-
             bool tHaveMaster =  mMasterType != ElementType::UNDEFINED && mMasterType != ElementType::EMPTY ;
             bool tHaveSlave =   mSlaveType != ElementType::UNDEFINED && mSlaveType != ElementType::EMPTY ;
 
-            // check if we use auto setting
             if( tIntegrationOrder == 0 )
             {
-                // auto define integration order
                 tIntegrationOrder = auto_integration_order( mElementType );
 
                 if( tHaveMaster )
@@ -611,7 +570,6 @@ namespace belfem
             }
             if( tHaveSlave )
             {
-                // count number of permutations
                 uint tNumFacets = mesh::number_of_facets( mSlaveType );
 
                 uint tNumPermutations = 0 ;

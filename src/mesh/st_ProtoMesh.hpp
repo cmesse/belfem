@@ -176,8 +176,8 @@ namespace belfem
                 Cell< id_t >   mSlaveFacets ;
             };
 
-            // todo: Still missing: CurveData
-            // todo: Still missing: function to provide tables to Kernel
+            // TODO(cm): add CurveData
+            // TODO(cm): add a function that provides the tables to the Kernel
 
         }
     }

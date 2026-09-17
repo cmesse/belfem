@@ -62,7 +62,8 @@ namespace belfem
                     // gradient on slave
                     const Matrix< real > & B = mCalc->Bs( p );
 
-                    // todo: these lines can be deleted
+                    // TODO(cm): P and Q feed only the assertions below but are
+                    // computed in release builds too; guard their calculation
                     Matrix< real > P( mCalc->N( p ) * mCalc->X() );
                     Matrix< real > Q( mCalc->Nm( p ) * mCalc->Xm() );
                     Matrix< real > R( mCalc->Ns( p ) * mCalc->Xs() );

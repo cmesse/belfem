@@ -78,19 +78,10 @@ namespace belfem
     public:
 //------------------------------------------------------------------------------
 
-        /**
-         * @brief Default constructor
-         */
         MaterialFactory() = default;
 
-        /**
-         * @brief Constructor with input section
-         */
         MaterialFactory( const input::Section * aSection );
 
-        /**
-         * @brief Default destructor
-         */
         ~MaterialFactory() = default;
 
 //------------------------------------------------------------------------------

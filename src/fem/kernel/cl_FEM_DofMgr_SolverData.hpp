@@ -209,7 +209,7 @@ namespace belfem
                 Cell< index_t > mWorkDofIndices ;
 
                 //! Anderson mixing for the Picard branch ( opt-in, master
-                //! side only; see todo/closed/anderson_picard_acceleration_plan.md ).
+                //! side only ).
                 //! 0 = off: the legacy relaxed update runs untouched
                 uint mAndersonDepth = 0 ;
 

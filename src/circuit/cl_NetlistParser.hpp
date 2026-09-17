@@ -101,7 +101,7 @@ namespace belfem
 
         /**
          * Lexes an ngspice netlist into the intermediate representation the
-         * NgspiceCircuitFactory consumes ( todo/ngspice_parser_plan.md §9.1 ).
+         * NgspiceCircuitFactory consumes.
          *
          * Handled here: the mandatory title line ( always consumed, never
          * parsed ); full-line '*' comments; "* belfem:" directives ( single
@@ -113,7 +113,7 @@ namespace belfem
          * around '=' removed before tokenizing; case-folding of every
          * identifier; ".end" ( exactly that token -- trailing tokens
          * hard-error ) after which remaining lines are ignored; the ordered
-         * first-appearance node-name list ( restart contract O9 ),
+         * first-appearance node-name list ( restart contract ),
          * including nodes introduced only by a directive's n+/n- keys.
          *
          * Two deliberate BELFEM extensions beyond the manual's strict
@@ -124,7 +124,7 @@ namespace belfem
          * ".end". Both accept strictly more than stock ngspice and never
          * reinterpret a deck ngspice accepts. A "* belfem:" DIRECTIVE is a
          * statement, not a comment: it completes the pending card ( so
-         * node collection follows line order, O9 ) and ends the
+         * node collection follows line order ) and ends the
          * continuation chain.
          *
          * Hard errors ( BELFEM_ERROR, each naming source, line and card ):

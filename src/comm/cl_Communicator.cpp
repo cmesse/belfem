@@ -1,5 +1,3 @@
-//
-// Created by Christian Messe on 2018-12-21.
 /*
  * BELFEM -- The Berkeley Lab Finite Element Framework
  * Copyright (c) 2026, The Regents of the University of California,

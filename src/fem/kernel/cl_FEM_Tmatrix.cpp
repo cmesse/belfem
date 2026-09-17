@@ -175,21 +175,6 @@ namespace belfem
         void
         Tmatrix::print() const
         {
-            /*std::cout << "n   : " << mNumRows << std::endl ;
-            std::cout << "m   : " << mNumCols << std::endl ;
-            std::cout << "nnz : " << mNumNonZeros << std::endl ;
-
-            std::cout << "pointers :" << std::endl ;
-            for( uint k=0; k<=mNumRows; ++k )
-            {
-                std::cout << "  " << k << ", " << mPointers[ k ] << std::endl ;
-            }
-            std::cout <<  std::endl << "indices & values :" << std::endl ;
-            for( uint k=0; k<mNumNonZeros; ++k )
-            {
-                std::cout << "  " << k << ", " << mIndices[ k ] << ", " << mValues[ k ] << std::endl ;
-            }*/
-
             Matrix< real > T( mNumRows, mNumCols, 0.0 );
 
             this->get_matrix( T );

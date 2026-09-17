@@ -25,8 +25,8 @@ namespace belfem
 // ----------------------------------------------------------------------------
 
         // 7th order in the Shunn and Ham numbering ( leading error term delta^7,
-        // their Table 1 ): exact for polynomials up to degree 6. UNUSED since
-        // 2026-09-03: requested order 7 is served by the degree-8 Witherden and
+        // their Table 1 ): exact for polynomials up to degree 6. This table is unused:
+        // requested order 7 uses the degree-8 Witherden and
         // Vincent table ( fn_intpoints.cpp ), because "order" means the exactness
         // degree there and this table falls one short of it.
         // source Shunn and Ham, 10.1016/j.cam.2012.03.032

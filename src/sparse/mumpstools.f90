@@ -28,12 +28,7 @@ module mumpstools_common
 
     type ( DMUMPS_STRUC ), dimension( : ), allocatable, target, save :: gSolvers
     integer, dimension( : ), allocatable, save :: gOccupied
-    ! FIXED at 8. The setter that used to change it was removed 2026-08-29:
-    ! it had no caller anywhere, it did not reallocate the pool, and a call
-    ! after the first create would have left gMaxNumSolvers and the actual
-    ! array size disagreeing -- a scan past the end, or a deallocate with
-    ! high slots still occupied. Raising the pool size is a reallocation
-    ! feature; add it as one if it is ever wanted, not as a bare setter
+    ! The pool size is fixed. Growing it requires reallocating gSolvers.
     integer( int_t ), save :: gMaxNumSolvers = 8
     integer( int_t ), save :: gNumSolvers = 0
 

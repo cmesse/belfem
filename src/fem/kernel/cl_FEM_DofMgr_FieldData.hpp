@@ -102,7 +102,8 @@ namespace belfem
 
 //-----------------------------------------------------------------------------
 
-                // todo: we might not need this anymore
+                // TODO(cm): no caller; delete together with the definition
+                // in cl_FEM_DofMgr_FieldData.cpp
                 void
                 initialize_linear_projection_lists();
 

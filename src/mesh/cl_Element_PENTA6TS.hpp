@@ -12,10 +12,6 @@
 #ifndef CL_ELEMENT_PENTA6TS_HPP
 #define CL_ELEMENT_PENTA6TS_HPP
 
-//
-// Created by Christian Messe on 2019-08-04.
-//
-
 #ifndef BELFEM_CL_ELEMENT_PENTA6TS_HPP
 #define BELFEM_CL_ELEMENT_PENTA6TS_HPP
 

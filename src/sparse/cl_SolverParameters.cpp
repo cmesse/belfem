@@ -144,8 +144,7 @@ namespace belfem
       mUseMatrixMatching( aOther.mUseMatrixMatching ),
       // Solver takes its parameters BY VALUE, so a member missing here is
       // silently reset to its default before the wrapper sees it — that
-      // is exactly how a deck's "metis nodendp : false" was being lost
-      // ( found by review 2026-08-15 )
+      // can otherwise lose a deck's "metis nodendp : false" setting.
       mUseMetisNodeNDP( aOther.mUseMetisNodeNDP ),
       mPreconditioner(aOther.mPreconditioner),
       mKrylovMethod(aOther.mKrylovMethod),
@@ -366,8 +365,8 @@ namespace belfem
     SolverParameters::synchronize()
     {
         // the have-flags travel with their tolerances so every rank holds
-        // the same record of what the deck stated. Since 2026-08-18 the
-        // relative have-flag gates nothing ( STRUMPACK always applies the
+        // the same record of what the deck stated. The relative have-flag
+        // gates nothing ( STRUMPACK always applies the
         // shared value ), but it keeps its slot: the payload is positional
         // and shrinking it from the middle is how pack/unpack desyncs are
         // born ( width history: 7 -> 8 -> 9 -> 12 -> 13 )

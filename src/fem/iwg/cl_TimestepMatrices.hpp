@@ -139,9 +139,6 @@ namespace belfem
                 mFlags.set( static_cast< index_t >( aFlag ) );
             }
 
-            /**
-             * @brief Check if a matrix has been populated
-             */
             bool
             has_flag( const MatrixFlag aFlag ) const
             {
@@ -204,7 +201,6 @@ namespace belfem
              */
             void
             assemble_dJdx( const real adt, const real aAlpha = 1.0 );
-
 
         };
 

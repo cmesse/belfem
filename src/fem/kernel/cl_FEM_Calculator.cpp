@@ -11,7 +11,6 @@
 
 #include <iostream>
 
-
 #include "assert.hpp"
 #include "commtools.hpp"
 #include "cl_IWG.hpp"
@@ -101,7 +100,6 @@ namespace belfem
                 bool tIsConstantMu0 = tIsConstantMu
                         && mMaterial->constant_property( MaterialProperty::mu ) == constant::mu0 ;
 
-                // flag if we need jc
                 bool tIsHTS = mMaterial->have( MaterialProperty::jc ) ;
 
                 // flag if rho depends on the field magnitude and the b-j angle;
@@ -134,7 +132,6 @@ namespace belfem
 
                 // density at the undeformed-mesh reference temperature ( see
                 // the member note: density( T ) would double-count expansion ).
-                //
                 // The correction multiplies BOTH branches. It used to sit on
                 // the ref_density branch alone, which made it dead for every
                 // alloy: Alloy::create_splines calls set_custom( density ),
@@ -207,9 +204,9 @@ namespace belfem
                         ( long unsigned int ) aCalculator->group()->id(),
                         mMaterial->label().c_str() );
 
-                    // the wall kernel has no dMdx tangent blocks, so a
-                    // field-dependent mu is not supported here ( decision
-                    // 2026-08-09: plated walls are copper, mu = mu0 )
+                    // The wall kernel has no dMdx tangent blocks, so it does not
+                    // support field-dependent mu. Plated walls are expected to be
+                    // copper with mu = mu0; any constant mu passes.
                     BELFEM_ERROR( tIsConstantMu0 || tIsConstantMu,
                         "side connector block %lu: material %s must have a constant mu",
                         ( long unsigned int ) aCalculator->group()->id(),
@@ -265,7 +262,6 @@ namespace belfem
 
                     mFunB = & MaxwellData::compute_b_ts ;
 
-
                     if ( tIsMetal )
                     {
                         mFunRho       = & MaxwellData::compute_rho_metal ;
@@ -281,7 +277,7 @@ namespace belfem
                         // Newton tangent must be bound — for constant jc/n
                         // the derivative evaluates to exactly zero and the
                         // kernel early-outs, so those decks are unchanged.
-                        // The T channel ( T-leg, 2026-08-13 ) is bound
+                        // The T channel is bound
                         // per law as well: it feeds T_h_newton's
                         // quench-feedback block and, unlike |B|, keeps a
                         // nonzero rho_n term for constant-jc materials.
@@ -290,7 +286,6 @@ namespace belfem
                         // while add_rho_field_tangent differentiates
                         // bj_angle ( field to current, metal Kohler ) —
                         // binding it would apply the wrong ∂β/∂q rows
-                        // ( 2026-08-13 audit, both voices )
                         if ( mMaterial->have_defect() )
                         {
                             if ( mMaterial->use_piecewise() )
@@ -377,7 +372,6 @@ namespace belfem
                         mFunMu = & MaxwellData::compute_mu_h ;
                         mFundMudH = & MaxwellData::compute_dmu_material ;
                     }
-
 
                     mFunB = & MaxwellData::compute_b_bulk ;
 
@@ -818,8 +812,6 @@ namespace belfem
             }
         }
 
-
-
 //------------------------------------------------------------------------------
 
         Calculator::Calculator( Group * aGroup, const ModelDimensionality aDimensionality ) :
@@ -852,13 +844,11 @@ namespace belfem
                 delete mMaxwellData ;
             }
 
-            // delete calculator matrices
             for( calculator::MatrixData * tMatrix : mMatrices )
             {
                 delete tMatrix ;
             }
 
-            // delete calculator vectors
             for( calculator::VectorData * tVector : mVectors )
             {
                 delete tVector ;
@@ -887,7 +877,6 @@ namespace belfem
         }
 
 //------------------------------------------------------------------------------
-
 
         void
         Calculator::initialize_integration(
@@ -962,21 +951,16 @@ namespace belfem
             if(     mGroup->type() == GroupType::BLOCK ||
                     mGroup->type() == GroupType::SIDESET )
             {
-                // get pointer to equation object
                 IWG * tEquation = mGroup->parent()->iwg();
 
-                // reset the list
                 mVectors.clear() ;
 
-                // reset the map
                 mVectorMap.clear() ;
 
-                // flags for special cases
                 bool tHaveH = false ;
 
                 for ( const string & tLabel: tEquation->all_fields())
                 {
-                    // the size of the vector
                     uint tSize = 0;
 
                     EntityType tType = entity_type( tLabel );
@@ -986,7 +970,6 @@ namespace belfem
                         tHaveH = true ;
                     }
 
-                    // determine size
                     switch ( tType )
                     {
                         case ( EntityType::EDGE ) :
@@ -1015,13 +998,11 @@ namespace belfem
                         }
                     }
 
-                    // allocate size
                     this->create_vector( tLabel, tSize, tType );
                 }
 
                 if( tHaveH )
                 {
-                    // clear memory
                     if( mEdgeFunction != nullptr )
                     {
                         delete mEdgeFunction ;
@@ -1056,7 +1037,6 @@ namespace belfem
                         {
                             uint tNumDimensions = mesh::dimension( mGroup->master_type() );
 
-                            // master edge functions
                             {
                                 uint n = mesh::number_of_facets( mGroup->master_type() );
                                 mEdgeFunctionsMaster.set_size( n, nullptr );
@@ -1151,7 +1131,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-
         uint
         Calculator::slave_integration_index_2d( const mesh::Facet * aFacet )
         {
@@ -1213,8 +1192,6 @@ namespace belfem
                 return;
             }
 
-
-            // make sure that allocation funciton is only called once
             BELFEM_ERROR( ! mIsAllocated, "calculator is already allocated" );
             mIsAllocated = true ;
 
@@ -1253,21 +1230,10 @@ namespace belfem
                 mFunLinkElement = & Calculator::link_element_default;
             }
 
-            // number of nodes per element
             mNumberOfNodes = mesh::number_of_nodes( mGroup->element_type() );
 
-            // corner nodes per element
             mNumberOfCornerNodes = mesh::number_of_corner_nodes( mGroup->element_type() );
 
-            // number of edges per element
-            //uint tNumEdges = mesh::number_of_edges( mGroup->element_type() );
-
-            // number of faces per element
-            //uint tNumFaces = mesh::number_of_faces( mGroup->element_type() );
-
-            // uint tNumNedelecDofs = mesh::number_of_nedelec_dofs( mGroup->element_type() );
-
-            // get the number of dimensions
             uint tNumDimensions = mMesh->number_of_dimensions() ;
 
             // get the number of dofs from first element. a group with only
@@ -1276,38 +1242,30 @@ namespace belfem
             uint tNumDofs = mGroup->parent() != nullptr && mGroup->number_of_elements() > 0 ?
                 mGroup->elements()(0)->number_of_local_dofs() : 0 ;
 
-            // matrices for X-Coordinates
             mX.set_size( mNumberOfNodes, tNumDimensions, BELFEM_QUIET_NAN );
             mXc.set_size( mNumberOfCornerNodes, tNumDimensions, BELFEM_QUIET_NAN );
 
-            // matrix for Jacobian and its inverse
             mJ = this->create_matrix( "J", tNumDimensions, tNumDimensions );
             mInvJ = this->create_matrix( "InvJ", tNumDimensions, tNumDimensions );
 
-            // special node and matrix interpolators
             switch( mGroup->parent() == nullptr ? IwgType::UNDEFINED : mGroup->parent()->iwg()->type() )
             {
                 case( IwgType::Gradient2D ) :
                 {
-                    // matrix for node interpolation
                     mN = this->create_matrix( "N", 2, tNumDofs );
                     mB = this->create_matrix( "B", tNumDimensions, mNumberOfNodes );
 
-                    // link functions
                     mFunN = & Calculator::N2D ;
                     mFunB = & Calculator::Bscalar ;
-
 
                     break;
                 }
                 case( IwgType::Gradient3D ) :
                 {
-                    // matrix for node interpolation
                     mN = this->create_matrix( "N", 3, tNumDofs );
 
                     mB = this->create_matrix( "B", tNumDimensions, mNumberOfNodes );
 
-                    // link functions
                     mFunN = & Calculator::N3D ;
                     mFunB = & Calculator::Bscalar ;
 
@@ -1315,28 +1273,22 @@ namespace belfem
                 }
                 case( IwgType::PlaneStress ) :
                 {
-                    // matrix for node interpolation
                     mN = this->create_matrix( "N", 2, tNumDofs );
 
-                    // matrices for gradient operator
                     mdN = this->create_matrix( "dN", 2, 2*mNumberOfNodes );
                     mB = this->create_matrix( "B", 3, tNumDofs );
 
-                    // link functions
                     mFunN = & Calculator::N2D ;
                     mFunB = & Calculator::Bplanestress ;
                     break ;
                 }
                 case( IwgType::LinearElasticity ) :
                 {
-                    // matrix for node interpolation
                     mN = this->create_matrix( "N", 3, tNumDofs );
 
-                    // matrices for gradient operator
                     mdN = this->create_matrix( "dN", 3, 3*mNumberOfNodes );
                     mB  = this->create_matrix( "B", 6, tNumDofs );
 
-                    // link functions
                     mFunN = & Calculator::N3D ;
                     mFunB = & Calculator::Bvoigt ;
                     break ;
@@ -1356,7 +1308,6 @@ namespace belfem
                     {
                         break ;
                     }
-                    // set functions for master element
                     if( mGroup->master_type() != ElementType::EMPTY )
                     {
                         uint tNumMasterNodes = mesh::number_of_nodes( mGroup->master_type() ) ;
@@ -1372,7 +1323,6 @@ namespace belfem
                         mnxBm  = this->create_matrix( "nxBm", tNumDimensions == 3 ? 3 : 1, tNumMasterNodes );
                     }
 
-                    // set functions for slave element
                     if( mGroup->slave_type() != ElementType::EMPTY  )
                     {
                         uint tNumSlaveNodes = mesh::number_of_nodes( mGroup->slave_type() );
@@ -1392,21 +1342,16 @@ namespace belfem
                 }
             }
 
-            // stiffness matrix
             mK.set_size( tNumDofs, tNumDofs, BELFEM_QUIET_NAN );
 
-            // Newton correction matrix
             mJN.set_size( tNumDofs, tNumDofs, BELFEM_QUIET_NAN );
 
-            // load vector
             mf.set_size( tNumDofs, BELFEM_QUIET_NAN );
 
-            // dof vectors
             mq0.set_size( tNumDofs, BELFEM_QUIET_NAN );
             mq.set_size( tNumDofs, BELFEM_QUIET_NAN );
             mqswap.set_size( tNumDofs, BELFEM_QUIET_NAN );
 
-            // link function to invert J
             switch( tNumDimensions )
             {
                 case( 2 ) :
@@ -1577,19 +1522,16 @@ namespace belfem
                 }
             }
 
-            // check if we are allocating master and slave elements
             if( mGroup->master_type() != ElementType::EMPTY )
             {
                 uint tNumNodes = mesh::number_of_nodes( mGroup->master_type() );
 
                 mXm.set_size( tNumNodes, tNumDimensions, BELFEM_QUIET_NAN );
 
-                // allocate normal vector
                 mNormal.set_size( tNumDimensions, BELFEM_QUIET_NAN );
 
                 mJm = this->create_matrix( "Jm", tNumDimensions, tNumDimensions );
 
-                // get the interpolation order of the master block
                 InterpolationOrder tOrder = mesh::interpolation_order( mGroup->master_type() ) ;
 
                 switch( mesh::geometry_type( mGroup->master_type() ) )
@@ -1655,11 +1597,6 @@ namespace belfem
                 uint tNumNodes = mesh::number_of_nodes( mGroup->slave_type() );
 
                 mXs.set_size( tNumNodes, tNumDimensions, BELFEM_QUIET_NAN );
-
-                //tNumNedelecDofs = mesh::number_of_nedelec_dofs( mGroup->slave_type() );
-
-                // mIndexXs = this->create_matrix( "Xs", tNumNodes, tNumDimensions );
-                // mIndexBs = this->create_matrix( "Bs", tNumNodes, tNumDimensions );
 
                 mJs = this->create_matrix( "Js", tNumDimensions, tNumDimensions );
 
@@ -1795,19 +1732,16 @@ namespace belfem
         {
             BELFEM_ERROR( mIsAllocated, "calculator is not allocated");
 
-            // reset vectors
             for( calculator::VectorData * tVector : mVectors )
             {
                 tVector->set_index( BELFEM_UINT_MAX );
             }
 
-            // reset matrices
             for( calculator::MatrixData * tMatrix : mMatrices )
             {
                 tMatrix->set_index( BELFEM_UINT_MAX );
             }
 
-            // reset determinant
             mDetJ     = BELFEM_QUIET_NAN ;
             mDetJIndex = BELFEM_UINT_MAX ;
             mSurfaceIncrement = BELFEM_QUIET_NAN ;
@@ -1911,7 +1845,6 @@ namespace belfem
         {
             BELFEM_ASSERT( aFacet->master() != nullptr, "Expect a master element");
             BELFEM_ASSERT( aFacet->slave() != nullptr, "Expect a slave element");
-            // grab coordinates of master
             for ( uint j=0; j<3; ++j )
             {
                 for( uint i=0; i<aFacet->master()->number_of_nodes(); ++i )
@@ -1920,7 +1853,6 @@ namespace belfem
                 }
             }
 
-            // grab coordinates of slave
             for ( uint j=0; j<3; ++j )
             {
                 for( uint i=0; i<aFacet->slave()->number_of_nodes(); ++i )
@@ -1929,8 +1861,6 @@ namespace belfem
                 }
             }
 
-            // grab coordinates of facet
-            // grab coordinates of slave
             for ( uint j=0; j<3; ++j )
             {
                 for( uint i=0; i<aFacet->number_of_nodes(); ++i )
@@ -1939,19 +1869,16 @@ namespace belfem
                 }
             }
 
-            // reset vectors
             for( calculator::VectorData * tVector : mVectors )
             {
                 tVector->set_index( BELFEM_UINT_MAX );
             }
 
-            // reset matrices
             for( calculator::MatrixData * tMatrix : mMatrices )
             {
                 tMatrix->set_index( BELFEM_UINT_MAX );
             }
 
-            // reset determinant
             mDetJ     = BELFEM_QUIET_NAN ;
             mDetJIndex = BELFEM_UINT_MAX ;
             mSurfaceIncrement = BELFEM_QUIET_NAN ;
@@ -1978,7 +1905,6 @@ namespace belfem
             mIsLinear = mesh::interpolation_order( aFacet->element()->type() ) == InterpolationOrder::LINEAR ;
         }
 
-
 //-----------------------------------------------------------------------------
 
         Calculator *
@@ -1988,7 +1914,6 @@ namespace belfem
                 bool           & aMasterIsConductor,
                 bool           & aSlaveIsConductor )
         {
-            // get the mesh facet
             mesh::Facet * tMeshFacet = this->element()->facet();
 
             BELFEM_ASSERT( tMeshFacet != nullptr, "Expect a mesh facet for element %lu",
@@ -1999,10 +1924,8 @@ namespace belfem
             // hard-errors on a controller-less kernel, e.g. the test fixtures )
             SideSet * tSideSet = this->group()->parent()->sideset( tMeshFacet->sideset_id() );
 
-            // get the fem facet
             Element * tFacet = tSideSet->element( tMeshFacet->id() );
 
-            // get the other calculator
             Calculator * aNormalCalc = tSideSet->calculator() ;
 
             BELFEM_ASSERT(  aNormalCalc != nullptr, "Expect a normal calculator for sideset %u", ( uint )tMeshFacet->element()->block_id() );
@@ -2012,13 +1935,10 @@ namespace belfem
             BELFEM_ASSERT(  tMeshFacet->master() != nullptr, "Expect a master element for facet %lu", ( long unsigned int ) tFacet->id() );
             BELFEM_ASSERT(  tMeshFacet->slave()  != nullptr, "Expect a slave element for facet %lu", ( long unsigned int ) tFacet->id() );
 
-            // link calculator and facet
             aNormalCalc->link(  tFacet );
 
-            // get master element
             mesh::Element * tMaster = tMeshFacet->master();
 
-            // get the slave element
             mesh::Element * tSlave = tMeshFacet->slave() ;
 
             // an h-conductor side has no potential: its trace comes from
@@ -2078,10 +1998,8 @@ namespace belfem
             {
                 aVector = new calculator::VectorData( aLabel, aSize, aType );
 
-                // add vector to user vectors
                 mVectors.push( aVector );
 
-                // add vector to map
                 mVectorMap[ aLabel ] = aVector ;
             }
 
@@ -2109,14 +2027,11 @@ namespace belfem
                                                                aNumRows,
                                                                aNumCols );
 
-                // add vector to user vectors
                 mMatrices.push( aMatrix );
 
-                // add vector to map
                 mMatrixMap[ aLabel ] = aMatrix ;
             }
 
-            // fill matrix with zeros
             aMatrix->matrix().fill( 0.0 );
 
             return aMatrix ;
@@ -2147,16 +2062,12 @@ namespace belfem
                     mMesh->field( aEdgeField )->entity_type() == EntityType::EDGE,
                     "Field '%s' is not an edge field", aEdgeField.c_str() );
 
-            // grab data object
             calculator::VectorData * tVectorData = mVectorMap( aEdgeField );
 
-            // get ref to field on mesh
             Vector< real > & tField = mMesh->field_data( aEdgeField );
 
-            // grab the vector object
             Vector< real > & aData = tVectorData->vector() ;
 
-            // loop over all edges
             for( uint e=0; e< mElement->element()->number_of_edges(); ++e )
             {
                 aData( e ) = tField( mElement->element()->edge( e )->index() );
@@ -2236,11 +2147,9 @@ namespace belfem
                     mMesh->field( aEdgeField )->entity_type() == EntityType::EDGE,
                     "Field '%s' is not an edge field", aEdgeField.c_str());
 
-
             BELFEM_ASSERT(
                     mMesh->field( aFaceField )->entity_type() == EntityType::FACE,
                     "Field '%s' is not an edge field", aFaceField.c_str());
-
 
             Vector< real > & aData = this->vector(aVectorLabel );
 
@@ -2252,10 +2161,8 @@ namespace belfem
             for ( uint e = 0; e < mElement->element()->number_of_edges(); ++e )
             {
 
-                // get index of edge
                 index_t tIndex = mElement->element()->edge( e )->index();
 
-                // check direction of edge
                 if ( mElement->edge_direction( e ))
                 {
                     aData( tCount++ ) = tEdgeData( tIndex + tIndex );
@@ -2268,7 +2175,6 @@ namespace belfem
                 }
             }
 
-            // write data into container
             index_t tIndex = 2 * mElement->element()->index();
             aData( tCount++ ) = tFaceData( tIndex );
             aData( tCount++ ) = tFaceData( tIndex + 1 );
@@ -2284,22 +2190,17 @@ namespace belfem
             const string & aFaceField,
             const string & aVectorLabel )
         {
-            // get ref to edge field on mesh
             Vector< real > & tEdgeField = mMesh->field_data( aEdgeField );
 
-            // get ref to face field on mesh
             Vector< real > & tFaceField = mMesh->field_data( aFaceField );
 
-            // the result vector
             Vector< real > & aData = this->vector( aVectorLabel );
 
-            // initialize counter
             uint tCount = 0 ;
 
             uint tNumEdges = mElement->element()->number_of_edges() ;
             uint tNumFaces = mElement->element()->number_of_faces() ;
 
-            // check length of memory container
             BELFEM_ASSERT(
                     aData.length() >= 2 * ( tNumEdges + tNumFaces ),
                     "Length of vector does not fit ( is %u, but need at least %u )",
@@ -2309,10 +2210,8 @@ namespace belfem
             for( uint e=0; e< tNumEdges; ++e )
             {
 
-                // get index of edge
                 index_t tIndex = mElement->element()->edge( e )->index() ;
 
-                // check direction of edge
                 if( mElement->edge_direction( e ) )
                 {
                     aData( tCount ++ ) = tEdgeField( tIndex + tIndex );
@@ -2329,10 +2228,8 @@ namespace belfem
             // therefore, we just populate here
             for( uint f=0; f<tNumFaces; ++f )
             {
-                // get index of face
                 index_t tIndex = mElement->element()->face( f )->index() ;
 
-                // write data into container
                 aData( tCount++ ) = tFaceField( tIndex + tIndex );
                 aData( tCount++ ) = tFaceField( tIndex + tIndex + 1 );
             }
@@ -2347,7 +2244,6 @@ namespace belfem
         {
             if( mNormalIndex == BELFEM_UINT_MAX )
             {
-                // remember the index
                 mNormalIndex = aIndex;
 
                 switch ( mMasterIndex )
@@ -2380,7 +2276,6 @@ namespace belfem
                 // this value will contain the length of the side
                 mSurfaceIncrement = norm( mNormal );
 
-                // now let's norm the vector
                 mNormal /= mSurfaceIncrement;
 
                 // finally, we must adapt this value, since along the edge
@@ -2402,10 +2297,8 @@ namespace belfem
             }
             else if( mNormalIndex != aIndex )
             {
-                // remember the index
                 mNormalIndex = aIndex;
 
-                // compute the Jacobian matrix
                 const Matrix< real > & J = this->Jm( aIndex );
 
                 switch ( mMasterIndex )
@@ -2444,7 +2337,6 @@ namespace belfem
                 // if this edge was straight, this would be the length of this side
                 mSurfaceIncrement = norm( mNormal );
 
-                // now let's norm the vector
                 mNormal /= mSurfaceIncrement;
 
                 // finally, we must adapt this value, since along the edge
@@ -2452,7 +2344,6 @@ namespace belfem
                 mSurfaceIncrement *= 0.5;
             }
 
-            // now we can return the vector
             return mNormal;
         }
 
@@ -2463,7 +2354,6 @@ namespace belfem
         {
             if( mNormalIndex == BELFEM_UINT_MAX )
             {
-                // remember the index
                 mNormalIndex = aIndex;
 
                 switch ( mMasterIndex )
@@ -2501,7 +2391,6 @@ namespace belfem
                 // this value will contain the length of the side
                 mSurfaceIncrement = norm( mNormal );
 
-                // now let's norm the vector
                 mNormal /= mSurfaceIncrement;
 
                 // finally, we must adapt this value, since along the edge
@@ -2509,7 +2398,6 @@ namespace belfem
                 mSurfaceIncrement *= 0.5;
             }
 
-            // now we can return the vector
             return mNormal;
         }
 //------------------------------------------------------------------------------
@@ -2523,10 +2411,8 @@ namespace belfem
             }
             else if( mNormalIndex != aIndex )
             {
-                // remember the index
                 mNormalIndex = aIndex;
 
-                // compute the Jacobian matrix
                 const Matrix< real > & J = this->Jm( aIndex );
 
                 switch ( mMasterIndex )
@@ -2564,13 +2450,11 @@ namespace belfem
                 // this value will contain the length of the side
                 mSurfaceIncrement = norm( mNormal );
 
-                // now let's norm the vector
                 mNormal /= mSurfaceIncrement;
 
                 // no multiplication of mSurfaceIncrement with 0.5 here!
             }
 
-            // now we can return the vector
             return mNormal;
         }
 
@@ -2628,7 +2512,6 @@ namespace belfem
                 mNormal /= mSurfaceIncrement ;
             }
 
-            // now we can return the vector
             return mNormal;
         }
 
@@ -2643,10 +2526,8 @@ namespace belfem
             }
             else if ( mNormalIndex != aIndex )
             {
-                // remember the index
                 mNormalIndex = aIndex;
 
-                // compute the Jacobian matrix from the master element
                 const Matrix< real > & J = this->Jm( aIndex );
 
                 switch ( mMasterIndex )
@@ -2693,7 +2574,6 @@ namespace belfem
 
             }
 
-            // now we can return the vector
             return mNormal;
         }
 
@@ -2704,10 +2584,8 @@ namespace belfem
         {
             if ( mNormalIndex != aIndex )
             {
-                // remember the index
                 mNormalIndex = aIndex;
 
-                // compute the Jacobian matrix for the master element
                 const Matrix< real > & J = this->Jm( aIndex );
 
                 Vector< real > & n = mNormal;
@@ -2771,7 +2649,6 @@ namespace belfem
 
                         // using triangular weights, Σ w = 0.5, hence no further multiplication needed
 
-
                         break ;
                     }
                     case 4:
@@ -2779,7 +2656,6 @@ namespace belfem
                         n( 0 ) = J( 0, 1 ) * J( 1, 2 )-J( 0, 2 ) * J( 1, 1 );
                         n( 1 ) = J( 0, 2 ) * J( 1, 0 )-J( 0, 0 ) * J( 1, 2 );
                         n( 2 ) = J( 0, 0 ) * J( 1, 1 )-J( 0, 1 ) * J( 1, 0 );
-
 
                         // norm corresponds to two times the surface
                         mSurfaceIncrement = norm( mNormal );
@@ -2806,10 +2682,8 @@ namespace belfem
         {
             if ( mNormalIndex != aIndex )
             {
-                // remember the index
                 mNormalIndex = aIndex;
 
-                // compute the Jacobian matrix for the master element
                 const Matrix< real > & J = this->Jm( aIndex );
 
                 switch ( mMasterIndex )
@@ -2874,7 +2748,6 @@ namespace belfem
                 mNormal /= mSurfaceIncrement ;
             }
 
-            // now we can return the vector
             return mNormal;
         }
 
@@ -2937,10 +2810,8 @@ namespace belfem
                 return ;
             }
 
-            // get the list of dof strings
             const Cell< string > & tFields = mGroup->parent()->iwg()->dof_fields();
 
-            // loop over all fields
             for ( const string & tLabel : tFields )
             {
                 mesh::Field * tField = mMesh->field( tLabel );
@@ -2964,7 +2835,6 @@ namespace belfem
 
             for ( uint s=0; s<tOrder; ++s )
             {
-                // loop over all fields
                 for ( const string & tLabel : tFields )
                 {
                     mesh::Field * tField = mMesh->field( tLabel );
@@ -3139,7 +3009,6 @@ namespace belfem
             // element may be missing from the thermal group, whose aura is
             // expanded from a smaller owned-element set; the peer then keeps
             // its previous element ( postprocessing only, never assembly )
-            //
             // KEEPING THE PEER IS DELIBERATE. Do not turn the miss into an
             // assert or an error: this is the sanctioned fallback for a maxwell
             // element with no thermal counterpart, and coupled models added

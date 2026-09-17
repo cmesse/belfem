@@ -36,9 +36,7 @@ namespace belfem
                 mPhiBlocks( aPhiBlocks ),
                 mNonPhiBlocks( aNonPhiBlocks )
         {
-            // get maximum IDs from mesh
             mMaxNodeID    = mMesh->max_node_id() ;
-
 
             mCutData.set_size( mNumberOfCuts, nullptr );
 
@@ -144,7 +142,6 @@ namespace belfem
         void
         CutProcessor::collect_edges()
         {
-            // select edges
             mMesh->unflag_all_edges();
 
             for ( CutData * tCutData : mCutData )
@@ -160,7 +157,6 @@ namespace belfem
                 }
             }
 
-            // count edges
             index_t tCount = 0 ;
             for ( Edge * tEdge : mMesh->edges() )
             {
@@ -170,7 +166,6 @@ namespace belfem
                 }
             }
 
-            // collect edges
             mCohomologyEdges.set_size( tCount, nullptr );
             tCount = 0 ;
             for ( Edge * tEdge : mMesh->edges() )
@@ -237,7 +232,6 @@ namespace belfem
         void
         CutProcessor::collect_elements()
         {
-            // comparison object for sorting
             struct
             {
                 inline bool
@@ -247,16 +241,13 @@ namespace belfem
                 }
             } opElementId;
 
-            // make sure that all flags are reset
             mMesh->unflag_all_elements() ;
 
-            // collect elements per cut data
             for ( CutData * tCutData : mCutData )
             {
                 tCutData->collect_elements( mNonPhiBlocks );
             }
 
-            // count total number of elements
             index_t tCount = 0 ;
             for ( CutData * tCutData : mCutData )
             {
@@ -275,13 +266,10 @@ namespace belfem
                 }
             }
 
-            // make sure that elements are unique
             unique( mElements ) ;
 
-            // order elements after their ID
             sort( mElements , opElementId );
 
-            // set the element indices
             tCount = 0 ;
             for ( Element * tElement : mElements )
             {
@@ -315,7 +303,6 @@ namespace belfem
                         tElement->flag();
                     }
 
-                    // flag edges
                     index_t tCount = 0 ;
                     for ( Element * tElement : tCutData->elements() )
                     {
@@ -327,7 +314,6 @@ namespace belfem
                         }
                     }
 
-                    // count edges
                     tCount = 0 ;
                     for ( Edge * tEdge : mMesh->edges() )
                     {
@@ -337,7 +323,6 @@ namespace belfem
                         }
                     }
 
-                    // collect edges in temporary container
                     Cell< Edge * > tEdges( tCount, nullptr ) ;
                     tCount = 0 ;
 
@@ -361,7 +346,6 @@ namespace belfem
                         }
                     }
 
-                    // unflag edges on boundaries
                     for ( id_t tID : mPhiBoundaries )
                     {
                         Cell< Facet * > & tFacets = mMesh->sideset( tID )->facets() ;
@@ -371,7 +355,6 @@ namespace belfem
                         }
                     }
 
-                    // count edges
                     tCount = 0 ;
                     for ( Edge * tEdge : tEdges )
                     {
@@ -385,7 +368,6 @@ namespace belfem
                         "Thin cut %u is empty. The solver supports only thin cuts; thick cuts are not implemented yet. No conjugated edge survived the self-cancellation and boundary passes. The thick-cut cohomology generator is not a tight representative: locally, it is not the boundary of a one-sided region (see src/homology/doc/thick_thin_cuts_and_conjugate_edges.md). No user-side remedy exists yet: the representative the cohomology engine chose cannot be pushed onto element edges on this mesh.",
                         ( unsigned int ) tCutData->index() );
 
-                    // collect edges
                     Cell< Edge * > & tThinCut = tCutData->thin_cut_edges() ;
                     tThinCut.set_size( tCount, nullptr ) ;
 
@@ -417,7 +399,6 @@ namespace belfem
 
                 for ( CutData * tCutData : mCutData )
                 {
-                    // flag facets
                     index_t tCount = 0 ;
                     for ( Element * tElement : tCutData->elements() )
                     {
@@ -430,7 +411,7 @@ namespace belfem
                         }
                     }
 
-                    // quotient self-cancel ( todo/closed/periodic_cap_cut_emission.md ):
+                    // quotient self-cancel:
                     // the interior self-cancel below works on shared Face
                     // objects and cannot see that two periodically identified
                     // cap faces are the same quotient face. If both copies
@@ -451,7 +432,6 @@ namespace belfem
                         }
                     }
 
-                    // count facets
                     tCount = 0 ;
                     for ( Face * tFace : mMesh->faces() )
                     {
@@ -461,7 +441,6 @@ namespace belfem
                         }
                     }
 
-                    // collect facets in temporary container
                     Cell< Face * > tFaces( tCount, nullptr ) ;
                     tCount = 0 ;
                     for ( Face * tFace : mMesh->faces() )
@@ -483,7 +462,6 @@ namespace belfem
                             }
                         }
                     }
-                    // unflag faces on boundaries
                     for ( id_t tID : mPhiBoundaries )
                     {
                         Cell< Facet * > & tFacets = mMesh->sideset( tID )->facets() ;
@@ -493,7 +471,6 @@ namespace belfem
                         }
                     }
 
-                    // collect faces
                     tCount = 0 ;
                     for ( Face * tFace : tFaces )
                     {   if ( tFace->is_flagged() )
@@ -503,7 +480,6 @@ namespace belfem
                     }
 
                     Cell< Face * > tTempCut( tCount, nullptr );
-
 
                     tTempCut.set_size( tCount, nullptr ) ;
 
@@ -538,10 +514,8 @@ namespace belfem
                             {
                                 uint tNumFaces = 0 ;
 
-                                // grab edge
                                 Edge * tEdge = tFace->edge( e ) ;
 
-                                // check if edge sits on boundary
                                 if ( tEdge->is_flagged() ) continue ;
 
                                 for ( uint f=0; f<tEdge->number_of_faces(); ++f )
@@ -563,7 +537,6 @@ namespace belfem
                             {
                                 ++tCount ;
                             }
-
 
                         }
 
@@ -625,7 +598,6 @@ namespace belfem
 
 //-----------------------------------------------------------------------------
 
-
         void
         CutProcessor::compute_node_bitsets()
         {
@@ -637,7 +609,6 @@ namespace belfem
                 tEdge->flag() ;
             }
 
-            // create the temporary bitsets
             Cell< DynamicBitset * > tBitsets( tNumNodesPerElement, nullptr );
             for ( uint k=0; k<tNumNodesPerElement; ++k )
             {
@@ -684,7 +655,6 @@ namespace belfem
                 }
             }
 
-            // delete the bitset
             for ( DynamicBitset * tBitset : tBitsets )
             {
                 delete tBitset ;
@@ -703,7 +673,6 @@ namespace belfem
                 tCutData->flag_nodes();
             }
 
-            // count nodes
             index_t tCount = 0 ;
             for ( Node * tNode : mMesh->nodes() )
             {
@@ -717,7 +686,6 @@ namespace belfem
                 }
             }
 
-            // collect nodes
             mNodes.set_size( tCount, nullptr );
             tCount = 0 ;
             for ( Node * tNode : mMesh->nodes() )
@@ -752,7 +720,6 @@ namespace belfem
 
             uint tNumNodesPerElement = number_of_nodes( mElementType );
 
-            // create the temporary bitsets
             Cell< DynamicBitset * > tBitsets( tNumNodesPerElement, nullptr );
             for ( uint k=0; k<tNumNodesPerElement; ++k )
             {
@@ -803,7 +770,6 @@ namespace belfem
                 }
             }
 
-            // delete the bitset
             for ( DynamicBitset * tBitset : tBitsets )
             {
                 delete tBitset ;
@@ -826,7 +792,6 @@ namespace belfem
         index_t
         CutProcessor::pattern_index( const DynamicBitset * aBitset )
         {
-            // end delete
             Cell< DynamicBitset * > & tBitsetWithSameHash
                     = mHashToBitsets( aBitset->hash() );
 
@@ -860,7 +825,6 @@ namespace belfem
         {
             index_t tNumSets = mPatterns.size() ;
 
-
             for ( index_t s=0; s<tNumSets; ++s )
             {
                 mCutSets[ mPatterns( s ) ] = new CutSet( mMesh, mNodes, mPatterns( s ), mNumberOfCuts ) ;
@@ -891,7 +855,6 @@ namespace belfem
             }
         }
 
-
 //-----------------------------------------------------------------------------
 
         void
@@ -919,19 +882,14 @@ namespace belfem
 
             for ( uint k=0; k<3; ++k )
             {
-                // skip empty bitsets
                 if ( aBitsets( k )->count() == 0 ) continue;
 
-                // lock the bitset
                 aBitsets( k )->lock();
 
-                // get the hex value
                 const string & tHex = mPatterns( this->pattern_index( aBitsets( k ) ) );
 
-                // set the flag of the node bitset
                 mCutSets( tHex )->node_bitset()->set( aElement->node( k )->index() ) ;
 
-                // unlock the bitset
                 aBitsets( k )->unlock();
             }
         }
@@ -965,19 +923,14 @@ namespace belfem
 
             for ( uint k=0; k<4; ++k )
             {
-                // skip empty bitsets
                 if ( aBitsets( k )->count() == 0 ) continue;
 
-                // lock the bitset
                 aBitsets( k )->lock();
 
-                // get the hex value
                 const string & tHex = mPatterns( this->pattern_index( aBitsets( k ) ) );
 
-                // set the flag of the node bitset
                 mCutSets( tHex )->node_bitset()->set( aElement->node( k )->index() ) ;
 
-                // unlock the bitset
                 aBitsets( k )->unlock();
             }
 
@@ -1013,19 +966,14 @@ namespace belfem
 
             for ( uint k=0; k<6; ++k )
             {
-                // skip empty bitsets
                 if ( aBitsets( k )->count() == 0 ) continue;
 
-                // lock the bitset
                 aBitsets( k )->lock();
 
-                // get the hex value
                 const string & tHex = mPatterns( this->pattern_index( aBitsets( k ) ) );
 
-                // set the flag of the node bitset
                 mCutSets( tHex )->node_bitset()->set( aElement->node( k )->index() ) ;
 
-                // unlock the bitset
                 aBitsets( k )->unlock();
             }
         }
@@ -1065,19 +1013,14 @@ namespace belfem
 
             for ( uint k=0; k<10; ++k )
             {
-                // skip empty bitsets
                 if ( aBitsets( k )->count() == 0 ) continue;
 
-                // lock the bitset
                 aBitsets( k )->lock();
 
-                // get the hex value
                 const string & tHex = mPatterns( this->pattern_index( aBitsets( k ) ) );
 
-                // set the flag of the node bitset
                 mCutSets( tHex )->node_bitset()->set( aElement->node( k )->index() ) ;
 
-                // unlock the bitset
                 aBitsets( k )->unlock();
             }
         }
@@ -1091,32 +1034,24 @@ namespace belfem
                 tBitset->lock() ;
                 if ( tBitset->count() == 0 ) continue;
 
-                // get the hash of the bitset
                 size_t tHash =  tBitset->hash() ;
 
-                // test if has exists in map
                 if ( ! mHashToBitsets.key_exists( tHash ) )
                 {
-                    // create a new Cell
                     Cell< DynamicBitset * > tBitsetsWithSameHash( 1, nullptr );
 
-                    // create a new bitset
                     DynamicBitset * tNewBitset = new DynamicBitset( tBitset->size() );
 
-                    // set bitsets
                     *tNewBitset = *tBitset ;
 
                     tNewBitset->lock() ;
 
-                    // add bitset to container
                     tBitsetsWithSameHash( 0 ) = tNewBitset ;
 
-                    // add cell to map
                     mHashToBitsets[ tHash ] = tBitsetsWithSameHash ;
                 }
                 else
                 {
-                    // grab the bitsets with the same hash
                     Cell< DynamicBitset * > & tBitsetWithSameHash = mHashToBitsets( tHash );
 
                     bool tIsNew = true ;
@@ -1134,10 +1069,8 @@ namespace belfem
                     if ( tIsNew )
                     {
 
-                        // create a new bitset
                         DynamicBitset * tNewBitset = new DynamicBitset( tBitset->size() );
 
-                        // set bitsets
                         *tNewBitset = *tBitset ;
 
                         tNewBitset->lock() ;
@@ -1170,7 +1103,6 @@ namespace belfem
 
             uint tNumNodesPerElement = number_of_nodes( tType );
 
-            // create the temporary bitsets
             Cell< DynamicBitset * > tBitsets( tNumNodesPerElement, nullptr );
             for ( uint k=0; k<tNumNodesPerElement; ++k )
             {
@@ -1221,7 +1153,6 @@ namespace belfem
                 }
             }
 
-            // delete the bitset
             for ( DynamicBitset * tBitset : tBitsets )
             {
                 delete tBitset ;
@@ -1239,11 +1170,9 @@ namespace belfem
             {
                 if ( aBitsets( k )->count() > 0 )
                 {
-                    // get the duplicate
                     Node * tDup = mCutSets( aBitsets( k )->to_hex() )->duplicate( aElement->node( k ) ) ;
                     BELFEM_ASSERT( tDup != nullptr , "Could not find duplicate") ;
 
-                    // relink the element
                     aElement->insert_node( tDup, k ) ;
                 }
             }
@@ -1261,7 +1190,6 @@ namespace belfem
                 mMesh->block( tID )->flag_nodes() ;
             }
 
-            // count nodes
             index_t tCount = mAbstractNodes.size() ;
 
             for ( auto & tPair : mCutSets )
@@ -1299,7 +1227,6 @@ namespace belfem
                 tPair.second->duplicate_map().clear() ;
             }
 
-            // add nodes to mesh
             append( mMesh->nodes(), tNodes );
         }
 

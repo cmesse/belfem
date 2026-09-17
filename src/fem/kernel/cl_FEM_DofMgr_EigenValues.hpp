@@ -165,13 +165,12 @@ namespace belfem
 
                 // which of the two runs is in flight, for the messages. A
                 // failure that does not say whether the plain end or the fold
-                // died cannot be acted on -- measured 2026-08-28, when exactly
-                // that ambiguity cost a diagnostic cycle
+                // died cannot be acted on
                 const char *    mRunLabel = "eigenvalue" ;
 
                 // which ARPACK family drives this field. TOLD, not detected:
                 // the thermal Jacobian is symmetric by construction and the
-                // magnetic h-phi one is not ( Christian, 2026-08-28 ). Detecting
+                // magnetic h-phi one is not. Detecting
                 // it would mean comparing A against A^T across a distribution
                 // that may be transposed column blocks already ( see the CSC
                 // note in run_parpack ), which is a bigger job than the caller

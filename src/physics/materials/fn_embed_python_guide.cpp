@@ -62,7 +62,7 @@ namespace belfem
 
             // a guide that EXISTS but cannot be read completely must not be
             // embedded half-way: a truncated reference reader is worse than
-            // none ( audit finding, 2026-08-28 ). Absent stays silent by
+            // none. Absent stays silent by
             // design; broken gets a visible warning.
             if ( tStream.bad() )
             {

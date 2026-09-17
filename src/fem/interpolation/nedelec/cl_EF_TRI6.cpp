@@ -1,6 +1,13 @@
-//
-// Created by christian on 12/2/21.
-//
+/*
+ * BELFEM -- The Berkeley Lab Finite Element Framework
+ * Copyright (c) 2026, The Regents of the University of California,
+ * through Lawrence Berkeley National Laboratory (subject to receipt of any required
+ * approvals from the U.S. Dept. of Energy).  All rights reserved.
+ *
+ * Developers: Christian Messe, Gregory Giard
+ *
+ * See the top-level LICENSE file for the complete license and disclaimer.
+ */
 
 #include "nedelec/cl_EF_TRI6.hpp"
 #include "cl_FEM_Element.hpp"
@@ -91,7 +98,6 @@ namespace belfem
                 mG( 5, k ) = eta+xi3-eta*xi4-1.;
                 mG( 6, k ) = eta4*( eta-xi-1.);
                 mG( 7, k ) = eta4*( 2.-eta2-xi );
-                //mG( 8, k ) = eta4*( eta+xi2-1.0);
 
                 // dG/dxi
                 mGxi( 0, k ) = -eta4;
@@ -102,7 +108,6 @@ namespace belfem
                 mGxi( 5, k ) = 3.-eta4;
                 mGxi( 6, k ) = -eta4;
                 mGxi( 7, k ) = -eta4;
-                //mGxi( 8, k ) =  eta8;
 
                 // dG/deta
                 mGeta( 0, k ) = 1.-xi4 ;
@@ -113,7 +118,6 @@ namespace belfem
                 mGeta( 5, k ) = 1.-xi4 ;
                 mGeta( 6, k ) = eta8-xi4-4.;
                 mGeta( 7, k ) = 8.-xi4-eta8-eta8 ;
-                //mGeta( 8, k ) = eta8+xi8-4.;
 
                 // H
                 mH( 0, k ) = xi2*( xi2-1.) ;
@@ -124,7 +128,6 @@ namespace belfem
                 mH( 5, k ) = xi*( xi4-2.);
                 mH( 6, k ) = xi4*( xi-eta-1.);
                 mH( 7, k ) = xi4*( eta2+xi-1.);
-                //mH( 8, k ) = xi4*( 2.-eta-xi2);
 
                 // dH/dxi
                 mHxi( 0, k ) = xi8-2.;
@@ -135,7 +138,6 @@ namespace belfem
                 mHxi( 5, k ) = xi8-2.;
                 mHxi( 6, k ) = xi8-eta4-4.;
                 mHxi( 7, k ) = eta8+xi8-4.;
-                //mHxi( 8, k ) = 8.-eta4-xi8-xi8 ;
 
                 // dH/deta
                 mHeta( 0, k ) = 0. ;
@@ -146,7 +148,6 @@ namespace belfem
                 mHeta( 5, k ) = 0. ;
                 mHeta( 6, k ) = -xi4;
                 mHeta( 7, k ) =  xi8;
-                //mHeta( 8, k ) = -xi4;
             }
         }
 

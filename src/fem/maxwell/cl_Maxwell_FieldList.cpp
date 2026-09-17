@@ -396,7 +396,8 @@ namespace belfem
                         }
                         case DomainType::BackgroundField :
                         {
-                            // todo: add wave BCs for background field here
+                            // TODO(cm): wave boundary conditions for the background
+                            // field are not created here; add them when wave BCs exist
 
                             this->create_doftable(
                                     BoundaryAir,

@@ -1073,11 +1073,7 @@ namespace belfem
         void
         set_periodicity( mesh::Periodicity * aPeriodicity );
 
-        //void
-        //save_fields( const string & aFilename, const uint aRunningTimestep=0 );
 
-        //uint
-        //load_fields( const string & aFilename );
 
         void
         save_meta( hid_t aFile, const uint aRunningTimestep=0 );

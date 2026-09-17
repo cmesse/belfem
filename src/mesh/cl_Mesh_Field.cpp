@@ -33,7 +33,8 @@ namespace belfem
                 mEntityType( aEntityType ),
                 mFieldType( aFieldType )
         {
-            // todo: remove field type, it makes to sense
+            // TODO(cm): only one field type is supported; remove the enum once
+            // vector fields are ruled out
             BELFEM_ERROR( mFieldType == FieldType::SCALAR,
                     "only scalar fields are supported at this time" );
 

@@ -857,8 +857,7 @@ namespace belfem
             }
         }
 
-        // Facet-mediated periodic edge matching ( phase two of direction (d),
-        // todo/periodic_cap_cut_emission.md ). map_facets() aligns the two
+        // Facet-mediated periodic edge matching. map_facets() aligns the two
         // facet lists index-wise, and each cap facet lies in exactly one cut
         // sector per side, so the k-th facet pair carries the sector-resolved
         // raw edge correspondence. Within one pair, edges match through their
@@ -869,14 +868,13 @@ namespace belfem
         //   - PURE MIXED profile ( original <-> duplicate across the
         //     identification, both endpoints sharing the cut membership on
         //     each side ): tied DIRECTLY — the abstract current cancels in
-        //     the Whitney circulation, the jump stays in the node hanging
-        //     ( Grok EDGE-TIES combo III ).
+        //     the Whitney circulation. The jump stays in the node hanging.
         //   - HALF-CUT profile ( exactly one duplicated endpoint ): tied
         //     purely IFF both sides are half-cut and all four raw endpoints
         //     are periodically paired endpointwise ( then the identified H
         //     circulations are equal exactly; applied deferred, after the
-        //     loop, so pure ties win under every encounter order — the corc
-        //     cap-corner fix, 2026-08-25 ). Anything else is the genuinely
+        //     loop, so pure ties win under every encounter order ).
+        //     Anything else is the genuinely
         //     affine class and stays untied.
         // Afterwards the edge containers are compacted to tied pairs only,
         // because every downstream consumer ( set_entity_dependencies, BFM
@@ -934,8 +932,7 @@ namespace belfem
             // a skipped trace twin must be Whitney-identical to the kept tie:
             // same original endpoint pair and NOT half-cut ( both endpoints
             // share the cut membership, so the abstract current cancels in
-            // the circulation ). Anything else must fail loudly ( Codex
-            // phase-two final audit, alias invariant )
+            // the circulation ). All other cases must cause an error.
             auto tIsPureTwin = [&tKeyOfIds]( Edge * aEdge, Edge * aKept ) -> bool
             {
                 const bool tHalf =
@@ -1066,8 +1063,8 @@ namespace belfem
                         tProposedTargets.insert( F );
                     }
 
-                    // classify the raw profile ( Grok EDGE-TIES, combo III:
-                    // straight node ties + DIRECT edge ties win ). For an edge
+                    // classify the raw profile: straight node ties and direct
+                    // edge ties take priority. For an edge
                     // whose endpoints are BOTH cut duplicates ( or both
                     // originals ) the abstract current cancels in the Whitney
                     // relation h = phi0 - phi1, so the direct period tie is
@@ -1155,8 +1152,8 @@ namespace belfem
                         // alignment — the identified H circulations are equal
                         // exactly and the tie is pure: leaving such a pair
                         // untied gives each geometric cap an independent
-                        // corner dof ( the corc cap-corner antisymmetry,
-                        // 2026-08-25 ). Genuinely affine half-cuts stay
+                        // corner dof ( the cap-corner antisymmetry ).
+                        // Genuinely affine half-cuts stay
                         // untied as before.
                         bool tTiePure = false ;
 

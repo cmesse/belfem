@@ -58,7 +58,6 @@ namespace belfem
     constexpr id_t    gNoID    = std::numeric_limits<id_t>::max();
     constexpr proc_t  gNoOwner = std::numeric_limits<proc_t>::max();
 
-    // todo: probably better to move to constants
     constexpr real    gTfreeze = 273.15 ;
     constexpr real    gTref    = 288.15 ;
     constexpr real    gTroom   = 293.15 ;

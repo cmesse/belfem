@@ -324,8 +324,7 @@ end subroutine arpack_standard_eigen
 !     promise
 !
 ! The CALLER decides which one to use. It is not detected here: the thermal
-! Jacobian is symmetric by construction and the magnetic h-phi one is not
-! ( Christian, 2026-08-28 ).
+! Jacobian is symmetric by construction and the magnetic h-phi one is not.
 !
 !-----------------------------------------------------------------------
 subroutine arpack_symmetric_eigen( n, nnz, values, indices, pointers, job, nev, ncvmin, tol, maxit, &
@@ -630,7 +629,7 @@ end subroutine arpack_symmetric_eigen
 ! NUMERIC arguments across bind( c ). BMAT, WHICH, HOWMNY, RVEC and SELECT
 ! stay Fortran-side, so no character descriptor and no Fortran LOGICAL ever
 ! crosses the boundary -- neither has a portable C representation, and the
-! tree contains no name-mangled extern anywhere ( verified 2026-08-29 ).
+! tree contains no name-mangled extern anywhere.
 !
 ! CONTRACT, verified against arpack-ng 3.9.1 ( SRC/dsaupd.f, SRC/dseupd.f ),
 ! which is the version BELFEM links ( libarpack.so.2.1.0 ) :

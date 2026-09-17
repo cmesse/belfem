@@ -433,8 +433,6 @@ namespace belfem
                             {
                                 // Keast
                                 integration::gauss_tet24( aWeights, aPoints );
-                                // Shunn and Ham
-                                // integration::gauss_tet24( aWeights, aPoints );
                                 break;
                             }
                             case ( 7 ) :

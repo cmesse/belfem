@@ -86,18 +86,18 @@ namespace belfem
     inline real
     Material::n_eval( const real T, const real normB, const real angleNxB ) const
     {
-        // ohmic floor ( 2026-08-27 ): measured tables soften through n = 1
-        // near T_crit; below that the raw power law is sub-ohmic and its
-        // J -> 0 limit flips. At n = 1 the tape is a plain resistor
-        // ec/jc. dn_eval_dB / dn_eval_dT return 0 while the floor binds,
-        // so the tangents differentiate the SAME clamped law
+        // Ohmic floor: measured tables soften through n = 1 near T_crit.
+        // Below it, the raw power law is sub-ohmic and its limit reverses
+        // as J approaches 0. At n = 1, rhoPL = ec/jc and is independent
+        // of J. dn_eval_dB / dn_eval_dT return 0 while the floor binds, so
+        // the tangents differentiate the same clamped law.
         return std::max( this->n_eval_raw( T, normB, angleNxB ), 1.0 ) ;
     }
 
-    // derivative routing mirrors jc_eval / n_eval: with no function attached
-    // the value is a constant and its derivative is EXACTLY zero — which also
-    // makes constant-jc decks bit-identical, since the Newton consumer
-    // early-outs on zero ( audited 2026-08-13 )
+    // Derivative routing mirrors jc_eval() and n_eval(). With no function
+    // attached, the value is constant and its derivative is exactly zero.
+    // This keeps constant-jc decks bit-identical because the Newton
+    // consumer exits early on zero.
 
     inline real
     Material::djc_eval_dB( const real T, const real normB, const real angleNxB ) const
@@ -118,10 +118,10 @@ namespace belfem
         return mNFunction->deval_dB( normB, angleNxB, T ) ;
     }
 
-    // T-leg twins ( audited 2026-08-13 ): same null-check
-    // routing. Exact zero for constants, ModifiedKim and 2-arg functions;
-    // for a 3-arg ( T-dependent ) UserDefined WITHOUT a deval_dT override
-    // the base-class 0.0 is a conservative fallback, not an exact derivative
+    // djc_eval_dT() and dn_eval_dT() use the same null-check routing.
+    // Constants, ModifiedKim, and two-argument functions have exact zero
+    // derivatives. For a temperature-dependent UserDefined function without
+    // deval_dT(), the base-class 0.0 is a conservative fallback.
 
     inline real
     Material::djc_eval_dT( const real T, const real normB, const real angleNxB ) const
@@ -165,9 +165,9 @@ namespace belfem
      *       \left(\frac{1}{\rho_n} + \frac{1}{\rho_{PL}}\right)^{-1}.
      * \f]
      * \f$\rho_{PL}\f$ is floored at mRhoMin, which is ZERO by default
-     * (2026-08-10): a positive floor desynchronizes the value from
-     * drho_powerlaw_dJ, which differentiates the unfloored law — with the
-     * old 1e-16 the Newton tangent was wrong for all
+     * : a positive floor desynchronizes the value from
+     * drho_powerlaw_dJ, which differentiates the unfloored law — with a
+     * floor of 1e-16 the Newton tangent is wrong for all
      * \f$J \lesssim 0.87\,J_c\f$ on typical tape constants. Anyone raising
      * mRhoMin again must also zero the derivative while the floor binds.
      *
@@ -1938,7 +1938,7 @@ namespace belfem
     }
 
 //------------------------------------------------------------------------------
-// Field derivatives of the HTS laws ( audited 2026-08-13 )
+// Field derivatives of the HTS laws
 //
 // jc = jc(T,|B|,θ) and n = n(T,|B|,θ) through the JcFunction hooks; at fixed
 // J, T, θ the unfloored power law p0 = (ec/jc)·(J/jc)^(n−1) has
@@ -1947,8 +1947,7 @@ namespace belfem
 //
 // so  dp0/d|B| = p0·[ −(n/jc)·djc/d|B| + ln(J/jc)·dn/d|B| ].
 //
-// Conventions per the audit round ( tmp/ai_exchange/jc_derivative_plumbing.md,
-// both voices ):
+// Conventions:
 //  - drho_powerlaw_dB mirrors drho_powerlaw_dJ exactly: parallel factor
 //    ( 1 + rhoPL/rhon )^-2 with the FLOORED rhoPL, unfloored law in the
 //    numerator, J < eps guard.
@@ -2081,7 +2080,7 @@ namespace belfem
     }
 
 //------------------------------------------------------------------------------
-// Temperature derivatives of the HTS laws ( T-leg, audited 2026-08-13 )
+// Temperature derivatives of the HTS laws
 //
 // The quench-feedback tangent: jc(T), n(T) AND rho_n(T) all move. With
 // a = rho_n, b = p0 = (ec/jc)·(J/jc)^(n−1) and c = parallel(a,b),
@@ -2089,21 +2088,21 @@ namespace belfem
 //     ∂c/∂a = b²/(a+b)² = ( c/a )²        ∂c/∂b = a²/(a+b)² = 1/(1+b/a)²
 //
 // dp0/dT = p0·( −(n/jc)·djc/dT + ln(J/jc)·dn/dT ), same chain as the |B|
-// channel. These closed forms replace the retired b = a·c/(c−a)
-// reconstruction in the old compute_drhodT_hts, which was sign-flipped
-// ( correct: a·c/(a−c) ) and whose dadT weighting c²/(a−2c)² diverged at
-// the flux-flow crossover rho_PL = rho_n. Conventions:
+// channel. The closed forms avoid reconstructing b = a·c/(a−c)
+// from c. That reconstruction is sign-sensitive. Its dadT weighting
+// c²/(a−2c)² diverges at the flux-flow crossover rho_PL = rho_n.
+// Conventions:
 //  - floored rhoPL in the parallel factors, unfloored law differentiated
 //    ( dB/dJ convention );
 //  - NO ( djc==0 && dn==0 ) early-out: the rho_n term is the only correct
 //    T-dependence of a constant-jc material and must survive;
 //  - drho_piecewise_dT follows rho_piecewise's OWN residual branch for
-//    branch; the Bézier blend carries BOTH parts ( 2026-08-14 ): the
-//    frozen-knot partial ( rho_n control points + the explicit rho1
-//    dependence ) AND the knot motion, i.e. dtParam/dT through j1(T),
-//    j2(T), j3(T). The knot motion dominates — with it staged out the
-//    frozen part alone reproduced only 4-33 % of dρ/dT across the blend,
-//    which is why the thermal Newton stalled in flux-flow. It degrades to
+//    branch; the Bézier blend carries BOTH parts: the frozen-knot
+//    partial ( rho_n control points + the explicit rho1 dependence ) AND
+//    the knot motion, i.e. dtParam/dT through j1(T), j2(T), j3(T). The
+//    knot motion dominates: the frozen part alone reproduces only
+//    4-33 % of dρ/dT across the blend, and without the knot motion the
+//    thermal Newton stalls in flux-flow. It degrades to
 //    the frozen part alone at the degenerate n−1 == mNff transition ( see
 //    the guard at the discriminant ). Jumps at j1 and T_crit are
 //    inherited from the residual itself;
@@ -2211,15 +2210,13 @@ namespace belfem
             return dadT ;
         }
 
-        // Bézier blend: FULL derivative ( 2026-08-14 ). The residual's Bézier
-        // machinery is reproduced verbatim ( cf. rho_piecewise ) to obtain
-        // tParam and rhoFF, then differentiated in two parts — (i) the
-        // control points rho1 and rho_n at frozen knots, and (ii) the knot
-        // motion, i.e. dtParam/dT through j1(T), j2(T), j3(T). Part (ii)
-        // dominates: it was staged out when the T-leg first landed, and a
-        // finite-difference check then showed the frozen part alone
-        // reproduces only 4-33 % of dρ/dT across the blend. With both parts
-        // the derivative is exact to roundoff.
+        // Bézier blend: FULL derivative. The residual's Bézier machinery is
+        // reproduced verbatim ( cf. rho_piecewise ) to obtain tParam and
+        // rhoFF, then differentiated in two parts — (i) the control points
+        // rho1 and rho_n at frozen knots, and (ii) the knot motion, i.e.
+        // dtParam/dT through j1(T), j2(T), j3(T). Part (ii) dominates
+        // ( see the temperature-derivative header above ). With both parts
+        // the derivative is exact.
         real j2 = j1 * std::pow( rhon / rho1, 1.0 / ( n - 1.0 ) ) ;
 
         real logj1 = std::log10( j1 ) ;
@@ -2462,7 +2459,7 @@ namespace belfem
     }
 
 //------------------------------------------------------------------------------
-// The riva law ( 2026-08-27 )
+// The riva law
 //
 // The same parallel model as rho_powerlaw — the superconducting power-law
 // channel in parallel with the normal-state channel ( Duron et al. 2004;
@@ -2483,7 +2480,7 @@ namespace belfem
 // ∂ρ/∂ρPL = w², ∂ρ/∂ρn = (1−w)².
 // Deviation from Riva Eq. 5.1/5.4: BELFEM keeps its mRhoMin FLOOR semantics
 // ( zero by default ) instead of Riva's additive 1e-17 regularization — an
-// additive term would reopen the 2026-08-10 value/tangent desync.
+// additive term would desynchronize the value and tangent.
 //------------------------------------------------------------------------------
 
     inline bool

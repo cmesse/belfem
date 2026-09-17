@@ -126,8 +126,6 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
 
-            //void
-            //flag_elements_on_cuts( const Vector< id_t > & aNonPhiDomains );
 
             int
             determine_cut_case_2d( Element * aElement );

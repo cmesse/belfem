@@ -1,6 +1,13 @@
-//
-// Created by gregorygiard on 10/23/25.
-//
+/*
+ * BELFEM -- The Berkeley Lab Finite Element Framework
+ * Copyright (c) 2026, The Regents of the University of California,
+ * through Lawrence Berkeley National Laboratory (subject to receipt of any required
+ * approvals from the U.S. Dept. of Energy).  All rights reserved.
+ *
+ * Developers: Christian Messe, Gregory Giard
+ *
+ * See the top-level LICENSE file for the complete license and disclaimer.
+ */
 
 #include "cl_IWG_TransientHeatConduction.hpp"
 #include "cl_FEM_Dof.hpp"
@@ -89,8 +96,8 @@ namespace belfem
                 const Matrix< real > & N = aCalc->N(k) ;
 
                 // mass matrix
-                // todo:: replace by cp and lambda when we have thermal properties of material
-                //aM += w( k ) * trans( N ) * aCalc->material()->cp( tT ) *  N * aCalc->dV( k );
+                // TODO(cm): the mass matrix uses a unit coefficient; use the
+                // material's cp once this IWG reads thermal properties
                 M += w( k ) * trans( N ) * 1.0 *  N * aCalc->dV( k );
 
                 //stiffness matrix

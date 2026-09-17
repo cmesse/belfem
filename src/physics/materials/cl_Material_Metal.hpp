@@ -12,7 +12,6 @@
 #ifndef BELFEM_CL_MATERIAL_METAL_HPP
 #define BELFEM_CL_MATERIAL_METAL_HPP
 
-
 #include <cmath>
 #include "cl_Material_SplineLookupTable.hpp"
 #include "cl_Database.hpp"
@@ -112,9 +111,7 @@ namespace belfem
                    const MaterialType aType,
                    const bool aBuildTables = true );
 
-            /**
-             * @brief Destructor - deletes Debye integral splines
-             */
+            /** Deletes the owned Debye-integral splines. */
             ~Metal() override;
 
             /**
@@ -263,7 +260,6 @@ namespace belfem
             real
             J( const real Z ) const ;
 
-
             /**
              * @brief Debye integral J₃(Z) = ∫₀^Z x³eˣ/(eˣ-1)² dx
              * @param Z Reduced temperature Z = θ/T
@@ -295,7 +291,6 @@ namespace belfem
                  */
             real
             Jn( const real Z ) const ;
-
 
             /**
              * @brief Total resistivity at zero field (overrides base class)
@@ -472,7 +467,6 @@ namespace belfem
             real
             d2cpdT2_custom( const real T) const override;
 
-
             void
             set_kohler_dependencies();
 
@@ -568,7 +562,6 @@ namespace belfem
             void
             populate_rho_database( Mesh * aMesh, Vector< real > & aRho );
 
-
         };
 
         inline real Metal::J3( const real Z ) const
@@ -595,7 +588,6 @@ namespace belfem
             return mSplineJ5->eval( Z ) ;
         }
 
-
         inline real Metal::Jn( const real Z ) const
         {
             BELFEM_ASSERT( mSplineJn != nullptr, "lookup table for Jn is not initialized" ) ;
@@ -603,7 +595,6 @@ namespace belfem
             if ( Z > mZnMax ) return mJnMax ;
             return mSplineJn->eval( Z ) ;
         }
-
 
         inline real
         Metal::J( const real Z ) const
@@ -751,13 +742,11 @@ namespace belfem
             return mBhCurve->H( B );
         }
 
-
         inline real
         Metal::mu_bhcurve( real H, const real T ) const
         {
             return mBhCurve->mu( H );
         }
-
 
         inline void
         Metal::dmudH_bhcurve( const real H, real & mu, real & dmudH ) const

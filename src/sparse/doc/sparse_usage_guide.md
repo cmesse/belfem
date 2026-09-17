@@ -954,8 +954,13 @@ solver.set_mumps_reordering(
 > triangle is acceptable — it does not insist on the lower one — and what is fatal is supplying
 > BOTH: `(i,j)` and `(j,i)` are then summed as duplicates. BELFEM stores and hands over the FULL
 > matrix and nothing extracts a triangle, so every off-diagonal would arrive twice and MUMPS would
-> factorize a different matrix -- without failing. Measured on a matrix with a known spectrum:
-> a first-solve residual of 7.4e16 and a converged eigenvalue of -2.5e-19 against a true 2.46e-6.
+> factorize a different matrix -- without failing. Measured on a 1D Laplacian with an analytic
+> spectrum, driven through the eigenvalue shift-invert path: under `SYM = 2` the first solve
+> returned a residual `||Ax-b||/||b||` of 7.4e16 and a "converged" smallest eigenvalue of
+> -2.5e-19 against a true 2.46e-6, with ARPACK reporting `info 0` and `nconv 1` throughout;
+> under `SYM = 0` on the same matrix the residual was 1.3e-12 and the eigenvalue correct to
+> 6e-12. The one-representative rule is in the MUMPS user guide 5.5.1, §5.2.2.1; either
+> triangle satisfies it, so an extraction may pick whichever is cheaper.
 >
 > `MUMPS::initialize()` therefore rejects any symmetric mode with an always-active error rather
 > than accepting one it cannot honor. To enable it, supply one triangle from the wrapper — see

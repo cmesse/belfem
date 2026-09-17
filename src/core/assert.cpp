@@ -294,13 +294,11 @@ namespace belfem
         void
         error_abort()
         {
-            // the MPI lifecycle contract that used to live here - the
-            // MPI_COMM_WORLD-not-gComm.world() choice, the Initialized /
-            // Finalized guards, the unconditional std::abort() fall-through -
-            // moved verbatim into comm_abort ( declared in cl_Communicator.hpp,
-            // defined in commtools.cpp ) on 2026-08-30, so that every caller
-            // inherits it rather than only this one. L-21: vendor calls go
-            // through the wrapper.
+            // comm_abort() ( declared in cl_Communicator.hpp, defined in
+            // commtools.cpp ) owns the MPI lifecycle contract. It uses
+            // MPI_COMM_WORLD rather than gComm.world(), checks MPI
+            // initialization and finalization, and falls through to
+            // std::abort(). Vendor calls use this wrapper.
             comm_abort( 1 );
         }
 

@@ -84,9 +84,6 @@ namespace belfem
             UNDEFINED      = 4
         };
 
-        /**
-         * @brief Bitset for tracking Jc function dependencies
-         */
         typedef Bitset< static_cast< uint >( JcParameter::UNDEFINED ) > JcDependency;
 
 //------------------------------------------------------------------------------
@@ -142,22 +139,11 @@ namespace belfem
 
         public:
 
-            /**
-             * @brief Default constructor
-             */
             JcFunction() = default;
 
-            /**
-             * @brief Virtual destructor
-             */
             virtual
             ~JcFunction() = default;
 
-            /**
-             * @brief Check if function depends on a parameter
-             * @param aParameter Parameter to check (normB, angleNxB, or T)
-             * @return True if function depends on this parameter
-             */
             bool
             depends_on( const JcParameter aParameter ) const;
 
@@ -175,10 +161,6 @@ namespace belfem
                 return BELFEM_QUIET_NAN ;
             }
 
-            /**
-             * @brief Check if function is constant (no dependencies)
-             * @return True if function has no dependencies
-             */
             bool
             is_constant() const ;
 
@@ -236,12 +218,11 @@ namespace belfem
              * @return d(jc)/dθ [A/m²/rad] or d(n)/dθ [1/rad]
              *
              * Same zero-default contract as deval_dB. NOTE: for HTS the
-             * angle is bn_angle ( field to tape normal, UNFOLDED [ 0, pi ]
-             * since 2026-08-16 ), and the existing Newton kernel differentiates
+             * angle is bn_angle (the field-to-tape-normal angle, unfolded [0, pi]),
+             * and the existing Newton kernel differentiates
              * bj_angle ( field to current, the metal Kohler variable ) — so
              * this hook must NOT be wired into add_rho_field_tangent's beta
-             * channel until a signed bn_angle d(theta)/dq chain exists there
-             * ( 2026-08-13 audit, both voices; known residual ).
+             * channel until a signed bn_angle d(theta)/dq chain exists there.
              */
             virtual real
             deval_dbeta(

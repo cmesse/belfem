@@ -88,9 +88,6 @@ namespace belfem
                 this->set_dependency( JcParameter::angleNxB );
             }
 
-            /**
-             * @brief Destructor
-             */
             ~JcFunctionModifiedKim() override = default;
 
             /**
@@ -102,10 +99,9 @@ namespace belfem
              * Evaluates the modified Kim model:
              * Jc = Jc0 / [1 + √(k²·sin²(θ) + cos²(θ)) · B/B0]^α
              *
-             * Even in θ by construction (cos², sin² only), so the unfolded
-             * angle θ ∈ [0, π] delivered since 2026-08-16 evaluates
-             * identically to the historical folded [0, π/2] input — this law
-             * needs no fold of its own.
+             * The law is even in θ because it uses only cos² and sin². An
+             * unfolded angle θ ∈ [0, π] gives the same result as a folded
+             * [0, π/2] input, so this law needs no internal fold.
              */
             real
             eval( const real normB, const real angle  ) const override

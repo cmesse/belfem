@@ -38,7 +38,7 @@ namespace belfem
          * from 0.43 at 95 K. Formula alloys that contain lead inherit this through
          * cl_Material_Alloy. For the other metals of the roster the static and dynamic
          * moduli differ by only a few percent and the dynamic ( ultrasonic ) data are
-         * served. Decision: Christian Messe, 2026-09-15.
+         * served.
          */
         class Lead : public Metal
         {

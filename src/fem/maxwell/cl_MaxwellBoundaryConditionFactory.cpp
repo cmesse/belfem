@@ -297,7 +297,6 @@ namespace belfem
                         }
                         case (BoundaryConditionType::Voltage) :
                         {
-                            //tUnits = tDim == 3 ? "V" : "V/m" ;
                             tUnits = "V" ;
                             break ;
                         }
@@ -314,11 +313,10 @@ namespace belfem
                             // applies once ( mValue = compute( t ) * mScale ).
                             //
                             // The token is matched by NAME rather than by dimension.
-                            // This was originally FORCED: unit_to_si used to code the
-                            // whole Tesla family with VOLT's exponents, so a dimension
-                            // test accepted "1 V" as one tesla. That defect was fixed
-                            // on 2026-08-30 ( stringtools.cpp, the "magnetic
-                            // density" block ), and check_unit( x, "T" ) is now sound.
+                            // A dimension test would also be sound: unit_to_si codes
+                            // the Tesla family with its own exponents ( stringtools.cpp,
+                            // the "magnetic density" block ), so check_unit( x, "T" )
+                            // distinguishes a tesla from a volt.
                             //
                             // The whitelist is KEPT because it is what was audited,
                             // not because it is still required. Switching to

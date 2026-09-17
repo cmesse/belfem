@@ -237,8 +237,8 @@ namespace belfem
      * \brief Kill the whole job. Never returns.
      *
      * This is the error-path twin of the collectives in commtools.hpp, and it obeys a
-     * stricter contract than they do ( see error_abort in assert.cpp, whose
-     * body this wrapper absorbed on 2026-08-30 ):
+     * stricter contract than they do. error_abort in assert.cpp delegates
+     * to it:
      *
      * - MPI_COMM_WORLD, never gComm.world(): world() indexes mComms( 0 ),
      *   which is EMPTY between MPI_Init and the push in Communicator::init.

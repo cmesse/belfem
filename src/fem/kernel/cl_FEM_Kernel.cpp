@@ -12,11 +12,7 @@
 #include "commtools.hpp"
 #include "stringtools.hpp"
 
-
-
 #include "cl_FEM_Kernel.hpp"
-
-
 
 #include "cl_Element_Factory.hpp"
 #include "cl_FEM_DofManager.hpp"
@@ -35,8 +31,6 @@
 #include "fn_max.hpp"
 #include "fn_sum.hpp"
 
-
-
 namespace belfem
 {
     namespace fem
@@ -50,7 +44,6 @@ namespace belfem
             mMesh( aKernelParameters->mesh() ),
             mFieldOffset( aKernelParameters->mesh()->number_of_fields() )
         {
-            // set the communication table
             if( mCommRank == 0 )
             {
                 // check the mesh for flipped nodes and reorient them if needed
@@ -87,8 +80,8 @@ namespace belfem
                     }
                 }
 
-                // set the flag for curved elements
                 // for meshes on other procs, this is done in
+
                 // receive_submesh
                 mMesh->flag_curved_elements() ;
 
@@ -98,11 +91,9 @@ namespace belfem
 
             comm_barrier();
 
-            // check if a Kernel has already been created
             if ( aKernelParameters->kernel() == nullptr )
             {
 
-                // partition the mesh if in parallel mode
                 if ( mCommSize > 1 && mCommRank == 0 )
                 {
 
@@ -188,7 +179,6 @@ namespace belfem
 
             message( InfoLevel::Verbose, "Partitionig mesh ... ");
 
-            // reset the element flags and indices
             for ( mesh::Element * tElement : mMesh->elements() )
             {
                 tElement->set_index( gNoIndex );
@@ -236,15 +226,12 @@ namespace belfem
             delete tBitset ;
             tBlockMap.clear() ;
 
-            // now we can count the elements
             tCount = 0 ;
             for ( auto b : tBlockIndices )
             {
                 tCount += mMesh->blocks()(b)->number_of_elements() ;
             }
 
-
-            // populate the element graph
             Graph tElementGraph( tCount, nullptr);
             tCount = 0 ;
             Cell< index_t > tIndices ;
@@ -265,7 +252,6 @@ namespace belfem
                 mesh::Element * tElement = reinterpret_cast< mesh::Element * >( tVertex );
                 tBitset->reset();
 
-                 // search for neighbors
                 for ( uint k=0; k<tElement->number_of_corner_nodes(); ++k )
                 {
                     mesh::Node * tOrg = tElement->node( k )->original() ;
@@ -304,7 +290,6 @@ namespace belfem
             Graph tFacetGraph ;
             if ( mMesh->thin_shells().size() > 0 )
             {
-                // populate the facet graph
                 tCount = 0 ;
                 for ( mesh::ThinShell * tShell : mMesh->thin_shells() )
                 {
@@ -371,7 +356,6 @@ namespace belfem
                     tCount = 0 ;
                     for ( graph::Vertex * tVertex : tFacetGraph )
                     {
-                        // count owner IDs among neighbors
                         Vector< index_t > tOwnerCount( mCommSize, 0 );
                         for ( uint n=0; n<tVertex->number_of_vertices(); ++n )
                         {
@@ -509,7 +493,6 @@ namespace belfem
                 }
             }
 
-
             mMesh->update_element_indices();
             mMesh->update_facet_indices();
 
@@ -538,8 +521,6 @@ namespace belfem
                 }
             }
 
-            // mMesh->save( "metis.exo" );
-
             message( InfoLevel::Verbose, "   ... time for partitioniong: %u ms ",  ( unsigned int )  tTimer.stop() );
         }
 
@@ -553,7 +534,6 @@ namespace belfem
                 const Vector< id_t > aSideSets )
         {
 
-            // create the equation object
             IWG * aIWG = nullptr ;
 
             if( is_maxwell( aEquationType ) )
@@ -574,12 +554,10 @@ namespace belfem
 
                 if( aBlocks.length() > 0 )
                 {
-                    // select the specified blocks for the IWG
                     aIWG->select_blocks( aBlocks );
                 }
                 else
                 {
-                    // select all blocks
                     aIWG->select_blocks( tFactory.all_block_ids() );
                 }
 
@@ -591,10 +569,8 @@ namespace belfem
                 // deliberately not selecting all sidesets here
             }
 
-            // add to containers
             mIWGs.push( aIWG );
 
-            // return the field
             return aIWG ;
         }
 
@@ -612,10 +588,8 @@ namespace belfem
         Kernel::create_field( IWG * aEquation )
         {
             aEquation->initialize() ;
-            // create the dof manager
             DofManager * aField = new DofManager( this, mDofManagers.size() ) ;
 
-            // check the sanity of the mesh
             if( mCommRank == 0 )
             {
                 int tStatus = aEquation->check_mesh( aField->mesh(), 0) ;
@@ -624,10 +598,8 @@ namespace belfem
                          tStatus );
             }
 
-            // wait for other procs
             comm_barrier() ;
 
-            // link IWG to field
             aField->set_equation( aEquation );
 
             mDofManagers.push( aField );
@@ -708,9 +680,6 @@ namespace belfem
                     mOwnSubmesh = true ;
                 }
 
-                //mesh::ConnectivityCalculator tCalculator( this->mesh() ) ;
-                //tCalculator.connect_elements_to_elements() ;
-                //tCalculator.connect_facets_to_facets() ;
             }
             else
             {
@@ -747,7 +716,6 @@ namespace belfem
             BELFEM_ERROR(  mMaterialMap.key_exists( aLabel ),
                               "Could not find material %s in kernel", aLabel.c_str() );
 
-
             return mMaterialMap( aLabel );
 
         }
@@ -762,17 +730,14 @@ namespace belfem
                 mMaterialMap[aLabel] = aMaterial ;
             }
 
-            // add material to array
             mMaterials.push( aMaterial );
         }
 
 //------------------------------------------------------------------------------
 
-
         void
         Kernel::add_boundary_condition( belfem::fem::PhysicalBoundaryCondition * aBC )
         {
-            // add material to array
             mBoundaryConditions.push( aBC );
         }
 
@@ -803,10 +768,8 @@ namespace belfem
                 const Vector< id_t >    & aSideSetIDs,
                 Cell< mesh::Element * > & aElements )
         {
-            // count elements
             index_t tCount = 0 ;
 
-            // loop over all block IDs
             for( id_t b: aBlockIDs )
             {
                 if( mMesh->block_exists( b ) )
@@ -815,7 +778,6 @@ namespace belfem
                 }
             }
 
-            // loop over all sideset IDs
             for( id_t s: aSideSetIDs )
             {
                 if( mMesh->sideset_exists( s ) )
@@ -824,13 +786,10 @@ namespace belfem
                 }
             }
 
-            // allocate memory
             aElements.set_size( tCount, nullptr );
 
-            // reset counter
             tCount = 0 ;
 
-            // grab elements
             for( id_t b: aBlockIDs )
             {
                 if( mMesh->block_exists( b ) )
@@ -844,7 +803,6 @@ namespace belfem
                 }
             }
 
-            // grab facets
             for( id_t s: aSideSetIDs )
             {
                 if( mMesh->sideset_exists( s ) )
@@ -864,15 +822,12 @@ namespace belfem
         void
         Kernel::compute_element_volumes()
         {
-            // get the mesh
             Mesh * tMesh = this->mesh() ;
             BELFEM_ASSERT( tMesh != nullptr, "No mesh specified." );
 
-            // create a new field on the mesh
             Vector< real > & tVolumes = tMesh->field_exists( "_Volumes" ) ?
                 tMesh->field_data( "_Volumes" ) : tMesh->create_field( "_Volumes", EntityType::ELEMENT ) ;
 
-            // make sure that the volumes field is properly sized
             tVolumes.set_size( tMesh->number_of_elements(), BELFEM_QUIET_NAN );
 
             // we don't want to write this field
@@ -880,34 +835,25 @@ namespace belfem
 
             mesh::Pipette  tPip ;
 
-            // reset the counter
             index_t tCount = 0 ;
 
             index_t tNumMyElements = 0 ;
             index_t tNumNotMyElements = 0 ;
 
-            // first, each proc computes its own elements
-            // loop over all blocks
             for( mesh::Block * tBlock : tMesh->blocks() )
             {
                 if ( tBlock->domain_type() == DomainType::ThinShell || tBlock->domain_type() == DomainType::Buffer ) continue ;
 
-                // set the element type
                 tPip.set_element_type( tBlock->element_type() );
 
-                // grab the elements
                 Cell< mesh::Element * > & tElements = tBlock->elements() ;
-
 
                 for( mesh::Element * tElement : tElements )
                 {
-                    // check if this proc owns the element
                     if( tElement->owner() == mCommRank )
                     {
-                        // compute the element volume
                         tVolumes( tElement->index() ) = tPip.measure( tElement );
 
-                        // increment negative counter
                         if( tVolumes( tElement->index() ) < 0 )
                         {
                             ++tCount ;
@@ -934,14 +880,12 @@ namespace belfem
             // block. Rank 0 owns the full mesh, measures the facets in master
             // order, and shares areas + first-ids; workers never touch their
             // own facet subset at all.
-            //
             // The exchange is ONE flat payload for all shells, done before
             // the shell loop. A worker only holds the shells it has elements
             // of ( ProtoMesh::create_thinshells drops the others ), so any
             // communication inside a per-shell loop pairs rank 0's shell k
             // with a different shell on such a worker. Shells and blocks are
             // therefore looked up by id, never by position.
-            //
             // header layout, per shell, in rank-0 shell order:
             //   shell id, area offset, facet count, block count,
             //   ( block id, first element id ) x block count
@@ -1080,7 +1024,6 @@ namespace belfem
                              real tVol = tAllSurfaces( tOffset + f ) * tBlock->thickness() ;
                              tVolumes( tElement->index() ) = tVol ;
 
-                            // increment negative counter
                              if ( tVol < 0 )
                              {
                                 ++tCount ;
@@ -1097,7 +1040,6 @@ namespace belfem
             }
             comm_barrier() ;
 
-            // this routine checks that all elements are positive
             if( mCommRank == 0 )
             {
                 Vector< index_t > tAllCount( mCommSize, 0 );
@@ -1111,12 +1053,9 @@ namespace belfem
             }
             else
             {
-                // send my counter to master
                 send( tCount );
             }
 
-
-            // next, each proc sends its computations to the master
             if ( mCommRank == 0 )
             {
                 Cell< Vector< id_t > > tAllIDs( mCommSize, {} );

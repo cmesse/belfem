@@ -204,8 +204,6 @@ namespace belfem
             /**
              * expose container for edge directions (obsolete)
              */
-            // void
-            // edge_directions( Vector< real > & aEdgeDirections ) const ;
 
 //------------------------------------------------------------------------------
 

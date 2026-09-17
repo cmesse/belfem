@@ -344,8 +344,9 @@ namespace belfem
             // off: free rims ( validated legacy ). The fuse is branch-coherent
             // since the single-authority fix, but suppresses the through-
             // thickness branch transition where the upper and lower cuts
-            // differ — see todo/side_edge_fusing_cut_aware_plan.md, O1.
-            // Physics position ( C. Messe / Prof. Sirous, 2026-08-13 ):
+            // differ. TODO(cm): finish or remove the fuse; the plan is
+            // todo/deferred/side_edge_fusing_cut_aware_plan.md.
+            // Physics position:
             // fusing is the mathematically cleaner continuity statement, yet
             // measured runs converge slower for no better result — the fuse
             // appears to overconstrain the rim, like enforcing a B·n = 0

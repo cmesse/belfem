@@ -55,7 +55,6 @@ namespace belfem
          * Consequence: an unmagnetized nickel part near 500 K is served an E about
          * 40 % too stiff, and the room-temperature E rose from 184 to about 223 GPa.
          * The thermal expansion Bezier ends at 600 K and is clamped up to T_max.
-         * Decision: Christian Messe, 2026-09-15.
          */
         class Nickel : public Ferromagnetic
         {

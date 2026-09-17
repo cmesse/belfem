@@ -1,6 +1,13 @@
-//
-// Created by gregorygiard on 10/24/25.
-//
+/*
+ * BELFEM -- The Berkeley Lab Finite Element Framework
+ * Copyright (c) 2026, The Regents of the University of California,
+ * through Lawrence Berkeley National Laboratory (subject to receipt of any required
+ * approvals from the U.S. Dept. of Energy).  All rights reserved.
+ *
+ * Developers: Christian Messe, Gregory Giard
+ *
+ * See the top-level LICENSE file for the complete license and disclaimer.
+ */
 
 #include <variant>
 #include "cl_ThermalBoundaryConditionFactory.hpp"
@@ -90,7 +97,6 @@ namespace belfem
                         // tCount - i ) — which would relabel a previous
                         // section's condition, or underflow on the first.
                         // Refuse the type instead of corrupting a neighbor
-                        // ( same hardening as the Maxwell twin, 2026-08-11 )
                         BELFEM_ERROR( false,
                             "Unsupported thermal boundary condition type: %s",
                             tSection->type().c_str() );

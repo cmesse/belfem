@@ -1,6 +1,14 @@
-//
-// Created by gregorygiard on 10/24/25.
-//
+/*
+ * BELFEM -- The Berkeley Lab Finite Element Framework
+ * Copyright (c) 2026, The Regents of the University of California,
+ * through Lawrence Berkeley National Laboratory (subject to receipt of any required
+ * approvals from the U.S. Dept. of Energy).  All rights reserved.
+ *
+ * Developers: Christian Messe, Gregory Giard
+ *
+ * See the top-level LICENSE file for the complete license and disclaimer.
+ */
+
 #include "globals.hpp"
 #include "cl_ThermalFactory.hpp"
 #include "cl_FEM_Controller.hpp"
@@ -144,7 +152,8 @@ namespace belfem
             mOwnKernelParameters = false ;
 
 
-            // todo: be aware that axisymmetry could also be a case
+            // TODO(cm): only TwoD and ThreeD are selected here; AxSymmX and
+            // AxSymmY need a deck key
             mDimensionality = mMesh->number_of_dimensions() == 2
                 ? ModelDimensionality::TwoD
                 : ModelDimensionality::ThreeD;

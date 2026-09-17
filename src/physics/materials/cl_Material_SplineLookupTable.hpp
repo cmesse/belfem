@@ -35,14 +35,13 @@ namespace belfem
             ~SplineLookupTable() override ;
 
             /**
-             * @brief Assign a spline for property interpolation
-            */
+             * Takes ownership of aSpline; the table deletes it. With the
+             * default nullptr the stored spline is kept and only the
+             * dispatch is refreshed.
+             */
             void
             set_spline( const MaterialProperty aProperty, Spline * aSpline=nullptr ) ;
 
-            /**
-            * @brief Get spline for a property
-            */
             Spline *
             spline( const MaterialProperty aProperty ) ;
 
@@ -107,7 +106,6 @@ namespace belfem
                 Vector< real > & aThermalExpansionCryo,
                 const real aTSwitch = BELFEM_QUIET_NAN ) ;
 
-
             /**
              * @brief composite thermal expansion for a Material::alpha_custom()
              *        override: the Grueneisen polynomial aPoly below the switch
@@ -116,7 +114,6 @@ namespace belfem
              */
             real
             alpha_composite( const Bezier * aBezier, const Vector< real > & aPoly, const real T ) const ;
-
 
             /**
              * @brief Fix the split temperature of the cryogenic expansion branch

@@ -11,7 +11,6 @@
 
 // see  https://gsjaardema.github.io/seacas/html/deprecated.html
 
-
 #include <cstring>
 
 #include "cl_Mesh_ExodusWriter.hpp"
@@ -50,7 +49,6 @@ namespace belfem
 
             this->collect_blocks();
 
-            // count number of entities
             uint tCount = mBlocks.size() ;
             for ( SideSet * tSideSet : mMesh->sidesets() )
             {
@@ -75,7 +73,6 @@ namespace belfem
             this->populate_fields();
             this->close_file();
 
-            // delete progressbar
             if( tProgressbar != nullptr )
             {
                 tProgressbar->finish() ;
@@ -155,7 +152,6 @@ namespace belfem
             mCpuWordSize = sizeof( double );
             mIoWordSize = 8;
 
-            // create a file
             mHandle = ex_create(
                     mPath.c_str(), /* filename path */
                     EX_CLOBBER,  /* create mode */
@@ -173,7 +169,6 @@ namespace belfem
                 mNumElements += tBlock->number_of_elements();
             }
             mNumBlocks = mBlocks.size();
-
 
             // count visible sidesets, using the same filter as populate_sidesets()
             // ( thin-shell source sidesets stay on the mesh with zero facets )
@@ -195,7 +190,6 @@ namespace belfem
                     mNumNodeSets,
                     mNumSideSets );
 
-            // check error from exodus
             this->check( "ex_put_init");
 #endif
         }
@@ -211,7 +205,6 @@ namespace belfem
                           "Number of dimensions of mesh must be 2 or 3 ( is %u ).",
                                   ( unsigned int ) mMesh->number_of_dimensions() );
 
-
             double * tCoords = ( double * ) malloc( mNumNodes * sizeof( double ) );
 
             index_t tCount=0;
@@ -223,7 +216,6 @@ namespace belfem
 
             mError = ex_put_coord( mHandle, tCoords, NULL, NULL );
 
-            // check error from exodus
             this->check( "ex_put_coord (x)");
 
             tCount = 0;
@@ -246,7 +238,6 @@ namespace belfem
                     tCoords[ tCount++ ] = tNode->z();
                 }
 
-                // send coordinates to exodus
                 mError = ex_put_coord( mHandle, NULL, NULL, tCoords );
 
                 this->check( "ex_put_coord (z)");
@@ -325,7 +316,6 @@ namespace belfem
                         0);
 
                 this->check( "ex_put_block");
-
 
                 mError = ex_put_prop( mHandle,
                                       EX_ELEM_BLOCK,
@@ -479,10 +469,8 @@ namespace belfem
 
             StringList tLabels( tCount );
 
-
             for( SideSet * tSideSet : tSideSets )
             {
-                // number of facets
                 int64_t tNumFacets = tSideSet->number_of_facets();
 
                 ex_put_set_param(
@@ -494,7 +482,6 @@ namespace belfem
 
                 this->check( "ex_put_set_param" );
 
-                // allocate containers
                 int * tElementIDs = ( int * ) malloc( tNumFacets * sizeof( int ));
                 int * tSideSetIDs = ( int * ) malloc( tNumFacets * sizeof( int ));
 
@@ -544,14 +531,12 @@ namespace belfem
         {
 #ifdef BELFEM_EXODUS
 
-            // count fields
             uint tNodeFieldCount = 0;
             uint tElementFieldCount = 0;
 
-            // get number of fields from mesh
             uint tNumFields = mMesh->number_of_fields();
 
-            // collect field labels and sort them (exudus complains otherwise)
+            // collect field labels and sort them ( exodus complains otherwise )
             Cell< string > tLabels( tNumFields, "" );
             for( uint k=0; k<tNumFields; ++k )
             {
@@ -592,15 +577,12 @@ namespace belfem
                 }
             }
 
-            // allocate matrices
             Cell< mesh::Field * > tNodeFields( tNodeFieldCount, nullptr );
             Cell< mesh::Field * > tElementFields( tElementFieldCount, nullptr );
 
-            // reset counters
             tNodeFieldCount = 0;
             tElementFieldCount = 0;
 
-            // collect fields
             for( uint k=0; k<tNumFields; ++k )
             {
                 mesh::Field * tField = mMesh->field( tLabels( k ) );
@@ -620,7 +602,6 @@ namespace belfem
                         }
                         default:
                         {
-                            // do nothing
                             break;
                         }
                     }
@@ -628,7 +609,6 @@ namespace belfem
             }
             this->populate_node_fields( tNodeFields );
             this->populate_element_fields( tElementFields );
-
 
             tNodeFields.clear();
             tElementFields.clear();
@@ -661,12 +641,10 @@ namespace belfem
         ExodusWriter::populate_global_variables()
         {
 #ifdef BELFEM_EXODUS
-            // get number of global variables from mesh
             uint tNumGlobalVariables = mMesh->number_of_global_variables();
 
             if ( tNumGlobalVariables > 0 )
             {
-                // get field titles
                 StringList tFieldLabels( tNumGlobalVariables );
 
                 for( GlobalVariable * tVar : mMesh->global_variables() )
@@ -712,7 +690,6 @@ namespace belfem
 
                 this->check( "ex_put_var (global)");
 
-                // tidy up memory
                 free( tGlobalVars );
             }
 #endif
@@ -727,7 +704,6 @@ namespace belfem
             uint tNumNodes = mMesh->number_of_nodes();
             uint tNumNodeFields = 2;
 
-            // count fields that are to be written
             for ( mesh::Field * tField : aFields )
             {
                 if( tField->write_field_to_file() )
@@ -772,7 +748,6 @@ namespace belfem
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-            // create field with node ids
             real * tNodeData = ( real * ) malloc( tNumNodes * sizeof( real ) );
 
             uint k=0;
@@ -782,7 +757,6 @@ namespace belfem
                 tNodeData[ k++ ] = ( real )  tNode->id();
             }
 
-            // write node IDs
             /* write nodal variables */
             mError = ex_put_var(
                     mHandle,
@@ -801,7 +775,6 @@ namespace belfem
                 tNodeData[ k++ ] = ( real )  tNode->owner();
             }
 
-            // write node IDs
             /* write nodal variables */
             mError = ex_put_var(
                     mHandle,
@@ -816,13 +789,10 @@ namespace belfem
 
             free( tNodeData );
 
-            // write other fields
             for ( mesh::Field * tField : aFields )
             {
-                // check if field is to be written
                 if( tField->write_field_to_file() )
                 {
-                    // write nodal variables
                     mError = ex_put_var(
                             mHandle,
                             mTimeStep,
@@ -849,7 +819,6 @@ namespace belfem
 
             int tID = 0;
 
-            // count fields with write flag
             uint tNumElementFields = 4;
 
             for ( mesh::Field * tField : aFields )
@@ -860,7 +829,6 @@ namespace belfem
                 }
             }
 
-            // get field titles
             StringList tFieldLabels( tNumElementFields );
 
             tFieldLabels.push( "ElementID");
@@ -912,7 +880,6 @@ namespace belfem
 
             this->check( "ex_put_truth_table (element)");
 
-            // tidy up memory
             free( tTruthTable );
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -923,18 +890,14 @@ namespace belfem
 
             for( uint k=0; k<4; ++k )
             {
-                // increment id counter
                 ++tID;
 
-                // loop over all blocks
                 for ( uint b = 0; b < tNumBlocks; ++b )
                 {
-                    // get block
                     mesh::Block * tBlock = tBlocks( b );
 
                     uint tNumElements = tBlock->number_of_elements();
 
-                    // allocate data object
                     real * tBlockData = ( real * ) malloc( tNumElements * sizeof( real ) );
 
                     switch( k )
@@ -978,8 +941,6 @@ namespace belfem
 
                     }
 
-
-                    // push data
                     mError = ex_put_var(
                             mHandle,
                             mTimeStep,
@@ -1002,21 +963,16 @@ namespace belfem
             {
                 if( tField->write_field_to_file() )
                 {
-                    // increment id counter
                     ++tID;
 
-                    // get field data
                     Vector< real > tData = tField->data();
 
-                    // loop over all blocks
                     for ( uint b = 0; b < tNumBlocks; ++b )
                     {
-                        // get block
                         mesh::Block * tBlock = tBlocks( b );
 
                         uint tNumElements = tBlock->number_of_elements();
 
-                        // allocate data object
                         real * tBlockData = ( real * ) malloc( tNumElements * sizeof( real ));
 
                         // assemble data blockwise
@@ -1025,7 +981,6 @@ namespace belfem
                             tBlockData[ e ] = tData( tBlock->element( e )->index() );
                         }
 
-                        // push data
                         mError = ex_put_var(
                                 mHandle,
                                 mTimeStep,
@@ -1036,7 +991,6 @@ namespace belfem
                                 tBlockData );
 
                         this->check( "ex_put_var (element)");
-                        // tidy up memory
                         free( tBlockData );
                     }
                 }

@@ -376,9 +376,8 @@ namespace belfem
 
             // -- the ONE solver-section setting that changes the discretization:
             //    whether layer interfaces get duplicate dofs and ghost facets.
-            //    Added 2026-09-01; every cache built before then misses once
-            //    and is rebuilt, which is the point ( a stale cache silently
-            //    kept the other layout )
+            //    A cache without this setting misses and is rebuilt. Otherwise,
+            //    it could silently retain the other layout.
             tLines.push( string( "thinshell.ghost = " )
                          + ( fem::ghost_facets_requested( aInputFile ) ? "on" : "off" ) );
 

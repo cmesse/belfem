@@ -25,7 +25,6 @@ namespace belfem
             const bool aParallelMode )
     {
 #ifdef BELFEM_HDF5
-        // make sure that file path is given
         BELFEM_ERROR( ! aPath.empty(), "No file path given." );
 
         if( aParallelMode )
@@ -43,7 +42,6 @@ namespace belfem
             {
                 case( FileMode::NEW ) :
                 {
-                    // call HDF5 API
                     mFile = H5Fcreate(
                             mPath.c_str(),
                             H5F_ACC_TRUNC, // If file exists, erasing all existing data.
@@ -58,16 +56,13 @@ namespace belfem
                 }
                 case( FileMode::OPEN_RDONLY ) :
                 {
-                    // make sure that file exists
                     BELFEM_ERROR( file_exists( mPath ),
                                "File %s does not exist.",
                                mPath.c_str() );
 
-
-                    // call HDF5 API
                     mFile = H5Fopen(
                             mPath.c_str(),
-                            H5F_ACC_RDONLY,   // File creation property list identifier
+                            H5F_ACC_RDONLY,   // access flags
                             H5P_DEFAULT);  // Access property list identifier.
 
                     BELFEM_ERROR( mFile > 0,
@@ -78,16 +73,13 @@ namespace belfem
                 }
                 case( FileMode::OPEN_RDWR ) :
                 {
-                    // make sure that file exists
                     BELFEM_ERROR( file_exists( mPath ),
                                "File %s does not exist.",
                                mPath.c_str() );
 
-
-                    // call HDF5 API
                     mFile = H5Fopen(
                             mPath.c_str(),
-                            H5F_ACC_RDWR,   // File creation property list identifier
+                            H5F_ACC_RDWR,   // access flags
                             H5P_DEFAULT);  // Access property list identifier.
 
                     BELFEM_ERROR( mFile > 0,
@@ -103,10 +95,8 @@ namespace belfem
                 }
             }
 
-            // set flag for file is open
             mFileIsOpen = true;
 
-            // copy my file id into active group
             mActiveGroup = mFile;
 
             mActiveGroupLabel = "";
@@ -222,7 +212,6 @@ namespace belfem
     {
 #ifdef BELFEM_HDF5
 
-
         string tLabel = hdf5::create_tree( mTreeLabels, aLabel );
 
         if ( hdf5::group_exists( mActiveGroup, aLabel ) )
@@ -239,7 +228,6 @@ namespace belfem
             mTreeLabels.push( aLabel );
             mTree.push( mActiveGroup );
 
-            // remember label
             mActiveGroupLabel = tLabel;
 
             return mActiveGroup;
@@ -258,7 +246,6 @@ namespace belfem
 #endif
     }
 
-
 //------------------------------------------------------------------------------
 
     void
@@ -272,10 +259,8 @@ namespace belfem
 
         if( mTree.size() > 1 )
         {
-            // close active group
             H5Gclose(  mTree.pop() );
 
-            // remove last label from tree
             mTreeLabels.pop() ;
 
             mActiveGroup = mTree.last();
@@ -310,11 +295,9 @@ namespace belfem
         uint tNumGroups = mTree.size() ;
         for( uint g=0; g<tNumGroups; ++g )
         {
-            // close active group
             H5Gclose(  mTree.pop() );
         }
 
-        // tidy up
         mTree.clear() ;
         mTreeLabels.clear() ;
         mActiveGroupLabel = "/";
@@ -329,7 +312,6 @@ namespace belfem
     void
     HDF5::save_data(const string &aLabel, const string & aValue)
     {
-        // call interface
         hdf5::save_string_to_file(
                 mActiveGroup,
                 aLabel,
@@ -342,7 +324,6 @@ namespace belfem
     void
     HDF5::save_data( const string &aLabel, const char* aValue )
     {
-        // call interface
         hdf5::save_string_to_file(
                 mActiveGroup,
                 aLabel,
@@ -358,7 +339,6 @@ namespace belfem
     HDF5::load_data( const string & aLabel,
                            string & aValue)
     {
-        // call interface
         hdf5::load_string_from_file(
             mActiveGroup,
             aLabel,
@@ -373,7 +353,6 @@ namespace belfem
     void
     HDF5::save_data(const string & aLabel, const sint & aValue)
     {
-        // call interface
         hdf5::save_scalar_to_file(
                 mActiveGroup,
                 aLabel,
@@ -386,7 +365,6 @@ namespace belfem
     void
     HDF5::save_data(const string & aLabel, const uint & aValue)
     {
-        // call interface
         hdf5::save_scalar_to_file(
                 mActiveGroup,
                 aLabel,
@@ -399,7 +377,6 @@ namespace belfem
     void
     HDF5::save_data(const string & aLabel, const luint & aValue)
     {
-        // call interface
         hdf5::save_scalar_to_file(
                 mActiveGroup,
                 aLabel,
@@ -412,7 +389,6 @@ namespace belfem
     void
     HDF5::save_data(const string & aLabel, const lluint & aValue)
     {
-        // call interface
         hdf5::save_scalar_to_file(
                 mActiveGroup,
                 aLabel,
@@ -425,7 +401,6 @@ namespace belfem
     void
     HDF5::save_data(const std::string & aLabel, const real & aValue)
     {
-        // call interface
         hdf5::save_scalar_to_file(
                 mActiveGroup,
                 aLabel,
@@ -439,7 +414,6 @@ namespace belfem
     HDF5::save_data(const std::string & aLabel,
                            const bool & aValue)
     {
-        // call interface
         hdf5::save_bool_to_file(
                 mActiveGroup,
                 aLabel,
@@ -468,7 +442,6 @@ namespace belfem
     HDF5::load_data( const string & aLabel,
                              sint & aValue )
     {
-        // call interface
         hdf5::load_scalar_from_file(
                 mActiveGroup,
                 aLabel,
@@ -482,7 +455,6 @@ namespace belfem
     HDF5::load_data( const string & aLabel,
                              uint & aValue )
     {
-        // call interface
         hdf5::load_scalar_from_file(
                 mActiveGroup,
                 aLabel,
@@ -496,7 +468,6 @@ namespace belfem
     HDF5::load_data( const string & aLabel,
                            luint  & aValue )
     {
-        // call interface
         hdf5::load_scalar_from_file(
                 mActiveGroup,
                 aLabel,
@@ -510,7 +481,6 @@ namespace belfem
     HDF5::load_data( const string & aLabel,
                            lluint & aValue )
     {
-        // call interface
         hdf5::load_scalar_from_file(
                 mActiveGroup,
                 aLabel,
@@ -524,7 +494,6 @@ namespace belfem
     HDF5::load_data( const string & aLabel,
                             real  & aValue )
     {
-        // call interface
         hdf5::load_scalar_from_file(
                 mActiveGroup,
                 aLabel,
@@ -549,6 +518,5 @@ namespace belfem
     }
 
 //------------------------------------------------------------------------------
-
 
 }

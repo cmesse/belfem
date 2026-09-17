@@ -31,8 +31,8 @@ namespace belfem
             // ladder ( 30 -> 60 -> 120 -> 240 -> 480, at most four doublings )
             // and with it the persist-bounded ratchet: an escalated value
             // stays for later solves on this instance, free() restores the
-            // default. The ladder runs BEHIND the ICNTL(23) cap since
-            // 2026-09-01: the guide says a -9 can still occur with the cap
+            // default. The ladder runs BEHIND the ICNTL(23) cap: the guide
+            // says a -9 can still occur with the cap
             // set and still asks for a larger ICNTL(14) then
             constexpr int_t gDefaultMemoryRelaxation = 30 ;
             constexpr int_t gMaxMemoryRelaxation     = 480 ;
@@ -166,11 +166,11 @@ namespace belfem
                     ( int_t ) mParams->memory_budget() : 0 ;
 
             // BLR only on explicit request, mirroring the STRUMPACK
-            // grouping ( 2026-08-16 ): the old inverse switch sent
-            // every value except OFF — including the AUTOMATIC default —
-            // into BLR, and the unconditional CNTL(7) write below turned
-            // that into silent LOSSY factorization at 1e-8 absolute on
-            // every MUMPS deck without a compression key. BLR is an
+            // grouping: an inverse switch would send every value except
+            // OFF — including the AUTOMATIC default — into BLR, and the
+            // unconditional CNTL(7) write below would turn that into silent
+            // LOSSY factorization at 1e-8 absolute on every MUMPS deck
+            // without a compression key. BLR is an
             // accuracy-for-memory trade and must be a stated choice.
             // default covers OFF, AUTOMATIC and any future enumerator —
             // a new value must opt IN to compression, never fall into it
@@ -235,37 +235,12 @@ namespace belfem
             this->hatch_turtle() ;
 
             // remember symmetry mode
-            // ---- BELFEM CANNOT HONOUR A SYMMETRIC MUMPS MODE. -------------
-            // Under SYM != 0, MUMPS wants exactly ONE representative of each
-            // symmetric coordinate. Either triangle will do -- it does NOT
-            // insist on the lower one, and an entry from the opposite triangle
-            // is neither ignored nor rejected. What is fatal is supplying
-            // BOTH: ( i, j ) and ( j, i ) are then treated as DUPLICATES and
-            // SUMMED, exactly as duplicates are in unsymmetric mode.
-            //
-            // BELFEM stores and hands over the FULL matrix and nothing extracts
-            // a triangle, so every off-diagonal arrives twice while the
-            // diagonal arrives once. MUMPS factorizes A with doubled
-            // off-diagonals -- a DIFFERENT matrix.
-            //
-            // It does not fail. It returns a converged, plausible, wrong
-            // answer: measured 2026-08-29 on a 1D Laplacian with an analytic
-            // spectrum, SYM = 2 gave a first-solve residual
-            // ||Ax-b||/||b|| = 7.4e16 and an eigenvalue of -2.5e-19 against a
-            // true 2.46e-6, with the eigensolver reporting success throughout.
-            // SYM = 0 on the same matrix: residual 1.3e-12, eigenvalue right
-            // to 6e-12.
-            //
-            // ( MUMPS 5.5.1 user guide section 5.2.2.1. An earlier version of
-            //   this comment said MUMPS "requires the lower triangle". That
-            //   was wrong, and the distinction matters to whoever implements
-            //   the extraction: they may pick either triangle. )
-            //
-            // Always-active, and an error rather than a silent downgrade to
-            // SYM = 0: a caller that asked for symmetry wants the memory
-            // saving, and quietly not giving it is its own kind of lie. To
-            // support this properly, supply one triangle -- see
-            // todo/mumps_symmetric_triangle_extraction.md
+            // MUMPS symmetric modes require one entry from either triangle for
+            // each symmetric pair. BELFEM supplies the full matrix, so MUMPS
+            // sums off-diagonal pairs and factorizes a different matrix without
+            // failing. Reject symmetric modes rather than silently removing the
+            // requested memory saving. Supporting them requires one triangle.
+            // See src/sparse/doc/sparse_usage_guide.md, "Exploit Symmetry".
             BELFEM_ERROR( aSymmetryMode == SymmetryMode::Unsymmetric,
                 "MUMPS symmetry mode %i is not supported: for SYM != 0 MUMPS wants ONE "
                 "representative per symmetric coordinate and sums ( i, j ) with ( j, i ), "
@@ -471,8 +446,7 @@ namespace belfem
             // ---- AFTER the teardown reporting above, which reads mMatrix to
             // build its error message. Clearing it earlier made the
             // `mInfo( 0 ) != 0 && mMatrix != nullptr` guard permanently false
-            // and silenced every JOB -2 error and warning -- a regression
-            // introduced and caught in the same session, 2026-08-29.
+            // and silenced every JOB -2 error and warning.
             //
             // It does have to be cleared, though: mMatrix is the "which matrix
             // are these factors for" record, and JOB -2 has just destroyed the
@@ -964,8 +938,8 @@ namespace belfem
             // the same branch and decodes the true failure instead of the
             // propagated -1 "error on rank N". A rank-0-only throw once left
             // the other ranks marching into the next collective and the job
-            // died by segfault instead of the error box ( observed
-            // 2026-07-27, INFOG(1) = -10 quench )
+            // ended in a segmentation fault instead of reporting the error
+            // when INFOG(1) = -10.
             if( mInfoG( 0 ) < 0 )
             {
                 // soft-fail contract: record and return uniformly on all
@@ -986,7 +960,7 @@ namespace belfem
 
                     // force a full JOB=6 ( analysis + factorization + solve )
                     // on the next attempt: a failure during analysis leaves
-                    // no valid analysis for a JOB=5 reuse ( Codex round-5 )
+                    // no valid analysis for a JOB=5 reuse
                     mMatrix = nullptr ;
 
                     // and the factors this failure leaves behind, if any, are
@@ -1181,8 +1155,8 @@ namespace belfem
             // the same branch and decodes the true failure instead of the
             // propagated -1 "error on rank N". A rank-0-only throw once left
             // the other ranks marching into the next collective and the job
-            // died by segfault instead of the error box ( observed
-            // 2026-07-27, INFOG(1) = -10 quench )
+            // ended in a segmentation fault instead of reporting the error
+            // when INFOG(1) = -10.
             if( mInfoG( 0 ) < 0 )
             {
                 // soft-fail contract: record and return uniformly on all
@@ -1203,7 +1177,7 @@ namespace belfem
 
                     // force a full JOB=6 ( analysis + factorization + solve )
                     // on the next attempt: a failure during analysis leaves
-                    // no valid analysis for a JOB=5 reuse ( Codex round-5 )
+                    // no valid analysis for a JOB=5 reuse
                     mMatrix = nullptr ;
 
                     // and the factors this failure leaves behind, if any, are

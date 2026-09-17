@@ -32,7 +32,6 @@
 namespace belfem
 {
 
-
 //------------------------------------------------------------------------------
 
     SpMatrix::SpMatrix( Graph & aGraph,
@@ -45,9 +44,9 @@ namespace belfem
         if ( aSortGraph ) graph::sort( aGraph );
 
 #ifdef DEBUG
-        // guarded by DEBUG, not BELFEM_DEBUG: the latter is defined nowhere,
-        // so this check had never run in any configuration ( revived
-        // 2026-08-16 ). It is O( V log V ) per construction — debug-build
+        // Guarded by DEBUG, not BELFEM_DEBUG; BELFEM_DEBUG is undefined.
+        // This check runs only in debug builds. It is O( V log V ) per
+        // construction — a debug-build
         // cost only — and it has never been exercised on production graphs,
         // so a first firing is a finding to investigate, not automatically
         // a regression in the caller
@@ -55,7 +54,6 @@ namespace belfem
 #endif
         if ( aNumRows == 0 && aNumCols == 0 )
         {
-            // set the sizes and tidy indices in graph
             this->set_sizes(
                     aGraph.size(),                         // number of rows
                     this->tidy_graph( aGraph ) // returns number of columns
@@ -63,7 +61,6 @@ namespace belfem
         }
         else
         {
-            // sort indices in graph
             if ( aSortGraph )
             {
                 for( graph::Vertex * tVertex : aGraph )
@@ -71,11 +68,9 @@ namespace belfem
                     tVertex->sort_vertices();
                 }
             }
-            // take sizes from input
             this->set_sizes( aNumRows, aNumCols );
         }
 
-        // check which kind of matrix this is
         switch ( aType )
         {
             case ( SpMatrixType::CSR ) :
@@ -95,10 +90,8 @@ namespace belfem
             }
         }
 
-        // allocate the data container
         this->allocate_values();
 
-        // fill container with zeros
         this->fill( 0.0 );
 
 #ifdef BELFEM_NETLIB
@@ -125,23 +118,19 @@ namespace belfem
                       ? mNumCols + 1
                       : mNumRows + 1;
 
-        // allocate pointer array
         mPointers = ( int_t * ) malloc( ( mPointerSize ) * sizeof( int_t ) );
         std::memcpy( mPointers, aPointers, ( mPointerSize ) * sizeof( int_t ) );
-
 
         switch ( aType )
         {
             case ( SpMatrixType::CSR ) :
             {
-                // allocate column array
                 mColumns = ( int_t * ) malloc( ( mNumNonZeros ) * sizeof( int_t ) );
                 std::memcpy( mColumns, aIndices, ( mNumNonZeros ) * sizeof( int_t ) );
                 break ;
             }
             case( SpMatrixType::CSC ) :
             {
-                // allocate row array
                 mRows = ( int_t * ) malloc( ( mNumNonZeros ) * sizeof( int_t ) );
                 std::memcpy( mRows, aIndices, ( mNumNonZeros ) * sizeof( int_t ) );
                 break ;
@@ -182,10 +171,8 @@ namespace belfem
 
     SpMatrix::SpMatrix( const Matrix< real > & aMatrix, const SpMatrixType aType )
     {
-        // set sizes
         this->set_sizes( aMatrix.n_rows(), aMatrix.n_cols() );
 
-        // count nonzeros
         mNumNonZeros = 0 ;
         for( int_t i=0; i<mNumRows; ++i )
         {
@@ -198,14 +185,12 @@ namespace belfem
             }
         }
 
-
 #ifdef BELFEM_NETLIB
         this->allocate_swap();
 #endif
 
         this->allocate_values() ;
 
-        // set type of matrix
         mType = aType ;
 
         switch ( aType )
@@ -214,43 +199,32 @@ namespace belfem
             {
                 mPointerSize = mNumRows + 1;
 
-                // allocate pointer array
                 mPointers = ( int_t * ) malloc( ( mPointerSize ) * sizeof( int_t ) );
 
-                // first entry
                 mPointers[ 0 ] = 0 ;
 
-                // allocate column array
                 mColumns = ( int_t * ) malloc( ( mNumNonZeros ) * sizeof( int_t ) );
 
-                // position in columns
                 int_t tStep = 0 ;
 
                 int_t tCount;
 
-                // populate pointers array
                 for( int_t i=0; i<mNumRows; ++i )
                 {
-                    // reset counter
                     tCount = 0 ;
 
-                    // loop over all columns
                     for( int_t j=0; j<mNumCols; ++j )
                     {
                         if( aMatrix( i, j ) != 0.0 )
                         {
-                            // write column
                             mColumns[ tStep ] = j ;
 
-                            // write value
                             mValues[ tStep++ ] = aMatrix( i, j );
 
-                            // increment counter
                             ++tCount;
                         }
                     }
 
-                    // count entries
                     mPointers[ i + 1 ] = mPointers[ i ] + tCount ;
                 }
 
@@ -260,43 +234,32 @@ namespace belfem
             {
                 mPointerSize = mNumCols + 1;
 
-                // allocate pointer array
                 mPointers = ( int_t * ) malloc( ( mPointerSize ) * sizeof( int_t ) );
 
-                // first entry
                 mPointers[ 0 ] = 0 ;
 
-                // allocate row array
                 mRows = ( int_t * ) malloc( ( mNumNonZeros ) * sizeof( int_t ) );
 
-                // position in columns
                 int_t tStep = 0 ;
 
                 int_t tCount;
 
-                // populate pointers array
                 for( int_t j=0; j<mNumCols; ++j )
                 {
-                    // reset counter
                     tCount = 0 ;
 
-                    // loop over all columns
                     for( int_t i=0; i<mNumRows; ++i )
                     {
                         if( aMatrix( i, j ) != 0.0 )
                         {
-                            // write column
                             mRows[ tStep ] = i ;
 
-                            // write value
                             mValues[ tStep++ ] = aMatrix( i, j );
 
-                            // increment counter
                             tCount++;
                         }
                     }
 
-                    // count entries
                     mPointers[ j + 1 ] = mPointers[ j ] + tCount ;
                 }
 
@@ -350,7 +313,6 @@ namespace belfem
 
         if ( mChild != nullptr )
         {
-            // transfer ownerships
             mChild->update_from_parent() ;
             mChild->mParent = nullptr ;
             mChild = nullptr ;
@@ -503,18 +465,14 @@ namespace belfem
     void
     SpMatrix::create_csr_indices( Graph & aGraph )
     {
-        // number of vertices
         index_t tSize = aGraph.size();
 
         mPointerSize = mNumRows + 1;
 
-        // allocate pointer array
         mPointers = ( int_t * ) malloc( ( mPointerSize ) * sizeof( int_t ) );
 
-        // populate pointer array
         std::fill_n( mPointers, mPointerSize, 0 );
 
-        // create pointer array ( step 1 )
         for ( index_t k = 0; k < tSize; ++k )
         {
             mPointers[ aGraph( k )->index() + 1 ] = ( int_t ) aGraph( k )->number_of_vertices();
@@ -523,7 +481,6 @@ namespace belfem
         // counter to prevent data type overflow
         index_t tCount = 0;
 
-        // create pointer array ( step 2 )
         for ( int_t k = 1; k < mPointerSize; ++k )
         {
             tCount += mPointers[ k ];
@@ -536,15 +493,12 @@ namespace belfem
         BELFEM_ASSERT( ( index_t ) mPointers[ mNumRows ] == tCount,
             "Something went wrong while creating CSR index" );
 
-        // allocate index vector
         tCount = ( tCount == 0 ) ? 1 : tCount;
 
         mColumns = ( int_t * ) malloc( tCount * sizeof( int_t ) );
 
-        // reset counter
         tCount = 0;
 
-        // loop over all nodes and create index array
         for( graph::Vertex * tVertex : aGraph )
         {
             int_t tNumVertices = tVertex->number_of_vertices();
@@ -561,18 +515,14 @@ namespace belfem
     void
     SpMatrix::create_csc_indices(  Graph & aGraph )
     {
-        // number of vertices
         index_t tSize = aGraph.size();
 
         index_t tNumNonzeros = 0;
 
-        // allocate a counting array
         index_t * tCount = ( index_t * ) malloc( mNumCols * sizeof( index_t ) );
 
-        // fill array with zeros
         std::fill_n( tCount, mNumCols, 0 );
 
-        // count vertices per column
         for ( index_t k = 0; k < tSize; ++k )
         {
             int_t tNumberOfVertices =  aGraph( k )->number_of_vertices();
@@ -587,7 +537,6 @@ namespace belfem
 
         mPointerSize = mNumCols + 1;
 
-        // populate pointer array
         mPointers = ( int_t * ) malloc( ( mPointerSize ) * sizeof( int_t ) );
 
         mPointers[ 0 ] = 0;
@@ -596,38 +545,31 @@ namespace belfem
             mPointers[ k+1 ] = mPointers[ k ] + tCount[ k ];
         }
 
-        // reset counter
         std::fill_n( tCount, mNumCols, 0 );
 
         // set number of nonzeros and check int_t type boundaries
         this->set_nnz( tNumNonzeros );
 
-        // populate indices
         tNumNonzeros = ( tNumNonzeros == 0 ) ? 1 : tNumNonzeros;
 
         mRows = ( int_t * ) malloc( tNumNonzeros * sizeof( int_t ) );
 
         int_t n = ( int_t ) tSize;
 
-        // count vertices per column
         for ( int_t k = 0; k < n; ++k )
         {
             int_t tNumberOfVertices =  aGraph( k )->number_of_vertices();
 
             for( int_t i=0; i<tNumberOfVertices; ++i )
             {
-                // get column of array
                 index_t j = aGraph( k )->vertex( i )->index();
 
-                // write index into array
                 mRows[ mPointers[ j ] + tCount[ j ] ] = ( int_t ) aGraph( k )->index();
 
-                // increment counter
                 ++tCount[ j ];
             }
         }
 
-        // free counter
         free( tCount );
     }
 
@@ -655,7 +597,6 @@ namespace belfem
                      ( long long unsigned int ) aNumCols,
                      ( long long unsigned int ) tMaxSize );
 
-        // set data
         mNumRows = ( int_t ) aNumRows;
         mNumCols = ( int_t ) aNumCols;
     }
@@ -670,13 +611,11 @@ namespace belfem
 #else
         const index_t tMaxNNZ = 2147483647 ;
 #endif
-        // make sure that NNZ is OK
         BELFEM_ERROR( aNumNonZeros < tMaxNNZ,
                      "too many non-zeros in matrix (%lu > %lu )",
                      ( long unsigned int ) aNumNonZeros,
                      ( long unsigned int ) tMaxNNZ );
 
-        // set data
         mNumNonZeros = ( int_t ) aNumNonZeros;
     }
 
@@ -691,7 +630,6 @@ namespace belfem
         // BELFEM_ASSERT only - so in a release build, assembling into an
         // entry the pattern does not contain used to write one element past
         // the allocation. The extra slot turns that into a harmless dump.
-        //
         // The slot is zeroed because assembly accumulates ( += ) into it,
         // which reads it first; fill() only covers the logical length.
         // mNumNonZeros stays the logical length everywhere else - fill(),
@@ -734,7 +672,6 @@ namespace belfem
         BELFEM_ERROR( mParent == nullptr, "can't sort a child matrix" );
         BELFEM_ERROR( mChild  == nullptr, "can't sort a parent matrix while a child is attached" );
 
-        // determine which index array to check
         int_t * tIndices = nullptr ;
         int_t   tNumSlices = 0 ;
 
@@ -759,7 +696,6 @@ namespace belfem
         // reusable work buffer (clear() preserves allocation)
         Cell< std::pair< int_t, real > > tWork ;
 
-        // check each row (CSR) or column (CSC)
         for ( int_t i = 0; i < tNumSlices; ++i )
         {
             int_t tBegin = mPointers[ i ] - tBase ;
@@ -767,7 +703,6 @@ namespace belfem
 
             if ( tEnd - tBegin <= 1 ) continue ;
 
-            // check if already sorted
             bool tSorted = true ;
             for ( int_t k = tBegin; k < tEnd - 1; ++k )
             {
@@ -780,14 +715,12 @@ namespace belfem
 
             if ( !tSorted )
             {
-                // gather index-value pairs
                 tWork.clear() ;
                 for ( int_t k = tBegin; k < tEnd; ++k )
                 {
                     tWork.push( { tIndices[ k ], mValues[ k ] } ) ;
                 }
 
-                // sort by index
                 std::sort( tWork.data(),
                            tWork.data() + tWork.size(),
                            []( const std::pair< int_t, real > & a,
@@ -796,7 +729,6 @@ namespace belfem
                                return a.first < b.first ;
                            } ) ;
 
-                // scatter back
                 int_t k = tBegin ;
                 for ( auto & tPair : tWork )
                 {
@@ -825,21 +757,17 @@ namespace belfem
         {
             case( SpMatrixIndexingBase::Cpp ) :
             {
-                // test if this is in fortran base
                 if( mPointers[ 0 ] == 1 && mParent == nullptr )
                 {
-                    // decrement all pointers
                     std::for_each( mPointers, mPointers + mPointerSize,
                                    [ ]( int_t & tValue ){ --tValue; } );
 
-                    // decrement all rows
                     if( mRows != nullptr )
                     {
                         std::for_each( mRows, mRows + mNumNonZeros,
                                        [ ]( int_t & tValue ){ --tValue; } );
                     }
 
-                    // decrement all cols
                     if( mColumns != nullptr )
                     {
                         std::for_each( mColumns, mColumns + mNumNonZeros,
@@ -853,21 +781,17 @@ namespace belfem
             }
             case( SpMatrixIndexingBase::Fortran ) :
             {
-                // test if this is in c++ base
                 if( mPointers[ 0 ] == 0 && mParent == nullptr )
                 {
-                    // decrement all pointers
                     std::for_each( mPointers, mPointers + mPointerSize,
                                    [ ]( int_t & tValue ){ ++tValue; } );
 
-                    // increment all rows
                     if( mRows != nullptr )
                     {
                         std::for_each( mRows, mRows + mNumNonZeros,
                                        [ ]( int_t & tValue ){ ++tValue; } );
                     }
 
-                    // increment all cols
                     if( mColumns != nullptr )
                     {
                         std::for_each( mColumns, mColumns + mNumNonZeros,
@@ -942,7 +866,6 @@ namespace belfem
         {
             case( SpMatrixType::CSR ) :
             {
-                // test if rows already exist
                 if( mRows == nullptr )
                 {
                     if( mNumNonZeros == 0 )
@@ -954,7 +877,6 @@ namespace belfem
                         mRows = ( int_t * ) malloc( mNumNonZeros * sizeof( int_t ));
                     }
 
-                    // populate row indices
                     int_t tCount = 0;
                     for ( int_t k = 0; k < mNumRows; ++k )
                     {
@@ -979,7 +901,6 @@ namespace belfem
                     {
                         mColumns = ( int_t * ) malloc( mNumNonZeros * sizeof( int_t ));
                     }
-                    // populate row indices
                     int_t tCount = 0;
                     for ( int_t k = 0; k < mNumCols; ++k )
                     {
@@ -999,7 +920,6 @@ namespace belfem
             }
         }
 
-        // restore indexing base
         if( tOldBase == 1 )
         {
             this->set_indexing_base( SpMatrixIndexingBase::Fortran );
@@ -1101,7 +1021,6 @@ namespace belfem
         {
             for ( int_t r = 0; r < mNumRows; ++r )
             {
-                // get bandwidth
                 int_t n = mPointers[ r + 1 ] - mPointers[ r ];
 
                 for ( int_t c = 0; c < n; ++c )
@@ -1115,7 +1034,6 @@ namespace belfem
         {
             for ( int_t r = 0; r < mNumCols; ++r )
             {
-                // get bandwidth
                 int_t n = mPointers[ r + 1 ] - mPointers[ r ];
 
                 for ( int_t c = 0; c < n; ++c )
@@ -1165,19 +1083,14 @@ namespace belfem
             const enum FileMode aMode)
     {
 #ifdef BELFEM_HDF5
-        // create a new file
         HDF5 tFile( aPath, aMode, false );
 
-        // get status from file
         herr_t & tStatus = tFile.status();
 
-        // create a group with the specified label
         hid_t tGroup = tFile.create_group( aLabel );
 
-        // save matrix into this group
         this->save( tGroup, tStatus );
 
-        // close HDF5 file
         tFile.close();
 #else
         BELFEM_ERROR( false, "Trying to save a sparse matrix to HDF5, but BELFEM is not link against HDF5 libraries." );
@@ -1213,19 +1126,14 @@ namespace belfem
             }
         }
 
-        // save format
         hdf5::save_string_to_file( aGroup, "Format", tFormatLabel, aStatus );
 
-        // save sizes
         hdf5::save_scalar_to_file( aGroup, "NumRows", mNumRows, aStatus );
         hdf5::save_scalar_to_file( aGroup, "NumCols", mNumCols, aStatus );
-        // save number of nonzeros
         hdf5::save_scalar_to_file( aGroup, "NumNonZeros", mNumNonZeros, aStatus );
 
-        // save pointers
         hdf5::save_array_to_file( aGroup, "Pointers", mPointers, mPointerSize, aStatus );
 
-        // save indices
         if( mType == SpMatrixType::CSC )
         {
             hdf5::save_array_to_file( aGroup, "Indices", mRows, mNumNonZeros, aStatus );
@@ -1235,7 +1143,6 @@ namespace belfem
             hdf5::save_array_to_file( aGroup, "Indices", mColumns, mNumNonZeros, aStatus );
         }
 
-        // save data
         hdf5::save_array_to_file( aGroup, "Values", mValues, mNumNonZeros, aStatus );
 #else
         BELFEM_ERROR( false, "Trying to save a sparse matrix to HDF5, but BELFEM is not link against HDF5 libraries." );
@@ -1250,12 +1157,10 @@ namespace belfem
             const string aLabel )
     {
 #ifdef BELFEM_HDF5
-        // create a new file
         HDF5 tFile( aPath, FileMode::OPEN_RDONLY, false );
 
         hid_t   tGroup = tFile.select_group( aLabel );
         herr_t & tStatus = tFile.status();
-
 
         this->load( tGroup, tStatus );
 
@@ -1288,12 +1193,10 @@ namespace belfem
 
         string tFormatLabel;
 
-        // load format
         hdf5::load_string_from_file( aGroup, "Format", tFormatLabel, aStatus );
 
         string tFormat = string_to_upper( tFormatLabel );
 
-        // resolve type
         SpMatrixType tType = SpMatrixType::UNDEFINED ;
         if( tFormat == "CSR" )
         {
@@ -1391,14 +1294,11 @@ namespace belfem
         {
             mType = tType ;
 
-            // load sizes
             hdf5::load_scalar_from_file( aGroup, "NumRows", mNumRows, aStatus );
             hdf5::load_scalar_from_file( aGroup, "NumCols", mNumCols, aStatus );
 
-            // load number of nonzeros
             hdf5::load_scalar_from_file( aGroup, "NumNonZeros", mNumNonZeros, aStatus );
 
-            // determine pointer size
             if( mType == SpMatrixType::CSC )
             {
                 mPointerSize = mNumCols + 1;
@@ -1408,7 +1308,6 @@ namespace belfem
                 mPointerSize = mNumRows + 1;
             }
 
-            // make sure that array is not used
             if( mPointers != nullptr )
             {
                 free( mPointers );
@@ -1422,11 +1321,9 @@ namespace belfem
                 free( mColumns );
             }
 
-            // allocate memory
             mPointers = ( int_t * ) malloc( mPointerSize * sizeof( int_t ) );
             hdf5::load_array_from_file( aGroup, "Pointers", mPointers,  mPointerSize, aStatus );
 
-            // load indices
             if( mType == SpMatrixType::CSC )
             {
                 mRows = ( int_t * ) malloc( mNumNonZeros * sizeof( int_t ) );
@@ -1445,7 +1342,6 @@ namespace belfem
 
             this->allocate_values();
 
-            // load values
             hdf5::load_array_from_file( aGroup, "Values", mValues, mNumNonZeros, aStatus );
         }
 
@@ -1624,7 +1520,6 @@ namespace belfem
         int_t tLengthX = mNumCols;
         int_t tLengthY = mNumRows;
 
-        // flip X and Y length if matrix is transposed
         if( aTransposedFlag )
         {
             tLengthX = mNumRows;
@@ -1733,7 +1628,6 @@ namespace belfem
         // no base restore: nothing was converted
     }
 
-
     void
     SpMatrix::multiply( const Vector< real > & aX,
                         Vector< real > & aY )
@@ -1745,7 +1639,6 @@ namespace belfem
         // this path while the overload below ran MKL's, and the two drifted: only
         // the other one validates its dimensions. This path is the ARPACK inverse
         // iteration ( DofMgr_EigenValues ), i.e. once per iteration.
-        //
         // The fill is REQUIRED, not defensive, and only on the MKL path. The
         // Fortran kernels zero y themselves ( splinalg.f90 ), so every caller of
         // this overload is entitled to hand us an UNINITIALISED aY, and the eigen
@@ -1780,13 +1673,10 @@ namespace belfem
         BELFEM_ERROR( mParent == nullptr, "can't copy onto a child matrix" );
         BELFEM_ERROR( mChild  == nullptr, "can't copy onto a parent matrix" );
 
-        // delete current data
         this->deallocate();
 
-        // copy the type
         mType = aMatrix.type();
 
-        // set matrix size
         mNumRows = aMatrix.n_rows();
         mNumCols = aMatrix.n_cols();
 
@@ -1799,14 +1689,11 @@ namespace belfem
             mPointerSize = mNumCols + 1;
         }
 
-        // set number of nonzeros
         mNumNonZeros = aMatrix.number_of_nonzeros();
 
-        // copy pointers
         mPointers = ( int_t * ) malloc( ( mPointerSize ) * sizeof( int_t ) );
         std::memcpy( mPointers, aMatrix.pointers(), ( mPointerSize ) * sizeof( int_t ) );
 
-        // copy cols
         if( aMatrix.rows() != nullptr )
         {
             mRows = ( int_t * ) malloc( mNumNonZeros * sizeof( int_t ) );
@@ -1817,7 +1704,6 @@ namespace belfem
             mRows = nullptr;
         }
 
-        // copy cols
         if( aMatrix.cols() != nullptr )
         {
             mColumns = ( int_t * ) malloc( mNumNonZeros * sizeof( int_t ) );
@@ -1839,7 +1725,6 @@ namespace belfem
         this->allocate_swap();
 #endif
 
-        // link
         if( mPointers[ 0 ] == 0 )
         {
             this->set_indexing_base( SpMatrixIndexingBase::Cpp );
@@ -1849,7 +1734,6 @@ namespace belfem
             this->set_indexing_base( SpMatrixIndexingBase::Fortran );
         }
 
-        // return ref to this matrix
         return *this;
     }
 //----------------------------------------------------------------------------
@@ -1867,57 +1751,43 @@ namespace belfem
         BELFEM_ERROR( aMatrix.mParent == nullptr, "can't move from a child matrix" );
         BELFEM_ERROR( aMatrix.mChild  == nullptr, "can't move from a parent matrix" );
 
-        // delete current data
         this->deallocate();
 
-        // move the type
         mType = aMatrix.mType ;
 
-        // move matrix size
         mNumRows = aMatrix.mNumRows ;
         aMatrix.mNumRows = 0 ;
 
         mNumCols = aMatrix.mNumCols ;
         aMatrix.mNumCols = 0 ;
 
-        // move pointer size
         mPointerSize = aMatrix.mPointerSize ;
         aMatrix.mPointerSize = 0 ;
 
-        // move number of nonzeros
         mNumNonZeros = aMatrix.mNumNonZeros ;
         aMatrix.mNumNonZeros = 0 ;
 
-        // move pointers
         mPointers = aMatrix.mPointers ;
         aMatrix.mPointers = nullptr ;
 
-        // move rows
         mRows = aMatrix.mRows ;
         aMatrix.mRows = nullptr ;
 
-        // move cols
         mColumns = aMatrix.mColumns ;
         aMatrix.mColumns = nullptr ;
 
-        // move data
         mValues = aMatrix.mValues ;
         aMatrix.mValues = nullptr ;
 
-        // move coo flag
         mHaveCooIndices = aMatrix.mHaveCooIndices ;
         aMatrix.mHaveCooIndices = false ;
 
 #ifdef BELFEM_NETLIB
-        // move swap
         mSwap = std::move( aMatrix.mSwap ) ;
         mSwapSize = aMatrix.mSwapSize ;
         aMatrix.mSwapSize = 0 ;
 #endif
 
-        // move function pointer
-
-        // return ref to this matrix
         return *this ;
     }
 

@@ -41,7 +41,6 @@ namespace belfem
             //! Pointer to the mesh being processed
             Mesh * mMesh ;
 
-
             Cell< Node * >    & mNodes ;
             Cell< Edge * >    & mEdges  ;
             Cell< Face * >    & mFaces;
@@ -65,20 +64,11 @@ namespace belfem
             public:
 //------------------------------------------------------------------------------
 
-            /**
-             * @brief Constructor
-             * @param aMesh Pointer to the mesh to compute connectivity for
-             */
             ConnectivityCalculator( Mesh * aMesh );
 
-            /**
-             * @brief Destructor (nothing to release; all containers are owned by the mesh)
-             */
+            /** Nothing to release: every container is owned by the mesh. */
             ~ConnectivityCalculator();
 
-            /**
-            * @brief Compute node-to-element connectivity
-            */
             void
             connect_nodes_to_elements() ;
 

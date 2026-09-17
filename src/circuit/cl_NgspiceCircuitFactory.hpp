@@ -32,28 +32,27 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
         /**
-         * Builds an ElectricalCircuit from a lexed netlist
-         * ( todo/ngspice_parser_plan.md §9.2, decisions O5/O6/O8/O9 ).
+         * Builds an ElectricalCircuit from a lexed netlist.
          *
-         * Node map ( O9, frozen for restart ): the ground aliases "0" and
+         * Node map ( frozen for restart ): the ground aliases "0" and
          * "gnd" are one node and land on the LAST BELFEM index; every other
          * node packs into 0 .. N-2 in order of first appearance in the
          * netlist ( element cards and directive n+/n- keys alike ). A deck
          * that never references ground is invalid ( manual, "Ground node" ).
          * The map is logged at construction and exposed via node_index()
          * so the deck-side terminal-pair reader resolves node NAMES through
-         * the same map ( O5 ) -- never raw integers.
+         * the same map -- never raw integers.
          *
          * Components are created in netlist line order ( elements and
          * directives merged by line ), which freezes the unknown-current
-         * layout for restart ( O9 ). Labels are the case-folded instance
-         * names ( O5 ).
+         * layout for restart. Labels are the case-folded instance
+         * names.
          *
          * v1 element support, refusals are hard errors naming the card:
          *  - R/C/L: value from the positional field or the r=/c=/l= keyword
          *    ( exactly one ); nonzero; `ic=` and every other keyword refused
          *    ( value-changing, plan §12.2 ). BDF order from the
-         *    `* belfem: order <instance> <n>` directive ( O8 ), default 1,
+         *    `* belfem: order <instance> <n>` directive, default 1,
          *    valid 1..6 ( the BDF kernel's own bound ).
          *  - V/I: bare value or `DC <value>` -> constant source;
          *    `SIN(vo va freq [td theta phase])` -> sine, where vo/td/theta
@@ -113,7 +112,7 @@ namespace belfem
 
             /**
              * resolve a netlist node name ( case-folded; ground aliases
-             * "0"/"gnd" allowed ) to its BELFEM index -- the O5 lookup for
+             * "0"/"gnd" allowed ) to its BELFEM index -- the lookup for
              * the deck-side terminal-pair and output readers. Hard-errors
              * on a name the netlist does not contain.
              */

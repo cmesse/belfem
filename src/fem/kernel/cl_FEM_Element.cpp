@@ -28,7 +28,6 @@ namespace belfem
                 mParent( aParent ),
                 mElement( aElement )
         {
-            // grab ID from group
             this->link_dofs( aDofManager, aParent->id() );
         }
 
@@ -119,13 +118,11 @@ namespace belfem
 
         Element::~Element()
         {
-            // free rotation data if they have been set
             if( mRotationData != nullptr )
             {
                 free( mRotationData );
             }
 
-            // free dof container
             if( mNumberOfDofs > 0 )
             {
                 free( mDOFs );
@@ -142,19 +139,15 @@ namespace belfem
         void
         Element::link_dofs( DofManager * aDofManager, const id_t aBlockID )
         {
-            // node dofs
             const Vector< index_t > & tNodeDofTypes =
                     aDofManager->iwg()->dofs_per_node( aBlockID );
 
-            // edge dofs
             const Vector< index_t > & tEdgeDofTypes =
                     aDofManager->iwg()->dofs_per_edge( aBlockID );
 
-            // face dofs
             const Vector< index_t > & tFaceDofTypes =
                     aDofManager->iwg()->dofs_per_face( aBlockID );
 
-            // get number of dofs per node and edge
             index_t tNumberOfDofsPerNode = tNodeDofTypes.length();
 
             index_t tNumberOfNodesPerElement = mElement->number_of_nodes();
@@ -170,10 +163,8 @@ namespace belfem
                           + tNumberOfDofsPerEdge * tNumberOfEdgesPerElement
                           + tNumberOfDofsPerFace * tNumberOfFacesPerElement;
 
-            // allocate dof container
             mDOFs = ( Dof ** ) malloc( mNumberOfDofs * sizeof( Dof * ) );
 
-            // initialize counter
             index_t tCount = 0;
 
             BELFEM_ASSERT( tEdgeDofTypes.length() < 2 && tFaceDofTypes.length() < 2 , "Too many Edge and Face dofs" );
@@ -182,10 +173,8 @@ namespace belfem
             {
                 this->compute_edge_directions();
 
-                // link element with dofs
                 if ( tNumberOfDofsPerEdge > 0  )
                 {
-                    // link element to edge dofs
                     for ( uint k = 0; k < tNumberOfEdgesPerElement; ++k )
                     {
                         if ( mEdgeDirections.test( k ) > 0 )
@@ -223,12 +212,11 @@ namespace belfem
                 }
             }
 
-            // here is where we would link #celldof
+            // TODO(cm): cell dofs are not linked here; link them when a facet
+            // IWG carries cell dofs
 
-            // check if node dofs exist
             if( tNumberOfDofsPerNode > 0 )
             {
-                // loop over all nodes
                 for ( uint k = 0; k < tNumberOfNodesPerElement; ++k )
                 {
 
@@ -257,14 +245,12 @@ namespace belfem
                 const id_t                  aMasterBlockID,
                 const id_t                  aSlaveBlockID  )
         {
-            // get equation object
             IWG * tIWG = aDofManager->iwg() ;
 
             // if facet has no slave, there are no dofs
             // in that case, we link against an empty vector
             Vector< index_t > tEmpty ;
 
-            // node dofs
             const Vector< index_t > & tMasterNodeDofTypes =
                     aMasterBlockID == 0 ? tEmpty :
                     aDofManager->iwg()->dofs_per_node( aMasterBlockID );
@@ -273,7 +259,6 @@ namespace belfem
                     aSlaveBlockID == 0 ? tEmpty :
                     tIWG->dofs_per_node( aSlaveBlockID );
 
-            // edge dofs
             const Vector< index_t > & tMasterEdgeDofTypes =
                     aMasterBlockID == 0 ? tEmpty :
                     tIWG->dofs_per_edge( aMasterBlockID );
@@ -281,10 +266,6 @@ namespace belfem
             const Vector< index_t > & tSlaveEdgeDofTypes =
                     aSlaveBlockID == 0 ? tEmpty :
                     tIWG->dofs_per_edge( aSlaveBlockID );
-
-
-            // face dofs
-
 
             const Vector< index_t > & tMasterFaceDofTypes =
                     aMasterBlockID == 0 ? tEmpty :
@@ -298,12 +279,9 @@ namespace belfem
             const Vector< index_t > & tFacetOnlyNodeDofTypes =
                     tIWG->dofs_per_node_on_sideset( aSideSetID, true );
 
-
-
             BELFEM_ASSERT( ! (  tMasterFaceDofTypes.length() > 0 && tSlaveFaceDofTypes.length() > 0 ),
                           "can't have face dofs on both master and slave" );
 
-            // lagrangian dofs
             const Vector<  index_t > & tLambdaDofTypes = aDofManager->iwg()->lambda_dofs( aSideSetID );
 
             // catch case for boundaries
@@ -322,7 +300,8 @@ namespace belfem
                 tMode = SideSetDofLinkMode::Inactive ;
             }
 
-            // need to do something fancy here for #Facedof
+            // TODO(cm): face dofs on facets are not linked here; link them when
+            // a facet IWG carries face dofs
             switch ( tMode )
             {
                 case( SideSetDofLinkMode::Cut ) :
@@ -421,41 +400,33 @@ namespace belfem
                 const Vector< index_t > & aSlaveFaceDofTypes,
                 const Vector< index_t > & aLambdaDofTypes )
         {
-            // get number of dofs per node
             index_t tNumberOfDofsPerNode =
                       aMasterNodeDofTypes.length()
                     + aSlaveNodeDofTypes.length() ;
 
-            // get number of dofs per edge
             index_t tNumberOfDofsPerEdge =
                     ( aMasterEdgeDofTypes.length()
                     + aSlaveEdgeDofTypes.length() ) * aDofManager->iwg()->edge_multiplicity() ;
 
-            // get number of dofs per face
             index_t tNumberOfDofsPerFace =
                     (  aMasterFaceDofTypes.length()
                      + aSlaveFaceDofTypes.length() ) * aDofManager->iwg()->face_multiplicity() ;
 
-            // get the number of nodes on this facet
             index_t tNumberOfNodesPerElement = mElement->number_of_nodes();
 
             index_t tNumberOfEdgesPerElement = mElement->number_of_edges() ;
             index_t tNumberOfFacesPerElement = mElement->number_of_faces() ;
 
-            // compute the number of DOFs on this sideset
             mNumberOfDofs =
                       tNumberOfDofsPerNode * tNumberOfNodesPerElement
                     + tNumberOfDofsPerEdge * tNumberOfEdgesPerElement
                     + tNumberOfDofsPerFace * tNumberOfFacesPerElement
                     + aLambdaDofTypes.length() ;
 
-            // allocate dof container
             mDOFs = ( Dof ** ) malloc( mNumberOfDofs * sizeof( Dof * ) );
 
-            // reset the counter
             index_t tCount = 0 ;
 
-            // link edge directions
             if( aMasterEdgeDofTypes.length() > 0 )
             {
                 this->grab_edge_directions_for_facet( mMaster );
@@ -465,10 +436,8 @@ namespace belfem
                 this->grab_edge_directions_for_facet( mSlave );
             }
 
-            // link to edge dofs on master
             if( tNumberOfDofsPerEdge > 0 )
             {
-                // link dofs on master
                 this->link_edge_dofs(
                         aDofManager,
                         aMasterEdgeDofTypes,
@@ -476,7 +445,6 @@ namespace belfem
                         tNumberOfEdgesPerElement,
                         tCount );
 
-                // link dofs on slave
                 this->link_edge_dofs(
                         aDofManager,
                         aSlaveEdgeDofTypes,
@@ -485,10 +453,8 @@ namespace belfem
                         tCount );
             }
 
-            // link face dofs on master
             if( tNumberOfDofsPerFace > 0 )
             {
-                // link dofs on master
                 this->link_face_dofs(
                         aDofManager,
                         aMasterFaceDofTypes,
@@ -496,7 +462,6 @@ namespace belfem
                         tNumberOfFacesPerElement,
                         tCount );
 
-                // link dofs on slave
                 this->link_face_dofs(
                         aDofManager,
                         aSlaveFaceDofTypes,
@@ -505,7 +470,6 @@ namespace belfem
                         tCount );
             }
 
-            // link to node dofs on master
             this->link_node_dofs(
                     aDofManager,
                     aMasterNodeDofTypes,
@@ -513,7 +477,6 @@ namespace belfem
                     tNumberOfNodesPerElement,
                     tCount );
 
-            // link to node dofs on slave
             this->link_node_dofs(
                     aDofManager,
                     aSlaveNodeDofTypes,
@@ -546,9 +509,7 @@ namespace belfem
 
             index_t tNumberOfNodesOnMaster = mMaster->element()->number_of_nodes();
 
-            // get number of dofs on the facet
             index_t  tNumberOfNodesOnFacet = mElement->number_of_nodes();
-
 
             index_t tNumberOfEdgesOnMaster =
                     mMaster->element()->number_of_edges() ;
@@ -560,7 +521,6 @@ namespace belfem
 
             index_t tNumberOfFacesOnFacet = mElement->number_of_faces() ;
 
-            // compute memory for dofs
             mNumberOfDofs =
                       tNumberOfNodesOnMaster * aMasterNodeDofTypes.length()
                     + tNumberOfNodesOnFacet  * aSlaveNodeDofTypes.length()
@@ -572,7 +532,6 @@ namespace belfem
                                           + tNumberOfFacesOnFacet  * aSlaveFaceDofTypes.length() )
                     + aLambdaDofTypes.length() ;
 
-            // link edge directions
             if( aMasterEdgeDofTypes.length() > 0 )
             {
                 mMaster->edge_directions( mEdgeDirections );
@@ -582,22 +541,18 @@ namespace belfem
                 this->grab_edge_directions_for_facet( mSlave );
             }
 
-            // allocate memory
             mDOFs = ( Dof ** ) malloc( mNumberOfDofs * sizeof( Dof * ) );
 
-            // reset the counter
             index_t tCount = 0 ;
 
             if(  aDofManager->iwg()->edge_multiplicity() > 0 )
             {
-                // link to edge dofs on master
                 this->link_edge_dofs( aDofManager,
                                       aMasterEdgeDofTypes,
                                       mMaster->element(),
                                       tNumberOfEdgesOnMaster,
                                       tCount );
 
-                // link to edge dofs on facet
                 this->link_edge_dofs( aDofManager,
                                       aSlaveEdgeDofTypes,
                                       mElement,
@@ -607,14 +562,12 @@ namespace belfem
 
             if( aDofManager->iwg()->face_multiplicity() > 0 )
             {
-                // link to face dofs on master
                 this->link_face_dofs( aDofManager,
                                       aMasterFaceDofTypes,
                                       mMaster->element(),
                                       tNumberOfFacesOnMaster,
                                       tCount );
 
-                // link to face dofs on facet
                 this->link_face_dofs( aDofManager,
                                       aSlaveFaceDofTypes,
                                       mElement,
@@ -622,14 +575,12 @@ namespace belfem
                                       tCount );
             }
 
-            // link to node dofs on master
             this->link_node_dofs( aDofManager,
                                   aMasterNodeDofTypes,
                                   mMaster->element(),
                                   tNumberOfNodesOnMaster,
                                   tCount ) ;
 
-            // link to node dofs on facet
             this->link_node_dofs( aDofManager,
                                   aSlaveNodeDofTypes,
                                   mElement,
@@ -657,7 +608,6 @@ namespace belfem
         {
             BELFEM_ASSERT( mSlave != nullptr, "Slave element not linked" );
 
-            // get number of dofs on the facet
             index_t  tNumberOfNodesOnFacet = mElement->number_of_nodes();
 
             index_t tNumberOfNodesOnSlave = mSlave->element()->number_of_nodes();
@@ -674,7 +624,6 @@ namespace belfem
             index_t tNumberOfFacesOnSlave =
                     mSlave->element()->number_of_faces() ;
 
-            // compute memory for dofs
             mNumberOfDofs =
                       tNumberOfNodesOnFacet  * aMasterNodeDofTypes.length()
                     + tNumberOfNodesOnSlave  * aSlaveNodeDofTypes.length()
@@ -686,7 +635,6 @@ namespace belfem
                           + tNumberOfFacesOnSlave  * aSlaveFaceDofTypes.length() )
                     + aLambdaDofTypes.length() ;
 
-            // link edge directions
             if( aMasterEdgeDofTypes.length() > 0 )
             {
                 this->grab_edge_directions_for_facet( mMaster );
@@ -696,22 +644,18 @@ namespace belfem
                 mSlave->edge_directions( mEdgeDirections );
             }
 
-            // allocate memory
             mDOFs = ( Dof ** ) malloc( mNumberOfDofs * sizeof( Dof * ) );
 
-            // reset the counter
             index_t tCount = 0 ;
 
             if( aDofManager->iwg()->edge_multiplicity()  > 0 )
             {
-                // link to edge dofs on facet
                 this->link_edge_dofs( aDofManager,
                                       aMasterEdgeDofTypes,
                                       mElement,
                                       tNumberOfEdgesOnFacet,
                                       tCount );
 
-                // link to edge dofs on master
                 this->link_edge_dofs( aDofManager,
                                       aSlaveEdgeDofTypes,
                                       mSlave->element(),
@@ -721,14 +665,12 @@ namespace belfem
 
             if( aDofManager->iwg()->face_multiplicity() > 0 )
             {
-                // link to face dofs on facet
                 this->link_face_dofs( aDofManager,
                                       aMasterFaceDofTypes,
                                       mElement,
                                       tNumberOfFacesOnFacet,
                                       tCount );
 
-                // link to face dofs on master
                 this->link_face_dofs( aDofManager,
                                       aSlaveFaceDofTypes,
                                       mSlave->element(),
@@ -736,20 +678,17 @@ namespace belfem
                                       tCount );
             }
 
-            // link to node dofs on facet
             this->link_node_dofs( aDofManager,
                                   aMasterNodeDofTypes,
                                   mElement,
                                   tNumberOfNodesOnFacet,
                                   tCount );
 
-            // link to node dofs on slave
             this->link_node_dofs( aDofManager,
                                   aSlaveNodeDofTypes,
                                   mSlave->element(),
                                   tNumberOfNodesOnSlave,
                                   tCount ) ;
-
 
             this->link_lambda_dofs( aDofManager, aLambdaDofTypes, tCount );
 
@@ -774,7 +713,6 @@ namespace belfem
             BELFEM_ASSERT( mMaster != nullptr, "Master element not linked" );
             BELFEM_ASSERT( mSlave != nullptr, "Slave element not linked" );
 
-            // get number of dofs on the facet
             index_t  tNumberOfNodesOnMaster = mMaster->element()->number_of_nodes();
 
             index_t tNumberOfNodesOnSlave = mSlave->element()->number_of_nodes();
@@ -793,7 +731,6 @@ namespace belfem
 
             index_t tNumberOfNodesOnFacet = mElement->number_of_nodes() ;
 
-            // compute memory for dofs
             mNumberOfDofs =
                       tNumberOfNodesOnMaster * aMasterNodeDofTypes.length()
                     + tNumberOfNodesOnSlave  * aSlaveNodeDofTypes.length()
@@ -806,7 +743,6 @@ namespace belfem
                     + tNumberOfNodesOnFacet * aFacetOnlyNodeDofTypes.length()
                     + aLambdaDofTypes.length() ;
 
-            // link edge directions
             if( aMasterEdgeDofTypes.length() > 0 )
             {
                 mMaster->edge_directions( mEdgeDirections );
@@ -830,22 +766,18 @@ namespace belfem
                 mSlave->edge_directions( mEdgeDirections );
             }
 
-            // allocate memory
             mDOFs = ( Dof ** ) malloc( mNumberOfDofs * sizeof( Dof * ) );
 
-            // reset the counter
             index_t tCount = 0 ;
 
             if( aDofManager->iwg()->edge_multiplicity() > 0 )
             {
-                // link to edge dofs on master
                 this->link_edge_dofs( aDofManager,
                                       aMasterEdgeDofTypes,
                                       mMaster->element(),
                                       tNumberOfEdgesOnMaster,
                                       tCount );
 
-                // link to edge dofs on slave
                 this->link_edge_dofs( aDofManager,
                                       aSlaveEdgeDofTypes,
                                       mSlave->element(),
@@ -855,14 +787,12 @@ namespace belfem
 
             if( aDofManager->iwg()->face_multiplicity() > 0 )
             {
-                // link to face dofs on master
                 this->link_face_dofs( aDofManager,
                                       aMasterFaceDofTypes,
                                       mMaster->element(),
                                       tNumberOfFacesOnMaster,
                                       tCount );
 
-                // link to face dofs on slave
                 this->link_face_dofs( aDofManager,
                                       aSlaveFaceDofTypes,
                                       mSlave->element(),
@@ -870,28 +800,24 @@ namespace belfem
                                       tCount );
             }
 
-            // link to node dofs on master
             this->link_node_dofs( aDofManager,
                                   aMasterNodeDofTypes,
                                   mMaster->element(),
                                   tNumberOfNodesOnMaster,
                                   tCount );
 
-            // link to node dofs on slave
             this->link_node_dofs( aDofManager,
                                   aSlaveNodeDofTypes,
                                   mSlave->element(),
                                   tNumberOfNodesOnSlave,
                                   tCount ) ;
 
-            // link node dofs on facet
             this->link_node_dofs( aDofManager,
                                   aFacetOnlyNodeDofTypes,
                                   mElement,
                                   tNumberOfNodesOnFacet,
                                   tCount );
 
-            // for contact etc
             this->link_lambda_dofs( aDofManager,
                     aLambdaDofTypes,
                     tCount );
@@ -911,10 +837,10 @@ namespace belfem
                 const id_t aMasterBlockID,
                 const id_t aSlaveBlockID )
         {
-            // help vector
             Vector< index_t > tEmpty ;
 
             // for this method, we assume that only node dofs exist on
+
             // master and slave
             const Vector< index_t > & tMasterNodeDofTypes =
                     aMasterBlockID == 0 ? tEmpty :
@@ -991,7 +917,6 @@ namespace belfem
 
             uint tNumberOfLayers = aLayers.size() ;
 
-            // compute memory for dofs
             mNumberOfDofs =
                       tNumberOfNodesOnMaster * aMasterNodeDofTypes.length()
                     + tNumberOfNodesOnSlave  * aSlaveNodeDofTypes.length()
@@ -1001,28 +926,23 @@ namespace belfem
                     + mElement->number_of_faces() * aDofManager->iwg()->face_multiplicity() * aThinShellFaceDofTypes.length() )
                     + aLambdaDofTypes.length() * aDofManager->iwg()->lambda_multiplicity() ;
 
-            // allocate memory
             mDOFs = ( Dof ** ) malloc( mNumberOfDofs * sizeof( Dof * ) );
 
-            // initialize the counter
             index_t tCount = 0 ;
 
             if( aMasterNodeDofTypes.length() > 0 )
             {
-                // link node dofs on master
                 this->link_node_dofs( aDofManager, aMasterNodeDofTypes, mMaster->element(), tNumberOfNodesOnMaster,
                                       tCount );
             }
             if( aSlaveNodeDofTypes.length() > 0 )
             {
 
-                // link node dofs on slave
                 this->link_node_dofs( aDofManager, aSlaveNodeDofTypes, mSlave->element(), tNumberOfNodesOnSlave,
                                       tCount );
             }
             if( aFacetNodeDofTypes.length() > 0 )
             {
-                // link node dofs on slave
                 this->link_node_dofs( aDofManager, aFacetNodeDofTypes, mElement, tNumberOfNodesOnFacet,
                         tCount );
             }
@@ -1030,7 +950,6 @@ namespace belfem
             this->link_edge_dofs_thin_shell( aDofManager, aThinShellEdgeDofTypes, aLayers,  tCount );
             this->link_face_dofs_thin_shell( aDofManager, aThinShellFaceDofTypes, aLayers,  tCount );
 
-            // link lambda dofs
             this->link_lambda_dofs( aDofManager, aLambdaDofTypes, tCount );
 
             BELFEM_ASSERT( mNumberOfDofs == tCount, "number of dofs for element %lu does not match (is %u, expect %u)",
@@ -1061,10 +980,8 @@ namespace belfem
                             + aDofManager->iwg()->edge_multiplicity() * aThinShellEdgeDofTypes.length() * tNumberOfEdges
                             + aDofManager->iwg()->face_multiplicity() * aThinShellFaceDofTypes.length() * tNumberOfFaces ) ;
 
-            // allocate memory
             mDOFs = ( Dof ** ) malloc( mNumberOfDofs * sizeof( Dof * ) );
 
-            // initialize the counter
             index_t tCount = 0 ;
 
             this->link_edge_dofs_thin_shell( aDofManager, aThinShellEdgeDofTypes, aLayers,  tCount );
@@ -1086,7 +1003,6 @@ namespace belfem
             {
                 tSigns[ aReferenceElement->element()->edge( e )->id() ] = aReferenceElement->edge_direction( e ) == 1.0 ;
             }
-
 
             for( uint e=0; e<mElement->number_of_edges(); ++e )
             {
@@ -1112,7 +1028,6 @@ namespace belfem
                 const                uint aNumberOfNodesPerElement,
                 index_t                 & aCount )
         {
-            // do nothing if there are no dofs to link
             if ( aDofTypes.length() == 0 )
             {
                 return;
@@ -1139,7 +1054,6 @@ namespace belfem
                         const                uint aNumberOfEdgesPerElement,
                         index_t                 & aCount )
         {
-            // do nothing if there are no dofs to link
             if ( aDofTypes.length() == 0 )
             {
                 return;
@@ -1151,7 +1065,6 @@ namespace belfem
             // since the edge might in backwards direction
             int tNumberOfDofsPerEdge = aDofManager->iwg()->edge_multiplicity() ;
 
-            // get multiplicity of edges
             uint tOff = aDofTypes( 0 ) ;
 
             for ( uint k = 0; k < aNumberOfEdgesPerElement; ++k )
@@ -1185,7 +1098,6 @@ namespace belfem
                 const uint aNumberOfFacesPerElement,
                 index_t & aCount )
         {
-            // do nothing if there are no dofs to link
             if ( aDofTypes.length() == 0 )
             {
                 return;
@@ -1219,7 +1131,6 @@ namespace belfem
                 return;
             }
 
-            // get offset for edge dofs
             uint tOff = aDofTypes( 0 ) ;
 
             uint tNumberOfEdges = mElement->number_of_edges() ;
@@ -1265,7 +1176,6 @@ namespace belfem
                 return;
             }
 
-            // get offset for edge dofs
             uint tOff = aDofTypes( 0 ) ;
 
             uint tNumberOfFaces= mElement->number_of_faces() ;
@@ -1293,7 +1203,6 @@ namespace belfem
                             const Vector< index_t > & aDofTypes,
                             index_t & aCount )
         {
-            // do nothing if there are no dofs to link
             if ( aDofTypes.length() == 0 )
             {
                 return;
@@ -1337,7 +1246,6 @@ namespace belfem
         Element::compute_edge_directions()
         {
 
-            // number of edges of this element
             uint tNumEdges = mElement->number_of_edges() ;
 
             if( tNumEdges == 0 )
@@ -1350,14 +1258,8 @@ namespace belfem
 
             Cell< mesh::Node * > tNodes ;
 
-            // if this is a facet on a tape,
-            // make sure that we take the original facet
-            //mesh::Element * tElement = ( mFacet == nullptr ) ? mElement :
-             //       mParent->parent()->mesh()->original_facet( mElement->id() )->element() ;
-
             for( uint e=0; e<tNumEdges; ++e )
             {
-                // grab node IDs
                 id_t tA = mElement->edge( e )->node( 0 )->original()->id();
                 id_t tB = mElement->edge( e )->node( 1 )->original()->id();
 
@@ -1442,16 +1344,13 @@ namespace belfem
                 const Matrix< real > & aRotationAxes,
                 const Vector< real > & aRotationAngles )
         {
-            // free memory if it has been set
             if( mRotationData != nullptr )
             {
                 free( mRotationData );
             }
 
-            // get the number of nodes from the element
             uint tNumNodes = mElement->number_of_nodes() ;
 
-            // make sure that container sizes are correct
             BELFEM_ASSERT( aRotationAxes.n_rows() >= 3,
                           "Invalid number of rows for aRotationAxes. Is %u but expect at least 3",
                           ( unsigned int ) aRotationAngles.length() );
@@ -1461,24 +1360,20 @@ namespace belfem
                           ( unsigned int ) aRotationAngles.length(),
                           ( unsigned int ) tNumNodes );
 
-
             BELFEM_ASSERT( aRotationAngles.length() >= tNumNodes,
                           "Invalid length of  aRotationAngles. Is %u but expect at least %u.",
                           ( unsigned int ) aRotationAngles.length(),
                           ( unsigned int ) tNumNodes );
 
-            // allocate the memory
             mRotationData   = ( real * ) malloc( 4 * tNumNodes * sizeof( real ) );
 
             uint tCount = 0 ;
 
-            // populate data
             for( uint k=0; k<tNumNodes; ++k )
             {
                 mRotationData[ tCount++  ] = aRotationAngles( k );
             }
 
-            // initialize counter
             for( uint k=0; k<tNumNodes; ++k )
             {
                 mRotationData[ tCount++ ] = aRotationAxes( 0, k );
@@ -1493,10 +1388,8 @@ namespace belfem
         void
         Element::get_rotation_data( Matrix< real > & aRotationAxes, Vector< real > & aRotationAngles )
         {
-            // get the number of nodes from the element
             uint tNumNodes = mElement->number_of_nodes() ;
 
-            // make sure that container sizes are correct
             BELFEM_ASSERT( aRotationAxes.n_rows() >= 3,
                           "Invalid number of rows for aRotationAxes. Is %u but expect at least 3",
                           ( unsigned int ) aRotationAngles.length() );
@@ -1506,26 +1399,22 @@ namespace belfem
                           ( unsigned int ) aRotationAngles.length(),
                           ( unsigned int ) tNumNodes );
 
-
             BELFEM_ASSERT( aRotationAngles.length() >= tNumNodes,
                           "Invalid length of  aRotationAngles. Is %u but expect at least %u.",
                           ( unsigned int ) aRotationAngles.length(),
                           ( unsigned int ) tNumNodes );
 
-            // make sure that fields have been allocated
             BELFEM_ASSERT( mRotationData != nullptr,
                           "Rotation data has not been set for element %lu",
                           ( long unsigned int ) mElement->id() );
 
             uint tCount = 0 ;
 
-            // populate data
             for( uint k=0; k<tNumNodes; ++k )
             {
                 aRotationAngles( k ) = mRotationData[ tCount++  ] ;
             }
 
-            // initialize counter
             for( uint k=0; k<tNumNodes; ++k )
             {
                 aRotationAxes( 0, k ) = mRotationData[ tCount++ ] ;
@@ -1552,7 +1441,6 @@ namespace belfem
                 free( mLocalDofs );
             }
 
-
             mNumberOfDofs = aGlobalDofs.size() ;
             mDOFs = ( Dof ** ) malloc( mNumberOfDofs * sizeof( Dof * ) );
 
@@ -1569,7 +1457,6 @@ namespace belfem
             {
                 mLocalDofs[ tCount++ ] = tDof ;
             }
-
 
             BELFEM_ASSERT( mNumberOfLocalDofs == aTmatrix.n_rows() && mNumberOfDofs == aTmatrix.n_cols(),
                            "Dimension of T-Matrix does not match for element %lu ( is %u x %u, expect %u x %u )",
@@ -1603,7 +1490,6 @@ namespace belfem
 
             return false ;
         }
-
 
     }
 }

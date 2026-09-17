@@ -27,7 +27,6 @@
 
 #include "fn_entity_type.hpp"
 #include "fn_matrix_type.hpp"
-//#include "op_Graph_Vertex_Index.hpp"
 #include "petsctools.hpp"
 
 namespace belfem
@@ -67,7 +66,6 @@ namespace belfem
                     mDOFs( aDofData->dofs() ),
                     mNumberOfFreeDofs( aDofData->number_of_free_dofs() ),
                     mNumberOfFixedDofs( aDofData->number_of_fixed_dofs() ),
-                    //mNumberOfHangingDofs( aDofData->number_of_hanging_dofs() ),
                     mMyNumberOfFreeDofs( aDofData->my_number_of_free_dofs() ),
                     mMyNumberOfFixedDofs( aDofData->my_number_of_fixed_dofs() ),
                     mMyNumberOfHangingDofs( aDofData->my_number_of_hanging_dofs() )
@@ -81,7 +79,6 @@ namespace belfem
             {
                 this->reset() ;
 
-                // delete solver if it exists
                 if( mSolver != nullptr )
                 {
                     delete mSolver ;
@@ -398,14 +395,12 @@ namespace belfem
                     false );
 
                 // jacobian matrix inherits pointers and indices from
-                // system matrix
+                // the system matrix
                 mJacobianMatrix =  new SpMatrix( mSystemMatrix );
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                // allocate RHS
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-                // allocate right hand side
                 if( mParent->iwg()->num_rhs_cols() <= 1 )
                 {
                     mRhsVector.set_size( mMyNumberOfFreeDofs, 0.0 );
@@ -419,10 +414,6 @@ namespace belfem
                     mRhsMatrix.set_size( mMyNumberOfFreeDofs,
                                          mParent->iwg()->num_rhs_cols(), 0.0 );
                 }
-
-                // ( a per-proc counter exchange lived here until 2026-08-15;
-                //   the collected tables were never read — removed on both
-                //   the master and the worker side )
             }
 
  //------------------------------------------------------------------------------
@@ -533,11 +524,10 @@ namespace belfem
                                              "FullMass       ",
                                              "FullStiffness  "};
 
-
                     // name the dof fields so the report says WHICH system it
                     // belongs to — two kernels print this block back to back,
                     // and unlabeled counts from different runs have been
-                    // compared as if they were the same quantity (2026-08-15)
+                    // compared as if they were the same quantity.
                     const Cell< string > & tDofFields = mParent->iwg()->dof_fields() ;
                     string tFieldList ;
                     for ( uint f = 0; f < tDofFields.size() && f < 4; ++f )
@@ -621,7 +611,6 @@ namespace belfem
 
                     for ( uint m=0; m<tNumMatrices; ++m )
                     {
-                        // get the matrix
                         SpMatrix * tMatrix = this->matrix( static_cast< MatrixType >( m ) );
 
                         // Always consume the rows/cols indices, even if matrix doesn't exist
@@ -636,24 +625,18 @@ namespace belfem
 
                         for ( proc_t p = 1; p < mCommSize; ++p )
                         {
-                            // get the local table
                             Vector< index_t > & tTable = tTables( p );
 
-                            // get rows
                             Vector< int_t > & tRows = tAllRows( p );
 
-                            // get cols
                             Vector< int_t > & tCols = tAllCols( p );
 
-                            // get number of nonzeros in this matrix
                             index_t tNNZ = tRows.length();
 
                             tTable.set_size( tNNZ );
 
-                            // loop over all entries
                             for ( index_t k = 0; k < tNNZ; ++k )
                             {
-                                // compute index
                                 tTable( k ) = tMatrix->index( tRows( k ), tCols( k ) );
                             }
                         }
@@ -675,16 +658,13 @@ namespace belfem
                     {
                         SpMatrix * tMatrix = this->matrix( static_cast< MatrixType >( m ) );
 
-
                         if ( tMatrix == nullptr )
                         {
                             int_t tZero = 0;
 
-                            // send zero to master ( for rows )
                             comm_barrier() ;
                             send( tZero );
 
-                            // send zero to master ( for cols )
                             comm_barrier() ;
                             send( tZero );
                         }
@@ -799,7 +779,6 @@ namespace belfem
 
                 index_t tMyNumberOfFreeDofs = aFreeDofs.size() ;
 
-                // total number of dofs
                 index_t tNumberOfDofs = aData( tPivot++ );
 
                 index_t tNumDofsPerDof ;
@@ -809,24 +788,20 @@ namespace belfem
 
                 for( index_t k=0; k<tNumberOfDofs; ++k )
                 {
-                    // grab dof
                     Dof * tA = mDofData->dof( aData( tPivot++ ) );
                     tA->reset_vertex_container();
                     tNumDofsPerDof = aData( tPivot++ );
 
                     BELFEM_ASSERT( ! tA->is_hanging(), "dofs should not be hanging in graph creation" );
 
-                    // check if dof is taken into account
                     if ( tA->is_fixed() == tRowIsFixed || tUseFullMatrix )
                     {
                         tBitset.reset();
 
                         for( index_t i=0; i<tNumDofsPerDof; ++i )
                         {
-                            // get other dof
                             Dof * tB = mDofData->dof( aData( tPivot++ ) );
 
-                            // check flag
                             index_t tOff = tB->is_fixed() ? tMyNumberOfFreeDofs : 0 ;
 
                             if ( tB->is_fixed() == tColIsFixed || tUseFullMatrix )
@@ -872,14 +847,11 @@ namespace belfem
             void
             SolverData::collect_fields( Cell< mesh::Field * > & aFields )
             {
-                // get IWG
                 IWG * tIWG = mParent->iwg() ;
                 BELFEM_ERROR( tIWG != nullptr, "no equation was set" );
 
-                // grab field data
                 const Cell< string > & tFieldLabels = tIWG->all_fields() ;
 
-                // how many fields exist on the mesh
                 uint tNumFields = tFieldLabels.size() ;
 
                 // count fields ( need to account for multiplicities )
@@ -911,15 +883,12 @@ namespace belfem
                     }
                 }
 
-                // allocate container
                 aFields.set_size( tCount, nullptr );
 
-                // reset counter
                 tCount = 0 ;
 
                 for ( uint f = 0; f < tNumFields; ++f )
                 {
-                    // grab field
                     mesh::Field * tField = mParent->mesh()->field( tFieldLabels( f ));
 
                     uint tMultiplicity;
@@ -948,7 +917,6 @@ namespace belfem
                         }
                     }
 
-
                     for( uint i=0; i<tMultiplicity; ++i )
                     {
                         aFields( tCount++ ) = tField ;
@@ -962,16 +930,11 @@ namespace belfem
             void
             SolverData::compute_element_dof_connectivity( Vector< id_t > & aData )
             {
-                // contains
-                // number of elements
-                // element id
-                // number of dofs
-                // dof index
+                // payload layout: the number of elements, then per element
+                // its id, its number of dofs and the dof indices
 
-                // counter for number of elements
                 index_t tElemCount = 0 ;
 
-                // determine memory size
                 index_t tCount = 1 ;
 
                 for( Block * tBlock : mBlockData->blocks() )
@@ -1002,7 +965,6 @@ namespace belfem
 
                 aData.set_size( tCount );
 
-                // reset the counter
                 tCount = 0 ;
 
                 aData( tCount++ ) = tElemCount ;
@@ -1076,22 +1038,17 @@ namespace belfem
             {
                 index_t tNumberOfDofs = mDOFs.size() ;
 
-                // count elements per dof
                 Vector< id_t > tWork( tNumberOfDofs, 0 );
 
                 index_t tCount = 0 ;
 
-                // set temporary index for dofs
                 for( Dof * tDof : mDOFs )
                 {
                     tDof->set_my_index( tCount++ );
                 }
 
-                // contains
-                // number of dofs
-                // dof index
-                // number of elements
-                // element ids
+                // payload layout: the number of dofs, then per dof its
+                // index, its number of elements and the element ids
                 tCount = mDOFs.size() + 1 ;
 
                 for( Block * tBlock : mBlockData->blocks() )
@@ -1102,21 +1059,6 @@ namespace belfem
 
                         for( uint d=0; d<tElement->number_of_dofs(); ++d )
                         {
-                            /*// debug output
-                            if ( tElement->dof( d )->is_hanging() )
-                            {
-                                std::cout << "#ELEMENT " << tElement->id() << " " << to_string( tElement->element()->type() ) << std::endl;
-
-                                for ( uint i=0; i<tElement->number_of_dofs(); ++i )
-                                {
-                                    std::cout << "  #GDOF : " << tElement->dof( i )->id() << " " << tElement->dof( i )->is_hanging() << std::endl;
-                                }
-                                std::cout << std::endl;
-                                for ( uint i=0; i<tElement->number_of_local_dofs(); ++i )
-                                {
-                                    std::cout << "  #LDOF : " << tElement->local_dof( i )->id() << " " << tElement->local_dof( i )->is_hanging() << std::endl;
-                                }
-                            }*/
                             BELFEM_ASSERT( ! tElement->dof( d )->is_hanging(), "Element %lu on block %lu has a hanging dof that is denoted as real dof: %lu (%s %lu)" ,
                                 ( long unsigned int ) tElement->id(),
                                 ( long unsigned int ) tElement->element()->block_id(),
@@ -1128,7 +1070,6 @@ namespace belfem
                         }
                     }
                 }
-
 
                 for( id_t tID : mParent->iwg()->selected_sidesets() )
                 {
@@ -1161,17 +1102,13 @@ namespace belfem
                     // tWork(k) contains number of elements
                     aData( tCount++ ) = tWork( k );
 
-                    // save in temporary index
                     tSwap = tWork( k );
 
-                    // overwrite work with memory offset
                     tWork( k ) = tCount ;
 
-                    // increment memory counter
                     tCount += tSwap ;
                 }
 
-                // populate vector
                 tCount = 0 ;
                 aData( tCount++ ) = mDOFs.size();
 
@@ -1218,65 +1155,48 @@ namespace belfem
                     Vector< id_t > & aConnectivity )
             {
 
-                // a memory pointer
                 index_t tPivot = 0 ;
 
                 // create a temporary map that keeps track of the element offsets
                 Map< id_t, index_t > tOffsets ;
 
-                // get the number of elements
                 index_t tNumElems = aElementWiseData( tPivot++ );
                 index_t tNumDofs ;
 
                 id_t tElementID ;
 
-                // loop over all elements
                 for( index_t e=0; e<tNumElems; ++e )
                 {
-                    // get the element ID
                     tElementID = aElementWiseData( tPivot++ );
 
-                    // remember the memory position
                     tOffsets[ tElementID ] = tPivot ;
 
-                    // get the number of DOFs for this element
                     tNumDofs = aElementWiseData( tPivot++ );
 
-                    // jump pivot to next element ID
                     tPivot += tNumDofs ;
                 }
 
-                // reset the pivot
                 tPivot = 0 ;
                 index_t tOffset = 0 ;
 
-                // number of DOFs on this proc
                 index_t tNumberOfDofs = aDofWiseData( tPivot++ );
 
-                // count number of dofs per dof
                 Vector< index_t > tCount( tNumberOfDofs, 0 );
 
                 for( index_t k=0; k<tNumberOfDofs; ++k )
                 {
-                    // get the number of elements for this dof
                     tNumElems = aDofWiseData( tPivot++ );
 
-                    // loop over all elements of this dof
                     for( index_t e=0; e<tNumElems; ++e )
                     {
-                        // get the element ID
                         tElementID = aDofWiseData( tPivot++ );
 
-                        // get the offset in the other vector
                         tOffset = tOffsets( tElementID );
 
-                        // get the number of DOFs for this element
                         tCount( k ) += aElementWiseData( tOffset++ );
                     }
                 }
 
-                // allocate memory
-                // allocate list with IDs
                 Cell< Vector< id_t > > tAllIDs( tNumberOfDofs,
                                                 Vector< id_t >() );
                 for( index_t k=0; k<tNumberOfDofs; ++k )
@@ -1292,26 +1212,20 @@ namespace belfem
 
                 for( index_t k=0; k<tNumberOfDofs; ++k )
                 {
-                    // get the number of elements for this dof
                     tNumElems = aDofWiseData( tPivot++ );
 
-                    // get ID list
                     Vector< index_t > & tIDs = tAllIDs( k );
 
                     if( tIDs.length() > 0 )
                     {
                         j = 0;
 
-                        // loop over all elements of this dof
                         for ( index_t e = 0; e < tNumElems; ++e )
                         {
-                            // get the element ID
                             tElementID = aDofWiseData( tPivot++ );
 
-                            // get the offset in the other vector
                             tOffset = tOffsets( tElementID );
 
-                            // get the number of DOFs for this element
                             tNumDofs = aElementWiseData( tOffset++ );
 
                             for ( index_t i = 0; i < tNumDofs; ++i )
@@ -1350,7 +1264,6 @@ namespace belfem
                 BELFEM_ASSERT( tPivot == aConnectivity.length(), "memory error");
             }
 
-
 //------------------------------------------------------------------------------
 
             void
@@ -1368,42 +1281,30 @@ namespace belfem
                 index_t tPivot  ;
                 index_t tNumDofs = 0 ;
 
-                // set temporary dof index
                 for ( Dof * tDof : mDOFs )
                 {
                     tDof->set_my_index( tNumDofs++ );
                 }
 
-
-                // loop over all procs and count memory needs
                 for( uint p=0; p<tNumProcs; ++p )
                 {
-                    // get vector with proc-wise data
                     const Vector< id_t > & tData = aConnectivities( p );
 
-                    // reset pivot
                     tPivot = 0 ;
 
-                    // get number of dofs
                     index_t tNumberOfDofsPerProc = tData( tPivot++ );
                     for( index_t k=0; k<tNumberOfDofsPerProc; ++k )
                     {
-                        // get dof
                         Dof * tDof = mDofData->dof( tData( tPivot++ ) );
 
-                        // get number of dofs per dof
                         tNumDofs = tData( tPivot++ );
-
-                        // add to counter
 
                         tCount( tDof->my_index() ) += tNumDofs ;
 
-                        // jump
                         tPivot += tNumDofs;
                     }
                 }
 
-                // allocate list with IDs
                 Cell< Vector< id_t > > tAllIDs( tNumberOfDofs,
                                                 Vector< id_t >() );
                 for( index_t k=0; k<tNumberOfDofs; ++k )
@@ -1412,31 +1313,22 @@ namespace belfem
                 }
                 tCount.fill( 0 );
 
-                // loop over all procs and combine dofs
                 for( uint p=0; p<tNumProcs; ++p )
                 {
-                    // get vector with proc-wise data
                     const Vector< id_t > & tData = aConnectivities( p );
 
-                    // reset pivot
                     tPivot = 0 ;
 
-                    // get number of dofs on this proc
                     index_t tNumberOfDofsPerProc = tData( tPivot++ );
 
-                    // populate cell
                     for( index_t k=0; k<tNumberOfDofsPerProc; ++k )
                     {
-                        // get dof index
                         index_t tIndex = mDofData->dof( tData( tPivot++ ))->my_index() ;
 
-                        // get ID list
                         Vector< id_t > & tIDs = tAllIDs( tIndex );
 
-                        // get number of dofs per dof
                         tNumDofs = tData( tPivot++ );
 
-                        // add dofs to ID list
                         for( index_t i=0; i<tNumDofs; ++i )
                         {
                             tIDs( tCount( tIndex )++ ) = tData( tPivot++ );
@@ -1445,8 +1337,6 @@ namespace belfem
                     }
                 }
 
-                // unify data
-                // memory counter
                 tPivot = 2 * tNumberOfDofs + 1 ;
 
                 for( index_t k=0; k<tNumberOfDofs; ++k )
@@ -1592,7 +1482,6 @@ namespace belfem
                 SpMatrix & I       =  *mImpositionMatrix;
                 SpMatrix & J       =  *mJacobianMatrix;
 
-                // get dimension of element Jacobian
                 uint tN = aElement->number_of_dofs() ;
 
                 // cache dof indices
@@ -1602,7 +1491,6 @@ namespace belfem
                 {
                     idx.push( aElement->dof( i )->index() );
                 }
-
 
 #if !defined( NDEBUG ) || defined( DEBUG )
                 for ( uint i = 0; i < tN; ++i )
@@ -1615,7 +1503,6 @@ namespace belfem
                 }
 #endif
 
-                // add element jacobian to system matrices
                 for ( uint i = 0; i < tN; ++i )
                 {
                     Dof * tRow = aElement->dof( i );
@@ -1634,8 +1521,7 @@ namespace belfem
                                 // A and J are built with the same sparsity.
                                 // hence we only need to compute the position once
                                 // and use the raw pointer for accessing
-                                // A( idx( i ), idx( j ) ) += aJacobian( i, j );
-                                // J( idx( i ), idx( j ) ) += aJacobian( i, j );
+                                // This is equivalent to A( idx( i ), idx( j ) ) += aJacobian( i, j ).
                                 index_t tPos = A.index( idx( i ), idx( j  ) );
 
                                 BELFEM_ASSERT( tPos < ( index_t ) A.number_of_nonzeros(),
@@ -1679,7 +1565,6 @@ namespace belfem
                 //Add the derivative term to the jacobian
                 SpMatrix & J       =  *mJacobianMatrix;
 
-                // get dimension of element Jacobian
                 uint tN = aElement->number_of_dofs() ;
 
                 // cache dof indices
@@ -1689,7 +1574,6 @@ namespace belfem
                 {
                     idx.push( aElement->dof( i )->index() );
                 }
-
 
                 if ( adJdx.n_cols() > 0 )
                 {
@@ -1723,9 +1607,7 @@ namespace belfem
                 real * M = mFullMassMatrix->data();
                 real * K = mFullStiffnessMatrix->data();
 
-                // get dimension of element Jacobian
                 uint tN = aElement->number_of_dofs() ;
-
 
                 // cache dof indices
                 Cell< index_t > & idx = mWorkDofIndices ;
@@ -1760,10 +1642,8 @@ namespace belfem
             SolverData::assemble_rhs( Element * aElement,
                                      const Vector< real > & aRHS )
             {
-                // get dimension of element Jacobian
                 uint tN = aElement->number_of_dofs() ;
 
-                // add residual to vector
                 for ( uint i = 0; i < tN; ++i )
                 {
                     Dof * tRow = aElement->dof( i );
@@ -1781,10 +1661,8 @@ namespace belfem
                                                const Vector< real > & aRHS )
             {
 
-                // get dimension of element Jacobian
                 uint tN = aElement->number_of_dofs() ;
 
-                // add residual to vector
                 for ( uint i = 0; i < tN; ++i )
                 {
                     Dof * tRow = aElement->dof( i );
@@ -1802,10 +1680,8 @@ namespace belfem
                                                const Vector< real > & aRHS )
             {
 
-                // get dimension of element Jacobian
                 uint tN = aElement->number_of_dofs() ;
 
-                // add residual to vector
                 for ( uint i = 0; i < tN; ++i )
                 {
                     Dof * tRow = aElement->dof( i );
@@ -1823,11 +1699,9 @@ namespace belfem
                     Element * aElement,
                     const Matrix< real > & aRHS )
             {
-                // get dimension of element Jacobian
                 uint tN = aElement->number_of_dofs() ;
                 uint tM = aRHS.n_cols() ;
 
-                // add residual to vector
                 for ( uint i = 0; i < tN; ++i )
                 {
                     Dof * tRow = aElement->dof( i );
@@ -1931,10 +1805,8 @@ namespace belfem
                     Cell< Vector< real > > tAllVectors;
                     collect( tAllVectors );
 
-                    // assemble system
                     for ( proc_t p = 1; p < mCommSize; ++p )
                     {
-                        // get dof table for this proc
                         const Vector< index_t > & tDOFs = mDofData->dof_indices( p );
 
                         Vector< real > & tVector = tAllVectors( p );
@@ -1943,15 +1815,12 @@ namespace belfem
                         // eg, if a proc does not have a wetted surface
                         if ( tVector.length() > 0 )
                         {
-                            // get number of dofs fixme: check this
                             index_t tNumDOFs = tDOFs.length();
 
                             index_t tCount = 0 ;
 
-                            // loop over all dofs
                             for ( index_t i = 0; i < tNumDOFs; ++i )
                             {
-                                // get dof
                                 Dof * tDOF = mDOFs( tDOFs( i ) );
 
                                 if ( !tDOF->is_fixed() )
@@ -1964,7 +1833,6 @@ namespace belfem
                 }
                 else
                 {
-                    // send vector to master
                     send( aVector );
                 }
             }
@@ -1974,7 +1842,6 @@ namespace belfem
             void
             SolverData::collect_rhs_matrix()
             {
-                // number of cols in rhs matrix
                 uint tNumCols = mParent->iwg()->num_rhs_cols();
 
                 if ( mCommRank == 0 )
@@ -1982,24 +1849,18 @@ namespace belfem
                     Cell< Matrix< real > > tAllRHS;
                     collect( tAllRHS );
 
-                    // assemble system
                     for ( proc_t p = 1; p < mCommSize; ++p )
                     {
-                        // get dof table for this proc
                         const Vector< index_t > & tDOFs = mDofData->dof_indices( p );
 
-                        // get the current data
                         Matrix< real > & tRHS = tAllRHS( p );
 
-                        // get number of dofs
                         index_t tNumDOFs = tDOFs.length();
 
-                        // loop over all dofs
                         for ( index_t j = 0; j < tNumCols; ++j )
                         {
                             for ( index_t i = 0; i < tNumDOFs; ++i )
                             {
-                                // get dof
                                 Dof * tDOF = mDOFs( tDOFs( i ));
 
                                 if ( !tDOF->is_fixed() )
@@ -2012,7 +1873,6 @@ namespace belfem
                 }
                 else
                 {
-                    // send vector to master
                     send( mRhsMatrix );
                 }
             }
@@ -2024,13 +1884,11 @@ namespace belfem
             {
                 if ( mCommRank == 0 )
                 {
-                    // allocate vector
                     if ( mFieldValues.length() != mNumberOfFreeDofs )
                     {
                         mFieldValues.set_size( mNumberOfFreeDofs, 0.0 );
                     }
 
-                    // collect values for free dofs
                     for ( Dof * tDof: mDOFs )
                     {
                         if ( !tDof->is_fixed() )
@@ -2046,17 +1904,14 @@ namespace belfem
             void
             SolverData::set_solver( const SolverParameters & aParams )
             {
-                // delete solver if it exists already
                 if( mSolver != nullptr )
                 {
                     delete mSolver ;
                 }
 
-                // create a new solver
                 mSolver = new Solver( aParams );
 
                 mSolver->set_symmetry_mode( mParent->iwg()->symmetry_mode() );
-
 
             }
 
@@ -2065,7 +1920,6 @@ namespace belfem
             void
             SolverData::solve()
             {
-                // get pointer to the equation
                 IWG * tIWG = mParent->iwg() ;
                 BELFEM_ERROR( tIWG != nullptr, "no equation was set" );
 
@@ -2095,12 +1949,10 @@ namespace belfem
 
                     Timer tTimer;
 
-                    // right hand side
                     Vector< real > tFixedValues( mNumberOfFixedDofs );
 
                     index_t tCount = 0;
 
-                    // loop over all dofs
                     for ( Dof * tDof: mDOFs )
                     {
                         if ( tDof->is_fixed() )
@@ -2109,13 +1961,11 @@ namespace belfem
                         }
                     }
 
-                    // add loads over boundary
                     if( mConvection.length() > 0 )
                     {
                         mRhsVector += mConvection ;
                     }
 
-                    // add volume loads
                     if( mVolumeLoads.length() > 0 )
                     {
                         mRhsVector += mVolumeLoads ;
@@ -2131,17 +1981,14 @@ namespace belfem
 
                     if(  tIWG->num_rhs_cols() == 1 ) // right hand side is vector
                     {
-                        // compute the norm of the rhs vector
                         mRhsNorm = norm( mRhsVector );
 
                         switch( tIWG->mode() )
                         {
                             case( IwgMode::Direct ) :
                             {
-                                // wait for other procs
                                 comm_barrier() ;
 
-                                // solve the system
                                 mSolver->solve( *mSystemMatrix, mLhsVector, mRhsVector ) ;
                                 if (std::isnan(mRhsNorm))
                                 {
@@ -2158,7 +2005,6 @@ namespace belfem
                                     return ;
                                 }
 
-                                // write values into field
                                 for ( Dof * tDof: mDOFs )
                                 {
                                     if ( ! tDof->is_fixed() )
@@ -2191,7 +2037,6 @@ namespace belfem
                     {
                         BELFEM_ASSERT( tIWG->mode() == IwgMode::Direct, "IWG must be direct when rhs is matrix" );
 
-                        // perform a sanity check
                         const Vector< id_t> & tBlocks = tIWG->selected_blocks();
                         uint tNumDofsPerNode = tIWG->number_of_dofs_per_node( tBlocks( 0 ) );
 
@@ -2206,7 +2051,6 @@ namespace belfem
                                          "Edge DOFs not supported if using an RHS matrix" );
                         }
                         // note: this only works for node fields
-                        // wait for other procs
                         comm_barrier() ;
                         mSolver->solve( *mSystemMatrix, mLhsMatrix, mRhsMatrix );
 
@@ -2221,27 +2065,20 @@ namespace belfem
                         {
                             for ( index_t i = 0; i <  tIWG->number_of_dofs_per_node(); ++i )
                             {
-                                // get field
                                 mesh::Field * tField = mParent->mesh()->field( tIWG->all_fields()( k++ ) );
 
-                                // sanity check
                                 BELFEM_ERROR( tField->entity_type() == EntityType::NODE,
                                              "RHS matrices require all fields to be nodal but field %s is not a node field.",
                                              tField->label().c_str() );
 
-                                // get field data
                                 Vector< real > & tData = tField->data();
 
-                                // loop over all nodes
                                 for( mesh::Node *tNode : mParent->mesh()->nodes() )
                                 {
-                                    // get dof
                                     Dof * tDOF = mDofData->dof( mDofData->node_dof_id( tNode->id(), i ) );
 
-                                    // write data into dof
                                     tDOF->value() = mLhsMatrix( tDOF->index(), j );
 
-                                    // write data of dof into field
                                     tData( tDOF->dof_index_on_field() ) = tDOF->value() ;
                                 }
 
@@ -2263,14 +2100,12 @@ namespace belfem
                     // the solver wrapper redistributes the matrix from the main proc
                     if ( tIWG->num_rhs_cols() == 1 )
                     {
-                        // wait for other procs
                         comm_barrier() ;
 
                         mSolver->solve( *mSystemMatrix, mLhsVector, mRhsVector ) ;
                     }
                     else
                     {
-                        // wait for other procs
                         comm_barrier() ;
                         mSolver->solve( *mSystemMatrix, mLhsMatrix, mRhsMatrix ) ;
                     }
@@ -2278,7 +2113,6 @@ namespace belfem
                 }
                 else
                 {
-                    // wait for other procs
                     comm_barrier() ;
                 }
             }
@@ -2320,13 +2154,11 @@ namespace belfem
                         }
                     }
 
-                    // add loads over boundary
                     if( mConvection.length() > 0 )
                     {
                         mRhsVector += mConvection ;
                     }
 
-                    // add volume loads
                     if( mVolumeLoads.length() > 0 )
                     {
                         mRhsVector += mVolumeLoads ;
@@ -2423,10 +2255,8 @@ namespace belfem
                     {
                         case( SolverAlgorithm::NewtonRaphson ) :
                         {
-                            // wait for other procs
                             comm_barrier() ;
 
-                            // solve the system
                             mSolver->solve( *mJacobianMatrix, mLhsVector, mRhsVector ) ;
                             if (std::isnan(mRhsNorm))
                             {
@@ -2448,14 +2278,12 @@ namespace belfem
                             // the PRE-update residual despite the recompute
                             for ( Dof * tDof: mDOFs )
                             {
-                                // update DOF values
                                 if ( ! tDof->is_fixed() )
                                 {
                                     tDof->value() -= tIWG->omega() * mLhsVector( tDof->index() );
                                     mFieldValues( tDof->index() ) = tDof->value() ;
                                 }
 
-                                // update value in field
                                 mCollectedFields( tDof->type_id() )->value(
                                         tDof->dof_index_on_field() ) = tDof->value();
                             }
@@ -2476,9 +2304,7 @@ namespace belfem
                             // preserve r: residual() reads it after the solve
                             mRhsBackup = mRhsVector ;
 
-                            // wait for other procs
                             comm_barrier() ;
-                            // solve the system
                             mSolver->solve( *mSystemMatrix, mLhsVector, mRhsVector ) ;
                             if (std::isnan(mRhsNorm))
                             {
@@ -2511,7 +2337,6 @@ namespace belfem
                                     tDof->value() -= tOmega * mLhsVector( tDof->index() );
                                 }
 
-                                // update value in field
                                 mCollectedFields( tDof->type_id() )->value(
                                         tDof->dof_index_on_field() ) = tDof->value() ;
                             }
@@ -2542,7 +2367,6 @@ namespace belfem
                           mSolver->type() == SolverType::STRUMPACK ||
                           mSolver->type() == SolverType::PETSc )
                 {
-                    // wait for other procs
                     comm_barrier() ;
 
                     // note: it doesn't matter what matrix we pass here because
@@ -2551,7 +2375,6 @@ namespace belfem
                 }
                 else
                 {
-                    // wait for other procs
                     comm_barrier() ;
                 }
             }
@@ -2565,7 +2388,6 @@ namespace belfem
 
                 if( mKernel->is_master() )
                 {
-                    // compute value
                     // note that this vector now contains the error r=A*x-b
                     // while the value of mRhsNorm was computed before with the real rhs vector
 
@@ -2575,7 +2397,6 @@ namespace belfem
 
                     aResidual = tRhsNorm/ mRhsNorm ;
 
-                    // catch case if rhs is zero
                     if ( mRhsNorm < BELFEM_EPS || tRhsNorm < BELFEM_EPS )
                     {
                         if ( std::abs( aResidual ) < 1. + BELFEM_EPS )
@@ -2584,10 +2405,6 @@ namespace belfem
                         }
                     }
 
-
-                    //this->write_residuals_to_mesh() ;
-
-                    // catch error
                     /*if( ( aResidual == 0  && aIteration == 0 ) || aResidual > 1E12 || std::isnan( aResidual ) )
                     {
 
@@ -2904,7 +2721,7 @@ namespace belfem
                     tRNorm / tXNorm : tRNorm ;
 
                 // beta = the live relaxation the controller line search
-                // manages ( O2 decision: backtracking must damp this step )
+                // manages ( backtracking must damp this step )
                 const uint tUsed = anderson_mixing_step(
                     mAndersonXStage,
                     mAndersonRStage,
@@ -2918,7 +2735,7 @@ namespace belfem
                     mAndersonColNorm,
                     mAndersonXNew );
 
-                // O3: a pair whose difference columns just failed the solve
+                // a pair whose difference columns just failed the solve
                 // must not re-enter the history ( it would poison the next
                 // attempt ); the bootstrap pair of an empty window always
                 // stages, otherwise the window could never fill

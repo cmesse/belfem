@@ -194,7 +194,7 @@ namespace belfem
             real mRelativeEpsilonTarget = 1e-6 ; // relative error criterion
             //! absolute error criteria: DISABLED by default ( 0.0 ) — the raw
             //! ||A x - b|| is dimensional, so a universal default is unit- and
-            //! load-scale dependent ( Codex+Grok RQ3 ). Opt in per deck via
+            //! load-scale dependent. Opt in per deck via
             //! "absolute tolerance" in the nonlinear ( thermal ) sections.
             real mAbsoluteEpsilonTarget = 0.0 ;
 
@@ -203,12 +203,11 @@ namespace belfem
             real mAbsoluteEpsilonTarget2 = 0.0 ;  // absolute thermal error criterion ( see above: opt-in )
 
             //! coupled runs only: skip the thermal update while the magnetic
-            //! residual exceeds this gate. DISABLED by default ( ts17
-            //! 2026-07-22 showed it converts a mutual divergence spiral into
-            //! a limit cycle pinned at the gate instead of rescuing it — a
-            //! lost state needs a timestep cut, not update reordering ).
-            //! Kept as an experiment knob: "update gate" in the nonlinear
-            //! thermal section.
+            //! residual exceeds this gate. Disabled by default: on a coupled
+            //! tape stack it converts a mutual divergence spiral into a limit
+            //! cycle at the gate rather than rescuing it. A lost state needs a
+            //! timestep cut, not update reordering. The optional "update gate"
+            //! is in the nonlinear thermal section.
             real mThermalUpdateGate = BELFEM_REAL_MAX ;
 
             //! set while the thermal update is frozen by the gate; forces a
@@ -225,9 +224,6 @@ namespace belfem
             
             // - - - - - - end user settings - - - - - -
 
-            // todo: add flag if we want to reset omega at each timestep
-
-            // end user settings
             real mOmegaNewton = 1.0 ;
             real mOmegaPicard = 1.0 ;
             real mOmegaNewton2 = 1.0 ;
@@ -304,9 +300,8 @@ namespace belfem
             //! absolute magnetic residual norm, the twin of mEpsilonAbs2:
             //! consumed by the certified-exit heads so that a deck-set
             //! "absolute tolerance" in the nonlinear ( magnetic ) section
-            //! is live ( it was parsed but dead — Claude+Grok jury
-            //! 2026-08-09 ). With the default target 0.0 the escape never
-            //! fires and the behaviour is unchanged
+            //! is used rather than ignored after parsing. With the default
+            //! target 0.0, the escape never fires, so behavior is unchanged.
             real mEpsilonAbs = BELFEM_REAL_MAX ;
 
             //! thermal stagnation exit: consecutive coupled iterations with a
@@ -381,12 +376,11 @@ namespace belfem
             uint mPostFailureHold      = 0 ;
             uint mPostFailureHoldSteps = 2 ;
 
-            //! floor escalation ( Christian 2026-08-10: allow more iterations
-            //! rather than aborting ): each cut demanded while Delta t already
-            //! sits at mDeltaTimeMin doubles the iteration budgets, up to
-            //! mFloorEscalationCap x the deck values, and the attempt retries
-            //! AT the floor. The budgets return to the deck values with the
-            //! next accepted step ( finalize ).
+            //! floor escalation: allow more iterations rather than aborting.
+            //! Each cut requested while Delta t is at mDeltaTimeMin doubles
+            //! the iteration budgets, up to mFloorEscalationCap x the deck
+            //! values. The attempt retries at the floor. The budgets return
+            //! to the deck values with the next accepted step ( finalize ).
             uint mFloorRetries       = 0 ;
             uint mFloorEscalationCap = 4 ;
 
@@ -598,7 +592,7 @@ namespace belfem
             // after assembly and before the solve ); shared by the magnetic iterate paths
             //! the per-trip bodies and the old outer predicates are
             //! internals of the solve_* loops — the uncertified outer path
-            //! must not survive as a callable API ( round-3 R-G )
+            //! must not survive as a callable API
 
             void
             iterate_coupled();
@@ -639,9 +633,9 @@ namespace belfem
             // tracker and return true when the attempt has made no new minimum for
             // the configured window while still far from tolerance -- UNLESS the
             // field's relaxation grew since the previous call, which marks a line
-            // search recovering from an overshoot rather than a stall ( replayed
-            // 2026-08-21: fires on the omega-pinned grinds, spares the AIMD
-            // recovery whose cut used to cascade the timestep down ).
+            // search recovering from an overshoot rather than a stall. It still
+            // fires when omega remains pinned. It spares the recovery from a
+            // cascading timestep cut.
             //
             // aOmega must be the relaxation that PRODUCED the current residual --
             // the caller's post-line-search tOmega / tOmega2 -- never re-derived
@@ -697,8 +691,8 @@ namespace belfem
             // MUMPS computes its condition estimate during the SOLVE, so the
             // error analysis is armed for exactly ONE solve per timestep --
             // the first iterate -- and disarmed as soon as the value is read.
-            // Leaving it armed ( the pre-2026-08-10 behaviour ) paid for the
-            // analysis on every solve of every iteration and read one value.
+            // Leaving it armed for the whole step would pay for the analysis
+            // on every solve in every iteration but read only one value.
             // The first iterate is also the better sample: it is assembled at
             // the converged previous step, so kappa is measured at a
             // comparable state in every timestep and the series is a trend.

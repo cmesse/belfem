@@ -1,6 +1,14 @@
-//
-// Created by christian on 10/23/24.
-//
+/*
+ * BELFEM -- The Berkeley Lab Finite Element Framework
+ * Copyright (c) 2026, The Regents of the University of California,
+ * through Lawrence Berkeley National Laboratory (subject to receipt of any required
+ * approvals from the U.S. Dept. of Energy).  All rights reserved.
+ *
+ * Developers: Christian Messe, Gregory Giard
+ *
+ * See the top-level LICENSE file for the complete license and disclaimer.
+ */
+
 #include "constants.hpp"
 #include "globals.hpp"
 #include "mt_maxwell_h.hpp"
@@ -33,8 +41,7 @@ namespace belfem
              *              [ (1/|h|) ( jhat - c bhat )^T E
              *              + (1/|j|) ( bhat - c jhat )^T C ]
              *
-             * ( derivation + Codex verification 2026-07-21, exchange thread
-             * maxwell_h_kernels_audit ). The beta term exists only in 3D
+             * The beta term exists only in 3D
              * ( 2D: beta = pi/2 by convention ) and is dropped near the
              * beta = 0 / pi/2 kinks of the abs() in bj_angle; the whole row
              * is dropped at the small-field cutoffs of bj_angle.

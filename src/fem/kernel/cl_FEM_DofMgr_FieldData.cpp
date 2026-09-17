@@ -66,7 +66,6 @@ namespace belfem
             void
             FieldData::update_field_indices( Cell< Dof * > & aDOFs )
             {
-                // get the types
                 const Vector< index_t > & tTypes = mParent->iwg()->default_dof_types();
 
                 BELFEM_ERROR( tTypes.length() > 0 , "Fields have not been set" );
@@ -75,15 +74,11 @@ namespace belfem
 
                 Vector< index_t > tFieldIndices(  max( tTypes ) + 1, gNoIndex );
 
-
-                // loop over all fields
                 for( uint k=0; k<tLabels.size(); ++k )
                 {
-                    // get index of field
                     tFieldIndices( tTypes( k ) )
                         = mMesh->field( tLabels( k ) )->index() ;
                 }
-
 
                 for( Dof * tDof : aDOFs )
                 {
@@ -102,10 +97,8 @@ namespace belfem
 
                 if ( mCommRank != 0 )
                 {
-                    // count owned nodes
                     mMyNumberOfOwnedNodes = 0;
 
-                    // loop over all nodes on mesh
                     for ( mesh::Node * tNode : mMesh->nodes() )
                     {
                         if ( tNode->owner() == mCommRank )
@@ -114,11 +107,9 @@ namespace belfem
                         }
                     }
 
-                    // allocate memory
                     Vector< id_t > tIDs( mMyNumberOfOwnedNodes );
                     index_t tCount = 0;
 
-                    // collect IDs of owned nodes
                     for ( mesh::Node * tNode : mMesh->nodes() )
                     {
                         if ( tNode->owner() == mCommRank )
@@ -140,10 +131,8 @@ namespace belfem
                     comm_barrier() ;
                     belfem::collect( tAllIDs );
 
-                    // allocate index vector
                     mNodeOwnerList.set_size( tNumProcs, {} );
 
-                    // loop over all ids
                     for ( uint p = 0; p < tNumProcs; ++p )
                     {
                         Vector< index_t > & tIndices = mNodeOwnerList( p );
@@ -180,7 +169,6 @@ namespace belfem
                     Vector< id_t > tIDs( mMyNumberOfOwnedElements );
                     index_t tCount = 0;
 
-                    // collect IDs of owned nodes
                     for ( mesh::Element * tElement : mMesh->elements() )
                     {
                         if ( tElement->owner() == mCommRank )
@@ -201,10 +189,8 @@ namespace belfem
                     comm_barrier() ;
                     belfem::collect( tAllIDs );
 
-                    // allocate index vector
                     mElementOwnerList.set_size( tNumProcs, {} );
 
-                    // loop over all ids
                     for ( uint p = 0; p < tNumProcs; ++p )
                     {
                         Vector< index_t > & tIndices = mElementOwnerList( p );
@@ -231,18 +217,14 @@ namespace belfem
                     "Field %s is off type %s but must be node or element to collect",
                     aLabel.c_str(), to_string( mMesh->field( aLabel )->entity_type() ).c_str() );
 
-
                 if( mCommSize > 1 )
                 {
-                    // grab field
                     Vector< real > & tField = mMesh->field_data( aLabel );
-
 
                     if ( mCommRank != 0 )
                     {
                         Vector< real > tSubField ;
                         index_t tCount = 0 ;
-
 
                         switch ( mMesh->field( aLabel )->entity_type() )
                         {
@@ -250,7 +232,6 @@ namespace belfem
                             case EntityType::NODE :
                             {
                                 tSubField.set_size( mMyNumberOfOwnedNodes );
-                                // collect owned data
                                 for ( mesh::Node * tNode: mMesh->nodes())
                                 {
                                     if ( tNode->owner() == mCommRank )
@@ -279,26 +260,20 @@ namespace belfem
 
                         comm_barrier() ;
 
-
-                        // send data to master
                         send( tSubField );
                     }
                     else
                     {
-                        // collect subfields
                         Cell< Vector< real > > tSubFields;
 
                         comm_barrier() ;
 
-
                         belfem::collect( tSubFields );
 
-                        // assemble
                         uint tNumProcs = comm_size();
 
                         for ( uint p = 0; p < tNumProcs; ++p )
                         {
-                            // grab index vector
                             const Vector< index_t > & tIndices =
                                 mMesh->field( aLabel )->entity_type() == EntityType::NODE ? mNodeOwnerList( p ) : mElementOwnerList( p );
 
@@ -328,11 +303,9 @@ namespace belfem
 
                     if ( mCommRank != 0 )
                     {
-                        // field counters
                         uint tNodeFieldCount = 0 ;
                         uint tElementFieldCount = 0 ;
 
-                        // count fields
                         for ( uint f = 0; f < tNumFields; ++f )
                         {
                             switch( mMesh->field( aLabels( f ) )->entity_type() )
@@ -413,14 +386,12 @@ namespace belfem
 
                         comm_barrier() ;
 
-                        // send data to master
                         send( tNodeData );
                         send( tElementData );
 
                     }
                     else
                     {
-                        // collect subfields
                         Cell< Matrix< real > > tAllNodeData ;
                         Cell< Matrix< real > > tAllElementData ;
                         comm_barrier() ;
@@ -428,16 +399,13 @@ namespace belfem
                         belfem::collect( tAllNodeData );
                         belfem::collect( tAllElementData );
 
-                        // assemble
                         uint tNumProcs = comm_size();
 
                         for ( uint p = 1; p < tNumProcs; ++p )
                         {
-                            // field counters
                             uint tNodeFieldCount = 0 ;
                             uint tElementFieldCount = 0 ;
 
-                            // grab index vector
                             const Vector< index_t > & tNodeIndices    = mNodeOwnerList( p );
                             const Matrix< real >    & tNodeFields     = tAllNodeData( p );
 
@@ -487,26 +455,22 @@ namespace belfem
             void
             FieldData::initialize_linear_projection_lists()
             {
-                // get the block list
                 const Vector< id_t > & tSelectedBlocks
                     = mParent->iwg()->selected_blocks();
 
                 Cell< Vector< id_t > > tAllNodeIDs;
                 Vector< id_t > tMyNodeIDs;
 
-                // start a timer
                 Timer tTimer;
 
                 const bool tIsMaster = mCommRank == 0 ;
 
-                // get node container of mesh
                 Cell< mesh::Node * > & tNodes = mMesh->nodes();
 
                 const proc_t tNumProcs = comm_size();
 
                 if ( tIsMaster )
                 {
-                    // allocate id and index containers
                     tAllNodeIDs.set_size( tNumProcs, {} );
                     mAllCornerNodeIndices.set_size( tNumProcs, {} );
 
@@ -520,10 +484,8 @@ namespace belfem
                         Vector< id_t >    & tNodeIDs = tAllNodeIDs( p );
                         Vector< index_t > & tNodeIndices = mAllCornerNodeIndices( p );
 
-                        // find corner nodes
                         for ( index_t tID : tSelectedBlocks )
                         {
-                            // grab element list of this block
                             Cell< mesh::Element * > & tElements = mMesh->block( tID )->elements();
 
                             for ( mesh::Element * tElement : tElements )
@@ -535,16 +497,12 @@ namespace belfem
                             }
                         }
 
-                        // local counter
                         index_t tCount = 0 ;
 
-                        // count nodes
                         for ( mesh::Node * tNode : tNodes )
                         {
-                            // check if node is selected
                             if ( tNode->is_flagged() )
                             {
-                                // increment counter
                                ++tCount ;
                             }
                         }
@@ -554,36 +512,27 @@ namespace belfem
                             tNodeIDs.set_size( tCount );
                             tNodeIndices.set_size( tCount );
 
-
-                            // reset counter
                             tCount = 0;
 
-                            // collect node IDs and indices
                             for ( mesh::Node * tNode: tNodes )
                             {
                                 if ( tNode->is_flagged() )
                                 {
-                                    // add node to list
                                     tNodeIDs( tCount ) = tNode->id() ;
                                     tNodeIndices( tCount++ ) = tNode->index() ;
                                 }
                             }
                         }
-                    } // end loop over all procs
-
-                    // wait
+                    }
                     comm_barrier() ;
 
-                    // send IDs to other procs
                     belfem::distribute( tAllNodeIDs );
 
                 }
                 else
                 {
-                    // wait
                     comm_barrier() ;
 
-                    // get corner node IDs from master
                     receive( tMyNodeIDs );
                 }
 
@@ -594,10 +543,8 @@ namespace belfem
 
                 Vector< id_t > & tCornerNodeIDs = tIsMaster ? tAllNodeIDs( 0 ) : tMyNodeIDs ;
 
-                // allocate memory
                 mMyCornerNodeIndices.set_size( tCornerNodeIDs.length() );
 
-                // initialize counter
                 index_t k = 0 ;
 
                 for( id_t tID : tCornerNodeIDs )
@@ -616,7 +563,6 @@ namespace belfem
 
                 if( tIsMaster )
                 {
-                    // allocate index containers
                     mAllNonCornerNodeIndices.set_size( tNumProcs, {} );
 
                     // - - - - - - - - - - - - - - - - - - - -
@@ -630,10 +576,8 @@ namespace belfem
                         Vector< id_t >    & tNodeIDs     = tAllNodeIDs( p );
                         Vector< index_t > & tNodeIndices = mAllNonCornerNodeIndices( p ) ;
 
-                        // flag all nodes
                         for ( index_t tID : tSelectedBlocks )
                         {
-                            // grab element list of this block
                             Cell< mesh::Element * > & tElements = mMesh->block( tID )->elements();
 
                             for ( mesh::Element * tElement : tElements )
@@ -646,16 +590,12 @@ namespace belfem
                             }
                         }
 
-                        // local counter
                         index_t tCount = 0 ;
 
-                        // count nodes
                         for ( mesh::Node * tNode : tNodes )
                         {
-                            // check if node is selected
                             if ( tNode->is_flagged() )
                             {
-                                // increment counter
                                 ++tCount ;
                             }
                         }
@@ -665,32 +605,24 @@ namespace belfem
                             tNodeIDs.set_size( tCount );
                             tNodeIndices.set_size( tCount );
 
-
-                            // reset counter
                             tCount = 0;
 
-                            // collect node IDs and indices
                             for ( mesh::Node * tNode: tNodes )
                             {
                                 if ( tNode->is_flagged() )
                                 {
-                                    // add node to list
                                     tNodeIDs( tCount ) = tNode->id() ;
                                     tNodeIndices( tCount++ ) = tNode->index() ;
                                 }
                             }
                         }
-                    } // end loop over all procs
-
-                    // wait
+                    }
                     comm_barrier() ;
 
-                    // send IDs to other procs
                     belfem::distribute( tAllNodeIDs );
                 }
                 else
                 {
-                    // wait
                     comm_barrier() ;
                     belfem::receive( tMyNodeIDs );
                 }
@@ -703,19 +635,15 @@ namespace belfem
 
                 Vector< id_t > & tMyNonCornerNodeIDs = tIsMaster ? tAllNodeIDs( 0 ) : tMyNodeIDs ;
 
-                // flag nodes
                 for( id_t tID : tMyNonCornerNodeIDs )
                 {
                     mMesh->node( tID )->flag() ;
                 }
 
-                // reset counter
                 k = 0 ;
 
-                // allocate memory
                 mMyNonCornerNodeIndices.set_size( tMyNonCornerNodeIDs.length() );
 
-                // allocate container
                 mMyNonCornerNodes.set_size( tMyNonCornerNodeIDs.length(), nullptr );
 
                 tMyNodeIDs.set_size( tMyNonCornerNodeIDs.length() );
@@ -729,31 +657,23 @@ namespace belfem
                         // get real element type of block ( tBlock->element_type() is the linear one )
                         ElementType tType = tBlock->block()->element_type();
 
-                        // get number of nodes per element
                         uint tNumCornerNodes = mesh::number_of_corner_nodes( tType );
                         uint tNumNodes = mesh::number_of_nodes( tType );
 
-                        // grab elements on block
                         Cell< mesh::Element * > & tElements = tBlock->block()->elements();
 
-                        // loop over all elements on this block
                         for ( mesh::Element * tElement: tElements )
                         {
-                            // loop over all non corner nodes of this element
                             for ( uint i = tNumCornerNodes; i < tNumNodes; ++i )
                             {
-                                // grab node
                                 mesh::Node * tNode = tElement->node( i );
 
-                                // check if node has been processed
                                 if ( tNode->is_flagged() )
                                 {
                                     mMyNonCornerNodeIndices( k ) = tNode->index();
 
-                                    // store ID for sending
                                     tMyNodeIDs( k ) = tNode->id();
 
-                                    // add node to container
                                     mMyNonCornerNodes( k++ ) = tNode;
 
                                     // unflag this node, each node is processed only once
@@ -769,7 +689,6 @@ namespace belfem
                               ( long unsigned int ) k,
                               ( long unsigned int ) mMyNonCornerNodeIndices.length() );
 
-                // wait
                 comm_barrier() ;
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -778,23 +697,18 @@ namespace belfem
 
                 if( tIsMaster )
                 {
-                    // get IDs from other procs
                     belfem::collect( tAllNodeIDs );
 
-                    // allocate array
                     mAllNonCornerNodeIndices.set_size( tNumProcs, {} );
 
-                    // create indices
                     for( proc_t p=1; p<tNumProcs; ++p )
                     {
                         Vector< index_t > & tNodeIDs = tAllNodeIDs( p );
 
-                        // get indices
                         Vector< index_t > & tIndices = mAllNonCornerNodeIndices( p );
 
                         tIndices.set_size( tNodeIDs.length() );
 
-                        // reset counter
                         k = 0 ;
 
                         for( id_t tID : tNodeIDs )
@@ -805,11 +719,9 @@ namespace belfem
                 }
                 else
                 {
-                    // send IDs to master
                     send( tMyNodeIDs );
                 }
 
-                // wait
                 comm_barrier() ;
 
                 if ( mCommRank == 0 )
@@ -830,31 +742,22 @@ namespace belfem
                 {
                     Cell< Vector< real > > tAllData( tNumProcs, {} );
 
-                    // loop over all procs
                     for( uint p=1; p<tNumProcs; ++p )
                     {
-                        // grab node indices
                         const Vector< index_t > & tIndices = mAllCornerNodeIndices( p );
 
-                        // grab data
                         Vector< real > & tData = tAllData( p );
 
-                        // number of nodes on this field
                         index_t tNumNodes = tIndices.length() ;
 
-                        // allocate size
                         tData.set_size( tNumFields * tIndices.length() );
 
-                        // initialize counter
                         index_t tCount = 0 ;
 
-                        // loop over all fields
                         for( index_t f=0; f<tNumFields; ++f )
                         {
-                            // grab field data
                             Vector< real > & tField = mMesh->field_data( aFieldLabels( f ) );
 
-                            // loop over all nodes
                             for( index_t k=0; k<tNumNodes; ++k )
                             {
                                 tData( tCount++ ) = tField( tIndices( k ) );
@@ -862,46 +765,37 @@ namespace belfem
                         }
                     }
 
-                    // wait
                     comm_barrier();
 
                     belfem::distribute( tAllData );
                 }
                 else
                 {
-                    // Data container
                     Vector< real > tData ;
 
-                    // wait
                     comm_barrier() ;
                     receive( tData );
 
-                    // initialize counter
                     index_t tCount = 0 ;
 
                     index_t tNumNodes = mMyCornerNodeIndices.length() ;
 
-                    // loop over all fields
                     for( index_t f=0; f<tNumFields; ++f )
                     {
-                        // grab field data
                         Vector< real > & tField = mMesh->field_data( aFieldLabels( f ) );
 
-                        // loop over all nodes
                         for( index_t k=0; k<tNumNodes; ++k )
                         {
                             tField( mMyCornerNodeIndices( k ) ) = tData( tCount++ );
                         }
                     }
 
-                    // sanity check
                     BELFEM_ASSERT( tCount == tData.length(), "Invalid vector size. Is %lu but expect %lu",
                                   ( long unsigned int ) tCount,
                                   ( long unsigned int ) tData.length() );
 
                 }
 
-                // wait for all procs to be done
                 comm_barrier() ;
             }
 
@@ -912,25 +806,20 @@ namespace belfem
                     const Cell< string > & aFieldLabels,
                     Matrix< real > & aData )
             {
-                // get number of fields
                 index_t tNumFields = aFieldLabels.size() ;
                 uint tNumProcs = mKernel->number_of_procs();
 
                 if( mCommRank == 0 )
                 {
 
-                    // container with other data
                     Cell< Matrix< real > > tAllData( mKernel->number_of_procs(), {} );
 
                     belfem::collect( tAllData );
 
-                    // get number of nodes
                     index_t tNumNodes = mMyNonCornerNodeIndices.length() ;
 
-                    // write my own data
                     for( index_t f=0; f<tNumFields; ++f )
                     {
-                        // grab field
                         Vector< real > & tData = mMesh->field_data( aFieldLabels( f ) );
 
                         for( index_t k=0; k<tNumNodes; ++k )
@@ -939,25 +828,18 @@ namespace belfem
                         }
                     }
 
-                    // write data of other procs
                     for( uint p=1; p<tNumProcs; ++p )
                     {
-                        // grab data container
                         Matrix< real > & tData = tAllData( p );
 
-                        // grab indices
                         Vector< index_t > & tIndices = mAllNonCornerNodeIndices( p );
 
-                        // get number of nodes
                         index_t tN = tIndices.length() ;
 
-                        // write my own data
                         for( index_t f=0; f<tNumFields; ++f )
                         {
-                            // grab field
                             Vector< real > & tField = mMesh->field_data( aFieldLabels( f ) );
 
-                            // write data onto mesh
                             for( index_t k=0; k<tN; ++k )
                             {
                                 tField( tIndices( k ) ) = tData( k, f );
@@ -967,11 +849,9 @@ namespace belfem
                 }
                 else
                 {
-                    // send data to master
                     send( aData );
                 }
 
-                // wait
                 comm_barrier() ;
             }
 
@@ -983,7 +863,6 @@ namespace belfem
             {
                 Timer tTimer ;
 
-                // collect node fields
                 Cell< string > tFieldLabels ;
                 for( uint f = 0; f < aFieldLabels.size(); ++f )
                 {
@@ -996,116 +875,87 @@ namespace belfem
                 // communicate corner node data
                 this->communicate_corner_node_data( tFieldLabels );
 
-                // unflag all nodes on mesh
                 mMesh->unflag_all_nodes() ;
 
-                // flag nodes of interest
                 for( mesh::Node * tNode : mMyNonCornerNodes )
                 {
                     tNode->flag() ;
                 }
 
-                // the shape function factory
                 InterpolationFunctionFactory tFactory ;
 
-                // number of fields to interpolate
                 const index_t tNumFields = tFieldLabels.size() ;
 
                 const index_t tNumNonCornerNodes = mMyNonCornerNodes.size() ;
 
                 Matrix< real > tWork( tNumNonCornerNodes, tNumFields );
 
-                // Node Counter
                 index_t tCount = 0 ;
 
-                // loop over all blocks
                 for( id_t tBlockID : mParent->iwg()->selected_blocks() )
                 {
                     if( mParent->block_exists( tBlockID ) )
                     {
-                        // grab block on mesh
                         mesh::Block * tBlock = mParent->block( tBlockID )->block() ;
 
-                        // get element type
                         const ElementType tType = tBlock->element_type();
 
-                        // create the linear shape function
                         InterpolationFunction * tLinShape = tFactory.create_lagrange_function(
                                 mesh::linear_element_type( tType ));
 
-                        // create the higher order shape function
                         InterpolationFunction * tHighShape = tFactory.create_lagrange_function(
                                 tType );
 
-                        // grab parameter coordinates
                         Matrix< real > tXi;
                         tHighShape->param_coords( tXi );
 
-                        // get number of nodes of element
                         uint tNumNodes = mesh::number_of_nodes( tType );
 
-                        // number of corner nodes
                         uint tNumCornerNodes = mesh::number_of_corner_nodes( tType );
 
-                        // Evaluated function
                         Cell< Matrix< real > > tAllN( tXi.n_cols(), {} );
 
                         for ( uint k = 0; k < tNumNodes; ++k )
                         {
-                            // get vector
                             Matrix< real > & tN = tAllN( k );
 
-                            // allocate size
                             tN.set_size( 1, tNumCornerNodes );
 
-                            // evaluate function
                             tLinShape->N( tXi.col( k ), tN );
                         }
 
-                        // get elements from mesh
                         Cell< mesh::Element * > & tElements = tBlock->elements();
 
                         Matrix< real > tLinData( tNumCornerNodes, tNumFields );
 
                         Matrix< real > tNodeData( 1, tNumFields );
 
-                        // loop over all elements
                         for ( mesh::Element * tElement : tElements )
                         {
-                            // collect data from fields
                             for ( uint j = 0; j < tNumFields; ++j )
                             {
-                                // grab field
                                 Vector< real > & tField = mMesh->field_data( tFieldLabels( j ));
 
-                                // grab nodes
                                 for ( uint i = 0; i < tNumCornerNodes; ++i )
                                 {
                                     tLinData( i, j ) = tField( tElement->node( i )->index() );
                                 }
                             }
 
-                            // loop over all non-corner nodes
                             for ( uint k = tNumCornerNodes; k < tNumNodes; ++k )
                             {
-                                // grab node
                                 mesh::Node * tNode = tElement->node( k );
 
-                                // check if node has been computed
                                 if ( tNode->is_flagged() )
                                 {
-                                    // interpolate data
                                     tNodeData = tAllN( k ) * tLinData;
 
-                                    // write data into work matrix
                                     tWork.set_row( tCount++, tNodeData.row( 0 ) );
 
-                                    // unflag node
                                     tNode->unflag();
                                 }
                             }
                         }
-                        // delete shape functions
                         delete tLinShape;
                         delete tHighShape;
                     }
@@ -1127,16 +977,13 @@ namespace belfem
             void
             FieldData::distribute( const Cell< string > & aFieldLabels )
             {
-                // get number of fields
                 uint tNumberOfFields = aFieldLabels.size();
 
                 if ( mCommRank == 0 )
                 {
 
-                    // get number of procs
                     uint tNumberOfProcs = mKernel->number_of_procs();
 
-                    // sanity check
                     if( tNumberOfProcs > 1 )
                     {
                         Vector< uint > tNumFieldsPerProc;
@@ -1152,34 +999,26 @@ namespace belfem
                         }
                     }
 
-                    // container with data to send
                     Cell< Vector< real > > tData( tNumberOfProcs, {} );
 
-                    // loop over all fields
                     for( uint f=0; f<tNumberOfFields; ++f )
                     {
                         mesh::Field * tF = mMesh->field( aFieldLabels( f ) );
 
-                        // grab field data
                         Vector< real > & tField = tF->data() ;
 
                         index_t tMultiplicity = 0 ;
 
-                        // loop over all procs
                         for( uint p=1; p<tNumberOfProcs; ++p )
                         {
                             const Cell< index_t > & tIndices = this->field_indices( tF->entity_type(), p , tMultiplicity );
 
-                            // get number of nodes
                             index_t tNumberOfEntities = tIndices.size()  ;
 
-                            // get values
                             Vector< real > & tValues = tData( p );
 
-                            // set size for values
                             tValues.set_size( tNumberOfEntities * tMultiplicity );
 
-                            // populate data
                             if( tMultiplicity == 1 )
                             {
                                 for( index_t k=0; k<tNumberOfEntities; ++k )
@@ -1201,7 +1040,6 @@ namespace belfem
 
                         }
 
-                        // send data to other procs
                         belfem::distribute( tData );
                     }
                 }
@@ -1209,10 +1047,8 @@ namespace belfem
                 {
                     send( tNumberOfFields );
 
-                    // loop over all fields
                     for( uint f=0; f<tNumberOfFields; ++f )
                     {
-                        // get data
                         receive( mMesh->field_data( aFieldLabels( f ) ) );
                     }
                 }

@@ -76,49 +76,6 @@ namespace belfem
             mMesh->unfinalize();
             mMesh->finalize();
 
-            /* the following lines just test if the poisson problem works
-             * they are safe to be deleted
-            fem::KernelParameters tParams( mMesh ) ;
-
-            fem::Kernel tKernel( &tParams );
-
-
-            fem::IWG * tEquation = tKernel.create_equation( IwgType::Poisson );
-
-            tEquation->select_blocks( mAirBlocks );
-            tEquation->set_abstract_nodes( mAbstractNodes );
-            tEquation->set_abstract_dof_type( 0 );
-
-            fem::DofManager * tField = tKernel.create_field( tEquation );
-            tField->set_solver( SolverType::MUMPS );
-
-            for ( fem::Dof * tDof : tField->dofs() )
-            {
-                if ( tDof->mesh_basis()->id() == 33 )
-                {
-                    tDof->fix( 0.0 );
-                    break ;
-                }
-            }
-
-            for ( Node * tNode : mAbstractNodes )
-            {
-                reinterpret_cast< fem::Dof * >(tNode->dof( 0 ))->fix( 1.0 );
-            }
-            tKernel.compute_element_volumes();
-
-            tField->initialize() ;
-
-            tField->field_data( "phi" ).fill( 0 );
-
-            tField->compute_jacobian();
-
-            tField->solve();
-
-
-            mMesh->save("test.exo");
-            exit( 0 );*/
-
         }
 
         CutProcessorManual::~CutProcessorManual()

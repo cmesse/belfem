@@ -122,22 +122,17 @@ namespace belfem
                     this->collect_midnodes( tPairs, tMidNodes );
                 }
 
-                // create the new curve
                 Curve * tCurve = new Curve( ++mMaxCurveID, tType );
 
-                // create the segments
                 this->create_segments( tCurve, tPairs, tMidNodes ) ;
 
                 Matrix< index_t > tAdjacency( tEndNodes.size(), 2, BELFEM_UINT_MAX );
                 this->sort_end_nodes( tCurve, tAdjacency, tEndNodes );
 
-                // with the nodes sorted, we reorient the segments
                 this->orient_segments( tEndNodes, tCurve->segments() ) ;
 
-                // Step 8: we can now order the segments in the order they are connected
                 this->sort_segments( tEndNodes( 0 ), tAdjacency, tCurve->segments() ) ;
 
-                // Step 9: collect and sort the nodes
                 this->collect_nodes( tCurve );
 
                 this->compute_coordinates( tCurve );
@@ -222,7 +217,6 @@ namespace belfem
                     {
                         tFacet->element()->get_nodes_of_edge( e, tNodes ) ;
 
-                        // create the key
                         key_t tA = tNodes( 0 )->index() > tNodes( 1 )->index() ? tNodes( 0 )->index() : tNodes( 1 )->index() ;
                         key_t tB = tNodes( 0 )->index() > tNodes( 1 )->index() ? tNodes( 1 )->index() : tNodes( 0 )->index() ;
                         tKeys( tCount++ ) = tA * tNumNodes + tB ;
@@ -236,7 +230,6 @@ namespace belfem
             aEdges.set_size( tKeys.length(), nullptr ) ;
             for ( key_t tKey : tKeys )
             {
-                // compute first and second node ids
                 key_t tIndexA = tKey % tNumNodes ;
                 key_t tIndexB = ( tKey - tIndexA ) / tNumNodes ;
 
@@ -262,7 +255,6 @@ namespace belfem
         {
             Cell< Node * > tNodes ;
 
-            // count facets per edge
             for ( id_t tID : aSideSets )
             {
                 Cell< Facet * > & tFacets = mMesh->sideset( tID )->facets() ;
@@ -271,15 +263,12 @@ namespace belfem
                 {
                     for ( uint e=0; e<tFacet->element()->number_of_edges(); ++e )
                     {
-                        // get the nodes of the edge
                         tFacet->element()->get_nodes_of_edge( e, tNodes ) ;
 
-                        // create the key
                         key_t tA = tNodes( 0 )->index() > tNodes( 1 )->index() ? tNodes( 0 )->index() : tNodes( 1 )->index() ;
                         key_t tB = tNodes( 0 )->index() > tNodes( 1 )->index() ? tNodes( 1 )->index() : tNodes( 0 )->index() ;
                         key_t tKey = tA * aNumNodes + tB ;
 
-                        // get the edge
                         aMap( tKey )->increment_facet_counter() ;
                     }
                 }
@@ -290,7 +279,6 @@ namespace belfem
                 tEdge->allocate_facet_container() ;
             }
 
-            // connect facets to edges
             for ( id_t tID : aSideSets )
             {
                 Cell< Facet * > & tFacets = mMesh->sideset( tID )->facets() ;
@@ -299,15 +287,12 @@ namespace belfem
                 {
                     for ( uint e=0; e<tFacet->element()->number_of_edges(); ++e )
                     {
-                        // get the nodes of the edge
                         tFacet->element()->get_nodes_of_edge( e, tNodes ) ;
 
-                        // create the key
                         key_t tA = tNodes( 0 )->index() > tNodes( 1 )->index() ? tNodes( 0 )->index() : tNodes( 1 )->index() ;
                         key_t tB = tNodes( 0 )->index() > tNodes( 1 )->index() ? tNodes( 1 )->index() : tNodes( 0 )->index() ;
                         key_t tKey = tA * aNumNodes + tB ;
 
-                        // add facet to edge
                         aMap( tKey )->add_facet( tFacet ) ;
                     }
                 }
@@ -380,7 +365,6 @@ namespace belfem
                 tEdge->node( 1 )->flag() ;
             }
 
-            // count flagged nodes
             index_t tCount = 0 ;
 
             for ( Node * tNode : aNodes )
@@ -395,7 +379,6 @@ namespace belfem
                 }
             }
 
-            // temporary node container
             Cell< Node * > tNodes;
             tNodes.vector_data() = std::move( aNodes.vector_data() );
 
@@ -452,7 +435,6 @@ namespace belfem
                 tPending.push( tNode );
             }
 
-
             index_t aGroup = 0 ;
             index_t tIteration = 0 ;
 
@@ -473,7 +455,6 @@ namespace belfem
                     {
                         Edge * tEdge = reinterpret_cast< Edge * >( tNode->vertex( e ) ) ;
 
-                        // put nodes on queue if they have not been visited
                         if ( tEdge->node( 0 )->index() == gNoIndex )
                         {
                             tEdge->set_index( aGroup );
@@ -494,7 +475,6 @@ namespace belfem
             return aGroup ;
         }
 
-
         void
         CurveFactory::create_protocurves(
             Cell< Node * >     & aNodes,
@@ -514,7 +494,6 @@ namespace belfem
                 tEdge->unflag();
             }
 
-            // count nodes per chain
             Vector< index_t > tNodeCount( tNumChains, 0 );
 
             for ( Node * tNode : aNodes )
@@ -522,7 +501,6 @@ namespace belfem
                 ++tNodeCount( tNode->index() );
             }
 
-            // count edges per chain
             Vector< index_t > tEdgeCount( tNumChains, 0 );
             for ( Edge * tEdge : aEdges )
             {
@@ -553,7 +531,6 @@ namespace belfem
                 tEdge->set_index( tEdgeCount( tEdge->index() )++ );
             }
         }
-
 
 //------------------------------------------------------------------------------
 
@@ -647,7 +624,6 @@ namespace belfem
                 }
             }
 
-            // get intersection with boundary nodes
             tEndNodeBitset &= aBoundaryNodeBitset ;
 
             index_t tNumEndNodes = tEndNodeBitset.count() ;
@@ -657,7 +633,6 @@ namespace belfem
                 return nullptr ;
             }
 
-
             index_t tNumMidNodes = 0 ;
             if ( aCurve->element_type() == ElementType::LINE3 )
             {
@@ -665,15 +640,12 @@ namespace belfem
                 tNumMidNodes = tMidNodeBitset.count() ;
             }
 
-
-            // reset all node indices
             Cell< Node * > & tNodes = mMesh->nodes() ;
             for ( Node * tNode : tNodes )
             {
                 tNode->set_index( gNoIndex );
             }
 
-            // set node indices for end nodes
             Cell< index_t > tIndices ;
             tEndNodeBitset.where( tIndices );
 
@@ -685,7 +657,6 @@ namespace belfem
                 tNodes( tIndex )->set_index( tCount++ );
             }
 
-            // set node indices for mid nodes
             Cell< Node * > tMidNodes ;
             if ( aCurve->element_type() == ElementType::LINE3 )
             {
@@ -758,13 +729,11 @@ namespace belfem
             // Step 3: collect the corner nodes
             Cell< Node * > tEndNodes( 2*tFacets.size(), nullptr );
             tCount = 0 ;
-            //tEndNodes( tCount++ ) = tFacets( 0 )->node( 0 );
             for ( Facet * tFacet : tFacets )
             {
                 tEndNodes( tCount++ ) = tFacet->node( 0 );
                 tEndNodes( tCount++ ) = tFacet->node( 1 );
             }
-            //remove the doubles
             unique( tEndNodes );
             for ( Node * tNode : tEndNodes )
             {
@@ -865,7 +834,6 @@ namespace belfem
         void
         CurveFactory::create_pairs( Cell< Node * > & aEndNodes, Cell< std::pair< Node *, Node * > > & aPairs )
         {
-            // count possible edges
             index_t tCount = 0 ;
             for ( Node * tNode : aEndNodes )
             {
@@ -897,12 +865,10 @@ namespace belfem
 
             unique( tKeys );
 
-
             aPairs.reserve( tKeys.length() );
 
             for ( key_t tKey : tKeys )
             {
-                // recover first and second node indices
                 key_t tIndexA = tKey % tNumNodes ;
                 key_t tIndexB = ( tKey - tIndexA ) / tNumNodes ;
 
@@ -950,7 +916,6 @@ namespace belfem
                             // a crash in the sorting algorithm in which the midnodes are not relevant
                             tNodes( 2 )->set_index( gNoIndex );
 
-                            // add node to container
                             aMidNodes( tCount++ ) = tNodes( 2 ) ;
                             tFound = true ;
                             break ;
@@ -987,7 +952,6 @@ namespace belfem
 
                 tSegments( tCount++ ) = tSegment ;
             }
-            // add midside node of we are second order
             tCount = 0 ;
             if ( aCurve->element_type() == ElementType::LINE3 )
             {
@@ -1005,7 +969,6 @@ namespace belfem
         {
             Cell< Segment * > & tSegments = aCurve->segments() ;
 
-            // counter for nodes
             Vector< uint > tNumSegments( aEndNodes.size(), 0 ) ;
 
             // the first loop is to determine if the loop is closed and sane
@@ -1014,7 +977,6 @@ namespace belfem
                 tNumSegments( tSegment->node( 0 )->index() )++ ;
                 tNumSegments( tSegment->node( 1 )->index() )++ ;
             }
-
 
             Node * tStart = nullptr ;
             Node * tEnd = nullptr ;
@@ -1054,7 +1016,6 @@ namespace belfem
             BELFEM_ERROR( tOne + tTwo == tCount, "The Curve seems to branch or is not properly connected. This is not allowed: 1: %lu 2: %lu 1+2: %lu",
                 ( luint ) tOne, ( luint ) tTwo, ( luint ) tCount );
 
-            // reset the counter
             tNumSegments.fill( 0 );
 
             // create the adjacency, filled with gNoIndex: next() tests the
@@ -1093,27 +1054,20 @@ namespace belfem
 
             index_t tNumCornerNodes = aEndNodes.size();
 
-            // the counter for the segments
-
             tCount = 0 ;
             Node * tNode = tStart ;
 
             Vector< index_t > tNewIndices( tNumCornerNodes, gNoIndex ) ;
 
-            // set the new index of the first node
             tNewIndices( tNode->index() ) = tCount++ ;
 
             for ( index_t k=0; k<tNumCornerNodes; ++k )
             {
-                // flag the node
                 tNode->flag();
 
-                // increment the node index
                 tNewIndices( tNode->index() ) = k ;
 
-                // get the next node
                 tNode = this->next( tAdjacency, tSegments, tNode ) ;
-
 
                 if ( tNode->is_flagged() )
                 {
@@ -1126,14 +1080,12 @@ namespace belfem
             tNewIndices( tEnd->index() ) = tNumCornerNodes-1 ;
             tNewIndices( tStart->index() ) = 0 ;
 
-            // next, let's write the indices into the nodes
             tCount = 0 ;
             for ( Node * tNode : aEndNodes )
             {
                 tNode->set_index( tNewIndices( tCount++ ) );
             }
 
-            // now, let's sort the nodes
             sort( aEndNodes, opNodeIndex );
 
             // finally, we must reorganize the adjacency
@@ -1167,13 +1119,11 @@ namespace belfem
             }
         }
 
-
 //------------------------------------------------------------------------------
 
         void
         CurveFactory::sort_segments( Node * aStart, const Matrix< index_t > & aAdjacency, Cell< Segment * > & aSegments )
         {
-            // get the first segment
             Segment * tSegment = aSegments( aAdjacency( aStart->index(), 0 ) );
             tSegment->set_index( 0 );
             tSegment->flag();
@@ -1183,25 +1133,20 @@ namespace belfem
 
             while ( tCount < tNumSegments )
             {
-                // get the next segment
                 Segment * tNext = this->next( aAdjacency, aSegments, tSegment ) ;
 
                 // if the segment has been visited, we know that we have closed the loop
                 if ( tNext->is_flagged() ) break ;
 
-                // write index of next segment
                 tNext->set_index( tCount++ );
 
-                // mark segment as visited
                 tNext->flag();
 
-                // shift segment
                 tSegment = tNext ;
             }
 
             sort( aSegments, opSegmentIndex );
         }
-
 
 //------------------------------------------------------------------------------
 
@@ -1284,7 +1229,6 @@ namespace belfem
         Segment *
         CurveFactory::next( const Matrix< index_t > & aAdjacency, Cell< Segment * > & aSegments, Segment * aSegment )
         {
-            // get the indices of the neigboring segments
             index_t tIndices[ 4 ];
 
             // First segment at start node (node 0)
@@ -1411,15 +1355,12 @@ namespace belfem
                 BELFEM_ASSERT( tSegments.first()->node( 0 )->id() == tSegments.last()->node( 1 )->id(),
                     "The loop is supposed to be closed but something went wrong");
 
-                // fix the first node id
                 tSegments( 0 )->node( 0 )->set_index( 0 ) ;
             }
 
-            // now we can put the nodes into the container
             tNodes.set_size( tCount, nullptr ) ;
             tCount = 0 ;
 
-            // add the first node
             tNodes( tCount++ ) = tSegments( 0 )->node( 0 ) ;
 
             switch (  aCurve->element_type() )
@@ -1483,7 +1424,6 @@ namespace belfem
             }
             else if ( aCurve->element_type() == ElementType::LINE3 )
             {
-                // number of integgration points
                 int n = 7 ;
                 Vector< double > w( n );
                 Vector< double > xi( n );

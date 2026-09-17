@@ -510,8 +510,8 @@ namespace belfem
             mEz( 1, 11 ) = mS[ 11 ] * dF( 2, 11 ) * Nabla( 1, 2 );
             mEz( 2, 11 ) = mS[ 11 ] * dF( 2, 11 ) * Nabla( 2, 2 );
 
-            // fix ( 2026-08-23 ): the rows were assembled with the
-            // operands swapped, returning -curl. With mEx/mEy/mEz holding
+            // Operand order matters: swapped operands return -curl. With
+            // mEx/mEy/mEz holding
             // d(e_i)/dx, d(e_i)/dy, d(e_i)/dz in their rows i, the curl is
             //   ( curl e )_x = d(e_z)/dy - d(e_y)/dz = mEy.row(2) - mEz.row(1)
             // and cyclic — the same assembly EF_HEX8TS::C() always had.

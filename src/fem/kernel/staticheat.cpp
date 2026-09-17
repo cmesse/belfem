@@ -47,8 +47,6 @@ int main( int    argc,
     // load the mesh
     Mesh * tMesh = new Mesh( "dipole.msh" );
 
-    // assume the mesh was set in mm
-    //tMesh->scale_mesh( 0.001 );
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Setup the problem
@@ -101,8 +99,6 @@ int main( int    argc,
     tField->sideset( 7 )->impose_dirichlet( 1 ); // 1
     tField->sideset( 8 )->impose_dirichlet( 1 ); // 1
 
-    //tField->sideset( 1 )->impose_neumann( 60e6 );
-    //tField->sideset( 1 )->impose_alpha( 1e5, 800.0 );
 
     // set coldgas temperature
     tField->sideset( 9 )->impose_dirichlet( 0 ); // 1
@@ -115,13 +111,8 @@ int main( int    argc,
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     comm_barrier();
 
-    // initialize the dofs and detect wetted sidesets
-    //tField->init_dofs() ;
 
-    // compute the surface normals of the mesh and redistribute over all procs
-    //mesh::compute_surface_normals( tField->mesh(), tIWG.wetted_sidesets() );
 
-    //tField->initialize_jacobian();
     tField->initialize() ;
 
 

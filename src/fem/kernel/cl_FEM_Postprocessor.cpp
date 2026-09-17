@@ -955,15 +955,10 @@ namespace belfem
             {
                 // this early return must mirror the communication pattern of
                 // the normal path EXACTLY: one barrier and one matrix send,
-                // matching root's single synch_target_fields() collect. A
-                // second [DIAG] dummy lived here from 2026-07-19 to 2026-08-27,
-                // claiming to pair with a "patch_count gather" that never
-                // existed in the tree; its unmatched 3-index_t size header
-                // ( 12 bytes in default builds ) was a stray base-tag
-                // message that truncated the next
-                // 1-element collect whenever the partition left a rank with no
-                // owned postprocessor nodes ( observed on RLC np=4; gantry
-                // np=10 showed the matching signature )
+                // matching root's single synch_target_fields() collect. An extra
+                // send is a stray base-tag message. Its unmatched size header
+                // truncates the next one-element collect when a rank owns no
+                // postprocessor nodes.
                 comm_barrier();
                 Matrix< real > tNull ;
                 send( tNull );

@@ -887,13 +887,10 @@ namespace belfem
                 }
 
                 // magnetic density: tesla is V*s/m^2 = kg/( s^2 * A ), so mass
-                // +1, current -1, time -2 and NO length term. Until 2026-08-30
-                // every entry here carried the VOLT exponents instead ( mass +1,
-                // length +2, current -1, time -3 ) -- the "V" block above copied
-                // with only the string changed. check_unit compares nothing but
-                // these seven exponents, so a voltage was accepted wherever a
-                // flux density was required and a correctly written V*s/m^2 was
-                // refused. The scale factors were never wrong.
+                // +1, current -1, time -2, and no length term. The "V" block
+                // uses exponents mass +1, length +2, current -1, and time -3.
+                // Copying that block would make check_unit accept voltage where
+                // flux density is required and reject a correctly written V*s/m^2.
                 else if ( tUnit == "G" )
                 {
                     tScale = 1e-4;

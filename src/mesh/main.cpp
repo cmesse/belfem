@@ -31,7 +31,6 @@ int main( int    argc,
     gComm.init( argc, argv );
 
 
-    // print_banner();
 
     // load the mesh
     Mesh tMesh( "helix_translate_periodic.msh" );

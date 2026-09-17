@@ -31,8 +31,7 @@ namespace belfem
      * repeated roots, and 0-2 via the quadratic/linear cascade when the
      * leading coefficients vanish. Complex roots are never returned.
      *
-     * Caveats (audited 2026-07-23, Claude Fable + Codex, all live branches
-     * verified correct in exact arithmetic):
+     * Caveats:
      * - the epsilon tests on the coefficients and the discriminant are
      *   ABSOLUTE; callers should scale the polynomial to O(1) coefficients
      *   (the EoS and material solvers do).
@@ -123,8 +122,8 @@ namespace belfem
 
                 // note: u and v are real scalars, so x is real by
                 // construction and the first branch below is always taken;
-                // the complex fallbacks are unreachable defensive code
-                // (audit 2026-07-23), kept until a cleanup pass
+                // The complex fallback is unreachable. It remains as defensive
+                // code until a cleanup pass.
                 std::complex< T > x = u + v;
 
                 if( std::abs( std::imag( x ) ) < BELFEM_EPSILON )

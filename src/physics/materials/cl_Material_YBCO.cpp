@@ -83,7 +83,6 @@ namespace belfem
             ( void ) Gamma ;
             this->set_constant( MaterialProperty::Gamma, 1.0 );
 
-            //this->set_constant( MaterialProperty::M, M );
 
             this->set_constant( MaterialProperty::ref_density, 6300 );
             this->set_constant( MaterialProperty::T_ref_density, gTroom );
@@ -423,7 +422,6 @@ namespace belfem
 
             real theta = 275.0 ;
             this->set_constant( MaterialProperty::debye, theta );
-            //this->set_constant( MaterialProperty::debye0K, theta );
 
             this->set_rho_i_ref( 273.15, 60e-8, theta);
 
@@ -483,10 +481,10 @@ namespace belfem
             // Fitted against measurements from Sommerfeld et al. 2003
             // (10.1103/PhysRevB.67.174520).
             //
-            // 2026-08-25: the optical channel's unit defect in debye.f90 was
-            // fixed, and alpha( T ) below the split now follows cp, which made
-            // grueneisen( T ) a sane ~2.1 instead of ~800 at 2 K. Both changes
-            // opened the phonon channel wide, so b, d and Gamma were refitted.
+            // b, d, and Gamma are fitted after correcting the optical-channel
+            // units in debye.f90 and making alpha( T ) below the split follow cp.
+            // These changes increase the phonon channel
+            // ( grueneisen( T ) ~2.1 at 2 K ).
             // The fit is DEGENERATE: the electronic term k_e = L0 T / rho( T )
             // below alone reproduces the data to 10 % rms, and every fit
             // reaches the same floor by suppressing k_ph ( ~ 1 W/(m K) ). The

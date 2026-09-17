@@ -284,10 +284,8 @@ namespace belfem
             //! maps domain types to activation modes for sidesets
             Map< DomainType, GroupActivationMode > mSideSetActivationModes ;
 
-            //! normal, if this is a 2d problem, todo: delete
+            //! TODO(cm): mNormal2D and mNormal3D have no reader; delete both
             Vector< real > mNormal2D = { 0., 0. };
-
-            //! normal, if this is a 3d problem, todo: delete
             Vector< real > mNormal3D = { 0., 0., 0. };
 
             InterpolationType mInterpolationType = InterpolationType::LAGRANGE ;
@@ -309,23 +307,14 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             // The symmetry default is UNSYMMETRIC on purpose, and must stay
-            // that way. BELFEM assembles and stores the FULL matrix, while
-            // MUMPS with SYM != 0 ( PositiveDefiniteSymmetric = SYM 1,
-            // GeneralSymmetric = SYM 2 ) expects only ONE half of it. Either
-            // half will do -- the user guide 5.5.1 §5.2.2.1 accepts the lower
-            // or the upper triangle including the diagonal -- but only one,
-            // because "duplicate entries are summed" applies to the symmetric
-            // pair: "if both aij and aji are provided, they will be summed".
-            // Handing MUMPS the full matrix under SYM != 0 therefore
-            // factorizes A with every OFF-DIAGONAL DOUBLED and the diagonal
-            // counted once, which is a different operator. Until
-            // 2026-08-29 it did so SILENTLY: measured on the eigen path,
-            // ||Ax-b||/||b|| = 7.4e16 and a "converged" lambda_min of -2.5e-19
-            // against a true 2.46e-6, with the eigensolver reporting success.
-            // cl_SolverMUMPS.cpp now refuses SYM != 0 with an always-active
-            // error, so that particular failure is loud rather than silent --
-            // but the default belongs here regardless, because this is where
-            // an IWG that never thinks about symmetry gets its answer.
+            // that way. BELFEM supplies MUMPS with the full matrix. With
+            // SYM != 0 ( PositiveDefiniteSymmetric = SYM 1;
+            // GeneralSymmetric = SYM 2 ), MUMPS sums each off-diagonal pair
+            // and factorizes a different matrix. cl_SolverMUMPS.cpp rejects
+            // symmetric modes. The default still belongs here, because this
+            // is where an IWG that never thinks about symmetry gets its
+            // answer. See src/sparse/doc/sparse_usage_guide.md,
+            // "Exploit Symmetry".
             //
             // Scope, deliberately narrow: the mode set here travels to the
             // solver on the ordinary DofManager solve path
@@ -335,16 +324,13 @@ namespace belfem
             // accord, and the triangle requirement is MUMPS's, not a property
             // of every backend that reads SymmetryMode.
             //
-            // Symmetric must therefore be an explicit, deliberate choice by a
-            // caller that has arranged to supply one half -- never something an
-            // IWG inherits by forgetting to pass an argument. That is not
-            // hypothetical: deriving straight from this class is the DOCUMENTED
-            // extension point for a user writing their own IWG
-            // ( dof_manager_usage_guide.md, "class IWG_Custom : public IWG" ),
-            // and every in-tree IWG happens to reach Unsymmetric only through
-            // IWG_Timestep's own default. A user following the guide never
-            // passes this argument, so before 2026-08-29 the documented path
-            // handed them SYM = 1 and a silently wrong factorization.
+            // A caller must choose Symmetric explicitly and supply one matrix
+            // triangle. An IWG must not inherit it by omitting an argument.
+            // The user guide documents deriving IWG_Custom from this class
+            // ( dof_manager_usage_guide.md, "class IWG_Custom : public IWG" ).
+            // A user following the guide does not pass this argument. A
+            // symmetric default would therefore hand them SYM = 1 and a
+            // silently wrong factorization.
             // This class OWNS the DofTable* held in mBlockDofs, mSideSetDofs
             // and mSideSetOnlyDofs -- allocated with new, deleted in the
             // destructor. The implicit copy would shallow-copy those pointers
@@ -601,8 +587,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            // Vector< index_t > &
-            // lambda_dofs( const id_t aSideSetID );
 
 //------------------------------------------------------------------------------
 
@@ -994,7 +978,9 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            // todo: old function, should be obsolete soon
+            // TODO(cm): retire both collect_node_data overloads; the remaining
+            // callers are fn_Mesh_integrate_scalar_over_sidesets.cpp and
+            // cl_FEM_Calculator.cpp
             void
             collect_node_data(
                     Element        * aElement,
@@ -1003,7 +989,8 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            // todo: old function, should be obsolete soon
+            // TODO(cm): retire this overload once the callers named above no
+            // longer use collect_node_data
             void
             collect_node_data(
                     Element        * aElement,

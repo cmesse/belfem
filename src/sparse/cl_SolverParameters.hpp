@@ -61,8 +61,7 @@ namespace belfem
 
         // MC64 matrix matching, only used by STRUMPACK. Its permutation is
         // load-bearing for the coupled h-phi Jacobian: without it the Newton
-        // stage hits exact zero pivots that replace_tiny_pivots cannot absorb
-        // (observed 2026-07-05, serial hphirun, ZERO_PIVOT at Newton 17).
+        // stage hits exact zero pivots that replace_tiny_pivots cannot absorb.
         // Expensive in MPI mode ( STRUMPACK gathers the full matrix on rank 0,
         // once per initialize ) -- ( matching : off ) is an opt-out for cases
         // verified to tolerate it.
@@ -71,8 +70,8 @@ namespace belfem
         // STRUMPACK / serial-METIS only. METIS_NodeNDP returns the separator
         // tree; METIS_NodeND does not, so STRUMPACK has to rebuild a supernodal
         // tree from the elimination tree instead, and that reconstruction is
-        // what produces very deep trees. Observed on tapestack3d 2026-08-12,
-        // 832k magnetic dofs: "used METIS_NodeND (iso METIS_NodeNDP)",
+        // what produces very deep trees. Observed on a large 3D deck:
+        // "used METIS_NodeND (iso METIS_NodeNDP)",
         // "supernodal tree was built from etree", 56 levels — and STRUMPACK's
         // own diagnostic then warned that it "does not handle this safely,
         // which could lead to segmentation faults due to stack overflows",
@@ -95,11 +94,11 @@ namespace belfem
         //    aggregation assumes a symmetric elliptic system; that describes
         //    the PICARD thermal operator ( M/dt + K, SPD ) but not the NEWTON
         //    tangent, which carries the non-symmetric mixed-operator term
-        //    ( B'*grad T ) (x) ( dlambda/dT * N ) from mt_thermal_h. Measured
-        //    on tapestack3d 2026-08-12, 337k thermal dofs, rtol 1e-8:
-        //    GAMG needed ~74 Krylov iterations on the two Picard iterates and
-        //    ~700 on every Newton iterate of the same step -- a 9x penalty
-        //    that appears exactly when the algorithm flips. ASM is slightly
+        //    ( B'*grad T ) (x) ( dlambda/dT * N ) from mt_thermal_h. On a
+        //    coupled tape stack GAMG needed about nine times more Krylov
+        //    iterations on the Newton iterates than on the Picard iterates
+        //    of the same step -- a penalty that appears exactly when the
+        //    algorithm flips. ASM is slightly
         //    worse on the Picard operator ( ~107 ) and does not degrade on the
         //    Newton one, which is the trade this default takes.
         //
@@ -122,17 +121,16 @@ namespace belfem
         KrylovMethod      mKrylovMethod       = KrylovMethod::AUTO ;
 
         // Relative tolerance: PETSc KSP rtol AND STRUMPACK outer-GMRES
-        // rel_tol, always applied ( STRUMPACK since 2026-08-18; before
-        // that only when stated, and an unstated deck inherited the
-        // library's 1e-6 — the tapestack3d A/B showed that loose exit
-        // test WAS the printed nonlinear residual, see strumpacktools ).
+        // rel_tol, always applied ( an unstated deck would otherwise
+        // inherit the library's 1e-6, and that loose exit test becomes the
+        // printed nonlinear residual — see strumpacktools ).
         //
         // 1e-10 rather than 1e-8 because a transient solved for an ABSOLUTE
         // field accepts an absolute error of ~rtol * |field| per step. A
         // thermal run in kelvin therefore drifts by ~rtol * T every step, and
         // in an adiabatic or weakly forced problem nothing pulls it back:
-        // measured on tapestack3d 2026-08-13, 337k thermal dofs, a uniform
-        // 77 K start drifted 8.6e-5 K in 23 steps at rtol 1e-8, and 2.6e-7 K
+        // measured on a thermal run from a uniform 77 K start: a drift of
+        // 8.6e-5 K in 23 steps at rtol 1e-8, and 2.6e-7 K
         // at rtol 1e-10. The failure is silent -- no residual, no message --
         // so the default carries the safety margin rather than the deck.
         // ( The old reassurance "STRUMPACK pays nothing, the factorization
@@ -145,12 +143,10 @@ namespace belfem
         real mRelativeTolerance = 1e-10;
 
         // Set when the deck or set_relative_tolerance() stated a value.
-        // NOT a consumer gate: since 2026-08-18 STRUMPACK always applies
-        // mRelativeTolerance ( same as PETSc ). Do not re-introduce the
-        // have_relative_tolerance() guard in strumpacktools — that was
-        // the REFINE-era split, retired after the tapestack3d
-        // 1e-8 vs 1e-10 A/B; stall protection is now PREC_GMRES +
-        // maxit 50 + always-set abs_tol. The flag still rides
+        // This flag does not control application of mRelativeTolerance:
+        // STRUMPACK always applies it, as PETSc does. Do not add a
+        // have_relative_tolerance() guard in strumpacktools. PREC_GMRES,
+        // maxit 50, and abs_tol prevent stalls. The flag remains in
         // synchronize() so the positional payload keeps its slot ( current
         // width 13, see the history note in synchronize() ).
         bool mHaveRelativeTolerance = false ;
@@ -162,7 +158,7 @@ namespace belfem
         // shipped with it unset for years — on a SMALL right-hand side
         // ( transient startup, ||b|| ~ 1e-2 ) that floor sits exactly at
         // a 1e-11 RELATIVE nonlinear target and Newton converges only by
-        // GMRES overshoot lottery ( three-voice jury 2026-08-17 ).
+        // GMRES overshoot lottery.
         // 1e-14 restores >= 3 decades of headroom while keeping GMRES:
         // the factorization-preconditioned iteration reaches it in a few
         // extra Arnoldi steps, and the maxit cap bounds the cost.

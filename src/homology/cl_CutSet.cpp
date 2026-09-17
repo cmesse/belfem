@@ -109,8 +109,7 @@ namespace belfem
                     // This gets every pair PAST relink ( all dups exist ). A prior
                     // "Step 6c" was proposed to explicitly register FRAGMENTATION's
                     // extra single-partner dups via a verdict table, then REJECTED
-                    // as unsafe ( see todo/closed/periodic_thin_cut_continuity_fix.md,
-                    // "Why Pairing Was Rejected" ) — registering could clobber a
+                    // as unsafe because registering could clobber a
                     // node's single mPeriodic slot and corrupt slave T-matrices.
                     // Those unbacked seam dups don't need backup registration
                     // because the periodic rebuild keys facet/edge corners by

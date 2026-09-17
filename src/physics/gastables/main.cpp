@@ -76,7 +76,6 @@ calculate_values( const gastables::Arguments & aArgs, Matrix< real > & aValues )
 
     RefGasFactory tFactory;
     RefGas * tGas = tFactory.create_refgas( aArgs.gasname() );
-    // tGas->set_mode( RefGasMode::POLY );
 
     std::cout << "gas " << tGas->label() << std::endl;
 

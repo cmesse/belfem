@@ -22,8 +22,8 @@
 #include "fn_intpoints.hpp"
 #include "en_IntegrationScheme.hpp"
 
-// todo: the integration points for the facets are corrently in the interpolation library
-//       it would be cleaner to move them to integration
+// TODO(cm): move facet integration points from the interpolation
+//           library to integration
 #include "../../fem/interpolation/fn_IF_initialize_integration_points_on_facet.hpp"
 #include "fn_dot.hpp"
 #include "fn_norm.hpp"

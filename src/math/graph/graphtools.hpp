@@ -90,7 +90,7 @@ namespace belfem
             // Second pass: count total edges. Self-loops are dropped here and
             // in the fill below: a graph built from a matrix carries one per
             // diagonal entry, and METIS_NodeNDP corrupts its heap on them
-            // ( reproduced 2026-09-04, FM_2WayNodeRefine1Sided → rpqDestroy ).
+            // and crashes in FM_2WayNodeRefine1Sided, specifically in rpqDestroy.
             // METIS and SCOTCH define their input as loop-free; ParMETIS passes
             // loops through unchecked. The Graph itself keeps them: DistMatrix
             // builds the permuted SpMatrix from the Graph and needs the diagonal

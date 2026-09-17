@@ -115,8 +115,8 @@ namespace belfem
             // anyway — set_params, which parses the key, runs later
 
             // arm the soft-fail contract: under the controller, a failed
-            // factorization ( singular matrix at a strained iterate, e.g.
-            // MUMPS INFOG(1) = -10 at quench, 2026-07-27 ) is a failed trial
+            // factorization ( a singular matrix at a strained iterate, e.g.
+            // MUMPS INFOG(1) = -10 at quench ) is a failed trial
             // that cuts the timestep, not a run killer
             if ( mKernel->dofmgr()->solver() != nullptr )
             {
@@ -166,7 +166,6 @@ namespace belfem
         void
         Controller::initialize_timestep()
         {
-            // reset timer
             mTimer->reset();
             mOmegaPicard = mOmega0 ;
             mOmegaNewton = mOmega0 ;
@@ -196,7 +195,6 @@ namespace belfem
             mThermalFlipCount = 0 ;
             mReset = false ;
 
-            // reset iteration counter
             mIteration0 = mIteration ;
             mIteration02 = mIteration2 ;
             mIteration = 0 ;
@@ -236,20 +234,16 @@ namespace belfem
                 mEquation2->make_savepoint() ;
             }
 
-            // update the fields
             mEquation->shift_fields() ;
 
-            // remember old time
             mTime0 = mTime ;
 
-            // update the time
             mTime += mDeltaTime ;
 
             mKernel->mesh()->time_stamp() = mTime ;
             mEquation->delta_time() = mDeltaTime ;
             mKernel->mesh()->time_step() = mMeshTimeStep ;
 
-            //Solve the circuit problem
             // The circuit MNA solve runs on rank 0 only. Its success/failure must be
             // broadcast so that every rank takes the reset/return branch together —
             // otherwise rank 0 resets while the others march into the collective solve and
@@ -285,7 +279,6 @@ namespace belfem
                 return ;
             }
 
-            //update the boundary conditions
             mKernel->compute_boundary_conditions( mTime ) ;
 
             if( mKernel2 != nullptr )
@@ -301,12 +294,10 @@ namespace belfem
                 mKernel2->compute_boundary_conditions( mTime ) ;
             }
 
-            // reset epsilon
             mEpsilon = BELFEM_REAL_MAX ;
             mEpsilonAbs = BELFEM_REAL_MAX ;
             mEpsilon2 = BELFEM_REAL_MAX ;
 
-            // print header
             if( mCommRank == 0 && gLog.info_level() > 0 )
             {
                 this->print_header() ;
@@ -328,7 +319,6 @@ namespace belfem
         void
         Controller::initialize_magnetic()
         {
-            // reset timer
             mTimer->reset();
             mOmegaPicard = mOmega0 ;
             mOmegaNewton = mOmega0 ;
@@ -339,7 +329,6 @@ namespace belfem
             mEquation->set_algorithm( SolverAlgorithm::Picard ) ;
             mReset = false ;
 
-            // reset iteration counter
             mIteration0 = mIteration ;
             mIteration = 0 ;
 
@@ -370,20 +359,16 @@ namespace belfem
                 mEquation2->make_savepoint() ;
             }
 
-            // update the fields
             mEquation->shift_fields() ;
 
-            // remember old time
             mTime0 = mTime ;
 
-            // update the time
             mTime += mDeltaTime ;
 
             mKernel->mesh()->time_stamp() = mTime ;
             mEquation->delta_time() = mDeltaTime ;
             mKernel->mesh()->time_step() = mMeshTimeStep ;
 
-            //Solve the circuit problem
             // The circuit MNA solve runs on rank 0 only. Its success/failure must be
             // broadcast so that every rank takes the reset/return branch together —
             // otherwise rank 0 resets while the others march into the collective solve and
@@ -419,14 +404,11 @@ namespace belfem
                 return ;
             }
 
-            //update the boundary conditions
             mKernel->compute_boundary_conditions( mTime ) ;
 
-            // reset epsilon
             mEpsilon = BELFEM_REAL_MAX ;
             mEpsilonAbs = BELFEM_REAL_MAX ;
 
-            // print header
             if( mCommRank == 0 && gLog.info_level() > 0 )
             {
                 this->print_header() ;
@@ -442,7 +424,6 @@ namespace belfem
 
             mDeltaTime2 = mDeltaTime/mCouplingFactor ;
 
-            // reset timer
             mTimer->reset();
             mOmegaPicard2 = mOmega0 ;
             mOmegaNewton2 = mOmega0 ;
@@ -453,7 +434,6 @@ namespace belfem
             mEquation2->set_algorithm( SolverAlgorithm::Picard ) ;
             mResetThermal = false ;
 
-            // reset iteration counter
             mIteration02 = mIteration2 ;
             mIteration2 = 0 ;
 
@@ -482,19 +462,15 @@ namespace belfem
             // / initialize_magnetic ( see reset_timestep ).
             mEquation2->shift_fields() ;
 
-            // remember old time
             mTime02 = mTime2 ;
 
-            // update the time
             mTime2 += mDeltaTime2 ;
 
             mKernel2->mesh()->time_stamp() = mTime2 ;
             mEquation2->delta_time() = mDeltaTime2 ;
 
-            //update the boundary conditions
             mKernel2->compute_boundary_conditions( mTime2 ) ;
 
-            // reset epsilon
             mEpsilon2 = BELFEM_REAL_MAX ;
             mEpsilonAbs2 = BELFEM_REAL_MAX ;
 
@@ -511,7 +487,6 @@ namespace belfem
             // free and get value*dt added.
             if ( mCommRank == 0 )
             {
-                // get the abstract nodes
                 Cell< Dof * > & tAbstractDofs = mKernel->dofmgr()->abstract_dofs();
 
                 // walk the CURRENT conditions first: the factory creates them
@@ -677,11 +652,10 @@ namespace belfem
             int  tExponent = ( int ) std::floor( std::log10( aKappa ) );
             real tMantissa = aKappa / std::pow( 10.0, ( real ) tExponent );
 
-            // the printf precision depends on the exponent's digit count, and
-            // the rounding-carry threshold depends on the precision ( 9.96
-            // under %.1f prints "10.0" and breaks the 6-char cell — Codex+
-            // Grok blind agreement ); a carry can also grow the exponent into
-            // the next digit class, hence the second pass
+            // The printf precision depends on the exponent digit count. The
+            // rounding threshold also depends on that precision: 9.96 under
+            // %.1f prints "10.0" and breaks the six-character cell. A carry
+            // can move the exponent to the next digit class, so use two passes.
             uint tPrecision = 0 ;
             for ( uint tPass = 0; tPass < 2; ++tPass )
             {
@@ -825,7 +799,7 @@ namespace belfem
             // the spare clause below compares against the omega of the PREVIOUS
             // watchdog call; every return path must refresh it AFTER the test,
             // or one spared iterate blinds the detector for the rest of the
-            // attempt ( three-AI round 2026-08-21, Grok R3 )
+            // attempt.
             const real tOmegaPrev = mWatchdogOmegaPrev ;
             mWatchdogOmegaPrev = aOmega ;
 
@@ -843,20 +817,13 @@ namespace belfem
                 return false ;
             }
 
-            // SPARE a stalled-best iterate while the line search is regrowing
-            // its relaxation: a no-new-best window that merely spans an
-            // overshoot/backtrack/recovery cycle is not a stall. Measured
-            // ( coarse tapestack3d, 2026-08-21 ): the AIMD recovery from a
-            // backtracked omega ~0.1 takes ~17-22 iterates at beta = 1.1,
-            // window W = 8 cut it mid-climb and CASCADED ( halving improved
-            // the best residual and was cut again, 2.10 -> 1.05 -> 0.53 ms ).
-            // A genuine stall has omega pinned or shrinking ( the hd floor
-            // grinds, and 383@2.10 with omega frozen at 0.053 ), so it still
-            // fires. The motivation parallels Chamberlain-Powell-Lemarechal's
-            // watchdog technique -- do not punish a nonmonotone step that is
-            // still contracting -- though theirs relaxes a line search and
-            // this spares a timestep cut. NaN prev ( cold start ) must not
-            // spare.
+            // A rising relaxation factor means the line search is recovering
+            // from a backtrack, not stalling. That recovery can outlast the
+            // watchdog window, so do not cut the timestep while omega is still
+            // climbing. A genuine stall has omega pinned or shrinking and still
+            // fires. A NaN previous omega ( cold start ) is not a recovery.
+            // Unlike the classical watchdog, which relaxes a line search, this
+            // guard spares a timestep cut.
             if ( ! std::isnan( tOmegaPrev ) && aOmega > tOmegaPrev )
             {
                 return false ;
@@ -941,7 +908,7 @@ namespace belfem
                         // the growth rule earns the other half back. After an
                         // ESCALATED-Newton stall the stale Picard omega predates a
                         // genuine Picard breakdown, so the conservative min-merge
-                        // stays ( Codex DQ2, uncoupled path has no line search )
+                        // stays because the uncoupled path has no line search.
                         if ( mForceNewton )
                         {
                             mOmegaPicard = std::max( std::min( mOmegaNewton, mOmegaPicard ), mOmegaMin );
@@ -1023,7 +990,7 @@ namespace belfem
             // body ( certified-magnetic, thermal still iterating ) the
             // residual did not come from a magnetic step — a promotion here
             // would wipe Anderson history and re-anchor the watchdog on
-            // coupling drift ( round-3 C5 ). The handoff idles until a
+            // coupling drift. The handoff idles until a
             // magnetic body runs again.
             if ( mMagBodyRanLastTrip ) {
             // mForceNewton ( set by try_escalate_to_newton on a Picard breakdown ) pins the
@@ -1042,12 +1009,10 @@ namespace belfem
                     // this attempt: the first full step after a promotion
                     // routinely overshoots from a nearly-converged iterate ( the
                     // reproducible it-3 kick, ts34 trace ), while re-damping on
-                    // every re-promotion would ratchet omega down x0.5 per
-                    // promote/demote cycle ( Codex+Grok audit ). omega recovers
-                    // through the growth rule once the tangent proves
-                    // contractive. The escalation path is untouched --
-                    // try_escalate_to_newton sets the algorithm directly and
-                    // never passes through this flip
+                    // every re-promotion would halve omega. Omega recovers through
+                    // the growth rule once the tangent proves contractive. The
+                    // escalation path is unchanged: try_escalate_to_newton()
+                    // sets the algorithm directly and never passes through this flip.
                     real tDamp = mFirstFlip ? 0.5 : 1.0 ;
                     mOmegaNewton = std::clamp( tDamp * mOmegaPicard, mOmegaMin, mOmegaMax );
                     mFirstFlip = false ;
@@ -1088,7 +1053,7 @@ namespace belfem
             // capture the algorithm that runs THIS iteration's solves: a same-call
             // escalation ( try_escalate_to_newton below ) can flip mEquation to
             // Newton after the solve, which must not re-route the omega store or
-            // the trust test in the adaptation tail ( Codex+Grok audit )
+            // the trust test in the adaptation tail
             const bool tRanNewton = mEquation->algorithm() == SolverAlgorithm::NewtonRaphson ;
             real & tOmega = tRanNewton ? mOmegaNewton : mOmegaPicard ;
             tOmega = std::clamp( tOmega, mOmegaMin, mOmegaMax ) ;
@@ -1137,7 +1102,7 @@ namespace belfem
             const real tEpsilonHeadAbs = mKernel->dofmgr()->absolute_residual();
 
             // a NaN head means the committed state itself is broken — cut
-            // the timestep before anything consumes it ( round-3 N1: the
+            // the timestep before anything consumes it ( the
             // decision uses the BROADCAST scalar only, never mRhsNorm )
             if ( std::isnan( tEpsilonHead ) )
             {
@@ -1204,11 +1169,10 @@ namespace belfem
             // accepted iterate's epsilon ( BELFEM_REAL_MAX on the first
             // iteration, reset in initialize_*, so trial 1 always passes ) and
             // REPLACED for Newton trials by the pre-update residual of the
-            // CURRENT assembly the moment it is known ( lagged-A metric fix,
-            // 2026-08-10 ): mEpsilon0 was measured under the PREVIOUS
-            // assembly, and whenever the two assemblies disagree by more than
-            // the acceptance band, the stale reference rejected all eight
-            // trials flat in omega -- the omega -> 0 limit of any trial is
+            // CURRENT assembly the moment it is known: a reference measured
+            // under the PREVIOUS assembly rejects all eight trials flat in
+            // omega whenever the two assemblies disagree by more than the
+            // acceptance band -- the omega -> 0 limit of any trial is
             // exactly the pre-update residual, so against the honest
             // reference a small enough step is always acceptable and the
             // search degrades gracefully instead of deadlocking ( greg5 out2;
@@ -1225,7 +1189,6 @@ namespace belfem
 
             while ( tRun )
             {
-                // set relaxation parameters
                 mEquation->set_omega( tOmega );
 
                 if ( ! tFirstTrial )
@@ -1259,7 +1222,6 @@ namespace belfem
                     return ;
                 }
 
-                // get the residual
                 mEpsilon = mKernel->dofmgr()->residual( mIteration );
                 mEpsilonAbs = mKernel->dofmgr()->absolute_residual();
                 tLogEpsilon = std::log10( mEpsilon ) ;
@@ -1268,7 +1230,7 @@ namespace belfem
                 // pair, NOT kappa: sampled at the FIRST SOLVE of
                 // the timestep and disarmed right after ( no-op unless
                 // "mumps error analysis" is on and the solver is MUMPS --
-                // NOT the eigen flag; the two diagnostics split 2026-08-30 ).
+                // NOT the eigen flag, which gates a different diagnostic ).
                 // Iteration 0 is structurally Picard ( promotion requires
                 // mIteration > 1 ) and Picard accepts its first trial, so
                 // this is exactly one instrumented solve — the tBacktracks
@@ -1319,7 +1281,7 @@ namespace belfem
                 // multi-decade kick from a deep reference: a full Newton step
                 // from a -50 dB iterate that jumps to -30 dB used to sail
                 // through the plain absolute clause and could spiral the whole
-                // timestep ( ts34 trace, dl20260727 )
+                // timestep
                 else if ( tLogEpsilon < tLogEpsilonRef + 0.3
                      || ( tLogEpsilon < 0.8 && tLogEpsilon < tLogEpsilonRef + 1.0 ) )
                 {
@@ -1339,7 +1301,6 @@ namespace belfem
                     // magnetic-only run an omega-independent flat regression
                     // is a defect signature, not baseline drift, and this
                     // branch was observed laundering a 44 dB kick there
-                    // ( Garber R9 trace, dl20260806 )
                     //
                     // the regression did NOT shrink over two consecutive omega
                     // halvings. A genuine step overshoot vanishes as omega -> 0;
@@ -1354,7 +1315,7 @@ namespace belfem
                     // and stagnation guards still cut -- through honest
                     // mechanisms instead of a reject storm. TWO flat pairs are
                     // required because a single one could also be a saturated
-                    // divergence plateau ( Codex EQ1 ); within one line search
+                    // divergence plateau; within one line search
                     // the thermal state is fixed, so genuine drift stays flat
                     // across every halving and only pays one extra solve here
                     //
@@ -1393,10 +1354,10 @@ namespace belfem
 
                     // flat-pair bookkeeping for the moved-baseline detector:
                     // count consecutive rejects whose residual matches the
-                    // previous trial within 0.05 decade AND whose omega
-                    // genuinely decreased — at the mOmegaMin floor the halving
-                    // clamps to a no-op and identical trials would count as
-                    // flat without any physics content ( Grok R1c )
+                    // previous trial within 0.05 decade and whose omega
+                    // decreased. Omega must decrease because at the mOmegaMin
+                    // floor the halving is a no-op, and identical trials would
+                    // otherwise count as flat without physical meaning.
                     tFlatRejects = ( tBacktracks > 1
                         && tOmega < 0.6 * tOmegaTrialPrev
                         && std::abs( tLogEpsilon - tLogEpsilonPrev ) < 0.05 ) ?
@@ -1507,7 +1468,7 @@ namespace belfem
             // since Picard iterates always accept, this is where a doomed
             // iterate would otherwise reach thermal and charge the shared
             // solver-failure counter for a state that is already condemned
-            // gated on tSolveM like tMagneticReset ( round-3 R6 ): a
+            // gated on tSolveM like tMagneticReset: a
             // certified skip trip renders no budget verdict — at
             // mIteration == max an ungated prediction would freeze the
             // thermal side of a healthy step and trip the deadlock error
@@ -1524,7 +1485,7 @@ namespace belfem
 
             // a latched stall makes further thermal work pointless — without
             // this clause the stalled floor would keep taking bodies and the
-            // no-body exit below could never fire ( round-3 C1 )
+            // no-body exit below could never fire
             const bool tUpdateThermal = mKernel2 != nullptr
                 && mEpsilon < mThermalUpdateGate
                 && ! tMagneticDoomed
@@ -1630,8 +1591,8 @@ namespace belfem
 
                 // ---------- THERMAL HEAD ----------
                 // Gauss-Seidel position preserved: assembled at the CURRENT
-                // state, AFTER any magnetic body this trip — never reused
-                // from before it ( round-3 Codex 1 )
+                // state after any magnetic body this trip. Never reuse it
+                // from before that body.
                 mKernel2->dofmgr()->compute_jacobian_and_rhs();
 
                 this->dump_system_if_requested( mKernel2->dofmgr(), "thermal",
@@ -1757,7 +1718,7 @@ namespace belfem
                 mThermalFrozen = true ;
 
                 // flat evidence must not carry across a freeze: the state
-                // moves while thermal is frozen ( Codex RQ2 )
+                // moves while thermal is frozen
                 mThermalFlatCount = 0 ;
             }
 
@@ -1801,7 +1762,7 @@ namespace belfem
                 return ;
             }
 
-            // deadlock guard ( round-3 R-A ): magnetic certified but thermal
+            // deadlock guard: magnetic certified but thermal
             // neither runnable nor stalled — nothing can advance, and a
             // silent spin here would be the exact silent-failure class
             BELFEM_ERROR( tSolveM || mKernel2 == nullptr
@@ -1836,7 +1797,6 @@ namespace belfem
             // down past +10 dB. Termination then rests on the stagnation guard ( a flat
             // residual hands Newton back to Picard, then a second Picard stall resets ) and
             // the mMaxNumIterations ceiling -- both still active below -- not the +10 dB rule.
-            //
             // The rule is PERSISTENT, not instantaneous: three consecutive
             // iterates above the bar. A flux-front Picard overshoot from a
             // near-converged state recovers within two alpha halvings when
@@ -1851,7 +1811,7 @@ namespace belfem
                 && mDivergenceStrikes >= 3 && mIteration > mMinNumIterations ;
             // a skip trip runs no magnetic body: its counters and residual
             // describe the last body, so magnetic reset verdicts are only
-            // rendered on body trips ( round-3 R6 — the magnetic budget must
+            // rendered on body trips ( the magnetic budget must
             // not burn on idle certification trips )
             const bool tMagneticReset = tSolveM
                 && ( mIteration > mMaxNumIterations
@@ -1903,7 +1863,6 @@ namespace belfem
                 }
                 else
                 {
-                    //tOmega *= mAlpha ; // reduce the relaxation
                     this->reset_timestep() ;
                     return;
                 }
@@ -1912,7 +1871,7 @@ namespace belfem
             // stagnation guard: cut the timestep if Picard has stalled ( Newton falls back
             // to Picard internally; see magnetic_stagnation_forces_reset ).
             // Both guards judge magnetic BODY progress — idle certification
-            // trips must neither feed nor trigger them ( round-3 R6 )
+            // trips must neither feed nor trigger them
             if ( tSolveM && this->magnetic_stagnation_forces_reset() )
             {
                 this->reset_timestep() ;
@@ -1932,12 +1891,11 @@ namespace belfem
             // relic of the pre-iteration-count timestep controller )
             if ( tSolveM && mIteration > 1 )
             {
-                // MIT-3a: the streak is judged for EVERY accepted iterate,
-                // not only improving ones. Nesting the reset inside the
-                // improvement branch would let a qualifier, an accepted
-                // wobble, and another qualifier count as "consecutive"
-                // ( Codex, 2026-08-18 ) -- exactly the single-lucky-step
-                // case the streak exists to exclude
+                // Evaluate the streak after every accepted iterate, not only
+                // improving ones. If the reset stayed in the improvement branch,
+                // a qualifying iterate, then an accepted wobble, then another
+                // qualifying iterate would count as consecutive. The streak
+                // excludes this one-step improvement.
                 if ( tRanNewton
                      && tBacktracks == 0
                      && mEpsilon < 0.5 * mEpsilon0 )
@@ -1952,7 +1910,7 @@ namespace belfem
                 if( mEpsilon < mEpsilon0 )
                 {
                     mNumIterationsDiv = 0;
-                    // O2 amendment ( ts16 log ): the growth branch stays
+                    // the growth branch stays
                     // ACTIVE while Anderson is on. Holding omega made it a
                     // one-way ratchet to the floor -- alpha-decay and the
                     // backtracking kept shrinking it and nothing grew it
@@ -1967,8 +1925,7 @@ namespace belfem
                     // healthily contracting Newton ). tRanNewton, not the live
                     // algorithm: a same-call escalation must not classify the
                     // accepted Picard step as Newton trust
-                    // MIT-3a ( todo/timestep_collapse_mitigation_design.md
-                    // sec 4a ): the qualifying condition builds a STREAK, and
+                    // the qualifying condition builds a STREAK, and
                     // only the second consecutive qualifying step earns the
                     // geometric recovery. One first-trial contraction is not
                     // evidence near a residual floor: on tapestack3d the
@@ -2019,13 +1976,13 @@ namespace belfem
             //actually ran ( mOmegaPicard2 or mOmegaNewton2 ). Moved out of
             //the magnetic adaptation gate: a thermal body on a
             //magnetic-skip trip still adapts omega2, and a thermal HEAD that
-            //certified without solving must not ( round-3 C4/R6 )
+            //certified without solving must not
             if ( tSolvedThermal && tOmega2Ptr != nullptr )
             {
                 real & tOmegaT = *tOmega2Ptr ;
                 if( mEpsilon2 < mEpsilon20 )
                 {
-                    // O2 amendment ( ts16 log ): growth stays active,
+                    // growth stays active,
                     // see the magnetic block for the rationale
                     tOmegaT *= mBeta  + mGamma * 2./ constant::pi * std::atan( ( mEpsilon20 - mEpsilon2 ) / mEpsilon20 ) ;
                 }
@@ -2073,7 +2030,7 @@ namespace belfem
             // initialize_thermal() call, which recomputes mDeltaTime2 and
             // clears the flag. Returning here hands control back to the
             // driver's outer time2 loop, exactly as the old
-            // while( run_thermal() ) predicate did ( code-audit P0 )
+            // while( run_thermal() ) predicate did
             mTripExit = false ;
 
             while ( true )
@@ -2147,8 +2104,6 @@ namespace belfem
             tOmega = std::clamp( tOmega, mOmegaMin, mOmegaMax ) ;
             mEquation->set_omega( tOmega );
 
-
-
             this->reset_dotQ();
             mKernel->dofmgr()->compute_jacobian_and_rhs();
             this->collect_dotQ();
@@ -2220,7 +2175,6 @@ namespace belfem
                 return ;
             }
 
-            // get the residual
             mEpsilon = mKernel->dofmgr()->residual( mIteration );
             mEpsilonAbs = mKernel->dofmgr()->absolute_residual();
 
@@ -2234,10 +2188,8 @@ namespace belfem
             // staged Anderson pair commits right away
             this->anderson_commit_magnetic() ;
 
-            // increment iteration counter
             ++mIteration ;
 
-            // print the line
             if( mCommRank == 0 && gLog.info_level() > 0 )
             {
                 this->print_line_magnetic( tOmega );
@@ -2264,7 +2216,6 @@ namespace belfem
                 }
                 else
                 {
-                    //tOmega *= mAlpha ; // reduce the relaxation
                     this->reset_timestep() ;
                     return;
                 }
@@ -2293,7 +2244,7 @@ namespace belfem
                 if( mEpsilon < mEpsilon0 )
                 {
                     mNumIterationsDiv = 0;
-                    // O2 amendment ( ts16 log ): the growth branch stays
+                    // the growth branch stays
                     // ACTIVE while Anderson is on. Holding omega made it a
                     // one-way ratchet to the floor -- alpha-decay and the
                     // backtracking kept shrinking it and nothing grew it
@@ -2398,7 +2349,6 @@ namespace belfem
             real & tOmega = mEquation2->algorithm() == SolverAlgorithm::Picard ? mOmegaPicard2 : mOmegaNewton2 ;
             tOmega = std::clamp( tOmega, mOmegaMin2, mOmegaMax2 ) ;
 
-            // set relaxation parameters
             mEquation2->set_omega( tOmega );
             mKernel2->dofmgr()->compute_jacobian_and_rhs();
 
@@ -2467,7 +2417,6 @@ namespace belfem
                 return ;
             }
 
-            // get the residual
             mEpsilon2 = mKernel2->dofmgr()->residual( mIteration2 );
             mEpsilonAbs2 = mKernel2->dofmgr()->absolute_residual();
 
@@ -2480,10 +2429,8 @@ namespace belfem
             // no accept/reject loop here: the staged pair commits right away
             this->anderson_commit_thermal() ;
 
-            // increment iteration counter
             ++mIteration2 ;
 
-            // print the line
             if( mCommRank == 0 && gLog.info_level() > 0 )
             {
                 this->print_line_thermal( tOmega );
@@ -2491,7 +2438,6 @@ namespace belfem
 
             if( mIteration2 > mMaxNumIterations2 || ((mEpsilon2 > 1E1 && mIteration2 > mMinNumIterations2) || std::isnan( mEpsilon2 ) ) )
             {
-                //tOmega *= mAlpha ; // reduce the relaxation
                 if (mDeltaTime2 < mDeltaTime/20)
                 {
                     mCouplingFactor = 20 ;
@@ -2535,7 +2481,7 @@ namespace belfem
                 if( mEpsilon2 < mEpsilon20 )
                 {
                     mNumIterationsDiv = 0;
-                    // O2 amendment ( ts16 log ): growth stays active,
+                    // growth stays active,
                     // see iterate_coupled for the rationale
                     tOmega *= mBeta  + mGamma * 2./ constant::pi * std::atan( ( mEpsilon20 - mEpsilon2 ) / mEpsilon20 ) ;
                 }
@@ -2618,7 +2564,6 @@ namespace belfem
                 return false ;
             }
 
-
             return true ;
         }
 
@@ -2626,7 +2571,6 @@ namespace belfem
         {
             --mRunningTimeStep ;
             mReset = true ;
-
 
             // MIT-3a: a rejected step's Newton contractions are not evidence
             // for the retry -- the retry solves a DIFFERENT problem ( smaller
@@ -2680,9 +2624,9 @@ namespace belfem
             mIteration = 0 ;
             mIteration2 = 0 ;
 
-            // re-arm the first-promotion latches so the retry damps its first
-            // Newton entry again ( currently redundant with the drivers'
-            // initializers, but reset must be self-contained — Codex DQ1 )
+            // Re-arm the first-promotion latches so the retry damps its first
+            // Newton entry again. The drivers' initializers also do this, but
+            // reset_timestep() must be self-contained.
             mFirstFlip  = true ;
             mFirstFlip2 = true ;
 
@@ -2800,22 +2744,16 @@ namespace belfem
                 mDeltaTime *= 0.5 ;
             }
 
-            // A rejection is one of the most diagnostically important events
-            // in a run, and it used to be SILENT — the message here was
-            // commented out, so the only trace of a rejected step was the
-            // same step number reappearing with a smaller Δt in the next
-            // header ( 2026-08-13 quench night: 19 rejections, every one
-            // reconstructed after the fact by diffing step headers ). Printed
-            // AFTER the Δt update so the value shown is the one the retry
-            // actually uses — the cut is not always a plain halving, the
-            // floor branch above clamps instead.
+            // A rejection is an important diagnostic event. Without this
+            // message, it appears only as the same step number with a smaller
+            // Δt in the next header. Print it after the Δt update so it shows
+            // the value used for the retry. The cut is not always a halving;
+            // the floor branch can clamp it instead.
             if( mCommRank == 0 && gLog.info_level() > 0 )
             {
                 // +1: reset_timestep decremented mRunningTimeStep at entry,
                 // so the ATTEMPTED step — the one whose header the reader
-                // just saw — is one above the counter here ( observed on the
-                // first live print: the message named 683 for an attempt
-                // headed 684 )
+                // just saw — is one above the counter here
                 // same 20/25/24 column geometry as print_header, so a
                 // rejection reads as the twin of the header it follows
                 std::cout << "   ┌────────────────────┬─────────────────────────┬────────────────────────┐" << std::endl ;
@@ -2976,7 +2914,6 @@ namespace belfem
                 //Remember previous mDeltaTime if it was changed due to save point
                 if (!std::isnan( mDeltaTimeTemporary ))
                 {
-                    //Reset the temporary time stepping value
                     mDeltaTime = mDeltaTimeTemporary ;
                     mDeltaTimeTemporary = BELFEM_QUIET_NAN ;
                 }
@@ -3024,7 +2961,6 @@ namespace belfem
             }
         }
 
-
         void
         Controller::compute_circuit_current()
         {
@@ -3039,7 +2975,6 @@ namespace belfem
                 }
             }
 
-            // get the abstract nodes
             Cell< Dof * > & tAbstractDofs = mKernel->dofmgr()->abstract_dofs();
             uint tCount = 0 ;
             for (PhysicalBoundaryCondition * tBC : mKernel->boundary_conditions())
@@ -3061,8 +2996,7 @@ namespace belfem
             mDeltaTime0 = mDeltaTime ;
             mIterationTime = mTimer->stop() ;
 
-
-            // conditioning, per timestep ( Christian, 2026-08-29 ): the MUMPS
+            // conditioning, per timestep: the MUMPS
             // COND pair, if asked for, was already sampled on the FIRST
             // iterate of this step by the arm/capture pair ; the eigen
             // estimate, if asked for, is taken HERE, at the END of the step,
@@ -3088,7 +3022,6 @@ namespace belfem
                 mPostprocesingTime = tTimer.stop();
             }
 
-            // Update the FEM component in the circuit
             if ( mCircuit != nullptr && mCommRank == 0)
             {
                 mCircuit->save_timestep() ;
@@ -3116,7 +3049,7 @@ namespace belfem
             // a completed timestep clears the consecutive-solver-failure
             // count -- unconditionally, not only when the timestep adapts
             // ( with "adapt timestep : off" the count would otherwise
-            // accumulate sporadic failures across the whole run, Grok SQ5 )
+            // accumulate sporadic failures across the whole run )
             if ( ! mReset )
             {
                 mSolverFailCount = 0 ;
@@ -3177,7 +3110,6 @@ namespace belfem
             // SEPARATE quantity behind a SEPARATE key: this function serves
             // "compute conditioning" only, and every field with THAT flag set
             // gets the eigen treatment once per timestep.
-            //
             // That fallback returns kappa = |lambda_max| / |lambda_min|, and
             // the small end can be OUT OF REACH: ARPACK accepts a Ritz value
             // once its error bound drops below tol * |lambda|, and that bound
@@ -3191,11 +3123,9 @@ namespace belfem
             // hands back a NaN rather than aborting -- the footer shows n/a
             // and the run continues. Where kappa is smaller the estimate is
             // perfectly good, so the path stays live.
-            //
             // MUMPS remains the recommended solver for this diagnostic ; the
             // deck parser says so. PETSc and SuperLU could also supply the
-            // Arioli/Demmel/Duff numbers -- see
-            // todo/conditioning_diagnostic_backends.md
+            // Arioli/Demmel/Duff numbers.
             // each field is asked separately, against its own EigenValues --
             // the DofManager builds one per instance, so the two kernels
             // already own one each and nothing is shared between them.
@@ -3212,9 +3142,7 @@ namespace belfem
             // return BELFEM_SIGNALING_NAN, because get_cond1 / get_cond2 hand
             // back a NaN unless ICNTL(11) is still armed ( cl_SolverMUMPS.cpp
             // ) -- so a re-read silently overwrites the captured numbers with
-            // n/a. That defect was live on 2026-08-29 and is what this
-            // comment exists to prevent recurring.
-            //
+            // n/a. Do not re-read them here.
             // THE NUMBERS ARE NOT THE SAME QUANTITY and must never be
             // compared: MUMPS COND1 is a componentwise 1-norm condition
             // estimate for the solved system WITH ITS ACTUAL RIGHT-HAND SIDE,
@@ -3223,17 +3151,14 @@ namespace belfem
             // hands DMUMPS_SOL_LCOND an identity weight vector, under its own
             // comment "Notice that D is always the identity"
             // ( MUMPS 5.9.1 dsol_driver.F:6101-6111 ), so no scaling enters
-            // the estimate. Saying "of the scaled matrix" here was wrong and
-            // was corrected 2026-08-29 -- while slot 0
-            // returns |lambda_max| / |lambda_min|, a 2-norm property of the
-            // matrix alone -- and that ratio is kappa_2 only for a NORMAL
-            // matrix. It is therefore kappa_2 for the symmetric thermal
-            // Jacobian and merely a spectral ratio for the nonsymmetric h-phi
-            // one; since 2026-08-30 the footer prints the honest common name,
-            // |lambda|max/|lambda|min, for both fields.
-            // Measured on the same tapestack3d thermal operator:
-            // kappa_2 = 2.96e7 against a COND1 in the 1e4-1e5 range. Both are
-            // right ; they answer different questions
+            // the estimate. Slot 0 returns |lambda_max| / |lambda_min|, a
+            // spectral property of the matrix alone -- and that ratio is
+            // kappa_2 only for a NORMAL matrix. It is therefore kappa_2 for
+            // the symmetric thermal Jacobian and merely a spectral ratio for
+            // the nonsymmetric h-phi one, which is why the footer prints the
+            // common name |lambda|max/|lambda|min for both fields. The two
+            // numbers answer different questions and can differ by orders
+            // of magnitude.
             if ( mComputeConditioning )
             {
                 mTimer->reset() ;
@@ -3249,7 +3174,7 @@ namespace belfem
             {
                 mTimer->reset() ;
 
-                // R3b tripwire: mSymmetric is written ONCE, at attach, by
+                // mSymmetric is written ONCE, at attach, by
                 // setup_thermal_eigen(). If that write is ever lost -- a new
                 // attach path that skips the helper, or an EigenValues object
                 // rebuilt after attach -- the thermal field silently drops to
@@ -3318,12 +3243,11 @@ namespace belfem
             if ( mKernel2 == nullptr ) return ;
 
             // The thermal Jacobian is symmetric by construction, the magnetic
-            // h-phi one is not ( Christian, 2026-08-28 ), so the thermal field
+            // h-phi one is not, so the thermal field
             // gets the Lanczos driver and the magnetic field keeps the default
             // nonsymmetric one. Declared here rather than measured: detecting
             // it would mean comparing A against A^T across a distribution that
             // may already be transposed column blocks.
-            //
             // Written ONCE per attach rather than once per timestep. That is
             // safe because the object outlives the call: mEigenValues is
             // assigned only in the DofManager constructor and nothing rebuilds
@@ -3332,7 +3256,6 @@ namespace belfem
             // the matrix rather than the object. EigenValues itself already
             // states the model: mSymmetric "is set once at setup, never
             // derived from matrix values, so it needs no broadcast".
-            //
             // Unconditional on purpose: it selects an ARPACK driver and is
             // inert unless the eigen diagnostic actually runs, so it does not
             // belong behind either diagnostic flag. NOT rank-guarded -- the
@@ -3343,13 +3266,12 @@ namespace belfem
 
         // ----------------------------------------------------------------
         // Diagnostic-configuration warnings, one function per field.
-        //
         // Split by field rather than composed into one message because the
         // two fields are validated at DIFFERENT TIMES: the magnetic kernel
-        // exists when set_params runs, the thermal one usually does not. The
-        // pre-2026-08-30 code composed "magnetic and thermal" in a single
-        // sprint at parse time, which is why its thermal branch -- guarded on
-        // a kernel that is null there -- never fired on any coupled deck.
+        // exists when set_params runs, the thermal one usually does not. A
+        // single message composed at parse time would have its thermal
+        // branch guarded on a kernel that is null there, so it would never
+        // fire on any coupled deck.
         // ----------------------------------------------------------------
 
         void
@@ -3446,12 +3368,11 @@ namespace belfem
             if ( ! mMumpsErrorAnalysis2 || mKernel2 == nullptr ) return ;
 
             // NOTHING but MUMPS arming lives here. The thermal eigen driver is
-            // selected in setup_thermal_eigen(), called once per attach --
-            // until 2026-08-30 the set_symmetric() call sat in THIS function,
-            // between the flag guard and the MUMPS guard, so re-gating the
-            // function onto the error-analysis flag would have silently sent
-            // the thermal field through the nonsymmetric driver on every deck
-            // that did not ask for MUMPS error analysis
+            // selected in setup_thermal_eigen(), called once per attachment. A
+            // set_symmetric() call in this function would sit between the flag
+            // guard and the MUMPS guard. It would silently send the thermal
+            // field through the nonsymmetric driver on every deck that does
+            // not request MUMPS error analysis.
             if ( mKernel2->dofmgr()->solver() == nullptr
                  || mKernel2->dofmgr()->solver()->type() != SolverType::MUMPS ) return ;
 
@@ -3476,13 +3397,10 @@ namespace belfem
             // estimator, ITMAX = 5, twice if the second row category is
             // non-empty -- it does NOT add iterative refinement, which is
             // ICNTL(10) and already set to 20 for a single RHS
-            // [ cl_SolverMUMPS.cpp, mumpstools.f90 ]; the earlier claim that
-            // ICNTL(11) runs refinement was refuted 2026-08-29 ), we cannot
-            // know which iterate
-            // will be the last, and the native estimate's drift across a step
-            // is negligible next to the estimate's own error ( Christian,
-            // 2026-08-29 ). Disarmed here ; initialize_timestep re-arms on the
-            // next step
+            // [ cl_SolverMUMPS.cpp, mumpstools.f90 ] ), we cannot know which
+            // iterate will be the last, and the native estimate's drift
+            // across a step is negligible next to the estimate's own error.
+            // Disarmed here ; initialize_timestep re-arms on the next step
             mKernel->dofmgr()->solver()->set_mumps_error_analysis(
                 MumpsErrorAnalysis::None );
         }
@@ -3516,23 +3434,19 @@ namespace belfem
             Solver * tSolver = aDofMgr->solver() ;
             if ( tSolver == nullptr ) return ;
 
-            // only PETSc is gated here. The original premise for exempting
-            // the direct libraries — "a factorization's delivered accuracy
-            // does not depend on the stated tolerance" — was FALSIFIED for
-            // STRUMPACK: its outer GMRES stops at its tolerances.
-            // The exemption stands anyway, but NOT because a loose relative
-            // pairing is safe there — the 1e-8 / 1e-11 pairing this comment
-            // once called "proven" collapsed the tapestack3d timestep, and
-            // the 2026-08-18 A/B showed its Picard residual was the linear
-            // exit test, not the physics. The exemption survives because
-            // the WORKING pairing is itself lin > nonlin: with the class
-            // default 1e-10 always applied ( since 2026-08-18 ) against a
-            // 1e-11 nonlinear target, factorization-preconditioned GMRES
-            // overshoots its exit test by decades ( observed ~1e-15 ), so
-            // the lin <= nonlin predicate this gate applies to PETSc would
-            // refuse a configuration that demonstrably works. A deck whose
+            // Only PETSc is gated here. The direct libraries are exempt, but
+            // not because a factorization's accuracy is independent of the
+            // stated tolerance: STRUMPACK's outer GMRES stops at its
+            // tolerances, and a loose relative pairing has made the Picard
+            // residual report the linear exit test instead of the physics and
+            // collapsed the timestep. The exemption survives because the
+            // working pairing is itself lin > nonlin. With the class default
+            // 1e-10 applied against a 1e-11 nonlinear target, the
+            // factorization-preconditioned GMRES overshoots its exit test by
+            // decades, so the lin <= nonlin predicate this gate applies to
+            // PETSc would refuse a configuration that works. A deck whose
             // STRUMPACK residual crawls instead of dives states a tighter
-            // 'relative tolerance' — the expert override, not this gate
+            // 'relative tolerance' — the expert override, not this gate.
             if ( tSolver->type() != SolverType::PETSc ) return ;
 
             const real tLinTol = tSolver->parameters().relative_tolerance() ;
@@ -3659,8 +3573,6 @@ namespace belfem
             std::cout << tMessage << std::endl ;
             std::cout <<     "   ├────────────────────┴─────────────────────────┴────────────────────────┤"<< std::endl ;
         }
-
-
 
         void
         Controller::print_line( const real aOmega, const real aOmega2 )
@@ -3812,12 +3724,10 @@ namespace belfem
             // background's value() under an "A" label states a field strength in
             // amperes: for a 1 T ramp that reads as tens of thousands of amperes
             // through a conductor carrying none.
-            //
             // The background condition imposes H, so it is converted back to the
             // flux density the deck asked for, B = mu0*H. Decks that are neither
             // current- nor background-driven keep the legacy behaviour verbatim,
             // so no existing footer changes.
-            //
             // NOTE a voltage condition's value() is in VOLTS and has always been
             // folded into this maximum under an "A" label. That mislabel is not
             // this change's to fix silently, and it survives UNCHANGED in the
@@ -3933,13 +3843,12 @@ namespace belfem
             unsigned int minutes = ( uint ) timecount / 60 ;
             unsigned int  seconds = ( uint ) timecount % 60 ;
 
-
             const bool tMagneticEigenFailed = mComputeConditioning  && ! std::isfinite( mConditionNumbers1( 0 ) ) ;
 
             // slot 0 of the THERMAL vector, negated: the banner fires when the
             // thermal EIGEN estimate is missing. Reading the magnetic vector,
-            // or reading it unnegated, made this predicate report the opposite
-            // of its own name ( fixed 2026-08-29 )
+            // or reading it unnegated, makes this predicate report the
+            // opposite of its own name
             const bool tThermalEigenFailed = mComputeConditioning2
                  && mKernel2 != nullptr
                  && mKernel2->dofmgr()->solver() != nullptr
@@ -3985,12 +3894,9 @@ namespace belfem
             }
 
             // Each row is gated on ITS OWN diagnostic, and the closing tail
-            // is unconditional. The outer if/else that used to wrap all of
-            // this was dropped on 2026-08-30: it keyed the whole block on the
-            // EIGEN flags, so a deck asking only for the MUMPS numbers got
-            // none of its rows, and its two branches carried byte-identical
-            // copies of the tail.
-            //
+            // is unconditional. An outer if/else keyed on the EIGEN flags
+            // would prevent a deck that requests only the MUMPS numbers from
+            // printing any rows. It would also duplicate the tail.
             // The kappa glyph would be TWO BYTES in utf-8, so a %-Ns field
             // would pad by bytes and skew the frame: the label text is
             // written literally and only the fixed-width value is substituted.
@@ -4001,8 +3907,7 @@ namespace belfem
                 // for a NORMAL matrix, so the old symmetric/nonsymmetric
                 // branch printed "κ₂" for the thermal field and the ratio for
                 // the magnetic one. Naming the ratio everywhere never
-                // over-claims, needs no glossary, and is the label INC-213
-                // pointed at when it recorded "κ₂" as part of a misreading
+                // overstates the result and needs no glossary.
                 tFormat  = "   │                    |λ|max/|λ|min, Magnetic         :  %12s    │" ;
                 tMessage = sprint( tFormat.c_str(),
                     conditioning_string( mConditionNumbers1( 0 ) ).c_str() );
@@ -4256,7 +4161,6 @@ namespace belfem
                     tFile << std::setprecision( 16 );
                 }
 
-                // Write header only on first call
                 if ( mFirstIVSave && tFile.is_open() )
                 {
                     tFile << "time";
@@ -4268,10 +4172,8 @@ namespace belfem
                     mFirstIVSave = false ;
                 }
 
-                // Write current time
                 if ( tFile.is_open() ) tFile << mTime ;
 
-                // Write current and voltage for each abstract DoF
                 uint tCount = 0 ;
 
                 for ( fem::Dof * tDof : tAbstractDofs )
@@ -4474,23 +4376,21 @@ namespace belfem
             }
             else
             {
-                // absent block = gauging OFF. Opt-in since 2026-09-01
-                // ( Christian ): on the tape decks the default 1e-4 was
-                // invisible to the conditioning estimate and kappa tracked
-                // the timestep instead. It was on at 1e-4 from 2026-08-27
-                // to then, and off before that. Written, not skipped: the
-                // IWG constructor default is 1e-4 and would otherwise stand
+                // With no block, gauging is off. Gauging is opt-in because a
+                // default of 1e-4 was invisible to the conditioning estimate,
+                // so kappa tracked the timestep. Always write the value: the
+                // IWG constructor default is 1e-4 and would otherwise remain.
                 mEquation->set_penalty( 0.0, 2 );
             }
 
             // the ghost coupling of the thin-shell layers, read through the
             // same helper the thin-shell factory and the mesh cache tag use
             // ( fn_FEM_ghost_switch.hpp ), so the three cannot disagree:
-            // -1 = no block = off ( opt-in since 2026-09-01 ), 0 = off,
+            // -1 = no block = off ( opt-in ), 0 = off,
             // > 0 = on with that eta. A block without eta is refused there.
             // ALWAYS written, on every rank ( set_penalty broadcasts ): the
             // IWG constructor default is 4 and would otherwise survive into
-            // the assembly and the log ( audit finding ). With the ghost off
+            // the assembly and the log. With the ghost off
             // there are no ghost facets to assemble, so the 0 is documentary
             const real tEta = fem::read_ghost_eta( aSection );
             mEquation->set_penalty( tEta > 0.0 ? tEta : 0.0, 0 );
@@ -4523,7 +4423,6 @@ namespace belfem
                 }
             }
 
-            //Read thermal if exists
             if (aSection->section_exists( "nonlinear thermal" ))
             {
                 const input::Section * tNonLinearThermal = aSection->section( "nonlinear thermal" );
@@ -4816,13 +4715,10 @@ namespace belfem
             // key, because it spans two sections: the penalties come from
             // "nonlinear", the scheme and the Anderson depths from "timestep",
             // which is read above.
-            //
             // Every row is printed, including the off ones. Both penalties are
-            // opt-in, and both have changed their default inside a single
-            // release ( chi was on at 1e-4 from 2026-08-27 to 2026-09-01 ), so
-            // the log has to state what a run actually used -- an absent row
+            // opt-in, so the log has to state what a run actually used -- an
+            // absent row
             // cannot be told from a knob nobody looked at.
-            //
             // Row labels follow the deck sections that set them
             // ( "nitsche ghost penalty", "coulomb gauge penalty",
             //   "anderson stabilization" ) so a reader can grep the input.
@@ -4903,12 +4799,11 @@ namespace belfem
             }
 
             // condition-number diagnostics ( print_footer ). Only the flags
-            // are read here. Two INDEPENDENT keys since 2026-08-30:
+            // are read here. Two independent keys:
             // "compute conditioning" runs the eigenvalue estimate
             // ( compute_conditioning() ), "mumps error analysis" arms MUMPS
             // ICNTL(11) per timestep around the first solve
             // ( arm_conditioning_* ). Neither is a fallback for the other.
-            //
             // The key belongs to a SOLVE, so it is read per field from
             // "linear magnetic" / "linear thermal" -- the same sections that
             // already choose each field's library. A "compute conditioning"
@@ -4938,7 +4833,7 @@ namespace belfem
             // "mumps error analysis" -- the SECOND, independent diagnostic.
             // Same three-site chain as the flag above: the solver section is
             // the shorthand for both fields, each linear block overrides its
-            // own. Split out of "compute conditioning" on 2026-08-30 because
+            // own. Separate from "compute conditioning" because
             // the two answer different questions at very different prices, and
             // neither could be requested alone.
             if ( aSection->key_exists( "mumps error analysis" ) )
@@ -4971,8 +4866,7 @@ namespace belfem
             // Its kernel does not exist yet on the coupled path
             // ( MaxwellFactory::create_controller builds the controller with
             // the magnetic kernel alone ), so a thermal branch in this block
-            // could never fire -- which is exactly what the pre-2026-08-30
-            // version did, silently, for its whole life. The thermal half
+            // could never fire, silently. The thermal half
             // lives in check_thermal_diagnostics(), called once the kernel is
             // actually attached
             mParamsSet = true ;
@@ -5202,13 +5096,11 @@ namespace belfem
                                        tOrder > 0 ? tOrder - 1 : 0 );
             if ( tRequired == 0 ) return ;
 
-            // EXACTLY the levels verified below: handing a deeper,
-            // never-filled level to distribute_fields would fault rather
-            // than help — FieldData::distribute walks entity indices with
-            // no empty guard, and EDGE/FACE history vectors stay empty
-            // until something sizes them, so a PARALLEL MID-RAMP restart
-            // would reproduce the very crash this function prevents
-            // ( Grok — invisible to the serial probe )
+            // Pass only the levels verified below. A deeper, never-filled
+            // level would fault because FieldData::distribute has no empty
+            // guard and EDGE/FACE history vectors remain empty until sized.
+            // A parallel restart during the ramp would reproduce the crash
+            // this function prevents. A serial run does not expose it.
             Cell< string > tParents ;
             Cell< string > tHistory ;
             aEquation->history_field_labels( tParents, tHistory, tRequired );
@@ -5280,11 +5172,10 @@ namespace belfem
                 herr_t tStatus = 0 ;
                 hdf5::save_scalar_to_file( tGroup, "delta_time", mDeltaTime, tStatus );
 
-                // BDF integrator state, so a warm start resumes at full
-                // order instead of re-anchoring the ramp at BDF1 ( the
-                // restart cliff, 2026-08-15 ). bdf_last_dt is the IWG's OWN
-                // delta -- the LAST COMPLETED step h_n; the delta_time above
-                // is the NEXT step and is a different quantity
+                // BDF integrator state lets a warm start resume at full order
+                // instead of restarting the ramp at BDF1. bdf_last_dt is the
+                // IWG's own delta: the last completed step h_n. The delta_time
+                // above is the next step and is a different quantity.
                 {
                     Vector< real > tH ;
                     uint tStepCount ;

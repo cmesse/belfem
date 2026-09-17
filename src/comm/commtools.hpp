@@ -47,37 +47,22 @@ namespace belfem
 // UTILITIES
 //==============================================================================
 
-    /**
-     * \brief Returns the number of processes in the communicator.
-     * \return The number of processes.
-     */
     proc_t
     comm_size();
 
 //------------------------------------------------------------------------------
 
-    /**
-     * \brief Returns the rank of the current process in the communicator.
-     * \return The rank of the current process.
-     */
     proc_t
     comm_rank();
 
-
 //------------------------------------------------------------------------------
 
-    /**
-     * \brief Checks the MPI error code and reports any errors.
-     * \param aErrorCode The MPI error code to check.
-     */
     void
     comm_check( const int aErrorCode );
 
 //------------------------------------------------------------------------------
 
-    /**
-     * \brief Synchronizes all processes in the communicator.
-     */
+    /** Collective: every rank must reach it before any rank passes it. */
     void
     comm_barrier();
 
@@ -115,33 +100,16 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-    /**
-     * \brief Generates a unique tag for MPI communication between two processes.
-     * \param aSource The source process rank.
-     * \param aTarget The target process rank.
-     * \return A unique tag for communication.
-     */
     int
     comm_tag( const proc_t aSource, const proc_t aTarget );
 
 //------------------------------------------------------------------------------
 
-    /**
-     * \brief Splits a message into chunks for MPI communication.
-     * \param aLength The length of the message to split.
-     * \return A cell containing the sizes of each chunk.
-     */
     Cell< int >
     comm_split( const index_t aLength );
 
 //------------------------------------------------------------------------------
 
-    /**
-     * \brief Calculates the total number of chunks needed for a set of message lengths.
-     * \param aLengths Vector of message lengths.
-     * \param aRoot The root process rank.
-     * \return The total number of chunks.
-     */
     index_t
     comm_splitcount( const Vector< index_t > & aLengths, const proc_t aRoot );
 
@@ -150,12 +118,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-    /**
-     * \brief Broadcasts a scalar value to all processes.
-     * \tparam T The type of the scalar.
-     * \param aMessage The scalar to broadcast.
-     * \param aRoot The root process rank (default is 0).
-     */
+    /** Collective: every rank calls it, and aRoot's data lands on all ranks. */
     template< typename T >
     void
     broadcast( T & aMessage, const proc_t aRoot=0,
@@ -164,13 +127,11 @@ namespace belfem
 #ifdef BELFEM_MPI
         if( gComm.size() > 1 )
         {
-            // Ensure T is a scalar type.
             // Note: std::complex<T> is not supported here; use
             // send/receive for complex scalar communication.
             BELFEM_ASSERT(  std::is_arithmetic<T>::value,
                 "Can only broadcast arithmetic types." );
 
-            // call the bcast command
             comm_t tCommType = comm_type<T>();
             comm_check( MPI_Bcast(
                     &aMessage,
@@ -182,7 +143,7 @@ namespace belfem
 #endif
     }
 
-    // for raw array with known length
+    /** Collective: every rank calls it, and aRoot's data lands on all ranks. */
     template< typename T >
     void
     broadcast( T * aMessage, const proc_t aRoot, const proc_t aLength )
@@ -190,13 +151,11 @@ namespace belfem
 #ifdef BELFEM_MPI
         if( gComm.size() > 1 )
         {
-            // Ensure T is a scalar type.
             // Note: std::complex<T> is not supported here; use
             // send/receive for complex array communication.
             BELFEM_ASSERT(  std::is_arithmetic<T>::value,
                 "Can only broadcast arithmetic types." );
 
-            // call the bcast command
             comm_t tCommType = comm_type<T>();
 
             comm_check( MPI_Bcast(
@@ -298,28 +257,19 @@ namespace belfem
 #endif
     }
 
-
 //==============================================================================
 // SCALARS
 //==============================================================================
 
-    /**
-     * \brief Sends a scalar value to a specific target process.
-     * \tparam T The type of the scalar.
-     * \param aData The scalar to send.
-     * \param aTarget The target process rank.
-     */
     template< typename T >
     void
     send(  const T aData, const proc_t aTarget=0, typename std::enable_if<is_scalar<T>::value>::type* = nullptr  )
     {
 #ifdef BELFEM_MPI
-        // get my id
         proc_t tMyRank = gComm.rank();
 
         if( aTarget < comm_size() && tMyRank != aTarget )
         {
-            // status/request handlers
             MPI_Status  tStatus;
             MPI_Request tRequest;
 
@@ -331,8 +281,6 @@ namespace belfem
                        gComm.world(),
                        & tRequest ) );
 
-
-            // wait until receive is complete
             comm_check(  MPI_Wait( &tRequest, &tStatus ) );
         }
 #endif
@@ -340,31 +288,20 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-    /**
-     * \brief Receives a scalar value from a specific source process.
-     * \tparam T The type of the scalar.
-     * \param aData The scalar to receive.
-     * \param aSource The source process rank (default is 0).
-     */
     template< typename T >
     void
     receive(  T & aData, const proc_t aSource=0, typename std::enable_if<is_scalar<T>::value>::type* = nullptr )
     {
 #ifdef BELFEM_MPI
-        // get my id
         proc_t tMyRank = gComm.rank();
 
-        // get the number of procs
         proc_t tCommSize = gComm.size();
-
 
         if( aSource < tCommSize && tMyRank != aSource )
         {
-            // status/request handlers
             MPI_Status  tStatus;
             MPI_Request tRequest;
 
-            // call MPI command
             comm_check(  MPI_Irecv( &aData,
                        1,
                        comm_type< T >(),
@@ -373,7 +310,6 @@ namespace belfem
                        gComm.world(),
                        & tRequest ) );
 
-            // wait until receive is complete
             comm_check( MPI_Wait( &tRequest, &tStatus ) );
         }
 #endif
@@ -401,22 +337,17 @@ namespace belfem
     send( T * aData, const index_t aLength, const proc_t aTarget )
     {
 #ifdef BELFEM_MPI
-        // get the total number of procs
         proc_t tCommSize = gComm.size();
 
-        // get my rank
         proc_t tMyRank   = gComm.rank();
 
         if ( aTarget < tCommSize && aTarget != tMyRank )
         {
-            // status/request handlers
             MPI_Status  tSizeStatus;
             MPI_Request tSizeRequest;
 
-            // compute the commtag
             int tCommTag = comm_tag( tMyRank, aTarget );
 
-            // send the length
             comm_check(  MPI_Isend( &aLength,
                        1,
                        comm_type< index_t >(),
@@ -425,31 +356,23 @@ namespace belfem
                        gComm.world(),
                        & tSizeRequest ) );
 
-            // wait until receive is complete
             comm_check( MPI_Wait( &tSizeRequest, &tSizeStatus ) );
 
-            // nothing to do if the vector is empty
             if ( aLength == 0 ) return ;
 
-            // compute the chunks for this message
             Cell< int > tChunkSizes = comm_split( aLength );
 
-            // Allocate memory for status/request vector
             MPI_Status*  tStatus  = ( MPI_Status*  ) malloc( sizeof( MPI_Status  ) * tChunkSizes.size() );
             MPI_Request* tRequest = ( MPI_Request* ) malloc( sizeof( MPI_Request ) * tChunkSizes.size() );
 
-            // initialitze the counter
             index_t tCount = 0 ;
 
-            // offset in data container
             index_t tOffset = 0 ;
 
-            // get the communication type
             comm_t tCommType = comm_type< T >();
 
             for ( index_t c : tChunkSizes )
             {
-                // send data
                 comm_check( MPI_Isend(
                         &aData[ tOffset ],
                         c,
@@ -459,11 +382,9 @@ namespace belfem
                         gComm.world(),
                         & tRequest[ tCount++] ) );
 
-                // increment offset
                 tOffset+= c;
             }
 
-            // wait until send is complete
             comm_check( MPI_Waitall( tCount, tRequest, tStatus ) );
 
             free( tStatus );
@@ -492,22 +413,17 @@ namespace belfem
     {
 #ifdef BELFEM_MPI
 
-        // get the total number of procs
         proc_t tCommSize = gComm.size();
 
-        // get my rank
         proc_t tMyRank   = gComm.rank();
 
         if ( aSource < tCommSize && aSource != tMyRank )
         {
-            // status/request handlers
             MPI_Status  tSizeStatus;
             MPI_Request tSizeRequest;
 
-            // compute the commtag
             int tCommTag = comm_tag( aSource, tMyRank );
 
-            // receive the length
             index_t tSize = 0;
 
             comm_check(  MPI_Irecv( &tSize,
@@ -518,38 +434,28 @@ namespace belfem
                        gComm.world(),
                        & tSizeRequest ) );
 
-            // wait until receive is complete
             comm_check( MPI_Wait( &tSizeRequest, &tSizeStatus ) );
 
-            // make sure that length is properly defined
             BELFEM_ERROR( tSize <= aLength, "Datastream too large ( length %u but expect <=%u ).",
                 ( unsigned int ) tSize, ( unsigned int ) aLength  );
 
-            // return new value
             aLength = tSize;
 
-            // nothing to do if the vector is empty
             if ( aLength == 0 ) return ;
 
-            // compute the chunks for this message
             Cell< int > tChunkSizes = comm_split( tSize );
 
-            // Allocate memory for status/request vector
             MPI_Status*  tStatus  = ( MPI_Status*  ) malloc( sizeof( MPI_Status  ) * tChunkSizes.size() );
             MPI_Request* tRequest = ( MPI_Request* ) malloc( sizeof( MPI_Request ) * tChunkSizes.size() );
 
-            // initialitze the counter
             index_t tCount = 0 ;
 
-            // offset in data container
             index_t tOffset = 0 ;
 
-            // get the communication type
             comm_t tCommType = comm_type< T >();
 
             for ( index_t c : tChunkSizes )
             {
-                // send data
                 comm_check( MPI_Irecv(
                         &aData[ tOffset ],
                         c,
@@ -559,11 +465,9 @@ namespace belfem
                         gComm.world(),
                         & tRequest[ tCount++] ) );
 
-                // increment offset
                 tOffset+= c;
             }
 
-            // wait until send is complete
             comm_check( MPI_Waitall( tCount, tRequest, tStatus ) );
 
             free( tStatus );
@@ -576,34 +480,22 @@ namespace belfem
 // CELLS
 //==============================================================================
 
-    /**
-     * \brief Sends a cell to a specific target process.
-     * \tparam T The type of the cell elements.
-     * \param aData The cell to send.
-     * \param aTarget The target process rank.
-     */
     template< typename T >
     void
     send( Cell< T > & aData, const proc_t aTarget=0 )
     {
 #ifdef BELFEM_MPI
-        // get my id
         proc_t tMyRank = gComm.rank();
 
-        // nothing to do here
         if ( tMyRank == aTarget ) return ;
 
-        // get the length of the cell
         index_t tSize = aData.size();
 
-        // status/request handlers
         MPI_Status  tSizeStatus;
         MPI_Request tSizeRequest;
 
-        // compute the commtag
         int tCommTag = comm_tag( tMyRank, aTarget );
 
-        // send the length
         comm_check(  MPI_Isend( &tSize,
                    1,
                    comm_type< index_t >(),
@@ -612,34 +504,25 @@ namespace belfem
                    gComm.world(),
                    & tSizeRequest ) );
 
-        // wait until receive is complete
         comm_check( MPI_Wait( &tSizeRequest, &tSizeStatus ) );
 
-        // nothing to do if the cell is empty
         if ( tSize == 0 ) return ;
 
-        // get the communication type
         comm_t tCommType = comm_type< T >();
 
-        // compute the chunks for this message
         Cell< int > tChunkSizes = comm_split( aData.size() );
 
-        // offset in data container
         index_t tOffset = 0 ;
 
-        // Allocate memory for status/request cell
         MPI_Status*  tStatus  = ( MPI_Status*  ) malloc( sizeof( MPI_Status  ) * tChunkSizes.size() );
         MPI_Request* tRequest = ( MPI_Request* ) malloc( sizeof( MPI_Request ) * tChunkSizes.size() );
 
-        // initialitze the counter
         index_t tCount = 0 ;
 
-        // get the raw pointer of the cell
         const T * tData = aData.data();
 
         for ( index_t c : tChunkSizes )
         {
-            // send data
             comm_check( MPI_Isend( &tData[ tOffset ],
                         c,
                         tCommType,
@@ -651,7 +534,6 @@ namespace belfem
             tOffset+= c;
         }
 
-        // wait until send is complete
         comm_check( MPI_Waitall( tCount, tRequest, tStatus ) );
 
         free( tStatus );
@@ -661,60 +543,40 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-    /**
-     * \brief Receives a cell from a specific source process.
-     * \tparam T The type of the cell elements.
-     * \param aData The cell to receive.
-     * \param aSource The source process rank (default is 0).
-     */
     template< typename T >
     void
     receive( Cell< T > & aData, const proc_t aSource=0 )
     {
 #ifdef BELFEM_MPI
 
-        // get my id
         proc_t tMyRank = gComm.rank();
 
-        // nothing to do here
         if ( tMyRank == aSource ) return ;
 
-        // obtain the length of the cell
         index_t tSize = 0 ;
         receive( tSize, aSource );
 
-        // allocate memory for the cell
         aData.set_size( tSize, 0 );
 
-        // nothing more to do if the cell is empty
         if ( tSize == 0 ) return ;
 
-        // get the communication type
         comm_t tCommType = comm_type< T >();
 
-        // compute the chunks for this message
         Cell< int > tChunkSizes = comm_split( aData.size() );
 
-        // offset in data container
         index_t tOffset = 0 ;
 
-        // Inside the length distrubution, we use comm_tag too.
-        // For safety, the tag for the messages is incremented.
         int tCommTag = comm_tag( aSource, tMyRank ) + 1 ;
 
-        // Allocate memory for status/request cell
         MPI_Status*  tStatus  = ( MPI_Status*  ) malloc( sizeof( MPI_Status  ) * tChunkSizes.size() );
         MPI_Request* tRequest = ( MPI_Request* ) malloc( sizeof( MPI_Request ) * tChunkSizes.size() );
 
-        // initialitze the counter
         index_t tCount = 0 ;
 
-        // get the raw pointer of the cell
         T * tData = aData.data();
 
         for ( index_t c : tChunkSizes )
         {
-            // send data
             comm_check( MPI_Irecv(
                         &tData[ tOffset ],
                         c,
@@ -727,7 +589,6 @@ namespace belfem
             tOffset+= c;
         }
 
-        // wait until send is complete
         comm_check( MPI_Waitall( tCount, tRequest, tStatus ) );
 
         free( tStatus );
@@ -737,25 +598,17 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-    /**
-     * \brief Broadcasts a cell to all processes.
-     * \tparam T The type of the cell elements.
-     * \param aData The cell to broadcast.
-     * \param aRoot The root process rank (default is 0).
-     */
+    /** Collective: every rank calls it, and aRoot's data lands on all ranks. */
     template< typename T >
     void
     broadcast( Cell< T >  & aData, const proc_t aRoot=0 )
     {
 #ifdef BELFEM_MPI
 
-        // get my id
         proc_t tMyRank = gComm.rank();
 
-        // Get length of cell
         index_t tSize = tMyRank == aRoot ? aData.size() : 0 ;
 
-        // communicate the cell size
         MPI_Request tSizeRequest ;
         comm_check( MPI_Ibcast(
                             & tSize,
@@ -765,16 +618,13 @@ namespace belfem
                             gComm.world(),
                             & tSizeRequest ) );
 
-        // wait until the size is received
         MPI_Status tSizeStatus ;
         comm_check( MPI_Wait( &tSizeRequest, &tSizeStatus ) );
 
-        // allocate memory for the cell
         if ( tMyRank != aRoot ) aData.set_size( tSize );
 
         if ( tSize == 0 ) return ;
 
-        // broadcast the cell data
         MPI_Request tDataRequest ;
         comm_check( MPI_Ibcast(
             aData.data(),
@@ -784,37 +634,27 @@ namespace belfem
             gComm.world(),
             & tDataRequest ) );
 
-        // wait until data is received
         MPI_Status tDataStatus ;
         comm_check( MPI_Wait( &tDataRequest, &tDataStatus ) );
 
 #endif
     }
 
-
 //------------------------------------------------------------------------------
 
-    /**
-    * \brief Distributes elements of a cell to other processes.
-    * \tparam T The type of the cell elements.
-    * \param aData The cell to distribute.
-    */
     template< typename T >
     void
     distribute( Cell< T > & aData )
     {
 #ifdef BELFEM_MPI
-        // get my id
         proc_t tMyRank = gComm.rank();
 
-        // get the number of procs
         proc_t tCommSize = gComm.size();
 
         BELFEM_ASSERT( static_cast< proc_t >( aData.size() )== tCommSize,
         "Length of cell does not match ( is %u, expect commsize %u ).",
         ( unsigned int ) aData.size(), ( unsigned int ) tCommSize );
 
-        // Allocate memory for status/request cell
         MPI_Status*  tStatus  = ( MPI_Status*  ) malloc( sizeof( MPI_Status  ) * tCommSize );
         MPI_Request* tRequest = ( MPI_Request* ) malloc( sizeof( MPI_Request ) * tCommSize );
 
@@ -826,7 +666,6 @@ namespace belfem
                 continue ;
             }
 
-            // send data
             comm_check( MPI_Isend( &aData( p ),
                        1,
                        comm_type< T >(),
@@ -837,10 +676,8 @@ namespace belfem
 
         }
 
-        // wait until send is complete
         comm_check( MPI_Waitall( tCommSize, tRequest, tStatus ) );
 
-        // tidy up memory
         free( tStatus );
         free( tRequest );
 #endif
@@ -848,26 +685,19 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-    /**
-     * \brief Collects scalar values from all processes into a cell.
-     * \tparam T The type of the scalar.
-     * \param aData The cell to store collected values.
-     * \param aMyValue The value from the current process (default is 0).
-     */
+    /** Receives only, one slot per rank. Not collective: every other rank
+     *  must send, through distribute() or send(). */
     template< typename T >
     void
     collect( Cell< T > & aData, const T aMyValue = 0 )
     {
 #ifdef BELFEM_MPI
-        // get my id
         proc_t tMyRank = gComm.rank();
 
-        // get the number of procs
         proc_t tCommSize = gComm.size();
 
         aData.set_size( tCommSize, 0 );
 
-        // Allocate memory for status/request cell
         MPI_Status*  tStatus  = ( MPI_Status*  ) malloc( sizeof( MPI_Status  ) * tCommSize );
         MPI_Request* tRequest = ( MPI_Request* ) malloc( sizeof( MPI_Request ) * tCommSize );
 
@@ -880,7 +710,6 @@ namespace belfem
                 continue ;
             }
 
-            // send data
             comm_check( MPI_Irecv( &aData( p ),
                        1,
                        comm_type< T >(),
@@ -889,12 +718,9 @@ namespace belfem
                        gComm.world(),
                        &tRequest[ p ] ) );
 
-
         }
-        // wait until send is complete
         comm_check( MPI_Waitall( tCommSize, tRequest, tStatus ) );
 
-        // tidy up memory
         free( tStatus );
         free( tRequest );
 #endif
@@ -904,34 +730,22 @@ namespace belfem
 // VECTORS
 //==============================================================================
 
-    /**
-     * \brief Sends a vector to a specific target process.
-     * \tparam T The type of the vector elements.
-     * \param aData The vector to send.
-     * \param aTarget The target process rank.
-     */
     template< typename T >
     void
     send( Vector< T > & aData, const proc_t aTarget=0 )
     {
 #ifdef BELFEM_MPI
-        // get my id
         proc_t tMyRank = gComm.rank();
 
-        // nothing to do here
         if ( tMyRank == aTarget ) return ;
 
-        // get the length of the vector
         index_t tSize = aData.length();
 
-        // status/request handlers
         MPI_Status  tSizeStatus;
         MPI_Request tSizeRequest;
 
-        // compute the commtag
         int tCommTag = comm_tag( tMyRank, aTarget );
 
-        // send the length
         comm_check(  MPI_Isend( &tSize,
                    1,
                    comm_type< index_t >(),
@@ -940,34 +754,25 @@ namespace belfem
                    gComm.world(),
                    & tSizeRequest ) );
 
-        // wait until receive is complete
         comm_check( MPI_Wait( &tSizeRequest, &tSizeStatus ) );
 
-        // nothing to do if the vector is empty
         if ( tSize == 0 ) return ;
 
-        // get the communication type
         comm_t tCommType = comm_type< T >();
 
-        // compute the chunks for this message
         Cell< int > tChunkSizes = comm_split( aData.length() );
 
-        // offset in data container
         index_t tOffset = 0 ;
 
-        // Allocate memory for status/request vector
         MPI_Status*  tStatus  = ( MPI_Status*  ) malloc( sizeof( MPI_Status  ) * tChunkSizes.size() );
         MPI_Request* tRequest = ( MPI_Request* ) malloc( sizeof( MPI_Request ) * tChunkSizes.size() );
 
-        // initialitze the counter
         index_t tCount = 0 ;
 
-        // get the raw pointer of the vector
         const T * tData = aData.data();
 
         for ( index_t c : tChunkSizes )
         {
-            // send data
             comm_check( MPI_Isend( &tData[ tOffset ],
                         c,
                         tCommType,
@@ -979,7 +784,6 @@ namespace belfem
             tOffset+= c;
         }
 
-        // wait until send is complete
         comm_check( MPI_Waitall( tCount, tRequest, tStatus ) );
 
         free( tStatus );
@@ -989,60 +793,40 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-    /**
-     * \brief Receives a vector from a specific source process.
-     * \tparam T The type of the vector elements.
-     * \param aData The vector to receive.
-     * \param aSource The source process rank (default is 0).
-     */
     template< typename T >
     void
     receive( Vector< T > & aData, const proc_t aSource=0 )
     {
 #ifdef BELFEM_MPI
 
-        // get my id
         proc_t tMyRank = gComm.rank();
 
-        // nothing to do here
         if ( tMyRank == aSource ) return ;
 
-        // obtain the length of the vector
         index_t tSize = 0 ;
         receive( tSize, aSource );
 
-        // allocate memory for the vector
         aData.set_size( tSize, 0 );
 
-        // nothing more to do if the vector is empty
         if ( tSize == 0 ) return ;
 
-        // get the communication type
         comm_t tCommType = comm_type< T >();
 
-        // compute the chunks for this message
         Cell< int > tChunkSizes = comm_split( aData.length() );
 
-        // offset in data container
         index_t tOffset = 0 ;
 
-        // Inside the length distrubution, we use comm_tag too.
-        // For safety, the tag for the messages is incremented.
         int tCommTag = comm_tag( aSource, tMyRank ) + 1 ;
 
-        // Allocate memory for status/request vector
         MPI_Status*  tStatus  = ( MPI_Status*  ) malloc( sizeof( MPI_Status  ) * tChunkSizes.size() );
         MPI_Request* tRequest = ( MPI_Request* ) malloc( sizeof( MPI_Request ) * tChunkSizes.size() );
 
-        // initialitze the counter
         index_t tCount = 0 ;
 
-        // get the raw pointer of the vector
         T * tData = aData.data();
 
         for ( index_t c : tChunkSizes )
         {
-            // send data
             comm_check( MPI_Irecv(
                         &tData[ tOffset ],
                         c,
@@ -1055,7 +839,6 @@ namespace belfem
             tOffset+= c;
         }
 
-        // wait until send is complete
         comm_check( MPI_Waitall( tCount, tRequest, tStatus ) );
 
         free( tStatus );
@@ -1065,25 +848,17 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-    /**
-     * \brief Broadcasts a vector to all processes.
-     * \tparam T The type of the vector elements.
-     * \param aData The vector to broadcast.
-     * \param aRoot The root process rank (default is 0).
-     */
+    /** Collective: every rank calls it, and aRoot's data lands on all ranks. */
     template< typename T >
     void
     broadcast( Vector< T >  & aData, const proc_t aRoot=0 )
     {
 #ifdef BELFEM_MPI
 
-        // get my id
         proc_t tMyRank = gComm.rank();
 
-        // Get length of vector
         index_t tSize = tMyRank == aRoot ? aData.length() : 0 ;
 
-        // communicate the vector size
         MPI_Request tSizeRequest ;
         comm_check( MPI_Ibcast(
                             & tSize,
@@ -1093,16 +868,13 @@ namespace belfem
                             gComm.world(),
                             & tSizeRequest ) );
 
-        // wait until the size is received
         MPI_Status tSizeStatus ;
         comm_check( MPI_Wait( &tSizeRequest, &tSizeStatus ) );
 
-        // allocate memory for the vector
         if ( tMyRank != aRoot ) aData.set_size( tSize );
 
         if ( tSize == 0 ) return ;
 
-        // broadcast the vector data
         MPI_Request tDataRequest ;
         comm_check( MPI_Ibcast(
             aData.data(),
@@ -1112,7 +884,6 @@ namespace belfem
             gComm.world(),
             & tDataRequest ) );
 
-        // wait until data is received
         MPI_Status tDataStatus ;
         comm_check( MPI_Wait( &tDataRequest, &tDataStatus ) );
 
@@ -1121,27 +892,19 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-    /**
-     * \brief Distributes elements of a vector to other processes.
-     * \tparam T The type of the vector elements.
-     * \param aData The vector to distribute.
-     */
     template< typename T >
     void
     distribute( Vector< T > & aData )
     {
 #ifdef BELFEM_MPI
-        // get my id
         proc_t tMyRank = gComm.rank();
 
-        // get the number of procs
         proc_t tCommSize = gComm.size();
 
         BELFEM_ASSERT( static_cast< proc_t>( aData.length() )== tCommSize,
         "Length of vector does not match ( is %u, expect commsize %u ).",
         ( unsigned int ) aData.length(), ( unsigned int ) tCommSize );
 
-        // Allocate memory for status/request vector
         MPI_Status*  tStatus  = ( MPI_Status*  ) malloc( sizeof( MPI_Status  ) * tCommSize );
         MPI_Request* tRequest = ( MPI_Request* ) malloc( sizeof( MPI_Request ) * tCommSize );
 
@@ -1153,7 +916,6 @@ namespace belfem
                 continue ;
             }
 
-            // send data
             comm_check( MPI_Isend( &aData( p ),
                        1,
                        comm_type< T >(),
@@ -1164,10 +926,8 @@ namespace belfem
 
         }
 
-        // wait until send is complete
         comm_check( MPI_Waitall( tCommSize, tRequest, tStatus ) );
 
-        // tidy up memory
         free( tStatus );
         free( tRequest );
 #endif
@@ -1175,26 +935,19 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-    /**
-     * \brief Collects scalar values from all processes into a vector.
-     * \tparam T The type of the scalar.
-     * \param aData The vector to store collected values.
-     * \param aMyValue The value from the current process (default is 0).
-     */
+    /** Receives only, one slot per rank. Not collective: every other rank
+     *  must send, through distribute() or send(). */
     template< typename T >
     void
     collect( Vector< T > & aData, const T aMyValue = 0 )
     {
 #ifdef BELFEM_MPI
-        // get my id
         proc_t tMyRank = gComm.rank();
 
-        // get the number of procs
         proc_t tCommSize = gComm.size();
 
         aData.set_size( tCommSize, 0 );
 
-        // Allocate memory for status/request vector
         MPI_Status*  tStatus  = ( MPI_Status*  ) malloc( sizeof( MPI_Status  ) * tCommSize );
         MPI_Request* tRequest = ( MPI_Request* ) malloc( sizeof( MPI_Request ) * tCommSize );
 
@@ -1207,7 +960,6 @@ namespace belfem
                 continue ;
             }
 
-            // send data
             comm_check( MPI_Irecv( &aData( p ),
                        1,
                        comm_type< T >(),
@@ -1216,12 +968,9 @@ namespace belfem
                        gComm.world(),
                        &tRequest[ p ] ) );
 
-
         }
-        // wait until send is complete
         comm_check( MPI_Waitall( tCommSize, tRequest, tStatus ) );
 
-        // tidy up memory
         free( tStatus );
         free( tRequest );
 #endif
@@ -1229,28 +978,20 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-    /**
-     * \brief Distributes a collection of vectors to other processes.
-     * \tparam T The type of the vector elements.
-     * \param aData The collection of vectors to distribute.
-     */
     template< typename T >
     void
     distribute( Cell< Vector< T > > & aData )
     {
 #ifdef BELFEM_MPI
 
-        // get my id
         proc_t tMyRank = gComm.rank();
 
-        // get the number of procs
         proc_t tCommSize = gComm.size();
 
         BELFEM_ASSERT( static_cast< proc_t>( aData.size() )== tCommSize,
             "Length of data container does not match ( is %u, expect commsize %u ).",
             ( unsigned int ) aData.size(), ( unsigned int ) tCommSize );
 
-        // populate the vector lengths
         Vector< index_t > tSizes( tCommSize, 0 );
         for ( proc_t p=0; p<tCommSize; ++p )
         {
@@ -1258,41 +999,29 @@ namespace belfem
         }
         index_t tCount = comm_splitcount( tSizes, tMyRank );
 
-        // send the vector length to the other procs
         distribute( tSizes );
 
-        // Allocate memory for request/status vector
         MPI_Request* tRequest = ( MPI_Request * ) malloc( sizeof( MPI_Request ) * tCount );
         MPI_Status*  tStatus  = ( MPI_Status *  ) malloc( sizeof( MPI_Status  ) * tCount );
 
-
-        // resetting the counter
         tCount = 0 ;
 
-        // get the communication type
         comm_t tCommType = comm_type< T >();
 
         for( proc_t p=0; p<tCommSize; ++p )
         {
-            // no message if self or there is nothing to send
             if ( p == tMyRank || aData( p ).length() == 0 ) continue ;
 
-            // get the raw pointer of the container
             const T * tData = aData( p ).data();
 
-            // compute the chunks for this message
             Cell< int > tChunkSizes = comm_split( aData( p ).length() );
 
-            // offset in data container
             index_t tOffset = 0 ;
 
-            // Inside the length distrubution, we use comm_tag too.
-            // For safety, the tag for the messages is incremented.
             int tCommTag = comm_tag( tMyRank, p ) + 1 ;
 
             for ( index_t c : tChunkSizes )
             {
-                // send data
                 comm_check( MPI_Isend( &tData[ tOffset ],
                             c,
                             tCommType,
@@ -1305,38 +1034,28 @@ namespace belfem
             }
         }
 
-        // wait until send is complete
         comm_check( MPI_Waitall( tCount, tRequest, tStatus ) );
 
-        // tidy up memory
         free( tStatus );
         free( tRequest );
 
 #endif
     }
 
-      /**
-     * \brief Distributes a collection of cells to other processes.
-     * \tparam T The type of the cell elements.
-     * \param aData The collection of cells to distribute.
-     */
     template< typename T >
     void
     distribute( Cell< Cell< T > > & aData )
     {
 #ifdef BELFEM_MPI
 
-        // get my id
         proc_t tMyRank = gComm.rank();
 
-        // get the number of procs
         proc_t tCommSize = gComm.size();
 
         BELFEM_ASSERT( static_cast< proc_t>( aData.size() )== tCommSize,
             "Length of data container does not match ( is %u, expect commsize %u ).",
             ( unsigned int ) aData.size(), ( unsigned int ) tCommSize );
 
-        // populate the vector lengths
         Vector< index_t > tSizes( tCommSize, 0 );
         for ( proc_t p=0; p<tCommSize; ++p )
         {
@@ -1344,41 +1063,29 @@ namespace belfem
         }
         index_t tCount = comm_splitcount( tSizes, tMyRank );
 
-        // send the vector length to the other procs
         distribute( tSizes );
 
-        // Allocate memory for request/status vector
         MPI_Request* tRequest = ( MPI_Request * ) malloc( sizeof( MPI_Request ) * tCount );
         MPI_Status*  tStatus  = ( MPI_Status *  ) malloc( sizeof( MPI_Status  ) * tCount );
 
-
-        // resetting the counter
         tCount = 0 ;
 
-        // get the communication type
         comm_t tCommType = comm_type< T >();
 
         for( proc_t p=0; p<tCommSize; ++p )
         {
-            // no message if self or there is nothing to send
             if ( p == tMyRank || aData( p ).size() == 0 ) continue ;
 
-            // get the raw pointer of the container
             const T * tData = aData( p ).data();
 
-            // compute the chunks for this message
             Cell< int > tChunkSizes = comm_split( aData( p ).size() );
 
-            // offset in data container
             index_t tOffset = 0 ;
 
-            // Inside the length distrubution, we use comm_tag too.
-            // For safety, the tag for the messages is incremented.
             int tCommTag = comm_tag( tMyRank, p ) + 1 ;
 
             for ( index_t c : tChunkSizes )
             {
-                // send data
                 comm_check( MPI_Isend( &tData[ tOffset ],
                             c,
                             tCommType,
@@ -1391,10 +1098,8 @@ namespace belfem
             }
         }
 
-        // wait until send is complete
         comm_check( MPI_Waitall( tCount, tRequest, tStatus ) );
 
-        // tidy up memory
         free( tStatus );
         free( tRequest );
 
@@ -1415,18 +1120,14 @@ namespace belfem
     {
 #ifdef BELFEM_MPI
 
-        // get my id
         proc_t tMyRank = gComm.rank();
 
-        // get the number of procs
         proc_t tCommSize = gComm.size();
 
         BELFEM_ASSERT( static_cast< proc_t>( aOffsets.length() ) == tCommSize + 1,
             "Length of offset container does not match ( is %u, expect commsize %u ).",
             ( unsigned int ) aOffsets.length(), ( unsigned int ) tCommSize + 1 );
 
-
-        // populate the vector lengths
         Vector< index_t > tSizes( tCommSize, 0 );
 
         for ( proc_t p=0; p<tCommSize; ++p )
@@ -1435,38 +1136,27 @@ namespace belfem
         }
         index_t tCount = comm_splitcount( tSizes, tMyRank );
 
-        // send the vector length to the other procs
         distribute( tSizes );
 
-        // Allocate memory for request/status vector
         MPI_Request* tRequest = ( MPI_Request * ) malloc( sizeof( MPI_Request ) * tCount );
         MPI_Status*  tStatus  = ( MPI_Status *  ) malloc( sizeof( MPI_Status  ) * tCount );
 
-
-        // resetting the counter
         tCount = 0 ;
 
-        // get the communication type (strip const qualifier if present)
         comm_t tCommType = comm_type< typename std::remove_const<T>::type >();
 
         for( proc_t p=0; p<tCommSize; ++p )
         {
-            // no message if self or there is nothing to send
             if ( p == tMyRank || tSizes( p ) == 0 ) continue ;
 
-            // compute the chunks for this message
             Cell< int > tChunkSizes = comm_split(  tSizes( p ) );
 
-            // offset in data container
             index_t tOffset = aOffsets( p ) ;
 
-            // Inside the length distrubution, we use comm_tag too.
-            // For safety, the tag for the messages is incremented.
             int tCommTag = comm_tag( tMyRank, p ) + 1 ;
 
             for ( index_t c : tChunkSizes )
             {
-                // send data
                 comm_check( MPI_Isend( aData + tOffset,
                             c,
                             tCommType,
@@ -1479,28 +1169,25 @@ namespace belfem
             }
         }
 
-        // wait until send is complete
         comm_check( MPI_Waitall( tCount, tRequest, tStatus ) );
 
-        // tidy up memory
         free( tStatus );
         free( tRequest );
 
 #endif
     }
 
+    /** Rank 0 only, receives only: rank p's block lands at aOffsets( p ) and
+     *  every other rank must send it, through distribute() or send(). */
     template< typename T, typename U >
     void
     collect( T * aData, const Vector< U > & aOffsets )
     {
 #ifdef BELFEM_MPI
-         // get my id
         proc_t tMyRank = gComm.rank();
 
-        // get the number of procs
         proc_t tCommSize = gComm.size();
 
-        // obtain the vector lengths from non-root ranks
         Vector< index_t > tSizes ;
         collect( tSizes );
         // rank 0's data is already in aData; set its size from offsets for consistency
@@ -1513,36 +1200,27 @@ namespace belfem
             tCount += comm_split( tSizes( p ) ).size();
         }
 
-        // Allocate memory for status/request vector
         MPI_Status*  tStatus  = ( MPI_Status*  ) malloc( sizeof( MPI_Status  ) * tCount );
         MPI_Request* tRequest = ( MPI_Request* ) malloc( sizeof( MPI_Request ) * tCount );
 
-        // resetting the counter
         tCount = 0 ;
 
-        // get the communication type
         comm_t tCommType = comm_type< T >();
 
         for( proc_t p=1; p<tCommSize; ++p )
         {
-            // get the length
             index_t tSize = tSizes( p );
 
             if ( tSize == 0 ) continue;
 
-            // compute the chunks for this message
             Cell< int > tChunkSizes = comm_split( tSize );
 
-            // offset in data container
             index_t tOffset = aOffsets( p ) ;
 
-            // Inside the length distribution, we use comm_tag too.
-            // For safety, the tag for the messages is incremented.
             int tCommTag = comm_tag( tMyRank, p ) + 1 ;
 
             for ( index_t c : tChunkSizes )
             {
-                // receive data
                 comm_check( MPI_Irecv( &aData[ tOffset ],
                             c,
                             tCommType,
@@ -1555,39 +1233,28 @@ namespace belfem
             }
         }
 
-        // wait until send is complete
         comm_check( MPI_Waitall( tCount, tRequest, tStatus ) );
 
-        // tidy up memory
         free( tStatus );
         free( tRequest );
 #endif
     }
 //------------------------------------------------------------------------------
 
-
-    /**
-     * \brief Collects vectors from all processes into a cell.
-     * \tparam T The type of the vector elements.
-     * \param aData The cell to store collected vectors.
-     * \param aMyData The vector contributed by this process.
-     */
+    /** Receives only, one slot per rank. Not collective: every other rank
+     *  must send, through distribute() or send(). */
     template< typename T >
     void
     collect( Cell< Vector< T > > & aData, Vector< T > aMyData={} )
     {
 #ifdef BELFEM_MPI
 
-        // get my id
         proc_t tMyRank = gComm.rank();
 
-        // get the number of procs
         proc_t tCommSize = gComm.size();
 
-        // allocate memory
         aData.set_size(  tCommSize, {} );
 
-        // obtain the vector lengths
         Vector< index_t > tSizes ;
         collect( tSizes );
 
@@ -1603,45 +1270,34 @@ namespace belfem
 				continue ;
 			}
 
-            // allocate memory of vector
             aData( p ).set_size( tSizes( p ), 0 );
 
             tCount += comm_split( tSizes( p ) ).size();
         }
 
-        // Allocate memory for status/request vector
         MPI_Status*  tStatus  = ( MPI_Status*  ) malloc( sizeof( MPI_Status  ) * tCount );
         MPI_Request* tRequest = ( MPI_Request* ) malloc( sizeof( MPI_Request ) * tCount );
 
-        // resetting the counter
         tCount = 0 ;
 
-        // get the communication type
         comm_t tCommType = comm_type< T >();
 
         for( proc_t p=0; p<tCommSize; ++p )
         {
-            // get the length
             index_t tSize = tSizes( p );
 
             if ( p == tMyRank || tSize == 0 ) continue;
 
-            // get the raw data container
             T * tData = aData( p ).data() ;
 
-            // compute the chunks for this message
             Cell< int > tChunkSizes = comm_split( tSize );
 
-            // offset in data container
             index_t tOffset = 0 ;
 
-            // Inside the length distribution, we use comm_tag too.
-            // For safety, the tag for the messages is incremented.
             int tCommTag = comm_tag( tMyRank, p ) + 1 ;
 
             for ( index_t c : tChunkSizes )
             {
-                // receive data
                 comm_check( MPI_Irecv( &tData[ tOffset ],
                             c,
                             tCommType,
@@ -1654,10 +1310,8 @@ namespace belfem
             }
         }
 
-        // wait until send is complete
         comm_check( MPI_Waitall( tCount, tRequest, tStatus ) );
 
-        // tidy up memory
         free( tStatus );
         free( tRequest );
 
@@ -1671,7 +1325,6 @@ namespace belfem
     share( Vector< T > & aData )
     {
 #ifdef BELFEM_MPI
-        // get my id
         proc_t tMyRank = gComm.rank();
 
         proc_t tCommSize = gComm.size();
@@ -1681,10 +1334,8 @@ namespace belfem
         MPI_Request* tRequest = ( MPI_Request * ) malloc( sizeof( MPI_Request ) * ( tCommSize-1 ) );
         MPI_Status*  tStatus  = ( MPI_Status *  ) malloc( sizeof( MPI_Status  ) * ( tCommSize-1 ) );
 
-        // get the communication type
         comm_t tIndex_t = comm_type< index_t >();
 
-        // get the communication type
         comm_t tCommType = comm_type< T >();
 
         index_t tCount = 0 ;
@@ -1704,10 +1355,8 @@ namespace belfem
                         &tRequest[ tCount ++ ] ) );
         }
 
-        // wait until send is complete
         comm_check( MPI_Waitall( tCount, tRequest, tStatus ) );
 
-        // tidy up memory
         free( tStatus );
         free( tRequest );
 
@@ -1721,25 +1370,18 @@ namespace belfem
             tCount = 0 ;
             for( proc_t p=0; p<tCommSize; ++p )
             {
-                // no message if self or there is nothing to send
                 if ( p == tMyRank ) continue ;
 
-                // get the raw pointer of the container
                 const T * tData = aData.data();
 
-                // compute the chunks for this message
                 Cell< int > tChunkSizes = comm_split( aData.length() );
 
-                // offset in data container
                 index_t tOffset = 0 ;
 
-                // Inside the length distrubution, we use comm_tag too.
-                // For safety, the tag for the messages is incremented.
                 int tCommTag = comm_tag( tMyRank, p ) + 1 ;
 
                 for ( index_t c : tChunkSizes )
                 {
-                    // send data
                     comm_check( MPI_Isend( &tData[ tOffset ],
                                 c,
                                 tCommType,
@@ -1752,13 +1394,9 @@ namespace belfem
                 }
             }
 
-            // wait until send is complete
             comm_check( MPI_Waitall( tCount, tRequest, tStatus ) );
         }
 
-
-
-        // tidy up memory
         free( tStatus );
         free( tRequest );
 #endif
@@ -1771,7 +1409,6 @@ namespace belfem
     share( Cell< T > & aData )
     {
 #ifdef BELFEM_MPI
-        // get my id
         proc_t tMyRank = gComm.rank();
 
         proc_t tCommSize = gComm.size();
@@ -1781,10 +1418,8 @@ namespace belfem
         MPI_Request* tRequest = ( MPI_Request * ) malloc( sizeof( MPI_Request ) * ( tCommSize-1 ) );
         MPI_Status*  tStatus  = ( MPI_Status *  ) malloc( sizeof( MPI_Status  ) * ( tCommSize-1 ) );
 
-        // get the communication type
         comm_t tIndex_t = comm_type< index_t >();
 
-        // get the communication type
         comm_t tCommType = comm_type< T >();
 
         index_t tCount = 0 ;
@@ -1804,10 +1439,8 @@ namespace belfem
                         &tRequest[ tCount ++ ] ) );
         }
 
-        // wait until send is complete
         comm_check( MPI_Waitall( tCount, tRequest, tStatus ) );
 
-        // tidy up memory
         free( tStatus );
         free( tRequest );
 
@@ -1821,25 +1454,18 @@ namespace belfem
             tCount = 0 ;
             for( proc_t p=0; p<tCommSize; ++p )
             {
-                // no message if self or there is nothing to send
                 if ( p == tMyRank ) continue ;
 
-                // get the raw pointer of the container
                 const T * tData = aData.data();
 
-                // compute the chunks for this message
                 Cell< int > tChunkSizes = comm_split( aData.size() );
 
-                // offset in data container
                 index_t tOffset = 0 ;
 
-                // Inside the length distrubution, we use comm_tag too.
-                // For safety, the tag for the messages is incremented.
                 int tCommTag = comm_tag( tMyRank, p ) + 1 ;
 
                 for ( index_t c : tChunkSizes )
                 {
-                    // send data
                     comm_check( MPI_Isend( &tData[ tOffset ],
                                 c,
                                 tCommType,
@@ -1852,13 +1478,9 @@ namespace belfem
                 }
             }
 
-            // wait until send is complete
             comm_check( MPI_Waitall( tCount, tRequest, tStatus ) );
         }
 
-
-
-        // tidy up memory
         free( tStatus );
         free( tRequest );
 #endif
@@ -1868,22 +1490,15 @@ namespace belfem
 // MATRICES
 //==============================================================================
 
-    /**
-    * \brief Broadcasts a matrix to all processes.
-    * \tparam T The type of the matrix elements.
-    * \param aData The matrix to broadcast.
-    * \param aRoot The root process rank (default is 0).
-    */
+    /** Collective: every rank calls it, and aRoot's data lands on all ranks. */
     template< typename T >
     void
     broadcast( Matrix< T >  & aData, const proc_t aRoot=0 )
     {
 #ifdef BELFEM_MPI
 
-        // get my id
         proc_t tMyRank = gComm.rank();
 
-        // row, columns and transfer length of matrix
         // We transmit spacing()*n_cols rather than n_rows*n_cols so that the
         // raw contiguous buffer (including backend padding, e.g. Blaze
         // SIMD alignment) is transferred as-is. This avoids disassembling
@@ -1898,7 +1513,6 @@ namespace belfem
         tSize[ 1 ] = aData.n_cols();
         tSize[ 2 ] = aData.spacing() * aData.n_cols();
 
-        // broadcast the matrix dimensions and transfer length
         MPI_Request tSizeRequest ;
         comm_check( MPI_Ibcast(
             & tSize,
@@ -1908,14 +1522,11 @@ namespace belfem
             gComm.world(),
             & tSizeRequest ) );
 
-        // wait until size is received
         MPI_Status tSizeStatus ;
         comm_check( MPI_Wait( &tSizeRequest, &tSizeStatus ) );
 
-        // allocate memory for the matrix
         if ( tMyRank != aRoot ) aData.set_size( tSize[ 0 ], tSize[ 1 ] );
 
-        // nothing to do if the matrix is empty
         if( tSize[ 0 ] == 0 || tSize[ 1 ] == 0 ) return ;
 
         BELFEM_ERROR( aData.capacity() >= tSize[ 2 ],
@@ -1927,7 +1538,6 @@ namespace belfem
         BELFEM_ERROR( tSize[ 2 ] <= ( index_t ) std::numeric_limits< int >::max(),
             "broadcast( Matrix ) : matrix too large for unchunked broadcast, use send/receive" );
 
-        // broadcast the matrix data
         MPI_Request tDataRequest ;
         comm_check( MPI_Ibcast(
             aData.data(),
@@ -1937,7 +1547,6 @@ namespace belfem
             gComm.world(),
             & tDataRequest ) );
 
-        // wait until data is received
         MPI_Status tDataStatus ;
         comm_check( MPI_Wait( &tDataRequest, &tDataStatus ) );
 
@@ -1950,35 +1559,23 @@ namespace belfem
     {
 #ifdef BELFEM_MPI
 
-        // get my id
         proc_t tMyRank = gComm.rank();
 
-        // nothing to do here
         if ( tMyRank == aTarget ) return ;
 
-        // row, columns and transfer length of matrix.
-        // We transmit spacing()*n_cols rather than n_rows*n_cols so that the
-        // raw contiguous buffer (including backend padding, e.g. Blaze
-        // SIMD alignment) is transferred as-is. This avoids disassembling
-        // and reassembling the matrix. Both ranks use the same binary, so
-        // padding layout is identical for a given (rows, cols) pair.
-        // Never use capacity() here: a matrix that shrank keeps its old,
-        // larger allocation, and transmitting that count overflows the
-        // exact-fit buffer on the receiving side.
+        // The transfer length is spacing() * n_cols(), not capacity().
+        // See broadcast( Matrix ) for the padding-layout rationale.
         index_t tSize[ 3 ];
 
         tSize[ 0 ] = aData.n_rows();
         tSize[ 1 ] = aData.n_cols();
         tSize[ 2 ] = aData.spacing() * aData.n_cols();
 
-        // status/request handlers
         MPI_Status  tSizeStatus;
         MPI_Request tSizeRequest;
 
-        // compute the commtag
         int tCommTag = comm_tag( tMyRank, aTarget );
 
-        // send the length
         comm_check(  MPI_Isend( &tSize,
                    3,
                    comm_type< index_t >(),
@@ -1987,34 +1584,25 @@ namespace belfem
                    gComm.world(),
                    & tSizeRequest ) );
 
-        // wait until receive is complete
         comm_check( MPI_Wait( &tSizeRequest, &tSizeStatus ) );
 
-        // nothing to do if the matrix is empty
         if( tSize[ 0 ] == 0 || tSize[ 1 ] == 0 ) return ;
 
-        // get the communication type
         comm_t tCommType = comm_type< T >();
 
-        // compute the chunks for this message
         Cell< int > tChunkSizes = comm_split( tSize[ 2 ] );
 
-        // offset in data container
         index_t tOffset = 0 ;
 
-        // Allocate memory for status/request vector
         MPI_Status*  tStatus  = ( MPI_Status*  ) malloc( sizeof( MPI_Status  ) * tChunkSizes.size() );
         MPI_Request* tRequest = ( MPI_Request* ) malloc( sizeof( MPI_Request ) * tChunkSizes.size() );
 
-        // initialitze the counter
         index_t tCount = 0 ;
 
-        // get raw pointer of matrix
         const T * tData =  aData.data();
 
         for ( index_t c : tChunkSizes )
         {
-            // send data
             comm_check( MPI_Isend( &tData[ tOffset ],
                         c,
                         tCommType,
@@ -2026,7 +1614,6 @@ namespace belfem
             tOffset+= c;
         }
 
-        // wait until send is complete
         comm_check( MPI_Waitall( tCount, tRequest, tStatus ) );
 
         free( tStatus );
@@ -2036,29 +1623,19 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-    /**
-     * \brief Receives a matrix from a specific source process.
-     * \tparam T The type of the matrix elements.
-     * \param aData The matrix to receive.
-     * \param aSource The source process rank (default is 0).
-     */
     template< typename T >
     void
     receive( Matrix< T > & aData, const proc_t aSource=0 )
     {
 #ifdef BELFEM_MPI
 
-        // get my id
         proc_t tMyRank = gComm.rank();
 
-        // nothing to do here
         if ( tMyRank == aSource ) return ;
 
-        // status/request handlers
         MPI_Status  tSizeStatus;
         MPI_Request tSizeRequest;
 
-        // compute the commtag
         int tCommTag = comm_tag( tMyRank, aSource );
 
         // tSize[2] is the sender's spacing()*n_cols, not n_rows*n_cols. We
@@ -2069,7 +1646,6 @@ namespace belfem
         // our own buffer holds at least spacing()*n_cols elements.
         index_t tSize[ 3 ];
 
-        // receive the dimensions
         comm_check(  MPI_Irecv( tSize,
                    3,
                    comm_type< index_t >(),
@@ -2078,12 +1654,10 @@ namespace belfem
                    gComm.world(),
                    & tSizeRequest ) );
 
-        // wait until receive is complete
         comm_check( MPI_Wait( &tSizeRequest, &tSizeStatus ) );
 
         aData.set_size( tSize[ 0 ], tSize[ 1 ] );
 
-        // nothing more to do if the matrix is empty
         if ( tSize[ 0 ] == 0 || tSize[ 1 ] == 0 ) return ;
 
         BELFEM_ERROR( aData.capacity() >= tSize[ 2 ],
@@ -2091,28 +1665,21 @@ namespace belfem
             ( long unsigned int ) tSize[ 2 ],
             ( long unsigned int ) aData.capacity() );
 
-        // get the communication type
         comm_t tCommType = comm_type< T >();
 
-        // compute the chunks for this message
         Cell< int > tChunkSizes = comm_split( tSize[ 2 ] );
 
-        // offset in data container
         index_t tOffset = 0 ;
 
-        // Allocate memory for request/status vector
         MPI_Request* tRequest = ( MPI_Request* ) malloc( sizeof( MPI_Request ) * tChunkSizes.size() );
         MPI_Status*  tStatus  = ( MPI_Status*  ) malloc( sizeof( MPI_Status  ) * tChunkSizes.size() );
 
-        // initialitze the counter
         index_t tCount = 0 ;
 
-        // get the raw pointer of the vector
         T * tData = aData.data();
 
         for ( index_t c : tChunkSizes )
         {
-            // send data
             comm_check( MPI_Irecv( &tData[ tOffset ],
                         c,
                         tCommType,
@@ -2124,7 +1691,6 @@ namespace belfem
             tOffset+= c;
         }
 
-        // wait until send is complete
         comm_check( MPI_Waitall( tCount, tRequest, tStatus ) );
 
         free( tStatus );
@@ -2134,28 +1700,20 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-    /**
-     * \brief Distributes a collection of matrices to other processes.
-     * \tparam T The type of the matrix elements.
-     * \param aData The collection of matrices to distribute.
-     */
     template< typename T >
     void
     distribute( Cell< Matrix< T > > & aData )
     {
 #ifdef BELFEM_MPI
 
-        // get my id
         proc_t tMyRank = gComm.rank();
 
-        // get the number of procs
         proc_t tCommSize = gComm.size();
 
         BELFEM_ASSERT( static_cast< proc_t>( aData.size() )== tCommSize,
             "Length of data container does not match ( is %u, expect commsize %u ).",
             ( unsigned int ) aData.size(), ( unsigned int ) tCommSize );
 
-        // populate the matrix lengths
         index_t * tSizes = ( index_t *  ) malloc( sizeof( index_t ) * tCommSize * 3 );
         index_t tCount = 0 ;
         for ( proc_t p=0; p<tCommSize; ++p )
@@ -2171,7 +1729,6 @@ namespace belfem
         MPI_Request* tSizeRequest = ( MPI_Request* ) malloc( sizeof( MPI_Request ) * tCommSize );
         MPI_Status*  tSizeStatus  = ( MPI_Status*  ) malloc( sizeof( MPI_Status  ) * tCommSize );
 
-        // send the data
         index_t tOffset = 0 ;
         for ( proc_t p=0; p<tCommSize; ++p )
         {
@@ -2182,7 +1739,6 @@ namespace belfem
                 continue;
             }
 
-            // send data
             comm_check( MPI_Isend( &tSizes[ tOffset ],
                         3,
                         comm_type< index_t >(),
@@ -2194,17 +1750,14 @@ namespace belfem
             tOffset += 3 ;
         }
 
-        // wait until send is complete
         comm_check( MPI_Waitall( tCommSize, tSizeRequest, tSizeStatus ) );
         free( tSizeRequest );
         free( tSizeStatus );
 
-        // count the chunk sizes
         tOffset = 2 ;
         tCount = 0 ;
         for ( proc_t p=0; p<tCommSize; ++p )
         {
-            // no message if self or there is nothing to send
             if ( p == tMyRank || aData( p ).n_rows() == 0 || aData( p ).n_cols() == 0 )
             {
                 tOffset += 3 ;
@@ -2214,44 +1767,33 @@ namespace belfem
             tOffset += 3 ;
         }
 
-        // clear memory
         free( tSizes );
 
-
-        // Allocate memory for status/request vector
         MPI_Status*  tStatus  = ( MPI_Status *  ) malloc( sizeof( MPI_Status  ) * tCount );
         MPI_Request* tRequest = ( MPI_Request * ) malloc( sizeof( MPI_Request ) * tCount );
 
-        // resetting the counter
         tCount = 0 ;
 
-        // get the communication type
         comm_t tCommType = comm_type< T >();
 
         for( proc_t p=0; p<tCommSize; ++p )
         {
-            // no message to self or if there is nothing to send
             if ( p == tMyRank || aData( p ).n_rows() == 0 || aData( p ).n_cols() == 0 )
             {
                 continue;
             }
 
-            // get the raw pointer of the contaoner
             const T * tData = aData( p ).data();
 
             // compute the chunks for this message ( same transfer length
             // as announced in tSizes above — never capacity() )
             Cell< int > tChunkSizes = comm_split( aData( p ).spacing() * aData( p ).n_cols() );
 
-            // offset in data container
             index_t tDataOffset = 0 ;
-            // Inside the length distrubution, we use comm_tag too.
-            // For safety, the tag for the messages is incremented.
             int tCommTag = comm_tag( tMyRank, p ) + 1 ;
 
             for ( index_t c : tChunkSizes )
             {
-                // send data
                 comm_check( MPI_Isend(
                             &tData[ tDataOffset ],
                             c,
@@ -2265,10 +1807,8 @@ namespace belfem
             }
         }
 
-        // wait until send is complete
         comm_check( MPI_Waitall( tCount, tRequest, tStatus ) );
 
-        // tidy up memory
         free( tStatus );
         free( tRequest );
 
@@ -2277,29 +1817,21 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-    /**
-     * \brief Collects matrices from all processes into a cell.
-     * \tparam T The type of the matrix elements.
-     * \param aData The cell to store collected matrices.
-     */
+    /** Receives only, one slot per rank. Not collective: every other rank
+     *  must send, through distribute() or send(). */
     template< typename T >
     void
     collect( Cell< Matrix< T > > & aData )
     {
 #ifdef BELFEM_MPI
 
-        // get my id
         proc_t tMyRank = gComm.rank();
 
-        // get the number of procs
         proc_t tCommSize = gComm.size();
 
-        // allocate memory
         aData.set_size(  tCommSize, {} );
 
-        // obtain the matrix lengths
         index_t * tSizes = ( index_t *  ) malloc( sizeof( index_t ) * tCommSize * 3 );
-
 
         MPI_Request* tSizeRequest = ( MPI_Request* ) malloc( sizeof( MPI_Request ) * tCommSize );
         MPI_Status*  tSizeStatus  = ( MPI_Status*  ) malloc( sizeof( MPI_Status  ) * tCommSize );
@@ -2317,7 +1849,6 @@ namespace belfem
                 continue ;
             }
 
-            // receive data
             comm_check( MPI_Irecv( &tSizes[ tOffset ],
                         3,
                         comm_type< index_t >(),
@@ -2329,7 +1860,6 @@ namespace belfem
             tOffset += 3 ;
         }
 
-        // wait until send is complete
         comm_check( MPI_Waitall( tCommSize, tSizeRequest, tSizeStatus ) );
 
         free( tSizeStatus );
@@ -2340,7 +1870,6 @@ namespace belfem
 
         for ( proc_t p=0; p<tCommSize; ++p )
         {
-            // skip if self
             if ( p == tMyRank )
             {
                 tOffset += 3 ;
@@ -2349,34 +1878,27 @@ namespace belfem
 
             aData( p ).set_size( tSizes[ tOffset ], tSizes[ tOffset+1 ] );
 
-            // skip if empty
             if ( tSizes[ tOffset ] == 0 || tSizes[ tOffset+1 ] == 0 )
             {
                 tOffset += 3 ;
                 continue ;
             }
 
-            // count memory needs
             tCount += comm_split( tSizes[ tOffset + 2  ] ).size();
             tOffset += 3 ;
         }
 
-        // Allocate memory for status/request vector
         MPI_Status*  tStatus  = ( MPI_Status*  ) malloc( sizeof( MPI_Status  ) * tCount );
         MPI_Request* tRequest = ( MPI_Request* ) malloc( sizeof( MPI_Request ) * tCount );
 
-
-        // get the communication type
         comm_t tCommType = comm_type< T >();
 
-        // resetting the counter
         tCount = 0 ;
 
         tOffset = 0 ;
 
         for( proc_t p=0; p<tCommSize; ++p )
         {
-            // no message to self or if there is nothing to receive
             if ( p == tMyRank )
             {
                 tOffset += 3 ;
@@ -2394,22 +1916,16 @@ namespace belfem
                 ( unsigned int ) p,
                 ( long unsigned int ) aData( p ).capacity() );
 
-            // compute the chunks for this message
             Cell< int > tChunkSizes = comm_split( tSizes[ tOffset + 2 ] );
 
-            // get the raw data container
             T * tData = aData( p ).data() ;
 
-            // offset in data container
             index_t tDataOffset = 0 ;
 
-            // Inside the length distribution, we use comm_tag too.
-            // For safety, the tag for the messages is incremented.
             int tCommTag = comm_tag( tMyRank, p ) + 1 ;
 
             for ( index_t c : tChunkSizes )
             {
-                // receive data
                 comm_check( MPI_Irecv( &tData[ tDataOffset ],
                             c,
                             tCommType,
@@ -2424,14 +1940,11 @@ namespace belfem
             tOffset += 3 ;
         }
 
-        // wait until send is complete
         comm_check( MPI_Waitall( tCount, tRequest, tStatus ) );
 
-        // tidy up memory
         free( tStatus );
         free( tRequest );
         free( tSizes );
-
 
 #endif
     }
@@ -2440,6 +1953,7 @@ namespace belfem
 // STRINGS
 //==============================================================================
 
+    /** Collective: every rank calls it, and aRoot's data lands on all ranks. */
     void
     broadcast( Cell< string > & aData, const proc_t aRoot=0 );
 

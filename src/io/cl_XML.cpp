@@ -21,7 +21,6 @@ namespace belfem
               const FileMode aMode ) : mPath( aPath )
     {
 #ifdef BELFEM_XML
-        // load XML file
         mFile.LoadFile( aPath.c_str() );
 
         BELFEM_ERROR( ! mFile.Error(),
@@ -30,10 +29,8 @@ namespace belfem
                 mFile.ErrorID(),
                 mFile.ErrorIDToName( mFile.ErrorID() ) );
 
-        // set the active element to current file
         mActiveElement = nullptr;
 
-        // set level to zero
         mLevel = 0;
 #else
         BELFEM_ERROR( false, "XML support not compiled in" );
@@ -44,9 +41,7 @@ namespace belfem
 
     XML::~XML()
     {
-        // reset element
 
-        //mActiveElement = nullptr;
     }
 
 //------------------------------------------------------------------------------
@@ -141,8 +136,6 @@ namespace belfem
                 "Could not find any child named %s in current tree",
                  aLabel.c_str() );
 
-
-        // select child element
         if( mLevel == 0 )
         {
             mActiveElement = mFile.FirstChildElement( aLabel.c_str() );
@@ -152,7 +145,6 @@ namespace belfem
             mActiveElement = mActiveElement->FirstChildElement( aLabel.c_str() );
         }
 
-        // increment level
         ++mLevel;
 #endif
     }
@@ -165,7 +157,6 @@ namespace belfem
 #ifdef BELFEM_XML
         tinyxml2::XMLElement * tElement =  mActiveElement->NextSiblingElement(
                 mActiveElement->Name() );
-
 
         if( tElement != NULL )
         {
@@ -202,9 +193,7 @@ namespace belfem
     XML::select_subtree( const string & aTree )
     {
 #ifdef BELFEM_XML
-        // replace slashes with space
         Cell< string > tWords = string_to_words( search_and_replace( aTree, "/", " " ) );
-
 
         mActiveElement = mFile.FirstChildElement( tWords( 0 ).c_str() );
 
@@ -214,7 +203,6 @@ namespace belfem
                    mPath.c_str(),
                    mFile.ErrorID(),
                    mFile.ErrorIDToName( mFile.ErrorID() ) );
-
 
         for( size_t k=1; k<tWords.size(); ++k )
         {
@@ -251,10 +239,8 @@ namespace belfem
         BELFEM_ERROR( this->key_exists( aKey ), "Key %s does not exist in element %s",
             aKey.c_str(), mActiveElement->Name() );
 
-
         string aValue = std::string(
                 mActiveElement->FirstChildElement( aKey.c_str() )->GetText() );
-
 
         return clean_string( aValue );
 #else

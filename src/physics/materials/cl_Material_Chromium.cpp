@@ -58,7 +58,7 @@ namespace belfem
             // 300 K the softening constants are ill-conditioned. K0 and G0 come from the cryogenic plateau
             // ( 0-120 K ), the common softening constant from the shear modulus over 0-120 K and the
             // paramagnetic 315-330 K points; nu = 0.237 is the cryogenic value ( isothermal 0.2371 ) and is
-            // held at every temperature. Decision: Christian Messe, 2026-09-15.
+            // held at every temperature.
             this->create_mech( 298.67, 0.2371, 100., 15.8, 15.8 );
 
             if ( ! std::isnan( RRR ) )
@@ -86,8 +86,7 @@ namespace belfem
         {
             // validity ceiling, not the melting point ( 2180 K ): above this temperature the quasi-harmonic
             // E( T ) departs by more than 5 % in shape from the dynamic modulus curve of Blanke 1989
-            // ( Thermophysikalische Stoffgroessen, uncited compilation, used here for the ceiling only );
-            // decided 2026-09-15, Christian Messe
+            // ( Thermophysikalische Stoffgroessen, an uncited compilation used only for this ceiling ).
             this->set_constant( MaterialProperty::T_max, 570. );
 
             // reference density at room temperature

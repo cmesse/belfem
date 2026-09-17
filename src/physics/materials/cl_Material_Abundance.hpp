@@ -145,9 +145,6 @@ namespace belfem
              */
             Abundance();
 
-            /**
-             * @brief Destructor
-             */
             ~Abundance() = default;
 
             /**

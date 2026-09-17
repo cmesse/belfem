@@ -14,7 +14,6 @@
 #include <memory>
 #include <utility>
 
-
 #include "cl_MaxwellFactory.hpp"
 #include "fn_check_facet_orientation.hpp"
 #include "fn_check_unit.hpp"
@@ -69,18 +68,13 @@ namespace belfem
     {
         this->create_materials();
 
-        // synchronize data
         Vector< uint > tIData( 3 );
         if ( mCommRank == 0 )
         {
-            // read mesh, either a gmsh mesh or a belfem mesh
             mMesh = this->read_mesh();
-
-            //mMesh->save( "mesh.exo" );
 
             mTopology = new mesh::Topology( mMesh );
 
-            // create the commtable
             uint n = comm_size() - 1;
             if ( n > 0 )
             {
@@ -142,7 +136,6 @@ namespace belfem
             }
         }
 
-        //Create the Maxwell BC Factory
         BELFEM_ERROR(mInputFile->section_exists("boundary conditions" ),"No boundary conditions defined") ;
         if ( mInputFile->section( "boundary conditions" )->section_exists( "maxwell" ) )
         {
@@ -157,7 +150,6 @@ namespace belfem
 
         BELFEM_ERROR(mInputFile->section_exists("boundary conditions" ),"No boundary conditions defined") ;
 
-        // Read temperature value if it exists
         if ( mInputFile->section_exists("initial conditions" ) )
         {
             const input::Section * tSection = mInputFile->section( "initial conditions" ) ;
@@ -176,8 +168,6 @@ namespace belfem
             }
         }
 
-
-        //Set the sideset domain type for the appropriate boundary conditions
         if ( mCommRank == 0 )
         {
             for ( PhysicalBoundaryCondition * tBC : mBoundaryConditionFactory->boundary_conditions() )
@@ -215,7 +205,6 @@ namespace belfem
                                 // out of the map. Topology::detect_sideset_types
                                 // dereferences master() unguarded, but it runs
                                 // much later on a fully wired mesh.
-                                //
                                 // This is a DIAGNOSTIC. It must never abort the
                                 // run it is only commenting on, so it asks before
                                 // it looks -- and stays silent when it cannot tell
@@ -256,8 +245,6 @@ namespace belfem
             }
         }
 
-
-        // create a parameter object
         mKernelParameters = new KernelParameters( mMesh );
     }
 
@@ -316,17 +303,14 @@ namespace belfem
     Mesh *
     MaxwellFactory::read_mesh()
     {
-        // get name of mesh
         string tMeshPath = mInputFile->section( "mesh" )->get_string(
             "file" );
 
         mLabel = filename( tMeshPath );
         mLabel = mLabel.substr( 0, mLabel.find_last_of( "." ) );
 
-        // check if file is configured as bfm
         if ( tMeshPath.substr( tMeshPath.find_last_of( "." ) + 1 ) == "bfm" )
         {
-            // load bfm mesh
             mesh::BfmFile tFile( tMeshPath );
 
             // the deck names a processed mesh directly, so there is no .msh
@@ -386,30 +370,23 @@ namespace belfem
             return tFile.get();
         }
 
-        // next we check if there is a corresponding Bfm file
         std::filesystem::path tBfmFilePath( tMeshPath );
         tBfmFilePath.replace_extension( ".bfm" );
         mMeshPath = tBfmFilePath.string();
 
-        // load original mesh
         Mesh * aMesh =  new Mesh( tMeshPath, 0, false, false );
 
-
-        // we need to scale the original mesh using the given unit
         string tUnit = mInputFile->section( "mesh" )->get_string(
                "unit" );
 
-        // test if the unit is valid
         value tValue = unit_to_si( tUnit );
         BELFEM_ERROR(
             check_unit( tValue, "m" ),
             "need a length unit for the mesh, is: %s",
             tUnit.c_str() );
 
-        // make sure the mesh is scaled to SI
         aMesh->scale_mesh( tValue.first );
 
-        // test the checksum
         size_t tChecksum = aMesh->checksum();
 
         // ... and the settings the mesh would be enriched with. The checksum
@@ -422,7 +399,6 @@ namespace belfem
         // carry them along so they land in the file we are about to write
         aMesh->set_config_tag( tConfigTag, tConfigText );
 
-        // check if bfm file exists
         if ( std::filesystem::exists( tBfmFilePath ) )
         {
             // OK, the mesh exists, now we need to load the original mesh
@@ -443,11 +419,9 @@ namespace belfem
                 // ( ProtoMesh::reconstruct_edge_connectivity ), and the
                 // duplicate interface edges of a DG stack share their node
                 // pairs with the originals -- they come back as orphans and
-                // the stack silently degrades to shared edges ( measured
-                // 2026-09-01: a fresh ghost-ON build carries 5 x 24908
-                // duplicate edge dofs on the tape deck, every reload of it
-                // carried none ). Rebuilding is the only correct answer until
-                // the reload preserves twin edges
+                // the stack silently degrades to shared edges. A fresh build with
+                // ghost facets has duplicate edge dofs, but a reload has none.
+                // Rebuild until the reload preserves twin edges
                 if ( tFileTag == tConfigTag && fem::ghost_facets_requested( *mInputFile ) )
                 {
                     message( InfoLevel::Default,
@@ -497,7 +471,6 @@ namespace belfem
 
         if ( ! aMesh->mesh_checker_flag() )
         {
-            // make sure that the mesh is oriented correctly
             MeshChecker tCheck( aMesh );
         }
 
@@ -632,7 +605,6 @@ namespace belfem
                 tCurve = tFactory.intersect( tPair.first, tPair.second, tID ) ;
             }
 
-            // Add these curves to the list and the mesh
             mCurves.push(tCurve) ;
             mMesh->curves().push(tCurve) ;
         }
@@ -645,11 +617,9 @@ namespace belfem
     MaxwellFactory::create_periodic( const input::Section * aSection )
     {
 
-        //Read source and target nodes
         BELFEM_ERROR( aSection->key_exists( "source" ), "Undefined source nodes for periodic" ) ;
         BELFEM_ERROR( aSection->key_exists( "target" ), "Undefined target nodes for periodic" ) ;
 
-        //Get source nodes
         Vector<id_t> tSourceIDs;
         aSection->get_ids( "source", tSourceIDs) ;
 
@@ -659,8 +629,6 @@ namespace belfem
         BELFEM_ERROR( tSourceIDs.length() == 3, "Exactly 3 nodes must be defined on source" ) ;
         BELFEM_ERROR( tTargetIDs.length() == 3, "Exactly 3 nodes must be defined on target" ) ;
 
-
-        // Create the periodicity
         mPeriodicFactory = new mesh::PeriodicityFactory( mMesh );
 
         mPeriodicFactory->set_master_plane( tSourceIDs(0), tSourceIDs(1), tSourceIDs(2) );
@@ -724,10 +692,7 @@ namespace belfem
 
         this->synch_material_map();
 
-        //if ( mCommRank == 0 ) mMesh->save( "debug.exo" );
-
         comm_barrier();
-
 
         this->set_block_types_in_magnetic_equation();
 
@@ -749,7 +714,6 @@ namespace belfem
 
             mesh::symrcm( mMesh->nodes() );
 
-            // rebuild indices
             mMesh->update_node_indices() ;
             mMesh->update_edge_indices() ;
             mMesh->update_face_indices() ;
@@ -769,7 +733,6 @@ namespace belfem
 
         comm_barrier();
 
-        // selecting the blocks
         Cell< id_t > tBlocks ;
         for ( mesh::Block * tBlock : mMesh->blocks() )
         {
@@ -809,7 +772,6 @@ namespace belfem
 
         mMagneticField->solver_data()->use_full_force( true );
 
-        // get the solver section from the input file
         const input::Section *tSolverSection = mInputFile->section(
             "solver" );
 
@@ -819,14 +781,11 @@ namespace belfem
             ? tSolverSection->section( "linear magnetic" )
             : tSolverSection->section( "linear" );
 
-        //SolverParameters tSolverParameters( tLinearSection );
-
         this->configure_solver( tLinearSection, mMagneticField );
 
         //extract the abstract node data to access it later in the controller
         mMagneticField->extract_abstract_dofs_from_mesh() ;
 
-        // update the block types
         for( Block * tGroup : mMagneticKernel->dofmgr()->blocks() )
         {
             switch( tMesh->block( tGroup->id() )->domain_type() )
@@ -862,7 +821,6 @@ namespace belfem
             tGroup->set_domain_type( tMesh->sideset( tGroup->id() )->domain_type() );
         }
 
-        // get enriched order
         uint tOrder = mUseEnrichment ? ( tMesh->max_element_order() == 1 ? 5 : 13 ) : 0 ;
 
         if ( mUseEnrichment )
@@ -872,7 +830,6 @@ namespace belfem
                 tBlock->set_integration_order( tOrder );
             }
         }
-
 
         // deactivate all antisymmetry BCs and unwanted interface
         for( SideSet * tGroup : mMagneticKernel->dofmgr()->sidesets())
@@ -885,7 +842,6 @@ namespace belfem
                 tGroup->set_activation_mode( GroupActivationMode::Inactive );
             }
         }
-
 
         for( SideSet * tGroup : mMagneticKernel->dofmgr()->sidesets())
         {
@@ -915,17 +871,14 @@ namespace belfem
             }
         }
 
-        //Send the dofmngr to the boundary conditions
         mBoundaryConditionFactory->set_fields( mMagneticField );
 
-        //Send boundary conditions to the kernel
         for ( PhysicalBoundaryCondition *tBC : mBoundaryConditionFactory->
               boundary_conditions() )
         {
             mMagneticKernel->add_boundary_condition( tBC );
         }
 
-        //Impose the bearing directly here
         bool tHaveBearing = false ;
 
         for ( PhysicalBoundaryCondition * tBC : mBoundaryConditionFactory->boundary_conditions() )
@@ -938,7 +891,6 @@ namespace belfem
                 }
                 tHaveBearing = true ;
             }
-            //Initialize the Dirichlet conditions, to set the fixed Dofs
             else if ( tBC->type() == BoundaryConditionType::BackgroundDirichlet ||
                       tBC->type() == BoundaryConditionType::Dirichlet)
             {
@@ -1047,7 +999,7 @@ namespace belfem
         // conditions — including the circuit terminal pairs, which the
         // circuit factory pushed into the same container — carry a label
         // too, but it is consumed by Controller::save_IV, which writes
-        // their I/U pairs. RANK 0 ONLY, by design ( 2026-08-15 ): the
+        // their I/U pairs. Only rank 0 stores them: the
         // globals' consumers — the Exodus writer, the memdump, ParaView —
         // all read rank 0's mesh, no worker code reads them, and keeping
         // worker copies meant replicating label strings over MPI for
@@ -1089,7 +1041,6 @@ namespace belfem
         return mMagneticKernel;
 
     }
-
 
 //------------------------------------------------------------------------------
 
@@ -1153,10 +1104,8 @@ namespace belfem
         {
             if ( mCommRank == 0 )
             {
-                // creating the protoshells
                 this->read_thin_shell_data();
 
-                // set fields in topology class
                 mTopology->run() ;
 
                 if ( mComputeCohomologies )
@@ -1222,14 +1171,11 @@ namespace belfem
             //Open the thin shells for cohomology purposes
             if (tFactory.create_thin_shell_cuts())
             {
-                // for debugging
-                //tFactory.save_curve_debug_meshes();
 
                 mThinShellMasterNodes = std::move(tFactory.thin_shell_master_nodes()) ;
                 mThinShellSlaveNodes  = std::move( tFactory.thin_shell_slave_nodes() );
             }
 
-            //Create the terminal information to send to the cut factory
             this->create_terminal_list() ;
 
             tFactory.set_terminals( mTerminals, mThinShellTerminalIndices ) ;
@@ -1243,14 +1189,12 @@ namespace belfem
             }
             this->set_block_and_sideset_names();
 
-
             comm_barrier();
         }
 
         void
         MaxwellFactory::set_block_and_sideset_names()
         {
-            // create the format
             string tFormat = "%s_" + format_with_leading_zeros(
                 mMesh->max_block_and_sideset_id() );
 
@@ -1359,7 +1303,6 @@ namespace belfem
                 {
                     mesh::ThinShell * tShell = tFactory.create( tProtoshell );
 
-                    // add shell to map
                     for ( id_t tID : tProtoshell->sidesets() )
                     {
                         mThinShellMap[ tID ] = tShell;
@@ -1404,7 +1347,6 @@ namespace belfem
                     }
                 }
                 this->find_autopins( mMesh->autopins() ) ;
-
 
             }
             comm_barrier();
@@ -1554,15 +1496,12 @@ namespace belfem
                 {
                     mesh::Facet * tOther = tFacet->facet( f );
 
-                    // skip facets that are not of interest
                     if ( ! tOther->is_flagged() ) continue;
 
-                    // add other to Queue
                     tQueue.push( tOther );
 
                     tOther->unflag();
 
-                    // check if facets have aligned normals
                     if ( mesh::check_facet_orientation( tFacet, tOther ) ) continue;
                     tOther->flip();
                 }
@@ -1611,12 +1550,10 @@ namespace belfem
         void
         MaxwellFactory::create_hanging_edges_and_facets()
         {
-            // Initialize: clear any existing flags on edges and facets
             mMesh->unflag_all_edges();
             mMesh->unflag_all_facets( 0 );
             mMesh->unflag_all_facets( 1 );
             mMesh->unflag_all_facets( 2 );
-            // Node containers for interface node matching
             Cell< mesh::Node * > tMasterNodes;   // Nodes from master side (typically conducting)
             Cell< mesh::Node * > tSlaveNodes;    // Nodes from slave side (reordered to match master)
             Cell< mesh::Node * > & tSlaveNodesTemp = tMasterNodes; // Temporary reuse of tMasterNodes buffer
@@ -1643,7 +1580,6 @@ namespace belfem
 
                     for ( mesh::Facet *tFacet : tFacets )
                     {
-                        // Ensure facet knows which element is master/slave
                         tFacet->compute_orientation();
 
                         // --- Node retrieval with proper orientation matching ---
@@ -1695,7 +1631,6 @@ namespace belfem
                                 tEdge->allocate_source_container(
                                     tEdge->number_of_nodes() );
 
-                                // For each node on this master edge, find corresponding slave node
                                 for ( uint k = 0; k < tEdge->number_of_nodes(); ++k )
                                 {
                                     mesh::Node * tNode = tNodeMap(
@@ -1759,14 +1694,12 @@ namespace belfem
                 Cell< mesh::Facet * > & tFacets = tShell->facets();
                 if ( tFacets.size() == 0 ) break;
 
-                // Verify linear elements (TRI3 in 3D, LINE2 in 2D)
                 BELFEM_ERROR( tFacets( 0 )->element()->type() == ElementType::TRI3 ||
                               tFacets( 0 )->element()->type() == ElementType::LINE2,
                               "Only linear triangular elements are supported" );
 
                 DynamicBitset tBitset( tFacets.size() );
 
-                // we begin with the upper ones
                 index_t tCount = 0 ;
                 for ( mesh::Facet * tFacet : tFacets )
                 {
@@ -1844,7 +1777,6 @@ namespace belfem
             if ( mMesh->number_of_dimensions() == 3 &&
                  mMesh->max_element_order() == 2 )
             {
-                // Use TMatrix to compute proper interpolation weights for facets
                 maxwell::TMatrix tTmatrix( mMesh );
 
                 Cell< mesh::Node * > tNodes( 12, nullptr );
@@ -1853,19 +1785,15 @@ namespace belfem
                 {
                     if ( tFacet->is_flagged() )  // Only process flagged facets from above
                     {
-                        // Get slave nodes in local ordering (reusing tMasterNodes temporarily)
                         tFacet->slave()->get_nodes_of_facet(
                             tFacet->index_on_slave(), tMasterNodes );
 
-                        // Reorder slave node      s to match master orientation
                         mesh::to_master_orientation(
                             tFacet, tSlaveNodes, tMasterNodes );
 
-                        // Get actual master nodes
                         tFacet->master()->get_nodes_of_facet(
                             tFacet->index_on_master(), tMasterNodes );
 
-                        // Collect all nodes (master + slave)
                         uint k = 0;
                         for ( mesh::Node *tNode : tMasterNodes )
                         {
@@ -1876,16 +1804,13 @@ namespace belfem
                             tNodes( k++ ) = tNode;
                         }
 
-                        // Compute interpolation weights using TMatrix
                         const Vector< real > &tWeights = tTmatrix.process( tFacet );
 
-                        // Set weighted sources on facet
                         tFacet->set_sources( tNodes, tWeights );
                     }
                 }
             }
 
-            // Cleanup: unflag all edges and facets
             mMesh->unflag_all_edges( );
             mMesh->unflag_all_facets( 0 );
             mMesh->unflag_all_facets( 1 );
@@ -1930,7 +1855,6 @@ namespace belfem
 
             for ( mesh::Edge * tEdge : tEdgesOnThinShell )
             {
-                // check if edge has already been processed
                 if ( tEdge->is_flagged() ) continue ;
 
                 // a periodic slave edge already hangs on its master-plane
@@ -1955,7 +1879,6 @@ namespace belfem
                     tEdge->add_source( tNode );
                 }
 
-                // tag edge as processed
                 tEdge->flag();
             }
 
@@ -2002,7 +1925,6 @@ namespace belfem
 
             for ( mesh::Edge * tEdge : tEdgesOnThinShell )
             {
-                // check if edge has already been processed
                 if ( tEdge->is_flagged() ) continue ;
 
                 // a periodic slave edge already hangs on its master-plane
@@ -2026,7 +1948,6 @@ namespace belfem
                     tEdge->add_source( tNode );
                 }
 
-                // tag edge as processed
                 tEdge->flag();
             }
 
@@ -2071,7 +1992,6 @@ namespace belfem
 
             mesh::get_bottom_edges( aElement, tEdgesOnThinShell );
 
-            // get volume edges
             aFacet->master()->get_edges_of_facet( aFacet->index_on_master(), tEdgesOnVolume );
 
             for ( uint e=0; e<m; ++e )
@@ -2084,8 +2004,6 @@ namespace belfem
             for ( mesh::Edge * tEdge : tEdgesOnThinShell )
             {
 
-
-                // check if edge has already been processed
                 if ( tEdge->is_flagged() ) continue ;
 
                 // a periodic slave edge already hangs on its master-plane
@@ -2138,7 +2056,6 @@ namespace belfem
 #endif
         }
 
-
         void
         MaxwellFactory::hang_thinshell_edges_on_edges_top(
             EdgeWorkData  & aWork,
@@ -2173,11 +2090,9 @@ namespace belfem
                 tNodesOnVolume( k )->set_index( k );
             }
 
-            // get volume edges
             aFacet->slave()->get_edges_of_facet( aFacet->index_on_slave(), tTemporaryEdges );
             to_master_orientation( aFacet, tTemporaryEdges, tEdgesOnVolume );
 
-            // get shell edges on the top layer
             mesh::get_top_edges( aElement, tEdgesOnThinShell );
 
             for ( uint e=0; e<m; ++e )
@@ -2189,8 +2104,6 @@ namespace belfem
 
             for ( mesh::Edge * tEdge : tEdgesOnThinShell )
             {
-                //
-                // check if edge has already been processed
                 if ( tEdge->is_flagged() ) continue ;
 
                 // a periodic slave edge already hangs on its master-plane
@@ -2205,7 +2118,6 @@ namespace belfem
                 }
 
                 tEdge->allocate_source_container( 1 );
-
 
                 mesh::Edge * tOther = tEdgesOnVolume( tEdge->index() );
 
@@ -2342,7 +2254,6 @@ namespace belfem
         {
             if ( mCommRank == 0 )
             {
-                // we can now disconnect the abstract nodes from the nodes
                 mMesh->unflag_all_nodes();
 
                 const Vector< id_t > & tAirBlocks = mTopology->groups( DomainType::Air );
@@ -2378,7 +2289,6 @@ namespace belfem
                     {
                         uint tCount = 0;
 
-                        // check for abstract nodes
                         for ( uint s = 0; s < tNode->number_of_sources(); ++s )
                         {
                             if ( tNode->source( s )->is_flagged() && tNode->
@@ -2391,7 +2301,6 @@ namespace belfem
                         tSources.set_size( tCount, nullptr );
                         tCount = 0;
 
-                        // relink nodes without abstract nodes
                         for ( uint s = 0; s < tNode->number_of_sources(); ++s )
                         {
                             if ( tNode->source( s )->is_flagged() && tNode->
@@ -2515,12 +2424,10 @@ namespace belfem
                 }
             }
 
-            // synch data with other procs
             broadcast( tThinShellBlocks );
             broadcast( tCoatingBlocks );
             broadcast( tCoatingTypes );
 
-            // we need to add the thin shell types to the block map here.
             // The walls get their OWN map and their own postprocessor pass:
             // a Postprocessor instance is single-element-type by construction
             // ( compute_node_matrices sizes the patch matrices once from
@@ -2555,7 +2462,6 @@ namespace belfem
                                                        s==1 ? tThinShellMap : tCoatingMap ;
                 if ( tIDs.length() > 0 )
                 {
-                    // count conductor types
                     uint tNumNormalConductors = 0;
                     uint tNumSuperConductors = 0;
 
@@ -2634,7 +2540,6 @@ namespace belfem
         void
         MaxwellFactory::init_fields()
         {
-            // initialize phi values
             Mesh * tMesh = mMagneticKernel->mesh() ;
 
             Vector< real > &tPhi = tMesh->field_exists( "phi" )
@@ -2695,10 +2600,8 @@ namespace belfem
         MaxwellFactory::configure_solver( const input::Section *aSection,
                                           DofManager *aField )
         {
-            // read solver settings
             SolverParameters tParams( aSection );
 
-            // set the solver of the field
             aField->set_solver( tParams );
         }
 
@@ -2759,7 +2662,6 @@ namespace belfem
             Vector< id_t > &aBlockIDs,
             Cell< string > &aMaterialLabels )
         {
-            // count memory needs
             index_t tCount = 0;
             for ( Domain *tDomain : mDomains )
             {
@@ -2868,7 +2770,6 @@ namespace belfem
         void
         MaxwellFactory::assign_materials()
         {
-            // first we collect all materials that we need
             Cell< string > tMaterialLabels ;
 
             Mesh * tMesh = mMagneticKernel->mesh() ;
@@ -2939,7 +2840,6 @@ namespace belfem
 
                 for ( Block *tBlock : tBlocks )
                 {
-                    // get material label
                     const string &tMaterialLabel = mMaterialBlockAssignment(
                         tBlock->id() );
                     if ( tMaterialLabel != "air" && tMaterialLabel !=
@@ -3171,12 +3071,10 @@ namespace belfem
         void
         MaxwellFactory::read_thin_shell_data()
         {
-            // get the topology section in the input file
             const input::Section *tTopo = mInputFile->section( "topology" );
 
             Map< string, string > tTapeMap;
 
-            // count number of thin shells
             uint tCount = 0;
             for ( uint k = 0; k < tTopo->num_sections(); ++k )
             {
@@ -3199,7 +3097,6 @@ namespace belfem
 
             tCount = 0;
 
-            // get sections that describe layers
             Map< string, const input::Section * > tLayers;
             for ( uint k = 0; k < mInputFile->num_sections(); ++k )
             {
@@ -3211,7 +3108,6 @@ namespace belfem
                 }
             }
 
-            // read the topology data
             id_t tID = 0;
             for ( uint j = 0; j < tTopo->num_sections(); ++j )
             {
@@ -3241,7 +3137,6 @@ namespace belfem
                                 tSection->label().c_str() );
                         }
 
-                        // read the layer data
                         BELFEM_ERROR( tLayers.key_exists( tSection->label() ),
                                       "Layers for %s not defined.",
                                       tShell->label().c_str() );
@@ -3253,7 +3148,6 @@ namespace belfem
                         tShell->thicknesses().set_size( tNumLayers, 0.0 );
                         tShell->materials().set_size( tNumLayers, "" );
 
-                        //Read the material and thicknesses
                         const Cell< string > & tBuffer = tLayer->buffer();
                         tCount = 0 ;
                         for ( index_t k = tLayer->start(); k<tLayer->end(); ++k )
@@ -3279,7 +3173,6 @@ namespace belfem
                             // it names neither the layer nor the value. A negative
                             // thickness inverts the layer stack and flips the sign
                             // of the QUAD4TS Jacobian.
-                            //
                             // Phrased as a positive test on purpose: to_real hands
                             // back NaN for a malformed number, and NaN > 0 is false,
                             // so that is refused here too instead of propagating
@@ -3365,7 +3258,6 @@ namespace belfem
                 }
             }
 
-            // set sideset types in mesh
             for ( auto tPair : mProtoshells )
             {
                 for ( id_t s : tPair->sidesets() )
@@ -3375,7 +3267,6 @@ namespace belfem
             }
 
         }
-
 
 //------------------------------------------------------------------------------
 
@@ -3538,9 +3429,10 @@ namespace belfem
 
             sort( tGraph , opVertexID );
 
-            // backup ownerships and levels, just in case.
-            // two-arg ctor: the one-arg Cell ctor only RESERVES ( size
-            // stays 0 and the indexed writes below would be out of range )
+            // snapshot the ownerships and levels: the partition search below
+            // mutates them and they are restored afterwards. Two-arg ctor: the
+            // one-arg Cell ctor only RESERVES ( size stays 0 and the indexed
+            // writes below would be out of range )
             Cell< proc_t >  tOwners( tGraph.size(), 0 );
             Cell< index_t > tLevels( tGraph.size(), 0 );
             index_t tCount = 0 ;
@@ -3597,7 +3489,6 @@ namespace belfem
                 aPins( tCount++ ) = reinterpret_cast< mesh::Node * >( tPin );
             }
 
-            // tidy up
             sort( tGraph , opVertexID );
             tCount = 0 ;
             for ( auto tNode : tGraph )

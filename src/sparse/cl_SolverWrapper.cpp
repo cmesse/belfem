@@ -397,14 +397,11 @@ namespace belfem
 // cannot influence and therefore most need to warn about. Moving it to BELFEM_OMP
 // would silently delete the oversubscription warning on every default build.
 #ifdef OMP
-            // The budget is PHYSICAL cores, not logical CPUs. Until 2026-08-21 this
-            // used std::thread::hardware_concurrency() -- the logical count -- and
-            // then RECOMMENDED that budget. On the 10-core / 20-thread reference
-            // workstation with ten ranks that recommends OMP_NUM_THREADS = 2, i.e.
-            // 20 threads on 10 cores: exactly the configuration
-            // examples/scripts/Allrun refuses to launch and doc/parallel_execution.md
-            // forbids. Two components of this repository disagreed about what a core
-            // is; this one was wrong.
+            // The budget is physical cores, not logical CPUs.
+            // std::thread::hardware_concurrency() returns the logical count. On a
+            // 10-core, 20-thread workstation with ten ranks, it would recommend
+            // OMP_NUM_THREADS = 2: 20 threads on 10 cores. examples/scripts/Allrun
+            // refuses that configuration, and doc/parallel_execution.md forbids it.
             const unsigned int tMine       = physical_cores_available( true ) ;
             const unsigned int tMaxThreads = omp_get_max_threads() ;
             const unsigned int tRanks      = gComm.node_size() ;
@@ -414,7 +411,7 @@ namespace belfem
             // defect being fixed, so there is no logical-CPU fallback. It is not a
             // reason for silence, though: an unset OMP_NUM_THREADS with several
             // ranks on a node IS the affinity-mask default, and diagnosing it needs
-            // no core count at all ( Grok, 2026-08-21 ). On a platform this parse
+            // no core count at all. On a platform this parse
             // cannot budget -- ARM, some VMs, a mask wider than CPU_SETSIZE -- that
             // would otherwise silence the one case the turtle exists to catch.
             const bool tKnown = tMine > 0 ;
