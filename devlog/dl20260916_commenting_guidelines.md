@@ -354,6 +354,10 @@ Christian's ruling: survey the 56 MATLAB scripts in the pre-reset `tmp/` (now `~
 Files: `src/fem/interpolation/doc/matlab/` (new: 14 scripts, `check_tet10.m`, `check_penta18.m`, `compare_tables.py`, five `README.md`), `src/fem/interpolation/doc/README.md` (section), `src/fem/interpolation/doc/nedelec_derivation.md` (two citations), `Doxyfile.in` (`EXCLUDE_PATTERNS`), `scripts/add_license_header.py` (`.m`), `more/gmsh/meshtool.m` (header only), `todo/matlab_derivations_recovery.md` (new), `todo/README.md`, `tmp/ai_exchange/review_matlab_recovery.md` and `matlab_recovery_sweep.md` (ephemeral), `tmp/matlab_survey/` (read-only mirror for the auditors, ephemeral).
 
 
+## Committed and closed
+
+`caf2045` (guideline, tooling, conventions, the three same-day devlogs), `05a4eb5` (the sweep and the license headers), `08c306b` (the MATLAB recovery). Range gate after the commits: `check_comment_only: OK (caf2045^..HEAD, 266 files)`. Both plans moved to `todo/closed/` with their Status lines rewritten as summaries; O1 of the MATLAB plan resolved by Christian accepting the default (dropped). Next: sweep 2, the Grok + Codex second-tier list over the swept tree (`comment_cleanup_sweep_1.md` §9).
+
 ## Not done
 
 - ~~Codex language sweep~~ — done (`gpt-5.6-terra`/medium, the dense-document row): 13 edits, all
