@@ -15,7 +15,7 @@
  * This translation unit is compiled — never linked, never run — as part of the
  * test_material_backendfree OBJECT library, with the linear-algebra backend
  * macro deliberately stripped (see CMakeLists.txt in this directory). It pins
- * the contract established by the 2026-07-02 SplineLookupTable refactor:
+ * the contract established by the SplineLookupTable refactor:
  * cl_Material.hpp and the user-material surface must compile with no
  * BELFEM_ARMADILLO / BELFEM_BLAZE macro defined, so that a simple user
  * material never needs the backend.

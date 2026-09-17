@@ -11,7 +11,7 @@
  * Circulation and curl battery for the volume Nedelec elements
  * ( TRI3, TRI6, TET4, TET10 ). See todo/falsification_tooling.md ( D1 ).
  *
- * This battery pins the class of defect found 2026-08-14 ( EF_TET4 edge 2,
+ * This battery pins a class of defect ( EF_TET4 edge 2,
  * EF_TET10 table-wide eta/zeta exchange, todo/nedelec_edge_function_defects.md ):
  * a wrong gradient or a wrong scalar factor breaks the circulation identity
  * within machine precision, on the reference element and on a distorted one.
@@ -25,12 +25,14 @@
  *  - expected circulations along the canonical ( unflipped ) edge direction:
  *    first order 1 per own edge, TRI6 pair ( 1/2, 1/2 ), TET10 pair ( 1, 1 ),
  *    zero on every foreign edge, zero for every face dof
- *    ( TRI6 value derived symbolically 2026-08-14; TET10 values verified
- *    against the corrected tables and the notes' polynomial set )
+ *    ( TRI6 value derived symbolically; TET10 values verified against the
+ *    corrected tables and the notes' polynomial set )
  *
  * The distorted-element coordinates are the exact vertices used by the
- * symbolic probes ( tmp/tet10/tet4_circulation_probe.py and friends ), so the
- * two verification chains meet on the same numbers.
+ * symbolic probes that produced the TET10 tables ( the probes themselves are
+ * not kept in the tree; the table generators are under
+ * src/fem/interpolation/doc/matlab/ ), so the two verification chains meet on
+ * the same numbers.
  *
  * Not covered here: LINE3 ( needs the thin-shell facet chain, see
  * test_InterfaceOrientation.cpp ) and the TS/TB family ( ditto ).
@@ -149,7 +151,7 @@ namespace
      * evaluation points. Column 0 is the INTERIOR base point on purpose:
      * link() evaluates its Jacobian at point 0, and a boundary point there
      * ( eta = 0 on the first edge ) masked the eta/zeta shape-derivative
-     * defect D3 of 2026-08-14. Then the finite difference cluster
+     * defect of the node map. Then the finite difference cluster
      * ( minus/plus per parameter direction ), then 3-point Gauss per edge.
      */
     Matrix< real >
@@ -318,7 +320,7 @@ namespace
     /**
      * Test 1: circulation identity. Every dof against every edge:
      * own-edge value for edge dofs, zero for everything else.
-     * This is the test that catches both 2026-08-14 defects.
+     * This is the test that catches both node-map defects.
      */
     void
     test_circulation(

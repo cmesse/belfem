@@ -1229,8 +1229,8 @@ void IWG_CustomPhysics::compute_mkf( Element * aElement )
     calc->link( aElement );  // Link to current element
 
     // 2. Collect node data
-    Matrix< real > tNodeCoords;
-    collect_node_coords( aElement, tNodeCoords );  // X, Y, Z
+    Matrix< real > tNodeCoords;                     // sized by the call to nodes x mNumberOfSpatialDimensions
+    collect_node_coords( aElement, tNodeCoords );  // ( the problem dimension; a local here for brevity, a member in real code )
 
     Matrix< real > tNodeTemps;
     collect_node_data( aElement, { "T" }, tNodeTemps );  // T at nodes

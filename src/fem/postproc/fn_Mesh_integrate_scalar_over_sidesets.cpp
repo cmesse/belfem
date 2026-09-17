@@ -40,9 +40,9 @@ namespace belfem
                                        const proc_t         aMasterRank  )
         {
             // reset the value
-            real aValue = 0.0;
+            real tValue = 0.0;
 
-            // this routine only works on the master
+            // the integral is computed on the master only; the broadcast below hands it out
             if ( comm_rank() == aMasterRank )
             {
 
@@ -156,7 +156,7 @@ namespace belfem
                                         tS += tW( k ) * dot( tN( k ), tNodeValues ) * tDetJ;
                                     }
 
-                                    aValue += tS;
+                                    tValue += tS;
                                 //}// end if own element
                             } // end element loop
                         } // end number of facets > 0
@@ -164,11 +164,10 @@ namespace belfem
                 } // end sideset loop
             } // end master rank
 
-            comm_barrier() ;
-            proc_t tMasterRank = aMasterRank;
-            broadcast( tMasterRank );
+            // the integral exists on aMasterRank only; hand it to every rank
+            broadcast( tValue, aMasterRank );
 
-            return aValue;
+            return tValue;
         }
 //------------------------------------------------------------------------------
     }

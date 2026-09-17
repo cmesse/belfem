@@ -696,6 +696,10 @@ namespace belfem
                 {
                     mSubMesh = mMesh ;
                     mMesh = new Mesh( mSubMesh->number_of_dimensions() );
+
+                    // the placeholder is this kernel's own; the submesh stays
+                    // the parent's
+                    mOwnMesh = true ;
                 }
             }
         }

@@ -75,8 +75,6 @@ namespace belfem
             //! Borrows the caller's matrix for the factorization lifetime.
             //! It is never deleted here.
             SpMatrix * mMatrix = nullptr ;
-            Vector< real > * mX = nullptr ;
-            Vector< real > * mY = nullptr ;
 
 //------------------------------------------------------------------------------
         public:
@@ -392,12 +390,6 @@ namespace belfem
             SpMatrix *
             matrix() ;
 
-            Vector< real > &
-            x() ;
-
-            Vector< real > &
-            y() ;
-
 //------------------------------------------------------------------------------
         };
 
@@ -438,22 +430,6 @@ namespace belfem
         Wrapper::matrix()
         {
             return mMatrix ;
-        }
-
-//------------------------------------------------------------------------------
-
-        inline Vector< real > &
-        Wrapper::x()
-        {
-            return *mX ;
-        }
-
-//------------------------------------------------------------------------------
-
-        inline Vector< real > &
-        Wrapper::y()
-        {
-            return *mY ;
         }
 
 //------------------------------------------------------------------------------

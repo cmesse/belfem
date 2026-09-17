@@ -792,11 +792,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            const Matrix< real > &
-            N( const uint & aIntegrationPoint );
-
-//------------------------------------------------------------------------------
-
             void
             set_blocks(
                     const Vector< id_t >      & aBlockIDs,
@@ -1205,6 +1200,10 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            /** Sizes aX to number_of_nodes x mNumberOfSpatialDimensions, the problem
+             *  dimension the derived IWG's constructor sets ( 2 or 3; link_to_group()
+             *  does not set it, and an IWG that leaves the sentinel trips the assert ),
+             *  and fills row k with node k's coordinates. */
             void
             collect_node_coords( Element * aElement, Matrix< real > & aX );
 

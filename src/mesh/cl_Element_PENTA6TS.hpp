@@ -9,9 +9,6 @@
  * See the top-level LICENSE file for the complete license and disclaimer.
  */
 
-#ifndef CL_ELEMENT_PENTA6TS_HPP
-#define CL_ELEMENT_PENTA6TS_HPP
-
 #ifndef BELFEM_CL_ELEMENT_PENTA6TS_HPP
 #define BELFEM_CL_ELEMENT_PENTA6TS_HPP
 
@@ -208,6 +205,3 @@ namespace belfem
 } /* namespace belfem */
 
 #endif //BELFEM_CL_ELEMENT_PENTA6TS_HPP
-
-
-#endif //CL_ELEMENT_PENTA6TS_HPP

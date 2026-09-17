@@ -154,10 +154,11 @@ namespace belfem
         // compute orientations on finalize
         bool mComputeFacetOrientationsWhenFinalizing = true ;
 
-        //! mAutoPins and mOrphanedNodes are views onto nodes that mNodes owns.
-        //! mAbstractNodes is adopted into mNodes only through
-        //! set_abstract_nodes(). If filled any other way, its nodes are in no
-        //! owned container and ~Mesh does not delete them.
+        //! Non-owning views onto nodes that mNodes owns and ~Mesh deletes. The
+        //! abstract nodes of a cut are adopted into mNodes by the cut processor
+        //! ( CutProcessor::collect_duplicates ) before the cut factory fills
+        //! this list; set_abstract_nodes() is an alternate adopter that nothing
+        //! in the tree calls.
         Cell< mesh::Node * > mAutoPins ;
         Cell< mesh::Node * > mAbstractNodes ;
         Cell< mesh::Node * > mOrphanedNodes ;

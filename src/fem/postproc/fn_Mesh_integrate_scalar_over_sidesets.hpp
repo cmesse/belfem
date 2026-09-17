@@ -21,9 +21,10 @@ namespace belfem
     {
 //------------------------------------------------------------------------------
 
-        /** Every rank must call it, but the integral is computed and returned on
-         *  aMasterRank only. Every other rank returns its untouched aValue
-         *  ( the value is not broadcast ). */
+        /** Every rank must call it. The integral is computed on aMasterRank from
+         *  that rank's mesh and then broadcast, so every rank returns it. Not
+         *  a distributed integral: on a partitioned mesh only the master's
+         *  entities are integrated. */
         real
         integrate_scalar_over_sidesets(
                 Mesh * aMesh,

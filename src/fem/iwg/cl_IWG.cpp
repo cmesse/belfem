@@ -1621,7 +1621,12 @@ namespace belfem
         {
             mesh::Element * tElement = aElement->element() ;
 
-            for( uint i=0; i<=mNumberOfSpatialDimensions; ++i )
+            BELFEM_ASSERT( mNumberOfSpatialDimensions >= 1 && mNumberOfSpatialDimensions <= 3,
+                "collect_node_coords() needs mNumberOfSpatialDimensions set by the IWG constructor" );
+
+            aX.set_size( tElement->number_of_nodes(), mNumberOfSpatialDimensions );
+
+            for( uint i=0; i<mNumberOfSpatialDimensions; ++i )
             {
                 for( uint k=0; k<tElement->number_of_nodes(); ++k )
                 {

@@ -35,6 +35,7 @@ namespace belfem
         CutSet::~CutSet()
         {
             delete mBitset;
+            delete mNodeBitset;
         }
 
 
