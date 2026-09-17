@@ -267,8 +267,9 @@ no extra normalization factor.
 
 The entries of the `C`-operator are found by deriving the edge functions in the parameter space
 and transforming with the chain rule. On a straight-edged triangle, `E^i_x,x` and `E^i_y,y`
-vanish, and after a few lines of algebra (the MATLAB fragment `matlab_curl/fragment.m` in the
-notes repository reproduces it symbolically) the operator collapses to a constant:
+vanish, and after a few lines of algebra the operator collapses to a constant (the derivation note
+`doc/matlab/nedelec_tri/curl.m` carries the symbolic steps, with the opposite Whitney sign convention
+and the collapse left as a commented line):
 
 ```
 C = 2 / det(J) * [ s_1  s_2  s_3 ]
@@ -440,7 +441,7 @@ owner and activate the corresponding face functions in its `E` and `C` operators
 > node map: eta and zeta were exchanged in every scalar factor touching them, the exact trap
 > described in §4. The defect was found by an exact symbolic probe (24 edge-dof conformity
 > violations, face candidates leaking onto edges), fixed at its source (the table generator
-> `tmp/tet10/tet10_generate.m` used the naive node map), regenerated through the re-pinned
+> `doc/matlab/nedelec_tet10/tet10_generate.m` used the naive node map), regenerated through the re-pinned
 > MATLAB pipeline, and ported back; the final gate parsed the edited C++ tables and confirmed
 > exact unit circulation, zero face leakage, and curl consistency for all 24 dofs. The same
 > day, the new runtime battery (`tests/fem/test_EdgeFunctions.cpp`) caught a third instance of

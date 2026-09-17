@@ -52,6 +52,15 @@ The `interpolation` module provides shape functions, integration point managemen
   - Shared infrastructure: pseudo-inverse Jacobian, normal/binormal, layer thickness
   - `QUAD4TS` (line-in-2D) and `PENTA6TS` (triangle-in-3D) surface thin-shell elements
 
+### MATLAB Derivation Scripts
+
+- **[matlab/README.md](matlab/README.md)** - Symbolic generators, zero-tests and derivation notes behind tables the C++ carries as results (not API; excluded from Doxygen)
+  - `matlab/nedelec_tet10/` - generator and asserting zero-tests of the `cl_EF_TET10.cpp` edge and face tables, the DefElement cross-check, the `cl_IF_TET10.hpp` Lagrange derivation
+  - `matlab/nedelec_tri/` - derivation notes for the TRI3 curl, the TRI6 ansatz and the facet-integration remap
+  - `matlab/lagrange/` - asserting zero-test of `cl_IF_PENTA18.hpp::d2NdXi2`
+  - `matlab/facets/` - PENTA6 slave-face parameter maps and outward-normal notebooks
+  - `matlab/compare_tables.py` - the MATLAB transcriptions checked against the C++ files (sympy)
+
 ---
 
 ## Quick Reference

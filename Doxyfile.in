@@ -1167,7 +1167,8 @@ EXCLUDE_SYMLINKS       = NO
 # retired hphirun.cpp / hphiTrun.cpp kept as reference drivers ) and are
 # deliberately NOT matched by any pattern here.
 
-EXCLUDE_PATTERNS       = */main.cpp \
+EXCLUDE_PATTERNS       = */doc/matlab/* \
+                         */main.cpp \
                          */*test.cpp \
                          */test_*.cpp \
                          */poisson.cpp \
