@@ -50,8 +50,10 @@ namespace belfem
             //! trial and cuts the timestep. Default off — standalone users
             //! keep the loud abort. Rank-uniformity: MUMPS propagates errors
             //! to every rank ( non-failing ranks see INFO(1) = -1 ), and the
-            //! STRUMPACK collective solve returns the same ReturnCode on all
-            //! ranks, so the recorded failure is uniform.
+            //! STRUMPACK wrapper reduces a success/failure verdict across ranks
+            //! before recording, so the recorded failure is uniform. Backends
+            //! without a soft path ( UMFPACK, PARDISO, SuperLU ) abort
+            //! regardless of this flag.
             bool mSoftFail = false ;
             bool mFailed   = false ;
 
@@ -70,6 +72,8 @@ namespace belfem
                 mFailed = true ;
             }
 
+            //! Borrows the caller's matrix for the factorization lifetime.
+            //! It is never deleted here.
             SpMatrix * mMatrix = nullptr ;
             Vector< real > * mX = nullptr ;
             Vector< real > * mY = nullptr ;
@@ -86,10 +90,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            /**
-             * returns the name of the solver as string
-             * @return
-             */
             const string &
             label() const ;
 
@@ -105,7 +105,9 @@ namespace belfem
             }
 
             /**
-             * true if the last factorization/solve failed softly
+             * True if a soft failure was recorded and not cleared since. Sticky
+             * until clear_failure(); disarming soft-fail does not clear it. A
+             * backend without a soft path never sets it, it aborts instead.
              */
             bool
             failed() const
@@ -124,6 +126,12 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            /** Contract for implementers, both overloads: the MPI backends' overrides
+             *  are collective and must not take a rank-local early exit; the base
+             *  aborts ( BELFEM_ERROR ). Configuration errors abort. A numerical
+             *  factorization or solve failure is recorded through flag_failure()
+             *  when soft-fail is armed on a backend with a soft path ( MUMPS,
+             *  STRUMPACK, PETSc ) and aborts otherwise. */
             virtual void
             solve( SpMatrix & aMatrix,
                    Vector <real> & aLHS,
@@ -185,8 +193,9 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
-         * returns the determinant, if supported by the solver
-         * and computation was requested
+         * The determinant of the last factorization. Not a query: a wrapper
+         * that does not compute it aborts ( BELFEM_ERROR ), PARDISO included.
+         * The five accessors below share this rule.
          */
         virtual real
         get_determinant() const ;
@@ -194,18 +203,17 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
-        * returns the conditioning numbner, if supported by the solver
-        * and computation was requested
-        */
+         * The first of the two condition-number estimates, dimensionless.
+         */
         virtual real
         get_cond1() const ;
 
 //------------------------------------------------------------------------------
 
         /**
-         * returns the conditioning numbner, if supported by the solver
-         * and computation was requested
-        */
+         * The second condition-number estimate, dimensionless. It weights the
+         * term reported by get_omega2().
+         */
        virtual real
        get_cond2() const ;
 
@@ -334,9 +342,7 @@ namespace belfem
              * cannot see each other: with OMP_NUM_THREADS unset each one defaults
              * to its affinity mask, which counts every hyperthread.
              *
-             * The cost is time and memory, not a hang: measured on this code,
-             * 4 ranks x 4 threads on 10 physical cores ran the factorization ~15 %
-             * slower than 4 x 2 and used ~13 GiB more ( doc/parallel_execution.md ).
+             * The cost is time and memory, not a hang.
              * BELFEM's element loop carries no omp pragmas, so the extra threads
              * cannot help the assembly at all -- only STRUMPACK and MKL consume them.
              *
@@ -366,6 +372,9 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            /** Flattens in column-major order: column j occupies entries j * n_rows
+             *  through j * n_rows + n_rows - 1. mat2vec() sizes aV; vec2mat()
+             *  requires aM to have the intended shape already. */
             void
             mat2vec( const Matrix< real > & aM,
                            Vector< real > & aV );
@@ -379,6 +388,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            /** Borrowed pointer to the caller's matrix; never deleted here. */
             SpMatrix *
             matrix() ;
 

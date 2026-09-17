@@ -99,7 +99,10 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        // parallel constructor
+        // Collective: the master builds the coefficients with a data
+        // constructor and calls synchronize( master ). Every other rank enters
+        // this constructor with the same master rank and receives them through
+        // an internal barrier and broadcasts.
         Spline( const proc_t aMasterProc );
 
 //------------------------------------------------------------------------------

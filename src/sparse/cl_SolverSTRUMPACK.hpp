@@ -42,6 +42,7 @@ namespace belfem
         public:
 //------------------------------------------------------------------------------
 
+            /** aParams is borrowed and must outlive the wrapper. */
             STRUMPACK( const SolverParameters * aParams ) ;
 
 //------------------------------------------------------------------------------
@@ -50,6 +51,9 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            /** Collective. A success/failure verdict is reduced across ranks; a
+             *  failure is recorded through flag_failure() when soft-fail is armed
+             *  and aborts otherwise. The inherited matrix overload aborts. */
             void
             solve(
                     SpMatrix & aMatrix,

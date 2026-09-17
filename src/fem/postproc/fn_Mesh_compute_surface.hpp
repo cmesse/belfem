@@ -22,6 +22,9 @@ namespace belfem
     {
 //------------------------------------------------------------------------------
 
+        /** Collective: every rank contributes its owned facets and every rank
+         *  returns the total. The result's unit is the square of the mesh coordinate unit,
+         *  or the coordinate unit in 2D. aMesh is borrowed. */
         real
         compute_surface( Mesh * aMesh, const Vector< id_t > & aSideSetIDs );
 

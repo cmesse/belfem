@@ -155,6 +155,10 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            /** Stores borrowed pointers to the sources and copies the weights. The
+             *  sources and the dofs stay owned by whoever created them. The basis
+             *  owns its pointer arrays and its copy of the weights. Every
+             *  set_sources() and insert_dof() overload shares this contract. */
             void
             set_sources( Cell< Basis * > & aSources, const Vector< real > & aCoefficients );
 

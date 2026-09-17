@@ -125,11 +125,11 @@ namespace belfem
                     mUpdateFunction  = & MaxwellPostprocessor::update_dofs_nedelec ;
                     if ( aType == MaxwellPostprocessorType::SuperConductor )
                     {
-                        mComputeFunction = & MaxwellPostprocessor::compute_superconductor ; // <-- needs to be replaced through special function for TS
+                        mComputeFunction = & MaxwellPostprocessor::compute_superconductor ;
                     }
                     else if ( aType == MaxwellPostprocessorType::ThinShellSuperConductor )
                     {
-                        mComputeFunction = & MaxwellPostprocessor::compute_superconductor_ts ; // <-- needs to be replaced through special function for TS
+                        mComputeFunction = & MaxwellPostprocessor::compute_superconductor_ts ;
                     }
 
                     if ( mMesh->field_exists( "face_h" ) )
@@ -247,7 +247,6 @@ namespace belfem
                         if (   tPair.second == DomainType::Conductor
                             || tPair.second == DomainType::ThinShell )
                         {
-                            // grab material
                             Material * tMaterial = mKernel->material( aMaterialMap( tPair.first) );
                             if ( ! tMaterial->have(MaterialProperty::jc) )
                             {
@@ -271,7 +270,6 @@ namespace belfem
                         if ( ! mKernel->mesh()->block_exists( tPair.first ) ) continue ;
                         if ( tPair.second == DomainType::Conductor || tPair.second == DomainType::ThinShell )
                         {
-                            // grab material
                             Material * tMaterial = mKernel->material( aMaterialMap( tPair.first ) );
                             if ( tMaterial->have(MaterialProperty::jc) )
                             {
@@ -326,7 +324,6 @@ namespace belfem
                     if ( mCreateElementFields )
                     {
                         mComputeElementFields = true ;
-                        // allocate mElementIndices
                         this->select_owned_elements();
                         this->create_element_fields() ;
                     }
@@ -470,7 +467,6 @@ namespace belfem
         const Vector< real > &
         MaxwellPostprocessor::compute_air( const uint aK )
         {
-            // compute the magnetic field
             mH = mCalculator->B( aK ) * mDOFs ;
 
             mH *= -1. ;
@@ -481,11 +477,9 @@ namespace belfem
         const Vector< real > &
         MaxwellPostprocessor::compute_ferro( const uint aK )
         {
-            // compute the magnetic field
             mH = mCalculator->B( aK ) * mDOFs ;
             mH *= -1.;
 
-            // compute the  permeability and the magnetic flux density
             mB = mMaterial->mu( norm( mH ) ) * mH ;
 
             combine( mH, mB, mY );
@@ -496,13 +490,10 @@ namespace belfem
         const Vector< real > &
         MaxwellPostprocessor::compute_conductor( const uint aK )
         {
-            // compute the magnetic field
             mH = mCalculator->E( aK ) * mDOFs ;
 
-            // compute the  permeability and the magnetic flux density
             mB = mMaterial->mu(  norm( mH ) ) * mH ;
 
-            // compute the current
             mJ = mCalculator->C( aK ) * mDOFs ;
 
             combine( mH, mB, mJ, mY );
@@ -517,11 +508,9 @@ namespace belfem
             // through-thickness row )
             mH = mCalculator->E( aK ) * mDOFs ;
 
-            // compute the  permeability and the magnetic flux density
             const real tMu = mMaterial->mu( norm( mH ) );
             mB = tMu * mH ;
 
-            // compute the current
             mJ = mCalculator->C( aK ) * mDOFs ;
 
             // recover the normal flux from the volume traces like the
@@ -685,12 +674,10 @@ namespace belfem
 
                     if ( tBlockID != tLastBlockID )
                     {
-                        // get the material
                         mBlock = mField->block( tElement->block_id() );
 
                         mMaterial = mMaterialMap[ tBlockID ];
 
-                        // get the calculator
                         mCalculator = mBlock->calculator();
 
                         tLastBlockID = tBlockID ;
@@ -721,13 +708,10 @@ namespace belfem
         const Vector< real > &
         MaxwellPostprocessor::compute_superconductor( const uint aK )
         {
-            // compute the magnetic field
             mH = mCalculator->E( aK ) * mDOFs ;
 
-            // compute the  permeability and the magnetic flux density
             mB = mMaterial->mu(  norm( mH ) ) * mH ;
 
-            // compute the current
             mJ = mCalculator->C( aK ) * mDOFs ;
 
             // divide the current through the critical current
@@ -807,14 +791,11 @@ namespace belfem
         const Vector< real > &
         MaxwellPostprocessor::compute_superconductor_ts( const uint aK )
         {
-            // compute the magnetic field
             mH = mCalculator->E( aK ) * mDOFs ;
 
-            // compute the  permeability and the magnetic flux density
             const real tMu = mMaterial->mu(  norm( mH ) );
             mB = tMu * mH ;
 
-            // compute the current
             mJ = mCalculator->C( aK ) * mDOFs ;
 
             // divide the current through the critical current
@@ -947,7 +928,6 @@ namespace belfem
                 Cell< Matrix< real > > tElementData( mCommSize, {} );
                 collect( tElementData );
 
-                // loop over all fields
                 uint f=0;
                 for ( string & tLabel : mElementTargetFields )
                 {

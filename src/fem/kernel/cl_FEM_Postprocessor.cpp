@@ -98,7 +98,6 @@ namespace belfem
             this->select_elements_and_owned_nodes();
             this->select_all_relevant_nodes();
 
-            // free some memory
             delete mNodeBitset ;
             mNodeBitset = nullptr ;
 

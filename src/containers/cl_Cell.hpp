@@ -31,8 +31,11 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     /**
-     * Cell is a wrapper around the standard vector.
-     * It also supports sorting and unique making of entries.
+     * A bounds-checked wrapper around std::vector. A Cell< T > owns its
+     * elements. A Cell< T* > stores pointers but does not own the pointees.
+     * Destruction, clear() and set_size() do not delete them. Copying a
+     * Cell< T* > copies the pointers. sort(), unique(), reverse() and
+     * append() are free functions.
      *
      * @ingroup grp_containers
      * @see @ref containers_container_usage_guide
@@ -54,6 +57,9 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        /** Creates an empty Cell with capacity for aReserve elements. size()
+         *  is 0 and operator() is out of bounds until push() or set_size().
+         *  The two-argument constructor creates elements. */
         Cell( const std::size_t aReserve )
         {
             mCell.reserve( aReserve );
@@ -117,6 +123,9 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        /** Returns a borrowed pointer into contiguous storage, possibly nullptr
+         *  when the Cell is empty ( test size(), never data() ). Any call that
+         *  may reallocate invalidates it. MPI accepts it at count 0. */
         T * data()
         {
             return mCell.data();
@@ -131,6 +140,8 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        /** The underlying vector. Resizing it here bypasses the bounds checks
+         *  of operator(). */
         std::vector< T > &
         vector_data()
         {
@@ -174,9 +185,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        /**
-         * return the size of the Cell
-         */
         size_t
         size() const
         {
@@ -185,6 +193,8 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        /** New elements are value-initialized ( zero for arithmetic T,
+         *  nullptr for pointers ). The two-argument overload sets a value. */
         void
         set_size( const size_t aSize )
         {
@@ -233,9 +243,8 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        /**
-         * clear the memory
-         */
+        /** Empties the Cell. It retains its capacity; shrink_to_fit() asks the
+         *  vector to release it. Pointees of a Cell< T* > are not deleted. */
         void
         clear()
         {
@@ -244,9 +253,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        /**
-         * reserve memory
-         */
         void
         reserve( const size_t aSize )
         {
@@ -255,9 +261,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        /**
-         * push an entry to the end of the cell (copy version)
-         */
         void
         push( const T & aValue )
         {
@@ -266,9 +269,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        /**
-         * push an entry to the end of the cell (move version)
-         */
         void
         push( T && aValue )
         {
@@ -277,9 +277,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        /**
-         * emplace an entry at the end (construct in-place)
-         */
         template< typename... Args >
         void
         emplace( Args&&... args )
@@ -289,9 +286,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        /**
-         * pop an entry from the Cell
-         */
         T
         pop()
         {
@@ -303,9 +297,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        /**
-         * free unused memory
-         */
         void
         shrink_to_fit()
         {
@@ -373,9 +364,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        /**
-         * Check if Cell is empty
-         */
         bool
         empty() const
         {
@@ -384,9 +372,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        /**
-         * Get capacity
-         */
         size_t
         capacity() const
         {
@@ -395,9 +380,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        /**
-         * Insert element at position (copy version)
-         */
         auto
         insert( typename std::vector< T >::const_iterator pos, const T & value )
             -> decltype( mCell.insert( pos, value ) )
@@ -407,9 +389,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        /**
-         * Insert element at position (move version)
-         */
         auto
         insert( typename std::vector< T >::const_iterator pos, T && value )
             -> decltype( mCell.insert( pos, std::move( value ) ) )
@@ -419,9 +398,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        /**
-         * Erase element at position
-         */
         auto
         erase( typename std::vector< T >::const_iterator pos )
             -> decltype( mCell.erase( pos ) )
@@ -454,10 +430,8 @@ namespace belfem
     void
     sort( Cell< T > & aCell )
     {
-        // get ref to data
         std::vector< T > & tVec = aCell.vector_data();
 
-        // sort data
         std::sort( tVec.begin(), tVec.end() );
     }
 
@@ -467,10 +441,8 @@ namespace belfem
     void
     sort( Cell< T > & aCell, C & aComp, const size_t aNumberOfItems=0 )
     {
-        // get ref to data
         std::vector< T > & tVec = aCell.vector_data();
 
-        // sort data
         if( aNumberOfItems==0 )
         {
             std::sort( tVec.begin(), tVec.end(), aComp );
@@ -483,17 +455,16 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+    /** Sorts aCell in place and removes the duplicates. It does not preserve
+     *  the order. */
     template< typename T >
     void
     unique( Cell< T > & aCell )
     {
-        // get ref to data
         std::vector< T > & tVec = aCell.vector_data();
 
-        // sort data
         std::sort( tVec.begin(), tVec.end() );
 
-        // trim vector
         tVec.erase( std::unique( tVec.begin(), tVec.end() ), tVec.end() );
     }
 
@@ -523,10 +494,8 @@ namespace belfem
     void
     reverse( Cell< T > & aCell )
     {
-        // get ref to data
         std::vector< T > & tVec = aCell.vector_data();
 
-        // reverse data
         std::reverse( tVec.begin(), tVec.end() );
     }
 
@@ -536,10 +505,8 @@ namespace belfem
     void
     append( Cell< T > & aA, const Cell< T > & aB )
     {
-        // Reserve enough capacity in aA to hold both aA and aB
         aA.vector_data().reserve(aA.vector_data().size() + aB.vector_data().size());
 
-        // Use std::vector's insert method to append aB's data to aA
         aA.vector_data().insert(
             aA.vector_data().end(),
             aB.vector_data().begin(),
@@ -553,16 +520,13 @@ namespace belfem
     void
     append_move( Cell< T > & aTarget, Cell< T > & aSource )
     {
-        // Reserve enough capacity in aA to hold both aA and aB
         aTarget.vector_data().reserve(aTarget.vector_data().size() + aSource.vector_data().size());
 
-        // Use std::vector's insert method with move iterators
         aTarget.vector_data().insert(
             aTarget.vector_data().end(),
             std::make_move_iterator(aSource.vector_data().begin()),
             std::make_move_iterator(aSource.vector_data().end()));
 
-        // Clear aB since its elements have been moved
         aSource.clear();
     }
 

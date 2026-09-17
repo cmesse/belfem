@@ -58,10 +58,8 @@ namespace belfem
                 Vector < id_t > tDomains ;
                 string tUnits ;
 
-                //Set the boundary condition type
                 BoundaryConditionType tType = boundary_condition_type( tSection->type() ) ;
 
-                // only needed if current BC is applied to thin shell
 
                 //Read the domains on which the condition is applied and set the domains
                 switch ( tType )
@@ -278,7 +276,6 @@ namespace belfem
                         mPhysicalBoundaryConditions( tCount - i )->set_label( tGlobalBase );
                     }
 
-                    //Set the direction for the background field
                     if ( tType == BoundaryConditionType::Background )
                     {
                         BELFEM_ERROR( tSection->key_exists( "direction" ), "Undefined direction for the background field" ) ;
@@ -409,12 +406,10 @@ namespace belfem
                                 const string tFType =  tSection->get_string( "type" ) ;
                                 if ( tFType == "ramp" )
                                 {
-                                    //First check if the required data is there
                                     BELFEM_ERROR( tSection->key_exists( "amplitude" ), "Amplitude not defined in the boundary condition" ) ;
                                     BELFEM_ERROR( tSection->key_exists( "period" ), "Period not defined in the boundary condition" ) ;
                                     BELFEM_ERROR( tSection->key_exists( "offset" ), "Offset not defined in the boundary condition" ) ;
 
-                                    //Then check the units
                                     string tUnitDef = tSection->get_units( "amplitude" );
                                     value tValue = unit_to_si( tUnitDef );
                                     BELFEM_ERROR(
@@ -436,19 +431,16 @@ namespace belfem
                                             "required unit for the offset of the boundary condition is: s" );
 
 
-                                    //Then set the function
                                     tFunction->set_ramp( tSection->get_value( "amplitude",tUnits ).first,
                                                          tSection->get_value( "period","s" ).first,
                                                          tSection->get_value( "offset","s" ).first ) ;
                                 }
                                 else if ( tFType == "sigmoid" )
                                 {
-                                    //First check if the required data is there
                                     BELFEM_ERROR( tSection->key_exists( "amplitude" ), "Amplitude not defined in the boundary condition" ) ;
                                     BELFEM_ERROR( tSection->key_exists( "period" ), "Period not defined in the boundary condition" ) ;
                                     BELFEM_ERROR( tSection->key_exists( "offset" ), "Offset not defined in the boundary condition" ) ;
 
-                                    //Then check the units
                                     string tUnitDef = tSection->get_units( "amplitude" );
                                     value tValue = unit_to_si( tUnitDef );
                                     BELFEM_ERROR(
@@ -469,7 +461,6 @@ namespace belfem
                                             check_unit( tValue, "s" ),
                                             "required unit for the offset of the boundary condition is: s" );
 
-                                    //Then set the function
                                     tFunction->set_sigmoid( tSection->get_value( "amplitude",tUnits ).first,
                                                             tSection->get_value( "period","s" ).first,
                                                             tSection->get_value( "offset","s" ).first,
@@ -479,10 +470,8 @@ namespace belfem
                                           tFType == "triangle" || tFType == "sawtooth" )
                                 {
 
-                                    //First check if the required data is there
                                     BELFEM_ERROR( tSection->key_exists( "amplitude" ), "Amplitude not defined in the boundary condition" ) ;
 
-                                    //Then check the units
                                     string tUnitDef = tSection->get_units( "amplitude" );
                                     value tValue = unit_to_si( tUnitDef );
                                     BELFEM_ERROR(
@@ -517,7 +506,6 @@ namespace belfem
                                         BELFEM_ERROR( false,"Period or frequency undefined" ) ;
                                     }
 
-                                    //Then set the function
                                     tFunction->set_periodic( boundary_condition_function_type( tFType ),
                                                              tSection->get_value( "amplitude",tUnits ).first,
                                                              tPeriod,
@@ -526,10 +514,8 @@ namespace belfem
                                 else if ( tFType == "constant" )
                                 {
 
-                                    //First check if the required data is there
                                     BELFEM_ERROR( tSection->key_exists( "amplitude" ), "Amplitude not defined in the boundary condition" ) ;
 
-                                    //Then check the units
                                     string tUnitDef = tSection->get_units( "amplitude" );
                                     value tValue = unit_to_si( tUnitDef );
                                     BELFEM_ERROR(
@@ -538,13 +524,11 @@ namespace belfem
                                             tUnits.c_str() );
                                     mPhysicalBoundaryConditions( tCount-i )->set_units( tValue.second ) ;
 
-                                    //Then set the function
                                     tFunction->set_constant( tSection->get_value( "amplitude",tUnits ).first ) ;
                                 }
                                 else if ( tFType == "userdefined" )
                                 {
 
-                                    //First check if the required data is there
                                     BELFEM_ERROR( tSection->key_exists( "file" ), "File not defined for user-defined function in the boundary condition" ) ;
                                     BELFEM_ERROR( tSection->key_exists( "label" ), "Label not defined for user-defined function in the boundary condition" ) ;
                                     BELFEM_ERROR( tSection->key_exists( "units" ), "Units not defined for user-defined function in the boundary condition" ) ;
@@ -558,7 +542,6 @@ namespace belfem
                                     mPhysicalBoundaryConditions( tCount-i )->set_units( tValue.second ) ;
                                     mPhysicalBoundaryConditions( tCount-i )->scale()*=tValue.first ;
 
-                                    //Then set the function
                                     tFunction->read_user_defined(tSection->get_string( "file" ), tSection->get_string( "label" )) ;
                                 }
                                 else

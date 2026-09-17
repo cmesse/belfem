@@ -41,10 +41,8 @@ namespace belfem
         BELFEM_ASSERT( aMesh->is_kernel_mesh() || comm_size() == 1,
                       "in parallel mode, input argument of compute_volume must be Kernel->mesh()" );
 
-        // get my rank
         const proc_t tMyRank = comm_rank() ;
 
-        // create the factory
         fem::InterpolationFunctionFactory tFactory ;
 
         // total volume
@@ -56,13 +54,10 @@ namespace belfem
         // geometry jacobian
         Matrix< real > tJ( tNumDim, tNumDim );
 
-        // loop over all blocks
         for( id_t tID : aBlockIDs )
         {
-            // check if block exists
             if( aMesh->block_exists( tID ) )
             {
-                // get pointer to elements
                 Cell< Element * > & tElements = aMesh->block( tID )->elements() ;
 
                 // skip this block if it is empty
@@ -71,16 +66,12 @@ namespace belfem
                     continue;
                 }
 
-                // get the element type
                 ElementType tElemType = aMesh->block( tID )->element_type() ;
 
-                // create the shape function
                 fem::InterpolationFunction * tShape = tFactory.create_lagrange_function( tElemType ) ;
 
-                // determine interpolation order
                 uint tOrder = auto_integration_order( tElemType );
 
-                // populate shape function
 
                 // integration points
                 Matrix< real > tXi ;
@@ -95,13 +86,10 @@ namespace belfem
                 // element coordinates
                 Matrix< real > tX( tNumNodes, tNumDim );
 
-                // populate vectors
                 intpoints( IntegrationScheme::GAUSS, geometry_type( tElemType ), tOrder, tW, tXi );
 
-                // get number of integration points
                 uint tNumIntpoints = tW.length() ;
 
-                // populate shape derivative
                 Cell< Matrix< real > > tdNdXi( tNumIntpoints, Matrix< real >( tNumDim, tNumNodes ) );
 
                 for( uint k=0; k<tNumIntpoints; ++k )
@@ -109,19 +97,15 @@ namespace belfem
                     tShape->dNdXi( tXi.col( k ), tdNdXi( k ) );
                 }
 
-                // tidy up
                 delete tShape ;
 
-                // loop over all elements on this block
                 for( Element * tElement : tElements )
                 {
 
-                    // check if this element is owned
                     if( tElement->owner() == tMyRank )
                     {
                         real tElVolume = 0.0 ;
 
-                        // populate element coordinates
                         for( uint i=0; i<tNumDim; ++i )
                         {
                             for( uint k=0; k<tNumNodes; ++k )
@@ -130,13 +114,10 @@ namespace belfem
                             }
                         }
 
-                        // loop over all integration points
                         for( uint k=0; k<tNumIntpoints; ++k )
                         {
-                            // compute geometry jacobian
                             tJ = tdNdXi( k ) * tX ;
 
-                            // add value to total volume
                             tElVolume += tW( k ) * std::abs( det( tJ ) );
 
                         }
@@ -149,25 +130,19 @@ namespace belfem
 
         proc_t tCommSize = comm_size() ;
 
-        // check if we are in parallel mode
         if( tCommSize > 1 )
         {
-            // check if this is the master
             if ( tMyRank == 0 )
             {
-                // data container
                 Vector< real > tData( tCommSize, 0 );
 
-                // collect data from other procs
                 collect( tData );
 
-                // add data to volume
                 aVolume += sum( tData );
 
             }
             else
             {
-                // send my contribution to master
                 send( aVolume );
             }
 

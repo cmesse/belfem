@@ -43,9 +43,6 @@ namespace belfem
         class Postprocessor ;
 
         /**
-         * this class creates the DOFs based on the passed equation object.
-         */
-        /**
          * @brief Main workhorse: DOF management, assembly coordination and the solver interface.
          *
          * @ingroup grp_fem_kernel
@@ -91,7 +88,8 @@ namespace belfem
             //! this flag will be reset once solve() is called
             bool mJacobianIsUpToDate = false ;
 
-            //! this map is needed for the post processors
+            //! ID-to-element cache for the postprocessors, filled once by
+            //! set_equation() through create_element_map()
             Map< id_t, Element * > mElementMap ;
 
             Cell< string > mPostprocessorSourceFields ;
@@ -102,9 +100,8 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             /**
-             *
-             * @param aParent
-             * @param aIndex :        corresponding index in kernel
+             * Borrows aParent, which owns this manager. aIndex is this manager's
+             * index in the kernel.
              */
             DofManager(
                           Kernel         * aParent,
@@ -125,7 +122,7 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
             /**
-             * a test routine for development
+             * Prints only on rank aRank. It does not communicate.
              */
              void
              print( const proc_t aRank=0 ) ;
@@ -155,9 +152,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            /**
-             * return a specific dof
-             */
             Dof *
             dof( const id_t aID ) override;
 
@@ -169,33 +163,26 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             /**
-             * return the non-hanging dofs ( free and fixed; hanging dofs
-             * live in DofData::hanging_dofs() )
+             * The non-hanging dofs, free and fixed ( hanging dofs live in
+             * DofData::hanging_dofs() ). Owned by DofData; the container is a view
+             * and every accessor of this class hands out borrowed pointers that
+             * a reset of the dof data invalidates.
              */
             Cell< Dof * > &
             dofs();
 
 //-----------------------------------------------------------------------------
 
-            /**
-             * return a specific bearing
-             */
             Bearing *
             bearing( const id_t aID );
 
 //-----------------------------------------------------------------------------
 
-            /**
-             * return a specific sideset
-             */
             SideSet *
             sideset( const id_t aID ) override;
 
 //------------------------------------------------------------------------------
 
-            /**
-             * return a specific block
-             */
             Block *
             block( const id_t aID ) override;
 
@@ -246,6 +233,10 @@ namespace belfem
 
 //-----------------------------------------------------------------------------
 
+            /** Collective: every rank assembles and the matrices are collected
+             *  across ranks. The first call initializes the system, and the stored
+             *  eigenvalues become void. The three compute_* below share this
+             *  contract. */
             void
             compute_jacobian( const bool aReset=true );
 
@@ -267,8 +258,10 @@ namespace belfem
 //------------------------------------------------------------------------------
 
              /**
-             * set the solver type for this field
-             */
+              * Collective: every rank constructs the solver ( whose constructor
+              * synchronizes the solver settings from rank 0 ), then performs a
+              * barrier.
+              */
             void
             set_solver( const SolverParameters & aParams );
 
@@ -279,13 +272,16 @@ namespace belfem
 
 //------------------------------------------------------------------------------
             /**
-             * expose the solver
+             * The solver is borrowed; this manager's solver data owns it.
              */
             Solver *
             solver();
 
 //-----------------------------------------------------------------------------
 
+            /** Collective. It requires an up-to-date Jacobian: compute_jacobian() must
+             *  have run since the last solve ( BELFEM_ERROR otherwise ), and this
+             *  call consumes it. */
             void
             solve();
 
@@ -305,6 +301,9 @@ namespace belfem
 
 //-----------------------------------------------------------------------------
 
+            /** Collective ( a barrier and four broadcasts ): the convergence measure
+             *  of iteration aIteration, identical on every rank afterwards;
+             *  absolute_residual() is the unnormalized norm of the same step. */
             real
             residual( const uint aIteration );
 
@@ -347,7 +346,8 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
             /**
-             * collects node data from the others and send it to master
+             * Collective, a gather to the master rank: the workers send their
+             * packed node data, the master receives ( a barrier inside ).
              */
             void
             collect_fields( const Cell< string > & aFieldLabels ) override ;
@@ -355,7 +355,7 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
             /**
-             * collects node data from the others and send it to master
+             * Collects one field, with barriers before and after collection.
              */
             void
             collect_field( const string & aFieldLabel ) ;
@@ -363,7 +363,8 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
             /**
-             * sends field data from master to the others
+             * Collective and asymmetric, the inverse of collect_fields(): the
+             * master sends, the workers receive; not a broadcast.
              */
             void
             distribute_fields( const Cell< string > & aFieldLabels ) override ;
@@ -371,30 +372,27 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
             /**
-             * perform a collect first, then a distribute
+             * Collective: a collect, a barrier, then a distribute.
              */
             void
             synchronize_fields( const Cell< string > & aFieldLabels ) override ;
 
 //-----------------------------------------------------------------------------
 
+            /** Collective: every rank assembles its loads and they are collected
+             *  here; a single right-hand side only ( asserted ). */
             void
             compute_volume_loads( const Vector< id_t > & aBlockIDs );
 
 //-----------------------------------------------------------------------------
             /**
-             * The JEDI Block Matrix System - May the Force be with you!
-             *
-             * Block form: [ J  D ] [ x ]   [ f ]
-             *             [ E  I ] [ y ] = [ g ]
-             *
-             * where x = free DOFs, y = fixed DOFs (imposed values)
-             *
-             * Reduced system: J*x = f - D*y  (solves for unknowns)
-             * Reaction forces: E*x + I*y = g (computes constraint forces!)
-             *
-             * In structural mechanics, the JEDI system literally computes
-             * "the Force" at supports and constraints.
+             * Block form of the assembled system, x = free dofs, y = fixed dofs:
+             *   [ J  D ] [ x ]   [ f ]
+             *   [ E  I ] [ y ] = [ g ]
+             * The reduced system J x = f - D y solves for the unknowns; E x + I y = g
+             * gives the reactions at the fixed dofs. The four accessors below hand
+             * out the blocks, borrowed from the solver data and invalidated by the
+             * next initialize().
              */
 
             SpMatrix *
@@ -427,11 +425,14 @@ namespace belfem
 
 //-----------------------------------------------------------------------------
 
+            /** Resizes aLHS and fills it in DOF order: free DOFs first, then fixed. */
             void
             full_lhs( Vector< real > & aLHS );
 
 //-----------------------------------------------------------------------------
 
+            /** The assembled right-hand side as the solver data holds it: rank-local
+             *  entries on the workers, the collected global vector on the master. */
             Vector< real >  &
             rhs_vector();
 
@@ -503,7 +504,7 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
             /**
-             * expose the projector arrays
+             * Owned by this manager; the container is a view.
              */
              Cell< Postprocessor * > &
              postprocessors();
@@ -511,7 +512,7 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
             /**
-             * compute the matrices for the projections
+             * Collective: computes the projection matrices; every rank must enter.
              */
              void
              initialize_postprocessors();
@@ -519,7 +520,8 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
             /**
-             * perform the L2 projections for the secondary fields
+             * Collective: distributes the source fields, runs every projector with
+             * a barrier each, so the projector list must be identical on all ranks.
              */
             void
             postprocess();
@@ -527,8 +529,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             /**
-             * return the blocks on this dof manager
-             * @return
+             * The blocks of this manager; owned here, the container is a view.
              */
             Cell< Block * > &
             blocks();
@@ -536,8 +537,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             /**
-             * return the sidesets on this dof manager
-             * @return
+             * The sidesets of this manager; owned here, the container is a view.
              */
             Cell< SideSet * > &
             sidesets();
@@ -558,7 +558,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             /**
-             * expose the eigenvalue tool
+             * Borrowed from this manager, which owns it.
              */
             dofmgr::EigenValues *
             eigen_values() ;
@@ -566,7 +566,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             /**
-             * returns direct access to one element. Needed for postprocessing
+             * One element by ID, through the element cache; borrowed.
              */
              Element *
              element( const id_t aID );

@@ -4,7 +4,7 @@
 **Purpose:** Sweep 1 removed what should not be in a comment. Sweep 2 adds what should be and is not: the ownership, collectiveness, layout, status and unit contracts on the public entry points, corrects the comments the code contradicts, repairs three things sweep 1 got wrong, and finishes the narration in files sweep 1 never reached. Source: three independent second-tier lists over the swept tree (Codex `gpt-6-astra`/high, Grok `grok-4.6`/high, and a Claude subagent), reconciled here; every entry below was cited by at least one of them with file:line and the load-bearing ones re-read by Claude before inclusion.
 **Module:** `src/comm`, `src/containers`, `src/linalg`, `src/mesh`, `src/fem/kernel`, `src/fem/iwg`, `src/sparse`, plus the narration tail
 **AIs involved:** Claude (reconciliation, edits), Codex + Grok (the lists; the per-batch deleted-reasons check as in sweep 1), Codex (language sweep of the added text)
-**Status:** PLAN — pending approval. Written 2026-09-16 from the three lists in `tmp/ai_exchange/comment_sweep_2_tier_list.md`.
+**Status:** IN PROGRESS — approved by Christian 2026-09-16 ("you can go ahead"; comments only, code findings parked in `todo/code_findings_from_comment_sweeps.md`). C1 next.
 
 > **Scope guards:**
 > - Comment-only, gated per batch by `scripts/check_comment_only.sh` as in sweep 1. Seven findings from the lists are **code**, not comments; they are listed in §6 for Christian and are not touched here.
@@ -66,19 +66,19 @@ Each contract is one sentence in the header a caller includes, in the form the g
 
 Per batch: read the implementations, write the sentences, `scripts/check_comment_only.sh`, then the Codex check from sweep 1's prompt (`scripts/prompts/comment_sweep.md`) extended with "is every added contract true of the code as written", apply, record.
 
-- [ ] **C1 — `commtools`** (`send`/`receive`/`share`/`distribute`/`comm_split`/`comm_check`, the tag protocol once at `comm_tag`, the blocking fact once, `:1193` and `:323` fixed).
-- [ ] **C2 — containers and linalg** (after: C1) (`cl_Cell.hpp` incl. the thirteen restating blocks; the dispatch headers; backend `data()`/`capacity()`; `cl_Map.hpp` narration).
-- [ ] **C3 — mesh** (after: C2) (`cl_Mesh.hpp` ownership and collectiveness; `cl_ElementTemplate.hpp`, `cl_Mesh_Basis.hpp`; the contradicted lines in `cl_Mesh_Basis.cpp`, `cl_ElementTemplate.hpp`, `cl_Mesh_ConnectivityCalculator.cpp`).
-- [ ] **C4 — kernel, dof manager, postprocessing** (after: C3).
-- [ ] **C5 — IWG and calculator** (after: C4) (incl. L02, the symmetry block re-attachment, `cl_IWG_StaticHeatConduction.cpp:132`, `cl_ThermalBoundaryConditionFactory.cpp:65`, `cl_MaxwellPostprocessor.cpp:132`).
-- [ ] **C6 — sparse** (after: C5) (`cl_Solver.hpp`, `cl_SolverWrapper.hpp`, the six backend headers, `pardisotools.hpp`, `cl_SolverPETSC.cpp:115`, `set_pardiso` deleted, `hatch_turtle` numbers removed, `cl_Spline.hpp`).
-- [ ] **C7 — the remaining contradicted comments** (after: C6) (`cl_GT_RefGas.cpp:698`, `cl_FEM_DofMgr_SideSetData.cpp:50`, `cl_FEM_Kernel.hpp:114,262`).
-- [ ] **C8 — narration tail** (after: C7): the files in §1's last bullet, with the D5 two-directional guard and a Codex deleted-reasons check.
-- [ ] **C9 — Codex language sweep of every added sentence** (after: C8); then the closing gate: `make check` on both backends (Christian), `check_comment_only.sh` over the range, census, plan to `todo/closed/`.
+- [x] **C1 — `commtools`** (done 2026-09-17; Codex truth check applied: `comm_check` aborts the whole run through MPI_Abort, `share` is sender-only not root-only, the out-of-range no-op holds for the scalar and raw overloads only, "value-initialized" became "filled with 0", the deadlock claims softened to what the code guarantees) (`send`/`receive`/`share`/`distribute`/`comm_split`/`comm_check`, the tag protocol once at `comm_tag`, the blocking fact once, `:1193` and `:323` fixed).
+- [x] **C2 — containers and linalg** (done 2026-09-17; Codex: reallocation invalidates `data()`, `shrink_to_fit()` is a request, the hand-offset rule now says "use spacing()", Armadillo `capacity()` is the logical count; the Map lookup contract added) (after: C1) (`cl_Cell.hpp` incl. the thirteen restating blocks; the dispatch headers; backend `data()`/`capacity()`; `cl_Map.hpp` narration).
+- [x] **C3 — mesh** (done 2026-09-17; Codex: `mAbstractNodes` is not reliably a view ( F8 filed ), `scale_mesh` zeroes a 2D third coordinate, `time_step` is not 1-based, `distribute_edge_directions` is rank 0 not master, the basis owns its weights copy) (after: C2) (`cl_Mesh.hpp` ownership and collectiveness; `cl_ElementTemplate.hpp`, `cl_Mesh_Basis.hpp`; the contradicted lines in `cl_Mesh_Basis.cpp`, `cl_ElementTemplate.hpp`, `cl_Mesh_ConnectivityCalculator.cpp`).
+- [x] **C4 — kernel, dof manager, postprocessing** (done 2026-09-17; Codex: the chained-kernel mesh ownership ( F9 filed ), `collect_fields` does barrier inside, `set_solver` synchronizes in the Solver constructor, `rhs_vector` is global on the master, `create_field` does not check adoption, `initialize()` is a no-op once initialized; nineteen blocks that had landed between a return type and its declaration moved above the declaration) (after: C3).
+- [x] **C5 — IWG and calculator** (done 2026-09-17; Codex: omega is not clamped, the calculator reference stays valid while its contents are overwritten, `allocate_work_matrices` has no once-only guard, `mM` is not sized in the calculator, `mX` of Gradient is sized at construction) (after: C4) (incl. L02, the symmetry block re-attachment, `cl_IWG_StaticHeatConduction.cpp:132`, `cl_ThermalBoundaryConditionFactory.cpp:65`, `cl_MaxwellPostprocessor.cpp:132`).
+- [x] **C6 — sparse** (done 2026-09-17; Codex: the Solver constructor synchronizes the settings but not the type, `aLHS` is resized by the backends, the first solve does not fix the column count, STRUMPACK reduces a verdict not a code, `failed()` survives disarming, the base-solve and `get_*` sentences qualified per backend) (after: C5) (`cl_Solver.hpp`, `cl_SolverWrapper.hpp`, the six backend headers, `pardisotools.hpp`, `cl_SolverPETSC.cpp:115`, `set_pardiso` deleted, `hatch_turtle` numbers removed, `cl_Spline.hpp`).
+- [x] **C7 — the remaining contradicted comments** (done 2026-09-17; Codex check: both corrections right) (after: C6) (`cl_GT_RefGas.cpp:698`, `cl_FEM_DofMgr_SideSetData.cpp:50`, `cl_FEM_Kernel.hpp:114,262`).
+- [x] **C8 — narration tail** (done 2026-09-17 with a guarded pass: only standalone lines matching the census pattern, at most 60 characters, without a reason marker, in twenty files, 224 lines; the plugin-API `@brief Set …` blocks in `cl_Material.hpp` and `cl_Material_UserDefined.hpp` were read and kept: each carries the signature the plugin must provide, the caller, or the path resolution, which is the contract; Codex deleted-reasons check over all 267 deletions: none carried a reason, contract, warning, layout rule or unit, none cut a continuation; 34 survivors it listed removed with the same guard; two more wrong lines it found fixed, `cl_GT_RefGas.cpp` "new beta" over a bisection midpoint and the PETSc "nonzero LHS" over a length test) (after: C7): the files in §1's last bullet, with the D5 two-directional guard and a Codex deleted-reasons check.
+- [◐] **C9 — Codex language sweep of every added sentence** (done 2026-09-17 in two halves, `gpt-5.6-terra`/medium; about seventy edits applied, the vague "split this" ones where the new text was given, one contract error it caught fixed: `time_step() const` is not a writable reference); the closing gate is open: `make check` on both backends (Christian), then `check_comment_only.sh` over the range, census, plan to `todo/closed/`.
 
 ### 4.0 Implementation Progress (updated 2026-09-16)
 
-Lists received and reconciled; the top-ten claims of each list re-read by Claude (all held; one Grok sweep-1 claim rests on inference, see §8). Nothing edited.
+C1–C9 done 2026-09-17, comment-only throughout (`check_comment_only: OK (HEAD, 54 files)`); every batch Codex-checked and corrected. Census: comment lines 27,837 → 27,281; narration candidates 1,288 → about 1,030. Two more code findings filed from the checks (F8 abstract nodes, F9 chained-kernel placeholder mesh). Waiting for Christian's `make check`; then commit and close.
 
 ## 5. Open Design Questions
 
@@ -88,7 +88,7 @@ Lists received and reconciled; the top-ten claims of each list re-read by Claude
 
 ## 6. Code findings from the lists, not this plan's (for Christian)
 
-Each verified by Claude against the cited lines; none is a comment.
+Moved 2026-09-16 to `todo/code_findings_from_comment_sweeps.md` on Christian's ruling that behavior-altering changes wait for a code session with the plan + audit → code + audit loop. Kept here for the record; each verified by Claude against the cited lines; none is a comment.
 
 1. **`fn_Mesh_integrate_scalar_over_sidesets.cpp:167-171` broadcasts `tMasterRank`, not `aValue`.** The integral is computed on the master rank only and returned on every rank; every non-master rank returns zero. Callers that use the value off rank 0 get zero silently. Needs a fix and a test (Codex M25).
 2. **`cl_IWG.hpp:820-821` declares `const Matrix<real>& N( const uint& )` and nothing defines it** (grep over `src/fem/iwg/*.cpp`): a public declaration that cannot link (Claude).
@@ -100,11 +100,11 @@ Each verified by Claude against the cited lines; none is a comment.
 
 ## 7. Definition-of-Done Checklist
 
-- [ ] Every entry of the three lists either has a sentence in the tree, is recorded as declined with a reason, or is in §6.
-- [ ] Every added sentence read against the implementation in this session; the Codex per-batch check asked "is every added contract true of the code".
+- [x] Every entry of the three lists either has a sentence in the tree, is recorded as declined with a reason, or is in §6.
+- [x] Every added sentence read against the implementation in this session; the Codex per-batch check asked "is every added contract true of the code".
 - [ ] `check_comment_only.sh` OK per batch and over the range; `make check` both backends.
-- [ ] Codex language sweep of the added text applied.
-- [ ] §6 handed to Christian; the closed-core narration list handed to Gregory.
+- [x] Codex language sweep of the added text applied.
+- [x] §6 handed to Christian (`todo/code_findings_from_comment_sweeps.md`); the closed-core narration list is F7 there, for Gregory.
 
 ## 8. Audit Trail
 

@@ -35,7 +35,6 @@ namespace belfem
                 mMesh->block( tID )->flag_nodes();
                 mBlocks[ tID ] = aKernel->dofmgr( aDofManagerIndex )->block( tID );
 
-                // check interpolation order
                 ElementType tType = mBlocks( tID )->element_type() ;
 
                 uint tOrder = 0 ;
@@ -111,10 +110,8 @@ namespace belfem
 
             if ( aNode->owner() == mCommRank )
             {
-                // reset vandermonde
                 mV.fill( 0.0 );
 
-                // reset rhs
                 mC.fill( 0.0 );
 
 
@@ -129,26 +126,21 @@ namespace belfem
                 gesv( mV, mC, mPivot );
 
 
-                // grab node coordinates
                 for ( int i=0; i<mNumDimensions; ++i )
                 {
                     mX( 0, i ) = aNode->x( i );
                 }
 
-                // compute the polynomial at the node
                 this->compute_poly( mX );
 
 
                 // evaluate field data
                 for ( int i=0; i<mNumDimensions; ++i )
                 {
-                    // grab the field
                     Vector< real > & tGrad = mMesh->field_data( mGradientFields( i ) );
 
-                    // compute the value
                     real tVal = dot( mP.col( 0 ), mC.col( i ) );
 
-                    // write value into field
                     tGrad( aNode->index() ) = tVal ;
 
                     for ( uint k=0; k<aNode->number_of_duplicates(); ++k )
@@ -166,25 +158,19 @@ namespace belfem
 
             const Vector< real > & tField = mMesh->field_data( mScalarField );
 
-            // loop over all elements connected to this node
             for ( uint e=0; e<aNode->number_of_elements(); ++e )
             {
-                // check if element is part of the selected blocks
                 if ( ! aNode->element( e )->is_flagged() ) continue ;
 
                 ++aElemCount ;
 
-                // grab Block
                 Block * tBlock = mBlocks( aNode->element( e )->block_id() ) ;
 
-                // grab calculator
                 const IntegrationData * tIntegration = tBlock->integration() ;
 
 
-                // grab element
                 mesh::Element * tElement = aNode->element( e ) ;
 
-                // get node data
                 mPhi.set_size( tElement->number_of_nodes() );
                 for ( uint k=0; k<tElement->number_of_nodes(); ++k )
                 {
@@ -201,25 +187,18 @@ namespace belfem
                     }
                 }
 
-                // loop over all integration points
                 for ( uint k=0 ; k<tIntegration->number_of_integration_points(); ++k )
                 {
-                    // compute coordinates of integration point
                     mX = tIntegration->N( k ) * mElX ;
 
-                    // compute Jacobian
                     mJ = tIntegration->dNdXi( k ) * mElX ;
 
-                    // compute gradient
                     mG = inv( mJ.matrix_data() ) * tIntegration->dNdXi( k ).matrix_data() * mPhi.vector_data();
 
-                    // evaluate polynomial
                     this->compute_poly( mX );
 
-                    // add entry to vandermonde matrix
                     mV += mP * trans( mP );
 
-                    // add entries to RHS
                     for ( int j=0; j<mNumDimensions; ++j )
                     {
                         for ( int i=0; i<mN; ++i )
@@ -312,13 +291,11 @@ namespace belfem
 
             mKernel->dofmgr( mDofMaganerIndex )->distribute_fields( {mScalarField } );
 
-            // loop over all nodes
             for ( mesh::Node * tNode : mNodes )
             {
                 this->process_node( tNode );
             }
 
-            // check if we need to flip
             if ( mFlipSign )
             {
                 for ( const string & tGradientField : mGradientFields )

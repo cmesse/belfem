@@ -103,6 +103,10 @@ namespace belfem
         public:
 //------------------------------------------------------------------------------
 
+            /** Collective. The constructor, the synch_* calls, run() and the first
+             *  initialize() communicate and must be entered by every rank,
+             *  including ranks without owned nodes. aKernel and aField are
+             *  borrowed. */
             Postprocessor( Kernel * aKernel , DofManager * aField = nullptr );
 
             virtual ~Postprocessor() ;

@@ -43,25 +43,16 @@ namespace belfem
     public :
 //------------------------------------------------------------------------------
 
-        /**
-         * empty constructor
-         */
         Matrix() = default;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        /**
-          * Constructor without fill value
-          */
         Matrix( const size_t aNumRows,
                    const size_t aNumCols ) :
                 mMatrix( aNumRows, aNumCols ) {}
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        /**
-          * Constructor with fill value
-          */
         Matrix( const size_t aNumRows,
                    const size_t aNumCols,
                    const T aValue ) :
@@ -70,9 +61,6 @@ namespace belfem
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        /**
-         * Constructor with initializer list
-         */
         Matrix( const std::initializer_list<std::initializer_list<T> > & aInitList )
                 : mMatrix( aInitList )
         {
@@ -81,9 +69,6 @@ namespace belfem
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        /**
-        * Constructor from expression
-        */
         Matrix( const MatrixType & aExpression )
                 : mMatrix( aExpression ) {}
 
@@ -157,10 +142,9 @@ namespace belfem
 // MEMORY
 //------------------------------------------------------------------------------
 
-        /*
-         * expose the underlying raw pointer
-         */
 
+        /** Returns a borrowed raw buffer under the layout contract stated
+         *  in cl_Matrix.hpp; may be nullptr when empty. */
         inline T *
         data()
         {
@@ -169,9 +153,6 @@ namespace belfem
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        /*
-         * expose the underlying raw pointer ( const version )
-         */
         inline const T *
         data() const
         {
@@ -247,9 +228,9 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        /**
-         * length of data container
-         */
+        /** The allocated element count, which may exceed spacing() * n_cols()
+         *  after a resize shrinks the matrix. Not a transfer length: that is
+         *  spacing() * n_cols(), see cl_Matrix.hpp. */
         inline size_t
         capacity() const
         {

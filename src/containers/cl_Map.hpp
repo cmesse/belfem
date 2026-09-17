@@ -209,12 +209,10 @@ namespace belfem
         void
         erase_key(  const Key & aKey  )
         {
-             // remove key from map
-             mMap.erase( aKey );
+              mMap.erase( aKey );
         }
 //------------------------------------------------------------------------------
 
-        // expose the data container
         auto
         map_data() -> decltype( mMap ) &
         {
@@ -223,13 +221,11 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        /**
-         * find operator
-         */
+        /** Looks up a key. A missing key aborts ( BELFEM_ERROR,
+         *  release too ). Both overloads share this contract. */
         Value &
         operator()( const Key & aKey )
         {
-            // check if key exists
             auto tIterator = mMap.find( aKey );
 
 #if !defined( NDEBUG ) || defined( DEBUG )
@@ -247,13 +243,9 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        /**
-         * find operator ( const variant )
-         */
         const Value &
         operator()( const Key & aKey ) const
         {
-// check if key exists
             auto tIterator = mMap.find( aKey );
 
 #if !defined( NDEBUG ) || defined( DEBUG )

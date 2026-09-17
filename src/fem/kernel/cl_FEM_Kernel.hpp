@@ -41,7 +41,11 @@ namespace belfem
         class Controller ;
 
         /**
-         * @brief Top-level orchestrator; owns the mesh, materials, boundary conditions and DOF managers.
+         * @brief Top-level orchestrator. Owns the equations, dof managers,
+         * materials and boundary conditions it creates or is handed. The mesh
+         * of the parameters is borrowed on the master rank; on the other ranks
+         * the kernel owns the submesh it receives when it distributes the mesh
+         * itself, and borrows it from the parent kernel when chained onto one.
          *
          * @ingroup grp_fem_kernel
          * @see @ref fem_kernel_index
@@ -95,6 +99,8 @@ namespace belfem
         public:
 //------------------------------------------------------------------------------
 
+            /** Collective: all ranks construct the kernel. It partitions the mesh
+             *  on the master, distributes the submeshes, and barriers twice. */
             Kernel( KernelParameters * aKernelParameters );
 
 //------------------------------------------------------------------------------
@@ -104,7 +110,8 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             /**
-             * expose parameter object
+             * The parameters are borrowed unless claim_parameter_ownership() was
+             * called.
              */
              const  KernelParameters *
              params();
@@ -112,7 +119,8 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             /**
-             * expose a field
+             * The dof manager at aIndex; owned by the kernel, never deleted by
+             * the caller.
              */
             DofManager *
             dofmgr( const uint aIndex=0 );
@@ -150,6 +158,7 @@ namespace belfem
             /**
              *expose the boundary condition container
              */
+            /** Owned by the kernel; the container is a view. */
             Cell< PhysicalBoundaryCondition * > &
             boundary_conditions();
 
@@ -164,7 +173,8 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             /**
-             * Compute the boundary condition and update the Dofs at a given time
+             * Computes the boundary conditions and updates the dofs at aTime.
+             * aTime is the absolute simulation time [s].
              */
             void
             compute_boundary_conditions( real aTime );
@@ -172,6 +182,8 @@ namespace belfem
 //------------------------------------------------------------------------------
 
 
+             /** Borrowed: the kernel deletes the comm tables only when it built them
+              *  itself, so the caller never deletes one. */
              const mesh::CommTable *
              comm_table( const uint aProc ) const ;
 
@@ -194,15 +206,18 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             /**
-             * returns the mesh on the master and the submesh on other
-             *
-             * @return the mesh (master) or the submesh (all other ranks)
+             * The mesh on the master, the submesh on every other rank. Never
+             * deleted by the caller: the master's mesh belongs to whoever created
+             * it, a worker's submesh to this kernel or to the parent kernel it is
+             * chained onto ( see the class brief ).
              */
             Mesh *
             mesh();
 
 //------------------------------------------------------------------------------
 
+            /** The kernel owns and destroys the returned equation; the caller only
+             *  borrows it. */
             IWG *
             create_equation( const IwgType aEquationType,
                 const        ModelDimensionality aModelDimensionality = ModelDimensionality::UNDEFINED,
@@ -221,6 +236,10 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            /** Collective; it performs a barrier. The kernel owns and destroys the
+             *  returned dof manager. aEquation is linked, not adopted: pass it
+             *  to the kernel through create_equation() or add_equation(), or it
+             *  leaks. */
             DofManager *
             create_field( IWG * aEquation );
 
@@ -239,6 +258,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            /** Borrowed and never deleted: the controller must outlive the kernel. */
             void
             set_controller( Controller * aController );
 
@@ -259,7 +279,9 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            // make sure that all elements have positive volume
+            /** Collective: every rank must enter it. Measures every owned element
+             *  into the hidden mesh field "_Volumes", exchanges the thin-shell
+             *  areas, and aborts on the master if any volume is negative. */
             void
             compute_element_volumes();
 
@@ -273,7 +295,9 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             /**
-             * count the number of elements on each block plus aura
+             * Collective in parallel ( a serial run returns at once ): the
+             * workers receive their submesh here, or borrow the parent kernel's
+             * when chained.
              */
             void
             distribute_mesh();

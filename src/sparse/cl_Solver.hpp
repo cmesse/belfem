@@ -46,6 +46,10 @@ namespace belfem
     public :
 //------------------------------------------------------------------------------
 
+        /** Collective: the constructor synchronizes the solver settings ( not
+         *  the solver type ) from rank 0 to every rank, so all ranks must
+         *  construct the Solver together. Both constructors share this
+         *  contract. */
         Solver( const SolverType aSolverType = gDefaultSolver ) ;
 
         Solver( const SolverParameters aParams ) ;
@@ -75,9 +79,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        /**
-         * return the type of the solver
-         */
          SolverType
          type() const ;
 
@@ -103,10 +104,13 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
-         * solves the system
-         * @param aMatrix
-         * @param aLHS     Left Hand Side
-         * @param aRHS     Right Hand Side
+         * Solves A x = b. It is collective for the MPI backends ( MUMPS,
+         * STRUMPACK, PETSc ) and local for the others. The first call
+         * initializes the wrapper. It does not return a failure status: when
+         * the wrapper's soft-fail contract is armed on a backend that has one
+         * ( MUMPS, STRUMPACK, PETSc ), a failed factorization or solve is
+         * reported by wrapper()->failed(); every other failure aborts
+         * ( BELFEM_ERROR ).
          */
         void
         solve(  SpMatrix       & aMatrix,
@@ -116,10 +120,10 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
-         * solves the system
-         * @param aMatrix
-         * @param aLHS     Left Hand Side
-         * @param aRHS     Right Hand Side
+         * Same contract as the vector overload, with one right-hand side per
+         * column of aRHS; the backend resizes aLHS to that shape. The first
+         * solve initializes the wrapper with aRHS's column count. PETSc and
+         * STRUMPACK have no matrix overload and abort here.
          */
         void
         solve(  SpMatrix       & aMatrix,
@@ -144,7 +148,8 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
-         * mumps only
+         * Silently ignored unless the solver is MUMPS. The three setters below
+         * share this contract.
          */
         void
         set_mumps_reordering(
@@ -162,18 +167,12 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        /**
-         * this does only do something if PARDISO is used
-         *
-         */
-/*        void
-        set_pardiso(
-                const PardisoMode aMode ) ; */
 
 //------------------------------------------------------------------------------
 
         /**
-         * tidy up solver manually ( also done by destructor )
+         * Releases the factorization ( the destructor does it too ); the next
+         * solve() re-initializes from scratch, including the RHS column count.
          */
          void
          free() ;
@@ -181,7 +180,8 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
-         * expose wrapper object
+         * Borrowed: the Solver owns and deletes the wrapper; do not keep it past
+         * the Solver's lifetime.
          */
         solver::Wrapper *
         wrapper() ;

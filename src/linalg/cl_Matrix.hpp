@@ -12,6 +12,21 @@
 #ifndef BELFEM_CL_MATRIX_HPP
 #define BELFEM_CL_MATRIX_HPP
 
+/*
+ * The contract of belfem::Matrix with either backend:
+ *
+ *   - Storage is column-major ( BLAS/LAPACK order ). Column j is contiguous
+ *     and row i is strided, so an inner loop varies the row index.
+ *   - data() returns the raw storage, which may include padding. spacing()
+ *     is its inter-column stride: Blaze pads it for SIMD alignment,
+ *     Armadillo does not.
+ *   - Element access goes through A( i, j ). An offset computed by hand
+ *     must use spacing(), never n_rows(). The length of a whole-matrix
+ *     transfer ( BLAS, LAPACK, MPI ) is spacing() * n_cols(), never
+ *     capacity().
+ *   - data() of an empty matrix is well-defined and may be nullptr.
+ */
+
 #include "cl_Vector.hpp"
 
 // include implementation

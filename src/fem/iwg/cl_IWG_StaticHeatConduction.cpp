@@ -129,7 +129,6 @@ namespace belfem
             // get integration weights
             const Vector< real > & tW = mCalc->integration()->weights();
 
-            // collect temperatures from last iteration
             const Vector< real > & tAlphaNodes = mCalc->node_data("alpha");
             const Vector< real > & tTinfNodes  = mCalc->node_data("Tinf");
 

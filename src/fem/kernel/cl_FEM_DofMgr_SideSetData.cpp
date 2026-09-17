@@ -47,8 +47,9 @@ namespace belfem
             void
             SideSetData::reset()
             {
-                // delete the maps
                 mSideSetMap.clear() ;
+
+                // this object owns the sidesets
 
                 for( SideSet * tSideSet : mSideSets )
                 {

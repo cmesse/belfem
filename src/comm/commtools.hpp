@@ -57,6 +57,8 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+    /** Any code other than MPI_SUCCESS aborts through BELFEM_ERROR ( release too ),
+     *  which ends the whole run with MPI_Abort on the world communicator. */
     void
     comm_check( const int aErrorCode );
 
@@ -100,16 +102,25 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+    /** The base tag of an unordered rank pair. Sizes and scalars use this
+     *  tag, payload chunks use tag + 1, and both ranks must issue their
+     *  exchanges in the same order. The full ordering contract is at the
+     *  definition in commtools.cpp. */
     int
     comm_tag( const proc_t aSource, const proc_t aTarget );
 
 //------------------------------------------------------------------------------
 
+    /** Local, it does not communicate: splits aLength into chunks of at most
+     *  gMaxCommChunkLength. Sender and receiver must use the same length,
+     *  or their chunk counts disagree. */
     Cell< int >
     comm_split( const index_t aLength );
 
 //------------------------------------------------------------------------------
 
+    /** Local, it does not communicate despite aRoot: the number of chunk
+     *  messages comm_split() would produce for every rank but aRoot. */
     index_t
     comm_splitcount( const Vector< index_t > & aLengths, const proc_t aRoot );
 
@@ -261,6 +272,13 @@ namespace belfem
 // SCALARS
 //==============================================================================
 
+    /** Point-to-point, not collective: one send() is matched by exactly one
+     *  receive() on aTarget, in the same order for the same rank pair. Blocks
+     *  until the message is handed to MPI although it posts an MPI_Isend, so
+     *  aData may be reused on return. It is a silent no-op when aTarget is
+     *  this rank. Every send() overload below shares this contract, with one
+     *  difference: only the scalar and raw-array overloads are also a no-op
+     *  when aTarget is out of range. */
     template< typename T >
     void
     send(  const T aData, const proc_t aTarget=0, typename std::enable_if<is_scalar<T>::value>::type* = nullptr  )
@@ -288,6 +306,10 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+    /** The receiving half of send(): point-to-point, not collective, blocks
+     *  until the message has arrived. It is a silent no-op when aSource is
+     *  this rank. The container overloads below resize aData to the sender's
+     *  size; only the raw-array overload requires preallocation. */
     template< typename T >
     void
     receive(  T & aData, const proc_t aSource=0, typename std::enable_if<is_scalar<T>::value>::type* = nullptr )
@@ -319,19 +341,8 @@ namespace belfem
 // RAW ARRAYS
 //==============================================================================
 
-    /**
-     * \brief Sends a raw array to a specified target process using MPI.
-     *
-     * This function sends a pre-allocated raw array \p aData of length \p aLength to the process
-     * with rank \p aTarget using non-blocking MPI operations. The array is split into chunks
-     * for efficient transmission.
-     *
-     * \tparam T The type of the array elements.
-     * \param aData Pointer to the pre-allocated array to send.
-     * \param aLength The number of elements in the array.
-     * \param aTarget The rank of the target process in the MPI communicator.
-     * \note Requires \p aData to be allocated with at least \p aLength elements.
-     */
+    /** Same contract as send( T ). The length travels first, then the
+     *  payload in chunks of at most gMaxCommChunkLength elements. */
     template< typename T >
     void
     send( T * aData, const index_t aLength, const proc_t aTarget )
@@ -393,20 +404,10 @@ namespace belfem
 #endif
     }
 
-    /**
-     * \brief Receives a raw array from a specified source process using MPI.
-     *
-     * This function receives a raw array into \p aData from the process with rank \p aSource
-     * using non-blocking MPI operations. The received length is stored in \p aLength, and the
-     * array is processed in chunks. The array must be pre-allocated with sufficient space.
-     *
-     * \tparam T The type of the array elements.
-     * \param aData Pointer to the pre-allocated array to receive data into.
-     * \param aLength Reference to the variable that will be updated with the received length.
-     * \param aSource The rank of the source process in the MPI communicator.
-     * \note Requires \p aData to be allocated with at least the initial \p aLength elements.
-     * \warning Raises BELFEM_ERROR ( active in release too ) if the received length exceeds the allocated space.
-     */
+    /** Same contract as receive( T& ), except that aData must be preallocated.
+     *  aLength is the capacity on entry and the received length on return. A
+     *  message longer than the capacity aborts with BELFEM_ERROR ( release
+     *  too ) instead of overflowing. */
     template< typename T >
     void
     receive( T * aData, index_t & aLength, const proc_t aSource )
@@ -480,6 +481,7 @@ namespace belfem
 // CELLS
 //==============================================================================
 
+    /** Same contract as send( T ). */
     template< typename T >
     void
     send( Cell< T > & aData, const proc_t aTarget=0 )
@@ -543,6 +545,8 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+    /** Same contract as receive( T& ); aData is resized to the sender's size
+     *  and filled with 0 before the payload lands. */
     template< typename T >
     void
     receive( Cell< T > & aData, const proc_t aSource=0 )
@@ -642,6 +646,12 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+    /** Sends only, not collective: aData has one entry per rank ( asserted )
+     *  and entry p goes to rank p; its own slot is skipped. Every other rank
+     *  must be in the matching collect() or receive(). With nobody receiving,
+     *  the sends complete only while MPI buffers them. Calling this on every
+     *  rank as if it were a scatter is therefore not safe beyond small
+     *  payloads. Every distribute() overload shares this contract. */
     template< typename T >
     void
     distribute( Cell< T > & aData )
@@ -730,6 +740,7 @@ namespace belfem
 // VECTORS
 //==============================================================================
 
+    /** Same contract as send( T ). */
     template< typename T >
     void
     send( Vector< T > & aData, const proc_t aTarget=0 )
@@ -793,6 +804,8 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+    /** Same contract as receive( T& ); aData is resized to the sender's size
+     *  and filled with 0 before the payload lands. */
     template< typename T >
     void
     receive( Vector< T > & aData, const proc_t aSource=0 )
@@ -892,6 +905,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+    /** Same contract as distribute( Cell< T >& ). */
     template< typename T >
     void
     distribute( Vector< T > & aData )
@@ -978,6 +992,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+    /** Same contract as distribute( Cell< T >& ). */
     template< typename T >
     void
     distribute( Cell< Vector< T > > & aData )
@@ -1042,6 +1057,7 @@ namespace belfem
 #endif
     }
 
+    /** Same contract as distribute( Cell< T >& ). */
     template< typename T >
     void
     distribute( Cell< Cell< T > > & aData )
@@ -1108,12 +1124,9 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-    /**
-     * \brief Distributes a raw vector based on lengths and offsets
-     * \tparam T The type of the array elements.
-     * \param aData Pointer to the contiguous array to distribute.
-     * \param aOffsets offsets per proc
-     */
+    /** Same contract as distribute( Cell< T >& ), on a contiguous caller-owned
+     *  buffer. aOffsets has comm_size() + 1 nondecreasing entries, and rank p
+     *  receives the half-open slice [ aOffsets( p ), aOffsets( p + 1 ) ). */
     template< typename T, typename U >
     void
     distribute( const T * aData, const Vector< U > & aOffsets )
@@ -1190,7 +1203,8 @@ namespace belfem
 
         Vector< index_t > tSizes ;
         collect( tSizes );
-        // rank 0's data is already in aData; set its size from offsets for consistency
+        // on rank 0, slot 0 is this rank's own block and is already in place;
+        // the loops below start at p = 1 and never read tSizes( 0 )
         tSizes( 0 ) = aOffsets( 0 );
 
         index_t tCount = 0 ;
@@ -1320,6 +1334,11 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+    /** Sends only; it is not collective. The calling rank sends aData to
+     *  every other rank, and each of those must call receive( aData, sender ).
+     *  Calling it on more than one rank is not a broadcast: the sends then
+     *  complete only while MPI buffers them. It is chunked, so unlike
+     *  broadcast() it is not limited to one unchunked message. */
     template< typename T >
     void
     share( Vector< T > & aData )
@@ -1404,6 +1423,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+    /** Same contract as share( Vector< T >& ). */
     template< typename T >
     void
     share( Cell< T > & aData )
@@ -1553,6 +1573,7 @@ namespace belfem
 #endif
     }
     
+    /** Same contract as send( T ). */
     template< typename T >
     void
     send( Matrix< T > & aData, const proc_t aTarget=0 )
@@ -1623,6 +1644,9 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+    /** Same contract as receive( T& ); aData is resized to the sender's shape.
+     *  The padded buffer is transferred unchanged, so both ranks must run the
+     *  same binary and backend ( see broadcast( Matrix ) ). */
     template< typename T >
     void
     receive( Matrix< T > & aData, const proc_t aSource=0 )
@@ -1700,6 +1724,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+    /** Same contract as distribute( Cell< T >& ). */
     template< typename T >
     void
     distribute( Cell< Matrix< T > > & aData )
@@ -1957,9 +1982,11 @@ namespace belfem
     void
     broadcast( Cell< string > & aData, const proc_t aRoot=0 );
 
+    /** Same contract as send( T ). */
     void
     send( const string & aMessage, const proc_t aTarget=0 );
 
+    /** Same contract as receive( T& ). */
     void
     receive( string & aMessage, const proc_t aSource=0 );
 

@@ -107,6 +107,7 @@ namespace belfem
         public:
 //------------------------------------------------------------------------------
 
+            /** aParams is borrowed and must outlive the wrapper. */
             MUMPS( const SolverParameters * aParams, const proc_t aMasterRank = 0 );
 
 //------------------------------------------------------------------------------
@@ -184,6 +185,11 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            /** Collective. If a negative INFOG(1) remains after the memory retry
+             *  ladder, flag_failure() records it when soft-fail is armed; otherwise
+             *  BELFEM_ERROR aborts. Positive warnings are reported, except the
+             *  out-of-range index bit, which aborts. Both overloads share this
+             *  contract. */
             void
             solve(
                     SpMatrix & aMatrix,

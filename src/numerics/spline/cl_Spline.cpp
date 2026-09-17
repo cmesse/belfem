@@ -61,7 +61,6 @@ namespace belfem
                 tGraph( k )->set_id( k + 1 );
             }
 
-            // first row
             tGraph( 0 )->init_vertex_container( 2 );
             tGraph( 0 )->insert_vertex( tGraph( 0 ));
             tGraph( 0 )->insert_vertex( tGraph( 1 ));
@@ -88,7 +87,6 @@ namespace belfem
             SpMatrix tA( tGraph, SpMatrixType::CSC );
 
 
-            // free graph
             graph::clear( tGraph );
 
             real tC = 1.0/aDeltaX;
@@ -312,10 +310,8 @@ namespace belfem
         Solver tSolver( gDefaultSolver ) ;
 #endif
 
-        // solve system
         tSolver.solve( aA, tDYDX, tB ) ;
 
-        // delete the solver
         tSolver.free();
 
         // create polynomial coefficients from derivatives
@@ -346,7 +342,6 @@ namespace belfem
 
         tStatus = this->save( tGroup );
 
-        // close file
         tFile.close();
 
     }
@@ -505,18 +500,14 @@ namespace belfem
                        ( long unsigned int ) mNumberOfPoints,
                        ( long unsigned int ) aY.length() );
 
-        // allocate memory for RHS
         aB.set_size( mNumberOfPoints );
 
-        // mid entries
         for( uint k=1; k<mNumberOfIntervals; ++k )
         {
             aB( k ) = aY( k+1 ) - aY( k-1 );
         }
-        // scale rhs
         aB *= 3.0 / ( mDeltaX * mDeltaX );
 
-        // first entry
         switch (  aStartBC )
         {
             case spline::SplineBC::NoCurvature :
@@ -567,7 +558,6 @@ namespace belfem
                           const Vector< real > & aY,
                           const Vector< real > & aDYDX )
     {
-        // allocate data
         mData.set_size( 4, mNumberOfPoints );
 
         // current interval
@@ -579,7 +569,6 @@ namespace belfem
         // coefficients
         Vector< real > tC( 4 );
 
-        // loop over all intervals
         for( uint k=0; k<mNumberOfIntervals; ++k )
         {
             tX( 0 ) = aX( k );
@@ -607,7 +596,6 @@ namespace belfem
     {
         uint tN = aY.length() - 1;
 
-        // allocate data
         mData.set_size( 4, tN+1 );
 
         // current interval
@@ -620,10 +608,8 @@ namespace belfem
         Vector< real > tC( 4 );
 
         tX( 1 ) = mXmin;
-        // loop over all intervals
         for( uint k=0; k<tN; ++k )
         {
-            // shift X
             tX( 0 ) = tX( 1 );
             tX( 1 ) += mDeltaX;
 
@@ -652,7 +638,6 @@ namespace belfem
 
         real tX = mXmin;
 
-        // first entry
         mData( 4, 0 ) = 0;
 
         // all other entries
@@ -760,7 +745,6 @@ namespace belfem
 
             comm_barrier() ;
 
-            // send data to others
             broadcast( tIData, aMasterProc );
             broadcast( tRData, aMasterProc );
             broadcast( mData, aMasterProc );
@@ -800,35 +784,27 @@ namespace belfem
     void
     Spline::save_to_database( const string & aDatabase, const string & aLabel )
     {
-        // check if file exists
         FileMode tMode = file_exists( aDatabase ) ?
                          FileMode::OPEN_RDWR : FileMode::NEW ;
 
-        // open database
         HDF5 tFile( aDatabase, tMode );
 
-        // create a new group
         tFile.create_group( aLabel );
 
-        // write the dimension
         uint tDimension = 1 ;
         tFile.save_data( "dimension", tDimension );
 
-        // write the number of points
         Vector<  uint > tNumPoints( tDimension );
         tNumPoints( 0 ) = mNumberOfPoints ;
         tFile.save_data( "npoints", tNumPoints );
 
-        // write the offset
         Vector< double > tOffset( tDimension );
         tOffset( 0 ) = mXmin ;
         tFile.save_data( "offset", tOffset );
 
-        // write the spline order, zero is a special indicator
         uint tOrder = 0 ;
         tFile.save_data( "order", tOrder );
 
-        // write the stepsize
         Vector< double > tStep( tDimension );
         tStep( 0 ) = mDeltaX ;
         tFile.save_data("step", tStep );
@@ -836,7 +812,6 @@ namespace belfem
 
         Matrix< real > tCoeffs = trans( mData );
 
-        // save the data
         tFile.save_data( "coeffs", tCoeffs );
 
         uint tExtra = static_cast< uint >( mExtraMode );
@@ -858,10 +833,8 @@ namespace belfem
         // create temporary matrix
         Matrix< real > tTemp = std::move( mData );
 
-        // reallocate original matrix
         mData.set_size( 5, tN, 0.0 );
 
-        // copy back original coeffs
         for( index_t k=0; k<tN; ++k )
         {
             for( index_t i=0; i<4; ++i )

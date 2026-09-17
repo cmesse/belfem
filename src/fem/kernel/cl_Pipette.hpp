@@ -40,10 +40,10 @@ namespace belfem
             uint mNumIntPointsLinear = 0 ;
 
 
-            // help fector
+            // The Pipette owns these buffers. They are allocated for the selected
+            // element type and freed by reset_containers() and the destructor.
             real * mW = nullptr ;
 
-            // raw vector for coordinates
             real * mX = nullptr ;
             real * mY = nullptr ;
             real * mZ = nullptr ;

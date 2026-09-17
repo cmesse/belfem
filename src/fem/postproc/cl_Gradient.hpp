@@ -42,6 +42,8 @@ namespace belfem
 
             Map< id_t, Block * > mBlocks ;
             Cell< mesh::Node * > mNodes ;
+            //! Work buffers reused between node recoveries. mX is sized at
+            //! construction, the rest by set_order().
             Matrix< real > mX ; // node coordinates
             Matrix< real > mP ; // polynomial vector
             Matrix< real > mC ; // coefficient matrix

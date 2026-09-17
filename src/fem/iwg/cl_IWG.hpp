@@ -86,10 +86,10 @@ namespace belfem
             // rank of this proc
             const proc_t mCommRank ;
 
-            // relaxation parameter for Newton-Raphson
+            // Newton relaxation factor, dimensionless; the setter does not clamp it
             real mOmega     = 0.9;
 
-            // penalty factor for weak BC
+            // Penalty factors of the weak boundary conditions, one per slot
             Vector< real > mPenalty ;
 
             //! flag telling if we have been initialized
@@ -306,6 +306,17 @@ namespace belfem
         public:
 //------------------------------------------------------------------------------
 
+            // This class OWNS the DofTable* held in mBlockDofs, mSideSetDofs
+            // and mSideSetOnlyDofs -- allocated with new, deleted in the
+            // destructor. The implicit copy would shallow-copy those pointers
+            // and double-free them, so copying and moving are deleted rather
+            // than left to the compiler. Deep-copy semantics are not wanted:
+            // an IWG is created once, linked, and used in place.
+            IWG( const IWG & ) = delete ;
+            IWG & operator=( const IWG & ) = delete ;
+            IWG( IWG && ) = delete ;
+            IWG & operator=( IWG && ) = delete ;
+
             // The symmetry default is UNSYMMETRIC on purpose, and must stay
             // that way. BELFEM supplies MUMPS with the full matrix. With
             // SYM != 0 ( PositiveDefiniteSymmetric = SYM 1;
@@ -331,17 +342,6 @@ namespace belfem
             // A user following the guide does not pass this argument. A
             // symmetric default would therefore hand them SYM = 1 and a
             // silently wrong factorization.
-            // This class OWNS the DofTable* held in mBlockDofs, mSideSetDofs
-            // and mSideSetOnlyDofs -- allocated with new, deleted in the
-            // destructor. The implicit copy would shallow-copy those pointers
-            // and double-free them, so copying and moving are deleted rather
-            // than left to the compiler. Deep-copy semantics are not wanted:
-            // an IWG is created once, linked, and used in place.
-            IWG( const IWG & ) = delete ;
-            IWG & operator=( const IWG & ) = delete ;
-            IWG( IWG && ) = delete ;
-            IWG & operator=( IWG && ) = delete ;
-
             IWG( const IwgType aType,
                  const ModelDimensionality aDimensionality,
                  const IwgMode aMode=IwgMode::Iterative,
@@ -394,6 +394,11 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            /** The caller provides aJacobian, sized number_of_dofs_per_element()
+             *  squared, in the element's local dof order and in column-major
+             *  order. The
+             *  implementation fills it. The compute_* overloads below share this
+             *  contract for their matrix and vector arguments. */
             virtual void
             compute_jacobian(
                     Element        * aElement,
@@ -441,22 +446,18 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            /** The IWG borrows the group, its calculator and the pointers reachable
+             *  from them. It owns and deletes nothing linked here. */
             virtual void
             link_to_group( Group * aGroup );
 
 //------------------------------------------------------------------------------
 
-            /**
-             * return the names of the potential fields
-             */
             const Cell< string > &
             dof_fields() const ;
 
 //------------------------------------------------------------------------------
 
-            /**
-             * return the names of the flux fields
-             */
             const Cell< string > &
             flux_fields() const;
 
@@ -470,41 +471,30 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            /**
-             * return the names of the other fields
-             */
             const Cell< string > &
             other_fields() const;
 
 //------------------------------------------------------------------------------
 
-            /**
-             * return the names of all fields
-             */
             const Cell< string > &
             all_fields() const ;
 
 //------------------------------------------------------------------------------
 
-            /**
-             * return the names of a specific field
-             */
             const string &
             field( const index_t aIndex ) const ;
 
 //------------------------------------------------------------------------------
 
-            /**
-             * return the number of connected fiends
-             */
             index_t
             number_of_fields() const ;
 
 //------------------------------------------------------------------------------
 
             /**
-             * DEPRECATED!
-             * @return
+             * TODO(cm): retire number_of_dofs_per_node() for the block-scoped
+             * overload below. Exit criterion: the call in
+             * cl_FEM_DofMgr_SolverData.cpp has moved to that overload.
              */
             uint
             number_of_dofs_per_node() const ;
@@ -679,48 +669,34 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            /**
-             * return the type of this IWG
-             */
              IwgType
              type() const ;
 
 //------------------------------------------------------------------------------
 
-            /**
-             * return the dimensionality of this IWG
-             */
             ModelDimensionality
             model_dimensionality() const ;
 
 //------------------------------------------------------------------------------
 
-            /**
-             * set the interpolation type of node elements
-             */
             void
             set_interpolation_type( const InterpolationType aType );
 
 //------------------------------------------------------------------------------
 
-            /**
-             * return the interpolation type of node elements
-             */
             InterpolationType
             interpolation_type() const ;
 
 //------------------------------------------------------------------------------
 
-            /**
-             * return the calculation mode of this IWG
-             */
             IwgMode
             mode() const ;
 
 //------------------------------------------------------------------------------
 
             /**
-             * get relaxation parameter
+             * The Newton relaxation factor, dimensionless; 1 is an undamped step.
+             * The setter does not clamp it.
              */
              real
              omega() const;
@@ -728,24 +704,23 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             /**
-              * set the relaxation parameter
-              */
+             * All ranks must call it. The value from rank 0 is broadcast to all
+             * ranks.
+             */
             void
             set_omega( const real & aOmega );
 
 //------------------------------------------------------------------------------
 
             /**
-              * set the penalty parameter
-              */
+             * All ranks must call it. The penalty factor of the weak boundary
+             * condition at slot aIndex is taken from rank 0 and broadcast.
+             */
             void
             set_penalty( const real aPsi, const uint aIndex=0 );
 
 //------------------------------------------------------------------------------
 
-            /**
-             * get penalty parameter
-             */
             real
             penalty( const uint aIndex ) const;
 
@@ -777,7 +752,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            // timestep, if this is a transient problem
+            // timestep [s] of a transient problem; writable
             real &
             delta_time() ;
 
@@ -956,6 +931,8 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            /** The caller pre-sizes aData. Row i holds element node i. Column j holds
+             *  aFieldLabels( j ). BELFEM_ASSERT checks this in debug builds only. */
             void
             collect_node_data(
                     Element        * aElement,
@@ -979,8 +956,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             // TODO(cm): retire both collect_node_data overloads; the remaining
-            // callers are fn_Mesh_integrate_scalar_over_sidesets.cpp and
-            // cl_FEM_Calculator.cpp
+            // caller is cl_FEM_Calculator.cpp
             void
             collect_node_data(
                     Element        * aElement,
@@ -989,8 +965,10 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            // TODO(cm): retire this overload once the callers named above no
-            // longer use collect_node_data
+            // TODO(cm): retire this overload once the caller named above no
+            // longer uses collect_node_data. aData must hold
+            // aOffset + number_of_nodes() entries; aOffset is advanced past
+            // the appended values.
             void
             collect_node_data(
                     Element        * aElement,
@@ -1042,17 +1020,11 @@ namespace belfem
 
 //---------------------------------------------------------------------------------
 
-            /**
-             * called by dof manager
-             */
              bool
              compute_jacobian_on_sideset() const ;
 
 //---------------------------------------------------------------------------------
 
-             /**
-              * called by dof manager
-              */
              bool
              compute_jacobian_on_block() const ;
 
@@ -1063,6 +1035,8 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            /** A timestep IWG returns the work matrices it owns. The base
+             *  implementation aborts with BELFEM_ERROR. */
             virtual TimestepMatrices *
             matrices();
 
@@ -1084,13 +1058,17 @@ namespace belfem
 
 //---------------------------------------------------------------------------------
             /**
-             * @return returns the calculator object
+             * The group's calculator, borrowed and re-pointed by every
+             * link_to_group(). A reference into one of its scratch vectors stays
+             * valid, but the next collect into the same slot overwrites the
+             * contents.
              */
             Calculator *
             calc();
 
 //------------------------------------------------------------------------------
-            // these nodes contain for example currents in maxwell cuts
+            // This list holds nodes that carry, for example, the currents of
+            // Maxwell cuts. The pointer list is copied; the mesh owns the nodes.
 
             void
             set_abstract_nodes( Cell< mesh::Node * > & aNodes );
@@ -1159,17 +1137,11 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            /**
-             * Tidy up memory.Called by destructor.
-             */
             void
             delete_block_dof_tables();
 
 //------------------------------------------------------------------------------
 
-            /**
-             * Tidy up memory.Called by destructor.
-             */
             void
             delete_sideset_dof_tables();
 
@@ -1206,6 +1178,10 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            /** Sizes the group's node-coordinate work matrix before its element loop.
+             *  The loop then allocates nothing. It also records the element
+             *  geometry counts. An override must size every buffer its kernel
+             *  writes into. */
             virtual void
             allocate_work_matrices( Group * aGroup );
 

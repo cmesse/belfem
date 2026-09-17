@@ -692,13 +692,10 @@ namespace belfem
                 // shift T
                 tTold = tT;
 
-                // new beta
                 tT = 0.5 * ( tT1 + tT2 );
 
-                // call beta function
                 tF = tPoly->dCpdT( tT );
 
-                // test result
                 if( tF1 * tF > 0 )
                 {
                     tT1 = tT;

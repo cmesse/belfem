@@ -56,32 +56,20 @@ namespace belfem
     public :
 //------------------------------------------------------------------------------
 
-        /**
-         * empty constructor
-         */
         Vector() = default;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        /**
-         * Constructor without fill value
-         */
         Vector( const size_t aNumRows ) :
                 mVector( aNumRows ) {}
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        /**
-         * Constructor with fill value
-         */
         Vector( const size_t aNumRows, const T & aValue ) :
                 mVector( aNumRows, aValue ) {}
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        /**
-         * Constructor with initializer list
-         */
         Vector( std::initializer_list<T> aInitList )
         {
             if( aInitList.size() == 1 )
@@ -104,9 +92,6 @@ namespace belfem
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        /**
-        * Constructor from expression
-        */
         Vector( const VectorType & aExpression ) :
                 mVector( aExpression ) {}
 
@@ -226,9 +211,8 @@ namespace belfem
 // MEMORY
 //------------------------------------------------------------------------------
 
-        /**
-         * expose the underlying raw pointer ( writable version )
-         */
+        /** Returns a borrowed raw buffer under the layout contract stated
+         *  in cl_Vector.hpp; may be nullptr when empty. */
         T *
         data()
         {
@@ -237,9 +221,6 @@ namespace belfem
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        /**
-         * expose the underlying raw pointer ( const version )
-         */
         const T *
         data() const
         {

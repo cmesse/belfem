@@ -292,7 +292,6 @@ namespace belfem
                 tNode->reset_facet_container();
             }
 
-            // loop over all elements
             for( Facet * tFacet: mFacets )
             {
                 if( tFacet->is_flagged() )
@@ -604,7 +603,6 @@ namespace belfem
                 }
             }
 
-            // allocate container for nodes
             for( Edge * tEdge: mEdges )
             {
                 tEdge->allocate_element_container();

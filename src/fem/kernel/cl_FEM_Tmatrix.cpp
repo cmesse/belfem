@@ -24,43 +24,32 @@ namespace belfem
 
             mValues = ( real * ) malloc( mNumNonZeros * sizeof( real ));
 
-            // allocate pointer array
             mPointers = ( uint * ) malloc(( mNumRows + 1 ) * sizeof( uint ));
 
-            // first entry
             mPointers[ 0 ] = 0;
 
-            // allocate column array
             mIndices = ( uint * ) malloc(( mNumNonZeros ) * sizeof( uint ));
 
-            // position in columns
             uint tStep = 0;
 
             uint tCount ;
 
-            // populate pointers array
             for ( uint i = 0; i < mNumRows; ++i )
             {
-                // reset counter
                 tCount = 0;
 
-                // loop over all columns
                 for ( uint j = 0; j < mNumCols; ++j )
                 {
                     if ( std::abs( aMatrix( i, j )) > BELFEM_EPSILON )
                     {
-                        // write column
                         mIndices[ tStep ] = j;
 
-                        // write value
                         mValues[ tStep++ ] = aMatrix( i, j );
 
-                        // increment counter
                         ++tCount;
                     }
                 }
 
-                // count entries
                 mPointers[ i + 1 ] = mPointers[ i ] + tCount;
             }
         }

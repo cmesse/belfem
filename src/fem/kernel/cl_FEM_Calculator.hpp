@@ -649,7 +649,8 @@ namespace belfem
             //! flag telling if element is straight or curved
             bool mIsCurved = false ;
 
-            //! stiffness matrix
+            //! Element work matrices and vectors, overwritten for every element.
+            //! The assembly therefore allocates nothing.
             Matrix< real > mK ;
 
             //! mass matrix
@@ -1210,6 +1211,9 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            /** Returns calculator-owned workspace. An existing entry with the same
+             *  label is resized and reused, not replaced. create_matrix() behaves
+             *  the same way. */
             calculator::VectorData *
             create_vector( const string & aLabel,
                            const uint aSize,
@@ -1830,13 +1834,10 @@ namespace belfem
                 // remember the index
                 mN->set_index( aIndex );
 
-                // get link to matrix
                 Matrix< real > & tN = mN->matrix() ;
 
-                // initialize counter
                 uint tCount = 0 ;
 
-                // populate matrix
                 for( uint k=0; k<mNumberOfNodes; ++k )
                 {
                     tN( 0, tCount++ ) = tPhi( k );
@@ -1859,13 +1860,10 @@ namespace belfem
                 // remember the index
                 mN->set_index( aIndex );
 
-                // get link to matrix
                 Matrix< real > & tN = mN->matrix() ;
 
-                // initialize counter
                 uint tCount = 0 ;
 
-                // populate matrix
                 for( uint k=0; k<mNumberOfNodes; ++k )
                 {
                     tN( 0, tCount++ ) = tPhi( k );
@@ -1936,22 +1934,16 @@ namespace belfem
         {
             if ( aIndex != mB->index() )
             {
-                // remember the index
                 mB->set_index( aIndex );
 
-                // compute derivative for scalar field
                 Matrix< real > & tdN = mdN->matrix() ;
 
-                // compute derivatives
                 tdN = this->invJ( aIndex ) * mDomainIntegration->dNdXi( aIndex );
 
-                // get matrix object
                 Matrix< real > & tB = mB->matrix() ;
 
-                // initialize counter
                 uint tCount = 0 ;
 
-                // populate data
                 for( uint k=0; k<mNumberOfNodes; ++k )
                 {
                     tB( 0, tCount )   = tdN( 0, k );
@@ -1971,22 +1963,16 @@ namespace belfem
         {
             if ( aIndex != mB->index() )
             {
-                // remember the index
                 mB->set_index( aIndex );
 
-                // compute derivative for scalar field
                 Matrix< real > & tdN = mdN->matrix() ;
 
-                // compute derivatives
                 tdN = this->invJ( aIndex ) * mDomainIntegration->dNdXi( aIndex );
 
-                // get matrix object
                 Matrix< real > & tB = mB->matrix() ;
 
-                // initialize counter
                 uint tCount = 0 ;
 
-                // populate data
                 for( uint k=0; k<mNumberOfNodes; ++k )
                 {
                     tB( 0, tCount )   = tdN( 0, k );
@@ -2288,7 +2274,6 @@ namespace belfem
             // compute the normal if it hasn't been computed so far
             ( this->*mFunNormal ) ( aIndex );
 
-            // return the surface increment
             return dot( mMasterIntegration->phi( aIndex ).vector_data(),
                         mXm.col( 1 ) )
                     * mSurfaceIncrement  * 2.0 * constant::pi ;
@@ -2303,7 +2288,6 @@ namespace belfem
             // compute the normal if it hasn't been computed so far
             ( this->*mFunNormal ) ( aIndex );
 
-            // return the surface increment
             return dot( mMasterIntegration->phi( aIndex ).vector_data(),
                         mXm.col( 0 ) )
                    * mSurfaceIncrement * 2.0 * constant::pi ;

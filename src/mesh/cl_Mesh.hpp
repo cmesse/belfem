@@ -154,13 +154,12 @@ namespace belfem
         // compute orientations on finalize
         bool mComputeFacetOrientationsWhenFinalizing = true ;
 
-        //! for special purpose
+        //! mAutoPins and mOrphanedNodes are views onto nodes that mNodes owns.
+        //! mAbstractNodes is adopted into mNodes only through
+        //! set_abstract_nodes(). If filled any other way, its nodes are in no
+        //! owned container and ~Mesh does not delete them.
         Cell< mesh::Node * > mAutoPins ;
-
-        //! for special purpose
         Cell< mesh::Node * > mAbstractNodes ;
-
-        //! for special purpose
         Cell< mesh::Node * > mOrphanedNodes ;
 
         Bitset< static_cast< size_t>( Connectivity::UNDEFINED )> mConnectivities ;
@@ -183,7 +182,10 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
-         * reads a mesh from a file
+         * Reads a mesh from a file. Collective unless aParallelMode is false.
+         * Only the master rank reads the file; every other rank gets an empty
+         * mesh that knows the dimension count. Constructing it on a subset of
+         * ranks deadlocks.
          */
         Mesh( const string & aPath,
             const proc_t aMasterProc = 0,
@@ -205,7 +207,9 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
-         * Multiply all node coordinates with a factor, e.g. to convert from mm to m.
+         * Multiplies the node and control-point coordinates by aFactor, e.g.
+         * to convert from mm to m; a 2D mesh's stored third coordinate is
+         * reset to zero. BELFEM assumes SI units downstream.
          */
          void
          scale_mesh( const real aFactor );
@@ -231,6 +235,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        /** Master rank only, a no-op elsewhere; the mesh must be finalized. */
         void
         save( const string & aFilePath  );
 
@@ -427,6 +432,8 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        /** Returns views of entities the mesh owns through the containers
+         *  below. These lists delete nothing. */
         Cell< mesh::Node * > & hanging_nodes();
         Cell< mesh::Edge * > & hanging_edges();
         Cell< mesh::Face * > & hanging_faces();
@@ -439,11 +446,15 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        /** Takes ownership of aBlock: ~Mesh deletes the block and, through it,
+         *  its elements. */
         void
         add_block( mesh::Block * aBlock );
 
 //------------------------------------------------------------------------------
 
+        /** Takes ownership of aSideSet: ~Mesh deletes the sideset and, through
+         *  it, its facets. The facets are registered in the facet map. */
         void
         add_sideset( mesh::SideSet * aSideSet );
 
@@ -586,7 +597,9 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
-         * expose Node container
+         * The nodes. This group of accessors returns entities the mesh owns and
+         * deletes. Elements and facets are the exception: their block or
+         * sideset owns them. Callers never delete them.
          */
         Cell< mesh::Node * > &
         nodes();
@@ -594,39 +607,30 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
-         * expose Block container
+         * The mesh owns the blocks; a block owns and deletes its elements.
          */
         Cell< mesh::Block * > &
         blocks();
 
 //------------------------------------------------------------------------------
 
-        /**
-         * check if block exists
-         */
          bool
          block_exists( const id_t aID ) const ;
 
 //------------------------------------------------------------------------------
 
-        /**
-         * check if sideset exists
-         */
         bool
         sideset_exists( const id_t aID ) const ;
 
 //------------------------------------------------------------------------------
 
-        /**
-         * check if node exists
-         */
         bool
         node_exists( const id_t aID ) const ;
 
 //------------------------------------------------------------------------------
 
         /**
-         * expose the thinshell container
+         * Owned and deleted by the mesh.
          */
         Cell< mesh::ThinShell * > &
         thin_shells();
@@ -634,7 +638,8 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
-         * expose Element container
+         * A flat list of the elements of all blocks. The blocks own and
+         * delete the elements; this container does not.
          */
         Cell< mesh::Element * > &
         elements();
@@ -642,7 +647,8 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
-         * expose Facet container
+         * A flat list of the facets of all sidesets. The sidesets own and
+         * delete the facets; this container does not.
          */
         Cell< mesh::Facet * > &
         facets();
@@ -650,7 +656,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
-         * expose Control Point container
+         * Owned and deleted by the mesh.
          */
         Cell< mesh::ControlPoint * > &
         control_points();
@@ -658,7 +664,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
-         * expose Sideset container
+         * The mesh owns the sidesets; a sideset owns and deletes its facets.
          */
         Cell< mesh::SideSet * > &
         sidesets();
@@ -666,7 +672,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
-         * expose Curve container
+         * Owned and deleted by the mesh.
          */
         Cell< mesh::Curve * > &
         curves();
@@ -687,7 +693,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
-         * expose edge container
+         * Owned and deleted by the mesh.
          */
         Cell< mesh::Edge * > &
         edges();
@@ -695,7 +701,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
-         * expose face container
+         * Owned and deleted by the mesh.
          */
         Cell< mesh::Face * > &
         faces();
@@ -703,7 +709,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
-         * expose Vertex container
+         * Owned and deleted by the mesh.
          */
         Cell< mesh::Element * > &
         vertices();
@@ -719,7 +725,9 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
-         * partition the mesh and set element and node ownerships
+         * Only the master rank partitions the mesh and sets the element and
+         * node ownerships. Every other rank does nothing. This function is not
+         * collective.
          */
         void
         partition(
@@ -829,7 +837,8 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
-         * return the current timestamp
+         * Writable reference to the current time [s]. This is the value
+         * written to the output files.
          */
         real &
         time_stamp();
@@ -837,7 +846,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         /**
-         * return the index of the time
+         * The current timestep index.
          */
         const uint &
         time_step() const;
@@ -959,6 +968,8 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        /** Collective and asymmetric: every rank must enter; rank 0 distributes
+         *  the per-owner edge signs, every other rank receives. */
         void
         distribute_edge_directions();
 
@@ -984,6 +995,10 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        /** Adopts the nodes. Those not already on the mesh are pushed into the
+         *  owned node container and given indices. Every node field is
+         *  resized. The mesh deletes them. Asserted to run only while the
+         *  abstract-node list is empty. */
         void
         set_abstract_nodes( Cell< mesh::Node * > & aNodes );
 
@@ -1045,6 +1060,7 @@ namespace belfem
         max_element_id() const ;
 
 
+        /** Returns a newly allocated mesh the caller owns and deletes. */
         Mesh *
         extract_thin_shell_mesh();
 
@@ -1070,6 +1086,7 @@ namespace belfem
         mesh::Periodicity *
         periodicity();
 
+        /** The mesh takes ownership and deletes aPeriodicity. */
         void
         set_periodicity( mesh::Periodicity * aPeriodicity );
 
@@ -1564,9 +1581,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-    /**
-     * return the current timestamp
-     */
     inline real &
     Mesh::time_stamp()
     {
@@ -1575,9 +1589,6 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-    /**
-     * return the current timestep
-     */
     inline const uint &
     Mesh::time_step() const
     {

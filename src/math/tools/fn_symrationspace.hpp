@@ -22,10 +22,8 @@ namespace belfem
     void
     symratiospace( const T & aXmin, const T & aXmax, const T & aRatio, const index_t aN, Vector< T > & aX )
     {
-        // check input
         BELFEM_ASSERT( aN % 2 == 1 , "aN must be odd" );
 
-        // set size of vector
         aX.set_size( aN );
 
         // number of steps per height
@@ -40,7 +38,6 @@ namespace belfem
             tDeltaX *= aRatio ;
         }
 
-        // populate beginning, end and middle point
         aX( 0 )      = aXmin ;
         aX( aN - 1 ) = aXmax ;
         aX( tN ) = aXmin + 0.5 * ( aXmax - aXmin );
@@ -48,7 +45,6 @@ namespace belfem
         // adapt scale
         tDeltaX = aX( tN ) / tX ;
 
-        // populate the rest
         for( index_t k=1; k<tN; ++k )
         {
             aX( k ) = aX( k - 1 ) + tDeltaX ;

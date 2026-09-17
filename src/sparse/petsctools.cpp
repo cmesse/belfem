@@ -126,7 +126,6 @@ namespace belfem
     )
     {
 #ifdef BELFEM_PETSC
-        // create the vector
         PetscErrorCode aStatus = VecCreate( aComm, & aVec );
 
         BELFEM_ASSERT( aStatus==0,
@@ -134,7 +133,6 @@ namespace belfem
                       ( int ) aStatus,
                       petsctools_error_message( aStatus ).c_str() );
 
-        // set the site of the vector
         aStatus = VecSetSizes(
                 aVec,
                 aLocalLength,
@@ -168,10 +166,8 @@ namespace belfem
             Vec & aVec )
     {
 #ifdef BELFEM_PETSC
-        // number of values to be set
         PetscInt tLength = aIndices.length() ;
 
-        // populate values
         PetscErrorCode aStatus = VecSetValues( aVec,
                 tLength,
                 aIndices.data(),
@@ -209,10 +205,8 @@ namespace belfem
     petsctools_get_vector( Vec & aVec, const Vector< PetscInt > & aIndices, Vector< PetscReal > & aVector )
     {
 #ifdef BELFEM_PETSC
-        // number of values to be read
         PetscInt tLength = aIndices.length() ;
 
-        // get vector data
         PetscErrorCode aStatus = VecGetValues( aVec, tLength, aIndices.data(), aVector.data() ) ;
 
         BELFEM_ASSERT( aStatus==0,
@@ -232,7 +226,6 @@ namespace belfem
     petsctools_get_local_vector( Vec & aVec, Vector< PetscReal > & aVector )
     {
 #ifdef BELFEM_PETSC
-        // get the local portion of the vector
         const PetscReal * tArray;
         PetscErrorCode aStatus = VecGetArrayRead( aVec, &tArray );
 
@@ -241,7 +234,6 @@ namespace belfem
              ( int ) aStatus,
              petsctools_error_message( aStatus ).c_str() );
 
-        // copy local values
         PetscInt tLocalSize = aVector.length();
         for( PetscInt i = 0; i < tLocalSize; ++i )
         {
@@ -277,7 +269,6 @@ namespace belfem
              ( int ) aStatus,
              petsctools_error_message( aStatus ).c_str() );
 
-        // copy local values
         PetscInt tLocalSize = aVector.length();
         for( PetscInt i = 0; i < tLocalSize; ++i )
         {

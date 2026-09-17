@@ -20,6 +20,9 @@ namespace belfem
     {
 //------------------------------------------------------------------------------
 
+        /** Collective: every rank contributes its owned elements and every rank
+         *  returns the total. The result's unit is the mesh coordinate unit raised to the
+         *  mesh dimension. aMesh is borrowed. Both overloads share this contract. */
         real
         compute_volume( Mesh * aMesh, const id_t aBlockIDs );
 

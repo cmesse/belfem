@@ -12,6 +12,14 @@
 #ifndef BELFEM_CL_VECTOR_HPP
 #define BELFEM_CL_VECTOR_HPP
 
+/*
+ * The contract of belfem::Vector with either backend: storage is contiguous
+ * with unit stride, so data() may be handed directly to BLAS, LAPACK, MPI
+ * and Fortran with length() elements. data() for an empty Vector is
+ * well-defined and may be nullptr, so test length(), never the pointer.
+ * Vector is for linear algebra; lists of ids or entities go into Cell.
+ */
+
 // include implementation
 #ifdef BELFEM_ARMADILLO
 #include "cl_AR_Vector.hpp"

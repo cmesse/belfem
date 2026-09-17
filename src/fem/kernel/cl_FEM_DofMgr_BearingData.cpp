@@ -44,10 +44,9 @@ namespace belfem
             void
             BearingData::reset()
             {
-                // delete map
                 mBearingMap.clear() ;
 
-                // delete pointers
+                // this object owns the bearings
                 for( Bearing * tBearing : mBearings )
                 {
                     delete tBearing ;
@@ -67,16 +66,12 @@ namespace belfem
             void
             BearingData::create_bearings()
             {
-                // restore factory settings
                 this->reset() ;
 
-                // initialize counter
                 index_t tCount = 0 ;
 
-                // allocate memory for bearings
                 mBearings.set_size( mMesh->vertices().size(), nullptr );
 
-                // loop over all vertices on mesh
                 for( mesh::Element * tVertex : mMesh->vertices() )
                 {
                     mBearings( tCount ) = new Bearing(

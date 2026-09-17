@@ -62,8 +62,6 @@ namespace belfem
                 //Set the boundary condition type
                 BoundaryConditionType tType = boundary_condition_type( tSection->type() ) ;
 
-                // only needed if current BC is applied to thin shell
-
                 //Read the domains on which the condition is applied and set the domains
                 switch ( tType )
                 {

@@ -94,6 +94,9 @@ namespace belfem
             ~SUPERLU() override ;
 
 //------------------------------------------------------------------------------
+            /** Local; it does not use MPI. There is no soft-fail path: a backend
+             *  failure aborts ( BELFEM_ERROR ) regardless of the flag. Both
+             *  overloads share this contract. */
             void
             solve( SpMatrix & aMatrix,
                    Vector <real> & aLHS,

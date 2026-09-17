@@ -72,7 +72,7 @@ namespace belfem
                     tFacet->master()->get_nodes_of_facet( tFacet->index_on_master(), tNodes ) ;
                     for ( Node * tNode : tNodes )
                     {
-                        // get the original of the node (might be the node itself)
+                        // the original may be the node itself
                         Node * tOrg = tNode->original();
                         tOrg->flag();
                         for ( uint k=0; k<tOrg->number_of_duplicates(); ++k )
@@ -97,12 +97,10 @@ namespace belfem
             index_t tCount = 0 ;
             for ( SideSet * tSideSet : mSideSets )
             {
-                // get first facet
                 Facet * tFacet = tSideSet->facets()( 0 );
 
-                // add blockid of master block to container
-                // ( we must duplicate  the masters since we don't want nodes on the air side hanging
-                //     unless for the cuts )
+                // the master blocks are duplicated too; otherwise nodes on the
+                // air side would be left hanging, except at the cuts
                 tBlockIDs( tCount++ ) = tFacet->master()->block_id() ;
             }
 

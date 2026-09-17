@@ -130,9 +130,6 @@ namespace belfem
                 mFlags.reset();
             }
 
-            /**
-             * @brief Set a flag after populating corresponding matrix
-             */
             void
             set_flag( const MatrixFlag aFlag )
             {

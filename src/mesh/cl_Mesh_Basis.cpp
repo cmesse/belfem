@@ -29,14 +29,14 @@ namespace belfem
 
         Basis::~Basis()
         {
-            // delete T-Matrix
+            // frees the pointer array and the weights; the sources are not freed
             if( mNumberOfSources != 0 )
             {
                 free( mSources );
                 free( mWeights );
             }
 
-            // delete dofs
+            // frees the pointer array; the dofs are not freed
             if( mNumberOfDofs != 0 )
             {
                 free( mDofs );
@@ -213,22 +213,17 @@ namespace belfem
                           ( long unsigned int ) aSources.size(),
                           ( long unsigned int ) std::numeric_limits< decltype( mNumberOfSources ) >::max() );
 
-            // set the number of sources
             mNumberOfSources = aSources.size() ;
 
-            // allocate memory
             mSources = ( Basis ** ) malloc( mNumberOfSources * sizeof( Basis * ) );
 
-            // copy sources
             for( uint k=0; k<mNumberOfSources; ++k )
             {
                 mSources[ k ] = aSources( k );
             }
 
-            // allocate memory
             mWeights = ( real * ) malloc( mNumberOfSources * sizeof( real ) );
 
-            // copy coefficients
             for( uint k=0; k<mNumberOfSources; ++k )
             {
                 mWeights[ k ] = aCoefficients( k );
@@ -262,22 +257,17 @@ namespace belfem
                           ( long unsigned int ) aSources.size(),
                           ( long unsigned int ) std::numeric_limits< decltype( mNumberOfSources ) >::max() );
 
-            // set the number of sources
             mNumberOfSources = aSources.size() ;
 
-            // allocate memory
             mSources = ( Basis ** ) malloc( mNumberOfSources * sizeof( Basis * ) );
 
-            // copy sources
             for( uint k=0; k<mNumberOfSources; ++k )
             {
                 mSources[ k ] = aSources( k );
             }
 
-            // allocate memory
             mWeights = ( real * ) malloc( mNumberOfSources * sizeof( real ) );
 
-            // copy coefficients
             for( uint k=0; k<mNumberOfSources; ++k )
             {
                 mWeights[ k ] = aCoefficients( k );
@@ -369,22 +359,17 @@ namespace belfem
                           ( long unsigned int ) aSources.size(),
                           ( long unsigned int ) std::numeric_limits< decltype( mNumberOfSources ) >::max() );
 
-            // set the number of sources
             mNumberOfSources = aSources.size() ;
 
-            // allocate memory
             mSources = ( Basis ** ) malloc( mNumberOfSources * sizeof( Basis * ) );
 
-            // copy sources
             for( uint k=0; k<mNumberOfSources; ++k )
             {
                 mSources[ k ] = reinterpret_cast< Basis * > ( aSources( k ) );
             }
 
-            // allocate memory
             mWeights = ( real * ) malloc( mNumberOfSources * sizeof( real ) );
 
-            // copy coefficients
             for( uint k=0; k<mNumberOfSources; ++k )
             {
                 mWeights[ k ] = aCoefficients( k );

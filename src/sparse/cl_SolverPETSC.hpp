@@ -48,6 +48,7 @@ namespace belfem
         public:
 //------------------------------------------------------------------------------
 
+            /** aParams is borrowed and must outlive the wrapper. */
             PETSC( const SolverParameters * aParams );
 
 //------------------------------------------------------------------------------
@@ -64,6 +65,10 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            /** Collective. With soft-fail armed, flag_failure() records the
+             *  iteration-limit, divergence-tolerance, null and breakdown reasons.
+             *  PETSc call errors and all other reasons abort. The inherited matrix
+             *  overload aborts. */
             void
             solve(
                     SpMatrix      & aMatrix,

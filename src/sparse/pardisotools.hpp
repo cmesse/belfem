@@ -30,6 +30,10 @@ extern"C" {
             const belfem::int_t  * aIndices,
             const double         * aValues );
 
+    /** aLHS and aRHS are tightly packed column-major aN x aNRHS buffers. The
+     *  Fortran declaration requires this layout, so a padded Matrix buffer
+     *  cannot be passed unchanged. aInfo has eight entries. Returns the
+     *  backend status; zero means success. */
     belfem::int_t
     pardisotools_solve(  const belfem::int_t    &  aN,
                          const belfem::int_t    & aNNZ,

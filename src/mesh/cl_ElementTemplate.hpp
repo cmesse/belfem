@@ -141,7 +141,8 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             /**
-             * insert an edge to a position in the member array
+             * Stores the pointer without taking ownership: the mesh owns the
+             * nodes, edges and faces, the element owns only its pointer arrays.
              */
             void
             insert_edge( Edge * aEdge, const uint aIndex ) override;
@@ -384,10 +385,8 @@ namespace belfem
         void
         ElementTemplate< N, C, E, T, F >::allocate_node_container()
         {
-            // create the contiainer
             mNodes = new Node * [ N ];
 
-            // populate the members with null pointers
             for ( uint k = 0; k < N; ++k )
             {
                 mNodes[ k ] = nullptr;
@@ -405,10 +404,8 @@ namespace belfem
             BELFEM_ASSERT( ! mHaveEdges, "Edge container for element %lu has already been allocated",
                           ( long unsigned int ) this->id() );
 
-            // create the contiainer
             mEdges = new Edge * [ E ];
 
-            // populate the members with null pointers
             for ( uint k = 0; k < E; ++k )
             {
                 mEdges[ k ] = nullptr;
@@ -427,10 +424,8 @@ namespace belfem
             BELFEM_ASSERT( ! mHaveFaces, "Face container for element %lu has already been allocated",
                           ( long unsigned int ) this->id() );
 
-            // create the contiainer
             mFaces = new Face * [ F ];
 
-            // populate the members with null pointers
             for ( uint k = 0; k < F ; ++k )
             {
                 mFaces[ k ] = nullptr;
@@ -554,7 +549,6 @@ namespace belfem
         void
         ElementTemplate< N, C, E, T, F >::reset_node_container()
         {
-            // delete the node container
             delete[] mNodes;
         }
 //------------------------------------------------------------------------------
@@ -563,13 +557,10 @@ namespace belfem
         void
         ElementTemplate< N, C, E, T, F >::reset_face_container()
         {
-            // check if container has been allocated
             if ( mHaveFaces )
             {
-                // delete the face container
                 delete[] mFaces;
 
-                // unset flag
                 mHaveFaces = false;
             }
         }
@@ -580,13 +571,10 @@ namespace belfem
         void
         ElementTemplate< N, C, E, T, F >::reset_edge_container()
         {
-            // check if container has been allocated
             if ( mHaveEdges )
             {
-                // delete the edge container
                 delete[] mEdges;
 
-                // unset flag
                 mHaveEdges = false;
             }
         }
@@ -604,7 +592,6 @@ namespace belfem
                          ( unsigned int ) N,
                          ( long unsigned int ) this->id() );
 
-            // write node into index
             mNodes[ aIndex ] = aNode;
         }
 
@@ -621,7 +608,6 @@ namespace belfem
                     ( unsigned int ) N,
                     ( long unsigned int ) this->id() );
 
-            // return the node
             return mNodes[ aIndex ];
         }
 
@@ -638,7 +624,6 @@ namespace belfem
                          ( unsigned int ) N,
                          ( long unsigned int ) this->id() );
 
-            // return the node
             return mNodes[ aIndex ];
         }
 
@@ -674,7 +659,6 @@ namespace belfem
                          ( unsigned int ) E,
                          ( long unsigned int ) this->id() );
 
-            // write node into index
             mEdges[ aIndex ] = aEdge;
         }
 
@@ -691,7 +675,6 @@ namespace belfem
                          ( unsigned int ) F,
                          ( long unsigned int ) this->id() );
 
-            // write node into index
             mFaces[ aIndex ] = aFace;
         }
 
@@ -713,7 +696,6 @@ namespace belfem
                          ( unsigned int ) E,
                          ( long unsigned int ) this->id() );
 
-            // return the node
             return mEdges[ aIndex ];
         }
 
@@ -734,7 +716,6 @@ namespace belfem
                          ( unsigned int ) E,
                          ( long unsigned int ) this->id() );
 
-            // return the node
             return mEdges[ aIndex ];
         }
 
@@ -756,7 +737,6 @@ namespace belfem
                          ( unsigned int ) F,
                          ( long unsigned int ) this->id() );
 
-            // return the node
             return mFaces[ aIndex ];
         }
 
@@ -777,7 +757,6 @@ namespace belfem
                          ( unsigned int ) F,
                          ( long unsigned int ) this->id() );
 
-            // return the node
             return mFaces[ aIndex ];
         }
 

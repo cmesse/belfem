@@ -103,7 +103,6 @@ namespace belfem
                           interpolation_order_numeric( aType ) :
                           2 * interpolation_order_numeric( aType ) ;
 
-            // allocate general interpolation data
             mIntegrationData = new belfem::fem::IntegrationData( aType ) ;
             mIntegrationData->populate(  tOrder );
             mNumIntPoints = mIntegrationData->weights().length() ;
@@ -117,7 +116,6 @@ namespace belfem
             mNodeCoordsLinear.set_size( mNumCornerNodes, mNumDim ) ;
             mNodeCoords.set_size( mNumNodes, mNumDim ) ;
 
-            // now we link the integration functions
             switch( tGeoType )
             {
                 case GeometryType::TRI :
@@ -229,7 +227,6 @@ namespace belfem
             mY[ 1 ] = aElement->node( 1 )->y() ;
             mY[ 2 ] = aElement->node( 2 )->y() ;
 
-            // compute the value
             return 0.5*((mX[1]-mX[0])*(mY[2]-mY[1])-(mY[1]-mY[0])*(mX[2]-mX[1]));
         }
 
@@ -250,7 +247,6 @@ namespace belfem
             mY[ 2 ] = aElement->node( 2 )->y() ;
             mY[ 3 ] = aElement->node( 3 )->y() ;
 
-            // compute the value
             return  0.5*((mY[1]-mY[3])*(mX[0]-mX[2])
                         +(mY[0]-mY[2])*(mX[3]-mX[1]));
         }
@@ -276,7 +272,6 @@ namespace belfem
             mZ[ 2 ] = aElement->node( 2 )->z() ;
             mZ[ 3 ] = aElement->node( 3 )->z() ;
 
-            // Compute Jacobian
             mW[ 0 ] = mX[ 0 ] - mX[ 3 ];
             mW[ 1 ] = mY[ 0 ] - mY[ 3 ];
             mW[ 2 ] = mZ[ 0 ] - mZ[ 3 ];
@@ -287,7 +282,6 @@ namespace belfem
             mW[ 7 ] = mY[ 1 ] - mY[ 3 ];
             mW[ 8 ] = mZ[ 1 ] - mZ[ 3 ];
 
-            // compute the determinant
             return (
                       mW[ 0 ]*(mW[ 4 ]*mW[ 8 ] - mW[ 5 ]*mW[ 7 ])
                     + mW[ 1 ]*(mW[ 5 ]*mW[ 6 ] - mW[ 3 ]*mW[ 8 ])
@@ -299,7 +293,6 @@ namespace belfem
         real
         Pipette::measure_linear( const Element * aElement )
         {
-            // copy the node coordinates of the element
             for ( uint i=0; i<mNumDim; ++i )
             {
                 for ( uint k=0; k<mNumCornerNodes; ++k )
@@ -353,7 +346,6 @@ namespace belfem
                 return ( this->*mVolumeFunctionLinear )( aElement );
             }
 
-            // copy the node coordinates of the element
             for ( uint i=0; i<mNumDim; ++i )
             {
                 for ( uint k=0; k<mNumNodes; ++k )
@@ -396,7 +388,6 @@ namespace belfem
             mJ.set_size( d, n );
             mNodeCoords.set_size( n, d );
 
-            // allocate general interpolation data
             if ( aType == ElementType::TRI3 )
             {
                 mSurfaceFunction = & Pipette::measure_surface_tri3 ;
@@ -427,12 +418,10 @@ namespace belfem
         Pipette::measure_surface_tri3( const Facet * aFacet )
         {
 
-            // grab nodes
             const Node * tNode0 = aFacet->node( 0 );
             const Node * tNode1 = aFacet->node( 1 );
             const Node * tNode2 = aFacet->node( 2 );
 
-            // compute jacobian
             mJ( 0, 0 ) = tNode0->x() - tNode2->x();
             mJ( 1, 0 ) = tNode1->x() - tNode2->x();
 
@@ -442,7 +431,6 @@ namespace belfem
             mJ( 0, 2 ) = tNode0->z() - tNode2->z();
             mJ( 1, 2 ) = tNode1->z() - tNode2->z();
 
-            // compute the normal
             mN( 0 ) = mJ( 0, 1 ) * mJ( 1, 2 ) - mJ( 0, 2 ) * mJ( 1, 1 );
             mN( 1 ) = mJ( 0, 2 ) * mJ( 1, 0 ) - mJ( 0, 0 ) * mJ( 1, 2 );
             mN( 2 ) = mJ( 0, 0 ) * mJ( 1, 1 ) - mJ( 0, 1 ) * mJ( 1, 0 );
@@ -458,16 +446,13 @@ namespace belfem
         Pipette::measure_surface_line2( const Facet * aFacet )
         {
 
-            // grab nodes
             const Node * tNode0 = aFacet->node( 0 );
             const Node * tNode1 = aFacet->node( 1 );
 
-            // compute jacobian
             mJ( 0, 0 ) = tNode0->x() - tNode1->x();
 
             mJ( 0, 1 ) = tNode0->y() - tNode1->y();
 
-            // compute the normal
             mN( 0 ) = mJ( 0, 1 ) ;
             mN( 1 ) = - mJ( 0, 0 ) ;
 
@@ -501,7 +486,6 @@ namespace belfem
                 // compute the jacobian (note: it is not quadratic here!)
                 mJ = mIntegrationData->dNdXi( k ) * mNodeCoords ;
 
-                // compute the normal
                 mN( 0 ) = mJ( 0, 1 ) * mJ( 1, 2 ) - mJ( 0, 2 ) * mJ( 1, 1 );
                 mN( 1 ) = mJ( 0, 2 ) * mJ( 1, 0 ) - mJ( 0, 0 ) * mJ( 1, 2 );
                 mN( 2 ) = mJ( 0, 0 ) * mJ( 1, 1 ) - mJ( 0, 1 ) * mJ( 1, 0 );

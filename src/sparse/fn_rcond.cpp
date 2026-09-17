@@ -50,14 +50,11 @@ namespace belfem
         cholmod_factor * tFactor = cholmod_analyze( &tMatrix, &tCommon) ;
         cholmod_factorize( &tMatrix, tFactor, &tCommon );
 
-        // compute the approximate conditioning
         real aCond = cholmod_rcond( tFactor, &tCommon );
 
-        // tidy up
         cholmod_free_factor ( &tFactor, &tCommon) ;
         cholmod_finish (&tCommon);
 
-        // return the result
         return aCond ;
 #else
         BELFEM_ERROR( false, "We are not linked against CHOLMOD." );

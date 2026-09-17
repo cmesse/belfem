@@ -84,13 +84,12 @@ namespace belfem
 
             index_t tRhsLength = tLengths( 0 );
 
-            // bool set flag if a nonzero LHS is given
+            // an initial guess is available when the LHS has the RHS length
             bool tHaveLHS = tLengths( 0 ) == tLengths( 1 );
 
             // no LHS of matching length: allocate it ( it then cannot serve as initial guess )
             if( ! tHaveLHS )
             {
-                // allocate LHS
                 aLHS.set_size( tRhsLength, 0.0 );
             }
 
@@ -100,7 +99,6 @@ namespace belfem
                 aRHS.set_size( tRhsLength );
             }
 
-            // check if we need to initialize the solver
             if( ! this->is_initialized() )
             {
                 this->initialize( aMatrix );
@@ -111,8 +109,8 @@ namespace belfem
             this->set_krylovmethod( mKrylovMethod );
             this->set_matrix_ordering( mParams->reordering_method() );
 
-            // set initial guess flag: respect SolverParameters setting if use_initial_guess is true,
-            // otherwise determine based on whether LHS was provided
+            // use an initial guess only when the parameters request it and a
+            // left-hand side was provided
             if( mParams->use_initial_guess() && tHaveLHS )
             {
                 this->set_initial_guess_flag( true );
@@ -122,13 +120,10 @@ namespace belfem
                 this->set_initial_guess_flag( false );
             }
 
-            // update data containers
             if( this->comm_size() > 1 ) // parallel mode
             {
-                // distribute matrix values
                 mDistMatrix->distribute_values( &aMatrix );
 
-                // update matrix in PETSc
                 petsctools_update_matrix( mDistMatrix, mData.mMat );
 
                 if( tHaveLHS )
@@ -160,7 +155,6 @@ namespace belfem
                     petsctools_set_vector( aLHS, mData.mVectorIndices, mData.mLHS );
                 }
 
-                // update RHS data
                 petsctools_set_vector( aRHS, mData.mVectorIndices, mData.mRHS );
             }
 
@@ -193,7 +187,6 @@ namespace belfem
 
             if ( this->rank() == tBadProc )
             {
-                // check error
                 BELFEM_ERROR( tStatus == 0,
                            "PETSC has thrown the error %i in function KSPSolve()\n%s",
                             tStatus,
@@ -334,7 +327,6 @@ namespace belfem
                     ( int ) tNumIterations );
             }
 
-            // check if we should print information
             if( gLog.info_level() >= 5 )
             {
                 KSPView( mData.mKSP, PETSC_VIEWER_STDOUT_WORLD );
@@ -382,7 +374,6 @@ namespace belfem
                 const int_t          aNumRhsColumns )
         {
 #ifdef BELFEM_PETSC
-            // call initialize function from parent
             Wrapper::initialize();
 
             BELFEM_ERROR( mParams->distributed_matrix_type() == DistributedMatrixType::AIJ || gComm.size() < 2,
@@ -425,7 +416,6 @@ namespace belfem
                 // create vector indices for parallel mode (global indices)
                 this->create_indices( tLocalLength, tGlobalOffset );
 
-                // allocate vectors for parallel mode
                 petsctools_allocate_vector(
                     mData.mComm,
                     mData.mLHS,
@@ -443,16 +433,12 @@ namespace belfem
                 // get size of matrix
                 PetscInt tN = aMatrix.n_rows() ;
 
-                // create the indices
                 this->create_indices( tN );
 
-                // allocate vector for right hand side
                 petsctools_allocate_vector( mData.mComm, mData.mRHS, tN );
 
-                // allocate vector for left hand side
                 petsctools_allocate_vector( mData.mComm, mData.mLHS, tN );
 
-                // link with input matrix
                 this->link_matrix( aMatrix );
             }
 
@@ -475,7 +461,6 @@ namespace belfem
                     delete mDistMatrix;
                 }
 
-                // tidy up
                 KSPDestroy( & mData.mKSP );
                 MatDestroy( & mData.mMat );
 
@@ -487,7 +472,6 @@ namespace belfem
             }
 
 #endif
-            // call function from parent
             Wrapper::free();
 
         }
@@ -517,10 +501,8 @@ namespace belfem
             // create the solver
             KSPCreate( mData.mComm, & mData.mKSP );
 
-            // set matrix and preconditioning matrix
             KSPSetOperators( mData.mKSP, mData.mMat, mData.mMat );
 
-            // grab PC pointer
             KSPGetPC( mData.mKSP, & mData.mPC );
 
             // set epsilon and tolerances. A deck-stated "max iterations"
@@ -546,7 +528,6 @@ namespace belfem
             BELFEM_ERROR( tStatus == 0,
                 "KSPSetTolerances failed with error %i", ( int ) tStatus );
 
-            // set the runtime options
             KSPSetFromOptions( mData.mKSP );
 #endif
         }
@@ -742,7 +723,6 @@ namespace belfem
                 }
             }
 
-            // Set the ordering for factorization
             aStatus = PCFactorSetMatOrderingType( mData.mPC, tPetscOrdering );
 
             BELFEM_ASSERT( aStatus == 0,
