@@ -43,9 +43,11 @@ namespace belfem
         /**
          * @brief Top-level orchestrator. Owns the equations, dof managers,
          * materials and boundary conditions it creates or is handed. The mesh
-         * of the parameters is borrowed on the master rank; on the other ranks
-         * the kernel owns the submesh it receives when it distributes the mesh
-         * itself, and borrows it from the parent kernel when chained onto one.
+         * of the parameters is borrowed unless the factory that created it
+         * called claim_mesh_ownership(), as MaxwellFactory does; on the worker
+         * ranks the kernel owns the submesh it receives when it distributes
+         * the mesh itself, and borrows it from the parent kernel when chained
+         * onto one.
          *
          * @ingroup grp_fem_kernel
          * @see @ref fem_kernel_index
@@ -207,9 +209,10 @@ namespace belfem
 
             /**
              * The mesh on the master, the submesh on every other rank. Never
-             * deleted by the caller: the master's mesh belongs to whoever created
-             * it, a worker's submesh to this kernel or to the parent kernel it is
-             * chained onto ( see the class brief ).
+             * deleted by the caller: the master's mesh belongs to this kernel
+             * once its factory handed it over ( claim_mesh_ownership ) and to
+             * its creator otherwise, a worker's submesh to this kernel or to the
+             * parent kernel it is chained onto ( see the class brief ).
              */
             Mesh *
             mesh();
@@ -255,6 +258,15 @@ namespace belfem
              */
              void
              claim_parameter_ownership( const bool aFlag = true );
+
+            /**
+             * Hands the mesh the parameters point at over to this kernel, which
+             * then deletes it in its destructor. Only the factory that created
+             * that mesh calls this; a kernel chained onto a parent borrows the
+             * parent's mesh and must not.
+             */
+             void
+             claim_mesh_ownership( const bool aFlag = true );
 
 //------------------------------------------------------------------------------
 

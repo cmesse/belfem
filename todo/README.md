@@ -145,7 +145,7 @@ one of the two must be retired before either is worked.
 
 ### [code_findings_from_comment_sweeps.md](code_findings_from_comment_sweeps.md) — defects the comment auditors found while reading for contracts, parked for a code session
 
-**OPEN, parked by ruling.** The sideset integral broadcasts the master rank instead of the value (non-master ranks return zero); an `IWG::N` declared and never defined; wrapper `mX`/`mY` never assigned; `IWG::collect_node_coords` writes `nDim + 1` columns; a double include guard; `tests/` dated lines; closed-core narration for Gregory. Each goes through the plan + audit → code + audit loop.
+**IN PROGRESS.** Tier 1 (the sideset broadcast, the undefined `IWG::N`, the null wrapper accessors, the `collect_node_coords` column bound, the include guard, the chained-kernel placeholder mesh, the `CutSet` bitset) landed 2026-09-17 in `70364c1`; tier 2 (the thermal equation and BC factory, the factory-created meshes handed to the kernel, `mLocalDofs`, the empty sideset's calculator, the distributor's control-point data) landed 2026-09-18, both through the plan + audit → code + audit loop with `make check` on both trees and Valgrind gates. F8 refuted by two deep scans; F7 waits for Gregory; F18 and F19 (rank-0 losses the last gate exposed) are next.
 
 ### [closed/comment_cleanup_sweep_2.md](closed/comment_cleanup_sweep_2.md) — add the missing contracts on the public entry points, correct the comments the code contradicts, finish the narration tail
 

@@ -46,6 +46,10 @@ namespace belfem
         {
             delete mInputFile;
 
+            // the factory object is ours; its boundary conditions belong to the
+            // kernel once create_thermal_kernel() handed them over
+            delete mBoundaryConditionFactory;
+
             for ( Domain *tDomain : mDomains )
             {
                 delete tDomain;
@@ -165,9 +169,11 @@ namespace belfem
 
             comm_barrier();
 
-            //Create the field
-            mThermalField = mThermalKernel->create_field( mThermalEquation );
+            // the kernel owns the equation from here on; create_field() only
+            // links it
+            mThermalKernel->add_equation( mThermalEquation );
             mOwnThermalEquation = false ;
+            mThermalField = mThermalKernel->create_field( mThermalEquation );
 
             // get the solver section from the input file
             const input::Section *tSolverSection = mInputFile->section(

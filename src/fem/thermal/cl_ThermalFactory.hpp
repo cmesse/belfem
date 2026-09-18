@@ -70,6 +70,13 @@ namespace belfem
 
             ThermalFactory( const string & aInputFile, Kernel * aMagneticKernel );
 
+            // owns raw pointers ( input file, BC factory, parameters until the
+            // kernel claims them ); a copy would double-delete them
+            ThermalFactory( const ThermalFactory & ) = delete ;
+            ThermalFactory & operator=( const ThermalFactory & ) = delete ;
+            ThermalFactory( ThermalFactory && ) = delete ;
+            ThermalFactory & operator=( ThermalFactory && ) = delete ;
+
             ~ThermalFactory();
 
 //------------------------------------------------------------------------------

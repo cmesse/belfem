@@ -49,6 +49,7 @@ namespace belfem
             this->delete_facet_extra() ;
 
             this->delete_vertex_data();
+            this->delete_control_point_data();
             this->delete_t_matrices();
             this->delete_tables();
 
@@ -2623,6 +2624,18 @@ namespace belfem
                 delete tData ;
             }
             mVertexData.clear();
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        Distributor::delete_control_point_data()
+        {
+            for ( auto * tData: mControlPointData )
+            {
+                delete tData ;
+            }
+            mControlPointData.clear();
         }
 
         void

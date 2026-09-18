@@ -53,7 +53,11 @@ namespace belfem
             bool mOwnKernelParameters = true ;
             KernelParameters * mKernelParameters = nullptr ;
 
+            //! the mesh this factory creates ( the file mesh on the master,
+            //! an empty one on the workers ); owned until create_magnetic_kernel()
+            //! hands it to the kernel, borrowed for reading afterwards
             Mesh * mMesh = nullptr ;
+            bool mOwnMesh = true ;
             string mMeshPath ;
 
             bool mComputeCohomologies = true ;
@@ -124,6 +128,13 @@ namespace belfem
             MaxwellFactory( const string & aInputFile );
 
             ~MaxwellFactory();
+
+            // owns raw pointers ( the mesh until handover, input file,
+            // factories, topology ); a copy would double-delete them
+            MaxwellFactory( const MaxwellFactory & ) = delete ;
+            MaxwellFactory & operator=( const MaxwellFactory & ) = delete ;
+            MaxwellFactory( MaxwellFactory && ) = delete ;
+            MaxwellFactory & operator=( MaxwellFactory && ) = delete ;
 
             const string &
             mesh_path() const ;

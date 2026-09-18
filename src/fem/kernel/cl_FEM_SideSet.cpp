@@ -190,9 +190,11 @@ namespace belfem
                 {
                     delete tData ;
                 }
-
-                this->delete_pointers();
            }
+
+            // the calculator exists even for an empty sideset ( the group
+            // constructor creates it whenever the parent has an equation )
+            this->delete_pointers();
         }
 
 //------------------------------------------------------------------------------

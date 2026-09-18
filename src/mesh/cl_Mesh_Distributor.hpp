@@ -289,6 +289,9 @@ namespace belfem
             delete_vertex_data();
 
             void
+            delete_control_point_data();
+
+            void
             delete_tables();
 
             void

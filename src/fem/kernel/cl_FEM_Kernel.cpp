@@ -767,6 +767,14 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
+        Kernel::claim_mesh_ownership( const bool aFlag )
+        {
+            mOwnMesh = aFlag ;
+        }
+
+//------------------------------------------------------------------------------
+
+        void
         Kernel::collect_elements(
                 const Vector< id_t >    & aBlockIDs,
                 const Vector< id_t >    & aSideSetIDs,

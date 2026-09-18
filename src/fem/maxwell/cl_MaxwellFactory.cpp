@@ -296,6 +296,14 @@ namespace belfem
         {
             delete mMagneticEquation;
         }
+
+        // the mesh belongs to the kernel once one was created; without a
+        // kernel it is still ours
+        if ( mOwnMesh && mMesh != nullptr )
+        {
+            delete mMesh;
+            mMesh = nullptr;
+        }
     }
 
     //------------------------------------------------------------------------------
@@ -761,6 +769,12 @@ namespace belfem
 
         mMagneticKernel->claim_parameter_ownership( true );
         mOwnKernelParameters = false ;
+
+        // the mesh goes with the kernel: it dies when the last handle to the
+        // kernel does, which is after every borrower ( the thermal kernel, this
+        // factory's own reads ) in the drivers
+        mMagneticKernel->claim_mesh_ownership( true );
+        mOwnMesh = false ;
 
         mMagneticKernel->mesh()->flag_curved_elements();
 

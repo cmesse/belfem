@@ -123,10 +123,10 @@ namespace belfem
                 free( mRotationData );
             }
 
-            if( mNumberOfDofs > 0 )
-            {
-                free( mDOFs );
-            }
+            // both initialized to null; free() accepts null and a malloc( 0 )
+            // result alike
+            free( mDOFs );
+            free( mLocalDofs );
 
             if( mTmatrix != nullptr )
             {
@@ -1432,14 +1432,8 @@ namespace belfem
                               const Matrix< real > & aTmatrix  )
         {
 
-            if( mNumberOfDofs > 0 )
-            {
-                free( mDOFs );
-            }
-            if( mNumberOfLocalDofs > 0 )
-            {
-                free( mLocalDofs );
-            }
+            free( mDOFs );
+            free( mLocalDofs );
 
             mNumberOfDofs = aGlobalDofs.size() ;
             mDOFs = ( Dof ** ) malloc( mNumberOfDofs * sizeof( Dof * ) );
