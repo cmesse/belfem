@@ -1150,6 +1150,12 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            /**
+             * For a sideset with edge functions, allocate_memory()
+             * precomputes them from the group's lookup tables before this
+             * call rebuilds the tables, so an order that differs from the
+             * one they hold must be followed by link( Group * )
+             */
             void
             set_integration_order( const uint aOrder );
 

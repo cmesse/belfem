@@ -174,23 +174,7 @@ namespace belfem
 
         SideSet::~SideSet()
         {
-            if( mElementType != ElementType::UNDEFINED )
-            {
-                for ( IntegrationData * tData : mMasterIntegration )
-                {
-                    delete tData ;
-                }
-
-                for ( IntegrationData * tData : mSlaveIntegration )
-                {
-                    delete tData ;
-                }
-
-                for ( IntegrationData * tData : mEnrichmentData )
-                {
-                    delete tData ;
-                }
-           }
+            this->delete_lookup_tables();
 
             // the calculator exists even for an empty sideset ( the group
             // constructor creates it whenever the parent has an equation )
@@ -507,8 +491,9 @@ namespace belfem
 
         void
         SideSet::initialize_lookup_tables( const uint aIntegrationOrder )
-
         {
+            this->delete_lookup_tables();
+
             uint tIntegrationOrder = aIntegrationOrder ;
             InterpolationType tType = mParent == nullptr ? InterpolationType::LAGRANGE : mParent->iwg()->interpolation_type();
             IntegrationScheme tScheme = mParent == nullptr ? IntegrationScheme::GAUSSCLASSIC : mParent->integration_scheme() ;
@@ -553,10 +538,6 @@ namespace belfem
                     {
                         InterpolationFunctionFactory tFactory ;
 
-                        for( IntegrationData * tData : mEnrichmentData )
-                        {
-                            delete tData ;
-                        }
                         mEnrichmentData.set_size( tNumFacets, nullptr );
 
                         for( uint f=0; f<tNumFacets; ++f )
@@ -593,7 +574,30 @@ namespace belfem
                     }
                 }
             }
+        }
 
+//------------------------------------------------------------------------------
+
+        void
+        SideSet::delete_lookup_tables()
+        {
+            for ( IntegrationData * tData : mMasterIntegration )
+            {
+                delete tData ;
+            }
+            mMasterIntegration.clear() ;
+
+            for ( IntegrationData * tData : mSlaveIntegration )
+            {
+                delete tData ;
+            }
+            mSlaveIntegration.clear() ;
+
+            for ( IntegrationData * tData : mEnrichmentData )
+            {
+                delete tData ;
+            }
+            mEnrichmentData.clear() ;
         }
 
 //------------------------------------------------------------------------------

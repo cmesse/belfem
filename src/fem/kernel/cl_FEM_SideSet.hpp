@@ -203,6 +203,20 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            /**
+             * builds the master, slave and enrichment tables for
+             * aIntegrationOrder ( 0 selects the automatic order ) and ends
+             * the tables of any earlier call. Callers: the mesh-backed
+             * constructor, Calculator::set_integration_order() and
+             * maxwell::TMatrix. The calculator borrows from these tables:
+             * link( Element * ) and link( Facet * ) cache raw pointers,
+             * allocate_memory() and link( Group * ) precompute the edge
+             * functions from their points. A rebuild leaves the cached
+             * pointers dangling until the next element link, and the
+             * precomputed edge functions stale whenever the points changed,
+             * until link( Group * ) runs again; every rebuild in the tree
+             * happens during setup
+             */
             void
             initialize_lookup_tables( const uint aIntegrationOrder ) override;
 
@@ -220,6 +234,15 @@ namespace belfem
 
             void
             collect_nodes( Cell< mesh::Facet * > & aFacets );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * deletes the IntegrationData objects this sideset owns through
+             * the three table cells and clears the cells
+             */
+            void
+            delete_lookup_tables();
 
 
 //------------------------------------------------------------------------------

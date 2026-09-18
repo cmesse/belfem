@@ -159,7 +159,7 @@ link time (reproduced with a stub library). R0 keeps the canonical system libdir
 
 ### [code_findings_from_comment_sweeps.md](code_findings_from_comment_sweeps.md) — defects the comment auditors found while reading for contracts, parked for a code session
 
-**IN PROGRESS.** Tiers 1–3 landed 2026-09-17/18 (`70364c1`, `ca5fb51`, `93a2376`) through the plan + audit → code + audit loop with `make check` on both trees and Valgrind gates: the sideset broadcast, the undefined `IWG::N`, the null wrapper accessors, the `collect_node_coords` column bound, the include guard, seven ownership leaks on the setup and teardown paths, the basis dof container, the 3D boundary edges. F8 refuted by two deep scans; F7 waits for Gregory. F20 (the sideset lookup tables) and F21 (`Basis::set_sources` zero-length arrays) are next.
+**IN PROGRESS.** Tiers 1–4 landed 2026-09-17/18 (`70364c1`, `ca5fb51`, `93a2376`, tier 4 the sideset lookup tables) through the plan + audit → code + audit loop with `make check` on both trees and Valgrind gates: the sideset broadcast, the undefined `IWG::N`, the null wrapper accessors, the `collect_node_coords` column bound, the include guard, seven ownership leaks on the setup and teardown paths, the basis dof container, the 3D boundary edges, the sideset tables built twice. F8 refuted by two deep scans; F7 waits for Gregory. Filed: F21–F24.
 
 ### [closed/comment_cleanup_sweep_2.md](closed/comment_cleanup_sweep_2.md) — add the missing contracts on the public entry points, correct the comments the code contradicts, finish the narration tail
 
