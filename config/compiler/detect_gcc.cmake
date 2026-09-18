@@ -73,14 +73,19 @@ get_filename_component( BELFEM_TPATH "${_BELFEM_CXX_COMPILER_PATH}" REALPATH )
 get_filename_component( BELFEM_TPATH "${BELFEM_TPATH}" DIRECTORY )
 get_filename_component( BELFEM_TPATH "${BELFEM_TPATH}" DIRECTORY )
 
-# step 3: find library directory
-if( IS_DIRECTORY "${BELFEM_TPATH}/lib64" )
+# step 3: find library directory. A compiler under a prefix of its own keeps its
+# runtime ( libstdc++, libgfortran ) there, so that directory goes on the rpath.
+# The system compiler's prefix is /usr, whose libdirs the linker and loader search
+# anyway; on the rpath they would only be promoted above the toolchain prefix when
+# ld resolves a shared library's own dependencies ( belfem_prune_system_libdirs.cmake )
+if( BELFEM_TPATH STREQUAL "/usr" OR BELFEM_TPATH STREQUAL "/" )
+    set( BELFEM_GCC_LIBS "" )
+elseif( IS_DIRECTORY "${BELFEM_TPATH}/lib64" )
     set( BELFEM_GCC_LIBS ${BELFEM_TPATH}/lib64 )
     list( APPEND BELFEM_RPATH ${BELFEM_GCC_LIBS} )
 elseif( IS_DIRECTORY "${BELFEM_TPATH}/lib" )
     set( BELFEM_GCC_LIBS ${BELFEM_TPATH}/lib )
     list( APPEND BELFEM_RPATH ${BELFEM_GCC_LIBS} )
-
 endif()
 
 # test if we want to use mpi

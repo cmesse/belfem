@@ -85,6 +85,8 @@ endforeach()
 
 if( BELFEM_RPATH )
     list( REMOVE_DUPLICATES BELFEM_RPATH )
+    # whoever appended a system libdir, it does not go on the rpath
+    belfem_prune_system_libdirs( BELFEM_RPATH )
 endif()
 
 # -------------------------------------------------------------------------

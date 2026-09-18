@@ -167,6 +167,9 @@ include( ${BELFEM_CONFIG_DIR}/system/find_unix.cmake )
 # package finder helper
 include( ${BELFEM_CONFIG_DIR}/scripts/belfem_find_package.cmake )
 
+# rpath hygiene: the system libdirs never go on the rpath
+include( ${BELFEM_CONFIG_DIR}/scripts/belfem_prune_system_libdirs.cmake )
+
 # compiler setup
 include( ${BELFEM_CONFIG_DIR}/compiler/detect_compiler.cmake )
 

@@ -141,6 +141,20 @@ one of the two must be retired before either is worked.
 
 ---
 
+## Added 2026-09-18
+
+### [closed/mpi_link_probe_plan.md](closed/mpi_link_probe_plan.md) — keep the system libdirs off the rpath so the SCLS PMIx wins; link a minimal MPI program at configure time so a broken MPI fails at cmake
+
+A 0.9.1 build on another machine compiled every module and failed at every executable link with
+38 `undefined reference to PMIx_*` lines: an older system PMIx was found ahead of the SCLS one,
+whether because the SCLS package is absent there or because of the rpath order below. CMake's compiler sanity link runs with plain g++ before mpicxx is swapped in, so nothing
+at configure time could catch it. The plan adds an `execute_process` link probe after the flavor
+detection, a message naming the SCLS package, and a Linux-only `ldd` report of where
+`libpmix.so.2` resolves. Round 1 found the real defect: BELFEM puts the system compiler's
+library directory first in every `-rpath`, so a distro PMIx in `/usr/lib64` beats the SCLS one at
+link time (reproduced with a stub library). R0 keeps the canonical system libdirs out of
+`BELFEM_RPATH`. DONE 2026-09-18: landed and gated by scratch configures; build gate owed (Christian).
+
 ## Added 2026-09-16
 
 ### [code_findings_from_comment_sweeps.md](code_findings_from_comment_sweeps.md) — defects the comment auditors found while reading for contracts, parked for a code session
