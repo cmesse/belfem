@@ -11,8 +11,9 @@ reproduce the reduction's semantics while doing it, which the first draft of R1 
 **Debt row:** DR-155 (`todo/debt_register.md`)
 **AIs involved:** Claude (found, isolated, measured; pre-registration), Codex `gpt-5.6-terra`/high
 and Grok `grok-4.6`/high (jury audit 2026-09-01, `tmp/ai_exchange/review_matvec_csc_omp_stack_overflow.md`)
-**Status:** **FIXED IN THE WORKING TREE, NOT YET COMPILED OR TESTED** (2026-09-01, Christian's
-ruling). The defect is closed by **removing the parallelism rather than repairing it**: BELFEM's own
+**Status:** **FIXED; DR-155 STRUCK 2026-09-18 ( Christian's ruling ).** The token-OFF build and `make check`
+ran green on 2026-09-01 and the Darwin decks ran under DR-131; the token-ON build and the Linux MKL eigen run
+were waived with the strike. As written on 2026-09-01 ( Christian's ruling ): The defect is closed by **removing the parallelism rather than repairing it**: BELFEM's own
 `!$omp` directives are now gated on a new `BELFEM_OMP` define which is **OFF by default**, so
 `matvec_csc` no longer creates a per-thread private copy of `y` at all. The heap-buffer design
 (R1, O1's communicator buffer, D14's initialisation fork) is **superseded and not implemented** —

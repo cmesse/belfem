@@ -12,14 +12,14 @@ measured adiabatic bulk moduli to isothermal ones before the fit; the served cur
 **Module:** `src/physics/materials` (`cl_Material_Metal`, nine pure-metal classes, tests, docs)
 **AIs involved:** Claude (exploration + plan), Codex (audit: terra/high on rev. 1, terra/xhigh on rev. 5),
 Grok (audit: 4.6/high on rev. 1, 4.6/xhigh on rev. 5)
-**Status:** ✅ COMPLETE 2026-09-15, pending Christian's commit. Landed: `Metal::create_mech( E2, nu2, T2, deltaK, deltaG )`
+**Status:** ✅ COMPLETE 2026-09-15, committed as `2ffebcc`; moved to `closed/` 2026-09-18. Landed: `Metal::create_mech( E2, nu2, T2, deltaK, deltaG )`
 with quasi-harmonic isothermal K and G on the logarithmic thermal strain, nine constructors with fitted constants and
 DOIs, Nickel's ΔE machinery removed with a documented rationale, Chromium constant ν, Lead at the static level (crystal K, Blanke E; handbook
 values reproduced; O7 closed 2026-09-15), validity ceilings from the shape comparison with
 Blanke (Cu 1000, Ag 900, Cr 570, Sn 400 K), the γ diagnostic printed at 298.15 K, `tests/physics/test_MetalElastic.cpp`
 (4 tests), docs rewritten and swept. Verified: `test_physics` 14/14 and `make check` 17/17 on `cmake-build-debug`
 (debug + MKL) after the final rebuild; three plan-jury rounds and one code jury, every finding verified and fixed.
-No residual. Per Christian, no follow-up todo is spun out; this file moves to `todo/closed/` with the commit.
+No residual. Per Christian, no follow-up todo is spun out.
 
 > **Scope guards:**
 > - IN: `Metal::create_mech`, `Metal::E_custom`, a **new** `Metal::nu_custom` (the base
@@ -464,13 +464,14 @@ Fe 214.886 / 0.18823 / 998.94 / 293.15 / 0.29; Ni 0 / 0 / 0 / 293.15 / 0.31 (+ `
 
 ## 7. Definition-of-Done Checklist
 
-- [ ] Every gap-table row mapped to a step or a resolved question.
-- [ ] Each claimed gap backed by a citation; rows 9 and 10 carry marked assumptions.
-- [ ] Ordered steps with dependencies; R2 is one compilable step.
+- [x] Every gap-table row mapped to a step or a resolved question.
+- [x] Each claimed gap backed by a citation; rows 9 and 10 carry marked assumptions.
+- [x] Ordered steps with dependencies; R2 is one compilable step.
 - [x] Open questions logged, not silently decided (O1–O4 all resolved by Christian, 2026-09-15).
-- [ ] End-to-end gate: `make check` with `test_MetalElastic` green on the R4 oracles (served isothermal
+- [x] End-to-end gate: `make check` with `test_MetalElastic` green on the R4 oracles (served isothermal
   convention, stated tolerances); `material copper` shows ν rising monotonically 4 K → T_max and
-  E(295 K) = 127.8 ± 1.0 GPa, ν(295 K) = 0.343 ± 0.002.
+  E(295 K) = 127.8 ± 1.0 GPa, ν(295 K) = 0.343 ± 0.002. (ran: `make check` 17/17, `CopperMatchesLedbetter1981Isothermal` and
+  `PoissonRatioIsMonotoneAndBounded` in `tests/physics/test_MetalElastic.cpp`; boxes ticked 2026-09-18 at the move to `closed/`)
 
 ## 8. Audit Trail
 

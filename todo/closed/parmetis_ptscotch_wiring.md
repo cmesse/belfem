@@ -8,8 +8,9 @@ adjacency builder first, because wiring is exactly what makes it reachable.
 **AIs involved:** Claude (survey + plan)
 **Status:** CLOSED 2026-09-04 — substance landed and verified: D1–D5 fixed, `reordering scheme :
 parmetis | ptscotch` wired through `DistMatrix::order_graph`, `make check` 19/19 with the new
-Tier-2 `sparsempi` suite green at np 2 and np 4 (12/12 each). **Sole remnant is a run gate, W-R5,
-the benchmark — tracked as DR-156 in `todo/debt_register.md`, not here.** Also open, not gates:
+Tier-2 `sparsempi` suite green at np 2 and np 4 (12/12 each). **Sole remnant was a run gate, W-R5,
+the benchmark — tracked as DR-156 in `todo/debt_register.md` until 2026-09-18, when Christian struck it:
+benchmarking is not the register's scope. W-R5 stays here as an unscheduled measurement, not as debt.** Also open, not gates:
 `compute_permutation` is dead (Christian's call whether to retire it); the new guide prose has had
 no Codex language sweep. Six jury rounds in `tmp/ai_exchange/review_parmetis_d1.md`; devlog
 `dl20260904_parmetis_d1_owner_guard.md`.

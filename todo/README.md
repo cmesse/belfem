@@ -175,9 +175,9 @@ link time (reproduced with a stub library). R0 keeps the canonical system libdir
 
 ## Added 2026-09-15
 
-### [elastic_moduli_quasiharmonic.md](elastic_moduli_quasiharmonic.md) — ν(T) and E(T) from the thermal strain instead of the constant-γ inversion
+### [closed/elastic_moduli_quasiharmonic.md](closed/elastic_moduli_quasiharmonic.md) — ν(T) and E(T) from the thermal strain instead of the constant-γ inversion
 
-Copper's Poisson ratio falls with T in the tree (0.363 → 0.344) where measurement rises
+**CLOSED 2026-09-18 (commit `2ffebcc`; `make check` 17/17 with the four `MetalElastic` tests; no residual, no follow-up todo).** Copper's Poisson ratio falls with T in the tree (0.363 → 0.344) where measurement rises
 (0.338 → 0.345): `Metal::create_mech` holds γ constant and inverts K = γρc_p/α_V, copying the
 unknown variation of γ into K. Plan: K = K₀·exp(−δ_K ε_V), G = G₀·exp(−δ_G ε_V) on the existing
 thermal-strain integral, two fitted constants per metal, E and ν derived; dν/dT(0) = 0 and monotone
@@ -929,7 +929,9 @@ broken here**, since that file has always lived in `nonfree/todo/` — now resol
   4 `[W]`, the `[F]` list empty ), after the 2026-08-31 archival pass moved DR-109, DR-111,
   DR-151, DR-152 and DR-154 out, and DR-135, DR-136 and DR-137 were struck and archived the
   same night — the background-field / periodic-Dirichlet cluster, closed on evidence, a design
-  ruling and an accepted-exposure ruling respectively. It was seeded when the 65 struck
+  ruling and an accepted-exposure ruling respectively. **Recounted 2026-09-18: the archive holds 144 rows and the live
+  register 9** ( 5 `[P]`, 3 `[W]`, one `[cdP]`, the `[F]` list empty ), after DR-131, DR-155 and DR-156 were struck
+  and archived on Christian's ruling ( DR-131 and DR-155 discharged, DR-156 out of scope: benchmarking is not debt ). **Same day, later: archive 146, live 7** ( 4 `[P]`, 2 `[W]`, one `[cdP]` ) after DR-157 and DR-158 were struck on Christian's ruling. **Later still: archive 147, live 6** ( 4 `[P]`, 2 `[W]` ) after DR-133 was struck on its refuted diagnosis, hygiene diff and gates. It was seeded when the 65 struck
   rows moved out of `debt_register.md` (108 rows in, 65 + 43 out, round-trip verified lossless),
   and the register's 233-line pass-by-pass preamble was replaced by a ~115-line **operating
   manual**: how to read a row, when a row may be struck, how a sweep gathers evidence, the
