@@ -90,6 +90,8 @@ namespace belfem
         Cell< mesh::Face * >    mFaces ;
         Cell< mesh::ControlPoint * > mControlPoints;
 
+        //! the line elements of a 3D Gmsh mesh, owned and deleted by the mesh;
+        //! empty in 2D, where the facets own them
         Cell< mesh::Element * > mBoundaryEdges ;
 
         Cell< mesh::Node * >         mHangingNodes;
@@ -718,7 +720,7 @@ namespace belfem
  //------------------------------------------------------------------------------
 
          /**
-          * expose container for boundary edges
+          * The line elements of a 3D Gmsh mesh; owned and deleted by the mesh.
           */
          Cell< mesh::Element * > &
          boundary_edges();

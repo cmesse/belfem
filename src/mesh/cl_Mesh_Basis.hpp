@@ -39,8 +39,12 @@ namespace belfem
             Basis ** mSources           = nullptr ;
             real  *  mWeights      = nullptr ;
 
+            //! dof container: mNumberOfDofs counts up while the dof manager
+            //! connects, is zeroed by allocate_dof_container() and counts up
+            //! again on insert; liveness of the array is the pointer, never the
+            //! count. Shared by every dof manager on this mesh.
             uint8_t    mNumberOfDofs = 0 ;
-            graph::Vertex ** mDofs ;
+            graph::Vertex ** mDofs = nullptr ;
 
 //------------------------------------------------------------------------------
         public:
@@ -269,7 +273,12 @@ namespace belfem
         {
             if( mNumberOfDofs > 0 )
             {
+                // a second dof manager connecting to the same mesh replaces
+                // the container the first one left; free it, do not leak it
+                free( mDofs );
                 mDofs = ( graph::Vertex ** ) malloc( mNumberOfDofs * sizeof ( graph::Vertex * ) );
+                BELFEM_ERROR( mDofs != nullptr, "Failed to allocate the dof container of basis %lu",
+                              ( long unsigned int ) this->id() );
                 std::fill( mDofs, mDofs + mNumberOfDofs, nullptr );
                 mNumberOfDofs = 0 ;
             }
@@ -280,12 +289,11 @@ namespace belfem
         inline void
         Basis::reset_dof_container()
         {
-            if( mNumberOfDofs > 0 )
-            {
-                free( mDofs );
-                mDofs = nullptr ;
-                mNumberOfDofs = 0 ;
-            }
+            // keyed on the pointer: a container allocated but not yet filled
+            // has a zero count and must still go
+            free( mDofs );
+            mDofs = nullptr ;
+            mNumberOfDofs = 0 ;
         }
 
 //------------------------------------------------------------------------------

@@ -650,6 +650,15 @@ namespace belfem
                 {
                     tDof->mesh_basis()->reset_dof_container();
                 }
+
+                // connect_dofs_to_mesh() ran over the whole list on the master;
+                // remove_hanging_dofs_from_container() moved the hanging dofs
+                // out of mDOFs afterwards, so their bases are reset here too.
+                // A basis is shared by every dof manager on the mesh.
+                for( Dof * tDof : mHangingDOFs )
+                {
+                    tDof->mesh_basis()->reset_dof_container();
+                }
             }
 
 //------------------------------------------------------------------------------

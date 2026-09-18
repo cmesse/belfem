@@ -36,11 +36,9 @@ namespace belfem
                 free( mWeights );
             }
 
-            // frees the pointer array; the dofs are not freed
-            if( mNumberOfDofs != 0 )
-            {
-                free( mDofs );
-            }
+            // frees the pointer array ( null until a dof manager connected );
+            // the dofs are not freed
+            free( mDofs );
         }
 
 //------------------------------------------------------------------------------

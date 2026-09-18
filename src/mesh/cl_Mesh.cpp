@@ -254,6 +254,13 @@ namespace belfem
             delete tVertex;
         }
 
+        // the line elements of a 3D Gmsh mesh live only here ( in 2D the
+        // facets own the line elements and this list stays empty )
+        for( auto tEdge : mBoundaryEdges )
+        {
+            delete tEdge;
+        }
+
         for ( auto tControlPoint : mControlPoints )
         {
             delete tControlPoint;
@@ -2736,8 +2743,13 @@ namespace belfem
             aMem += tVertex->memory();
         }
 
-        // Boundary edges (references, just pointer storage)
+        // Boundary edges: owned line elements of a 3D Gmsh mesh, not part of
+        // any block, so their payload is counted here like the vertices'
         aMem += mBoundaryEdges.size() * sizeof( mesh::Element * );
+        for ( mesh::Element * tEdge : mBoundaryEdges )
+        {
+            aMem += tEdge->memory();
+        }
 
         // Hanging containers (references, just pointer storage)
         aMem += mHangingNodes.size() * sizeof( mesh::Node * );
