@@ -139,6 +139,11 @@ binary with assertions on: no new check fired, per-tape currents identical to th
 tape 6 sign held, far field unchanged. Row struck and archived; the 3-D sibling's two hygiene twins
 are recorded in the archived row, not fixed. Archive 147 rows, live register 6 (4 `[P]`, 2 `[W]`).
 
+## Same session, last: DR-119 struck
+
+Christian's ruling on the recommendation above: strike on the notice run plus the existing code
+approval, trip half waived as unproducible on demand. Archive 148 rows, live register 5.
+
 ## Not done
 
 One C++ change, the DR-133 hygiene diff in `cl_CutFactory.cpp`, built and `make check`-green on both backends by Christian, probe-verified here. The CMake change was configure-gated in scratch trees, not built; `make check` after a reconfigure is owed and Christian runs builds. The two DR-155 gates named above stay unrun by ruling; if

@@ -931,7 +931,7 @@ broken here**, since that file has always lived in `nonfree/todo/` — now resol
   same night — the background-field / periodic-Dirichlet cluster, closed on evidence, a design
   ruling and an accepted-exposure ruling respectively. **Recounted 2026-09-18: the archive holds 144 rows and the live
   register 9** ( 5 `[P]`, 3 `[W]`, one `[cdP]`, the `[F]` list empty ), after DR-131, DR-155 and DR-156 were struck
-  and archived on Christian's ruling ( DR-131 and DR-155 discharged, DR-156 out of scope: benchmarking is not debt ). **Same day, later: archive 146, live 7** ( 4 `[P]`, 2 `[W]`, one `[cdP]` ) after DR-157 and DR-158 were struck on Christian's ruling. **Later still: archive 147, live 6** ( 4 `[P]`, 2 `[W]` ) after DR-133 was struck on its refuted diagnosis, hygiene diff and gates. It was seeded when the 65 struck
+  and archived on Christian's ruling ( DR-131 and DR-155 discharged, DR-156 out of scope: benchmarking is not debt ). **Same day, later: archive 146, live 7** ( 4 `[P]`, 2 `[W]`, one `[cdP]` ) after DR-157 and DR-158 were struck on Christian's ruling. **Later still: archive 147, live 6** ( 4 `[P]`, 2 `[W]` ) after DR-133 was struck on its refuted diagnosis, hygiene diff and gates. **Then archive 148, live 5** ( 3 `[P]`, 2 `[W]` ) after DR-119 was struck on its notice run, trip half waived. It was seeded when the 65 struck
   rows moved out of `debt_register.md` (108 rows in, 65 + 43 out, round-trip verified lossless),
   and the register's 233-line pass-by-pass preamble was replaced by a ~115-line **operating
   manual**: how to read a row, when a row may be struck, how a sweep gathers evidence, the
