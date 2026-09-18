@@ -54,7 +54,9 @@ nightly:make-check:
     - rm -rf build
     - mkdir build
     - cd build
-    - cmake .. -DUSE_TEST=ON -DUSE_DEBUG=$USE_DEBUG -DUSE_MATRIX_ARMADILLO=$ARMA -DUSE_MATRIX_BLAZE=$BLAZE
+    # USE_GASMODELS defaults OFF in CMakeLists.txt and stays so for users; the nightly turns it
+    # on so test_gastables and test_gasmodels exist as targets and the check fan-out runs them.
+    - cmake .. -DUSE_TEST=ON -DUSE_DEBUG=$USE_DEBUG -DUSE_MATRIX_ARMADILLO=$ARMA -DUSE_MATRIX_BLAZE=$BLAZE -DUSE_GASMODELS=ON
     - make -j2 check
   after_script:
     # Preserve the ctest logs so a failing run can be inspected from the job page.
