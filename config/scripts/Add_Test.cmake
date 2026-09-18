@@ -72,23 +72,124 @@ set( BELFEM_TEST_ENV "BELFEM_DATA=${CMAKE_SOURCE_DIR}/share" )
 # -----------------------------------------------------------------------------
 if( USE_MPI AND TESTRANKS )
 
-    # The launcher is resolved once per configure and cached. find_mpi.cmake has
-    # already identified the implementation by preprocessing mpi.h
-    # ( BELFEM_MPI_FLAVOR ) — a stronger check than a launcher's name or its
-    # --version banner — so that verdict is reused here instead of probed again.
+    # The launcher is resolved once per configure and cached; -DBELFEM_MPIEXEC
+    # wins over everything below. find_mpi.cmake has already identified the
+    # implementation by preprocessing mpi.h ( BELFEM_MPI_FLAVOR ) — a stronger
+    # check than a launcher's name or its --version banner — so that verdict
+    # is reused here instead of probed again.
+    #
+    # The launcher should belong to the installation the binaries are linked
+    # against, and a --version banner cannot tell two Open MPIs apart. The
+    # anchor is the compiler wrapper make will invoke: detect_*.cmake sets
+    # CMAKE_CXX_COMPILER to the bare wrapper name, which make resolves through
+    # PATH, so it is resolved here through PATH alone ( the same answer as
+    # BELFEM_MPICXX ). CMake's default find_program search visits its own
+    # install prefix and any CMAKE_PREFIX_PATH before PATH and can name a
+    # different wrapper — measured, not assumed. Search order for the
+    # launcher, each directory alone before the next:
+    #   1. MPI_HOME/bin — the user named the installation and find_mpi.cmake
+    #      put its library directory on the rpath. Not a proof of what was
+    #      linked ( the wrapper adds its own -L, and SCLS adds another ), so a
+    #      launcher there that is not beside the wrapper is reported
+    #   2. the wrapper's directory, then the directory of its symlink target:
+    #      a symlink farm ( a Spack view, /usr/local/bin ) usually links the
+    #      launcher too, an alternatives-style link does not
+    #   3. CMake's default search, PATH included — the pre-existing behavior,
+    #      kept as the fallback for an installation that keeps its launcher
+    #      elsewhere; a launcher found this way is not known to match and is
+    #      reported
+    # A mismatch is not a silent green: the launcher sentinel and the
+    # MAX-reduced verdict in tests/common/tier2_launcher_sentinel.hpp fail a
+    # singleton launch, and a job that never forms hits TESTTIMEOUT.
     if( NOT BELFEM_MPIEXEC )
+        set( _BELFEM_MPI_WRAPPER_DIRS )
+        if( IS_ABSOLUTE "${CMAKE_CXX_COMPILER}" )
+            set( _BELFEM_MPI_WRAPPER "${CMAKE_CXX_COMPILER}" )
+        else()
+            find_program( _BELFEM_MPI_WRAPPER
+                    NAMES ${CMAKE_CXX_COMPILER}
+                    PATHS ENV PATH
+                    NO_DEFAULT_PATH
+                    NO_CACHE )
+        endif()
+        if( _BELFEM_MPI_WRAPPER )
+            get_filename_component( _BELFEM_MPI_WRAPPER_DIR "${_BELFEM_MPI_WRAPPER}" DIRECTORY )
+            get_filename_component( _BELFEM_MPI_WRAPPER_REAL "${_BELFEM_MPI_WRAPPER}" REALPATH )
+            get_filename_component( _BELFEM_MPI_WRAPPER_REAL_DIR "${_BELFEM_MPI_WRAPPER_REAL}" DIRECTORY )
+            set( _BELFEM_MPI_WRAPPER_DIRS "${_BELFEM_MPI_WRAPPER_DIR}" "${_BELFEM_MPI_WRAPPER_REAL_DIR}" )
+            list( REMOVE_DUPLICATES _BELFEM_MPI_WRAPPER_DIRS )
+        endif()
+    endif()
+
+    if( NOT BELFEM_MPIEXEC AND BELFEM_MPIHOME )
         find_program( BELFEM_MPIEXEC
                 NAMES mpirun mpiexec
-                HINTS ${BELFEM_MPIHOME}/bin $ENV{MPI_HOME}/bin
+                PATHS ${BELFEM_MPIHOME}/bin
+                NO_DEFAULT_PATH
+                DOC "MPI launcher used to run Tier 2 ( multi-rank ) tests" )
+        if( BELFEM_MPIEXEC AND _BELFEM_MPI_WRAPPER_DIRS )
+            get_filename_component( _BELFEM_MPIEXEC_DIR "${BELFEM_MPIEXEC}" DIRECTORY )
+            if( NOT _BELFEM_MPIEXEC_DIR IN_LIST _BELFEM_MPI_WRAPPER_DIRS )
+                message( WARNING
+                        "Tier 2 tests will launch with ${BELFEM_MPIEXEC} from MPI_HOME, but the "
+                        "compiler wrapper make invokes is ${_BELFEM_MPI_WRAPPER}. If those are "
+                        "two installations the tests launch under an MPI the binaries were not "
+                        "built with. Set BELFEM_MPIEXEC to the matching launcher, or MPI_HOME "
+                        "to the wrapper's installation." )
+            endif()
+        endif()
+    endif()
+
+    if( NOT BELFEM_MPIEXEC AND _BELFEM_MPI_WRAPPER_DIRS )
+        find_program( BELFEM_MPIEXEC
+                NAMES mpirun mpiexec
+                PATHS ${_BELFEM_MPI_WRAPPER_DIRS}
+                NO_DEFAULT_PATH
                 DOC "MPI launcher used to run Tier 2 ( multi-rank ) tests" )
     endif()
 
     if( NOT BELFEM_MPIEXEC )
+        find_program( BELFEM_MPIEXEC
+                NAMES mpirun mpiexec
+                DOC "MPI launcher used to run Tier 2 ( multi-rank ) tests" )
+        if( BELFEM_MPIEXEC )
+            if( _BELFEM_MPI_WRAPPER )
+                set( _BELFEM_MPI_WRAPPER_WHERE "${_BELFEM_MPI_WRAPPER}" )
+            else()
+                set( _BELFEM_MPI_WRAPPER_WHERE "${CMAKE_CXX_COMPILER}, which was not found on PATH" )
+            endif()
+            message( WARNING
+                    "Tier 2 tests will launch with ${BELFEM_MPIEXEC}, which does not sit "
+                    "beside the compiler wrapper ${_BELFEM_MPI_WRAPPER_WHERE}. It is not "
+                    "known to be the MPI the binaries are linked against; a mismatch is "
+                    "not a silent green, but it is a failed suite. Set BELFEM_MPIEXEC to "
+                    "the matching launcher if this one is wrong." )
+        endif()
+    endif()
+
+    # reported once per configure; summary.cmake runs before the test tree
+    # and would only show a previous configure's cache
+    get_property( _BELFEM_MPIEXEC_REPORTED GLOBAL PROPERTY BELFEM_MPIEXEC_REPORTED )
+    if( BELFEM_MPIEXEC AND NOT _BELFEM_MPIEXEC_REPORTED )
+        message( STATUS "Tier 2 launcher: ${BELFEM_MPIEXEC}" )
+        set_property( GLOBAL PROPERTY BELFEM_MPIEXEC_REPORTED TRUE )
+    endif()
+
+    if( NOT BELFEM_MPIEXEC )
+        if( BELFEM_MPIHOME )
+            set( _BELFEM_MPI_SEARCHED "MPI_HOME/bin ( ${BELFEM_MPIHOME}/bin )" )
+        else()
+            set( _BELFEM_MPI_SEARCHED "MPI_HOME/bin ( MPI_HOME is unset )" )
+        endif()
+        if( _BELFEM_MPI_WRAPPER_DIRS )
+            string( APPEND _BELFEM_MPI_SEARCHED ", the wrapper's directory ( ${_BELFEM_MPI_WRAPPER_DIRS} )" )
+        else()
+            string( APPEND _BELFEM_MPI_SEARCHED ", the wrapper's directory ( ${CMAKE_CXX_COMPILER} not found on PATH )" )
+        endif()
         message( FATAL_ERROR
                 "Test suite '${TESTNAME}' asks for Tier 2 ( multi-rank ) tests at ranks "
                 "'${TESTRANKS}', but no MPI launcher could be found.\n"
-                "  Searched ${BELFEM_MPIHOME}/bin, $ENV{MPI_HOME}/bin and PATH for "
-                "mpirun / mpiexec.\n"
+                "  Searched ${_BELFEM_MPI_SEARCHED} and PATH for mpirun / mpiexec.\n"
                 "  Set MPI_HOME to the Open MPI installation, or configure with "
                 "-DUSE_MPI=OFF for a serial tree ( the Tier 2 suites are then skipped )." )
     endif()

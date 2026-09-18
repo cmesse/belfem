@@ -28,8 +28,12 @@
 **Main:** `test_commmpi_main.cpp` (owns `gComm`/`gLog`, the launcher sentinel and the verdict fold)
 **Binary:** `test_commmpi`, registered by `Add_Test.cmake` as `commmpi_np2` and `commmpi_np4`
 (`TESTRANKS 2 4` in `tests/comm/CMakeLists.txt`); both are part of `make check`, not `check-fast`,
-and carry the `mpi` label so `ctest -LE mpi` skips them by choice.
-**Run by hand:** `mpirun --oversubscribe -np 4 ./test_commmpi` with `BELFEM_TESTRANKS=4` in the
+and carry the `mpi` label, so `ctest -LE mpi` skips them by choice. The launcher ctest uses is
+`BELFEM_MPIEXEC` from the CMake cache. It is chosen during configuration from `MPI_HOME`, the
+compiler wrapper's directory, or `PATH`, in that order. Configuration warns when the selected
+launcher is not known to match the wrapper (see `doc/mpi_support.md`).
+**Run by hand:** `$BELFEM_MPIEXEC --oversubscribe -np 4 ./test_commmpi`, using the launcher from
+the CMake cache rather than a bare `mpirun` from `PATH`, with `BELFEM_TESTRANKS=4` set in the
 environment. The sentinel in `tests/common/tier2_launcher_sentinel.hpp` fails the run when
 `comm_size()` differs from that value or is below 2, so a binary launched without `mpirun` cannot
 skip its way to green. Every rank's `RUN_ALL_TESTS()` result is MAX-reduced before `finalize()`, so

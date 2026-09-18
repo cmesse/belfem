@@ -105,8 +105,27 @@ ldd $(mpicxx --showme:libdirs | cut -d' ' -f1)/libmpi.so | grep pmix   # show wh
 The configure step reports what it found, so a mismatch between the wrapper on `PATH` and
 the one BELFEM used is visible in the CMake output.
 
+The launcher for the Tier 2 (multi-rank) tests, `BELFEM_MPIEXEC` in the CMake cache, is chosen
+during configuration in the following order. Each directory is searched separately before moving to
+the next:
+
+1. `MPI_HOME/bin`, when `MPI_HOME` is set. This is the installation you named, and its library
+   directory is added to the rpath. It does not prove which MPI was linked, so configuration warns
+   if the launcher is not beside the compiler wrapper.
+2. The compiler wrapper's directory, resolved through `PATH` in the same way the shell resolves it,
+   followed by the directory of the wrapper's symlink target. A launcher found here belongs to the
+   wrapper's installation.
+3. CMake's default program search, including `PATH`. A launcher found this way is not known to
+   match, so configuration warns.
+
+`-DBELFEM_MPIEXEC=<path>` overrides all three sources. Configuration prints the selected launcher
+once as `Tier 2 launcher: <path>`. A wrong launcher does not produce a silent green result: the
+Tier 2 binaries include a sentinel that fails a singleton launch, and a job that never forms reaches
+the per-test timeout.
+
 ## Related
 
 - `config/system/find_mpi.cmake` — `MPI_HOME` handling, the implementation guard, the link probe and the PMIx check
+- `config/scripts/Add_Test.cmake` — how the Tier 2 launcher is chosen
 - `config/scripts/belfem_prune_system_libdirs.cmake` — keeps the system library directories off the rpath
 - `src/comm/doc/README.md` — the communication layer built on top of this
