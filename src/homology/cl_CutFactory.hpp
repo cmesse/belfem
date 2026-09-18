@@ -175,6 +175,19 @@ namespace belfem
                 Vector< real > & aWorkB,
                 Vector< real > & aN );
 
+            /**
+             * Gives every 2-D terminal curve the counter-clockwise sense about
+             * +z around its tape. Runs after the slave side is relinked to
+             * duplicate nodes and the loops are closed. The sense is read off
+             * the master element of the sideset_a facet that carries the first
+             * segment: with counter-clockwise elements the master lies to the
+             * left of its edge direction and owns the original nodes, so the
+             * loop is counter-clockwise exactly when that pass runs against
+             * the edge direction. Checked with BELFEM_ERROR: the first segment
+             * lies on sideset_a and the master carries its nodes.
+             * Homology::reorient_generators applies a global -1 calibrated to
+             * this sense.
+             */
             void
             orient_terminal_curves_2D();
 

@@ -1800,18 +1800,20 @@ namespace belfem
         void
         CutFactory::orient_terminal_curves_2D()
         {
-
             mMesh->unflag_all_nodes();
 
-            Vector< real > tP( 3 );
+            // every component enters cross() and norm(); Vector( n ) is the
+            // size-only constructor and leaves them unwritten under Blaze
+            Vector< real > tP( 3, 0.0 );
+            Vector< real > tT( 3, 0.0 );
+            Vector< real > tS( 3, 0.0 );
+            Vector< real > tB( 3, 0.0 );
+            Vector< real > tR( 3, 0.0 );
 
-            Vector< real > tT( 3 );
-            Vector< real > tS( 3 );
-            Vector< real > tB( 3 );
-            Vector< real > tR( 3 );
+            // in 2-D the surface normal is +z
+            tS( 2 ) = 1.0 ;
 
-            //in 2-D the surface is always in +z
-            tS(2) = 1.0 ;
+            Cell< Node * > tMasterNodes ;
 
             for ( Protoshell * tProtoshell : mProtoshells )
             {
@@ -1823,7 +1825,14 @@ namespace belfem
                     tT( 0 ) = tSegment->node( 1 )->x() - tSegment->node( 0 )->x();
                     tT( 1 ) = tSegment->node( 1 )->y() - tSegment->node( 0 )->y();
                     tT( 2 ) = tSegment->node( 1 )->z() - tSegment->node( 0 )->z();
-                    tT /= norm( tT );
+
+                    const real tLength = norm( tT );
+                    BELFEM_ERROR( tLength > 0.0,
+                        "Terminal curve %lu: its first segment has zero length ( nodes %lu and %lu )",
+                        ( long unsigned int ) tCurve->id(),
+                        ( long unsigned int ) tSegment->node( 0 )->id(),
+                        ( long unsigned int ) tSegment->node( 1 )->id() );
+                    tT /= tLength ;
 
                     tSegment->node( 0 )->flag();
                     tSegment->node( 1 )->flag();
@@ -1843,30 +1852,58 @@ namespace belfem
 
                         if ( tCount > 1 )
                         {
-                            // we have a surface
                             tFacet = tF ;
                             break ;
                         }
                     }
 
-                    BELFEM_ASSERT( tFacet != nullptr, "No surface found on tape/boundary" );
-
-                    // next, we compute the normal of the tape
-                    tP( 0 ) = tFacet->node( 1 )->x() - tFacet->node( 0 )->x();
-                    tP( 1 ) = tFacet->node( 1 )->y() - tFacet->node( 0 )->y();
-                    tB(0) = -tP(1);
-                    tB(1) = tP(0) ;
-                    tB /= norm( tB );
-
                     tSegment->node( 0 )->unflag();
                     tSegment->node( 1 )->unflag();
 
+                    // setup path, and the pointer is dereferenced below: the
+                    // search fails when the first segment does not lie on
+                    // sideset_a ( the first id listed for the curve )
+                    BELFEM_ERROR( tFacet != nullptr,
+                        "Terminal curve %lu: no facet of sideset %lu carries both nodes of its first segment ( %lu, %lu )",
+                        ( long unsigned int ) tCurve->id(),
+                        ( long unsigned int ) tCurve->sideset_a()->id(),
+                        ( long unsigned int ) tSegment->node( 0 )->id(),
+                        ( long unsigned int ) tSegment->node( 1 )->id() );
+
+                    // the master must still own the segment's ( original )
+                    // nodes: the slave side was relinked to duplicates, and the
+                    // sense is read off the master's edge direction below
+                    tFacet->master()->get_corner_nodes_of_facet( tFacet->index_on_master(), tMasterNodes );
+                    BELFEM_ERROR( tMasterNodes.size() == 2
+                                  && (    ( tMasterNodes( 0 ) == tSegment->node( 0 ) && tMasterNodes( 1 ) == tSegment->node( 1 ) )
+                                       || ( tMasterNodes( 0 ) == tSegment->node( 1 ) && tMasterNodes( 1 ) == tSegment->node( 0 ) ) ),
+                        "Terminal curve %lu: facet %lu of sideset %lu does not carry the segment's nodes on its master element %lu",
+                        ( long unsigned int ) tCurve->id(),
+                        ( long unsigned int ) tFacet->id(),
+                        ( long unsigned int ) tCurve->sideset_a()->id(),
+                        ( long unsigned int ) tFacet->master()->id() );
+
+                    // master's edge direction and the tape normal to its left
+                    tP( 0 ) = tMasterNodes( 1 )->x() - tMasterNodes( 0 )->x();
+                    tP( 1 ) = tMasterNodes( 1 )->y() - tMasterNodes( 0 )->y();
+                    tB( 0 ) = -tP( 1 );
+                    tB( 1 ) =  tP( 0 );
+                    const real tWidth = norm( tB );
+                    BELFEM_ERROR( tWidth > 0.0,
+                        "Terminal curve %lu: facet %lu of sideset %lu has zero in-plane length",
+                        ( long unsigned int ) tCurve->id(),
+                        ( long unsigned int ) tFacet->id(),
+                        ( long unsigned int ) tCurve->sideset_a()->id() );
+                    tB /= tWidth ;
+
+                    // tR = z x tB = -( master's edge direction ). tT is parallel or
+                    // antiparallel to it, so the distance is 0 or 2 and 1.0 splits
+                    // them. Homology::reorient_generators applies a global -1 that is
+                    // calibrated to this sense; changing it here inverts every 2-D
+                    // thin shell current
                     tR = cross( tS, tB );
                     tR /= norm( tR );
 
-                    // if the difference between T and R is close 0, the curve runs counter clockwise, if it is close to 2,
-                    // it runs clockwise and must be flipped. We chose 1.0 as criterion to allow for imprecisions
-                    // for higher order elements
                     if ( norm( tT - tR ) > 1.0 )
                     {
                         tCurve->reverse();

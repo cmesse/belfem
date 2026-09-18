@@ -10,10 +10,10 @@
 
 | File | Key Function | Purpose |
 |------|-------------|---------|
-| `cl_MaxwellFactory.cpp` | `fix_facet_masters()` (~line 981) | Corrects master/slave based on DomainType + BFS |
-| `cl_CutFactory.cpp` | `relink_slave_elements_with_duplicate_nodes()` (~line 1838) | Replaces slave element nodes with thin shell duplicates |
-| `cl_CutFactory.cpp` | `duplicate_nodes_on_face_sidesets()` (~line 1646) | Creates the duplicate nodes |
-| `cl_Mesh.cpp` | `update_facet_nodes()` (~line 678) | Copies master element's face nodes into the facet surface element |
+| `cl_MaxwellFactory.cpp` | `fix_facet_masters()` | Corrects master/slave based on DomainType; BFS propagation for same-type facets in 3-D only |
+| `cl_CutFactory.cpp` | `relink_slave_elements_with_duplicate_nodes()` (~line 1407) | Replaces slave element nodes with thin shell duplicates |
+| `cl_CutFactory.cpp` | `duplicate_nodes_on_face_sidesets()` (~line 1182) | Creates the duplicate nodes |
+| `cl_Mesh.cpp` | `update_facet_nodes()` (~line 628) | Copies master element's face nodes into the facet surface element |
 | `cl_Mesh_ConnectivityCalculator.cpp` | `connect_facets_to_elements()` (~line 171) | Initial master/slave assignment by element ID |
 | `cl_Facet.cpp` | `flip()` (~line 89) | Swaps master and slave, relinks facet nodes |
 | `fn_check_facet_orientation.hpp` | `check_facet_orientation()` (~line 39) | Checks if two adjacent facets have consistent outward normals |
@@ -45,7 +45,7 @@ If master/slave assignment is inconsistent, the wrong side gets duplicates and T
 
 ## Two-Stage Algorithm
 
-### Stage 1: `MaxwellFactory::fix_facet_masters()` (cl_MaxwellFactory.cpp:981-1049)
+### Stage 1: `MaxwellFactory::fix_facet_masters()` (cl_MaxwellFactory.cpp:1459-1536)
 
 #### Initial state
 
@@ -81,7 +81,26 @@ These cross-type facets are added to a BFS queue as **seeds** with known correct
 
 Facets where both sides have the **same** DomainType (e.g., Conductor/Conductor) cannot be resolved by DomainType comparison alone. These are flagged for later processing.
 
-BFS propagation from the cross-type seeds resolves them:
+In 3-D, BFS propagation from the cross-type seeds resolves them. **In 2-D the propagation is
+switched off** (`tPropagate` in `fix_facet_masters()`). The thin-shell cut pipeline and the
+thin-shell normals both read the tape facets' node order, and they need one master side per tape.
+In 2-D that uniformity is an **input assumption, not something the code establishes**: the master is
+the lower element id, so a tape's master side is uniform when each neighboring block's element ids form
+a contiguous range, which Gmsh output gives and nothing here checks. Interleaved ids would leave a
+mixed master along the tape; the cut pipeline's terminal-curve lookup then aborts with a named
+`BELFEM_ERROR` rather than orienting anything.
+
+The full master rule is therefore the same in both dimensions except for the propagation step:
+
+1. **Cross-type facets** (different DomainType on the two sides): the higher DomainType becomes the
+   master, in 2-D and 3-D alike.
+2. **Same-type facets**: in 3-D, BFS from the cross-type seeds; in 2-D, the master that
+   `connect_facets_to_elements` assigned, which is the element with the **lower id**. The lower-id
+   rule applies only here, never to a cross-type facet.
+3. **Deck-signed sidesets** are flipped after both steps (`flip_thin_shell_sidesets()`), whole
+   sidesets at a time.
+
+The 3-D propagation:
 
 ```cpp
 while ( ! tQueue.empty() )
@@ -110,7 +129,7 @@ The master/slave assignment set by `fix_facet_masters()` is preserved across `un
 
 ---
 
-### Stage 2: `CutFactory::relink_slave_elements_with_duplicate_nodes()` (cl_CutFactory.cpp:1838-1910)
+### Stage 2: `CutFactory::relink_slave_elements_with_duplicate_nodes()` (cl_CutFactory.cpp:1407-1483)
 
 This function runs after `duplicate_nodes_on_face_sidesets()` has created the duplicate nodes. It relinks elements on the slave side to use duplicates instead of originals.
 
@@ -186,9 +205,13 @@ After both stages complete, the following invariants hold:
 
 ### 1. Same-DomainType sidesets
 
-When both sides of a thin shell interface have the same DomainType (e.g., two Conductor blocks), DomainType comparison alone cannot determine master/slave. The BFS propagation from cross-type seeds is essential.
+When both sides of a thin shell interface have the same DomainType (e.g., two Conductor blocks), DomainType comparison alone cannot determine master/slave. The BFS propagation from cross-type seeds is essential in 3-D; in 2-D the lower-element-id master (see the rule above) is what the cut pipeline relies on.
 
-**Risk:** If the entire thin shell sideset has same-type blocks on both sides with no cross-type seeds anywhere in the connected component, the orientation is arbitrary but still consistent (all facets will be oriented the same way by BFS). However, if this leads to the wrong convention relative to other parts of the mesh, results may be incorrect.
+**Risk:** If a connected component of same-type facets has no cross-type seed at all, BFS never
+visits it, in 3-D or 2-D: only cross-type facets enter the queue, same-type facets are merely
+flagged, and the final pass just clears their flags. Such a component keeps the orientation it came in
+with from `connect_facets_to_elements` (lower element id is master), whose consistency BFS does not
+establish. If that convention is wrong relative to other parts of the mesh, results may be incorrect.
 
 ### 2. Overhanging thin shells
 
@@ -230,7 +253,7 @@ The relevant operations occur in this sequence during `MaxwellFactory` initializ
 
 ```
 1. Mesh::finalize()                            — initial connectivity
-2. MaxwellFactory::fix_facet_masters()          — correct master/slave by DomainType + BFS
+2. MaxwellFactory::fix_facet_masters()          — correct master/slave by DomainType + BFS (BFS in 3-D only)
 3. CutFactory::run()
    a. duplicate_nodes_on_face_sidesets()        — create thin shell duplicate nodes
    b. relink_slave_elements_with_duplicate_nodes() — replace slave element nodes
