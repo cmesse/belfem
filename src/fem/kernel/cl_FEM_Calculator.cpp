@@ -918,6 +918,14 @@ namespace belfem
                 mLinearIntegration->populate( aOrder,
                      mGroup->parent() != nullptr ? mGroup->parent()->integration_scheme() : IntegrationScheme::GAUSS );
             }
+
+            // the group's tables feed the edge-function precompute in
+            // allocate_memory(), so they are rebuilt first
+            if( mGroup != nullptr )
+            {
+                mGroup->initialize_lookup_tables( aOrder );
+            }
+
             this->allocate_memory() ;
 
             mNumberOfIntegrationPoints = mDomainIntegration->weights().length() ;
@@ -925,11 +933,6 @@ namespace belfem
             if( mEdgeFunction != nullptr )
             {
                 mEdgeFunction->precompute( mDomainIntegration->points() );
-            }
-
-            if( mGroup != nullptr )
-            {
-                mGroup->initialize_lookup_tables( aOrder );
             }
         }
 

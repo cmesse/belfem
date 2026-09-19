@@ -1151,10 +1151,11 @@ namespace belfem
 //------------------------------------------------------------------------------
 
             /**
-             * For a sideset with edge functions, allocate_memory()
-             * precomputes them from the group's lookup tables before this
-             * call rebuilds the tables, so an order that differs from the
-             * one they hold must be followed by link( Group * )
+             * rebuilds the group's lookup tables at aOrder, then lets
+             * allocate_memory() replace the edge functions and precompute
+             * them from the rebuilt tables. The calculator's cached table
+             * pointers dangle until the next element or facet link, its
+             * cached edge-function pointers until the next element link
              */
             void
             set_integration_order( const uint aOrder );

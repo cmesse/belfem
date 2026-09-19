@@ -58,9 +58,6 @@ namespace belfem
 
         class SideSet  : public Group
         {
-            // cell with sideset integration information
-            Cell< IntegrationData * > mSideSetIntegrationData ;
-
 
 //----------------------------------------------------------------------------
         protected:
@@ -212,10 +209,12 @@ namespace belfem
              * link( Element * ) and link( Facet * ) cache raw pointers,
              * allocate_memory() and link( Group * ) precompute the edge
              * functions from their points. A rebuild leaves the cached
-             * pointers dangling until the next element link, and the
-             * precomputed edge functions stale whenever the points changed,
-             * until link( Group * ) runs again; every rebuild in the tree
-             * happens during setup
+             * table pointers dangling until the next element or facet
+             * link. Calculator::set_integration_order() rebuilds before it
+             * precomputes and replaces the edge functions, which dangle
+             * until the next element link; any other rebuild leaves the
+             * edge functions stale until link( Group * ) runs again. Every
+             * rebuild in the tree happens during setup
              */
             void
             initialize_lookup_tables( const uint aIntegrationOrder ) override;

@@ -74,6 +74,17 @@ namespace belfem
             initialize_lookup_tables( const uint aIntegrationOrder ) override;
 
 //------------------------------------------------------------------------------
+        private:
+//------------------------------------------------------------------------------
+
+            /**
+             * frees the IntegrationData objects the block owns through
+             * mEnrichmentData and clears the cell
+             */
+            void
+            delete_lookup_tables();
+
+//------------------------------------------------------------------------------
         };
 
 //------------------------------------------------------------------------------

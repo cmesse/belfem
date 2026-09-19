@@ -90,6 +90,7 @@ namespace belfem
 
         Block::~Block()
         {
+            this->delete_lookup_tables();
             this->delete_pointers();
         }
 
@@ -115,6 +116,8 @@ namespace belfem
         void
         Block::initialize_lookup_tables( const uint aIntegrationOrder )
         {
+            this->delete_lookup_tables();
+
             IntegrationScheme tScheme = IntegrationScheme::GAUSSCLASSIC ;
 
             // using this switch, we make sure that only tri and tet elements are enriched
@@ -131,11 +134,6 @@ namespace belfem
             {
                 uint tNumFacets = mesh::number_of_facets( mElementType );
 
-                for( IntegrationData * tData : mEnrichmentData )
-                {
-                    delete tData ;
-                }
-
                 InterpolationFunctionFactory tFactory ;
 
                 mEnrichmentData.set_size( tNumFacets, nullptr );
@@ -148,6 +146,18 @@ namespace belfem
                     mEnrichmentData( f )->populate( aIntegrationOrder, tScheme );
                 }
             }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        Block::delete_lookup_tables()
+        {
+            for ( IntegrationData * tData : mEnrichmentData )
+            {
+                delete tData ;
+            }
+            mEnrichmentData.clear() ;
         }
 
 //------------------------------------------------------------------------------

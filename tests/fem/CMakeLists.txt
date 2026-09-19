@@ -23,6 +23,7 @@ set( SOURCES
         test_BdfTimestepMethod.cpp
         test_DofSeeding.cpp
         test_GhostSwitch.cpp
+        test_BlockRebuild.cpp
         )
 
 set( LIBLIST
@@ -40,6 +41,7 @@ if( USE_MAXWELL )
     include_directories( ${BELFEM_SOURCE_DIR}/fem/maxwell )
     include_directories( ${BELFEM_SOURCE_DIR}/fem/maxwell/matrices )
     list( APPEND SOURCES test_InterfaceOrientation.cpp )
+    list( APPEND SOURCES test_SideSetRebuild.cpp )
     list( APPEND LIBLIST maxwell )
 endif()
 
