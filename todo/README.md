@@ -157,9 +157,9 @@ link time (reproduced with a stub library). R0 keeps the canonical system libdir
 
 ## Added 2026-09-16
 
-### [code_findings_from_comment_sweeps.md](code_findings_from_comment_sweeps.md) — defects the comment auditors found while reading for contracts, parked for a code session
+### [closed/code_findings_from_comment_sweeps.md](closed/code_findings_from_comment_sweeps.md) — defects the comment auditors found while reading for contracts, parked for a code session
 
-**IN PROGRESS.** Tiers 1–5 landed 2026-09-17/18 (`70364c1`, `ca5fb51`, `93a2376`, `04a3e00`, tier 5 the calculator rebuild order and the block tables) through the plan + audit → code + audit loop with `make check` on both trees and Valgrind gates: the sideset broadcast, the undefined `IWG::N`, the null wrapper accessors, the `collect_node_coords` column bound, the include guard, seven ownership leaks on the setup and teardown paths, the basis dof container, the 3D boundary edges, the sideset tables built twice, the edge functions precomputed before the table rebuild, the block enrichment tables. F8 refuted by two deep scans; F7 waits for Gregory. Filed: F21, F25.
+**CLOSED 2026-09-18** after six tiers (`70364c1`, `ca5fb51`, `93a2376`, `04a3e00`, `62746d9`, tier 6 the calculator's vector list), each through the plan + audit → code + audit loop with `make check` on both trees and Valgrind gates: the sideset broadcast, the undefined `IWG::N`, the null wrapper accessors, the `collect_node_coords` column bound, the include guard, seven ownership leaks on the setup and teardown paths, the basis dof container, the 3D boundary edges, the sideset tables built twice, the edge functions precomputed before the table rebuild, the block enrichment tables, the calculator's orphaned workspace vectors; three regression tests shipped. F8 refuted by two deep scans. Residue carried in the closed file: F21 (`Basis::set_sources` count-keyed `malloc( 0 )`, plan owed) and F7 (closed core, waits for Gregory).
 
 ### [closed/comment_cleanup_sweep_2.md](closed/comment_cleanup_sweep_2.md) — add the missing contracts on the public entry points, correct the comments the code contradicts, finish the narration tail
 

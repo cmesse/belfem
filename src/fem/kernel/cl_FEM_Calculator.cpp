@@ -956,10 +956,9 @@ namespace belfem
             {
                 IWG * tEquation = mGroup->parent()->iwg();
 
-                mVectors.clear() ;
-
-                mVectorMap.clear() ;
-
+                // mVectors and mVectorMap are kept across a rebuild:
+                // create_vector() reuses an existing entry, and MaxwellData
+                // binds references to these Vector objects
                 bool tHaveH = false ;
 
                 for ( const string & tLabel: tEquation->all_fields())

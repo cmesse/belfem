@@ -56,3 +56,29 @@ TEST( SideSetRebuild, EdgeFunctionsFollowTheNewOrder )
     EXPECT_NO_THROW( tCalc->Es( tPointsAfter - 1 ) )
         << "slave edge function precomputed from the tables of the old order" ;
 }
+
+//------------------------------------------------------------------------------
+
+// the calculator's workspace vectors survive an order change: the map
+// hands out the same object, so a reference bound to it stays valid. This
+// checks the map on a sideset calculator; it does not exercise the
+// MaxwellData references, which exist on block calculators only
+TEST( SideSetRebuild, VectorsSurviveAnOrderChange )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    fem::test::TS_TestGhostStack tStack( 0.1, false );
+    fem::Calculator * tCalc = tStack.calculator();
+    const string & tLabel = tStack.iwg()->all_fields()( 0 );
+    ASSERT_TRUE( tCalc->vector_exists( tLabel ) );
+
+    const Vector< real > * tBefore = & tCalc->vector( tLabel );
+    tCalc->set_integration_order( 13 );
+    const Vector< real > * tAfter = & tCalc->vector( tLabel );
+
+    EXPECT_EQ( tBefore, tAfter )
+        << "workspace vector " << tLabel << " was replaced by the order change" ;
+}
