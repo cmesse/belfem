@@ -25,7 +25,7 @@ endif()
 # canonical source of the version number; bump it here on release. CMake exposes
 # it as PROJECT_VERSION and PROJECT_VERSION_MAJOR/MINOR/PATCH, which are fed into
 # the generated belfem_version.hpp header (see src/core/CMakeLists.txt).
-project(belfem VERSION 0.9.1)
+project(belfem VERSION 0.9.2)
 enable_language(Fortran)
 
 
