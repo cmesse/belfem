@@ -141,6 +141,21 @@ one of the two must be retired before either is worked.
 
 ---
 
+## Added 2026-09-21
+
+### [citation_index_completion.md](citation_index_completion.md) — closing the gap between the works the tree cites and the works it can identify
+
+**✅ CHECKER GREEN 2026-09-22 — R1–R5 and R7 done, O1 and O3 resolved; R6 and O2 open.**
+`doc/literature_references.md` gained a machine-checked citation key index (122 works, 234
+accepted spellings) and `scripts/check_citations.py` reads it, so every author-year token in
+`src/` and `doc/` is now either resolvable or reported. It went from 137 unresolved to **0**,
+and exits 0. Most closures were transcription rather than research: the DOIs were already in
+the tree, filed away from the citations that needed them. Three real defects fell out —
+Bathe's second edition was credited to Prentice Hall, *Finite Element Exterior Calculus* to
+three authors instead of Arnold alone, and `Herrmann 1978` turned out to name no existing
+work (the theorem is Barlow 1976). Left open: whether the checker becomes a gate (R6), and
+whether the index should mark which works are held locally (O2).
+
 ## Added 2026-09-18
 
 ### [closed/mpi_link_probe_plan.md](closed/mpi_link_probe_plan.md) — keep the system libdirs off the rpath so the SCLS PMIx wins; link a minimal MPI program at configure time so a broken MPI fails at cmake

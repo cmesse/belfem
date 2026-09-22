@@ -28,6 +28,7 @@ scripts/install_autoreview_hook.sh [--uninstall]   # opt-in post-commit hook, al
 scripts/review_status.sh                   # commits since last auto-review + open P0 flags
 scripts/check_doc_claims.py [--verbose]    # verify this file's checkable claims against the tree
 scripts/check_wrapper_policy.py            # L-21: direct third-party calls outside their wrapper module
+scripts/check_citations.py [--verbose]     # every author-year citation in src/ and doc/ resolves to a known work
 ```
 
 `check_doc_claims.py` guards the class of error a reader cannot catch: a convention document
@@ -709,6 +710,10 @@ The `./nonfree/` repository, when present, carries an additional reference libra
 | "What's the formula for Z?" | Bronshtein |
 | "What may a comment say, and why no TODO / byline / dead code?" | Martin 2025 Ch. 5; Thomas & Hunt 2020 Topic 7 (Tip 13), Topic 9 |
 | "Assertion or error? Who frees what?" | Thomas & Hunt 2020 Topics 23–26; Oliveira & Stewart 2006 §9.4, §9.7 |
+
+The `literature` skill (`.claude/skills/literature/`) carries this procedure — routing, reading
+and citing — together with the citation format and the symbol-annotation rules. Invoke it rather
+than rebuilding the chain from this table.
 
 **Step 2: use the index files** (when `./literature/` is present). `literature/README.md` holds the
 master decision flowcharts; `papers/fem/index.md`, `papers/fvm/index.md`, `papers/topology/index.md`,
