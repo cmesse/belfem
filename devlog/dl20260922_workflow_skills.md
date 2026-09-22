@@ -138,7 +138,11 @@ rule in this session that came from a collision rather than from reading a docum
 
 - `.claude/skills/code-with-jury/SKILL.md` (new)
 - `.claude/skills/session-close/SKILL.md` (new; pathspec-commit rule added after the index race)
-- `CLAUDE.md` — both skills registered in the Cross-Review Tooling block
+- `CLAUDE.md` — both skills registered in the Cross-Review Tooling block. **On disk only, not in
+  `cb86f2e`:** a peer added an SCLS paragraph to the same file mid-session which references
+  `doc/scls_toolchain.md`, still untracked, so committing the file wholesale would have added a
+  reference to a document not in the repository. The pathspec commit form takes a whole file, so
+  the registration lines wait for whoever commits that work
 - `doc/ai_collaboration_protocol.md` — §9.1 critical-code row and its rationale bullet; §6 header
   template rewritten to practice
 - `.claude/commands/cross-review.md` — critical-code row mirrored, row count corrected
