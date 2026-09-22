@@ -699,6 +699,18 @@ namespace belfem
                     tRho( mMaster->index() ) = aRho ;
                     tRho( mSlave->index() )  = aRho ;
                 }
+
+                /**
+                 * same field, one value per layer: master ( lower prism )
+                 * and slave ( upper prism ) resistivities set separately
+                 */
+                void
+                set_rho( const real aRhoM, const real aRhoS )
+                {
+                    Vector< real > & tRho = mMesh->field_data( "element_rho" );
+                    tRho( mMaster->index() ) = aRhoM ;
+                    tRho( mSlave->index() )  = aRhoS ;
+                }
             };
 
 //------------------------------------------------------------------------------

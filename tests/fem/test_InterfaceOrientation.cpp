@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <string>
 
 #include "typedefs.hpp"
 #include "cl_Matrix.hpp"
@@ -828,6 +829,393 @@ TEST( InterfaceOrientation, GhostElementContract )
             }
             EXPECT_GT( ghost_max_Kq( tK, tQ ), 1.0e-3 * tMaxK )
                 << "one-sided field must not be annihilated, c = " << c ;
+        }
+    }
+}
+
+//------------------------------------------------------------------------------
+// h_ghost coefficient contract: consistency ( rho_harm / h ) and penalty
+// ( alpha ) read back from the residual of a one-sided field
+//------------------------------------------------------------------------------
+
+// The oracle is the algebraic composition of the kernel, not its quadrature:
+// for a field q that carries the line integrals of a constant in-plane c on
+// the master edges and 0 on the slave edges, the master difference quotient
+// D+ q vanishes ( top and bottom edges are parallel and equally oriented )
+// and Em q = c on the interface, so with the interface projections
+//   g_m( j ) = sum_k w_k dS_k Em_k( :, 3+j ) . c
+//   g_s( j ) = sum_k w_k dS_k Es_k( :, j )   . c
+// the residual r = K q reads, block by block,
+//   rows 0-2  ( master bottom ) : + ( rho_harm / hm )         g_m
+//   rows 3-5  ( master top )    :   ( alpha - rho_harm / hm ) g_m
+//   rows 6-8  ( slave bottom )  : - ( alpha + rho_harm / hs ) g_s
+//   rows 9-11 ( slave top )     : + ( rho_harm / hs )         g_s
+// The two premises ( bottom-face columns of Em vanish on the top face,
+// Em q reproduces c ) are asserted on the same integration points.
+namespace
+{
+    // the kernel's consistency resistivity: harmonic mean of the two
+    // layers, 0 when both vanish ( no consistency term across an
+    // SC-SC facet )
+    real
+    ghost_rho_harm( const real aRhoM, const real aRhoS )
+    {
+        return ( aRhoM + aRhoS < BELFEM_EPSILON ) ? 0.0
+             : 2.0 * aRhoM * aRhoS / ( aRhoM + aRhoS );
+    }
+
+    // the kernel's penalty: eta times the harmonic mean of the
+    // k_reg-regularized layer stiffnesses k = rho / h
+    real
+    ghost_alpha(
+            const real aEta,
+            const real aKreg,
+            const real aRhoM,
+            const real aRhoS,
+            const real aHm,
+            const real aHs )
+    {
+        const real tKm = aRhoM / aHm + aKreg ;
+        const real tKs = aRhoS / aHs + aKreg ;
+        return aEta * 2.0 * tKm * tKs / ( tKm + tKs );
+    }
+
+    // the documented upper bound of alpha: 2 eta ( min( km, ks ) + k_reg )
+    real
+    ghost_alpha_bound(
+            const real aEta,
+            const real aKreg,
+            const real aRhoM,
+            const real aRhoS,
+            const real aHm,
+            const real aHs )
+    {
+        return 2.0 * aEta * ( std::min( aRhoM / aHm, aRhoS / aHs ) + aKreg );
+    }
+
+    // one-sided field: master edge dofs carry the line integrals of the
+    // constant field aC, slave dofs are zero
+    void
+    ghost_one_sided_field(
+            fem::test::TS_TestGhostStack & aStack,
+            const real                     aC[ 3 ],
+            Vector< real >               & aQ )
+    {
+        aQ.set_size( 12, 0.0 );
+        for ( uint e = 0; e < 6; ++e )
+        {
+            aQ( e ) = ghost_edge_dof( aStack.master()->edge( e ), aC );
+        }
+    }
+
+    // assemble K for whatever element_rho currently holds
+    void
+    ghost_assemble(
+            fem::Calculator * aCalc,
+            Matrix< real >  & aK )
+    {
+        fem::TimestepMatrices tMat ;
+        tMat.set_flag( fem::MatrixFlag::K );
+        tMat.initialize( 12 );
+        fem::maxwell::h_ghost( aCalc, & tMat );
+        aK = tMat.K();
+    }
+
+    // r = K q
+    void
+    ghost_residual(
+            const Matrix< real > & aK,
+            const Vector< real > & aQ,
+            Vector< real >       & aR )
+    {
+        aR.set_size( 12, 0.0 );
+        for ( uint j = 0; j < 12; ++j )
+        {
+            for ( uint i = 0; i < 12; ++i )
+            {
+                aR( i ) += aK( i, j ) * aQ( j );
+            }
+        }
+    }
+
+    // Gauss-weighted interface projections g_m ( master top columns ),
+    // g_s ( slave bottom columns ) and the two premises measured on the
+    // same points: the largest entry of the master bottom columns and of
+    // the slave top columns ( both must vanish on the interface ), and
+    // the largest deviation of Em q from aC. Each Em( k ) / Es( k )
+    // reference is consumed before the next point is requested — the
+    // edge function hands out one buffer per side
+    struct GhostProjections
+    {
+        Vector< real > mGm ;
+        Vector< real > mGs ;
+        real           mMaxG ;
+        real           mMaxEmBottom ;
+        real           mMaxEsTop ;
+        real           mMaxFieldError ;
+    };
+
+    void
+    ghost_interface_projections(
+            fem::Calculator      * aCalc,
+            const real             aC[ 3 ],
+            const Vector< real > & aQ,
+            GhostProjections     & aP )
+    {
+        aP.mGm.set_size( 3, 0.0 );
+        aP.mGs.set_size( 3, 0.0 );
+        aP.mMaxEmBottom   = 0.0 ;
+        aP.mMaxEsTop      = 0.0 ;
+        aP.mMaxFieldError = 0.0 ;
+
+        const Vector< real > & tW = aCalc->integration()->weights();
+        const uint tNg = tW.length();
+
+        for ( uint k = 0; k < tNg; ++k )
+        {
+            const real tWdS = tW( k ) * aCalc->dS( k );
+
+            {
+                const Matrix< real > & tEm = aCalc->Em( k );
+                for ( uint i = 0; i < 3; ++i )
+                {
+                    real tField = 0.0 ;
+                    for ( uint j = 0; j < 6; ++j )
+                    {
+                        tField += tEm( i, j ) * aQ( j );
+                    }
+                    aP.mMaxFieldError = std::max( aP.mMaxFieldError,
+                            std::abs( tField - aC[ i ] ) );
+                    for ( uint j = 0; j < 3; ++j )
+                    {
+                        aP.mMaxEmBottom = std::max( aP.mMaxEmBottom,
+                                std::abs( tEm( i, j ) ) );
+                        aP.mGm( j ) += tWdS * tEm( i, 3 + j ) * aC[ i ];
+                    }
+                }
+            }
+            {
+                const Matrix< real > & tEs = aCalc->Es( k );
+                for ( uint i = 0; i < 3; ++i )
+                {
+                    for ( uint j = 0; j < 3; ++j )
+                    {
+                        aP.mMaxEsTop = std::max( aP.mMaxEsTop,
+                                std::abs( tEs( i, 3 + j ) ) );
+                        aP.mGs( j ) += tWdS * tEs( i, j ) * aC[ i ];
+                    }
+                }
+            }
+        }
+
+        aP.mMaxG = 0.0 ;
+        for ( uint j = 0; j < 3; ++j )
+        {
+            aP.mMaxG = std::max( aP.mMaxG, std::abs( aP.mGm( j ) ) );
+            aP.mMaxG = std::max( aP.mMaxG, std::abs( aP.mGs( j ) ) );
+        }
+    }
+
+    // rows aRow0 .. aRow0+2 of aR against aCoeff * aG, absolute tolerance
+    void
+    ghost_expect_rows(
+            const Vector< real > & aR,
+            const uint             aRow0,
+            const real             aCoeff,
+            const Vector< real > & aG,
+            const real             aTol,
+            const char           * aWhat )
+    {
+        for ( uint j = 0; j < 3; ++j )
+        {
+            EXPECT_NEAR( aR( aRow0 + j ), aCoeff * aG( j ), aTol )
+                << aWhat << ", row " << aRow0 + j ;
+        }
+    }
+
+    // shared arrange for the two coefficient tests: field, premises,
+    // thicknesses and penalty slots read back from the fixture
+    struct GhostCoefficientSetup
+    {
+        Vector< real >   mQ ;
+        GhostProjections mP ;
+        real             mHm ;
+        real             mHs ;
+        real             mEta ;
+        real             mKreg ;
+    };
+
+    void
+    ghost_coefficient_setup(
+            fem::test::TS_TestGhostStack & aStack,
+            fem::Calculator              * aCalc,
+            GhostCoefficientSetup        & aS )
+    {
+        // generic in-plane direction: the facet is horizontal, so any
+        // ( x, y, 0 ) is tangential
+        const real tC[ 3 ] = { 0.7, -0.4, 0.0 };
+
+        ghost_one_sided_field( aStack, tC, aS.mQ );
+        ghost_interface_projections( aCalc, tC, aS.mQ, aS.mP );
+
+        // premises of the hand-derived residual
+        EXPECT_LT( aS.mP.mMaxEmBottom, 1.0e-14 )
+            << "master bottom-face columns must vanish on the interface" ;
+        EXPECT_LT( aS.mP.mMaxEsTop, 1.0e-14 )
+            << "slave top-face columns must vanish on the interface" ;
+        EXPECT_LT( aS.mP.mMaxFieldError, 1.0e-12 )
+            << "Em q must reproduce the constant field on the interface" ;
+        ASSERT_GT( aS.mP.mMaxG, 0.0 ) << "empty interface projection" ;
+
+        Mesh * tMesh = aStack.mesh();
+        aS.mHm   = tMesh->block( aStack.master()->block_id() )->thickness();
+        aS.mHs   = tMesh->block( aStack.slave()->block_id() )->thickness();
+        aS.mEta  = aStack.iwg()->penalty( 0 );
+        aS.mKreg = aStack.iwg()->penalty( 1 );
+        ASSERT_GT( aS.mHm, 0.0 );
+        ASSERT_GT( aS.mHs, 0.0 );
+        ASSERT_GT( aS.mEta, 0.0 );
+        ASSERT_GT( aS.mKreg, 0.0 );
+    }
+}
+
+// Far rows 0-2 and 9-11: the consistency coefficient is rho_harm / h with
+// the harmonic mean, finite at equal rho, and 0 by the guard when both
+// layers are superconducting. Rows 9-11 pin the coded jump form of the
+// slave slope ( same sign as the master rows, D- being the slave's own
+// outward quotient ).
+TEST( InterfaceOrientation, GhostConsistencyCoefficient )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    // equal ( finite at rho_m == rho_s ), unequal ( an arithmetic mean
+    // would read 2.5e-8 ), high contrast inside the clamp window, and
+    // the SC-SC guard
+    const real tPairs[ 4 ][ 2 ] = { { 3.0e-7, 3.0e-7 },
+                                    { 1.0e-8, 4.0e-8 },
+                                    { 1.0e-8, 1.0e9  },
+                                    { 0.0,    0.0    } };
+
+    for ( int tFlip : { -1, 1 } )
+    {
+        SCOPED_TRACE( "flip " + std::to_string( tFlip ) );
+        fem::test::TS_TestGhostStack tStack( 0.1, tFlip );
+        fem::Calculator * tCalc = tStack.calculator();
+        tCalc->link( tStack.ghost_element() );
+
+        GhostCoefficientSetup tS ;
+        ghost_coefficient_setup( tStack, tCalc, tS );
+        if ( ::testing::Test::HasFatalFailure() )
+        {
+            return ;
+        }
+
+        Matrix< real > tK ;
+        Vector< real > tR ;
+        for ( uint p = 0; p < 4; ++p )
+        {
+            const real tRhoM = tPairs[ p ][ 0 ];
+            const real tRhoS = tPairs[ p ][ 1 ];
+            SCOPED_TRACE( "rho_m " + std::to_string( tRhoM )
+                        + " rho_s " + std::to_string( tRhoS ) );
+
+            tStack.set_rho( tRhoM, tRhoS );
+            ghost_assemble( tCalc, tK );
+            ghost_residual( tK, tS.mQ, tR );
+
+            const real tRhoH  = ghost_rho_harm( tRhoM, tRhoS );
+            const real tAlpha = ghost_alpha( tS.mEta, tS.mKreg,
+                    tRhoM, tRhoS, tS.mHm, tS.mHs );
+            ASSERT_TRUE( std::isfinite( tRhoH ) );
+            const real tTol = 1.0e-12 * ( tAlpha + tRhoH / tS.mHm ) * tS.mP.mMaxG ;
+
+            ghost_expect_rows( tR, 0,  tRhoH / tS.mHm, tS.mP.mGm, tTol,
+                    "master bottom rows" );
+            ghost_expect_rows( tR, 9,  tRhoH / tS.mHs, tS.mP.mGs, tTol,
+                    "slave top rows" );
+        }
+    }
+}
+
+// Near rows 3-5 and 6-8: the penalty alpha = eta * k_pen with the
+// regularized harmonic stiffness, bounded at high contrast and floored
+// at eta * k_reg when both layers are superconducting
+TEST( InterfaceOrientation, GhostPenaltyCoefficient )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    // rho term visible beside alpha, high contrast, and the floor
+    const real tPairs[ 3 ][ 2 ] = { { 2.0e-3, 5.0e-4 },
+                                    { 1.0e-8, 1.0e9  },
+                                    { 0.0,    0.0    } };
+
+    for ( int tFlip : { -1, 1 } )
+    {
+        SCOPED_TRACE( "flip " + std::to_string( tFlip ) );
+        fem::test::TS_TestGhostStack tStack( 0.1, tFlip );
+        fem::Calculator * tCalc = tStack.calculator();
+        tCalc->link( tStack.ghost_element() );
+
+        GhostCoefficientSetup tS ;
+        ghost_coefficient_setup( tStack, tCalc, tS );
+        if ( ::testing::Test::HasFatalFailure() )
+        {
+            return ;
+        }
+
+        Matrix< real > tK ;
+        Vector< real > tR ;
+        for ( uint p = 0; p < 3; ++p )
+        {
+            const real tRhoM = tPairs[ p ][ 0 ];
+            const real tRhoS = tPairs[ p ][ 1 ];
+            SCOPED_TRACE( "rho_m " + std::to_string( tRhoM )
+                        + " rho_s " + std::to_string( tRhoS ) );
+
+            tStack.set_rho( tRhoM, tRhoS );
+            ghost_assemble( tCalc, tK );
+            ghost_residual( tK, tS.mQ, tR );
+
+            const real tRhoH  = ghost_rho_harm( tRhoM, tRhoS );
+            const real tAlpha = ghost_alpha( tS.mEta, tS.mKreg,
+                    tRhoM, tRhoS, tS.mHm, tS.mHs );
+            const real tTol = 1.0e-12 * ( tAlpha + tRhoH / tS.mHm ) * tS.mP.mMaxG ;
+
+            ghost_expect_rows( tR, 3, tAlpha - tRhoH / tS.mHm, tS.mP.mGm, tTol,
+                    "master top rows" );
+            ghost_expect_rows( tR, 6, -( tAlpha + tRhoH / tS.mHs ), tS.mP.mGs, tTol,
+                    "slave bottom rows" );
+
+            // the bound holds for the hand value and for the coefficient
+            // read back from rows 3-5 ( projection onto g_m, one division
+            // by its norm )
+            const real tBound = ghost_alpha_bound( tS.mEta, tS.mKreg,
+                    tRhoM, tRhoS, tS.mHm, tS.mHs );
+            real tRG = 0.0 ;
+            real tGG = 0.0 ;
+            for ( uint j = 0; j < 3; ++j )
+            {
+                tRG += tR( 3 + j ) * tS.mP.mGm( j );
+                tGG += tS.mP.mGm( j ) * tS.mP.mGm( j );
+            }
+            ASSERT_GT( tGG, 0.0 );
+            const real tAlphaRead = tRG / tGG + tRhoH / tS.mHm ;
+            EXPECT_LE( tAlpha, tBound * ( 1.0 + 1.0e-12 ) );
+            EXPECT_LE( tAlphaRead, tBound * ( 1.0 + 1.0e-12 ) )
+                << "alpha read back from the residual exceeds its bound" ;
+
+            if ( tRhoM == 0.0 && tRhoS == 0.0 )
+            {
+                EXPECT_NEAR( tAlphaRead, tS.mEta * tS.mKreg,
+                        1.0e-12 * tS.mEta * tS.mKreg )
+                    << "SC-SC penalty must floor at eta * k_reg" ;
+            }
         }
     }
 }
