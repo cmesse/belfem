@@ -8,7 +8,7 @@ them. The mechanism is transcription, not research: most of these works are name
 reference in the module document that cites them, and need the full reference plus a DOI.
 **Module:** `doc` (+ `src/physics/gasmodels`, `src/physics/materials`, `src/fem`, `src/sparse`)
 **AIs involved:** Claude (index + checker)
-**Status:** BLOCKED ON O3 — R1–R5 and R7 done 2026-09-22. **505 citations resolve, 4 do not**, and all four are the O3 works that cannot be identified from the tree. R6 (whether the checker becomes a gate) is now answerable and is the only step left besides O2. O1 resolved 2026-09-22
+**Status:** ✅ CHECKER GREEN — R1–R5 and R7 done, O1 and O3 resolved, all 2026-09-22. **`scripts/check_citations.py` reports 509 resolved, 0 unresolved, and exits 0.** Every author-year citation in `src/` and `doc/` now resolves to a full reference. Remaining: R6 (whether the checker becomes a gate — now a real choice, since it no longer fails by design) and O2 (marking which indexed works are held locally)
 
 > **Scope guards:**
 > - Out of scope: adding the works to `literature/`. The index records the reference so a reader
@@ -35,7 +35,7 @@ reference in the module document that cites them, and need the full reference pl
       `Lemmon & Jacobsen 2004`, `Muzny 2013`, `Penoncello & Lemmon 2009`, `Robinson 1978`.
       Cited in `src/physics/gasmodels/doc/README.md:600-605` and in the EoS headers. These are
       NIST-lineage correlations; the reference-quality papers carry DOIs.
-- [◐] **R2 — Maxwell and FEM theory.** **7 of 10 done 2026-09-22** — Nédélec 1980 and 1986, Juntunen & Stenberg, Bíró & Preis, Shahbazi, Hayasaka & Ito (Crossref-confirmed), Zaglmayr and Schoof & Yarberry (transcribed from `nedelec_derivation.md:487-489`). Herrmann 1978, Kuczmann & Iványi 2008 and Meunier 2008 moved to O3. Original text: `Bíró & Preis 1989`, `Hayasaka & Ito 2019`,
+- [x] **R2 — Maxwell and FEM theory.** **Done 2026-09-22** — the last three closed on Christian's references (see O3). Earlier that day, 7 of 10 — Nédélec 1980 and 1986, Juntunen & Stenberg, Bíró & Preis, Shahbazi, Hayasaka & Ito (Crossref-confirmed), Zaglmayr and Schoof & Yarberry (transcribed from `nedelec_derivation.md:487-489`). Herrmann 1978, Kuczmann & Iványi 2008 and Meunier 2008 moved to O3. Original text: `Bíró & Preis 1989`, `Hayasaka & Ito 2019`,
       `Herrmann 1978`, `Juntunen & Stenberg 2009`, `Kuczmann & Iványi 2008`, `Meunier 2008`,
       `Nédélec 1980`, `Shahbazi 2005`, `Zaglmayr 2006`, `Schoof & Yarberry 1994`.
       Nédélec 1980 is the foundational edge-element paper and should arguably also be routed in
@@ -61,7 +61,7 @@ reference in the module document that cites them, and need the full reference pl
       work (`10.1016/0009-2509(72)80096-4` for Soave 1972, `10.1063/1.1349047` for Span 2000,
       `10.1016/0378-3812(85)87016-3` for Schmidt & Wagner 1985, `10.1063/1.555898` for
       Setzmann & Wagner 1991). Mostly transcription; the residue needs Crossref. (after: O3)
-- [ ] **R6 — Wire the checker into the routine.** *Now answerable: the checker is at 4, all blocked on O3.* Decide whether `check_citations.py` joins
+- [ ] **R6 — Wire the checker into the routine.** *Now a real choice: the checker exits 0, so it can gate without failing by design.* Decide whether `check_citations.py` joins
       `check_doc_claims.py` in the session checklist, in the post-commit auto-review, or stays
       on-demand. (after: R5)
 
@@ -80,7 +80,29 @@ reference in the module document that cites them, and need the full reference pl
       bibliography row gained Linde as second author. The 1952 and 1953 papers are **not** indexed
       — nothing in the tree cites them (silver resistivity comes from Matula, magnetoresistance
       from Lüthi, Strom-Olsen, Stout and Iwasa).
-- [ ] **O3 — Four works cannot be identified from the tree.** Each is cited by surname and year
+- [x] **O3 — Four works cannot be identified from the tree.** **RESOLVED 2026-09-22**
+      (Christian supplied the two books; the other two settled on evidence):
+      - `Herrmann 1978` was a **mis-citation and no such work exists**. A Crossref author search
+        over 1970-1982 returns no Herrmann superconvergence paper; the only FEM Herrmann of 1978
+        is *Finite Element Analysis of Contact Problems*, unrelated. The theorem stated at
+        `postprocessor_recovery_theory.md:603` — derivatives superconvergent at the Gauss points,
+        `O(h^(p+1))` there against `O(h^p)` elsewhere — is **Barlow 1976**,
+        *Optimal stress locations in finite element models*, 10.1002/nme.1620100202. The
+        attribution was corrected and Barlow added to that document's reference list as item 5,
+        items 5-10 renumbered to 6-11. (The near-miss is Herrmann **1972**,
+        *Interpretation of Finite Element Procedure as Stress Error Minimization Procedure*,
+        10.1061/JMCEA3.0001684 — the variational companion, not the `O(h^(p+1))` statement. Not
+        indexed: nothing cites it.)
+      - `Kuczmann & Iványi 2008` — M. Kuczmann, A. Iványi, *The Finite Element Method in
+        Magnetics*, Akadémiai Kiadó, Budapest, ISBN 978-963-05-8649-8 (Christian).
+      - `Meunier 2008` — G. Meunier (ed.), *The Finite Element Method for Electromagnetic
+        Modeling*, ISTE/Wiley, 10.1002/9780470611173, print ISBN 978-1-84821-030-1 (Christian;
+        DOI confirmed against Crossref).
+      - `Robinson 1978` — indexed as **PR78**, on Christian's ruling that PR78 is the standard
+        name. It has no DOI: the revision is grey literature, not a journal article. The entry
+        describes the m(ω) branch for ω > 0.491 and points at the base equation,
+        Peng & Robinson 1976 (10.1021/i160057a011). No source edit — `Robinson 1978`,
+        `Peng Robinson 1978` and `PR78` are all accepted spellings on the row. Each is cited by surname and year
       with no fuller reference anywhere, and composing one from recollection is exactly what the
       `literature` skill forbids:
       - `Herrmann 1978` (`postprocessor_recovery_theory.md:598`) — carries a superconvergence
@@ -99,13 +121,13 @@ reference in the module document that cites them, and need the full reference pl
 
 ---
 
-## 4. Residue as of 2026-09-22 (widened matcher)
+## 4. Residue as of 2026-09-22 — none
 
 Live list: `scripts/check_citations.py`. Snapshot:
 
 ```
-  Herrmann 1978                      src/fem/maxwell/doc/postprocessor_recovery_theory.md:598
-  Kuczmann & Iványi 2008             src/fem/maxwell/doc/maxwell_weak_forms.md:367
-  Meunier 2008                       src/fem/maxwell/doc/maxwell_weak_forms.md:367
-  Robinson 1978                      src/physics/gasmodels/cl_GM_EoS_AlphaFunctionFactory.hpp:40
+citations resolved : 509
+distinct unresolved: 0
+
+all citations resolve
 ```

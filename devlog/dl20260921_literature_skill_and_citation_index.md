@@ -10,14 +10,15 @@ contradicting the DOI beside it, and 49 works cited in the tree that resolved to
 over the new prose). **No jury round ran** — the session produced skill text, documentation and one
 tooling script, which the exemption in `code-with-jury` covers; `scripts/check_citations.py` has
 had no code audit and that is Christian's call to make.
-**Status:** COMPLETE for the skill, the index and the checker. Open: O3 (four works the tree cannot
-identify), R6 (whether the checker becomes a gate), O2 (marking which works are held locally).
+**Status:** COMPLETE — skill, index and checker landed; the checker reaches **0 unresolved**.
+O1 and O3 both resolved. Open: R6 (whether the checker becomes a gate) and O2 (marking which
+indexed works are held locally).
 **Literature References:** Messe et al. 2023 (its own bibliography settled the MUMPS and STRUMPACK
 citations). The index holds **122 works** under 234 accepted spellings; three further property-data
 sources went into `src/physics/materials/doc/material_property_sources.md`
 **Verification:** reviewed, not verified — no build or test gate applies. Two checkers ran:
-`scripts/check_citations.py` (505 resolved, 4 unresolved) and `scripts/check_doc_claims.py`
-(38/38). DOIs were confirmed against the Crossref REST API or transcribed from an in-tree source
+`scripts/check_citations.py` (**509 resolved, 0 unresolved, exit 0**) and
+`scripts/check_doc_claims.py` (38/38 at the time of the first commit). DOIs were confirmed against the Crossref REST API or transcribed from an in-tree source
 corroborated by a second in-tree entry; none was composed.
 **Exchange:** `tmp/ai_exchange/citation_index_sweep.md` — the Codex language sweep; its outcome and
 the two declined suggestions are distilled below
@@ -221,12 +222,42 @@ Two spellings became aliases rather than source edits: `Sousa 2022b` (the tree e
 the tree identifies. Every author-year citation in `src/` and `doc/` that names a findable work now
 resolves to a full reference.
 
+## O3 closed the same day: the checker reaches zero
+
+Christian supplied the two books and ruled on the fourth; the first settled on evidence.
+
+**`Herrmann 1978` does not exist.** A Crossref author search over 1970-1982 returns no Herrmann
+superconvergence paper — the only FEM Herrmann of 1978 is *Finite Element Analysis of Contact
+Problems*, unrelated. The theorem at `postprocessor_recovery_theory.md:603` (derivatives
+superconvergent at the Gauss points, `O(h^(p+1))` there against `O(h^p)` elsewhere) is **Barlow
+1976**, *Optimal stress locations in finite element models*, 10.1002/nme.1620100202. Attribution
+corrected, Barlow added to that document's reference list as item 5 with items 5-10 renumbered to
+6-11. The near-miss that probably produced the wrong name is Herrmann **1972**, *Interpretation of
+Finite Element Procedure as Stress Error Minimization Procedure* (10.1061/JMCEA3.0001684) — the
+variational companion to the result, not the `O(h^(p+1))` statement itself. Not indexed, because
+nothing cites it.
+
+`Kuczmann & Iványi 2008` is *The Finite Element Method in Magnetics*, Akadémiai Kiadó, Budapest,
+ISBN 978-963-05-8649-8. `Meunier 2008` is *The Finite Element Method for Electromagnetic Modeling*,
+ISTE/Wiley, 10.1002/9780470611173 — confirmed against Crossref, which also returned the print ISBN.
+
+`Robinson 1978` is indexed as **PR78** on Christian's ruling that PR78 is the standard name. It has
+no DOI and will not get one: the revision is grey literature rather than a journal article. The row
+describes the m(ω) branch for ω > 0.491 that `cl_GM_EoS_AlphaFunctionFactory.cpp:53-57` implements
+and points at the base equation, Peng & Robinson 1976. No source edit — `Robinson 1978`,
+`Peng Robinson 1978` and `PR78` are all accepted spellings on the row, per the minimal-rename rule.
+
+**`scripts/check_citations.py` now reports 509 resolved, 0 unresolved, and exits 0.** Every
+author-year citation in `src/` and `doc/` resolves to a full reference. That makes R6 — whether the
+checker joins the session checklist or the post-commit hook — a real choice for the first time,
+since it no longer fails by design.
+
 ## Status
 
 Reviewed, not verified. The skill files, the index and the devlog are text; the checker is a new
 Python script and has had no jury round — it is tooling, like `check_doc_claims.py`, and Christian
-decides whether that class takes one. `scripts/check_citations.py` exits 1 today by design: the 24
-unresolved works are the open task, not a failure of the run.
+decides whether that class takes one. `scripts/check_citations.py` **exits 0**: 509 citations
+resolve and none do not.
 
 A Codex language sweep ran over the new prose (luna/medium, slug `citation_index_sweep`, exchange
 entry stamped; `git status` identical before and after, so the round stayed read-only). It reported
@@ -238,4 +269,4 @@ Watertown MA **in 2014**" asserts a publication year where only the copyright li
 the entry keeps "copyright 2014".
 
 Not done: the four magnets books are in the index but still absent from the prose sections of
-`doc/literature_references.md`.
+`doc/literature_references.md`, and no sweep has run over the prose added after the first commit.

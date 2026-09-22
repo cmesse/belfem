@@ -198,6 +198,11 @@ second authoritative table.
 | Zienkiewicz & Zhu 1992; Zienkiewicz 1992; Zhu 1992 | Zienkiewicz & Zhu 1992 | O. C. Zienkiewicz, J. Z. Zhu, "The superconvergent patch recovery and a posteriori error estimates", Int. J. Numer. Methods Eng. 33(7): Part 1 1331-1364 (10.1002/nme.1620330702), Part 2 1365-1382 — the SPR algorithm the Maxwell postprocessor implements | 10.1002/nme.1620330703 |
 | Zienkiewicz & Zhu 1987; Zienkiewicz 1987; Zhu 1987 | Zienkiewicz & Zhu 1987 | O. C. Zienkiewicz, J. Z. Zhu, "A simple error estimator and adaptive procedure for practical engineering analysis", Int. J. Numer. Methods Eng. 24(2):337-357, 1987 | 10.1002/nme.1620240206 |
 
+| Barlow 1976 | Barlow 1976 | J. Barlow, "Optimal stress locations in finite element models", Int. J. Numer. Methods Eng. 10(2):243-251, 1976 — the superconvergence of derivatives at the Gauss points, which the Maxwell postprocessor's recovery rests on | 10.1002/nme.1620100202 |
+| Kuczmann & Iványi 2008; Kuczmann 2008; Ivanyi 2008; Iványi 2008 | Kuczmann & Iványi 2008 | M. Kuczmann, A. Iványi, *The Finite Element Method in Magnetics*. Akadémiai Kiadó, Budapest, 2008 | ISBN 978-963-05-8649-8 |
+| Meunier 2008 | Meunier 2008 | G. Meunier (ed.), *The Finite Element Method for Electromagnetic Modeling*. ISTE / Wiley, 2008; print ISBN 978-1-84821-030-1 | 10.1002/9780470611173 |
+| Robinson 1978; Peng Robinson 1978; Peng & Robinson 1978; PR78 | PR78 | The 1978 revision of the Peng-Robinson m(ω) correlation, universally cited as **PR78**: a second branch for ω > 0.491, implemented at `cl_GM_EoS_AlphaFunctionFactory.cpp:53-57` with the published pair's +0.0055 jump at the switch kept deliberately. It appeared in the grey literature rather than a journal, so it carries no DOI; the base equation is **Peng & Robinson 1976** (10.1021/i160057a011) | no DOI — cite as PR78 |
+
 <!-- END CITATION INDEX -->
 
 **The Agélas ambiguity.** The retired alias table lists `F1` as Agélas, Di Pietro & Masson 2008,
