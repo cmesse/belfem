@@ -13,6 +13,7 @@ set( SOURCES
         test_Tensor.cpp
         test_TensorKernels.cpp
         test_MathTools.cpp
+        test_Bezier.cpp
         test_GraphVertex.cpp
         test_GraphAlgorithms.cpp
         test_GraphTools.cpp

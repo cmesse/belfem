@@ -743,6 +743,117 @@ TEST( EigenSym, EigenSymAgreesWithEigenOnASymmetricMatrix )
     EXPECT_NEAR( tSym( 1 ), tGenMax, tTol );
 }
 
+// -----------------------------------------------------------------------------
+// eigen_sym: the spectrum is known in advance, only the upper triangle is read,
+// and the input is not written
+//
+// S = Q diag( 1, 2, 3, 7 ) Q^T with the rational orthogonal
+//     Q = 1/2 * { { 1, 1, 1, 1 }, { 1, 1, -1, -1 },
+//                 { 1, -1, 1, -1 }, { 1, -1, -1, 1 } } .
+// Every entry of S is a multiple of 1/4, so the construction below is exact
+// in floating point.
+// -----------------------------------------------------------------------------
+
+namespace
+{
+    void
+    build_spectral_matrix( belfem::Matrix< belfem::real > & aS )
+    {
+        const belfem::Matrix< belfem::real > tQ = { {  0.5,  0.5,  0.5,  0.5 },
+                                                    {  0.5,  0.5, -0.5, -0.5 },
+                                                    {  0.5, -0.5,  0.5, -0.5 },
+                                                    {  0.5, -0.5, -0.5,  0.5 } };
+
+        const belfem::Vector< belfem::real > tLambda = { 1.0, 2.0, 3.0, 7.0 };
+
+        aS.set_size( 4, 4, 0.0 );
+
+        for ( belfem::uint j = 0; j < 4; ++j )
+            for ( belfem::uint i = 0; i < 4; ++i )
+            {
+                belfem::real tSum = 0.0;
+                for ( belfem::uint k = 0; k < 4; ++k )
+                {
+                    tSum += tQ( i, k ) * tLambda( k ) * tQ( j, k );
+                }
+                aS( i, j ) = tSum;
+            }
+    }
+
+    // the six strictly-lower entries, none of them the mirror of its upper twin
+    void
+    scribble_lower_triangle( belfem::Matrix< belfem::real > & aA )
+    {
+        aA( 1, 0 ) = -7.5;
+        aA( 2, 0 ) =  9.25;
+        aA( 2, 1 ) = 11.0;
+        aA( 3, 0 ) = -0.125;
+        aA( 3, 1 ) =  3.75;
+        aA( 3, 2 ) = -6.5;
+    }
+}
+
+TEST( EigenSym, EigenSymRecoversAConstructedSpectrum )
+{
+    belfem::Matrix< belfem::real > tS;
+    build_spectral_matrix( tS );
+
+    belfem::Vector< belfem::real > tValues;
+    belfem::eigen_sym( tS, tValues );
+
+    ASSERT_EQ( tValues.length(), 4u );
+    EXPECT_NEAR( tValues( 0 ), 1.0, tTol );
+    EXPECT_NEAR( tValues( 1 ), 2.0, tTol );
+    EXPECT_NEAR( tValues( 2 ), 3.0, tTol );
+    EXPECT_NEAR( tValues( 3 ), 7.0, tTol );
+}
+
+TEST( EigenSym, EigenSymReadsOnlyTheUpperTriangle )
+{
+    // the whole lower triangle is garbage, the spectrum must not move.
+    // Armadillo prints one
+    //     warning: eig_sym(): given matrix is not symmetric
+    // line for this call in any build -- its conformance checks are on
+    // regardless of NDEBUG and sample two of the entries scribbled here. It
+    // is a warning, not a failure, and Blaze has no such check.
+    belfem::Matrix< belfem::real > tA;
+    build_spectral_matrix( tA );
+    scribble_lower_triangle( tA );
+
+    belfem::Vector< belfem::real > tValues;
+    belfem::eigen_sym( tA, tValues );
+
+    ASSERT_EQ( tValues.length(), 4u );
+    EXPECT_NEAR( tValues( 0 ), 1.0, tTol );
+    EXPECT_NEAR( tValues( 1 ), 2.0, tTol );
+    EXPECT_NEAR( tValues( 2 ), 3.0, tTol );
+    EXPECT_NEAR( tValues( 3 ), 7.0, tTol );
+}
+
+TEST( EigenSym, EigenSymLeavesTheInputIntact )
+{
+    // nothing may write the caller's matrix: the Blaze wrapper works on a copy
+    // because syev overwrites its argument, Armadillo copies inside eig_sym.
+    // Entries are compared through the accessor with an exact equality --
+    // data() is not the same layout under both backends, and a decomposition
+    // that touched the matrix at all is a defect. The scribbled lower
+    // triangle draws the same Armadillo warning as the previous test.
+    belfem::Matrix< belfem::real > tA;
+    build_spectral_matrix( tA );
+    scribble_lower_triangle( tA );
+
+    const belfem::Matrix< belfem::real > tA0( tA );
+
+    belfem::Vector< belfem::real > tValues;
+    belfem::eigen_sym( tA, tValues );
+
+    for ( belfem::uint j = 0; j < 4; ++j )
+        for ( belfem::uint i = 0; i < 4; ++i )
+        {
+            EXPECT_EQ( tA( i, j ), tA0( i, j ) );
+        }
+}
+
 TEST( Eigen, EigenResultLength )
 {
     belfem::Matrix< belfem::real > tA = { { 1.0, 0.0, 0.0 },

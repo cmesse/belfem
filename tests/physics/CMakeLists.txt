@@ -20,6 +20,7 @@ set( SOURCES
         test_MaterialDerivatives.cpp
         test_MaterialFactoryDeck.cpp
         test_MaterialValues.cpp
+        test_Database.cpp
         )
 
 set( LIBLIST

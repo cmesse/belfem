@@ -543,6 +543,167 @@ TYPED_TEST( LapackTest, GemmAccumulate )
     EXPECT_LT( tErr, S::tol() );
 }
 
+// The three mixed cases below fix m = 3, k = 5, n = 7. The dimensions are
+// pairwise distinct, so a dimension taken from the wrong transposition flag
+// cannot cancel against a second one, and every stored operand has an odd row
+// count, so under Blaze the column stride exceeds n_rows and the call depends
+// on lapack::leading_dimension() reading the stored shape rather than op().
+
+TYPED_TEST( LapackTest, GemmMixedNT )
+{
+    using S = Scalar< TypeParam >;
+
+    // op(A) = A is 3x5, op(B) = B^T is 5x7, C is 3x7
+    belfem::Matrix< TypeParam > tA( 3, 5 );
+    belfem::Matrix< TypeParam > tB( 7, 5 );
+    for ( uint i = 0; i < 3; ++i )
+        for ( uint l = 0; l < 5; ++l )
+            tA( i, l ) = S::mk( 0.3 + 0.7 * i - 0.4 * l, 0.2 * i - 0.1 * l );
+    for ( uint j = 0; j < 7; ++j )
+        for ( uint l = 0; l < 5; ++l )
+            tB( j, l ) = S::mk( 0.5 - 0.25 * j + 0.35 * l, 0.15 * j - 0.2 * l );
+
+    // a non-zero beta keeps the shape check on the caller's C and makes the
+    // accumulator term visible
+    belfem::Matrix< TypeParam > tC( 3, 7 );
+    for ( uint i = 0; i < 3; ++i )
+        for ( uint j = 0; j < 7; ++j )
+            tC( i, j ) = S::mk( 0.6 - 0.2 * i + 0.1 * j, 0.05 * i - 0.3 * j );
+
+    const TypeParam tAlpha = S::mk(  1.5, 0.25 );
+    const TypeParam tBeta  = S::mk( -0.5, 0.75 );
+
+    // reference written on the logical operands
+    belfem::Matrix< TypeParam > tR( 3, 7 );
+    for ( uint i = 0; i < 3; ++i )
+        for ( uint j = 0; j < 7; ++j )
+        {
+            TypeParam tSum = S::mk( 0.0, 0.0 );
+            for ( uint l = 0; l < 5; ++l ) tSum += tA( i, l ) * tB( j, l );
+            tR( i, j ) = tAlpha * tSum + tBeta * tC( i, j );
+        }
+
+    belfem::Matrix< TypeParam > tA0( tA );
+    belfem::Matrix< TypeParam > tB0( tB );
+
+    belfem::gemm( tA, tB, tC, tAlpha, tBeta, 'N', 'T' );
+
+    real tErr = 0.0;
+    for ( uint i = 0; i < 3; ++i )
+        for ( uint j = 0; j < 7; ++j )
+            tErr = std::max( tErr, ( real ) std::abs( tC( i, j ) - tR( i, j ) ) );
+    EXPECT_LT( tErr, S::tol() );
+
+    // both operands are taken by const reference and must survive the call
+    for ( uint i = 0; i < 3; ++i )
+        for ( uint l = 0; l < 5; ++l )
+            EXPECT_EQ( tA( i, l ), tA0( i, l ) );
+    for ( uint j = 0; j < 7; ++j )
+        for ( uint l = 0; l < 5; ++l )
+            EXPECT_EQ( tB( j, l ), tB0( j, l ) );
+}
+
+TYPED_TEST( LapackTest, GemmMixedTN )
+{
+    using S = Scalar< TypeParam >;
+
+    // op(A) = A^T is 3x5, op(B) = B is 5x7, C is 3x7
+    belfem::Matrix< TypeParam > tA( 5, 3 );
+    belfem::Matrix< TypeParam > tB( 5, 7 );
+    for ( uint i = 0; i < 3; ++i )
+        for ( uint l = 0; l < 5; ++l )
+            tA( l, i ) = S::mk( 0.3 + 0.7 * i - 0.4 * l, 0.2 * i - 0.1 * l );
+    for ( uint j = 0; j < 7; ++j )
+        for ( uint l = 0; l < 5; ++l )
+            tB( l, j ) = S::mk( 0.5 - 0.25 * j + 0.35 * l, 0.15 * j - 0.2 * l );
+
+    belfem::Matrix< TypeParam > tC( 3, 7 );
+    for ( uint i = 0; i < 3; ++i )
+        for ( uint j = 0; j < 7; ++j )
+            tC( i, j ) = S::mk( 0.6 - 0.2 * i + 0.1 * j, 0.05 * i - 0.3 * j );
+
+    const TypeParam tAlpha = S::mk(  1.5, 0.25 );
+    const TypeParam tBeta  = S::mk( -0.5, 0.75 );
+
+    belfem::Matrix< TypeParam > tR( 3, 7 );
+    for ( uint i = 0; i < 3; ++i )
+        for ( uint j = 0; j < 7; ++j )
+        {
+            TypeParam tSum = S::mk( 0.0, 0.0 );
+            for ( uint l = 0; l < 5; ++l ) tSum += tA( l, i ) * tB( l, j );
+            tR( i, j ) = tAlpha * tSum + tBeta * tC( i, j );
+        }
+
+    belfem::gemm( tA, tB, tC, tAlpha, tBeta, 'T', 'N' );
+
+    real tErr = 0.0;
+    for ( uint i = 0; i < 3; ++i )
+        for ( uint j = 0; j < 7; ++j )
+            tErr = std::max( tErr, ( real ) std::abs( tC( i, j ) - tR( i, j ) ) );
+    EXPECT_LT( tErr, S::tol() );
+}
+
+TYPED_TEST( LapackTest, GemmConjugateTranspose )
+{
+    using S = Scalar< TypeParam >;
+
+    // 'C' is the plain transpose for the real flavors and the conjugate
+    // transpose for the complex ones; Scalar< T >::conj is the identity on
+    // the reals, so one reference serves all four
+    belfem::Matrix< TypeParam > tA( 5, 3 );
+    belfem::Matrix< TypeParam > tB( 5, 7 );
+    for ( uint i = 0; i < 3; ++i )
+        for ( uint l = 0; l < 5; ++l )
+            tA( l, i ) = S::mk( 0.3 + 0.7 * i - 0.4 * l, 0.2 * i - 0.1 * l );
+    for ( uint j = 0; j < 7; ++j )
+        for ( uint l = 0; l < 5; ++l )
+            tB( l, j ) = S::mk( 0.5 - 0.25 * j + 0.35 * l, 0.15 * j - 0.2 * l );
+
+    const TypeParam tAlpha = S::mk( 1.5, 0.25 );
+
+    belfem::Matrix< TypeParam > tR( 3, 7 );
+    for ( uint i = 0; i < 3; ++i )
+        for ( uint j = 0; j < 7; ++j )
+        {
+            TypeParam tSum = S::mk( 0.0, 0.0 );
+            for ( uint l = 0; l < 5; ++l ) tSum += S::conj( tA( l, i ) ) * tB( l, j );
+            tR( i, j ) = tAlpha * tSum;
+        }
+
+    // beta == 0 takes the resize path, so C arrives unsized
+    belfem::Matrix< TypeParam > tC;
+    belfem::gemm( tA, tB, tC, tAlpha, S::mk( 0.0, 0.0 ), 'C', 'N' );
+
+    ASSERT_EQ( tC.n_rows(), 3u );
+    ASSERT_EQ( tC.n_cols(), 7u );
+
+    real tErr = 0.0;
+    for ( uint i = 0; i < 3; ++i )
+        for ( uint j = 0; j < 7; ++j )
+            tErr = std::max( tErr, ( real ) std::abs( tC( i, j ) - tR( i, j ) ) );
+    EXPECT_LT( tErr, S::tol() );
+
+    // both flags 'C': the right-hand operand is conjugate-transposed
+    // independently of the left one, so a 'C' -> 'T' slip on transb alone
+    // is visible on the complex flavors
+    belfem::Matrix< TypeParam > tBt( 7, 5 );
+    for ( uint j = 0; j < 7; ++j )
+        for ( uint l = 0; l < 5; ++l )
+            tBt( j, l ) = S::conj( tB( l, j ) );
+
+    belfem::Matrix< TypeParam > tCc;
+    belfem::gemm( tA, tBt, tCc, tAlpha, S::mk( 0.0, 0.0 ), 'C', 'C' );
+
+    ASSERT_EQ( tCc.n_rows(), 3u );
+    ASSERT_EQ( tCc.n_cols(), 7u );
+
+    tErr = 0.0;
+    for ( uint i = 0; i < 3; ++i )
+        for ( uint j = 0; j < 7; ++j )
+            tErr = std::max( tErr, ( real ) std::abs( tCc( i, j ) - tR( i, j ) ) );
+    EXPECT_LT( tErr, S::tol() );
+}
+
 // =============================================================================
 // getrf + getri ( inversion round trip )
 // =============================================================================
