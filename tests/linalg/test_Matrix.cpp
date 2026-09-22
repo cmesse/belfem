@@ -682,6 +682,44 @@ TEST( Matrix, InvRoundTrip )
     EXPECT_NEAR( tProduct( 1, 1 ), 1.0, tEps );
 }
 
+// the product is spelled as ONE source expression, B * inv( A ), so the
+// operand reaching operator* is whatever inv() returns: a wrapper that ever
+// hands back a lazy inverse again lands on the defective path here, whereas
+// a named Matrix temporary would take the Matrix * Matrix overload and hide
+// it; the shape is asserted before any entry is read because operator() is
+// unchecked in release
+TEST( Matrix, ProductWithInverseKeepsNonSquareShape )
+{
+    belfem::Matrix< belfem::real > tA = { { 2.0, 1.0 }, { 1.0, 3.0 } };
+    belfem::Matrix< belfem::real > tB = { { 1.0, 2.0 }, { 3.0, 4.0 }, { 5.0, 6.0 } };
+
+    belfem::Matrix< belfem::real > tC ;
+    tC = tB * belfem::inv( tA );
+
+    ASSERT_EQ( tC.n_rows(), 3u );
+    ASSERT_EQ( tC.n_cols(), 2u );
+
+    // B * adj( A ) / det( A ), adj( A ) = [[3, -1], [-1, 2]], det( A ) = 5
+    EXPECT_NEAR( tC( 0, 0 ), 1.0 / 5.0, tEps );
+    EXPECT_NEAR( tC( 0, 1 ), 3.0 / 5.0, tEps );
+    EXPECT_NEAR( tC( 1, 0 ), 5.0 / 5.0, tEps );
+    EXPECT_NEAR( tC( 1, 1 ), 5.0 / 5.0, tEps );
+    EXPECT_NEAR( tC( 2, 0 ), 9.0 / 5.0, tEps );
+    EXPECT_NEAR( tC( 2, 1 ), 7.0 / 5.0, tEps );
+
+    // the degenerate 1x1 inverse, after the 3x2 verdict is in
+    belfem::Matrix< belfem::real > tG = { { 2.0 }, { 4.0 } };
+    belfem::Matrix< belfem::real > tH = { { 4.0 } };
+
+    belfem::Matrix< belfem::real > tD ;
+    tD = tG * belfem::inv( tH );
+
+    ASSERT_EQ( tD.n_rows(), 2u );
+    ASSERT_EQ( tD.n_cols(), 1u );
+    EXPECT_NEAR( tD( 0, 0 ), 0.5, tEps );
+    EXPECT_NEAR( tD( 1, 0 ), 1.0, tEps );
+}
+
 // =============================================================================
 // §4.7  Inv2 and Inv3 (BELFEM-authored)  [semantic]
 // =============================================================================
