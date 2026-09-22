@@ -23,6 +23,7 @@ set( SOURCES
         test_BdfTimestepMethod.cpp
         test_DofSeeding.cpp
         test_DirichletPin.cpp
+        test_Pipette.cpp
         test_GhostSwitch.cpp
         test_BlockRebuild.cpp
         test_Tmatrix.cpp

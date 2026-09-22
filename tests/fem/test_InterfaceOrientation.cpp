@@ -17,6 +17,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <memory>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -2557,5 +2558,347 @@ TEST( InterfaceOrientation, ThinShellNormalRecoveryConductorAir2D )
     {
         EXPECT_NEAR( hm( i ), a[ i ], 1.0e-10 );
         EXPECT_NEAR( hs( i ), a[ i ], 1.0e-10 );
+    }
+}
+
+//------------------------------------------------------------------------------
+// Geometric contract of the sideset Calculator on a PENTA6TS master: the
+// normal is a unit vector, it points out of the master element, and the top
+// and bottom faces of one prism carry opposite normals. The surface
+// increment integrates to the physical measure of the face it belongs to.
+//
+// Facet indices and their node lists are read from the PENTA6TS facet table
+// in cl_Element_PENTA6TS.hpp, not from cl_Element_PENTA6.hpp -- only the TS
+// table governs a PENTA6TS element. That table gives
+//     index 0 : quad { 0, 1, 4, 3 }
+//     index 1 : quad { 1, 2, 5, 4 }
+//     index 2 : quad { 0, 3, 5, 2 }
+//     index 3 : tri  { 0, 2, 1 }   bottom, normal_penta case 3
+//     index 4 : tri  { 3, 4, 5 }   top,    normal_penta case 4
+//------------------------------------------------------------------------------
+
+namespace
+{
+    //! mean of an element's node coordinates
+    void
+    facet_element_centroid( mesh::Element * aElement, real aC[ 3 ] )
+    {
+        const uint tNumNodes = aElement->number_of_nodes();
+
+        for ( uint i = 0; i < 3; ++i )
+        {
+            aC[ i ] = 0.0 ;
+        }
+        for ( uint k = 0; k < tNumNodes; ++k )
+        {
+            for ( uint i = 0; i < 3; ++i )
+            {
+                aC[ i ] += aElement->node( k )->x( i );
+            }
+        }
+        for ( uint i = 0; i < 3; ++i )
+        {
+            aC[ i ] /= static_cast< real >( tNumNodes );
+        }
+    }
+
+    //! magnitude of ( aB - aA ) x ( aC - aA )
+    real
+    facet_cross_norm( const real aA[ 3 ], const real aB[ 3 ], const real aC[ 3 ] )
+    {
+        real tU[ 3 ];
+        real tV[ 3 ];
+        for ( uint i = 0; i < 3; ++i )
+        {
+            tU[ i ] = aB[ i ] - aA[ i ];
+            tV[ i ] = aC[ i ] - aA[ i ];
+        }
+        const real tNx = tU[ 1 ] * tV[ 2 ] - tU[ 2 ] * tV[ 1 ];
+        const real tNy = tU[ 2 ] * tV[ 0 ] - tU[ 0 ] * tV[ 2 ];
+        const real tNz = tU[ 0 ] * tV[ 1 ] - tU[ 1 ] * tV[ 0 ];
+
+        return std::sqrt( tNx * tNx + tNy * tNy + tNz * tNz );
+    }
+
+    //! copies the node coordinates of one facet of a volume element
+    void
+    facet_node_coords( mesh::Element * aElement,
+                       const uint      aFacetIndex,
+                       Matrix< real > & aX )
+    {
+        Cell< mesh::Node * > tNodes ;
+        aElement->get_nodes_of_facet( aFacetIndex, tNodes );
+
+        aX.set_size( 3, tNodes.size(), 0.0 );
+        for ( uint k = 0; k < tNodes.size(); ++k )
+        {
+            for ( uint i = 0; i < 3; ++i )
+            {
+                aX( i, k ) = tNodes( k )->x( i );
+            }
+        }
+    }
+
+    //! area of a planar quadrilateral, split into two triangles
+    real
+    facet_quad_area( const Matrix< real > & aX )
+    {
+        real tP[ 4 ][ 3 ];
+        for ( uint k = 0; k < 4; ++k )
+        {
+            for ( uint i = 0; i < 3; ++i )
+            {
+                tP[ k ][ i ] = aX( i, k );
+            }
+        }
+        return 0.5 * facet_cross_norm( tP[ 0 ], tP[ 1 ], tP[ 2 ] )
+             + 0.5 * facet_cross_norm( tP[ 0 ], tP[ 2 ], tP[ 3 ] );
+    }
+}
+
+// The master-side normal of the ghost facet is the lower prism's top face
+// ( normal_penta case 4 ). The bottom face of the upper prism is the same
+// triangle seen from the other side; the calculator exposes no slave-side
+// normal ( Calculator::normal reads the master Jacobian and the master facet
+// index only ), so the test reaches it through a second facet that makes the
+// upper prism the master at its own bottom index.
+TEST( InterfaceOrientation, GhostNormalsUnitOutwardOpposite )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    for ( int tFlip : { -1, 1 } )
+    {
+        SCOPED_TRACE( "flip " + std::to_string( tFlip ) );
+
+        fem::test::TS_TestGhostStack tStack( 0.1, tFlip );
+        fem::Calculator * tCalc = tStack.calculator();
+        tCalc->link( tStack.ghost_element() );
+
+        ASSERT_EQ( tStack.ghost_element()->facet()->index_on_master(),
+                   mesh::top_facet_index( ElementType::PENTA6TS ) );
+
+        // the footprint is extruded straight along +z, so the unit vector
+        // from the prism centroid to the face centroid IS the outward
+        // normal: the true cosine is one, not merely positive
+        real tPrismCenter[ 3 ];
+        real tFaceCenter[ 3 ];
+        facet_element_centroid( tStack.master(), tPrismCenter );
+        facet_element_centroid( tStack.ghost_element()->facet()->element(),
+                                tFaceCenter );
+
+        real tDir[ 3 ];
+        real tDirNorm = 0.0 ;
+        for ( uint i = 0; i < 3; ++i )
+        {
+            tDir[ i ] = tFaceCenter[ i ] - tPrismCenter[ i ];
+            tDirNorm += tDir[ i ] * tDir[ i ];
+        }
+        tDirNorm = std::sqrt( tDirNorm );
+        ASSERT_GT( tDirNorm, 0.0 );
+        for ( uint i = 0; i < 3; ++i )
+        {
+            tDir[ i ] /= tDirNorm ;
+        }
+
+        // normal() hands out one buffer, so every point is copied before
+        // the next one is requested
+        const uint tNumPoints = tCalc->num_intpoints();
+        ASSERT_GT( tNumPoints, 0u );
+        Matrix< real > tTop( 3, tNumPoints, 0.0 );
+
+        for ( uint k = 0; k < tNumPoints; ++k )
+        {
+            const Vector< real > & n = tCalc->normal( k );
+            ASSERT_EQ( n.length(), 3u );
+
+            real tLength = 0.0 ;
+            real tCosine = 0.0 ;
+            for ( uint i = 0; i < 3; ++i )
+            {
+                tTop( i, k ) = n( i );
+                tLength += n( i ) * n( i );
+                tCosine += n( i ) * tDir[ i ];
+            }
+
+            EXPECT_NEAR( std::sqrt( tLength ), 1.0, 1.0e-12 )
+                << "master normal is not a unit vector at point " << k ;
+            EXPECT_GT( tCosine, 1.0 - 1.0e-12 )
+                << "master normal does not point out of the master at point "
+                << k ;
+        }
+
+        // second facet on the same pair: master is the UPPER prism at its
+        // bottom index, so the dispatch reaches normal_penta case 3. The
+        // facet is local to this test and owns the TRI3 it wraps
+        mesh::ElementFactory tFactory ;
+        mesh::Element * tTri =
+                tFactory.create_element( ElementType::TRI3, 200 );
+        for ( uint k = 0; k < 3; ++k )
+        {
+            tTri->insert_node( tStack.slave()->node( k ), k );
+        }
+        std::unique_ptr< mesh::Facet > tBottomFacet( new mesh::Facet( tTri ) );
+        tBottomFacet->set_master( tStack.slave(),
+                mesh::bottom_facet_index( ElementType::PENTA6TS ) );
+        tBottomFacet->set_slave( tStack.master(),
+                mesh::top_facet_index( ElementType::PENTA6TS ), 1 );
+
+        tCalc->link( tBottomFacet.get() );
+
+        ASSERT_EQ( tCalc->master_integration()->weights().length(),
+                   tNumPoints )
+            << "the bottom face is integrated with a different rule than "
+               "the top face -- the opposite-normal check is not comparing "
+               "the same points" ;
+
+        real tMaxSum = 0.0 ;
+        for ( uint k = 0; k < tNumPoints; ++k )
+        {
+            const Vector< real > & n = tCalc->normal( k );
+
+            real tLength = 0.0 ;
+            for ( uint i = 0; i < 3; ++i )
+            {
+                tLength += n( i ) * n( i );
+                tMaxSum = std::max( tMaxSum,
+                        std::abs( n( i ) + tTop( i, k ) ) );
+            }
+            EXPECT_NEAR( std::sqrt( tLength ), 1.0, 1.0e-12 )
+                << "bottom normal is not a unit vector at point " << k ;
+        }
+
+        EXPECT_LT( tMaxSum, 1.0e-12 )
+            << "top and bottom face of the shared triangle must carry "
+               "opposite normals" ;
+    }
+}
+
+// The surface increment is scaled reciprocally to the integration weights,
+// so sum_k w_k dS_k is the physical measure of the face. This reads the
+// triangular top face the ghost sideset carries ( normal_penta case 4 ); the
+// three quadrilateral side faces are the test below.
+TEST( InterfaceOrientation, GhostSurfaceIncrementIntegratesToTheArea )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    fem::test::TS_TestGhostStack tStack( 0.1, -1 );
+    fem::Calculator * tCalc = tStack.calculator();
+    tCalc->link( tStack.ghost_element() );
+
+    // ---- top face: the footprint triangle ----
+    {
+        Matrix< real > tX ;
+        facet_node_coords( tStack.master(),
+                mesh::top_facet_index( ElementType::PENTA6TS ), tX );
+        ASSERT_EQ( tX.n_cols(), 3u );
+
+        real tP[ 3 ][ 3 ];
+        for ( uint k = 0; k < 3; ++k )
+        {
+            for ( uint i = 0; i < 3; ++i )
+            {
+                tP[ k ][ i ] = tX( i, k );
+            }
+        }
+        const real tArea = 0.5 * facet_cross_norm( tP[ 0 ], tP[ 1 ], tP[ 2 ] );
+        ASSERT_GT( tArea, 0.0 );
+
+        const Vector< real > & tW = tCalc->integration()->weights();
+        ASSERT_EQ( tW.length(), tCalc->num_intpoints() );
+        ASSERT_EQ( tCalc->master_integration()->weights().length(),
+                   tW.length() );
+
+        real tSum = 0.0 ;
+        for ( uint k = 0; k < tW.length(); ++k )
+        {
+            const real tdS = tCalc->dS( k );
+            ASSERT_TRUE( std::isfinite( tdS ) )
+                << "surface increment is not finite at point " << k ;
+            EXPECT_GT( tdS, 0.0 );
+            tSum += tW( k ) * tdS ;
+        }
+
+        EXPECT_NEAR( tSum, tArea, 1.0e-12 * tArea )
+            << "top face: integrated surface increment " << tSum
+            << " vs physical area " << tArea ;
+    }
+}
+
+//------------------------------------------------------------------------------
+
+// contract pinned: on each of the three quadrilateral side faces of a PENTA6TS
+// ( normal_penta cases 0, 1, 2 ) the surface increment integrates to the
+// physical face area. The quad rule runs its in-plane coordinate over [-1,1]
+// while the master Jacobian's in-plane rows are barycentric derivatives, so
+// each case carries a chain-rule factor 1/2; the three cases are separate
+// code and are pinned separately.
+//
+// The probe reuses the ghost sideset's calculator, which was allocated for a
+// TRI3 facet, so the facet it links carries a TRI3 placeholder: node
+// relinking is switched off because a four-node face does not fit into it,
+// and the slave is only there because Calculator::link( Facet ) asserts one
+// and resolves a slave integration index from it. normal_penta reads neither
+// -- it reads the master Jacobian, which comes from the master facet index
+// and the master node coordinates.
+TEST( InterfaceOrientation, PentaSideFacesSurfaceIncrementIntegratesToTheArea )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    fem::test::TS_TestGhostStack tStack( 0.1, -1 );
+    fem::Calculator * tCalc = tStack.calculator();
+
+    mesh::ElementFactory tFactory ;
+
+    for ( uint f = 0; f < 3; ++f )
+    {
+        tCalc->link( tStack.ghost_element() );
+
+        Matrix< real > tX ;
+        facet_node_coords( tStack.master(), f, tX );
+        ASSERT_EQ( tX.n_cols(), 4u ) << "side face " << f ;
+
+        const real tArea = facet_quad_area( tX );
+        ASSERT_GT( tArea, 0.0 ) << "side face " << f ;
+
+        mesh::Element * tTri =
+                tFactory.create_element( ElementType::TRI3, 201 + f );
+        for ( uint k = 0; k < 3; ++k )
+        {
+            tTri->insert_node( tStack.master()->node( k ), k );
+        }
+        std::unique_ptr< mesh::Facet > tSideFacet( new mesh::Facet( tTri ) );
+        tSideFacet->set_master( tStack.master(), f, false );
+        tSideFacet->set_slave( tStack.slave(), f, 1 );
+
+        tCalc->link( tSideFacet.get() );
+
+        // the master facet rule, not the sideset's own triangle rule: the
+        // side face is a quadrilateral and is integrated as one
+        const Vector< real > & tW = tCalc->master_integration()->weights();
+        ASSERT_GT( tW.length(), 0u ) << "side face " << f ;
+
+        real tSum = 0.0 ;
+        for ( uint k = 0; k < tW.length(); ++k )
+        {
+            const real tdS = tCalc->dS( k );
+            ASSERT_TRUE( std::isfinite( tdS ) )
+                << "side face " << f << ": surface increment is not finite at point " << k ;
+            EXPECT_GT( tdS, 0.0 ) << "side face " << f ;
+            tSum += tW( k ) * tdS ;
+        }
+
+        EXPECT_NEAR( tSum, tArea, 1.0e-12 * tArea )
+            << "PENTA side face " << f << ": integrated surface increment " << tSum
+            << " vs physical area " << tArea << " ( ratio "
+            << ( tArea > 0.0 ? tSum / tArea : 0.0 ) << " )" ;
     }
 }

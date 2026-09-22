@@ -2600,12 +2600,15 @@ namespace belfem
                         n( 1 ) = J( 2, 2 ) * ( J( 0, 0 )-J( 1, 0 ) )-J( 2, 0 ) * ( J( 0, 2 )-J( 1, 2 ) );
                         n( 2 ) = J( 2, 0 ) * ( J( 0, 1 )-J( 1, 1 ) )-J( 2, 1 ) * ( J( 0, 0 )-J( 1, 0 ) );
 
-                        // norm corresponds to surface
+                        // the in-plane rows of Jm are barycentric derivatives while
+                        // the quad rule runs its in-plane coordinate over [-1,1], so
+                        // the pullback onto the side face carries a chain-rule
+                        // factor 1/2 at every point, the same 1/2 a [-1,1] edge
+                        // coordinate puts into dx/dr ( Bathe, Ch. 5, Example 5.8 );
+                        // the axial half-thickness is already inside |n|
                         mSurfaceIncrement = norm( mNormal );
                         mNormal /= mSurfaceIncrement ;
-
-                        // using quadrilateral weights, Σ w = 4, hence divide by four
-                        mSurfaceIncrement *= 0.25;
+                        mSurfaceIncrement *= 0.5;
 
                         break ;
                     }
@@ -2615,12 +2618,15 @@ namespace belfem
                         n( 1 ) = J( 1, 0 ) * J( 2, 2 )-J( 1, 2 ) * J( 2, 0 );
                         n( 2 ) = J( 1, 1 ) * J( 2, 0 )-J( 1, 0 ) * J( 2, 1 );
 
-                        // norm corresponds to surface
+                        // the in-plane rows of Jm are barycentric derivatives while
+                        // the quad rule runs its in-plane coordinate over [-1,1], so
+                        // the pullback onto the side face carries a chain-rule
+                        // factor 1/2 at every point, the same 1/2 a [-1,1] edge
+                        // coordinate puts into dx/dr ( Bathe, Ch. 5, Example 5.8 );
+                        // the axial half-thickness is already inside |n|
                         mSurfaceIncrement = norm( mNormal );
                         mNormal /= mSurfaceIncrement ;
-
-                        // using quadrilateral weights, Σ w = 4, hence divide by four
-                        mSurfaceIncrement *= 0.25;
+                        mSurfaceIncrement *= 0.5;
 
                         break ;
                     }
@@ -2630,12 +2636,15 @@ namespace belfem
                         n( 1 ) = J( 0, 2 ) * J( 2, 0 )-J( 0, 0 ) * J( 2, 2 );
                         n( 2 ) = J( 0, 0 ) * J( 2, 1 )-J( 0, 1 ) * J( 2, 0 );
 
-                        // norm corresponds to surface
+                        // the in-plane rows of Jm are barycentric derivatives while
+                        // the quad rule runs its in-plane coordinate over [-1,1], so
+                        // the pullback onto the side face carries a chain-rule
+                        // factor 1/2 at every point, the same 1/2 a [-1,1] edge
+                        // coordinate puts into dx/dr ( Bathe, Ch. 5, Example 5.8 );
+                        // the axial half-thickness is already inside |n|
                         mSurfaceIncrement = norm( mNormal );
                         mNormal /= mSurfaceIncrement ;
-
-                        // using quadrilateral weights, Σ w = 4, hence divide by four
-                        mSurfaceIncrement *= 0.25;
+                        mSurfaceIncrement *= 0.5;
 
                         break ;
                     }
