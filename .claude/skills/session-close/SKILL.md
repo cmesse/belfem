@@ -138,9 +138,30 @@ If the post-commit autoreview hook is installed (`BELFEM_AUTOREVIEW=1`), check
 `tmp/ai_exchange/AUTOREVIEW_P0.flag` and report any P0 rather than leaving it in the file.
 `scripts/review_status.sh` shows commits since the last auto-review.
 
+## 7 — Sign off with the end marker
+
+**The final message of a close ends with this line, and nothing follows it:**
+
+```
+--- THE END ---
+```
+
+It exists for one reason: several sessions run at once in separate terminal windows, and a
+glance at the bottom of a window has to answer "is this one finished?". A marker is enough —
+the client does not need to exit, so nothing is killed and the scrollback survives.
+
+Two rules keep it honest:
+
+- **Only on a genuine close.** Not at the end of a long answer, not when work is merely paused.
+  It means: the devlog is written, the companions are updated, the commit is made, and nothing
+  is pending on my side.
+- **Anything unfinished is named directly above it.** Files deliberately left uncommitted, a
+  gate that was not run, a ruling still owed. The marker says "I am done", never "everything
+  is done" — a close with residue is still a close, but the residue is listed first.
+
 ## Never committed
 
-`.gitignore` excludes `nonfree/`, `archive/`, `literature/`, `tmp/` (so the whole exchange tier),
+`.gitignore` excludes `nonfree/`, `archive/`, `/literature/`, `tmp/` (so the whole exchange tier),
 `build/` and `cmake-build-*/`. `.claude/` **is** tracked, minus `settings.local.json` and the
 runtime state files — so a new skill or command belongs in the commit, and a peer's WIP skill
 does not.
