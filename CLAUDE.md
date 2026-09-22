@@ -75,6 +75,18 @@ Before substantial work, confirm all of the following:
 
 ## Build System
 
+**BELFEM is built against SCLS** (<https://belfem.lbl.gov/scls.html>), the Scientific Core
+Library Stack: one jointly built set of every default third-party dependency — Open MPI,
+BLAS/LAPACK, Armadillo and Blaze, STRUMPACK, MUMPS, SuperLU, PETSc, ARPACK, HDF5, Exodus,
+METIS, SCOTCH, and CMake itself. Activating a flavor
+(`source /opt/scls/<flavor>/share/scls/activate`) exports `$SCLS` and `$SCLS_FLAVOR`, which
+the configure reads unprompted. The build system does not *require* it — `belfem_find_package`
+falls back to `/usr` and `/usr/local` — but no other configuration is tested, so treat "does
+this work without SCLS" as an open question, never as an assumption. The dependency stack, the
+flavors, and everything `$SCLS` changes in the configure are in `doc/scls_toolchain.md`; when
+answering a build or dependency question, read that before reasoning from `CMakeLists.txt`
+alone.
+
 This project uses CMake. Build trees are created by the user (`cmake-build-debug/` and `build/` both exist and are shared across worktrees).
 
 **The user runs builds.** Do not invoke `make` or launch solver binaries unless explicitly asked — a partial or missing object file usually means a build is already in progress elsewhere in the shared tree.

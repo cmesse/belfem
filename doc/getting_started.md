@@ -9,11 +9,38 @@ point is the [Coding Philosophy](@ref doc_coding_philosophy).
 
 ## 1. Build
 
-BELFEM requires CMake (≥ 4.0), a C++17 compiler, a Fortran compiler, and —
-for parallel runs — **Open MPI**. A distribution's CMake is often older than
-that; use the one from the toolchain you build against. Open MPI is the only
-supported MPI: MPICH and Intel MPI are untested and the configure step
-refuses them (see
+### 1.1 The dependency stack
+
+Start with **[SCLS](https://belfem.lbl.gov/scls.html)**, the Scientific Core
+Library Stack. It packages every third-party library BELFEM links by default —
+Open MPI, BLAS/LAPACK, Armadillo and Blaze, STRUMPACK, MUMPS, SuperLU, PETSc,
+ARPACK, HDF5, Exodus, METIS and SCOTCH — built together, with one compiler and
+one integer width, and it carries a current CMake as well. It is what BELFEM is
+built, tested and run against. On Enterprise Linux 9:
+
+```bash
+sudo dnf install https://belfem.lbl.gov/scls/el9/x86_64/Packages/scls-release-2026-1.el9.noarch.rpm
+sudo dnf install scls-gcc
+source /opt/scls/gcc/share/scls/activate
+```
+
+Packages also exist for EL10, Amazon Linux 2023 and Ubuntu 24.04. macOS and other
+systems build from source. Activation exports `$SCLS` and `$SCLS_FLAVOR`, and
+BELFEM's CMake reads both automatically.
+
+You *can* build against libraries you assembled yourself: the search falls back to
+`/usr` and `/usr/local`, and `-D<PACKAGE>_DIR=…` points it elsewhere. We do not test
+that configuration, and an inconsistent stack fails inside a solver rather than at
+the link stage. [The SCLS toolchain](@ref doc_scls_toolchain) covers the flavors,
+their configure-time presets, and what to watch for when building without it.
+
+### 1.2 Configure and build
+
+Beyond the stack, BELFEM requires CMake (≥ 4.0), a C++17 compiler and a Fortran
+compiler. It also requires **Open MPI**: `USE_MPI` defaults `ON`, so a stock
+configure needs one. A distribution's CMake is often older than version 4.0, so
+use the one from the toolchain you build against. Open MPI is the only supported
+MPI: MPICH and Intel MPI are untested, and the configure step refuses them (see
 [MPI support](@ref doc_mpi_support)). The generator is pinned to Unix
 Makefiles.
 
@@ -31,10 +58,11 @@ checkout this is an optimized build: `USE_DEBUG` defaults to `OFF` (`-O2` with
 and the full assertion set when you need it. The full option list sits at the
 top of `CMakeLists.txt`.
 
-The one exception is a toolchain-driven default: if `$SCLS` is set and names
-the `debug` flavor, `USE_DEBUG` presets to `ON` instead. An explicit
-`-DUSE_DEBUG=…` always wins, and when a flavor is in play the configure
-summary prints it.
+The toolchain adds two exceptions. If `$SCLS` names the `debug` flavor,
+`USE_DEBUG` presets to `ON`. An `mkl` flavor presets `USE_MKL` and `USE_PARDISO`
+to `ON`. An explicit `-DUSE_DEBUG=…` always wins, and when a flavor is in play
+the configure summary prints it. The full table is in
+[The SCLS toolchain](@ref doc_scls_toolchain).
 
 ```bash
 make check    # run the test suite

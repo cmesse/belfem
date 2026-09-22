@@ -14,10 +14,36 @@ problem, and thermal quench simulation is built in.
 
 ## Building
 
-BELFEM builds with CMake and requires a C++17 compiler, a Fortran compiler,
-and — for parallel runs — **Open MPI** (the only supported MPI; MPICH and
-Intel MPI are refused at configure time). The generator is pinned to Unix
-Makefiles.
+### Get the dependencies first: SCLS
+
+BELFEM is developed against **[SCLS](https://belfem.lbl.gov/scls.html)**, the Scientific
+Core Library Stack. SCLS is one coherent, jointly built set of the third-party libraries
+BELFEM links by default: Open MPI, BLAS/LAPACK, Armadillo and Blaze, STRUMPACK, MUMPS,
+SuperLU, PETSc, ARPACK, HDF5, Exodus, METIS and SCOTCH. It carries a current CMake as well.
+On Enterprise Linux 9:
+
+```bash
+sudo dnf install https://belfem.lbl.gov/scls/el9/x86_64/Packages/scls-release-2026-1.el9.noarch.rpm
+sudo dnf install scls-gcc
+source /opt/scls/gcc/share/scls/activate
+```
+
+Packages also exist for EL10, Amazon Linux 2023 and Ubuntu 24.04. macOS and other systems
+build SCLS from source. The activation script exports `$SCLS` and `$SCLS_FLAVOR`, and
+BELFEM's CMake reads both automatically — no extra arguments.
+
+The build system does not *insist* on SCLS. Every library is also searched for under `/usr`
+and `/usr/local`, and `-D<PACKAGE>_DIR=…` points it elsewhere. But BELFEM is not built, tested
+or run against a hand-assembled set of distribution packages, and the mismatches such a set
+invites — two MPIs, two BLAS integer widths, two compilers' name mangling — surface inside a
+solver rather than at the link stage. **Install SCLS.** `doc/scls_toolchain.md` is the full
+story, including what each flavor presets in the configure step.
+
+### Configure and build
+
+Beyond the stack, BELFEM needs a C++17 compiler, a Fortran compiler and CMake ≥ 4.0. It
+also needs **Open MPI**, the only supported MPI: `USE_MPI` defaults `ON`, and MPICH and
+Intel MPI are refused at configure time. The generator is pinned to Unix Makefiles.
 
 ```bash
 mkdir build && cd build

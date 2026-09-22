@@ -15,6 +15,17 @@ All notable changes to BELFEM are recorded here. The format follows
   apart. It is the worked example for combining a `userdefined` current boundary condition
   with a material `defect { }` plugin in a single shared object. Nineteen decks now ship.
 
+- **The dependency stack is now documented.** `doc/scls_toolchain.md` names SCLS — the
+  Scientific Core Library Stack BELFEM is built, tested and run against — and covers what it
+  supplies, how to install and activate a flavor, and the four separate mechanisms that read
+  `$SCLS` during the configure: the build defaults derived from the flavor name, the
+  link/include/rpath directories, the package search order, and the compiler pin. It also states
+  plainly what the CMake does not state: SCLS is not enforced, the search falls back to `/usr`,
+  and no other configuration is tested. `README.md`, `doc/getting_started.md` and `CLAUDE.md`
+  now name the stack where a reader is about to run `cmake`; previously SCLS appeared in the
+  documentation only as a mechanism for presetting `USE_MKL`, `USE_PARDISO` and `USE_DEBUG`,
+  and was never introduced.
+
 ### Changed
 
 - **CMake 4.0 is now the minimum**, raised from 3.11 and applied everywhere the project states

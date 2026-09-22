@@ -86,6 +86,7 @@ PAGE_GROUPS = [
         "doc_examples_scripts",
         "doc_input_file_reference",
         "doc_parallel_execution",
+        "doc_scls_toolchain",
         "doc_mpi_support",
     ]),
     ("Extend a module", [

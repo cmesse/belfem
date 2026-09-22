@@ -56,6 +56,7 @@ each of these.
 - @subpage doc_examples_scripts
 - @subpage doc_input_file_reference
 - @subpage doc_parallel_execution
+- @subpage doc_scls_toolchain
 - @subpage doc_mpi_support
 
 ### Extend a module

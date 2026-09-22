@@ -46,3 +46,4 @@ Both AIs communicate uncertainty honestly rather than defaulting to confident ag
 - For codebase architecture, coding standards, and literature routing, see `CLAUDE.md`.
 - For documentation organization conventions, see `doc/documentation_guidelines.md`.
 - For the HPC design rationale, see `doc/coding_philosophy.md`.
+- For the dependency stack the build is configured against — SCLS — see `doc/scls_toolchain.md`.
