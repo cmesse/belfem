@@ -55,6 +55,157 @@ FVM papers (aliases F0–F4):
 | F3 | `ingram2010.txt` | Ingram, Wheeler, Yotov 2010, "A Multipoint Flux Mixed Finite Element Method on Hexahedra", SIAM J. Numer. Anal. 48(4):1281-1312, DOI:10.1137/090766176 |
 | F4 | `wheeler2011.txt` | Wheeler, Xue, Yotov 2011, "A Family of Multipoint Flux Mixed Finite Element Methods for Elliptic Problems on General Grids", Procedia CS 4:918-927, DOI:10.1016/j.procs.2011.04.097 |
 
+## Citation Key Index (machine-checked)
+
+**This table is the source of record for full references, DOIs, and ISBNs.**
+`scripts/check_citations.py` reads it between the markers below, scans `src/` and `doc/` for
+author-year citations, and reports any that do not resolve. Keep the table shape: the key cell may
+carry several accepted spellings separated by `;`, and the third cell is the full reference.
+
+Property-data sources are **not listed here**. They live in
+`src/physics/materials/doc/material_property_sources.md`, whose bibliography the checker reads as a
+second authoritative table.
+
+<!-- BEGIN CITATION INDEX -->
+
+| Key | Cite as | Reference | DOI / ISBN |
+|---|---|---|---|
+| Messe 2023 | Messe et al. 2023, §2.7 | C. Messe, N. Riva, S. Viarengo, G. Giard, F. Sirois, "BELFEM: a special purpose finite element code for the magnetodynamic modeling of high-temperature superconducting tapes", Supercond. Sci. Technol. 36:114001, 2023 | 10.1088/1361-6668/acf7f9 |
+| Messe 2022 | Messe 2022 | C. Messe, "A Special Purpose Finite-Element Framework for HTS Applications", 8th Int. Workshop on Numerical Modelling of HTS, 2022 | HAL:hal-03791404 |
+| Alves 2022a | Alves et al. 2022a, §III | B. de Sousa Alves, M. Laforest, F. Sirois, "A 3-D Finite-Element Thin-Shell Model for HTS Tapes", IEEE Trans. Appl. Supercond. 32:7500411, 2022 | 10.1109/TASC.2022.3143076 |
+| Alves 2022b; Sousa 2022b; de Sousa Alves 2022b | Alves et al. 2022b, Eq. 19 | B. de Sousa Alves, V. Lahtinen, M. Laforest, F. Sirois, "Thin-shell approach for modeling superconducting tapes in the H-φ formulation", Supercond. Sci. Technol. 35:024001, 2022 | 10.1088/1361-6668/ac3f9e |
+| Alves 2024 | Alves et al. 2024 | B. de Sousa Alves, A. Arsenault, F. Sirois, "2-D Thin-Shell Model Based on the H-φ-Formulation in COMSOL Multiphysics", IEEE Trans. Appl. Supercond. 34:7500910, 2024 | 10.1109/TASC.2024.3473850 |
+| Arsenault 2021 | Arsenault et al. 2021 | A. Arsenault, F. Sirois, F. Grilli, "Implementation of the H-φ Formulation in COMSOL Multiphysics for Simulating the Magnetization of Bulk Superconductors", IEEE Trans. Appl. Supercond. 31:6800111, 2021 | 10.1109/TASC.2020.3033998 |
+| Arsenault 2023 | Arsenault et al. 2023, §II | A. Arsenault, B. de Sousa Alves, G. Giard, F. Sirois, "Magnetodynamic H-φ Formulation", IEEE Trans. Appl. Supercond. 33:6801306, 2023 — **read with the 2026 erratum** | 10.1109/TASC.2023.3293449 |
+| Arsenault 2026 | Arsenault et al. 2026 (erratum) | A. Arsenault, B. de Sousa Alves, G. Giard, F. Sirois, Erratum to "Magnetodynamic H-φ Formulation", IEEE Trans. Appl. Supercond. 36, 2026 — corrects the air-domain coupling | 10.1109/TASC.2026.3686487 |
+| Denis 2026 | Denis et al. 2026 | L. Denis, B. Vanderheyden, C. Geuzaine, "Simultaneous Multi-Scale Homogeneous H-Phi Thin-Shell Model for Stacked HTS Coils", IEEE Trans. Appl. Supercond. 36, 2026 | 10.1109/TASC.2026.3652981 |
+| Dular 1997 | Dular et al. 1997 | P. Dular, F. Henrotte, F. Robert, A. Genon, W. Legros, "A Generalized Source Magnetic Field Calculation Method for Inductors of Any Shape", IEEE Trans. Magn. 33:1398-1401, 1997 | 10.1109/20.582518 |
+| Dular 1999 | Dular et al. 1999 | P. Dular, C. Geuzaine, W. Legros, "A Natural Method for Coupling Magnetodynamic H-Formulations and Circuit Equations", IEEE Trans. Magn. 35:1626-1629, 1999 | 10.1109/20.767308 |
+| Dular 2021 | Dular et al. 2021 | J. Dular, M. Harutyunyan, L. Bortot, S. Schöps, B. Vanderheyden, C. Geuzaine, "On the Stability of Mixed Finite-Element Formulations for High-Temperature Superconductors", IEEE Trans. Appl. Supercond. 31:8200412, 2021 | 10.1109/TASC.2021.3098724 |
+| Riva 2023 | Riva et al. 2023 | N. Riva, A. Halbach, M. Lyly, C. Messe, J. Ruuskanen, V. Lahtinen, "H-φ Formulation in Sparselizard Combined With Domain Decomposition Methods", IEEE Trans. Appl. Supercond. 33:4900405, 2023 | 10.1109/TASC.2023.3240389 |
+| Riva 2021 | Riva 2021, Ch. 5 | N. Riva, "Quench behavior of high-temperature superconductor tapes for power applications", PhD thesis, EPFL, 2021 | EPFL thesis 8754 |
+| Schnaubelt 2023 | Schnaubelt et al. 2023 | E. Schnaubelt, M. Wozniak, S. Schöps, A. Verweij et al., "Electromagnetic Simulation of No-Insulation Coils Using H-φ Thin Shell Approximation", IEEE Trans. Appl. Supercond. 33:4900906, 2023 | 10.1109/TASC.2023.3258905 |
+| Wozniak 2025 | Wozniak et al. 2025 | M. Wozniak, E. Schnaubelt, S. Atalay, B. Bordini, J. Dular et al., "Influence of Critical Current Defect on Operation, Quench Detection and Protection of a Conduction-Cooled Pancake REBCO Coil", IEEE Trans. Appl. Supercond. 35:4604006, 2025 | 10.1109/TASC.2025.3532246 |
+| Badel 2019 | Badel et al. 2019, §4.3 | A. Badel, B. Rozier, B. Ramdane, G. Meunier, P. Tixador, "Modelling of 'quench' or the occurrence and propagation of dissipative zones in REBCO high temperature superconducting coils", Supercond. Sci. Technol. 32:094001, 2019 — local file `badel2021` is the HAL deposit year | 10.1088/1361-6668/ab181f |
+| Lucchini 2025 | Lucchini 2025 | F. Lucchini, "Evaluating Magnetization Losses in 3-D CORC Tapes With Integral and Finite-Element Methods", IEEE Trans. Appl. Supercond. 35, 2025 — local file is misspelled `luccini2025` | 10.1109/TASC.2025.3544512 |
+| Aavatsmark 2002 | Aavatsmark 2002, §3 | I. Aavatsmark, "An Introduction to Multipoint Flux Approximations for Quadrilateral Grids", Comput. Geosci. 6:405-432, 2002 | 10.1023/A:1021291114475 |
+| Agelas & Masson 2008; Agélas & Masson 2008; Agélas 2008; Agelas 2008; Masson 2008 | Agelas & Masson 2008 | L. Agélas, R. Masson, "Convergence of the finite volume MPFA O scheme for heterogeneous anisotropic diffusion problems on general meshes", C. R. Acad. Sci. Paris 346:1007-1012, 2008 — **see the note below on the FVCA V paper** | 10.1016/j.crma.2008.07.015 |
+| Ingram 2010 | Ingram et al. 2010 | R. Ingram, M. F. Wheeler, I. Yotov, "A Multipoint Flux Mixed Finite Element Method on Hexahedra", SIAM J. Numer. Anal. 48:1281-1312, 2010 | 10.1137/090766176 |
+| Klausen & Winther 2006; Klausen 2006 | Klausen & Winther 2006 | R. A. Klausen, R. Winther, "Robust Convergence of Multi Point Flux Approximation on Rough Grids", Numer. Math. 104:317-337, 2006 | 10.1007/s00211-006-0023-4 |
+| Wheeler 2011 | Wheeler et al. 2011 | M. F. Wheeler, G. Xue, I. Yotov, "A Family of Multipoint Flux Mixed Finite Element Methods for Elliptic Problems on General Grids", Procedia Comput. Sci. 4:918-927, 2011 | 10.1016/j.procs.2011.04.097 |
+| Pellikka 2013 | Pellikka et al. 2013, Eq. 10 | M. Pellikka, S. Suuriniemi, L. Kettunen, C. Geuzaine, "Homology and Cohomology Computation in Finite Element Modeling", SIAM J. Sci. Comput. 35:B1195-B1214, 2013 | 10.1137/130906556 |
+| Chen & Freedman 2010; Chen 2010; Chen & Freedman 2011 | Chen & Freedman 2010 | C. Chen, D. Freedman, "Hardness Results for Homology Localization", Discrete Comput. Geom. 45:425-448 — conference version 2010, journal version 2011 | 10.1007/s00454-010-9322-8 |
+| Dey 2011 | Dey et al. 2011 | T. K. Dey, A. N. Hirani, B. Krishnamoorthy, "Optimal Homologous Cycles, Total Unimodularity, and Linear Programming", SIAM J. Comput. 40:1026-1044, 2011 | 10.1137/100800245 |
+| Dunfield & Hirani 2011; Dunfield 2011 | Dunfield & Hirani 2011 | N. M. Dunfield, A. N. Hirani, "The least spanning area of a knot and the optimal bounding chain problem", Proc. 27th Ann. Symp. Computational Geometry, 135-144, 2011 | 10.1145/1998196.1998218 |
+| Mrozek & Batko 2009; Mrozek 2009 | Mrozek & Batko 2009 | M. Mrozek, B. Batko, "Coreduction Homology Algorithm", Discrete Comput. Geom. 41:96-118, 2009 | 10.1007/s00454-008-9073-y |
+| Haken 1961 | Haken 1961 | W. Haken, "Theorie der Normalflächen", Acta Math. 105:245-375, 1961 | 10.1007/BF02559591 |
+| Costantini 1998 | Costantini 1998 | M. Costantini, "A Novel Phase Unwrapping Method Based on Network Programming", IEEE Trans. Geosci. Remote Sens. 36:813-821, 1998 | 10.1109/36.673674 |
+| Bathe 2016; Bathe 2014 | Bathe, §8.6 | K.-J. Bathe, *Finite Element Procedures*, 2nd ed., published by the author, Watertown MA; copyright 2014, the copy here is the 2016 4th printing. Prentice Hall published the **first** edition only | ISBN 978-0-9790049-5-7 |
+| Hughes 2000; Hughes 1987 | Hughes, Ch. 4 | T. J. R. Hughes, *The Finite Element Method: Linear Static and Dynamic Finite Element Analysis*. Dover, 2000 — unabridged reprint of Prentice-Hall, 1987; the local extraction is the 1987 printing | ISBN 0-13-317025-X (1987) |
+| Zienkiewicz 2013 | Zienkiewicz et al. 2013 (Vol. 1) | O. C. Zienkiewicz, R. L. Taylor, J. Z. Zhu, *The Finite Element Method: Its Basis and Fundamentals*, 7th ed. Butterworth-Heinemann (Elsevier), 2013 | ISBN 978-1-85617-633-0 |
+| Zienkiewicz 2014 | Zienkiewicz et al. 2014 (Vol. 2) | O. C. Zienkiewicz, R. L. Taylor, D. D. Fox, *The Finite Element Method for Solid and Structural Mechanics*, 7th ed. Butterworth-Heinemann (Elsevier), 2014 | ISBN 978-1-85617-634-7 |
+| Belytschko 2014 | Belytschko et al. 2014 | T. Belytschko, W. K. Liu, B. Moran, K. I. Elkhodary, *Nonlinear Finite Elements for Continua and Structures*, 2nd ed. Wiley, 2014 | ISBN 978-1-118-63270-3 |
+| Brenner & Scott 2008; Brenner 2008 | Brenner & Scott 2008, Ch. 5 | S. C. Brenner, L. R. Scott, *The Mathematical Theory of Finite Element Methods*, 3rd ed. Springer, 2008 | ISBN 978-0-387-75933-3 |
+| Boffi 2013 | Boffi et al. 2013, Ch. 3 | D. Boffi, F. Brezzi, M. Fortin, *Mixed Finite Element Methods and Applications*, Springer Series in Computational Mathematics 44. Springer, 2013 | 10.1007/978-3-642-36519-5 |
+| Monk 2003 | Monk 2003, §6.1 | P. Monk, *Finite Element Methods for Maxwell's Equations*. Oxford University Press, 2003 | ISBN not captured in the local extraction |
+| Arnold 2018 | Arnold 2018 | D. N. Arnold, *Finite Element Exterior Calculus*, CBMS-NSF Regional Conference Series in Applied Mathematics 93. SIAM, 2018 — **single author**; Falk and Winther are co-authors of the Acta Numerica articles, not of this book | ISBN 978-1-61197-553-6 |
+| Bronshtein 2015 | Bronshtein | I. N. Bronshtein, K. A. Semendyayev, G. Musiol, H. Mühlig, *Handbook of Mathematics*, 6th ed. Springer, 2015 | ISBN 978-3-662-46220-1 |
+| Cormen 2009 | Cormen et al. (CLRS), Ch. 26 | T. H. Cormen, C. E. Leiserson, R. L. Rivest, C. Stein, *Introduction to Algorithms*, 3rd ed. MIT Press, 2009 | ISBN 978-0-262-03384-8 |
+| Gross & Kotiuga 2004; Gross 2004 | Gross & Kotiuga, §3 | P. W. Gross, P. R. Kotiuga, *Electromagnetic Theory and Computation: A Topological Approach*, MSRI Publications 48. Cambridge University Press, 2004 | ISBN 0-521-80160-5 |
+| Iwasa 2009 | Iwasa 2009, §8.2 | Y. Iwasa, *Case Studies in Superconducting Magnets: Design and Operational Issues*, 2nd ed. Springer, 2009 | ISBN 978-0-387-09799-2 |
+| Russenschuck 2010 | Russenschuck 2010, Ch. 7 | S. Russenschuck, *Field Computation for Accelerator Magnets: Analytical and Numerical Methods for Electromagnetic Design and Optimization*. Wiley-VCH, 2010 | ISBN 978-3-527-40769-9 |
+| Glukhikh 2018 | Glukhikh et al. 2018 | V. Glukhikh, O. Filatov, B. Kolbasov (eds.), *Fundamentals of Magnetic Thermonuclear Reactor Design*. Woodhead Publishing (Elsevier), 2018 | ISBN 978-0-08-102470-6 |
+| Barth 2013 | Barth 2013, Ch. 3 | C. Barth, *High Temperature Superconductor Cable Concepts for Fusion Magnets*, dissertation, Karlsruhe Institute of Technology. KIT Scientific Publishing, 2013 | ISBN 978-3-7315-0065-0 |
+| Martin 2025 | Martin 2025, Ch. 5 | R. C. Martin, *Clean Code: A Handbook of Agile Software Craftsmanship*, 2nd ed. Pearson, 2025 — the copyright page reads 2026; BELFEM documents cite it as 2025 | ISBN 978-0-13-539857-9 |
+| Oliveira & Stewart 2006; Oliveira 2006 | Oliveira & Stewart 2006, §7.9 | S. Oliveira, D. E. Stewart, *Writing Scientific Software: A Guide to Good Style*. Cambridge University Press, 2006 | 10.1017/CBO9780511617973 |
+| Rouson 2011 | Rouson et al. 2011, §1.7 | D. Rouson, J. Xia, X. Xu, *Scientific Software Design: The Object-Oriented Way*. Cambridge University Press, 2011 | 10.1017/CBO9780511977381 |
+| Thomas & Hunt 2020; Thomas 2020; Hunt 2020 | Thomas & Hunt 2020, Topic 25 | D. Thomas, A. Hunt, *The Pragmatic Programmer: Your Journey to Mastery*, 20th anniversary ed. Addison-Wesley, 2020 — cite by Topic and Tip, never by page | ISBN 978-0-13-595705-9 |
+| Evans 2017 | Evans 2017, §3.2 | J. A. Evans, *Mathematical Foundations of the Finite Element Method*, lecture series, University of Colorado Boulder, 2017 | lecture notes |
+| Felippa IFEM | Felippa IFEM, Ch. 11 | C. A. Felippa, *Introduction to Finite Element Methods (IFEM)*, course notes, University of Colorado Boulder | course notes |
+| Rhyner 1993 | Rhyner 1993 | J. Rhyner, "Magnetic properties and AC-losses of superconductors with power-law current-voltage characteristics", Physica C 212:292-300, 1993 | DOI not confirmed locally |
+| Duron 2004 | Duron et al. 2004 | J. Duron, F. Grilli, B. Dutoit, S. Stavrev, "Modeling the E-J relation of high-Tc superconductors in an arbitrary current range", Physica C 401:231-235, 2004 | DOI not confirmed locally |
+| Plummer 1987 | Plummer & Evetts 1987 | C. P. Plummer, J. E. Evetts, "Dependence of the shape of the resistive transition on composite inhomogeneity in multifilamentary wires", IEEE Trans. Magn. 23(2):1179-1182, 1987 | DOI not confirmed locally |
+| Kim 1962 | Kim 1962 | Y. B. Kim, C. F. Hempstead, A. R. Strnad, "Critical persistent currents in hard superconductors", Phys. Rev. Lett. 9, 1962 — the Kim model, reached here through Messe et al. 2023 §2.6 | DOI not confirmed locally |
+| Arnold 2001 | Arnold et al. 2001 | D. N. Arnold, D. Boffi, R. S. Falk, L. Gastaldi, "Finite element approximation on quadrilateral meshes", Commun. Numer. Methods Eng. 17(11):805-812, 2001 | 10.1002/cnm.450 |
+| Arnold 2002 | Arnold et al. 2002 | D. N. Arnold, D. Boffi, R. S. Falk, "Approximation by quadrilateral finite elements", Math. Comp. 71(239):909-922, 2002 | 10.1090/S0025-5718-02-01439-4 |
+| Arnold 2005 | Arnold et al. 2005 | D. N. Arnold, D. Boffi, R. S. Falk, "Quadrilateral H(div) finite elements", SIAM J. Numer. Anal. 42(6):2429-2451, 2005 | 10.1137/S0036142903431924 |
+| Falk 2011 | Falk et al. 2011 | R. S. Falk, P. Gatto, P. Monk, "Hexahedral H(div) and H(curl) finite elements", ESAIM: M2AN 45(1):115-143, 2011 | 10.1051/m2an/2010034 |
+| Lüthi 1960; Luethi 1960 | Luethi 1960 | B. Luethi, *Widerstandsänderung von Metallen in hohen Magnetfeldern*, dissertation, ETH Zürich, 1960 — spelled `Luethi` in the materials bibliography | thesis |
+
+| Anderson 1965 | Anderson 1965 | D. G. Anderson, "Iterative procedures for nonlinear integral equations", J. ACM 12, 1965 | 10.1145/321296.321305 |
+| Walker & Ni 2011; Walker 2011; Ni 2011 | Walker & Ni 2011 | H. F. Walker, P. Ni, "Anderson acceleration for fixed-point iterations", SIAM J. Numer. Anal. 49, 2011 — the type-II form implemented here | 10.1137/10078356X |
+| Irons & Tuck 1969; Irons 1969 | Irons & Tuck 1969 | B. Irons, R. C. Tuck, "A version of the Aitken accelerator for computer iteration", Int. J. Numer. Meth. Eng. 1, 1969 | DOI not confirmed locally |
+| Küttler & Wall 2008; Kuettler & Wall 2008; Küttler 2008 | Küttler & Wall 2008 | U. Küttler, W. A. Wall, dynamic-relaxation fixed-point FSI coupling, Comput. Mech., 2008 | 10.1007/s00466-008-0255-5 |
+| Gustafsson 1988; Lundh & Söderlind 1988; Lundh 1988; Söderlind 1988 | Gustafsson, Lundh & Söderlind 1988 | K. Gustafsson, M. Lundh, G. Söderlind, "A PI stepsize control for the numerical solution of ordinary differential equations", BIT 28:270-287, 1988 | 10.1007/BF01934091 |
+| Gustafsson 1994 | Gustafsson 1994 | K. Gustafsson, "Control-theoretic techniques for stepsize selection in implicit Runge-Kutta methods", ACM TOMS 20(4):496-517, 1994 | 10.1145/198429.198437 |
+| Söderlind 2002; Soderlind 2002 | Söderlind 2002 | G. Söderlind, "Automatic control and adaptive time-stepping", Numerical Algorithms 31:281-310, 2002 | 10.1023/A:1021160023092 |
+| Söderlind 2003; Soderlind 2003 | Söderlind 2003 | G. Söderlind, "Digital filters in adaptive time-stepping", ACM TOMS 29(1):1-26, 2003 | 10.1145/641876.641877 |
+| Söderlind & Wang 2006; Soderlind & Wang 2006; Söderlind 2006 | Söderlind & Wang 2006 | G. Söderlind, L. Wang, "Adaptive time-stepping and computational stability", J. Comput. Appl. Math. 185:225-243, 2006 | 10.1016/j.cam.2005.03.008 |
+| Valli 2002; Carey & Coutinho 2002; Carey 2002; Coutinho 2002 | Valli, Carey & Coutinho 2002 | A. M. P. Valli, G. F. Carey, A. L. G. A. Coutinho, "Control strategies for timestep selection in simulation of coupled viscous flow and heat transfer", Commun. Numer. Meth. Engng 18(2):131-139, 2002 | 10.1002/cnm.475 |
+| Brenan 1996; Campbell & Petzold 1996; Campbell 1996; Petzold 1996 | Brenan, Campbell & Petzold 1996 | K. E. Brenan, S. L. Campbell, L. R. Petzold, *Numerical Solution of Initial-Value Problems in Differential-Algebraic Equations*. SIAM, 1996 | 10.1137/1.9781611971224 |
+| Hairer & Wanner 1996; Hairer 1996; Wanner 1996 | Hairer & Wanner 1996, II.4 | E. Hairer, G. Wanner, *Solving Ordinary Differential Equations II: Stiff and Differential-Algebraic Problems*. Springer, 1996 | DOI not confirmed locally |
+| Burman & Zunino 2006; Burman 2006; Zunino 2006 | Burman & Zunino 2006 | E. Burman, P. Zunino, weighted interior penalty for advection-diffusion with discontinuous coefficients, SIAM J. Numer. Anal. 44:1612-1638, 2006 | DOI not confirmed locally |
+| Ern 2009; Stephansen & Zunino 2009; Stephansen 2009; Zunino 2009 | Ern, Stephansen & Zunino 2009 | A. Ern, A. F. Stephansen, P. Zunino, symmetric weighted interior penalty with harmonic flux weighting, IMA J. Numer. Anal. 29:235-256, 2009 | DOI not confirmed locally |
+| Hansbo & Hansbo 2004; Hansbo 2004 | Hansbo & Hansbo 2004 | A. Hansbo, P. Hansbo, element-doubling / XFEM-equivalent formulation, Comput. Methods Appl. Mech. Engrg. 193(33-35):3523-3540, 2004 | 10.1016/j.cma.2003.12.041 |
+| Karypis & Kumar 1998; Karypis 1998; Kumar 1998 | Karypis & Kumar 1998 | G. Karypis, V. Kumar, multilevel nested dissection, the algorithm behind METIS, 1998 | DOI not confirmed locally |
+| George 1973 | George 1973 | A. George, "Nested Dissection of a Regular Finite Element Mesh", SIAM J. Numer. Anal., 1973 | DOI not confirmed locally |
+| Hirani & Krishnamoorthy 2011; Krishnamoorthy 2011; Hirani 2011 | Dey et al. 2011 | see **Dey 2011** — the same work, cited in `src/homology/doc/` by its second and third authors | 10.1137/100800245 |
+| Freedman 2010; Freedman 2011 | Chen & Freedman 2010 | see **Chen & Freedman 2010** — the same work cited by its second author | 10.1007/s00454-010-9322-8 |
+| Geuzaine & Legros 1999; Geuzaine 1999; Legros 1999 | Dular et al. 1999 | see **Dular 1999** — cited in `src/homology/doc/` by its second and third authors | 10.1109/20.767308 |
+| Kaczynski 2004; Kaczynski & Mischaikow & Mrozek 2004 | Kaczynski et al. 2004 | T. Kaczynski, K. Mischaikow, M. Mrozek, *Computational Homology*, Applied Mathematical Sciences. Springer, 2004 — the chain complex reduction (CCR) and Smith normal form behind `fn_Smith.cpp` | DOI not confirmed locally |
+| O'Neal 1965; O'Neil 1965; O'Neal 1964; O'Neil 1964 | O'Neal et al. 1965 | H. R. O'Neal et al., Phys. Rev. 137, A748, 1965 — the materials bibliography keys this as `O'Neil 1965`, and the code cites it as 1964; the author is O'Neal | 10.1103/PhysRev.137.A748 |
+| Launey 1959; Launay 1959; De Launay 1959 | De Launay 1959 | J. De Launay et al., J. Phys. Chem. Solids, 1959 — spelled `Launey` in `cl_Material_Copper.cpp` | 10.1016/0022-3697(59)90038-1 |
+
+| Amestoy 2000; Amestoy & Duff 2000; Duff & L'Excellent 2000; Duff 2000; L'Excellent 2000 | Amestoy, Duff & L'Excellent 2000 | P. R. Amestoy, I. S. Duff, J.-Y. L'Excellent, "Multifrontal parallel distributed symmetric and unsymmetric solvers", Comput. Methods Appl. Mech. Engrg. 184:501-520, 2000 — the MUMPS paper, reference [24] of Messe et al. 2023 | 10.1016/S0045-7825(99)00242-X |
+| Ghysels 2016; Ghysels & Li 2016 | Ghysels et al. 2016 | P. Ghysels, X. S. Li, F.-H. Rouet, S. Williams, A. Napov, "An Efficient Multicore Implementation of a Novel HSS-Structured Multifrontal Solver Using Randomized Sampling", SIAM J. Sci. Comput. 38(5):S358-S384, 2016 — the STRUMPACK paper, reference [26] of Messe et al. 2023 | 10.1137/15M1010117 |
+| Grigorieff 1983 | Grigorieff 1983 | R. D. Grigorieff, "Stability of multistep-methods on variable grids", Numer. Math. 42:359-377, 1983 — the variable-grid zero-stability bound the BDF growth clamp rests on | 10.1007/BF01389580 |
+
+| Nédélec 1980; Nedelec 1980 | Nédélec 1980 | J. C. Nédélec, "Mixed finite elements in R³", Numer. Math. 35:315-341, 1980 — the first-kind edge-element family | 10.1007/BF01396415 |
+| Nédélec 1986; Nedelec 1986 | Nédélec 1986 | J. C. Nédélec, "A new family of mixed finite elements in R³", Numer. Math. 50:57-81, 1986 — the second-kind family | 10.1007/BF01389668 |
+| Zaglmayr 2006 | Zaglmayr 2006 | S. Zaglmayr, *High Order Finite Element Methods for Electromagnetic Field Computation*, PhD thesis, Johannes Kepler University Linz, 2006 | thesis |
+| Schoof & Yarberry 1994; Schoof 1994; Yarberry 1994 | Schoof & Yarberry 1994 | L. A. Schoof, V. R. Yarberry, "EXODUS II: A Finite Element Data Model", SAND92-2137, Sandia National Laboratories, 1994 — the node and edge numbering BELFEM follows | SAND92-2137 |
+| Bíró & Preis 1989; Biro & Preis 1989; Bíró 1989; Preis 1989 | Bíró & Preis 1989 | O. Bíró, K. Preis, "On the use of the magnetic vector potential in the finite-element analysis of three-dimensional eddy currents", IEEE Trans. Magn. 25(4):3145-3159, 1989 — the classical Coulomb-gauge penalty for the A-formulation | 10.1109/20.34388 |
+| Juntunen & Stenberg 2009; Juntunen & Stenberg 2008; Juntunen 2009; Stenberg 2009 | Juntunen & Stenberg 2009 | M. Juntunen, R. Stenberg, "Nitsche's method for general boundary conditions", Math. Comp. 78(267):1353-1374 — printed in the 2009 volume; Crossref records the 2008 online date | 10.1090/S0025-5718-08-02183-2 |
+| Shahbazi 2005 | Shahbazi 2005 | K. Shahbazi, "An explicit expression for the penalty parameter of the interior penalty method", J. Comput. Phys. 205:401-407, 2005 | 10.1016/j.jcp.2004.11.017 |
+| Hayasaka & Ito 2019; Hayasaka 2019; Ito 2019 | Hayasaka & Ito 2019 | R. Hayasaka, S. Ito, H. Hashizume, "Evaluation of Interface Resistance in a REBCO Tape at Different Temperatures by Contact-Probing Current Transfer Length Method", IEEE Trans. Appl. Supercond. 29:1-5, 2019 | 10.1109/TASC.2019.2895603 |
+
+| Leachman 2009; Leachman & Jacobsen 2009; Penoncello & Lemmon 2009; Penoncello 2009; Lemmon 2009 | Leachman et al. 2009 | J. W. Leachman, R. T Jacobsen, S. G. Penoncello, E. W. Lemmon, fundamental Helmholtz equation of state for parahydrogen, normal hydrogen and orthohydrogen, J. Phys. Chem. Ref. Data, 2009 — validity to 1000 K and 2000 MPa | 10.1063/1.3160306 |
+| Muzny 2013; Muzny & Huber 2013; Huber 2013; Kazakov 2013 | Muzny et al. 2013 | C. D. Muzny, M. L. Huber, A. F. Kazakov, viscosity correlation for normal hydrogen, J. Chem. Eng. Data 58:969-979, 2013. **BELFEM applies the 2022 erratum**, J. Chem. Eng. Data 67:2855, 10.1021/acs.jced.2c00523 — without it the correlation is wrong | 10.1021/je301273j |
+| Assael 2011; Assael & Huber 2011 | Assael et al. 2011 | M. J. Assael, S. K. Assael, M. L. Huber, R. A. Perkins, Y. Takata, thermal conductivity of hydrogen, J. Phys. Chem. Ref. Data 40:033101, 2011 — separate coefficient tables for normal and parahydrogen | 10.1063/1.3606499 |
+| Lemmon & Jacobsen 2004; Lemmon 2004; Jacobsen 2004 | Lemmon & Jacobsen 2004 | E. W. Lemmon, R. T Jacobsen, viscosity and thermal conductivity of nitrogen, argon, oxygen and air, Int. J. Thermophys. 25:21-69, 2004 — one functional form, four fluids | 10.1023/B:IJOT.0000022327.04529.f3 |
+| Friend 1989; Friend & Ely 1989; Ely 1989; Ingham 1989 | Friend et al. 1989 | D. G. Friend, J. F. Ely, H. Ingham, "Thermophysical Properties of Methane", J. Phys. Chem. Ref. Data 18(2):583-638, 1989 | 10.1063/1.555828 |
+
+| Soave 1972 | Soave 1972 | G. Soave, "Equilibrium Constants from a Modified Redlich-Kwong Equation of State", Chem. Eng. Sci. 27(6):1197-1203, 1972 | 10.1016/0009-2509(72)80096-4 |
+| Peng & Robinson 1976; Peng 1976 | Peng & Robinson 1976 | D.-Y. Peng, D. B. Robinson, "A New Two-Constant Equation of State", Ind. Eng. Chem. Fundam. 15(1):59-64, 1976 | 10.1021/i160057a011 |
+| Setzmann & Wagner 1991; Setzmann 1991; Wagner 1991 | Setzmann & Wagner 1991 | U. Setzmann, W. Wagner, "A New Equation of State and Tables of Thermodynamic Properties for Methane", J. Phys. Chem. Ref. Data 20(6):1061-1155, 1991 | 10.1063/1.555898 |
+| Schmidt & Wagner 1985; Schmidt 1985; Wagner 1985 | Schmidt & Wagner 1985 | R. Schmidt, W. Wagner, "A New Form of the Equation of State for Pure Substances", Fluid Phase Equilib. 19(3):175-200, 1985 | 10.1016/0378-3812(85)87016-3 |
+| Span 2000 | Span et al. 2000 | R. Span, E. W. Lemmon, R. T Jacobsen, W. Wagner, A. Yokozeki, "A Reference Equation of State for the Thermodynamic Properties of Nitrogen", J. Phys. Chem. Ref. Data 29(6):1361-1433, 2000 | 10.1063/1.1349047 |
+| Wilke 1950 | Wilke 1950 | C. R. Wilke, "A Viscosity Equation for Gas Mixtures", J. Chem. Phys. 18:517-519, 1950 | 10.1063/1.1747673 |
+| Gordon & McBride 1994; Gordon 1994; McBride 1994 | Gordon & McBride 1994 | S. Gordon, B. J. McBride, "Computer Program for Calculation of Complex Chemical Equilibrium Compositions and Applications", NASA Reference Publication 1311, 1994 — the CEA program; mixture rules Eqs. (5.3)-(5.7) | NASA RP-1311 |
+| Prausnitz & Poling 1987; Reid 1987; Poling 1987 | Reid, Prausnitz & Poling 1987 | R. C. Reid, J. M. Prausnitz, B. E. Poling, *The Properties of Gases and Liquids*, 4th ed. McGraw-Hill, 1987 | book |
+| Prausnitz & O'Connell 2001; Poling 2001; O'Connell 2001 | Poling, Prausnitz & O'Connell 2001 | B. E. Poling, J. M. Prausnitz, J. P. O'Connell, *The Properties of Gases and Liquids*, 5th ed. McGraw-Hill, 2001 | book |
+| Stewart & Lightfoot 2007; Bird 2007; Lightfoot 2007 | Bird, Stewart & Lightfoot 2007 | R. B. Bird, W. E. Stewart, E. N. Lightfoot, *Transport Phenomena*, 2nd ed. Wiley, 2007 | book |
+| Smith & Missen 1982; Missen 1982 | Smith & Missen 1982 | W. R. Smith, R. W. Missen, *Chemical Reaction Equilibrium Analysis*. Wiley-Interscience, 1982 | book |
+| Anderson 2003 | Anderson 2003 | J. D. Anderson, *Modern Compressible Flow*, 3rd ed. McGraw-Hill, 2003 | book |
+| Shapiro 1953 | Shapiro 1953 | A. H. Shapiro, *The Dynamics and Thermodynamics of Compressible Fluid Flow*. Ronald Press, 1953 | book |
+| Cuthill & McKee 1969; Cuthill 1969; McKee 1969 | Cuthill & McKee 1969 | E. Cuthill, J. McKee, "Reducing the bandwidth of sparse symmetric matrices", Proc. 1969 24th ACM National Conference, 157-172 | 10.1145/800195.805928 |
+| Liu & Sherman 1976; Sherman 1976 | Liu & Sherman 1976 | W.-H. Liu, A. H. Sherman, "Comparative Analysis of the Cuthill-McKee and the Reverse Cuthill-McKee Ordering Algorithms for Sparse Matrices", SIAM J. Numer. Anal. 13:198-213, 1976 | 10.1137/0713020 |
+| Stockmeyer 1976; Gibbs 1976; Poole 1976; Gibbs & Poole 1976 | Gibbs, Poole & Stockmeyer 1976 | N. E. Gibbs, W. G. Poole Jr., P. K. Stockmeyer, "An Algorithm for Reducing the Bandwidth and Profile of a Sparse Matrix", SIAM J. Numer. Anal. 13:236-250, 1976 — the RCM start-vertex heuristic | 10.1137/0713023 |
+| Dunavant 1985 | Dunavant 1985 | D. A. Dunavant, "High degree efficient symmetrical Gaussian quadrature rules for the triangle", Int. J. Numer. Methods Eng. 21:1129-1148, 1985 | 10.1002/nme.1620210612 |
+| Stroud 1971 | Stroud 1971 | A. H. Stroud, *Approximate Calculation of Multiple Integrals*. Prentice-Hall, 1971 | book |
+| Gear 1971 | Gear 1971 | C. W. Gear, *Numerical Initial Value Problems in Ordinary Differential Equations*. Prentice-Hall, 1971 — the BDF methods | book |
+| Jin 2014 | Jin 2014, Ch. 6 | J.-M. Jin, *The Finite Element Method in Electromagnetics*, 3rd ed. Wiley, 2014 | book |
+| Zienkiewicz & Zhu 1992; Zienkiewicz 1992; Zhu 1992 | Zienkiewicz & Zhu 1992 | O. C. Zienkiewicz, J. Z. Zhu, "The superconvergent patch recovery and a posteriori error estimates", Int. J. Numer. Methods Eng. 33(7): Part 1 1331-1364 (10.1002/nme.1620330702), Part 2 1365-1382 — the SPR algorithm the Maxwell postprocessor implements | 10.1002/nme.1620330703 |
+| Zienkiewicz & Zhu 1987; Zienkiewicz 1987; Zhu 1987 | Zienkiewicz & Zhu 1987 | O. C. Zienkiewicz, J. Z. Zhu, "A simple error estimator and adaptive procedure for practical engineering analysis", Int. J. Numer. Methods Eng. 24(2):337-357, 1987 | 10.1002/nme.1620240206 |
+
+<!-- END CITATION INDEX -->
+
+**The Agélas ambiguity.** The retired alias table lists `F1` as Agélas, Di Pietro & Masson 2008,
+"A Symmetric and Coercive Finite Volume Scheme for Multiphase Porous Media Flow" (FVCA V,
+DOI:10.1515/JNUM.2008.006). The local extraction, `agelas2008.txt`, is a different work — the
+two-author C. R. Acad. Sci. note above. Both are real; BELFEM routes to the coercivity result in
+the local one. Cite whichever work you actually read, and keep the DOIs apart.
+
 ---
 
 ## Overview
@@ -116,7 +267,7 @@ Start with **textbooks** if your question relates to:
 
 ### Core References
 
-**Bathe, K.-J.** *Finite Element Procedures*, 2nd ed., 4th printing. Prentice Hall, 2016.
+**Bathe, K.-J.** *Finite Element Procedures*, 2nd ed., published by the author, Watertown MA, copyright 2014; the copy held here is the 2016 4th printing. ISBN 978-0-9790049-5-7. Prentice Hall published only the first edition.
 - **Use for:** Robustness, reliability, production code implementation
 - **Key chapters:** Ch. 4 (formulation), Ch. 5 (elements), Ch. 8 (solvers), Ch. 9 (time integration)
 - **Personality:** Disciplined engineer — emphasizes proven, robust methods
@@ -161,7 +312,7 @@ Start with **textbooks** if your question relates to:
 
 ### Specialized Advanced References
 
-**Arnold, D.N., Falk, R.S., and Winther, R.** *Finite Element Exterior Calculus*. SIAM, 2018.
+**Arnold, D.N.** *Finite Element Exterior Calculus*, CBMS-NSF Regional Conference Series in Applied Mathematics 93. SIAM, 2018. ISBN 978-1-61197-553-6. Arnold is the sole author; Falk and Winther co-authored the Acta Numerica articles, not this book.
 - **Use for:** FEEC theory, topological foundations of FEM spaces
 - **Key topics:** de Rham complex, structure preservation, why FEM spaces must exist
 - **Personality:** Topologist — explains the mathematical structure underlying FEM

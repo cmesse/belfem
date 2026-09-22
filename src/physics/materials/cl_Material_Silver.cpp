@@ -34,7 +34,7 @@ namespace belfem
          * - Thermal expansion: Touloukian dataset
          * - Specific heat: Touloukian dataset
          * - Resistivity: Matula, Bloch-Grüneisen model with reference at 273.15K
-         * - Thermal conductivity: Fitted to Mendelssohn 1952, Gerritsen 1952, Li 2015
+         * - Thermal conductivity: Fitted to Mendelssohn 1952, Gerritsen 1956, Li 2015
          *   NOTE: Silver conductivity data with RRR is surprisingly sparse
          * - Magnetoresistance (Kohler): Lüthi 1960, Strom-Olsen 1967, Stout 1939, Iwasa 1993
          */
@@ -61,7 +61,7 @@ namespace belfem
              * silver in conjunction with the RRR value are surprisingly sparse.
              * Main data sources:
              * - Mendelssohn 1952, sample Agm RRR 30.9, 10.1088/0370-1298/65/6/301
-             * - Gerritsen 1952, sample AG2T, RRR 407, 10.1016/S0031-8914(56)90035-0
+             * - Gerritsen 1956, sample AG2T, RRR 407, 10.1016/S0031-8914(56)90035-0
              * - Li 2015, 10.1088/1757-899X/102/1/012027
              */
             this->set_lambda_coefficients(

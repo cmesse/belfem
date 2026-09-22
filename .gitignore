@@ -29,7 +29,8 @@
 # ── Non-public modules and external trees ─────────────────────────────────────
 nonfree/
 archive/
-literature/
+# anchored: a bare pattern would also match any nested directory of this name
+/literature/
 tmp/
 
 # AI-only, ephemeral per-task exchange scratch — must never be committed.

@@ -88,7 +88,7 @@ construction.
 | e3sconf 2024 | (chromium expansion dataset) | 2024 | E3S Web of Conferences | 10.1051/e3sconf/202459202009 |
 | Smith-Fickett 1995 | D. R. Smith, F. R. Fickett | 1995 | J. Res. NIST 100 | 10.6028/jres.100.012 |
 | Mendelssohn 1952 | K. Mendelssohn et al. | 1952 | Proc. Phys. Soc. A 65 | 10.1088/0370-1298/65/6/301 |
-| Gerritsen 1956 | A. N. Gerritsen | 1956 | Physica | 10.1016/S0031-8914(56)90035-0 |
+| Gerritsen 1956 | A. N. Gerritsen, J. O. Linde | 1956 | Physica 22, 821 (thermal conductivity of dilute silver alloys) | 10.1016/S0031-8914(56)90035-0 |
 | Li 2015 | Li et al. | 2015 | IOP Conf. Ser.: Mater. Sci. Eng. 102 | 10.1088/1757-899X/102/1/012027 |
 | Stout 1939 | J. W. Stout et al. | 1939 | J. Am. Chem. Soc. | 10.1021/ja01871a006 |
 | Iwasa 1993 | Y. Iwasa et al. | 1993 | Cryogenics | 10.1016/0011-2275(93)90199-X |
@@ -122,6 +122,9 @@ construction.
 | Lang 1988 | M. Lang et al. | 1988 | Z. Phys. B | 10.1007/BF01312506 |
 | Lei-Ledbetter 1991 | M. Lei, H. Ledbetter | 1991 | NISTIR 3980, Fig. 4.3 | report |
 | Sommerfeld 2003 | Sommerfeld et al. | 2003 | Phys. Rev. B 67, 174520 | 10.1103/PhysRevB.67.174520 |
+| Giebe-Blechschmidt 1931 | E. Giebe, E. Blechschmidt | 1931 | Ann. Phys. 403, 905 (magnetization dependence of Young's modulus in ferromagnetic rods — the Delta-E effect; reached via Ledbetter-Reed 1973, Table 9) | 10.1002/andp.19314030802 |
+| Koester-Franz 1961 | W. Koester (Köster), H. Franz | 1961 | Metallurgical Reviews 6(1), 1 ("Poisson's Ratio for Metals and Alloys") | 10.1179/mtlr.1961.6.1.1 |
+| Zou-Balandin 2001 | J. Zou, A. Balandin | 2001 | J. Appl. Phys. 89, 2932 ("Phonon heat conduction in a semiconductor nanowire"); the tau model and the Gamma mass-variance parameter | 10.1063/1.1345515 |
 | CRC Handbook | CRC Handbook of Chemistry and Physics | n/a | CRC Press (isotope masses and abundances) | edition not stated in-code |
 
 ## Known gaps (as found in the sources, 2026-08-28)
