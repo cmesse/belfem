@@ -11,6 +11,7 @@ set( SOURCES
         test_Mesh.cpp
         test_MeshTools.cpp
         test_Periodicity.cpp
+        test_FaceFactory.cpp
         )
 
 set( LIBLIST graph bezier interpolation integration mesh )
