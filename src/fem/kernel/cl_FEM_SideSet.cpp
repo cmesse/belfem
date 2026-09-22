@@ -51,10 +51,11 @@ namespace belfem
 
             const real tWeight = aDof->weight( 0 );
 
-            // the weight of a reroutable pair is a stored literal 1.0 with
-            // no arithmetic on it, so the tight machine tolerance is safe;
-            // anything off unit is a different condensation shape and must
-            // not be pinned
+            // the weight of a reroutable pair is a stored literal 1.0; the
+            // tolerance of ten machine epsilons admits a rounded unit weight,
+            // and the division by it below is live inside that band. Anything
+            // off unit is a different condensation shape and must not be
+            // pinned
             BELFEM_ERROR( std::isfinite( tWeight )
                           && std::abs( tWeight - 1.0 ) <= BELFEM_EPSILON,
                 "Dirichlet group %lu ( node %lu ): the dof hangs on one source with weight %g != 1 and cannot be pinned",

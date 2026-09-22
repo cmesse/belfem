@@ -22,6 +22,7 @@ set( SOURCES
         test_AndersonMixing.cpp
         test_BdfTimestepMethod.cpp
         test_DofSeeding.cpp
+        test_DirichletPin.cpp
         test_GhostSwitch.cpp
         test_BlockRebuild.cpp
         test_Tmatrix.cpp
