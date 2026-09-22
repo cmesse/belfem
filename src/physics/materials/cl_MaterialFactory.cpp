@@ -40,7 +40,7 @@
 
 namespace belfem
 {
-    MaterialFactory::MaterialFactory( const input::Section* aSection )
+    MaterialFactory::MaterialFactory( const input::Section* aSection, const bool aBuildTables )
     {
         uint n = aSection->num_sections();
 
@@ -118,7 +118,7 @@ namespace belfem
                 const real tRRR = tMatSection->key_exists( "RRR" )
                         ? tMatSection->get_real( "RRR" ) : BELFEM_QUIET_NAN ;
 
-                tMat = create_material( tMatType, tRRR ) ;
+                tMat = create_material( tMatType, tRRR, aBuildTables ) ;
                 switch ( tMat->type() )
                 {
                     case MaterialType::HTS :

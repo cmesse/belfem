@@ -80,7 +80,16 @@ namespace belfem
 
         MaterialFactory() = default;
 
-        MaterialFactory( const input::Section * aSection );
+        /**
+         * @brief Build every material a 'materials' deck section defines
+         *
+         * @param aSection     the 'materials' section of the input file
+         * @param aBuildTables build the rho database on construction; off
+         *                     writes no database to the cwd, the temperature
+         *                     splines are built either way
+         */
+        MaterialFactory( const input::Section * aSection,
+                         const bool aBuildTables = true );
 
         ~MaterialFactory() = default;
 

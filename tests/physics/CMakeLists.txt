@@ -18,6 +18,7 @@ set( SOURCES
         test_JcCustomGuard.cpp
         test_MetalElastic.cpp
         test_MaterialDerivatives.cpp
+        test_MaterialFactoryDeck.cpp
         )
 
 set( LIBLIST
