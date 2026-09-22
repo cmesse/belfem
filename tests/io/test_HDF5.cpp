@@ -11,6 +11,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <cstdio>
 #include <stdexcept>
 #include <string>
@@ -1074,6 +1075,153 @@ TEST_F( HDF5Test, MixedTypesInSubGroup )
         EXPECT_EQ( tName, "payload" );
         expect_vector_eq( tLoadedVec, tVec );
         expect_matrix_eq( tLoadedMat, tMat );
+    }
+}
+
+//-----------------------------------------------------------------------------
+// 10. Read contract across the file type: width converts, class refuses
+//-----------------------------------------------------------------------------
+
+TEST_F( HDF5Test, WidthMismatchIsConvertedNotOverrun )
+{
+    static_assert( sizeof( belfem::lluint ) == 8,
+                   "the wide side of the width mismatch must be 8 bytes" );
+    static_assert( sizeof( belfem::uint ) == 4,
+                   "the narrow side of the width mismatch must be 4 bytes" );
+
+    // the 4-byte target sits between two canaries: a read at the file's
+    // 8-byte width would spill into mAfter
+    struct Canary
+    {
+        belfem::uint mBefore;
+        belfem::uint mValue;
+        belfem::uint mAfter;
+    };
+    static_assert( sizeof( Canary ) == 12,
+                   "canaries must be adjacent to the target" );
+    static_assert( offsetof( Canary, mBefore ) == 0,
+                   "canaries must be adjacent to the target" );
+    static_assert( offsetof( Canary, mValue ) == 4,
+                   "canaries must be adjacent to the target" );
+    static_assert( offsetof( Canary, mAfter ) == 8,
+                   "canaries must be adjacent to the target" );
+
+    this->reset_path();
+
+    const belfem::lluint tWideScalar = 0x1234567ull;
+    const belfem::Vector< belfem::lluint > tWideVector =
+            { 3ull, 1ull, 4ull, 1ull, 5ull };
+    const belfem::uint tNarrowScalar = 42u;
+
+    // the array and matrix loaders are separate code paths
+    belfem::Cell< belfem::lluint > tWideCell( 4, 0ull );
+    tWideCell( 0 ) = 9ull;
+    tWideCell( 1 ) = 2ull;
+    tWideCell( 2 ) = 6ull;
+    tWideCell( 3 ) = 5ull;
+    belfem::Matrix< belfem::lluint > tWideMatrix( 2, 3 );
+    for ( belfem::index_t i = 0; i < 2; ++i )
+    {
+        for ( belfem::index_t j = 0; j < 3; ++j )
+        {
+            tWideMatrix( i, j ) = 10ull * i + j + 1ull;
+        }
+    }
+
+    {
+        belfem::HDF5 tFile( mPath, belfem::FileMode::NEW );
+        tFile.save_data( "wide_scalar", tWideScalar );
+        tFile.save_data( "wide_vector", tWideVector );
+        tFile.save_data( "narrow_scalar", tNarrowScalar );
+        tFile.save_data( "wide_cell", tWideCell );
+        tFile.save_data( "wide_matrix", tWideMatrix );
+    }
+
+    {
+        belfem::HDF5 tFile( mPath, belfem::FileMode::OPEN_RDONLY );
+
+        Canary tCanary = { 0xA5A5A5A5u, 0xA5A5A5A5u, 0xA5A5A5A5u };
+        tFile.load_data( "wide_scalar", tCanary.mValue );
+        EXPECT_EQ( tCanary.mBefore, 0xA5A5A5A5u );
+        EXPECT_EQ( tCanary.mValue, 0x1234567u );
+        EXPECT_EQ( tCanary.mAfter, 0xA5A5A5A5u );
+
+        belfem::Vector< belfem::uint > tNarrowVector;
+        tFile.load_data( "wide_vector", tNarrowVector );
+        EXPECT_EQ( tNarrowVector.length(), 5u );
+        const belfem::Vector< belfem::uint > tExpectedVector =
+                { 3u, 1u, 4u, 1u, 5u };
+        expect_vector_eq( tNarrowVector, tExpectedVector );
+
+        // prefilled with ones: a 4-byte short write into the 8-byte target
+        // would leave the high half set, a zero prefill could not see it
+        belfem::lluint tWideTarget = ~belfem::lluint( 0 );
+        tFile.load_data( "narrow_scalar", tWideTarget );
+        EXPECT_EQ( tWideTarget, 42ull );
+
+        belfem::Cell< belfem::uint > tNarrowCell;
+        tFile.load_data( "wide_cell", tNarrowCell );
+        ASSERT_EQ( tNarrowCell.size(), 4u );
+        EXPECT_EQ( tNarrowCell( 0 ), 9u );
+        EXPECT_EQ( tNarrowCell( 1 ), 2u );
+        EXPECT_EQ( tNarrowCell( 2 ), 6u );
+        EXPECT_EQ( tNarrowCell( 3 ), 5u );
+
+        belfem::Matrix< belfem::uint > tNarrowMatrix;
+        tFile.load_data( "wide_matrix", tNarrowMatrix );
+        ASSERT_EQ( tNarrowMatrix.n_rows(), 2u );
+        ASSERT_EQ( tNarrowMatrix.n_cols(), 3u );
+        for ( belfem::index_t i = 0; i < 2; ++i )
+        {
+            for ( belfem::index_t j = 0; j < 3; ++j )
+            {
+                EXPECT_EQ( tNarrowMatrix( i, j ), 10u * i + j + 1u );
+            }
+        }
+    }
+}
+
+TEST_F( HDF5Test, ClassMismatchIsRefusedInEveryBuild )
+{
+    this->reset_path();
+
+    const belfem::real tFloatScalar = 2.5;
+    const belfem::Vector< belfem::real > tFloatVector = { 0.5, 1.5, 2.5 };
+    const belfem::sint tIntScalar = 7;
+    belfem::Cell< belfem::real > tFloatCell( 3, 1.5 );
+    belfem::Matrix< belfem::real > tFloatMatrix( 2, 2, 0.5 );
+
+    {
+        belfem::HDF5 tFile( mPath, belfem::FileMode::NEW );
+        tFile.save_data( "float_scalar", tFloatScalar );
+        tFile.save_data( "float_vector", tFloatVector );
+        tFile.save_data( "int_scalar", tIntScalar );
+        tFile.save_data( "float_cell", tFloatCell );
+        tFile.save_data( "float_matrix", tFloatMatrix );
+    }
+
+    {
+        belfem::HDF5 tFile( mPath, belfem::FileMode::OPEN_RDONLY );
+
+        belfem::sint tIntTarget = 0;
+        EXPECT_THROW( tFile.load_data( "float_scalar", tIntTarget ),
+                      std::runtime_error );
+
+        belfem::Vector< belfem::sint > tIntVector;
+        EXPECT_THROW( tFile.load_data( "float_vector", tIntVector ),
+                      std::runtime_error );
+
+        belfem::real tRealTarget = 0.0;
+        EXPECT_THROW( tFile.load_data( "int_scalar", tRealTarget ),
+                      std::runtime_error );
+
+        belfem::Cell< belfem::sint > tIntCell;
+        EXPECT_THROW( tFile.load_data( "float_cell", tIntCell ),
+                      std::runtime_error );
+
+        belfem::Matrix< belfem::sint > tIntMatrix;
+        EXPECT_THROW( tFile.load_data( "float_matrix", tIntMatrix ),
+                      std::runtime_error );
     }
 }
 
