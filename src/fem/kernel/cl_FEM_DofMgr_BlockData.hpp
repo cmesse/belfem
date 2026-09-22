@@ -97,6 +97,19 @@ namespace belfem
                 reset();
 
 //------------------------------------------------------------------------------
+
+                /**
+                 * facet ids of the thin shells that own at least one block of
+                 * aBlockIndexMap, in shell order; a shell with no selected block
+                 * contributes nothing. Rank-local: no communication
+                 */
+                static void
+                selected_thin_shell_facet_ids(
+                          Mesh                 * aMesh,
+                    const Map< id_t, index_t > & aBlockIndexMap,
+                          Vector< id_t >       & aFacetIDs );
+
+//------------------------------------------------------------------------------
             private:
 //------------------------------------------------------------------------------
 

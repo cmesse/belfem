@@ -140,35 +140,48 @@ namespace belfem
             }
 
             void
+            BlockData::selected_thin_shell_facet_ids(
+                      Mesh                 * aMesh,
+                const Map< id_t, index_t > & aBlockIndexMap,
+                      Vector< id_t >       & aFacetIDs )
+            {
+                // a shell is selected when the IWG selected at least one of
+                // its layer blocks; count and fill use the same predicate
+                auto tSelected = [ &aBlockIndexMap ]( mesh::ThinShell * aShell )
+                {
+                    for ( mesh::Block * tBlock : aShell->blocks() )
+                    {
+                        if ( aBlockIndexMap.key_exists( tBlock->id() ) ) return true ;
+                    }
+                    return false ;
+                };
+
+                index_t tCount = 0 ;
+                for ( mesh::ThinShell * tShell : aMesh->thin_shells() )
+                {
+                    if ( tSelected( tShell ) ) tCount += tShell->facets().size() ;
+                }
+
+                aFacetIDs.set_size( tCount );
+                tCount = 0 ;
+                for ( mesh::ThinShell * tShell : aMesh->thin_shells() )
+                {
+                    if ( ! tSelected( tShell ) ) continue ;
+                    for ( mesh::Facet * tFacet : tShell->facets() )
+                    {
+                        aFacetIDs( tCount++ ) = tFacet->id() ;
+                    }
+                }
+            }
+
+            void
             BlockData::collect_thin_shell_facet_ids(
                 const Map< id_t, index_t > & aBlockIndexMap,
                 Vector< id_t > & aAllSelectedThinShellFacets )
             {
                 if ( mCommRank == 0 )
                 {
-                    index_t tCount = 0 ;
-                    for ( mesh::ThinShell * tShell : mMesh->thin_shells() )
-                    {
-                        for ( mesh::Block * tBlock : tShell->blocks() )
-                        {
-                            if ( aBlockIndexMap.key_exists( tBlock->id() ) )
-                            {
-                                tCount += tShell->facets().size() ;
-                                break;
-                            }
-                        }
-                    }
-
-                    aAllSelectedThinShellFacets.set_size( tCount );
-                    tCount = 0 ;
-                    for ( mesh::ThinShell * tShell : mMesh->thin_shells() )
-                    {
-                        for ( mesh::Facet * tFacet : tShell->facets() )
-                        {
-                            aAllSelectedThinShellFacets( tCount++ ) = tFacet->id() ;
-                        }
-                    }
-
+                    selected_thin_shell_facet_ids( mMesh, aBlockIndexMap, aAllSelectedThinShellFacets );
                     comm_barrier() ;
                     share( aAllSelectedThinShellFacets );
                 }
@@ -447,6 +460,10 @@ namespace belfem
 
                     for ( mesh::Block * tMeshBlock : tShell->blocks() )
                     {
+                        // a shell whose blocks the IWG did not select has no
+                        // fem block; the parallel linker applies the same rule
+                        if ( ! mBlockMap.key_exists( tMeshBlock->id() ) ) continue ;
+
                         Block * tBlock = mBlockMap( tMeshBlock->id() ) ;
 
                         index_t tCount = 0 ;

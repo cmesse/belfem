@@ -42,6 +42,7 @@ if( USE_MAXWELL )
     include_directories( ${BELFEM_SOURCE_DIR}/fem/maxwell/matrices )
     list( APPEND SOURCES test_InterfaceOrientation.cpp )
     list( APPEND SOURCES test_SideSetRebuild.cpp )
+    list( APPEND SOURCES test_ThinShellSelection.cpp )
     list( APPEND LIBLIST maxwell )
 endif()
 
