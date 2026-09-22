@@ -431,3 +431,579 @@ TEST( ElementBaseGuard, BaseElementTypeThrows )
 
     EXPECT_THROW( tElem.type(), std::runtime_error );
 }
+
+// =============================================================================
+// §4  Basis / Vertex Counter Widths  [semantic]
+// The narrow counters must refuse one past their width with a BELFEM_ERROR
+// and leave the count untouched; the width below must be accepted in full.
+// =============================================================================
+
+#include "cl_Edge.hpp"
+#include "cl_Face.hpp"
+#include "cl_Facet.hpp"
+
+namespace
+{
+    // inclusive maxima of the uint16_t and uint8_t counters under test
+    const belfem::uint tMaxU16 = 65535 ;
+    const belfem::uint tMaxU8  = 255 ;
+
+    // Owns heap entities for the duration of a scope: Cell< T * > itself is
+    // non-owning, so a fatal assertion or an unexpected throw would otherwise
+    // skip the deletes. Empty slots stay nullptr and are safe to delete.
+    template< typename T >
+    struct ScopeOwner
+    {
+        belfem::Cell< T * > mItems ;
+
+        explicit ScopeOwner( const belfem::uint aCount ) :
+            mItems( aCount, nullptr )
+        {
+        }
+
+        ~ScopeOwner()
+        {
+            for( belfem::uint k = 0; k < mItems.size(); ++k )
+            {
+                delete mItems( k );
+            }
+        }
+
+        ScopeOwner( const ScopeOwner & ) = delete ;
+        ScopeOwner( ScopeOwner && ) = delete ;
+        ScopeOwner & operator=( const ScopeOwner & ) = delete ;
+        ScopeOwner & operator=( ScopeOwner && ) = delete ;
+
+        T * &
+        operator()( const belfem::uint aIndex )
+        {
+            return mItems( aIndex );
+        }
+
+        belfem::uint
+        size() const
+        {
+            return mItems.size();
+        }
+    };
+
+    // runs aCall, requires a std::runtime_error whose what() carries the
+    // literal part of the BELFEM_ERROR text
+    template< typename F >
+    void
+    expect_refusal( F && aCall, const char * aSubstring )
+    {
+        bool tThrown = false ;
+        try
+        {
+            aCall();
+        }
+        catch( const std::runtime_error & aError )
+        {
+            tThrown = true ;
+            EXPECT_NE( std::string( aError.what() ).find( aSubstring ), std::string::npos )
+                << "message was: " << aError.what();
+        }
+        EXPECT_TRUE( tThrown ) << "expected a refusal carrying \"" << aSubstring << "\"";
+    }
+
+    void
+    create_source_nodes( ScopeOwner< belfem::mesh::Node > & aPool )
+    {
+        for( belfem::uint k = 0; k < aPool.size(); ++k )
+        {
+            aPool( k ) = new belfem::mesh::Node( k + 1 );
+        }
+    }
+
+    // the first aCount pool entries, viewed as Basis pointers
+    void
+    view_as_bases( ScopeOwner< belfem::mesh::Node > & aPool,
+                   const belfem::uint aCount,
+                   belfem::Cell< belfem::mesh::Basis * > & aBases )
+    {
+        aBases.set_size( aCount, nullptr );
+        for( belfem::uint k = 0; k < aCount; ++k )
+        {
+            aBases( k ) = aPool( k );
+        }
+    }
+
+    void
+    view_as_nodes( ScopeOwner< belfem::mesh::Node > & aPool,
+                   const belfem::uint aCount,
+                   belfem::Cell< belfem::mesh::Node * > & aSubset )
+    {
+        aSubset.set_size( aCount, nullptr );
+        for( belfem::uint k = 0; k < aCount; ++k )
+        {
+            aSubset( k ) = aPool( k );
+        }
+    }
+}
+
+// --- §4.1 set_sources( Cell< Basis * >, Vector< real > ) ---
+
+TEST( MeshEntities, SourcesBasisVectorOverloadCounterWidth )
+{
+    ScopeOwner< belfem::mesh::Node > tPool( tMaxU16 + 1 );
+    create_source_nodes( tPool );
+
+    belfem::Cell< belfem::mesh::Basis * > tSources ;
+
+    {
+        belfem::mesh::Node tNode( 1 );
+        view_as_bases( tPool, 300, tSources );
+        belfem::Vector< belfem::real > tWeights( 300, 1.0 );
+
+        tNode.set_sources( tSources, tWeights );
+
+        EXPECT_EQ( tNode.number_of_sources(), 300u );
+        EXPECT_TRUE( tNode.is_hanging() );
+        EXPECT_EQ( tNode.source( 299 ), tSources( 299 ) );
+    }
+
+    {
+        belfem::mesh::Node tNode( 1 );
+        view_as_bases( tPool, tMaxU16, tSources );
+        belfem::Vector< belfem::real > tWeights( tMaxU16, 1.0 );
+
+        tNode.set_sources( tSources, tWeights );
+
+        EXPECT_EQ( tNode.number_of_sources(), tMaxU16 );
+        EXPECT_EQ( tNode.source( tMaxU16 - 1 ), tSources( tMaxU16 - 1 ) );
+    }
+
+    {
+        belfem::mesh::Node tNode( 1 );
+        view_as_bases( tPool, tMaxU16 + 1, tSources );
+        belfem::Vector< belfem::real > tWeights( tMaxU16 + 1, 1.0 );
+
+        expect_refusal( [ & ]() { tNode.set_sources( tSources, tWeights ); },
+                        "but the source counter holds at most" );
+
+        EXPECT_EQ( tNode.number_of_sources(), 0u );
+        EXPECT_FALSE( tNode.is_hanging() );
+    }
+}
+
+// --- §4.2 set_sources( Cell< Basis * >, Cell< real > ) ---
+
+TEST( MeshEntities, SourcesBasisCellOverloadCounterWidth )
+{
+    ScopeOwner< belfem::mesh::Node > tPool( tMaxU16 + 1 );
+    create_source_nodes( tPool );
+
+    belfem::Cell< belfem::mesh::Basis * > tSources ;
+
+    {
+        belfem::mesh::Node tNode( 1 );
+        view_as_bases( tPool, 300, tSources );
+        belfem::Cell< belfem::real > tWeights( 300, 1.0 );
+
+        tNode.set_sources( tSources, tWeights );
+
+        EXPECT_EQ( tNode.number_of_sources(), 300u );
+        EXPECT_EQ( tNode.source( 299 ), tSources( 299 ) );
+    }
+
+    {
+        belfem::mesh::Node tNode( 1 );
+        view_as_bases( tPool, tMaxU16, tSources );
+        belfem::Cell< belfem::real > tWeights( tMaxU16, 1.0 );
+
+        tNode.set_sources( tSources, tWeights );
+
+        EXPECT_EQ( tNode.number_of_sources(), tMaxU16 );
+        EXPECT_EQ( tNode.source( tMaxU16 - 1 ), tSources( tMaxU16 - 1 ) );
+    }
+
+    {
+        belfem::mesh::Node tNode( 1 );
+        view_as_bases( tPool, tMaxU16 + 1, tSources );
+        belfem::Cell< belfem::real > tWeights( tMaxU16 + 1, 1.0 );
+
+        expect_refusal( [ & ]() { tNode.set_sources( tSources, tWeights ); },
+                        "but the source counter holds at most" );
+
+        EXPECT_EQ( tNode.number_of_sources(), 0u );
+    }
+}
+
+// --- §4.3 set_sources( Cell< Node * >, Vector< real > ) ---
+
+TEST( MeshEntities, SourcesNodeVectorOverloadCounterWidth )
+{
+    ScopeOwner< belfem::mesh::Node > tPool( tMaxU16 + 1 );
+    create_source_nodes( tPool );
+
+    belfem::Cell< belfem::mesh::Node * > tSources ;
+
+    {
+        belfem::mesh::Node tNode( 1 );
+        view_as_nodes( tPool, 300, tSources );
+        belfem::Vector< belfem::real > tWeights( 300, 1.0 );
+
+        tNode.set_sources( tSources, tWeights );
+
+        EXPECT_EQ( tNode.number_of_sources(), 300u );
+        EXPECT_EQ( tNode.source_node( 299 ), tSources( 299 ) );
+    }
+
+    {
+        belfem::mesh::Node tNode( 1 );
+        view_as_nodes( tPool, tMaxU16, tSources );
+        belfem::Vector< belfem::real > tWeights( tMaxU16, 1.0 );
+
+        tNode.set_sources( tSources, tWeights );
+
+        EXPECT_EQ( tNode.number_of_sources(), tMaxU16 );
+        EXPECT_EQ( tNode.source_node( tMaxU16 - 1 ), tSources( tMaxU16 - 1 ) );
+    }
+
+    {
+        belfem::mesh::Node tNode( 1 );
+        view_as_nodes( tPool, tMaxU16 + 1, tSources );
+        belfem::Vector< belfem::real > tWeights( tMaxU16 + 1, 1.0 );
+
+        expect_refusal( [ & ]() { tNode.set_sources( tSources, tWeights ); },
+                        "but the source counter holds at most" );
+
+        EXPECT_EQ( tNode.number_of_sources(), 0u );
+    }
+}
+
+// --- §4.4 allocate_source_container() + add_source() ---
+
+TEST( MeshEntities, SourcesIncrementalPathCounterWidth )
+{
+    ScopeOwner< belfem::mesh::Node > tPool( tMaxU16 );
+    create_source_nodes( tPool );
+
+    {
+        belfem::mesh::Node tNode( 1 );
+
+        expect_refusal( [ & ]() { tNode.allocate_source_container( tMaxU16 + 1 ); },
+                        "but the source counter holds at most" );
+
+        EXPECT_EQ( tNode.number_of_sources(), 0u );
+        EXPECT_FALSE( tNode.is_hanging() );
+    }
+
+    {
+        belfem::mesh::Node tNode( 1 );
+
+        tNode.allocate_source_container( 3 );
+        tNode.add_source( tPool( 0 ), 0.25 );
+        tNode.add_source( tPool( 1 ), 0.50 );
+        tNode.add_source( tPool( 2 ), 0.75 );
+
+        EXPECT_EQ( tNode.number_of_sources(), 3u );
+        EXPECT_TRUE( tNode.is_hanging() );
+        EXPECT_EQ( tNode.source( 2 ), tPool( 2 ) );
+        EXPECT_NEAR( tNode.weight( 2 ), 0.75, tEps );
+    }
+
+    {
+        // the append guard is the counter width itself
+        belfem::mesh::Node tNode( 1 );
+
+        tNode.allocate_source_container( tMaxU16 );
+        for( belfem::uint k = 0; k < tMaxU16; ++k )
+        {
+            tNode.add_source( tPool( k ) );
+        }
+        EXPECT_EQ( tNode.number_of_sources(), tMaxU16 );
+
+        expect_refusal( [ & ]() { tNode.add_source( tPool( 0 ) ); },
+                        "Source counter of basis" );
+
+        EXPECT_EQ( tNode.number_of_sources(), tMaxU16 );
+        EXPECT_EQ( tNode.source( tMaxU16 - 1 ), tPool( tMaxU16 - 1 ) );
+    }
+}
+
+// --- §4.5 dof counter and container ---
+
+TEST( MeshEntities, DofContainerAllocateEmptyThenReset )
+{
+    belfem::mesh::Node tNode( 1 );
+
+    tNode.allocate_dof_container();
+    EXPECT_EQ( tNode.number_of_dofs(), 0u );
+
+    tNode.reset_dof_container();
+    EXPECT_EQ( tNode.number_of_dofs(), 0u );
+}
+
+TEST( MeshEntities, DofCounterRefusesAtWidth )
+{
+    ScopeOwner< belfem::graph::Vertex > tDofs( tMaxU8 );
+    for( belfem::uint k = 0; k < tMaxU8; ++k )
+    {
+        tDofs( k ) = new belfem::graph::Vertex ;
+        tDofs( k )->set_id( k + 1 );
+    }
+
+    {
+        belfem::mesh::Node tNode( 1 );
+
+        for( belfem::uint k = 0; k < tMaxU8; ++k )
+        {
+            tNode.increment_dof_counter();
+        }
+
+        // fatal on purpose: a wrapped counter would make the allocate below
+        // a no-op and the first insert a write through a null pointer
+        ASSERT_EQ( tNode.number_of_dofs(), tMaxU8 );
+
+        expect_refusal( [ & ]() { tNode.increment_dof_counter(); },
+                        "Dof counter of basis" );
+        ASSERT_EQ( tNode.number_of_dofs(), tMaxU8 );
+
+        tNode.allocate_dof_container();
+        ASSERT_EQ( tNode.number_of_dofs(), 0u );
+
+        for( belfem::uint k = 0; k < tMaxU8; ++k )
+        {
+            tNode.insert_dof( tDofs( k ) );
+        }
+        EXPECT_EQ( tNode.number_of_dofs(), tMaxU8 );
+        EXPECT_EQ( tNode.dof( 0 ), tDofs( 0 ) );
+        EXPECT_EQ( tNode.dof( tMaxU8 - 1 ), tDofs( tMaxU8 - 1 ) );
+
+        expect_refusal( [ & ]() { tNode.insert_dof( tDofs( 0 ) ); },
+                        "Dof counter of basis" );
+        EXPECT_EQ( tNode.number_of_dofs(), tMaxU8 );
+        EXPECT_EQ( tNode.dof( tMaxU8 - 1 ), tDofs( tMaxU8 - 1 ) );
+    }
+}
+
+TEST( MeshEntities, DofContainerResetWhileUnfilled )
+{
+    // No-throw smoke case: the reset is keyed on the pointer, but allocate
+    // has already zeroed the count and ~Basis frees the block anyway, so the
+    // free itself has no observable oracle here, as in the reallocate case.
+    belfem::mesh::Node tNode( 1 );
+
+    tNode.increment_dof_counter();
+    tNode.increment_dof_counter();
+    tNode.increment_dof_counter();
+    EXPECT_EQ( tNode.number_of_dofs(), 3u );
+
+    tNode.allocate_dof_container();
+    EXPECT_EQ( tNode.number_of_dofs(), 0u );
+
+    tNode.reset_dof_container();
+    EXPECT_EQ( tNode.number_of_dofs(), 0u );
+}
+
+TEST( MeshEntities, DofContainerReallocateAfterFreshCount )
+{
+    // A second allocate while the first block is still owned must free it
+    // before it mallocs again. That free has no observable oracle here; this
+    // case is smoke only, its value is a clean run under a leak checker.
+    ScopeOwner< belfem::graph::Vertex > tDofs( 2 );
+    tDofs( 0 ) = new belfem::graph::Vertex ;
+    tDofs( 1 ) = new belfem::graph::Vertex ;
+
+    {
+        belfem::mesh::Node tNode( 1 );
+
+        tNode.increment_dof_counter();
+        tNode.increment_dof_counter();
+        tNode.allocate_dof_container();
+        ASSERT_EQ( tNode.number_of_dofs(), 0u );
+
+        // fatal on purpose: a count that is not reset would carry the first
+        // two into the second allocate, and the inserts below would write
+        // past a two-slot block
+        tNode.increment_dof_counter();
+        tNode.increment_dof_counter();
+        ASSERT_EQ( tNode.number_of_dofs(), 2u );
+
+        tNode.allocate_dof_container();
+        ASSERT_EQ( tNode.number_of_dofs(), 0u );
+
+        tNode.insert_dof( tDofs( 0 ) );
+        tNode.insert_dof( tDofs( 1 ) );
+        EXPECT_EQ( tNode.number_of_dofs(), 2u );
+        EXPECT_EQ( tNode.dof( 1 ), tDofs( 1 ) );
+    }
+}
+
+// --- §4.6 adjacency containers: capacity width ---
+// The "already allocated" precondition is an assert, so every refusal and
+// every acceptance runs on its own fresh node. Three checks lock the
+// acceptance side. The memory() delta across the allocate equals the stored
+// capacity times the pointer size ( array_memory() charges the capacity
+// fields, not the fill counts ), so a dropped capacity store goes red in
+// release, where add_*() is assert-guarded and number_of_*() is only the
+// counter. The fill to capacity through add_*() locks the malloc. The count
+// read back locks the counter. After a refusal, memory() and the counter are
+// re-read as untouched.
+
+TEST( MeshEntities, NodeContainerCapacityWidth )
+{
+    {
+        belfem::mesh::Node tNode( 1 );
+        const size_t tMemory = tNode.memory();
+        expect_refusal( [ & ]() { tNode.allocate_node_container( tMaxU8 + 1 ); },
+                        "node capacity of vertex" );
+        EXPECT_EQ( tNode.memory(), tMemory );
+        EXPECT_EQ( tNode.number_of_nodes(), 0u );
+    }
+    {
+        ScopeOwner< belfem::mesh::Node > tEntities( tMaxU8 );
+        for( belfem::uint k = 0; k < tMaxU8; ++k )
+        {
+            tEntities( k ) = new belfem::mesh::Node( k + 2 );
+        }
+
+        belfem::mesh::Node tNode( 1 );
+        const size_t tMemory = tNode.memory();
+        ASSERT_NO_THROW( tNode.allocate_node_container( tMaxU8 ) );
+        EXPECT_EQ( tNode.memory() - tMemory, tMaxU8 * sizeof( belfem::mesh::Node * ) );
+        for( belfem::uint k = 0; k < tMaxU8; ++k )
+        {
+            tNode.add_node( tEntities( k ) );
+        }
+        EXPECT_EQ( tNode.number_of_nodes(), tMaxU8 );
+        EXPECT_EQ( tNode.node( tMaxU8 - 1 ), tEntities( tMaxU8 - 1 ) );
+    }
+}
+
+TEST( MeshEntities, EdgeContainerCapacityWidth )
+{
+    {
+        belfem::mesh::Node tNode( 1 );
+        const size_t tMemory = tNode.memory();
+        expect_refusal( [ & ]() { tNode.allocate_edge_container( tMaxU8 + 1 ); },
+                        "edge capacity of vertex" );
+        EXPECT_EQ( tNode.memory(), tMemory );
+        EXPECT_EQ( tNode.number_of_edges(), 0u );
+    }
+    {
+        ScopeOwner< belfem::mesh::Edge > tEntities( tMaxU8 );
+        for( belfem::uint k = 0; k < tMaxU8; ++k )
+        {
+            tEntities( k ) = new belfem::mesh::Edge ;
+        }
+
+        belfem::mesh::Node tNode( 1 );
+        const size_t tMemory = tNode.memory();
+        ASSERT_NO_THROW( tNode.allocate_edge_container( tMaxU8 ) );
+        EXPECT_EQ( tNode.memory() - tMemory, tMaxU8 * sizeof( belfem::mesh::Edge * ) );
+        for( belfem::uint k = 0; k < tMaxU8; ++k )
+        {
+            tNode.add_edge( tEntities( k ) );
+        }
+        EXPECT_EQ( tNode.number_of_edges(), tMaxU8 );
+        EXPECT_EQ( tNode.edge( tMaxU8 - 1 ), tEntities( tMaxU8 - 1 ) );
+    }
+}
+
+TEST( MeshEntities, FaceContainerCapacityWidth )
+{
+    {
+        belfem::mesh::Node tNode( 1 );
+        const size_t tMemory = tNode.memory();
+        expect_refusal( [ & ]() { tNode.allocate_face_container( tMaxU8 + 1 ); },
+                        "face capacity of vertex" );
+        EXPECT_EQ( tNode.memory(), tMemory );
+        EXPECT_EQ( tNode.number_of_faces(), 0u );
+    }
+    {
+        // a Face copies its parent's nodes, so it needs a concrete element;
+        // all faces share one TRI3 parent, which they do not own
+        belfem::mesh::ElementFactory tFactory;
+        belfem::mesh::Node tN0( 2 ), tN1( 3 ), tN2( 4 );
+        ScopeOwner< belfem::mesh::Element > tParentOwner( 1 );
+        tParentOwner( 0 ) = tFactory.create_element( belfem::ElementType::TRI3, 1 );
+        belfem::mesh::Element * tParent = tParentOwner( 0 );
+        tParent->insert_node( &tN0, 0 );
+        tParent->insert_node( &tN1, 1 );
+        tParent->insert_node( &tN2, 2 );
+
+        {
+            ScopeOwner< belfem::mesh::Face > tEntities( tMaxU8 );
+            for( belfem::uint k = 0; k < tMaxU8; ++k )
+            {
+                tEntities( k ) = new belfem::mesh::Face( tParent );
+            }
+
+            belfem::mesh::Node tNode( 1 );
+            const size_t tMemory = tNode.memory();
+            ASSERT_NO_THROW( tNode.allocate_face_container( tMaxU8 ) );
+            EXPECT_EQ( tNode.memory() - tMemory, tMaxU8 * sizeof( belfem::mesh::Face * ) );
+            for( belfem::uint k = 0; k < tMaxU8; ++k )
+            {
+                tNode.add_face( tEntities( k ) );
+            }
+            EXPECT_EQ( tNode.number_of_faces(), tMaxU8 );
+            EXPECT_EQ( tNode.face( tMaxU8 - 1 ), tEntities( tMaxU8 - 1 ) );
+        }
+    }
+}
+
+TEST( MeshEntities, FacetContainerCapacityWidth )
+{
+    // the facet capacity is the one 16-bit field among the five
+    {
+        belfem::mesh::Node tNode( 1 );
+        const size_t tMemory = tNode.memory();
+        expect_refusal( [ & ]() { tNode.allocate_facet_container( tMaxU16 + 1 ); },
+                        "facet capacity of vertex" );
+        EXPECT_EQ( tNode.memory(), tMemory );
+        EXPECT_EQ( tNode.number_of_facets(), 0u );
+    }
+    {
+        // a Facet owns and deletes its element, so each gets a bare one
+        ScopeOwner< belfem::mesh::Facet > tEntities( tMaxU16 );
+        for( belfem::uint k = 0; k < tMaxU16; ++k )
+        {
+            tEntities( k ) = new belfem::mesh::Facet( new belfem::mesh::Element( k + 1 ) );
+        }
+
+        belfem::mesh::Node tNode( 1 );
+        const size_t tMemory = tNode.memory();
+        ASSERT_NO_THROW( tNode.allocate_facet_container( tMaxU16 ) );
+        EXPECT_EQ( tNode.memory() - tMemory, tMaxU16 * sizeof( belfem::mesh::Facet * ) );
+        for( belfem::uint k = 0; k < tMaxU16; ++k )
+        {
+            tNode.add_facet( tEntities( k ) );
+        }
+        EXPECT_EQ( tNode.number_of_facets(), tMaxU16 );
+        EXPECT_EQ( tNode.facet( tMaxU16 - 1 ), tEntities( tMaxU16 - 1 ) );
+    }
+}
+
+TEST( MeshEntities, ElementContainerCapacityWidth )
+{
+    {
+        belfem::mesh::Node tNode( 1 );
+        const size_t tMemory = tNode.memory();
+        expect_refusal( [ & ]() { tNode.allocate_element_container( tMaxU8 + 1 ); },
+                        "element capacity of vertex" );
+        EXPECT_EQ( tNode.memory(), tMemory );
+        EXPECT_EQ( tNode.number_of_elements(), 0u );
+    }
+    {
+        ScopeOwner< belfem::mesh::Element > tEntities( tMaxU8 );
+        for( belfem::uint k = 0; k < tMaxU8; ++k )
+        {
+            tEntities( k ) = new belfem::mesh::Element( k + 1 );
+        }
+
+        belfem::mesh::Node tNode( 1 );
+        const size_t tMemory = tNode.memory();
+        ASSERT_NO_THROW( tNode.allocate_element_container( tMaxU8 ) );
+        EXPECT_EQ( tNode.memory() - tMemory, tMaxU8 * sizeof( belfem::mesh::Element * ) );
+        for( belfem::uint k = 0; k < tMaxU8; ++k )
+        {
+            tNode.add_element( tEntities( k ) );
+        }
+        EXPECT_EQ( tNode.number_of_elements(), tMaxU8 );
+        EXPECT_EQ( tNode.element( tMaxU8 - 1 ), tEntities( tMaxU8 - 1 ) );
+    }
+}

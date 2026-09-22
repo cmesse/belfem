@@ -302,3 +302,78 @@ TEST( GraphVertexElement, ResetElementContainerThrows )
     belfem::graph::Vertex tV;
     EXPECT_THROW( tV.reset_element_container(), std::runtime_error );
 }
+
+// =============================================================================
+// §1.8  Adjacency Counter Width  [semantic]
+// =============================================================================
+
+namespace
+{
+    // Owns heap vertices for the duration of a scope: Cell< T * > itself is
+    // non-owning, so a fatal assertion would otherwise skip the deletes.
+    struct VertexScopeOwner
+    {
+        belfem::Cell< belfem::graph::Vertex * > mItems ;
+
+        explicit VertexScopeOwner( const belfem::uint aCount ) :
+            mItems( aCount, nullptr )
+        {
+        }
+
+        ~VertexScopeOwner()
+        {
+            for( belfem::uint k = 0; k < mItems.size(); ++k )
+            {
+                delete mItems( k );
+            }
+        }
+
+        VertexScopeOwner( const VertexScopeOwner & ) = delete ;
+        VertexScopeOwner( VertexScopeOwner && ) = delete ;
+        VertexScopeOwner & operator=( const VertexScopeOwner & ) = delete ;
+        VertexScopeOwner & operator=( VertexScopeOwner && ) = delete ;
+
+        belfem::graph::Vertex * &
+        operator()( const belfem::uint aIndex )
+        {
+            return mItems( aIndex );
+        }
+    };
+}
+
+TEST( GraphVertexCounter, CountWiderThanSixteenBits )
+{
+    const belfem::uint tCount = 70000 ;
+
+    VertexScopeOwner tSpokes( tCount );
+
+    {
+        belfem::graph::Vertex tHub ;
+
+        for( belfem::uint k = 0; k < tCount; ++k )
+        {
+            tHub.increment_vertex_counter();
+        }
+
+        // fatal on purpose: a narrowed counter would size the container short
+        // and the inserts below would write past it
+        ASSERT_EQ( tHub.number_of_vertices(), tCount );
+
+        tHub.init_vertex_container();
+        ASSERT_EQ( tHub.number_of_vertices(), 0u );
+
+        for( belfem::uint k = 0; k < tCount; ++k )
+        {
+            tSpokes( k ) = new belfem::graph::Vertex ;
+            tSpokes( k )->set_id( k + 1 );
+            tHub.insert_vertex( tSpokes( k ) );
+        }
+
+        ASSERT_EQ( tHub.number_of_vertices(), tCount );
+        EXPECT_EQ( tHub.vertex( tCount - 1 ), tSpokes( tCount - 1 ) );
+        EXPECT_EQ( tHub.vertex( tCount - 1 )->id(), tCount );
+
+        tHub.reset_vertex_container();
+        EXPECT_EQ( tHub.number_of_vertices(), 0u );
+    }
+}
