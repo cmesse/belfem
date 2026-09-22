@@ -28,9 +28,13 @@ sudo dnf install scls-gcc
 source /opt/scls/gcc/share/scls/activate
 ```
 
-Packages also exist for EL10, Amazon Linux 2023 and Ubuntu 24.04. macOS and other systems
-build SCLS from source. The activation script exports `$SCLS` and `$SCLS_FLAVOR`, and
-BELFEM's CMake reads both automatically — no extra arguments.
+Packages also exist for EL10, Amazon Linux 2023 and Ubuntu 24.04. The RPM and DEB
+repositories are a convenience, not a limit on where the stack runs: the same recipes build
+the same stack from source into an isolated prefix on any other Linux system — an older
+enterprise release, a machine you do not administer, a distribution outside those packaging
+paths — and on macOS, where Intel and Apple Silicon are both supported platforms. The
+activation script exports `$SCLS` and `$SCLS_FLAVOR`, and BELFEM's CMake reads both
+automatically — no extra arguments.
 
 The build system does not *insist* on SCLS. Every library is also searched for under `/usr`
 and `/usr/local`, and `-D<PACKAGE>_DIR=…` points it elsewhere. But BELFEM is not built, tested

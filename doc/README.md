@@ -17,7 +17,9 @@ Index of general project documentation.
 
 - [getting_started.md](getting_started.md) - **Build BELFEM and run your first simulation**: configure/build, the example workflow (gmsh mesh generation, then `belfem`), restart and material-database gotchas, deck validation with `belfem-conf`
 - [input_file_reference.md](input_file_reference.md) - **Living reference of the `input.conf` contract**: syntax, every parsed section/key with types, units, defaults and parse-site citations, aliases, dead keys, and pitfalls. Extend it in the same session as any input-feature change.
-- [scls_toolchain.md](scls_toolchain.md) - **The dependency stack BELFEM is built and tested against**: what SCLS supplies, how to install and activate a flavor, what `$SCLS` changes in the configure step (build defaults from the flavor name, link/include/rpath directories, package search order, compilers), and what building without it costs you
+- [scls_toolchain.md](scls_toolchain.md) - **The dependency stack BELFEM is built and tested against**: what SCLS supplies, how to install and activate a flavor, what `$SCLS` changes in the configure step (build defaults from the flavor name, link/include/rpath directories, package search order, compilers), which delivery path fits a given platform — RPM, DEB, a
+  source build into a prefix on any other Linux, or the native macOS build on Intel and Apple
+  Silicon — and what building without it costs you
 - [mpi_support.md](mpi_support.md) - **Open MPI is the only supported MPI**: why MPICH and Intel MPI are refused at configure time, what the `-DALLOW_UNTESTED_MPI=ON` override costs, and why the Open MPI link flags in the MUMPS and MKL configs must not be "made portable"
 - [parallel_execution.md](parallel_execution.md) — choosing MPI ranks, OpenMP threads and allocator settings for a production run: assembly scales with ranks (measured 3.6–3.8×), the factorization does not, and memory is set by a rank-independent factor
 

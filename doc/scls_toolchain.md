@@ -62,10 +62,20 @@ The canonical instructions, with the current release numbers, live at
 |---|---|
 | Enterprise Linux 9 / 10, Amazon Linux 2023 | install the `scls-release` RPM, then `dnf install scls-<flavor>` |
 | Ubuntu 24.04 LTS | install the `scls-archive-keyring` package, then `apt install scls-<flavor>` |
-| macOS and everything else | `git clone https://github.com/cmesse/scls.git`, write a `flavor.conf`, `./scls build all` |
+| Any other Linux | `git clone https://github.com/cmesse/scls.git`, write a `flavor.conf`, then run `./scls build all` |
+| macOS (Intel and Apple Silicon) | the same source build; SCLS's `doc/MACOS_BUILD.md` covers the prerequisites |
 
-macOS support is beta: it has been developed and tested on Intel Macs, and Apple Silicon is
-not yet verified.
+**The binary repositories are a convenience, not the portability boundary.** They exist where
+they add something — installation and removal through the system package manager. The same
+recipes and flavors build the same stack from source into an isolated prefix everywhere else:
+an enterprise Linux release older than the repositories cover, a cluster login node you do not
+administer, a distribution on neither packaging path, and macOS. A source build requires what
+any bootstrap does — a working system toolchain, the system prerequisites each recipe
+declares, disk, and hours. The `macos` flavor is the largest because it builds its own GCC to
+get Fortran.
+
+Native Apple Silicon (arm64) is a supported platform, not an experiment: both the stack and
+BELFEM build there.
 
 Each flavor has one activation script. To switch flavors, source the new one: the paths are
 replaced rather than accumulated.
@@ -96,6 +106,10 @@ entry point.
 | `debug` | GCC + Netlib reference BLAS/LAPACK, `-Og -g` | Valgrind, sanitizers, a debugger |
 
 The source build additionally supports flavors such as `intel`, `gcc-mkl-cuda` and `macos`.
+`mkl` is a Linux-only flavor: BELFEM's `config/linalg/config_mkl.cmake` stops the configure
+when `USE_MKL` is set on an Apple host. The `macos` flavor supplies OpenBLAS instead, and
+since the preset above keys on the flavor *name*, `USE_MKL` stays `OFF` there without being
+asked to.
 
 ## What activation changes in the BELFEM configure
 

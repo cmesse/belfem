@@ -19,6 +19,15 @@ A build that reaches the link stage on MPICH is therefore not evidence that it w
 failure that matters arrives later, inside a solver, and is harder to read than a missing
 library.
 
+This is a whole-stack policy, not a gap in BELFEM's portability. Every
+[SCLS](@ref doc_scls_toolchain) flavor is built around Open MPI, on every platform SCLS
+targets: the RPM and DEB repositories, a source build into an isolated prefix on any other
+Linux, and macOS on Intel and Apple Silicon. PETSc, MUMPS, STRUMPACK and ScaLAPACK are each
+compiled against that one MPI. Linking BELFEM to a second one would break the agreement the
+stack exists to keep. Building everything above a single MPI is what makes the same stack
+reproducible across those platforms; supporting a second one means building and validating
+the whole stack twice.
+
 ### Intel compilers
 
 Using the Intel compilers is fine, and is a route that has been used. **Build Open MPI with

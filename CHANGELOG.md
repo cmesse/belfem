@@ -24,7 +24,10 @@ All notable changes to BELFEM are recorded here. The format follows
   and no other configuration is tested. `README.md`, `doc/getting_started.md` and `CLAUDE.md`
   now name the stack where a reader is about to run `cmake`; previously SCLS appeared in the
   documentation only as a mechanism for presetting `USE_MKL`, `USE_PARDISO` and `USE_DEBUG`,
-  and was never introduced.
+  and was never introduced. The page separates SCLS's delivery paths — the RPM and DEB
+  repositories, a source build into an isolated prefix on any other Linux, and the native
+  macOS build — so the binary repositories are not read as the limit of where the stack runs,
+  and it names Apple Silicon as a supported platform.
 
 ### Changed
 
