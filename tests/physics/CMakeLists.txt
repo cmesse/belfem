@@ -19,6 +19,7 @@ set( SOURCES
         test_MetalElastic.cpp
         test_MaterialDerivatives.cpp
         test_MaterialFactoryDeck.cpp
+        test_MaterialValues.cpp
         )
 
 set( LIBLIST
