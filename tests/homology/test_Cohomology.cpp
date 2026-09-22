@@ -25,6 +25,7 @@
 
 #include <gtest/gtest.h>
 #include <map>
+#include <memory>
 
 #include "constants.hpp"
 #include "cl_Mesh.hpp"
@@ -46,10 +47,14 @@ namespace
     // one ring of elements between radii aR0 < aR1, counterclockwise.
     // node ids: 1..aN inner ring, aN+1..2*aN outer ring, both starting at
     // polar angle zero. aQuads selects one QUAD4 per sector or two TRI3.
+    // aWithConductor fills the hole with block 2: node 2*aN+1 at the origin
+    // and one counterclockwise TRI3 ( centre, inner k, inner k+1 ) per
+    // sector, a bulk conductor for the suggested homology to bound.
     // The caller owns the mesh.
     Mesh *
     create_annulus( const uint aN, const bool aQuads,
-        const real aR0 = 1.0, const real aR1 = 2.0 )
+        const real aR0 = 1.0, const real aR1 = 2.0,
+        const bool aWithConductor = false )
     {
         Mesh * tMesh = new Mesh( 2, 0, true );
 
@@ -115,6 +120,31 @@ namespace
         }
 
         tMesh->blocks().push( tBlock );
+
+        // the fan must be in place before finalize() and create_edges():
+        // element indices and edge directions are assigned there
+        if ( aWithConductor )
+        {
+            Node * tCentre = new Node( 2 * aN + 1, 0.0, 0.0 );
+            tNodes.push( tCentre );
+
+            Block * tFan = new Block( 2, aN );
+            for ( uint k = 0; k < aN; ++k )
+            {
+                const uint tNext = ( k + 1 ) % aN ;
+
+                Element * tElement =
+                    tFactory.create_element( ElementType::TRI3, tID++ );
+                tElement->insert_node( tCentre,         0 );
+                tElement->insert_node( tNodes( k ),     1 );
+                tElement->insert_node( tNodes( tNext ), 2 );
+                tElement->set_block_id( 2 );
+                tElements.push( tElement );
+                tFan->insert_element( tElement );
+            }
+            tMesh->blocks().push( tFan );
+        }
+
         tMesh->finalize();
         tMesh->create_edges( false );
 
@@ -177,6 +207,69 @@ namespace
         }
 
         return tPairing ;
+    }
+
+    // the sense of the suggested 2-D generator on the inner ring: +1 is
+    // counterclockwise ( node ids ascending ). This pins what the tree
+    // produces, not the physical convention: the core's own comment names the
+    // clockwise sense for +z, and which of the two holds is the homology
+    // owner's call. A different value is a convention change that the owner
+    // has to confirm, not a test to flip.
+    constexpr int gInnerRingSense = 1 ;
+
+    // +1 if the stored inner-ring edge aA -> aB runs counterclockwise
+    // ( ring position a -> a+1 mod aN ), -1 otherwise. Read from node ids so
+    // the oracle is independent of edge_direction.
+    int
+    inner_ring_sign( const id_t aA, const id_t aB, const uint aN )
+    {
+        return ( aB % aN ) == ( aA % aN + 1 ) % aN ? 1 : -1 ;
+    }
+
+    // premise of the sense tests: every fan element has positive signed
+    // area, so its boundary is the counterclockwise ring
+    bool
+    fan_is_counterclockwise( Mesh * aMesh, const uint aN )
+    {
+        Block * tFan = aMesh->block( 2 );
+        if ( tFan->number_of_elements() != aN ) return false ;
+
+        for ( Element * tElement : tFan->elements() )
+        {
+            const real tX0 = tElement->node( 0 )->x();
+            const real tY0 = tElement->node( 0 )->y();
+            const real tX1 = tElement->node( 1 )->x();
+            const real tY1 = tElement->node( 1 )->y();
+            const real tX2 = tElement->node( 2 )->x();
+            const real tY2 = tElement->node( 2 )->y();
+
+            const real tTwiceArea =
+                ( tX1 - tX0 ) * ( tY2 - tY0 ) - ( tX2 - tX0 ) * ( tY1 - tY0 );
+            if ( ! ( tTwiceArea > 0.0 ) ) return false ;
+        }
+        return true ;
+    }
+
+    // the production prelude of CutFactory::compute_cohomologies on the
+    // conductor fixture: index refresh, the suggesting Homology on the
+    // { in, out } terminal pair a 2-D bulk condition sends for block 2, then
+    // the reorientation. Must run BEFORE flag_region: suggest_Homology
+    // unflags everything on entry and on exit. The caller owns the result.
+    Homology *
+    suggest_conductor_loop( Mesh * aMesh )
+    {
+        aMesh->update_node_indices();
+        aMesh->update_edge_indices();
+        aMesh->update_face_indices();
+
+        Cell< Cell< id_t > > tTerminals = { { 2, 2 } };
+        Cell< id_t > tThinShellIndices ;
+
+        Homology * tSuggested =
+            new Homology( aMesh, tTerminals, tThinShellIndices );
+        tSuggested->reorient_generators();
+
+        return tSuggested ;
     }
 
     void
@@ -368,4 +461,84 @@ TEST( Cohomology, AnnulusPellikkaGeneralizedTri )
 TEST( Cohomology, AnnulusPellikkaGeneralizedQuad )
 {
     check_annulus( Algorithm::PellikkaGeneralized, true );
+}
+
+// the SIGNED sense of the suggested 2-D generator: gamma is the inner ring
+// with coefficient gInnerRingSense * ( +1 on a stored edge that runs
+// counterclockwise, -1 otherwise ), and nothing else survives — the radial
+// fan edges cancel between neighbours.
+TEST( Cohomology, SuggestedGeneratorIsTheCcwInnerRing )
+{
+    const uint tN = 8 ;
+
+    std::unique_ptr< Mesh > tMesh( create_annulus( tN, false, 1.0, 2.0, true ) );
+    ASSERT_TRUE( fan_is_counterclockwise( tMesh.get(), tN ) );
+
+    std::unique_ptr< Homology > tSuggested( suggest_conductor_loop( tMesh.get() ) );
+    ASSERT_EQ( tSuggested->get_Generators()( 1 ).size(), 1u );
+    Chain * tGamma = tSuggested->get_Generators()( 1 )( 0 );
+
+    // support is exactly the inner ring: one entry per ring edge
+    ASSERT_EQ( tGamma->getSimplicesMap().size(), tN );
+
+    uint tRingEdges = 0 ;
+    for ( Edge * tEdge : tMesh->edges() )
+    {
+        const id_t tA = tEdge->node( 0 )->id();
+        const id_t tB = tEdge->node( 1 )->id();
+        if ( tA > tN || tB > tN ) continue ;
+        ++tRingEdges ;
+
+        EXPECT_EQ( tGamma->getCoefficient( tEdge->index() ),
+            gInnerRingSense * inner_ring_sign( tA, tB, tN ) )
+            << "inner-ring edge " << tA << " -> " << tB ;
+    }
+    EXPECT_EQ( tRingEdges, tN );
+}
+
+// the production handoff driven with the SUGGESTED chain: after
+// updatekGeneratorsFromHomology + clean the cut cochain pairs with the
+// counterclockwise ring to gInnerRingSense, and, independently of that
+// convention, with gamma itself to +1 ( Pellikka et al. 2013, Eq. 5.3 ).
+TEST( Cohomology, SuggestedGeneratorPairsWithTheCleanedCochain )
+{
+    const uint tN = 8 ;
+
+    std::unique_ptr< Mesh > tMesh( create_annulus( tN, false, 1.0, 2.0, true ) );
+    ASSERT_TRUE( fan_is_counterclockwise( tMesh.get(), tN ) );
+
+    std::unique_ptr< Homology > tSuggested( suggest_conductor_loop( tMesh.get() ) );
+    ASSERT_EQ( tSuggested->get_Generators()( 1 ).size(), 1u );
+    Chain * tGamma = tSuggested->get_Generators()( 1 )( 0 );
+
+    // the phi region is the annulus alone; the edge list is untouched, so
+    // the second index refresh inside leaves gamma's edge indices valid
+    flag_region( tMesh.get() );
+
+    std::unique_ptr< SimplicialComplex > tComplex(
+        new SimplicialComplex( tMesh.get(), true ) );
+    tComplex->coreduce_complexPellikkaGeneralized();
+
+    std::unique_ptr< Cohomology > tCohomology(
+        new Cohomology( tComplex.get(), tMesh.get() ) );
+    ASSERT_EQ( tCohomology->get_Generators()( 1 ).size(), 1u );
+
+    // unit coupling: the update multiplies by F^T, which inverts F only
+    // when its single invariant factor is 1
+    const int tCoupling =
+        ( *tCohomology->get_Generators()( 1 )( 0 ) )( tGamma );
+    ASSERT_TRUE( tCoupling == 1 || tCoupling == -1 )
+        << "< c, gamma > = " << tCoupling ;
+
+    tCohomology->updatekGeneratorsFromHomology(
+        tSuggested->get_Generators()( 1 ), 1 );
+    tCohomology->clean();
+
+    // the update deletes the old generators: reacquire the pointer
+    Cell< Cochain * > & tGenerators = tCohomology->get_Generators()( 1 );
+    ASSERT_EQ( tGenerators.size(), 1u );
+    Cochain * tCut = tGenerators( 0 );
+
+    EXPECT_EQ( inner_ring_pairing( tMesh.get(), tCut, tN ), gInnerRingSense );
+    EXPECT_EQ( ( *tCut )( tGamma ), 1 );
 }
