@@ -258,8 +258,9 @@ TEST_P( ThermalDerivatives, MatchCentralDifferences )
     }
 
     // the field-dependent overloads, at zero field and in field; their T
-    // derivatives are themselves fixed-step central differences, so they are
-    // held to one order less
+    // derivatives are themselves central differences stepped by the framework
+    // global gFinDiffDeltaT, so they are held to that step's truncation, one
+    // order less than the analytic ones
     const real tBeta      = 0.37 ;
     const real tFieldRel  = 1e-4 ;
 
