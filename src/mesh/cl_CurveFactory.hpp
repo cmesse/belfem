@@ -82,6 +82,26 @@ namespace belfem
             void
             compute_coordinates( Curve * aCurve );
 
+            /*
+             * The three sorters below are one pipeline and must be called in
+             * this order: sort_end_nodes, orient_segments, sort_segments.
+             * On entry to sort_end_nodes, every node of aEndNodes carries its
+             * own slot of that cell as index() and is unflagged, and every
+             * segment of the curve carries its own slot of the segment cell
+             * as index() and is unflagged. sort_end_nodes leaves the visited
+             * nodes flagged, and its "not one connected chain" refusal also
+             * fires on a chain whose node flags were dirty on entry.
+             * sort_segments starts from aEndNodes( 0 ) after the sort.
+             */
+            void
+            sort_end_nodes( Curve * aCurve, Matrix< index_t > & aAdjacency, Cell< Node * > & aEndNodes );
+
+            void
+            orient_segments(  Cell< Node * > & aEndNodes, Cell< Segment * > & aSegments );
+
+            void
+            sort_segments( Node * aStart, const Matrix< index_t > & aAdjacency, Cell< Segment * > & aSegments );
+
 //------------------------------------------------------------------------------
         private:
 //------------------------------------------------------------------------------
@@ -103,17 +123,8 @@ namespace belfem
             void
             create_segments( Curve * aCurve, Cell< std::pair< Node *, Node * > > & aPairs, Cell< Node * > & aMidNodes );
 
-            void
-            sort_end_nodes( Curve * aCurve, Matrix< index_t > & aAdjacency, Cell< Node * > & aEndNodes );
-
             Node *
             next( const Matrix< index_t > & aAdjacency, Cell< Segment * > & aSegments, const Node * aNode );
-
-            void
-            orient_segments(  Cell< Node * > & aEndNodes, Cell< Segment * > & aSegments );
-
-            void
-            sort_segments( Node * aStart, const Matrix< index_t > & aAdjacency, Cell< Segment * > & aSegments );
 
             Segment *
             next( const Matrix< index_t > & aAdjacency, Cell< Segment * > & aSegments, Segment * aSegment );

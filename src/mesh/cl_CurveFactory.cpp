@@ -9,6 +9,8 @@
  * See the top-level LICENSE file for the complete license and disclaimer.
  */
 
+#include <string>
+
 #include "cl_CurveFactory.hpp"
 
 #include "fn_unique.hpp"
@@ -1079,6 +1081,39 @@ namespace belfem
             // set to zero again
             tNewIndices( tEnd->index() ) = tNumCornerNodes-1 ;
             tNewIndices( tStart->index() ) = 0 ;
+
+            // a node the walk never reached still carries gNoIndex, which the
+            // permutation below would use as a row index into the adjacency.
+            // The check belongs after the two forced writes: on an open chain
+            // the end node is assigned only by the force, the start by the reset
+            index_t tUnassigned = 0 ;
+            for ( index_t tIndex : tNewIndices )
+            {
+                if ( tIndex == gNoIndex )
+                {
+                    ++tUnassigned ;
+                }
+            }
+
+            if ( tUnassigned != 0 )
+            {
+                std::string tSideSets ;
+                if ( aCurve->sideset_a() != nullptr )
+                {
+                    tSideSets += ", sideset A: " + std::to_string( aCurve->sideset_a()->id() ) ;
+                }
+                if ( aCurve->sideset_b() != nullptr )
+                {
+                    tSideSets += ", sideset B: " + std::to_string( aCurve->sideset_b()->id() ) ;
+                }
+
+                BELFEM_ERROR( false,
+                    "Curve %lu is not one connected chain: indices were assigned for %lu of %lu nodes%s",
+                    ( luint ) aCurve->id(),
+                    ( luint ) ( tNumCornerNodes - tUnassigned ),
+                    ( luint ) tNumCornerNodes,
+                    tSideSets.c_str() );
+            }
 
             tCount = 0 ;
             for ( Node * tNode : aEndNodes )
