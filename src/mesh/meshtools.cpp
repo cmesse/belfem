@@ -1311,8 +1311,7 @@ namespace belfem
                     aNodes.set_size( 3, nullptr );
                     aNodes( 0 ) = aElement->node( 0 );
                     aNodes( 1 ) = aElement->node( 1 );
-                    aNodes( 2 ) = aElement->node( 5 );
-
+                    aNodes( 2 ) = aElement->node( 4 );
                     break;
                 }
                 case ElementType::PENTA6 :
@@ -1350,7 +1349,7 @@ namespace belfem
                 }
                 case ElementType::HEX20 :
                 {
-                    aNodes.set_size( 9, nullptr );
+                    aNodes.set_size( 8, nullptr );
                     aNodes( 0 ) = aElement->node( 0 );
                     aNodes( 1 ) = aElement->node( 1 );
                     aNodes( 2 ) = aElement->node( 2 );
@@ -1359,7 +1358,6 @@ namespace belfem
                     aNodes( 5 ) = aElement->node( 9 );
                     aNodes( 6 ) = aElement->node( 10 );
                     aNodes( 7 ) = aElement->node( 11 );
-                    aNodes( 8 ) = aElement->node( 21 );
                     break;
                 }
                 case ElementType::HEX27 :

@@ -9,6 +9,7 @@ include_directories( ${BELFEM_SOURCE_DIR}/fem/interpolation )
 set( SOURCES
         test_MeshEntities.cpp
         test_Mesh.cpp
+        test_MeshTools.cpp
         )
 
 set( LIBLIST graph bezier interpolation integration mesh )
