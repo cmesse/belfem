@@ -1,11 +1,16 @@
 /*
  * BELFEM -- The Berkeley Lab Finite Element Framework
- * Field dependence of the pure-metal thermal conductivity.
+ * Pure-metal resistivity and thermal conductivity around Metal::set_RRR().
  *
- * Metal::set_RRR() rebuilds the lambda spline, and the spline setter resets
- * the property's dependency flags to T-only. The Kohler flags registered by
- * create_kohler() must survive that rebuild, or neither the material tool nor
- * the FEM calculator ever selects lambda( T, B, beta ).
+ * MetalFieldDependence: set_RRR() rebuilds the lambda spline, and the spline
+ * setter resets the property's dependency flags to T-only. The Kohler flags
+ * registered by create_kohler() must survive that rebuild, or neither the
+ * material tool nor the FEM calculator ever selects lambda( T, B, beta ).
+ *
+ * MetalRRR: set_RRR() solves ( rho_i( T_ref ) + rho_0 ) / rho_0 = RRR for the
+ * residual resistivity rho_0 by a bracketed regula-falsi iteration; the stored rho_0 must
+ * satisfy that identity for the RRR the material was created with and again
+ * after the RRR is changed on the same object.
  */
 
 #include <cmath>
@@ -110,6 +115,41 @@ TEST( MetalFieldDependence, LambdaSplineMatchesHustBelowFirstKnots )
             EXPECT_NEAR( tMetal->lambda( T ), tLambdaHust, 1e-2 * tLambdaHust )
                 << tLabel << " T = " << T ;
         }
+
+        delete tMetal ;
+    }
+}
+
+// the ratio the regula-falsi residual in set_RRR() drives to zero, evaluated
+// on the rho_0 the material stores afterwards
+TEST( MetalRRR, SecantSatisfiesTheRRRIdentity )
+{
+    belfem::MaterialFactory tFactory ;
+
+    for ( const char * tLabel : gPureMetals )
+    {
+        SCOPED_TRACE( tLabel );
+
+        belfem::material::Metal * tMetal = dynamic_cast< belfem::material::Metal * >(
+                tFactory.create_material( tLabel, 50.0, false ) );
+        ASSERT_NE( tMetal, nullptr );
+
+        const belfem::real tTref = tMetal->constant_property( belfem::MaterialProperty::T_ref_rho_i );
+        EXPECT_TRUE( std::isfinite( tTref ) );
+        EXPECT_GT( tTref, 0.0 );
+
+        // RRR from the factory argument
+        belfem::real tRho0 = tMetal->constant_property( belfem::MaterialProperty::rho_0 );
+        EXPECT_TRUE( std::isfinite( tRho0 ) );
+        EXPECT_GT( tRho0, 0.0 );
+        EXPECT_NEAR( ( tMetal->rho_i_custom( tTref ) + tRho0 ) / tRho0, 50.0, 1e-9 );
+
+        // RRR changed on the same object
+        tMetal->set_RRR( 120.0 );
+        tRho0 = tMetal->constant_property( belfem::MaterialProperty::rho_0 );
+        EXPECT_TRUE( std::isfinite( tRho0 ) );
+        EXPECT_GT( tRho0, 0.0 );
+        EXPECT_NEAR( ( tMetal->rho_i_custom( tTref ) + tRho0 ) / tRho0, 120.0, 1e-9 );
 
         delete tMetal ;
     }

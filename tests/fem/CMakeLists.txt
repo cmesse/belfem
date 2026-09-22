@@ -24,6 +24,7 @@ set( SOURCES
         test_DofSeeding.cpp
         test_GhostSwitch.cpp
         test_BlockRebuild.cpp
+        test_Tmatrix.cpp
         )
 
 set( LIBLIST
