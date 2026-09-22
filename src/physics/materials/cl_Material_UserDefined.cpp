@@ -35,15 +35,26 @@ namespace belfem
             BELFEM_ERROR( mHandle != nullptr, "Could not load library %s ( error: %s )",
                 aLibraryPath.c_str(), dlerror() );
 
-            string tFunctionName = sprint( "%s_init", aLabel.c_str() );
+            // the destructor is the only dlclose site and does not run when the
+            // constructor throws, so everything past the successful dlopen
+            // closes the handle before the error leaves this frame
+            try
+            {
+                string tFunctionName = sprint( "%s_init", aLabel.c_str() );
 
-            void (* tInitFunc )( Material * ) =
-                reinterpret_cast< void(*)( Material * ) >( dlsym( mHandle, tFunctionName.c_str() ) );
+                void (* tInitFunc )( Material * ) =
+                    reinterpret_cast< void(*)( Material * ) >( dlsym( mHandle, tFunctionName.c_str() ) );
 
-            BELFEM_ERROR( tInitFunc != nullptr, "Could not find function %s in library %s ( error: %s )",
-                 tFunctionName.c_str(), aLibraryPath.c_str(), dlerror() );
+                BELFEM_ERROR( tInitFunc != nullptr, "Could not find function %s in library %s ( error: %s )",
+                     tFunctionName.c_str(), aLibraryPath.c_str(), dlerror() );
 
-            tInitFunc( this );
+                tInitFunc( this );
+            }
+            catch ( ... )
+            {
+                dlclose( mHandle );
+                throw ;
+            }
         }
 
         UserDefinedMaterial::~UserDefinedMaterial()
@@ -99,29 +110,49 @@ namespace belfem
                     break ;
                 }
                 case MaterialProperty::jc:
-                {
-                    BELFEM_ERROR( mJcFunction == nullptr,
-                        "jc function of material %s is already set", this->label().c_str() );
-
-                    JcFunctionUserDefined * tJc = new JcFunctionUserDefined( this );
-                    tJc->set_jc_function( Function );
-                    mJcFunction = tJc;
-                    this->set_have( MaterialProperty::jc ) ;
-                    this->set_dependency( MaterialProperty::jc, MaterialDependency::normB ) ;
-                    this->set_dependency( MaterialProperty::jc, MaterialDependency::angleNxB ) ;
-                    break ;
-                }
                 case MaterialProperty::n:
                 {
-                    BELFEM_ERROR( mNFunction == nullptr,
-                        "n function of material %s is already set", this->label().c_str() );
+                    // the installed function is always called as
+                    // f( material, normB, angleNxB ), so any other declared
+                    // pair would transpose the author's arguments silently
+                    BELFEM_ERROR( Dependency1 == MaterialDependency::normB,
+                       "first parameter of function %s for %s must be magnetic field in T" ,
+                       to_string( Property ).c_str(), this->label().c_str() );
 
-                    JcFunctionUserDefined * tN = new JcFunctionUserDefined( this );
-                    tN->set_jc_function( Function );
-                    mNFunction = tN;
-                    this->set_have( MaterialProperty::n ) ;
-                    this->set_dependency( MaterialProperty::n, MaterialDependency::normB ) ;
-                    this->set_dependency( MaterialProperty::n, MaterialDependency::angleNxB ) ;
+                    BELFEM_ERROR( Dependency2 == MaterialDependency::angleNxB,
+                        "second parameter of function %s for %s must be an angle in rad" ,
+                        to_string( Property ).c_str(), this->label().c_str() );
+
+                    // refused before the allocation and before any flag is
+                    // raised, so a rejected registration leaves the material
+                    // as it was
+                    if ( Property == MaterialProperty::jc )
+                    {
+                        BELFEM_ERROR( mJcFunction == nullptr,
+                            "jc function of material %s is already set", this->label().c_str() );
+                    }
+                    else
+                    {
+                        BELFEM_ERROR( mNFunction == nullptr,
+                            "n function of material %s is already set", this->label().c_str() );
+                    }
+
+                    this->reset_dependencies( Property );
+                    this->set_dependency( Property, MaterialDependency::normB ) ;
+                    this->set_dependency( Property, MaterialDependency::angleNxB ) ;
+
+                    JcFunctionUserDefined * tJcFunction = new JcFunctionUserDefined( this );
+                    tJcFunction->set_jc_function( Function );
+
+                    if ( Property == MaterialProperty::jc )
+                    {
+                        mJcFunction = tJcFunction;
+                    }
+                    else
+                    {
+                        mNFunction = tJcFunction;
+                    }
+                    this->set_have( Property ) ;
                     break ;
                 }
                 default:

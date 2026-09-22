@@ -144,7 +144,7 @@ extern "C" void MyAlloy_init(Material* mat)
 // =============================================================================
 // jc and n are NOT ordinary properties. They are evaluated through a
 // JcFunction object, and only the two- and three-dependency overloads of
-// set_user_defined_function build one. See note 6 below for the trap.
+// set_user_defined_function build one. See note 6 below for the accepted orders.
 //
 // The three-dependency signature is fixed: ( normB, angleNxB, T ), in that
 // order. angleNxB is the UNFOLDED field-to-normal angle in [0, pi].
@@ -288,29 +288,19 @@ extern "C" void MySuperconductor_init(Material* mat)
 //    unaffected.
 //
 //    A two-dependency jc or n is also accepted and gives a field- and
-//    angle-dependent fit with no temperature argument. Be aware that this
-//    overload does NOT validate the dependencies you declare -- it forces
-//    normB and angleNxB regardless of what you pass.
+//    angle-dependent fit with no temperature argument. Its one accepted
+//    order is ( normB, angleNxB ) -- the order in which the installed
+//    function is called -- and any other pair is refused, exactly as the
+//    three-dependency form refuses anything but ( normB, angleNxB, T ).
 //
 //    Note that rho and lambda are T-FIRST while jc and n are T-LAST. All the
 //    arguments are `real`, so getting this wrong compiles cleanly and
 //    evaluates the property at the wrong point -- this has bitten BELFEM
 //    itself more than once.
 //
-//    THE TRAP: the ONE-dependency overload accepts jc and n (with
-//    MaterialDependency::T -- it rejects any other dependency) and does the
-//    wrong thing. It stores the pointer and calls set_custom(), but never
-//    builds the JcFunction, so jc_eval() falls back to constant_property( jc )
-//    -- which set_custom() has just set to NaN.
-//
-//    Precisely: the fit is unreachable from the FEM ASSEMBLY route, which
-//    always evaluates through the full-signature overloads. It IS still
-//    reached by the temperature-only power-law overloads and by
-//    postprocessing, so the material is inconsistent rather than inert.
-//    In a debug build constant_property() asserts ("Property is not
-//    constant"); in a release build it returns NaN and the jc > 0 test then
-//    fails too. Always register jc and n through the two- or three-dependency
-//    form, as MySuperconductor_init does.
+//    The ONE-dependency overload refuses jc and n: the power law evaluates
+//    both through a JcFunction, and only the two- and three-dependency forms
+//    build one. Register them as MySuperconductor_init does.
 //
 // 7. ACCESSING OTHER PROPERTIES:
 //    Within your functions, you can call mat->property(args) to access
