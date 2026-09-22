@@ -740,7 +740,14 @@ namespace belfem
                 }
             }
 
-            BELFEM_ASSERT( tCount == n, "Failed to match all nodes" );
+            // tCount counts hits, not distinct partners: a source inside the
+            // tolerance of two targets is counted twice, so the message reports
+            // the count, not "n - count unmatched"
+            BELFEM_ERROR( tCount == n,
+                "matched %lu of %lu target nodes of the periodic pair within %g m",
+                ( long unsigned int ) tCount,
+                ( long unsigned int ) n,
+                ( double ) BELFEM_MESH_EPSILON );
 
             sort( aSourceNodes, opNodeIndex );
 
