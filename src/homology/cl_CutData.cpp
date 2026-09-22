@@ -246,6 +246,19 @@ namespace belfem
                 {
                     mCohomologyMinus->set( tEdges( tPair.first )->index() );
                 }
+                // a cut edge carries +1, -1 or zero; any other value is a defect
+                // upstream, and the branches above would turn it into a silent
+                // zero weight
+                else if ( tPair.second != 0 )
+                {
+                    Edge * tEdge = tEdges( tPair.first );
+
+                    BELFEM_ERROR( false,
+                                  "Cut %lu: edge %lu carries the coefficient %ld, which is not a unit",
+                                  ( luint ) mID,
+                                  ( luint ) tEdge->id(),
+                                  ( long ) tPair.second );
+                }
                 if ( tEdges( tPair.first )->is_periodic() )
                 {
                     if ( tPair.second == 1 )

@@ -26,17 +26,20 @@ generator with `|c(e)| ≥ 2` on some edges.
 > dispatches to `clean_spfa()` (`cl_Cohomology.cpp:191,358`), which solves the difference
 > constraints through `graph::spfa_difference_constraints` (`:455`) and emits an obstruction
 > certificate when no unit representative exists; pockets are removed afterwards by
-> `remove_cut_pockets()`. The paragraph below describes the **superseded** greedy behavior and is
-> kept because the failure it documents is what motivated the replacement.
+> `remove_cut_pockets()`. The paragraph below opens with the **superseded** greedy behavior, kept
+> because the failure it documents is what motivated the replacement, and then states how the cut
+> layer reacts to a non-unit coefficient today.
 
 The old code could not handle this: the greedy
 `Cohomology::clean()` tried to remove non-unit coefficients by local node firing with no
-global view and no termination guarantee, and the downstream `CutData` machinery is built only
-for unit coefficients — a non-unit edge is flagged as support but recorded in neither `±1`
-bitset (its weight becomes 0), so `determine_cut_case_3d()` ultimately rejects it as an
-invalid cut pattern or non-uniform coefficient, rather than diagnosing the real cause. The
-unit-only restriction is structural, not a bookkeeping accident: §1.1 explains why the push
-construction has no place to store a second sheet.
+global view and no termination guarantee. The downstream `CutData` machinery is still built
+only for unit coefficients, but it no longer absorbs a violation silently:
+`CutData::collect_coefficients()` sets the `+1` and `−1` bitsets from the cochain and
+refuses any other non-zero coefficient with an always-active error naming the cut and the
+edge, so the defect is reported where it enters the cut layer instead of surfacing later as
+an invalid cut pattern in `determine_cut_case_3d()`. The unit-only restriction is structural,
+not a bookkeeping accident: §1.1 explains why the push construction has no place to store a
+second sheet.
 
 The resolution has three parts:
 
