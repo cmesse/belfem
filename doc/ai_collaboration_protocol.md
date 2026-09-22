@@ -212,18 +212,36 @@ Examples:
 
 ### Required Header
 
-Fill only the applicable fields:
+`**Date:**` is the only field every entry carries. Fill the rest where they apply, and add one of
+your own where the session needs it — the fields below are the ones that recur, not a schema.
 
 ```markdown
-# Devlog 2026-03-13 — Solver Refactoring
+# Test-gap sweep, DR-113 drain-check tests, grok-4.7
 
-**Date:** 2026-03-13
-**Topic:** Brief description
-**AIs involved:** Claude, Codex
-**Claude Confidence:** medium (~70%)
-**Codex Audit Confidence:** high
+**Date:** 2026-09-21
+**Purpose:** what the session was for, in two or three lines — the question it opened with
+**Module:** `src/homology` (`cl_Cohomology`, `cl_CutProcessor`), or `meta` for tooling and docs
+**AIs involved:** Claude Opus 5 (primary), Codex `gpt-5.6-terra`/high and Grok `grok-4.7`/high
+(plan jury), Codex `gpt-6-astra`/high and Grok `grok-4.7`/high (code jury)
+**Status:** COMPLETE — both juries folded in, all gates on 9a4e65f passed; §5 lists what is open
 **Literature References:** Messe et al. 2023 §2.7, Bathe 2016 Ch. 8
 **Verification:** focused regression — `make check-fast` green on sideconnectors @ <commit> (see §11; "reviewed" ≠ "verified", name the highest evidence level reached; include branch/commit + command for probe level or above)
+**Exchange:** `tmp/ai_exchange/<slug>.md` — names the swept thread this entry distils
+```
+
+Three points where the practiced form differs from the older one, and why:
+
+- **The title is a topic phrase**, not `Devlog <date> — <topic>`. The date is on the next line and
+  in the filename; spending the title on it wastes the one line a future session scans. Around 200
+  older entries use the `Devlog <date> —` form — they are not wrong and are not to be churned.
+- **Each auditor seat names its model and its effort.** `AIs involved: Claude, Codex` does not
+  survive contact with the depth table in §9.1: a finding is only attributable if the record says
+  how hard the auditor was asked to look. Name the jury each seat sat on (plan or code) when both
+  ran.
+- **Per-finding confidence lives in the body**, beside the finding it qualifies (§3), which is
+  where a reader needs it. A header-level `**Claude Confidence:**` / `**Codex Audit Confidence:**`
+  line stays available for an entry whose whole subject carries one confidence, and a few entries
+  still use it.
 
 ## Summary
 
@@ -445,11 +463,12 @@ repository can check; if the vendor config drifts, the wrapper defaults stay put
 | Single narrow claim, round 1 | `gpt-5.6-terra`, `medium` | `high` |
 | Plan audit or code-diff audit, round 1 | `gpt-5.6-terra`, `high` | `high` |
 | Round ≥ 2, a round-1 split verdict, or a safety-boundary subject (ownership, lifetime, MPI collectives, ABI) | `gpt-5.6-terra`, `xhigh` | `xhigh` |
-| Unattended post-commit `--quick` | `gpt-5.6-luna`, `medium` | `grok-4.6`, `medium` |
+| Critical framework code — `src/mesh`, `src/fem/kernel`, dof manager, sidesets, blocks, calculator, basis, distributor, `src/fem/maxwell` factories | `gpt-6-astra`, `high` (`xhigh` for round ≥ 2) | `high` |
+| Unattended post-commit `--quick` | `gpt-5.6-luna`, `medium` | `grok-4.7`, `medium` |
 
 ```bash
 CODEX_MODEL=gpt-5.6-terra CODEX_EFFORT=high AI_EXCHANGE_SLUG=<slug> .claude/scripts/ask_codex.sh - < prompt.md
-GROK_MODEL=grok-4.6 GROK_EFFORT=high        AI_EXCHANGE_SLUG=<slug> .claude/scripts/ask_grok.sh  - < prompt.md
+GROK_MODEL=grok-4.7 GROK_EFFORT=high        AI_EXCHANGE_SLUG=<slug> .claude/scripts/ask_grok.sh  - < prompt.md
 ```
 
 Four things the table encodes, each of which cost something to learn:
@@ -464,6 +483,12 @@ Four things the table encodes, each of which cost something to learn:
   constraint: `max` has shown no measured benefit here, and `ultra` is documented by the vendor as
   delegating to subagents — a different execution shape than the single-agent read-only audit the
   wrappers assume, and one no in-repo evidence confirms. Raise the cap only with a measurement.
+- **One row moves the model instead: critical framework code.** Mesh, kernel and dof-manager work
+  takes `gpt-6-astra` on the Codex seat for both the plan audit and the code audit, because a wrong
+  ownership or lifetime call there is expensive to reverse — the tier-3 F18 case (a basis dof
+  container shared by two kernels) turned on a one-line change. This is a deliberate exception to
+  the rung discipline above, not a drift: the subject, not the round number, selects it.
+
 - **Effort is not a substitute for a sharp prompt.** The narration-stub failures documented in
   `doc/lessons_learned_evidence.md` were a prompt-shape defect; no effort setting would have
   touched them.
