@@ -1119,6 +1119,85 @@ TEST( DynamicBitset, IndexSurvivesMove )
     EXPECT_EQ( tBs.index(), belfem::gNoIndex );
 }
 
+// copy assignment carries the same metadata the copy constructor carries.
+// The arms sit on the two branches of operator=: a differing memory size
+// reallocates, an equal one keeps the buffer.
+TEST( DynamicBitset, IndexSurvivesCopyAssignment )
+{
+    // reallocating branch: one data word to two
+    belfem::DynamicBitset tA( 32 );
+    tA.set_index( 5 );
+
+    belfem::DynamicBitset tB( 128 );
+    tB.set( 100 );
+    tB.set_index( 99 );
+    tB.lock();
+
+    tA = tB;
+
+    EXPECT_EQ( tA.index(), 99u );
+    EXPECT_EQ( tA.size(), 128u );
+    EXPECT_TRUE( tA.test( 100 ) );
+    EXPECT_TRUE( tA.is_locked() );
+    EXPECT_EQ( tA.hash(), tB.hash() );
+
+    // same memory size: the buffer is kept, the metadata is still copied
+    belfem::DynamicBitset tC( 64 );
+    tC.set_index( 11 );
+    belfem::DynamicBitset tD( 64 );
+    tD.set_index( 42 );
+
+    tC = tD;
+
+    EXPECT_EQ( tC.index(), 42u );
+    EXPECT_FALSE( tC.is_locked() );
+
+    // a locked target takes the source's unlocked state, it does not keep
+    // its own lock
+    belfem::DynamicBitset tE( 64 );
+    tE.set( 3 );
+    tE.set_index( 7 );
+    tE.lock();
+    belfem::DynamicBitset tF( 64 );
+    tF.set_index( 55 );
+
+    tE = tF;
+
+    EXPECT_FALSE( tE.is_locked() );
+    EXPECT_EQ( tE.index(), 55u );
+
+    // the equal-memory arm copies the buffer too: the target's own bit is
+    // gone and the source's bit is present
+    EXPECT_FALSE( tE.test( 3 ) );
+    tF.set( 9 );
+    tE = tF;
+    EXPECT_TRUE( tE.test( 9 ) );
+
+    // assignment copies the index, it does not merge it: a source left at
+    // the default overwrites a target that carries one
+    belfem::DynamicBitset tG( 64 );
+    tG.set_index( 7 );
+    belfem::DynamicBitset tH( 64 );
+
+    tG = tH;
+
+    EXPECT_EQ( tG.index(), belfem::gNoIndex );
+}
+
+TEST( DynamicBitset, IndexSurvivesMoveAssignment )
+{
+    belfem::DynamicBitset tTarget( 64 );
+    tTarget.set_index( 3 );
+
+    belfem::DynamicBitset tSource( 128 );
+    tSource.set_index( 77 );
+
+    tTarget = std::move( tSource );
+
+    EXPECT_EQ( tTarget.index(), 77u );
+    EXPECT_EQ( tSource.index(), belfem::gNoIndex );
+}
+
 // =============================================================================
 // §2.12  Summary Bitmaps  [semantic]
 // =============================================================================

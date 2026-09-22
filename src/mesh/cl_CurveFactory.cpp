@@ -1021,9 +1021,8 @@ namespace belfem
             tNumSegments.fill( 0 );
 
             // create the adjacency, filled with gNoIndex: next() tests the
-            // slots against gNoIndex. The fill must go through set_size, whose
-            // fill value is typed T -- the constructor fill is typed real, and
-            // a 64-bit gNoIndex does not fit double's 53-bit mantissa
+            // slots against gNoIndex. Both the constructor and set_size fill
+            // with a value typed T, so a 64-bit gNoIndex survives the fill
             Matrix< index_t > tAdjacency ;
             tAdjacency.set_size( aEndNodes.size(), 2, gNoIndex );
 

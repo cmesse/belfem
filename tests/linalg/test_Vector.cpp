@@ -13,6 +13,8 @@
 
 #include <gtest/gtest.h>
 #include <cmath>
+#include <cstdint>
+#include <limits>
 #include <string>
 
 #include "typedefs.hpp"
@@ -293,6 +295,49 @@ TEST( Vector, SetSizeWithValue )
     for( size_t i = 0; i < 10; ++i )
     {
         EXPECT_NEAR( tVec( i ), 3.0, tEps );
+    }
+}
+
+// the three fill paths take the value as T, not as real. 2^53+1 is the
+// smallest odd integer a double cannot represent: a real round trip returns
+// 2^53, which is even.
+TEST( Vector, IntegerFillIsExact )
+{
+    const uint64_t tOdd = ( uint64_t( 1 ) << 53 ) + 1;
+    const uint64_t tMax = std::numeric_limits< uint64_t >::max();
+
+    belfem::Vector< uint64_t > tVec( 5, tOdd );
+    EXPECT_EQ( tVec.length(), 5u );
+    for( size_t i = 0; i < 5; ++i )
+    {
+        EXPECT_EQ( tVec( i ), tOdd );
+    }
+    EXPECT_EQ( tVec( 4 ) % uint64_t( 2 ), uint64_t( 1 ) );
+
+    tVec.fill( tMax );
+    for( size_t i = 0; i < 5; ++i )
+    {
+        EXPECT_EQ( tVec( i ), tMax );
+    }
+
+    tVec.set_size( 7, tOdd );
+    EXPECT_EQ( tVec.length(), 7u );
+    for( size_t i = 0; i < 7; ++i )
+    {
+        EXPECT_EQ( tVec( i ), tOdd );
+    }
+
+    // the sentinel fill the curve factory and the dof manager use
+    belfem::Vector< belfem::index_t > tIdx( 3, belfem::gNoIndex );
+    for( size_t i = 0; i < 3; ++i )
+    {
+        EXPECT_EQ( tIdx( i ), belfem::gNoIndex );
+    }
+
+    belfem::Vector< int > tNeg( 3, -7 );
+    for( size_t i = 0; i < 3; ++i )
+    {
+        EXPECT_EQ( tNeg( i ), -7 );
     }
 }
 

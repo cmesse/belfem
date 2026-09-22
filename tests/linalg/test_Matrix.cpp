@@ -15,6 +15,8 @@
 
 #include <gtest/gtest.h>
 #include <cmath>
+#include <cstdint>
+#include <limits>
 #include <string>
 
 #include "typedefs.hpp"
@@ -264,6 +266,67 @@ TEST( Matrix, SetSizeWithValue )
     EXPECT_EQ( tMat.n_rows(), 5u );
     EXPECT_EQ( tMat.n_cols(), 7u );
     EXPECT_NEAR( tMat( 4, 6 ), 1.0, tEps );
+}
+
+// the three fill paths take the value as T, not as real. 2^53+1 is the
+// smallest odd integer a double cannot represent: a real round trip returns
+// 2^53, which is even. Values are read through the accessor only -- Blaze
+// pads the inter-column stride, so a data() offset is not the element.
+TEST( Matrix, IntegerFillIsExact )
+{
+    const uint64_t tOdd = ( uint64_t( 1 ) << 53 ) + 1;
+    const uint64_t tMax = std::numeric_limits< uint64_t >::max();
+
+    belfem::Matrix< uint64_t > tMat( 3, 2, tOdd );
+    EXPECT_EQ( tMat.n_rows(), 3u );
+    EXPECT_EQ( tMat.n_cols(), 2u );
+    for( size_t j = 0; j < 2; ++j )
+    {
+        for( size_t i = 0; i < 3; ++i )
+        {
+            EXPECT_EQ( tMat( i, j ), tOdd );
+        }
+    }
+    EXPECT_EQ( tMat( 2, 1 ) % uint64_t( 2 ), uint64_t( 1 ) );
+
+    tMat.fill( tMax );
+    for( size_t j = 0; j < 2; ++j )
+    {
+        for( size_t i = 0; i < 3; ++i )
+        {
+            EXPECT_EQ( tMat( i, j ), tMax );
+        }
+    }
+
+    tMat.set_size( 4, 4, tOdd );
+    EXPECT_EQ( tMat.n_rows(), 4u );
+    EXPECT_EQ( tMat.n_cols(), 4u );
+    for( size_t j = 0; j < 4; ++j )
+    {
+        for( size_t i = 0; i < 4; ++i )
+        {
+            EXPECT_EQ( tMat( i, j ), tOdd );
+        }
+    }
+
+    // the sentinel fill the mesh factories use, and a signed instantiation
+    belfem::Matrix< belfem::index_t > tIdx( 2, 2, belfem::gNoIndex );
+    for( size_t j = 0; j < 2; ++j )
+    {
+        for( size_t i = 0; i < 2; ++i )
+        {
+            EXPECT_EQ( tIdx( i, j ), belfem::gNoIndex );
+        }
+    }
+
+    belfem::Matrix< int > tNeg( 2, 2, -7 );
+    for( size_t j = 0; j < 2; ++j )
+    {
+        for( size_t i = 0; i < 2; ++i )
+        {
+            EXPECT_EQ( tNeg( i, j ), -7 );
+        }
+    }
 }
 
 // =============================================================================
