@@ -227,7 +227,7 @@ namespace belfem
     Material::rho_powerlaw( const real normJ, const real normB, const real angleNxB  ) const
     {
         BELFEM_ASSERT( mJcFunction != nullptr, "Material %s does not have Jc function", mLabel.c_str() ) ;
-        BELFEM_ASSERT( this->is_constant( MaterialProperty::n ),   "Material %s does not have a constant jc parameter defined", mLabel.c_str() ) ;
+        BELFEM_ASSERT( this->is_constant( MaterialProperty::n ),   "Material %s does not have a constant n parameter defined", mLabel.c_str() ) ;
 
 
         BELFEM_ASSERT(
@@ -238,7 +238,7 @@ namespace belfem
 
         real ec = this->constant_property( MaterialProperty::ec ) ;
         real jc = mJcFunction->eval( normB, angleNxB ) ;
-        real  n = mNFunction->eval( normB, angleNxB ) ;
+        real  n = this->constant_property( MaterialProperty::n ) ;
 
         real rhon = this->rho( gTbulk ) ;
         real rhoPL = std::max(( ec / jc ) * std::pow( normJ / jc, n - 1 ), mRhoMin);
@@ -254,7 +254,7 @@ namespace belfem
     Material::rho_powerlaw( const real normJ, const real normB, const real angleNxB, const real x, const real y, const real z, const real t  ) const
     {
         BELFEM_ASSERT( mJcFunction != nullptr, "Material %s does not have Jc function", mLabel.c_str() ) ;
-        BELFEM_ASSERT( this->is_constant( MaterialProperty::n ),   "Material %s does not have a constant jc parameter defined", mLabel.c_str() ) ;
+        BELFEM_ASSERT( this->is_constant( MaterialProperty::n ),   "Material %s does not have a constant n parameter defined", mLabel.c_str() ) ;
 
 
         BELFEM_ASSERT(
@@ -265,7 +265,7 @@ namespace belfem
 
         real ec = this->constant_property( MaterialProperty::ec ) ;
         real jc = mJcFunction->eval( normB, angleNxB )*((this->mDefectFunction) (x,y,z,t)) ; ;
-        real  n = mNFunction->eval( normB, angleNxB ) ;
+        real  n = this->constant_property( MaterialProperty::n ) ;
 
         real rhon = this->rho( gTbulk ) ;
         real rhoPL = std::max(( ec / jc ) * std::pow( normJ / jc, n - 1 ), mRhoMin);
@@ -550,7 +550,7 @@ namespace belfem
     Material::rho_piecewise( const real normJ, const real normB, const real angleNxB  ) const
     {
         BELFEM_ASSERT( mJcFunction != nullptr, "Material %s does not have Jc function", mLabel.c_str() ) ;
-        BELFEM_ASSERT( this->is_constant( MaterialProperty::n ),   "Material %s does not have a constant jc parameter defined", mLabel.c_str() ) ;
+        BELFEM_ASSERT( this->is_constant( MaterialProperty::n ),   "Material %s does not have a constant n parameter defined", mLabel.c_str() ) ;
 
 
         BELFEM_ASSERT(
@@ -568,7 +568,7 @@ namespace belfem
 
         real ec = this->constant_property( MaterialProperty::ec ) ;
         real jc = mJcFunction->eval( normB, angleNxB ) ;
-        real  n = mNFunction->eval( normB, angleNxB ) ;
+        real  n = this->constant_property( MaterialProperty::n ) ;
 
         BELFEM_ASSERT( jc > 0.0, "Piecewise power law requires jc > 0 (got jc = %g) for material %s", ( double ) jc, mLabel.c_str() ) ;
         BELFEM_ASSERT( n  > 1.0, "Piecewise power law requires n > 1 (got n = %g) for material %s",  ( double ) n,  mLabel.c_str() ) ;
@@ -625,7 +625,7 @@ namespace belfem
     Material::rho_piecewise( const real normJ, const real normB, const real angleNxB, const real x, const real y, const real z, const real t  ) const
     {
         BELFEM_ASSERT( mJcFunction != nullptr, "Material %s does not have Jc function", mLabel.c_str() ) ;
-        BELFEM_ASSERT( this->is_constant( MaterialProperty::n ),   "Material %s does not have a constant jc parameter defined", mLabel.c_str() ) ;
+        BELFEM_ASSERT( this->is_constant( MaterialProperty::n ),   "Material %s does not have a constant n parameter defined", mLabel.c_str() ) ;
 
 
         BELFEM_ASSERT(
@@ -643,7 +643,7 @@ namespace belfem
 
         real ec = this->constant_property( MaterialProperty::ec ) ;
         real jc = mJcFunction->eval( normB, angleNxB )*((this->mDefectFunction) (x,y,z,t)) ; ;
-        real  n = mNFunction->eval( normB, angleNxB ) ;
+        real  n = this->constant_property( MaterialProperty::n ) ;
 
         BELFEM_ASSERT( jc > 0.0, "Piecewise power law requires jc > 0 (got jc = %g) for material %s", ( double ) jc, mLabel.c_str() ) ;
         BELFEM_ASSERT( n  > 1.0, "Piecewise power law requires n > 1 (got n = %g) for material %s",  ( double ) n,  mLabel.c_str() ) ;
@@ -1195,7 +1195,7 @@ namespace belfem
 
         real ec = this->constant_property( MaterialProperty::ec ) ;
         real jc = mJcFunction->eval( normB, angleNxB ) ;
-        real  n = mNFunction->eval( normB, angleNxB ) ;
+        real  n = this->constant_property( MaterialProperty::n ) ;
 
         if (normJ < BELFEM_EPSILON) return 0.0;
 
@@ -1220,7 +1220,7 @@ namespace belfem
 
         real ec = this->constant_property( MaterialProperty::ec ) ;
         real jc = mJcFunction->eval( normB, angleNxB ) * ((this->mDefectFunction) (x,y,z,t)) ;
-        real  n = mNFunction->eval( normB, angleNxB ) ;
+        real  n = this->constant_property( MaterialProperty::n ) ;
 
         if (normJ < BELFEM_EPSILON) return 0.0;
 
@@ -1650,7 +1650,7 @@ namespace belfem
 
         real ec = this->constant_property( MaterialProperty::ec ) ;
         real jc = mJcFunction->eval( normB, angleNxB ) ;
-        real  n = mNFunction->eval( normB, angleNxB ) ;
+        real  n = this->constant_property( MaterialProperty::n ) ;
 
         if (normJ < BELFEM_EPSILON) return 0.0;
 
@@ -1725,7 +1725,7 @@ namespace belfem
 
         real ec = this->constant_property( MaterialProperty::ec ) ;
         real jc = mJcFunction->eval( normB, angleNxB ) * ((this->mDefectFunction) (x,y,z,t)) ;
-        real  n = mNFunction->eval( normB, angleNxB ) ;
+        real  n = this->constant_property( MaterialProperty::n ) ;
 
         if (normJ < BELFEM_EPSILON) return 0.0;
 

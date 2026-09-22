@@ -17,6 +17,7 @@ set( SOURCES
         test_MetalFieldDependence.cpp
         test_JcCustomGuard.cpp
         test_MetalElastic.cpp
+        test_MaterialDerivatives.cpp
         )
 
 set( LIBLIST
