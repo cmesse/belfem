@@ -9,13 +9,10 @@ inventory before any src fix that changes a value or refuses an input; rulings b
 Christian at the end (the quiz).
 **Module:** every suite under `tests/`; src fixes only where a row's defect is live and the jury confirms
 **AIs involved:** Claude Fable then Opus 5 (orchestration, planning agents, juries, commits), Codex + Grok (juries; terra/high, astra/high on the critical list), Opus (implementation)
-**Status:** IN PROGRESS on Opus 5 — 2026-09-22 18:30 the Fable credit window closed and five of
-eight batch planners died mid-read; Christian moved the session to Opus and the work continues.
-Three plans survive (`review_tgap2_b1_plan.md`, `_b2_plan.md`, `_b7_plan.md`); B3, B4, B5a, B5b
-and B6 are being re-planned two at a time with named file lists (incident P1). Nothing has been
-juried, implemented or committed for any Tier 2 row yet. B4 (mesh) waits until the peer's live
-`src/mesh` edits settle — a planner citing `meshtools.cpp` line numbers mid-edit would cite
-line numbers that move.
+**Status:** IN PROGRESS on Opus 5 (orchestration back on Fable) — seven of eight batches planned;
+the quiz is complete (17 rulings, §3a-3d); implementation starts with slice 1 (DR-185 + T-05/N-20a,
+both src → both jury rounds) and the test-only rows of B1 (one jury round on the finished diff).
+B4 (mesh) waits on the peer's live `src/mesh` edits.
 
 > **Standing approvals (carried from Tier 1, `memory: test-gap-overnight-run`):** tests and jury-confirmed
 > local src fixes land without a per-row stop; Claude runs make/ctest; one commit per row, own files only,
@@ -61,6 +58,78 @@ line numbers that move.
 - O3 (T-30) Ni/Fe λ(300 K) within 15 %: land `DISABLED_` until ruled.
 - O5 (T-53) logical size vs capacity after shrink.
 - O9 (T-06) `.bfm` foreign git hash: refuse or flag.
+
+## 3a. Rulings taken (quiz, batch 1)
+
+- **Jury rounds:** a Tier 2 row that only adds tests to an existing suite takes ONE round (plan and
+  code together, on the finished diff); a row that touches `src/` keeps both. Standing rule.
+- **DR-186:** investigate the Lawrencium trigger first — which deck, which predicate — then restore
+  the guards (real misconfiguration) or fix the predicate (false positive). No change until known.
+- **DR-187:** refuse by name — `BELFEM_ERROR` naming the group and its domain type replaces the
+  silent `activate( false )`. Consumer inventory before it lands (a deck that hits it today
+  solves with a missing contribution; afterwards it stops at setup).
+- **T-09:** route the deck arm through `set_relative_tolerance` and validate there — one gate.
+
+## 3b. Rulings taken (quiz, batch 2)
+
+- **T-20:** add `SolverParameters::set_max_iterations` with the siblings' validation shape; no deck
+  key, so the input contract does not change. Unblocks three sparse tests.
+- **O5 (T-53):** logical size everywhere — the MPI routes deliver `n_rows × n_cols` after a shrink;
+  capacity is recorded by the test, never asserted.
+- **O9 (T-06):** a `.bfm` written by another git hash loads with a WARNING naming both hashes; not
+  refused. Consistent with the failure-tolerant input rule.
+- **O1 (T-07):** `Ascii` resolves a relative path against the process cwd (`getcwd()`), not
+  `getenv( "PWD" )` — a src change with a consumer inventory (every caller passing a relative
+  path; the tests already pass absolute ones).
+
+## 3c. Rulings taken (quiz, batch 3)
+
+- **T-15:** document `gRhoMax > gRhoMin` as a precondition at the definition plus one test asserting
+  it; no runtime guard on the hot clamp.
+- **N-06:** the `unfold_row` clause is STRUCK; the row keeps the self-containment invariant, pinned
+  by a property walk over the built dof set.
+- **N-53:** reachability first — one read of how `FaceFactory` assigns slave orientation on real
+  meshes; if 2 and 3 cannot occur, the `switch` arms are dead code and that is the finding.
+- **T-29:** the C1 band at 10 mT is measured on the first run, then set to ten times the
+  measurement (the YBCO spline-band pattern).
+
+## 3d. Rulings taken (quiz, batch 4) — the quiz is complete
+
+- **T-30:** the `DISABLED_` pins use each material file's own cited source (DOI) for the 300 K
+  value and print measured / reference / deviation; Christian corrects a number if the file's
+  citation is not the one he trusts.
+- **Proceed:** implementation starts with the unblocked cheapest slice — DR-185 (kernel copy
+  deletions + `static_assert`) and the shared map-message fix (T-05 / N-20a), then the test-only
+  rows of B1 and B6 — one batch in flight at a time; mesh waits on the peer.
+
+## 3e. Handoff to the next session (written 2026-09-22 evening, session 8ab15769 closing)
+
+Christian is reloading the session on Opus 5.5. State at handoff:
+
+- **Plans:** seven of eight on disk under `tmp/ai_exchange/review_tgap2_{b1,b2,b3,b5a,b5b,b6,b7}_plan.md`
+  (ephemeral: distil what you use into this file before the sweep). B4 (mesh) is unplanned and waits
+  until the peer's live edits to `cl_Face`, `cl_FaceFactory`, `cl_Element_Factory`, `meshtools` and
+  `cl_CurveFactory` are committed.
+- **Rulings:** all seventeen in §3a–3d; none open. One is standing policy: a test-only row takes ONE
+  jury round on the finished diff; a row touching `src/` keeps both.
+- **In flight at close:**
+  1. Slice-1 plan jury (DR-185 kernel copy deletions + T-05/N-20a map message), astra/high, slug
+     `review_tgap2_s1`. It runs detached and appends to `tmp/ai_exchange/review_tgap2_s1.md`; read the
+     two verdicts, verify their citations, reconcile, then implement on Opus and take the code round.
+  2. Opus agent implementing B1's five test-only rows (T-14 `tests/core/test_Logger.cpp` new, T-19,
+     T-28, N-05, N-23 in existing files). If its hand-back landed before close, its report is in §3f
+     below; if not, `git status -- tests/` shows what it wrote and each file must be syntax-gated in
+     both trees before anything else. Gate: `test_core`, `test_linalg`, `test_math` in both trees; then
+     one jury round on the own-files diff; then one commit per row.
+- **Order after that:** B6's three real rows (T-29 REBCO table, T-30 disabled pins, T-22 window
+  guard), then B3 with its two new setters, then B5a/B5b, then B2/B7, then B4 when the peer is done.
+  One batch in flight at a time.
+- **Register:** DR-185, DR-186, DR-187 sit in the working copy of `todo/debt_register.md` beside the
+  peer's uncommitted rows; the three shared index files (`todo/debt_register.md`, `todo/README.md`,
+  `devlog/README.md`) carry this run's lines beside peer WIP and go in at Christian's session close,
+  never staged from a fresh session.
+- **Do not:** launch more than two planning agents at once (incident P1); run a G4 mutation chain
+  while a jury reads the tree (Tier 1 incident P5); stage anything in the three shared files.
 
 ## 4. Incidents
 
