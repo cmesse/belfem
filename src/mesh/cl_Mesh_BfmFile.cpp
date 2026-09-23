@@ -323,6 +323,26 @@ namespace belfem
                             "             Datasets unknown to this build are ignored silently." );
                     }
                 }
+
+                // a stamp that differs from this build's loads and is
+                // flagged; the checksum and the settings fingerprint gate its
+                // reuse. The stamp names the commit and whether the tree was
+                // dirty, not the diff, and a build not made from git has no
+                // stamp of its own to compare
+                const string & tStamp = mProto->meta_data()->mGitHash ;
+                if ( is_built_from_git() && tStamp.size() > 0 )
+                {
+                    const string tOwn = git_is_dirty() ?
+                        git_commit_hash() + "-dirty" : git_commit_hash() ;
+
+                    if ( tStamp != tOwn )
+                    {
+                        message( InfoLevel::Default,
+                            "    Warning: this mesh file was written by git %s,", tStamp.c_str() );
+                        message( InfoLevel::Default,
+                            "             but this build is git %s.", tOwn.c_str() );
+                    }
+                }
             }
 #endif
         }

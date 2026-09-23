@@ -14,6 +14,7 @@ set( SOURCES
         test_FaceFactory.cpp
         test_FacetNodes.cpp
         test_CurveFactory.cpp
+        test_BfmFile.cpp
         )
 
 set( LIBLIST graph bezier interpolation integration mesh )
