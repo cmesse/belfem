@@ -192,9 +192,10 @@ Christian is reloading the session on Opus 5.5. State at handoff:
   release) after B3's first pass; post-jury B3 fixes re-run in the Blaze tree (sparse 132 + MPI
   14 at np 2/4).
 - **For the morning quiz:**
-  - DR-189: is the flat clamp below ~56 K on sp-ap acceptable (value error < 1 %, tangent kink),
-    or should J0 below its measured range be extrapolated? The bridge comment's "measurements
-    satisfy J0 >= jc( Bmin, theta )" is false there.
+  - DR-189 (an evaluator issue in `JcFunctionDatabase`, not a table defect): the self-field curve
+    is calibrated at 77.5 K only and sits up to 2.7 % below the table's 10 mT value at low T, so
+    `eval` continues the 10 mT value flat below 10 mT there (a tangent kink at 10 mT). Calibrate
+    per temperature, or bridge to the table value with its own slope?
   - T-30: which λ(300 K) references — Ni 90.7, Fe 83.2 (the backlog row) or 80.2 (commonly
     quoted)? Neither was read from Touloukian / NBSIR 84-3007; the pins stay disabled until you say.
   - O-B3-2: add a `set_metis_nodendp` setter (then N-22 and the sync test cover it), or accept the
