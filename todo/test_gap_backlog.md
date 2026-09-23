@@ -285,6 +285,23 @@ false is the intended opt-in. Two caveats: C05's wording is inexact (`SetCustomR
 exercises the inner guard; the one-argument route's own error is uncalled — double-guarded), and
 the drain-check tests G10 cites are green but UNCOMMITTED in `tests/comm` (+146 lines, peer WIP).
 
+## 3c. Rows the Tier 2 planning refuted (corrected at the source, 2026-09-22)
+
+Planning read each row against `devel` before writing tests. Five rows were wrong as the sweep
+stated them; they are corrected here so the next session does not re-plan them, and the
+ephemeral triage was annotated in place.
+
+| row | as written | what the tree says |
+|---|---|---|
+| T-35 | "non-convergent Newton returns false" | it aborts: `cl_IF_ElementMapper.cpp:369` is `BELFEM_ERROR( tCount < 100, … )`, and the header says so too. The round trips, `inside_pyra`, the TRI3 Jacobian and the QUAD4 bounds remain a valid contract row |
+| N-06 | "`unfold_row` depth limit aborts in release" | **`unfold_row` exists nowhere in `src/`** (zero hits). Clause struck. The self-containment half is real but unenforced: at `cl_FEM_Dof.cpp:133` the dof is not yet hanging, so a self-source passes the assert, and the assert is compiled out in release |
+| T-58 | "HTS laws finite and `≤ ρₙ`" | `≤ ρₙ` holds for the Riva and piecewise laws — the piecewise half already asserted by `HtsLaws.PiecewiseNormalRegimeAndAboveTcrit` — but `rho_powerlaw` is unbounded by design and is clamped downstream in `MaxwellData::compute_rho()`. Re-scoped to "finite for all three, bounded for two" |
+| T-16 | "`Alloy` reports `depends( rho, normB )`" — filed as a defect | CONTRACT: the flags are set inside the database build on purpose (`cl_Material_Alloy.cpp:504-515` comment), to advertise that the database exists; an alloy without one has no field-dependent path, unlike a metal whose Kohler flags are analytic |
+| N-52 | reopened by the exclusion re-read | struck (see §3b): two debug tests already assert the bounds half |
+
+One defect was found by the same reading and filed as **DR-185**: `Kernel` is implicitly copyable
+while owning seven heap resources.
+
 ## 4. For Gregory (closed core)
 
 Read-and-report only; no BELFEM-side session starts these.
