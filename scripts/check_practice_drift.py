@@ -52,7 +52,7 @@ import subprocess
 import sys
 import tempfile
 from collections import Counter
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 # A version is dot-separated integers; a suffix segment starts with a letter (gpt-6-astra,
 # gpt-5.4-mini, grok-4.7-build-fast).  Seat names such as "Claude Opus 5" fall outside the
@@ -112,12 +112,14 @@ def devlog_window(devlog_dir, recent):
     """The newest `recent` devlogs, ordered by filename date then filename.
 
     Several entries routinely share a date, so the date alone does not order the corpus; the
-    filename breaks the tie deterministically.
+    filename, ascending, breaks the tie deterministically.  Sorting by name first and then stably
+    by date keeps the two directions independent — a single reversed key would reverse both.
     """
-    def key(p):
+    def date(p):
         m = DEVLOG_DATE.search(p.name)
-        return (m.group(1) if m else "0", p.name)
-    return sorted(Path(devlog_dir).glob("dl*.md"), key=key, reverse=True)[:recent]
+        return m.group(1) if m else "0"
+    by_name = sorted(Path(devlog_dir).glob("dl*.md"), key=lambda p: p.name)
+    return sorted(by_name, key=date, reverse=True)[:recent]
 
 
 def _header_lines(path):
@@ -138,6 +140,12 @@ def devlog_fields(paths):
             denom += 1
             counts.update(fields)
     return counts, denom
+
+
+def devlogs_without_date(paths):
+    """Devlogs whose header carries no **Date:** — the one field the protocol requires."""
+    return sorted(p.name for p in paths
+                  if not any((m := FIELD.match(l)) and m.group(1) == "Date" for l in _header_lines(p)))
 
 
 def _depth_span(proto_path):
@@ -236,13 +244,23 @@ def record_models(devlog_paths, repo_path, n_commits, commit_texts=None):
 def index_targets(readme_path):
     """Filenames that are the link destination of an index entry.
 
-    An index line may mention a second filename in its prose, and an entry's label may differ
-    from its destination; matching either would count a file as indexed when it is not.
+    An index line may mention a second filename in its prose, an entry's label may differ from
+    its destination, and a destination may point into another directory; matching any of those
+    would count a file as indexed when it is not.
     """
+    base = Path(readme_path).resolve().parent
     out = set()
     for l in _lines(readme_path):
-        if m := INDEX_ENTRY.match(l):
-            out.add(PurePosixPath(m.group(1).split("#", 1)[0]).name)
+        if not (m := INDEX_ENTRY.match(l)):
+            continue
+        target = m.group(1).split("#", 1)[0]
+        if not target:
+            continue
+        # A link into another directory, or a URL ending in the same name, resolves outside the
+        # README's own directory and indexes a different file.
+        resolved = (base / target).resolve()
+        if resolved.parent == base:
+            out.add(resolved.name)
     return out
 
 
@@ -300,7 +318,13 @@ def probe_models(rows, exceptions, allowlists, messages, defaults, headers, comm
     # The Grok seat is always the latest allowlisted grok.  That model is declared by the policy
     # itself, whether or not a row happens to name it.
     policy_grok = _newest_grok(allowlists.get("grok", set()))
+    codex_rows = {r for r in rows if _seat(r) == "codex"}
+    grok_rows = rows - codex_rows
     declared = rows | exceptions | ({policy_grok} if policy_grok else set())
+    # Older groks stay allowlisted so an earlier round can be reproduced, and a devlog recording a
+    # round run while one of them was the latest is history, not drift.  The default and the rows
+    # are held to the latest below; only use is relaxed.
+    declared_for_use = declared | allowlists.get("grok", set())
 
     # P2c - a default that is not what the policy names.  "Equals the latest", not "appears in
     # some row": a default left on an older row would otherwise pass while the policy moved on.
@@ -309,14 +333,27 @@ def probe_models(rows, exceptions, allowlists, messages, defaults, headers, comm
                          f"grok default is {d}; the policy names the latest allowlisted grok, "
                          f"{policy_grok}"))
         reported.add(d)
-    if (d := defaults.get("codex")) and d not in rows:
-        findings.append((DRIFT, "P2c", d, f"codex default {d} is named by no depth row"))
-        reported.add(d)
+    for model in sorted(grok_rows):
+        if policy_grok and model != policy_grok:
+            findings.append((DRIFT, "P2c", model,
+                             f"depth row names {model}; the policy names the latest allowlisted "
+                             f"grok, {policy_grok}"))
+            reported.add(model)
+    # The Codex default must be a model the Codex arm accepts and a Codex row names.  "Codex row"
+    # is inferred from the gpt- prefix, not read from the table's Codex cell: a gpt- id written
+    # only in the Grok cell still satisfies it.
+    if d := defaults.get("codex"):
+        if d not in allowlists.get("codex", set()):
+            findings.append((DRIFT, "P2c", d, f"codex default {d} is rejected by ask_codex.sh's own arm"))
+            reported.add(d)
+        elif d not in codex_rows:
+            findings.append((DRIFT, "P2c", d, f"codex default {d} is named by no Codex-column row"))
+            reported.add(d)
 
     # P2a - used in recent records, declared nowhere.  Headers trigger; commit bodies only
     # corroborate.  A model P2c already diagnoses is not reported twice.
     for model in sorted(headers):
-        if model in declared or model in reported:
+        if model in declared_for_use or model in reported:
             continue
         also = f", and in {commits[model]} commit bodies" if commits.get(model) else ""
         findings.append((DRIFT, "P2a", model,
@@ -331,6 +368,13 @@ def probe_models(rows, exceptions, allowlists, messages, defaults, headers, comm
         if seat in allowlists and model not in allowlists[seat]:
             findings.append((DRIFT, "P2b", model,
                              f"depth row names {model}, which ask_{seat}.sh would reject"))
+    # The by-design line says "allowlisted"; an id no wrapper accepts makes that line false.
+    for model in sorted(exceptions):
+        seat = _seat(model)
+        if seat in allowlists and model not in allowlists[seat]:
+            findings.append((DRIFT, "P2b", model,
+                             f"the by-design line names {model}, which ask_{seat}.sh would reject"))
+            reported.add(model)
 
     # P2e - the rejection message lists a different set from the arm that enforces it, so a
     # caller told which models are allowed is told something false.
@@ -357,7 +401,7 @@ def probe_index(files, targets):
             for name in sorted(files - targets)]
 
 
-def probe_template(declared, used, denom, threshold):
+def probe_template(declared, used, window_n, threshold):
     """P1a (DRIFT) and P1b (INFO).
 
     The directions are not symmetric.  A declared field nobody writes means the template
@@ -367,12 +411,17 @@ def probe_template(declared, used, denom, threshold):
     percent of the window), and only as INFO.
     """
     findings = [(DRIFT, "P1a", f,
-                 f"template declares **{f}:** — used by none of the last {denom} entries")
+                 f"template declares **{f}:** — used by none of the last {window_n} entries")
                 for f in sorted(declared) if not used.get(f)]
     findings += [(INFO, "P1b", f,
-                  f"**{f}:** used by {used[f]}/{denom} recent entries, not declared by the template")
-                 for f in sorted(used) if f not in declared and 100 * used[f] / denom >= threshold]
+                  f"**{f}:** used by {used[f]}/{window_n} recent entries, not declared by the template")
+                 for f in sorted(used) if f not in declared and 100 * used[f] / window_n >= threshold]
     return findings
+
+
+def probe_dates(missing):
+    """P1c - a recent devlog without **Date:**, the one field the protocol requires."""
+    return [(DRIFT, "P1c", name, f"{name} has no **Date:** field") for name in missing]
 
 
 def probe_titles(old, total):
@@ -402,6 +451,7 @@ def run_live(root, recent, commits_n, threshold, commit_texts=None):
     headers, commit_hits, commit_status = record_models(window, root, commits_n, commit_texts)
     files, targets = devlog_files(devlog_dir), index_targets(readme)
     old, total = title_forms(window)
+    missing_date = devlogs_without_date(window)
 
     guard_required({
         "template fields": declared,
@@ -411,17 +461,21 @@ def run_live(root, recent, commits_n, threshold, commit_texts=None):
         "grok allowlist": allowlists["grok"],
         "codex default": defaults["codex"],
         "grok default": defaults["grok"],
+        # With no plain-versioned grok the policy names nothing, and P2c would skip silently.
+        "policy grok": _newest_grok(allowlists["grok"]),
         "devlog files": files,
         "index targets": targets,
     })
 
     findings = probe_models(rows, exceptions, allowlists, messages, defaults, headers, commit_hits)
     findings += probe_index(files, targets)
-    findings += probe_template(declared, used, denom, threshold)
+    findings += probe_template(declared, used, len(window), threshold)
+    findings += probe_dates(missing_date)
     findings += probe_titles(old, total)
 
     window_note = (f"at {head_commit(root)}: {denom} of the newest {len(window)} devlogs "
-                   f"(ordered by filename date, then name) carry a header; {len(files)} files, "
+                   f"(newest date first, then name) carry a header, back to "
+                   f"{window[-1].name if window else '-'}; {len(files)} files, "
                    f"{len(targets)} index entries; {commit_status}")
     return findings, window_note
 
@@ -444,8 +498,9 @@ def run(root, recent=40, commits=40, threshold=25.0, strict=False, commit_texts=
     """One live run; returns the process exit code."""
     try:
         findings, window_note = run_live(root, recent, commits, threshold, commit_texts)
-    except ExtractionError as exc:
-        print(f"extraction failed: {exc}", file=sys.stderr)
+    except (ExtractionError, OSError) as exc:
+        if not quiet:
+            print(f"extraction failed: {exc}", file=sys.stderr)
         return 2
     if quiet:
         drift = sum(1 for f in findings if f[0] == DRIFT)
@@ -546,7 +601,11 @@ def self_test():
         print("clean tree:")
         f = find(_tree(base, "clean"))
         check("no findings at all", not f)
-        check("an empty by-design list is accepted by the guard", True)
+        try:
+            run_live(_tree(base, "no_exceptions"), 40, 0, 25)
+            check("an empty by-design list is accepted by the guard", True)
+        except ExtractionError as exc:
+            check(f"an empty by-design list is accepted by the guard ({exc})", False)
 
         print("P1 - template fields:")
         f = find(_tree(base, "p1a", template_extra="**Retired:** nobody writes this"))
@@ -643,6 +702,83 @@ def self_test():
         _, _, status = record_models([], Path(base) / "not-a-repo", 5)
         check("a failed commit read is reported, not described as read", "UNAVAILABLE" in status)
 
+        print("v3 - declarations the wrappers must honour:")
+        f = find(_tree(base, "excn_rejected", exceptions=EXCEPTION_ANCHOR + " `gpt-9.9-ghost`\n\n"))
+        check("P2b fires on a by-design id no wrapper accepts", has(f, "P2b", "gpt-9.9-ghost"))
+        f = find(_tree(base, "grok_row_lag",
+                       row="| Plan audit | `gpt-5.6-terra`, `high` | `grok-4.6`, `high` |",
+                       grok=("grok-4.7", ["grok-4.7", "grok-4.6"], None)))
+        check("P2c fires on a Grok row naming an older grok", has(f, "P2c", "grok-4.6"))
+        f = find(_tree(base, "grok_row_ok"))
+        check("P2c is silent when the Grok row names the latest", not has(f, "P2c"))
+        f = find(_tree(base, "codex_default_rejected",
+                       row="| Plan audit | `gpt-5.6-terra`, `gpt-5.6-luna` | `grok-4.7`, `high` |",
+                       codex=("gpt-5.6-luna", ["gpt-5.6-terra"], None)))
+        check("P2c fires on a Codex default its own arm rejects, even when a row names it",
+              has(f, "P2c", "gpt-5.6-luna"))
+        f = find(_tree(base, "codex_default_grok_column",
+                       codex=("grok-4.7", ["gpt-5.6-terra", "grok-4.7"], None)))
+        check("a Grok-column token does not satisfy the Codex default", has(f, "P2c", "grok-4.7"))
+        f = find(_tree(base, "codex_prec", codex=("gpt-5.6-luna", ["gpt-5.6-terra", "gpt-5.6-luna"], None),
+                       devlog_extra="\n**Voices:** `gpt-5.6-luna`"))
+        hits = [p for _, p, s, _ in f if s == "gpt-5.6-luna"]
+        check("a Codex default off the table is one P2c finding, not also P2a", hits == ["P2c"])
+
+        print("v3 - history is not drift:")
+        f = find(_tree(base, "old_grok_use", grok=("grok-4.7", ["grok-4.7", "grok-4.6"], None),
+                       devlog_extra="\n**Voices:** `grok-4.6`"))
+        check("an older allowlisted grok recorded in a header is not P2a", not has(f, "P2a", "grok-4.6"))
+        f = find(_tree(base, "unlisted_grok", devlog_extra="\n**Voices:** `grok-9.9`"))
+        check("a grok no wrapper allowlists is still P2a", has(f, "P2a", "grok-9.9"))
+
+        print("v3 - index destinations:")
+        f = find(_tree(base, "p3_elsewhere", extra_devlogs=[("dl20260102_other.md", plain)], readme="## Entries\n- [dl20260102_other.md](dl20260102_other.md)\n- [x](../archive/dl20260101_clean.md)\n"))
+        check("a link into another directory does not index the local file",
+              has(f, "P3", "dl20260101_clean.md"))
+        f = find(_tree(base, "p3_url", extra_devlogs=[("dl20260102_other.md", plain)], readme="## Entries\n- [dl20260102_other.md](dl20260102_other.md)\n- [x](https://example.org/dl20260101_clean.md)\n"))
+        check("a URL ending in the same name does not index it", has(f, "P3", "dl20260101_clean.md"))
+        f = find(_tree(base, "p3_dotslash", readme="## Entries\n- [x](./dl20260101_clean.md)\n"))
+        check("a ./ link to the local file indexes it", not has(f, "P3"))
+
+        print("v3 - the required Date field:")
+        nodate = plain.replace("**Date:** 2026-01-01\n", "")
+        f = find(_tree(base, "p1c", extra_devlogs=[("dl20260102_nodate.md", nodate)],
+                       readme=_README + "- [dl20260102_nodate.md](dl20260102_nodate.md) — x\n"))
+        check("P1c fires on a recent devlog without **Date:**", has(f, "P1c", "dl20260102_nodate.md"))
+        check("P1c does not depend on P1a", not has(f, "P1a", "Date"))
+        f = find(_tree(base, "p1c_clean"))
+        check("P1c is silent when every entry has a Date", not has(f, "P1c"))
+
+        print("v3 - windows and denominators:")
+        wdir = Path(base) / "window" / "devlog"
+        wdir.mkdir(parents=True)
+        for n in ("dl20260101_z.md", "dl20260101_a.md", "dl20260102_m.md"):
+            (wdir / n).write_text(plain)
+        check("the window is newest date first, then name ascending",
+              [p.name for p in devlog_window(wdir, 3)] ==
+              ["dl20260102_m.md", "dl20260101_a.md", "dl20260101_z.md"])
+        headless = "# A topic phrase\n\n## Summary\n"
+        root = _tree(base, "p1b_window", devlog_extra="\n**Module:** meta", extra_devlogs=[("dl20260102_headless.md", headless)],
+                     readme=_README + "- [dl20260102_headless.md](dl20260102_headless.md) — x\n")
+        f = run_live(root, 40, 0, 60)[0]
+        check("P1b's share is of the window, not of headed files", not has(f, "P1b", "Module"))
+
+        print("v3 - failures are loud:")
+        gone = _tree(base, "missing_proto")
+        (gone / "doc/ai_collaboration_protocol.md").unlink()
+        check("a missing input is exit 2, not a traceback", run(gone, commits=0, quiet=True) == 2)
+        try:
+            find(_tree(base, "suffix_only", grok=("grok-4.7-build-fast", ["grok-4.7-build-fast"], None)))
+            check("an allowlist with no plain grok fails the guard", False)
+        except ExtractionError:
+            check("an allowlist with no plain grok fails the guard", True)
+        bad = subprocess.run([sys.executable, str(Path(__file__).resolve()), "--recent", "-1"],
+                             capture_output=True, text=True)
+        check("--recent -1 is rejected by the parser", bad.returncode == 2 and "must be" in bad.stderr)
+        bad = subprocess.run([sys.executable, str(Path(__file__).resolve()), "--threshold", "nan"],
+                             capture_output=True, text=True)
+        check("--threshold nan is rejected by the parser", bad.returncode == 2 and "must be" in bad.stderr)
+
         print("exit policy:")
         drifty = _tree(base, "exit_drift", extra_devlogs=[("dl20260102_unindexed.md", plain)])
         clean = _tree(base, "exit_clean")
@@ -661,11 +797,27 @@ def self_test():
     return 0
 
 
+def _at_least(low):
+    def parse(text):
+        n = int(text)
+        if n < low:
+            raise argparse.ArgumentTypeError(f"must be >= {low}")
+        return n
+    return parse
+
+
+def _percent(text):
+    x = float(text)
+    if not 0.0 <= x <= 100.0:     # also rejects nan and inf
+        raise argparse.ArgumentTypeError("must be a percentage in [0, 100]")
+    return x
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
-    ap.add_argument("--recent", type=int, default=40, help="devlogs in the window (default 40)")
-    ap.add_argument("--commits", type=int, default=40, help="commit bodies to read (default 40)")
-    ap.add_argument("--threshold", type=float, default=25.0,
+    ap.add_argument("--recent", type=_at_least(1), default=40, help="devlogs in the window (default 40)")
+    ap.add_argument("--commits", type=_at_least(0), default=40, help="commit bodies to read (default 40)")
+    ap.add_argument("--threshold", type=_percent, default=25.0,
                     help="percent of the window a practice field needs before P1b reports it")
     ap.add_argument("--strict", action="store_true", help="exit 1 when a DRIFT finding is reported")
     ap.add_argument("--self-test", action="store_true", help="run the fixtures; this is the gate")

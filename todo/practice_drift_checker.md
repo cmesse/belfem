@@ -10,12 +10,10 @@ practice → document direction.
 **AIs involved:** Claude Opus 5 (plan, verification, measurements). Round 1: Grok `grok-4.7`/high
 blind, 11 findings; **Codex produced no audit** (two usage-limit failures). Round 2: Codex
 `gpt-5.6-terra`/high and Grok `grok-4.7`/high, both blind, on a fresh slug — 16 findings.
-**Status:** **v2 SHIPPED** 2026-09-22. `--self-test` 36/36, 16/16 mutants killed. Code-jury
-round 2 (both seats, xhigh, blind) confirmed D-c1..D-c10 fixed and found eleven more, all
-reproduced: five are silent passes on a stated rule (D-c11..D-c15). D-c22 was added after
-the `ask_grok.sh` default was fixed: a false positive on historical `grok-4.6` use, now ruled. Christian's ruling: ship v2 as
-is and fix in v3, which takes a **narrow** jury on the v2→v3 diff only. None of the eleven fires
-on today's tree.
+**Status:** **v3 committed** 2026-09-22 — D-c11..D-c22 fixed except D-c13, which is only half done
+(the Codex-column check reads the `gpt-` prefix, not the table cell). `--self-test` 56/56, 30/30 mutants
+killed. A narrow jury on the v2→v3 diff (both seats, xhigh) found seven more, filed as D-c23..D-c29
+for v4; two raisers on the column check and on symlinks. None fires on today's tree.
 
 > **Scope guards:**
 > - **Out of scope:** any probe needing prose parsed *for meaning*. A token search inside a prose
@@ -289,25 +287,25 @@ All confirmed against source; two executed. Thread: `tmp/ai_exchange/review_prac
 Both seats at `xhigh`, blind, fresh slug. Thread: `tmp/ai_exchange/review_practice_drift_code_r2.md`.
 Every item below was reproduced with a fixture or confirmed by reading; none fires on the live tree.
 
-- [ ] **D-c11 (silent pass)** — a model on the by-design exception line that no wrapper arm
+- [x] **D-c11 (silent pass)** — a model on the by-design exception line that no wrapper arm
       accepts is unioned into `declared` unchecked. Two raisers.
-- [ ] **D-c12 (silent pass)** — a Grok depth row naming an older grok passes while the default is
+- [x] **D-c12 (silent pass)** — a Grok depth row naming an older grok passes while the default is
       correct. **Ruled 2026-09-22: DRIFT**; the protocol now says so.
-- [ ] **D-c13 (silent pass)** — the Codex-default P2c tests membership in the whole table, so a
+- [◐] **D-c13 (silent pass — PARTIAL, see D-c23)** — the Codex-default P2c tests membership in the whole table, so a
       Grok-column token satisfies it. Must be the Codex column and the Codex arm.
-- [ ] **D-c14 (silent pass)** — P3 keeps only the basename of a link destination, so
+- [x] **D-c14 (silent pass)** — P3 keeps only the basename of a link destination, so
       `../archive/dl….md` or a URL counts as indexing the local file. Resolve relative to the README.
-- [ ] **D-c15 (silent pass)** — a recent devlog without `**Date:**` is invisible in a 40-file
+- [x] **D-c15 (silent pass)** — a recent devlog without `**Date:**` is invisible in a 40-file
       window. **Ruled 2026-09-22: DRIFT**; the protocol now says so.
-- [ ] **D-c16** — `--recent`, `--commits`, `--threshold` are not validated; `--recent -1` is accepted.
-- [ ] **D-c17** — the window tiebreak is reverse-alphabetical (`reverse=True` reverses the name
+- [x] **D-c16** — `--recent`, `--commits`, `--threshold` are not validated; `--recent -1` is accepted.
+- [x] **D-c17** — the window tiebreak is reverse-alphabetical (`reverse=True` reverses the name
       too), and the report names no file, so the window cannot be reconstructed. Print the cutoff.
-- [ ] **D-c18** — one self-test assertion is `check(..., True)` and cannot fail.
-- [ ] **D-c19** — P1b divides by headed files while its help text says the window.
-- [ ] **D-c20** — a missing protocol or devlog file raises uncaught `OSError`, not exit 2.
-- [ ] **D-c21** — an allowlist of only suffixed groks leaves `policy_grok` unset and P2c skips
+- [x] **D-c18** — one self-test assertion is `check(..., True)` and cannot fail.
+- [x] **D-c19** — P1b divides by headed files while its help text says the window.
+- [x] **D-c20** — a missing protocol or devlog file raises uncaught `OSError`, not exit 2.
+- [x] **D-c21** — an allowlist of only suffixed groks leaves `policy_grok` unset and P2c skips
       silently; the policy grok should be a required extract.
-- [ ] **D-c22 (false positive, surfaced 2026-09-22)** — once the `ask_grok.sh` default moved to
+- [x] **D-c22 (false positive, surfaced 2026-09-22)** — once the `ask_grok.sh` default moved to
       `grok-4.7`, P2c stopped claiming `grok-4.6`, and P2a began reporting it: nine recent devlog
       headers and two commit bodies record rounds run on it *while it was the latest*. That is
       history, not drift. P2c's precedence had been masking it, so v2 could not show it while the
@@ -316,6 +314,30 @@ Every item below was reproduced with a fixture or confirmed by reading; none fir
       The default (P2c) and the depth rows (D-c12) must still be the latest, so real drift stays
       caught; P2a's Grok job narrows to "a grok not allowlisted at all". The Codex seat keeps the
       stricter rule — `gpt-6-astra` was allowlisted, used and unnamed, and that was a defect.
+
+### 4.3 Code-jury round 3 (narrow, on the v2→v3 diff) — open, for v4
+
+Both seats at `xhigh`, blind. Thread: `tmp/ai_exchange/review_practice_drift_v3.md`. v3 committed with
+these open on Christian's instruction; none fires on today's tree.
+
+- [ ] **D-c23 (silent pass, two raisers)** — D-c13 was only half done. The Codex-default check reads
+      "Codex row" from the `gpt-` prefix, not from the table's Codex cell, so a `gpt-` id written only
+      in the Grok cell satisfies it — executed. Parse cell provenance: split each row on `|`, cell 2
+      is Codex, cell 3 is Grok. Fixtures: a `gpt-` id only in cell 3 (must fire), only in cell 2
+      (must stay silent). The same flattening lets a misplaced id evade P2b.
+- [ ] **D-c24 (false positive, two raisers)** — `index_targets` uses `Path.resolve()`, which follows
+      symlinks, so a correctly indexed symlinked devlog is reported unindexed — executed. Normalize
+      `.` and `..` lexically instead.
+- [ ] **D-c25** — the "P1c does not depend on P1a" assertion cannot fail; the clean devlog carries
+      a Date, so P1a never fires on it anyway.
+- [ ] **D-c26** — the "failures are loud" test runs `quiet=True`, which silences the message it is
+      named for. Assert stderr, or print extraction errors regardless of `quiet`.
+- [ ] **D-c27** — an all-headless window fails the `devlog headers` guard (exit 2) instead of
+      reporting P1c for each file.
+- [ ] **D-c28** — the header scan ends at the first `## `, including one inside an opening example,
+      which can hide a later `**Date:**` and false-fire P1c.
+- [ ] **D-c29** — a malformed index destination can raise `OSError` in `resolve()` and abort the
+      whole run; one bad line should not end the check.
 
 ## 5. Open Design Questions
 

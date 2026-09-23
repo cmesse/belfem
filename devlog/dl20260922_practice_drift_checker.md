@@ -153,3 +153,29 @@ put broken links into HEAD.
 
 The lesson is in the backup memory: back up a shared file before any scripted rewrite of it, and
 never read and write one path in a single expression.
+
+## v3
+
+D-c11..D-c22 fixed in one pass: by-design ids must be on their seat's arm, a Grok row must name the
+latest grok, the Codex default must pass the Codex arm, index destinations are resolved against the
+README's directory, P1c enforces the required `**Date:**`, CLI values are validated, a missing input
+is exit 2, the window runs date-descending and name-ascending and names its cutoff, and historical
+use of an older allowlisted grok is no longer P2a (D-c22, ruled).
+
+Gates: `--self-test` 56/56; mutation testing 30/30 killed. The first mutation run of v3 left five
+survivors, and all five were tests passing for the wrong reason, not code defects — the CLI tests
+accepted exit 2, which a mutant run outside the repository also returns when it cannot find its
+inputs; two fixtures had a default failing both the arm check and the column check, so disabling
+either left a P2c standing; and P2c precedence had become untestable through Grok once D-c22
+declared every allowlisted grok, so it is now proven on the Codex side. All five were closed by
+tightening fixtures.
+
+A narrow code jury on the v2→v3 diff (Codex `gpt-5.6-terra`/xhigh and Grok `grok-4.7`/xhigh, blind)
+requested changes, and was right: **D-c13 was only half done.** "Codex-column row" was inferred from
+the `gpt-` prefix and never read from the table's cells, so a Codex default named only in the Grok
+cell passes silently — executed, both seats. My own code comment claimed the column semantics; it
+was false, and is corrected in the commit to say what the code does. Both seats also caught that
+`resolve()` follows symlinks, giving a false P3 on a correctly indexed symlinked devlog — executed.
+Five smaller findings from Grok and Codex. On Christian's instruction v3 is committed with all seven
+filed as D-c23..D-c29 and D-c13 reopened as partial. None fires on today's tree; live, the checker
+reports one DRIFT — the index line owed for `dl20260922_ask_codex_cli_audit.md`.
