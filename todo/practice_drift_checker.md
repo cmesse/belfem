@@ -12,7 +12,8 @@ blind, 11 findings; **Codex produced no audit** (two usage-limit failures). Roun
 `gpt-5.6-terra`/high and Grok `grok-4.7`/high, both blind, on a fresh slug — 16 findings.
 **Status:** **v2 SHIPPED** 2026-09-22. `--self-test` 36/36, 16/16 mutants killed. Code-jury
 round 2 (both seats, xhigh, blind) confirmed D-c1..D-c10 fixed and found eleven more, all
-reproduced: five are silent passes on a stated rule (D-c11..D-c15). Christian's ruling: ship v2 as
+reproduced: five are silent passes on a stated rule (D-c11..D-c15). D-c22 was added after
+the `ask_grok.sh` default was fixed: a false positive on historical `grok-4.6` use, now ruled. Christian's ruling: ship v2 as
 is and fix in v3, which takes a **narrow** jury on the v2→v3 diff only. None of the eleven fires
 on today's tree.
 
@@ -306,6 +307,15 @@ Every item below was reproduced with a fixture or confirmed by reading; none fir
 - [ ] **D-c20** — a missing protocol or devlog file raises uncaught `OSError`, not exit 2.
 - [ ] **D-c21** — an allowlist of only suffixed groks leaves `policy_grok` unset and P2c skips
       silently; the policy grok should be a required extract.
+- [ ] **D-c22 (false positive, surfaced 2026-09-22)** — once the `ask_grok.sh` default moved to
+      `grok-4.7`, P2c stopped claiming `grok-4.6`, and P2a began reporting it: nine recent devlog
+      headers and two commit bodies record rounds run on it *while it was the latest*. That is
+      history, not drift. P2c's precedence had been masking it, so v2 could not show it while the
+      default lagged. **Ruled 2026-09-22: for the Grok seat, any model on the wrapper's arm counts
+      as declared for P2a**, because §9.1 keeps older groks allowlisted to reproduce earlier rounds.
+      The default (P2c) and the depth rows (D-c12) must still be the latest, so real drift stays
+      caught; P2a's Grok job narrows to "a grok not allowlisted at all". The Codex seat keeps the
+      stricter rule — `gpt-6-astra` was allowlisted, used and unnamed, and that was a defect.
 
 ## 5. Open Design Questions
 
