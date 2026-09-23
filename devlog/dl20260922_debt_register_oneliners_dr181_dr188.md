@@ -108,3 +108,17 @@ This row was filed from the mesh bundle's code rounds and widened on Christian's
 - A debug-tree run of all three bundles; the MPI suites.
 - DR-184 (the QUAD16 facet table).
 - DR-188's residue, above.
+
+## Addendum 2026-09-23 — debug tree and valgrind (after `0243908`)
+
+Christian asked for the debug-tree valgrind run in the sandbox, and specified the `/opt/scls/debug` flavor, not `scls/mkl`. A private out-of-tree build was configured in the scratchpad against `/opt/scls/debug`: `USE_DEBUG=ON`, `USE_MKL=OFF`, reference BLAS/LAPACK. gtest, PETSc and STRUMPACK all resolve from that prefix. The library and the 8 fast test targets were built on one core in 22 min.
+
+`valgrind --leak-check=full` over the full `test_mesh` (119/119 passed) and `test_fem` (279/279) found **no invalid read or write and no uninitialised-value error**. **No leak record has a frame in code this session changed:** `CurveFactory`, `FaceFactory`, `Basis`/`allocate_source_container`, `background_phi`, `MaxwellFactory`, or the new tests. The `ThinShellTerminalCurves` refusal cases leave no `Protoshell` behind, which confirms the round-3 ownership fix. DR-169's surviving valgrind gate therefore ran clean. It was not run against the old destructor, so it shows the fix leaks nothing but not that the test discriminates.
+
+The definite leaks that remain are pre-existing:
+- the `MPI_Init_thread` runtime, about 19 KB per binary;
+- the `PeriodicityFactory` refusal paths, about 5.4 KB in `test_mesh` (DR-167);
+- **`Maxwell/ThermalBoundaryConditionFactory` constructors that leak when a deck is refused**, exposed by the peer's Tier 2 `AdmissionRefusals.ExpkOn{Maxwell,Thermal}BcIsRefused`, about 3.5 KB. This one is not on the register yet;
+- the `TS_TestWall` fixture in three `InterfaceOrientation.Hex8Tb*` tests, 1.1 KB, test-only.
+
+Still not run: the MPI suites, the other six fast suites under valgrind, and the 64-bit build.
