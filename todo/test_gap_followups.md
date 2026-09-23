@@ -78,6 +78,8 @@ DR-177 and O10 / O18 go to Gregory by `devlog/dl20260922_homology_report_for_gre
 
 ## 3. Open questions
 
+- **O0** Tier 2 of the triage (48 rows, 13 Astra-only, N-20 … N-30) is the next run; the Astra crosswalk is complete, nothing is untiered (`todo/test_gap_backlog.md` §3a).
+
 - **O1** R6 changes shipped iron/nickel results; which decks are reference runs Christian wants
   re-baselined afterwards?
 - **O2** R7's fixture geometry: two layers of unequal thickness and ρ ratio 10, or the production
