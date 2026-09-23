@@ -176,8 +176,18 @@ Christian is reloading the session on Opus 5.5. State at handoff:
   a live decoder defect (an unknown MUMPS warning bit dropped next to a known one) — fixed in
   `fe52394`, report-only callers. T-57's `multiply` NaN candidate is falsified on MKL (non-MKL
   lane unmeasured). R-11 dropped (ruled).
-- [ ] **B5a:** Opus agent writing the fem contract rows; the T-15 precondition comment is in
-  `src/core/globals.hpp` (uncommitted, rides the B5a commit).
+- [x] **B5a** `90f8901`: T-15 (precondition documented in `globals.hpp` + pinned), T-21, T-31,
+  T-35 (the Newton abort pinned as today's behavior — policy question in the quiz), T-37, T-46 (fem),
+  T-50 (rest), T-59 (pyramids/TET35 `DISABLED_`: no interpolation order), N-01, N-04, N-06, the ghost
+  dof count and `bn_angle`. Jury astra + grok (grok rerun alone after max-turns), both folded in.
+- [x] **B5b** `a6e923a`: N-07, N-20 (b)/(c), N-21 (b)/(c) reachable halves, N-25, N-49, N-50, N-51.
+  Held: N-20 (a), N-26 (i) (peer-edited `cl_MaxwellFactory.cpp`), N-26 (ii)/N-27 (rulings), N-30,
+  N-53. Refusal decks leak → DR-175 question in the quiz.
+- [x] **B2 source:** T-07 `1b92533` (Ascii resolves relative paths against the process cwd, ruling
+  O1; eight stale `$PWD` test comments rewritten), T-06 `9cb58e3` (foreign git stamp on a `.bfm`
+  loads with a warning naming both, ruling O9). **T-04 HELD** (see the quiz item).
+- [ ] **B2 tests** (T-43 a/c, T-56, T-77): written, green in both trees, in their jury round.
+- **Held for the peer:** B4 (`src/mesh` WIP), B7 (`tests/comm` WIP).
 - **Gates:** `make check` 17/17 in both trees (Armadillo `build/`, Blaze `cmake-build-debug/`, both
   release) after B3's first pass; post-jury B3 fixes re-run in the Blaze tree (sparse 132 + MPI
   14 at np 2/4).
@@ -194,7 +204,40 @@ Christian is reloading the session on Opus 5.5. State at handoff:
     each refused table leaks (now exercised twice per `make check`). Widen DR-175 or new row?
   - Register header: the `[W]` count says 14; the tree has 9 open `[W]` rows incl. DR-189
     (`check_doc_claims.py` fails on it; the mismatch predates this run).
-  - The one-sentence input-reference edit for `relative tolerance` owes a Codex prose pass.
+  - (done) the input-reference sentence took its Codex prose pass.
+  - **DR-187, the ruling needs narrowing (consumer inventory, 2026-09-23).** Both `default:` arms of
+    the thermal dispatch (`cl_ThermalFactory.cpp`, blocks and sidesets) also carry BY-DESIGN
+    exclusions: a thermal kernel over a deck with `Coil`, `Inactive`, `GeometryOnly`, `Ghost` or
+    `Cut` blocks, and every interface / symmetry / periodic / terminal sideset, lands there. "Refuse
+    by name" on the whole arm would abort decks that run correctly today. Proposal: list the
+    by-design exclusions explicitly, keep them silent, and refuse only an unexpected type by name.
+    Not implemented until you confirm.
+  - **T-04 HELD (two plan rounds, both "request changes").** The HDF5 existence helpers are used
+    as link probes for DATASETS: `group_exists` on `abstract`, `pinned`, `orphaned`
+    (`cl_Mesh_BfmFile.cpp:411-435`) and `extra` (`cl_Spline.cpp:380`), plus 16 BfmFile probes on
+    names written both as groups and datasets (periodic nodes/edges/faces/facets among them). A
+    type-checked `group_exists` would silently drop that data on every `.bfm` reload. Options:
+    (a) switch every probe to the kind its writer uses (or `link_exists`) first, proven by a `.bfm`
+    round trip carrying abstract, pinned, orphaned and periodic data, then type-check the helpers
+    [recommended]; (b) leave the helpers link-level and only fix their comments and the negative
+    `H5Lexists` → true conversion. Evidence: `tmp/ai_exchange/review_tgap2_b2_t04.md`. T-43(b)
+    waits with it.
+  - **DR-175 widening:** three more refusal paths leak what was built before the throw, and the new
+    tests now exercise them in every `make check`: `MaxwellBoundaryConditionFactory` and
+    `ThermalBoundaryConditionFactory` (a condition and its `SourceFunction` per refused `expk`
+    deck), `MaterialFactory`'s `critical temperature` refusal (one material), and
+    `JcFunctionDatabase`'s window guard (its `Database`). Widen DR-175, or accept the bounded test
+    leaks until the factories get exception safety?
+  - **ElementMapper Newton:** a non-convergent inverse map aborts (`BELFEM_ERROR` at
+    `cl_IF_ElementMapper.cpp:369`), while the coding philosophy wants expected algorithmic failure
+    as a status return, and `cl_EdgeCutter.cpp:455` already tries another candidate on `false`.
+    Keep the abort (the test pins it as today's behavior) or make it a status return?
+  - **By-catch, not fixed:** `BfmFile::save` throws on a mesh with no facets (`save_facet_data`);
+    a Maxwell `dirichlet` section refuses any dimensioned amplitude (its unit string stays empty).
+    Register rows?
+  - **B5b, held for the peer:** F-1/F-2 (named errors for an unresolved sideset id and an unknown
+    layer material, O2) and the DR-186 recovery guards (O4) are in `cl_MaxwellFactory.cpp`, which
+    carries a peer's uncommitted edits. The B5b test-only rows go ahead after B5a.
 
 ## 4. Incidents
 
