@@ -228,6 +228,62 @@ Tier 1 (22 rows, three of them Astra-only: N-17, N-18, N-19) is done except T-08
 Next: Tier 2 (48 rows, 13 Astra-only) through the same loop, consumer inventory before any fix.
 No Astra finding is outside a tier; the 36 excluded rows keep their reasons in the triage §5.
 
+## 3b. Re-read of the triage's 36 exclusions against `devel` (2026-09-22)
+
+One Fable agent re-read the priority groups ("already covered by a named test", "refuted
+against the tree", "closed by deletion", "stale reachability"; 30 rows) against today's tree:
+**21 hold, 6 reopen, 3 uncertain** (`tmp/ai_exchange/astra_exclusions_reread.md`, ephemeral;
+the substance is here). Pattern: "closed by deletion" was applied to whole families where only
+the wrap CONSTRUCTION was deleted while the basis or the deactivation is live; "covered by a
+named test" was applied twice to a class or branch no test reaches. The math/linalg/sparse/
+spline regressions are genuinely pinned (each a named BUG-xx test asserting the value).
+
+**Reopened, added to Tier 2 as N-49 … N-54:**
+- **N-49 (As P2/B13 #3)** `FEMTwoTerminals` does not restore its active current on restart:
+  no test references the class (`grep tests/`: 0); the cited `ElectricalCircuit.WarmRestart*`
+  cases use inductor/capacitor circuits. Fix site `src/circuit/cl_FEMTwoTerminals.cpp:81-89`;
+  standalone-constructible (`cl_FEMTwoTerminals.hpp:65`). Silent wrong answer on restart.
+- **N-50 (Ge s3#16 + As P2/B28 #7)** HEX8TS `|det J|` thickness scaling: `cl_EF_HEX8TS.{cpp,hpp}`
+  exist and are factory-built; `Penta6TsVolumeIdentity` (`test_InterfaceOrientation.cpp:485-512`)
+  has no HEX8TS twin and `TS_TestPrism` accepts HEX8TS (`cl_TS_TestStack.hpp:329`). A mirror at
+  two thicknesses. (Ge s3#15, the `mInvJ` permutation, IS covered by `Hex8TsGradient*` — holds.)
+- **N-51 (Ge s3#12)** EF_HEX8 `mS[7]` vs `mS[11]`: `hex8_circulation_battery` asserts per-edge
+  circulation, but both callers (`test_EdgeFunctions.cpp:1472`, `:1477`) pass no `aFlipEdge`, so
+  every sign is +1 and the confusion is invisible; one call flipping edges 7 and 11 closes it.
+- **N-52 (Ge s3#1)** `submat` bounds: `SubmatOnNonSquareMatrix` (`test_Matrix.cpp:424-443`) pins
+  the reused-variable half; its own comment says the bounds half is not exposed and the debug
+  section has no `submat` throw.
+- **N-53 (As P2/B07 #10)** TET10 nondefault face orientations `mT = 1, 2, 3`: `EF_TestVolume`
+  resolves every link to `mT = 0` (`cl_EF_TestVolume.hpp:57`, `:200`), so the `switch( mT[f] )`
+  at `cl_EF_TET10.cpp:1237-1297` is never entered by a test. Tier 2 if the two-TET10
+  `FaceFactory` fixture (T-34) can feed `EF_TestVolume`, else Tier 3.
+- **N-54 (As P2/B04 #4)** conductor–ferro interface deactivation vs hanging-edge condensation is
+  NOT a deleted path: `cl_MaxwellFactory.cpp:1669-1686` deactivates `InterfaceCondFerro` /
+  `InterfaceFerroAir` today and the types are dispatched (`cl_IWG_Maxwell.cpp:357`,
+  `cl_Topology.cpp:356-502`). Tier 3 (F2).
+
+**Uncertain (cheap or re-home):** Ge s7#4 `create_coo_indices` restores the indexing base in
+source (`cl_SpMatrix.cpp:862-926`) but no COO test asserts it — one `EXPECT_EQ`; Ge s2#4 ghost
+custom-matrix init order — the ghost fixture tags the sideset itself and cannot see the factory
+ordering (abort class, Tier 3 / F2); Ge s4#13 `LeftCoating`/`RightCoating` are live (21 hits,
+registered for the thermal kernel at `cl_MaxwellFactory.cpp:2804-2811`) and belong under T-52 /
+O4, not "deleted".
+
+**Silent losses among the low-confidence crosswalk matches:** P2/B07 #4 → T-25 (T-25 covers cp,
+λ, ρ, not thermal expansion α; belongs with N-40 / O11); P2/B05 #11 → T-39 (T-39 is global ids,
+not BC value reporting — check whether the DofManager replication deletion made it moot);
+partial: P1/B04 #9 → T-72 (only if T-72 asserts the null-master refusal of `145e2c0`), P2/B03 #8
+→ T-55 (the one-edge facet identity case, DR-14, is not named); stale: P2/B08 #2 → T-72 (order-2
+h-φ is refused at input, DR-103).
+
+**Holds worth the record:** MUMPS symmetric modes refused (`cl_SolverMUMPS.cpp:244`,
+`MUMPSRejectsSymmetricModes`); periodicity epsilon is a plain distance; the BDF rows are not only
+refuted but covered (`test_BdfTimestepMethod.cpp` through `BdfCoefficientProbe`); `entangle` is
+gone on `devel` (the unmerged `periodic` branches may still carry it); `mCreateGhostFacets`
+false is the intended opt-in. Two caveats: C05's wording is inexact (`SetCustomRejectsJcAndN`
+exercises the inner guard; the one-argument route's own error is uncalled — double-guarded), and
+the drain-check tests G10 cites are green but UNCOMMITTED in `tests/comm` (+146 lines, peer WIP).
+
 ## 4. For Gregory (closed core)
 
 Read-and-report only; no BELFEM-side session starts these.
