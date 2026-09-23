@@ -186,7 +186,7 @@ Christian is reloading the session on Opus 5.5. State at handoff:
 - [x] **B2 source:** T-07 `1b92533` (Ascii resolves relative paths against the process cwd, ruling
   O1; eight stale `$PWD` test comments rewritten), T-06 `9cb58e3` (foreign git stamp on a `.bfm`
   loads with a warning naming both, ruling O9). **T-04 HELD** (see the quiz item).
-- [ ] **B2 tests** (T-43 a/c, T-56, T-77): written, green in both trees, in their jury round.
+- [x] **B2 tests** `078a2b7`: T-43 (a)/(c), T-56, T-77. One jury round folded in. T-43 (b) waits with T-04.
 - **Held for the peer:** B4 (`src/mesh` WIP), B7 (`tests/comm` WIP).
 - **Gates:** `make check` 17/17 in both trees (Armadillo `build/`, Blaze `cmake-build-debug/`, both
   release) after B3's first pass; post-jury B3 fixes re-run in the Blaze tree (sparse 132 + MPI
