@@ -502,6 +502,67 @@ TEST( Polynomial, PolyfitReproducesData )
     }
 }
 
+TEST( Polynomial, PolyfitDegreeEightRecoversCoefficients )
+{
+    // Both backends scale x by ( n - 1 ) / ( x_n - x_0 ), which maps [ 2, 5 ]
+    // to unit spacing on [ 39.3, 98.3 ], and solve the Vandermonde system by
+    // QR least squares: Blaze through gels, Armadillo inside arma::polyfit.
+    // The coefficient error is dominated by the low powers. The worst
+    // coefficient measured on this fixture is 1.2e-5 ( Armadillo, MKL ),
+    // 5.9e-6 ( Blaze, MKL ), 6.8e-6 ( reference LAPACK ) and 3.6e-6
+    // ( OpenBLAS ); the bound sits a factor of eight above the worst of them.
+    // A normal-equations solve fails every coefficient of the same fixture,
+    // the worst by 8e+2, and the off-grid value too.
+    const belfem::real tCoeffTol = 1e-4;
+
+    const belfem::Vector< belfem::real > tExact =
+            { 1.0, -2.5, 3.25, -0.75, 1.5, -4.0, 2.0, -0.5, 3.0 };
+
+    // coefficients are stored highest power first, so Horner runs forward
+    auto tHorner = []( const belfem::Vector< belfem::real > & aC,
+                       const belfem::real aX )
+    {
+        belfem::real tValue = aC( 0 );
+        for( size_t i = 1; i < aC.length(); ++i )
+        {
+            tValue = tValue * aX + aC( i );
+        }
+        return tValue;
+    };
+
+    // 60 samples on [ 2, 5 ]
+    const size_t tNumSamples = 60;
+    belfem::Vector< belfem::real > tX( tNumSamples );
+    belfem::Vector< belfem::real > tY( tNumSamples );
+
+    for( size_t k = 0; k < tNumSamples; ++k )
+    {
+        tX( k ) = 2.0 + 3.0 * ( belfem::real ) k / 59.0;
+
+        // the samples come from Horner, not from polyval, so the fixture does
+        // not depend on the function the neighboring cases pin
+        tY( k ) = tHorner( tExact, tX( k ) );
+    }
+
+    belfem::Vector< belfem::real > tCoeffs;
+    belfem::polyfit( tX, tY, 8, tCoeffs );
+
+    ASSERT_EQ( tCoeffs.length(), tExact.length() );
+
+    for( size_t i = 0; i < tExact.length(); ++i )
+    {
+        EXPECT_LT( std::abs( tCoeffs( i ) - tExact( i ) ) / std::abs( tExact( i ) ),
+                   tCoeffTol ) << "coefficient of power " << ( 8 - i );
+    }
+
+    const belfem::real tProbe = 3.37;
+    const belfem::real tRef = tHorner( tExact, tProbe );
+
+    // the fitted value is far better conditioned than the coefficients that
+    // produce it; measured at 4e-16 or better
+    EXPECT_LT( std::abs( tHorner( tCoeffs, tProbe ) - tRef ) / std::abs( tRef ), 1e-12 );
+}
+
 // =============================================================================
 // §6.5  Polyfit  [debug]
 // =============================================================================
