@@ -212,7 +212,7 @@ Examples:
 
 ### Required Header
 
-`**Date:**` is the only field every entry carries. Fill the rest where they apply, and add one of
+`**Date:**` is the only field every entry carries, and an entry without it is a defect. Fill the rest where they apply, and add one of
 your own where the session needs it — the fields below are the ones that recur, not a schema.
 
 ```markdown
@@ -466,6 +466,22 @@ repository can check; if the vendor config drifts, the wrapper defaults stay put
 | Critical framework code — `src/mesh`, `src/fem/kernel`, dof manager, sidesets, blocks, calculator, basis, distributor, `src/fem/maxwell` factories | `gpt-6-astra`, `high` (`xhigh` for round ≥ 2) | `high` |
 | Unattended post-commit `--quick` | `gpt-5.6-luna`, `medium` | `grok-4.7`, `medium` |
 
+**Allowlisted but named by no row (by design):** `gpt-5.6-sol`
+
+That line is the *only* declaration of a deliberate exception, and it is anchored so a checker can
+read it without interpreting prose. Everything else in this section is free to describe a defect,
+name a stale model, or quote a wrapper — a model mentioned in the discussion below is not thereby
+excused. Add to the line when a model is deliberately withheld from the tiers; never infer an
+exception from a sentence.
+
+**The Grok seat is always the latest allowlisted `grok`** — today `grok-4.7`. That is why most rows
+above carry an effort and no model: the model follows a standing policy, not the subject, and naming
+a version in every row would give six places to go stale instead of one. Older versions stay
+allowlisted in `ask_grok.sh` so an earlier round can be reproduced, never so a new round can pick
+one. **A wrapper default or a depth row that names an older grok is a defect**, not a tier: on 2026-09-22
+`ask_grok.sh` still defaulted to `grok-4.6`, which is how fourteen recent records name a model this
+table does not.
+
 ```bash
 CODEX_MODEL=gpt-5.6-terra CODEX_EFFORT=high AI_EXCHANGE_SLUG=<slug> .claude/scripts/ask_codex.sh - < prompt.md
 GROK_MODEL=grok-4.7 GROK_EFFORT=high        AI_EXCHANGE_SLUG=<slug> .claude/scripts/ask_grok.sh  - < prompt.md
@@ -496,6 +512,20 @@ Four things the table encodes, each of which cost something to learn:
 `scripts/cross_review.sh --jury` and `--relay` refuse to run unless all four variables are set, and
 name this table when they do. `--quick` pins the cheap row itself and forces it onto the auditors,
 so the unattended post-commit hook cannot be retuned by whatever shell happened to commit.
+
+### 9.2 The Reserve Seat
+
+`.claude/scripts/ask_copilot.sh` is **not** part of the regular jury. The two seats are Codex and
+Grok, and a round that runs both is the standard. Copilot exists as a **substitute for a seat that
+is temporarily unavailable** — a vendor outage, or a usage limit that will not clear inside the
+session. It is low priority: no depth row is defined for it, and no effort is spent tuning it.
+
+When a seat is filled by the reserve, say so in the exchange entry and in the devlog. A round with a
+substitute seat is still a two-voice round, but the vendor diversity it was bought for is weaker,
+and that belongs in the record. Reporting the outage to Christian is unchanged — the reserve does
+not make an outage silent.
+
+---
 
 ### Workflow
 

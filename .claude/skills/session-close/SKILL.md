@@ -73,6 +73,7 @@ Skip none of these that apply; they are owed in the session that did the work, n
 | touched any `input.conf` key | `doc/input_file_reference.md` **and** `doc/input_schema.yaml`, then a Codex prose pass over the touched `.md` sections |
 | edited `CLAUDE.md`, `doc/coding_philosophy.md`, `CMakeLists.txt` or the compiler config | `python3 scripts/check_doc_claims.py` |
 | added a citation | `python3 scripts/check_citations.py` |
+| edited `doc/ai_collaboration_protocol.md`, a wrapper, or `devlog/README.md` | `python3 scripts/check_practice_drift.py` — reports where the convention documents and practice have parted |
 | added user-facing documentation | the Codex language sweep (not for `devlog/`, `todo/`, `METHODOLOGY.md`, `doc/lessons_learned.md`) |
 
 ## 5 — The commit

@@ -141,6 +141,32 @@ one of the two must be retired before either is worked.
 
 ---
 
+## Added 2026-09-22
+
+### [practice_drift_checker.md](practice_drift_checker.md) — a checker for convention documents that have drifted from practice
+
+**v2 SHIPPED 2026-09-22 as `scripts/check_practice_drift.py`; v3 (D-c11..D-c21) open.** Self-test
+36/36 and 16/16 mutants killed; a second code jury found five silent passes, logged for v3 with
+a narrow jury on the diff.
+`scripts/check_doc_claims.py` verifies the convention documents against the tree; nothing verifies
+them against practice — what the devlogs, commit bodies and wrapper defaults do. Two drifts are live:
+`ask_grok.sh` defaults the Grok seat to `grok-4.6`, which §9.1's rows name nowhere, and seven
+`devlog/dl*.md` files have no index entry, five of them weeks old.
+
+The plan's own history is the argument for it. Round 1 (one voice — Codex was down) found the §1
+tables describing a template that had been fixed hours earlier. The revision then proposed reading
+§9.1's **prose** for the list of deliberately-unnamed models — and round 2 found that the
+latest-grok paragraph added at ~02:45 names `grok-4.6` in that prose, so **documenting the defect
+disabled the probe that detects it**. A measurement taken at 02:37 was false when copied in at
+03:20. Exceptions are now declared structurally, on one anchored line the protocol owns
+(`**Allowlisted but named by no row (by design):**`), leaving prose free to describe defects.
+
+Round 2 ran both seats blind on a fresh slug: 16 findings, four P0, three with two raisers. Rulings
+taken 2026-09-22: structural exception line; template drift splits by direction (a template field
+nobody writes is DRIFT, a practice field the template lacks is INFO); fixtures gate and the live run
+only reports, so repairing a drift cannot break the build; `ask_copilot.sh` out of scope as the
+reserve seat (protocol §9.2).
+
 ## Added 2026-09-21
 
 ### [citation_index_completion.md](citation_index_completion.md) — closing the gap between the works the tree cites and the works it can identify

@@ -21,7 +21,10 @@ For role definitions and edit safety rules, see `AGENTS.md`.
 ### Cross-Review Tooling
 
 ```
-/cross-review [--jury|--relay] [path]      # three-AI review round (default: working-tree diff; --jury = parallel blind, --relay = sequential)
+/code-with-jury                            # the standing outer loop: plan -> plan jury -> implement -> code jury -> close out
+                                           # auto-loads on any non-trivial code change; names what is exempt (comments, docs, probes)
+/session-close                             # devlog + devlog/README index line + same-session companions + the commit, in house style
+/cross-review [--jury|--relay] [path]      # one three-AI review round (default: working-tree diff; --jury = parallel blind, --relay = sequential)
                                            # needs an explicit depth: CODEX_MODEL/CODEX_EFFORT/GROK_MODEL/GROK_EFFORT
 scripts/cross_review.sh --quick <sha>      # single-auditor light review (used by the post-commit hook; pins its own cheap depth)
 scripts/install_autoreview_hook.sh [--uninstall]   # opt-in post-commit hook, all worktrees; enable with BELFEM_AUTOREVIEW=1
@@ -29,6 +32,8 @@ scripts/review_status.sh                   # commits since last auto-review + op
 scripts/check_doc_claims.py [--verbose]    # verify this file's checkable claims against the tree
 scripts/check_wrapper_policy.py            # L-21: direct third-party calls outside their wrapper module
 scripts/check_citations.py [--verbose]     # every author-year citation in src/ and doc/ resolves to a known work
+scripts/check_practice_drift.py [--strict]  # convention documents vs practice: devlog headers, index coverage,
+                                           # auditor models and wrapper defaults; --self-test is the gate
 ```
 
 `check_doc_claims.py` guards the class of error a reader cannot catch: a convention document

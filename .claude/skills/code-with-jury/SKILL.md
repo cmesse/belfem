@@ -21,6 +21,7 @@ This skill is the **outer loop** those rounds sit inside.
 | Anything that compiles into the binary — C++, Fortran, CMake logic | **yes**, even one line |
 | Comment text, Doxygen, `doc/*.md`, `todo/`, `devlog/`, debt register | no — lands on approval. User-facing docs still take the Codex **language sweep** (CLAUDE.md) |
 | Diagnostic probe: temporary print, counter, dump | no — land it, strip it when its question is answered. Piggyback it on a fix's round when both are in flight |
+| Tooling script under `scripts/` or `.claude/scripts/` (Python, shell) | **yes** — Christian's ruling 2026-09-22. It does not compile into the binary, but a checker that reports "38/38 hold" is acted on as evidence, so a false negative is the harmful kind of wrong. Round-1 depth, not the astra row |
 | Input deck, `.geo`, example data | no, unless it changes a key's contract — then also `doc/input_file_reference.md` **and** `doc/input_schema.yaml` |
 
 A task that mixes text and code **splits**: land the text, route the code through the jury.
