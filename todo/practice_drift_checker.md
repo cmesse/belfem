@@ -10,10 +10,10 @@ practice → document direction.
 **AIs involved:** Claude Opus 5 (plan, verification, measurements). Round 1: Grok `grok-4.7`/high
 blind, 11 findings; **Codex produced no audit** (two usage-limit failures). Round 2: Codex
 `gpt-5.6-terra`/high and Grok `grok-4.7`/high, both blind, on a fresh slug — 16 findings.
-**Status:** **v3 committed** 2026-09-22 — D-c11..D-c22 fixed except D-c13, which is only half done
-(the Codex-column check reads the `gpt-` prefix, not the table cell). `--self-test` 56/56, 30/30 mutants
-killed. A narrow jury on the v2→v3 diff (both seats, xhigh) found seven more, filed as D-c23..D-c29
-for v4; two raisers on the column check and on symlinks. None fires on today's tree.
+**Status:** **v4 committed** 2026-09-22 — D-c23..D-c27 and D-c29 fixed, D-c13 completed (the depth
+table is read by its own column headers). D-c28 was **reverted**: the v4 fence toggle turned an
+unclosed fence into a silent pass, so v4 keeps v3's header scanner and D-c28 is reopened with the full
+spec. `--self-test` 63/63, 37/37 mutants killed. Round-4 jury filed D-c30..D-c33 and O6 for v5.
 
 > **Scope guards:**
 > - **Out of scope:** any probe needing prose parsed *for meaning*. A token search inside a prose
@@ -291,7 +291,7 @@ Every item below was reproduced with a fixture or confirmed by reading; none fir
       accepts is unioned into `declared` unchecked. Two raisers.
 - [x] **D-c12 (silent pass)** — a Grok depth row naming an older grok passes while the default is
       correct. **Ruled 2026-09-22: DRIFT**; the protocol now says so.
-- [◐] **D-c13 (silent pass — PARTIAL, see D-c23)** — the Codex-default P2c tests membership in the whole table, so a
+- [x] **D-c13 (silent pass — completed by D-c23 in v4)** — the Codex-default P2c tests membership in the whole table, so a
       Grok-column token satisfies it. Must be the Codex column and the Codex arm.
 - [x] **D-c14 (silent pass)** — P3 keeps only the basename of a link destination, so
       `../archive/dl….md` or a URL counts as indexing the local file. Resolve relative to the README.
@@ -320,24 +320,45 @@ Every item below was reproduced with a fixture or confirmed by reading; none fir
 Both seats at `xhigh`, blind. Thread: `tmp/ai_exchange/review_practice_drift_v3.md`. v3 committed with
 these open on Christian's instruction; none fires on today's tree.
 
-- [ ] **D-c23 (silent pass, two raisers)** — D-c13 was only half done. The Codex-default check reads
+- [x] **D-c23 (silent pass, two raisers)** — D-c13 was only half done. The Codex-default check reads
       "Codex row" from the `gpt-` prefix, not from the table's Codex cell, so a `gpt-` id written only
       in the Grok cell satisfies it — executed. Parse cell provenance: split each row on `|`, cell 2
       is Codex, cell 3 is Grok. Fixtures: a `gpt-` id only in cell 3 (must fire), only in cell 2
       (must stay silent). The same flattening lets a misplaced id evade P2b.
-- [ ] **D-c24 (false positive, two raisers)** — `index_targets` uses `Path.resolve()`, which follows
+- [x] **D-c24 (false positive, two raisers)** — `index_targets` uses `Path.resolve()`, which follows
       symlinks, so a correctly indexed symlinked devlog is reported unindexed — executed. Normalize
       `.` and `..` lexically instead.
-- [ ] **D-c25** — the "P1c does not depend on P1a" assertion cannot fail; the clean devlog carries
+- [x] **D-c25** — the "P1c does not depend on P1a" assertion cannot fail; the clean devlog carries
       a Date, so P1a never fires on it anyway.
-- [ ] **D-c26** — the "failures are loud" test runs `quiet=True`, which silences the message it is
+- [x] **D-c26** — the "failures are loud" test runs `quiet=True`, which silences the message it is
       named for. Assert stderr, or print extraction errors regardless of `quiet`.
-- [ ] **D-c27** — an all-headless window fails the `devlog headers` guard (exit 2) instead of
+- [x] **D-c27** — an all-headless window fails the `devlog headers` guard (exit 2) instead of
       reporting P1c for each file.
-- [ ] **D-c28** — the header scan ends at the first `## `, including one inside an opening example,
+- [ ] **D-c28 (REOPENED — v4 fix reverted, see §4.4)** — the header scan ends at the first `## `, including one inside an opening example,
       which can hide a later `**Date:**` and false-fire P1c.
-- [ ] **D-c29** — a malformed index destination can raise `OSError` in `resolve()` and abort the
+- [x] **D-c29** — a malformed index destination can raise `OSError` in `resolve()` and abort the
       whole run; one bad line should not end the check.
+
+### 4.4 Code-jury round 4 (narrow, on the v3→v4 diff) — open, for v5
+
+Both seats at `xhigh`, blind. Thread: `tmp/ai_exchange/review_practice_drift_v4r.md`. v4 committed with
+these open and D-c28 reverted to the v3 scanner. None fires on today's tree.
+
+- [ ] **D-c28, full specification (two raisers)** — the v4 fence toggle fixed the simple closed fence
+      only, missed nesting, and turned an unclosed fence into a silent pass (executed). A correct
+      header scan: CommonMark fences (``` and ~~~, a closer at least as long as the opener with no
+      info string, nesting), **only unfenced lines count as header** (a fenced `**Date:**` must not
+      stand in for a missing one — a gap v3 shares), and an unclosed fence must fall back to the
+      plain scan rather than swallow the body. Required fixtures: the three executed cases.
+- [ ] **D-c30 (two raisers)** — the column parser accepts ambiguous tables: duplicate seat headers,
+      rows narrower than the header, doubled edge pipes (`strip("|")` shifts cells), and `|` lines
+      anywhere in the §9.1 span. Require exactly one `Codex` and one `Grok` header and uniform width.
+- [ ] **D-c31** — the D-c25 conjunct `not has(f, "P1a", "Date")` is still dead: one headed sibling
+      keeps Date in use. The P1c half is live and carries the claim; drop or rebuild the conjunct.
+- [ ] **D-c32** — P2c's older-grok check reads only the Grok column; a `grok-4.6` in the Codex column
+      is only P2b. Low.
+- [ ] **D-c33** — P2c says "depth row" where P2b says "column"; no fixture removes the Codex header;
+      the "Codex column" guard message covers both a missing header and an empty set. Low.
 
 ## 5. Open Design Questions
 
@@ -358,6 +379,10 @@ these open on Christian's instruction; none fires on today's tree.
   underived; P2c may be too strict for a deliberate pin; and both live drifts the plan cites as
   justification are this team's own housekeeping lapses rather than errors discipline cannot catch.
   Carried, not closed.
+- **O6** — an all-headless window now reports P1a DRIFT for every template field ("used by none of
+  the last N entries") alongside P1c for each file. P1a applied literally, but it accuses the
+  template when the entries simply have no header. Keep, or suppress P1a when the window has no
+  headed entry? Christian's call.
 - **O4** — should P3 also flag the reverse, an index entry with no file? Measured tonight: zero such
   cases, so the probe would be dead code today. **Leaning yes anyway** — it is one set difference in
   the opposite direction and catches a renamed or deleted entry.

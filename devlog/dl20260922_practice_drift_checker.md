@@ -179,3 +179,35 @@ was false, and is corrected in the commit to say what the code does. Both seats 
 Five smaller findings from Grok and Codex. On Christian's instruction v3 is committed with all seven
 filed as D-c23..D-c29 and D-c13 reopened as partial. None fires on today's tree; live, the checker
 reports one DRIFT — the index line owed for `dl20260922_ask_codex_cli_audit.md`.
+
+## v4
+
+Run on autopilot at Christian's request. D-c23..D-c27 and D-c29 fixed, D-c13 completed: the depth
+table is now read by its own column headers (`Codex`, `Grok`) and each column is checked against its
+own seat's wrapper arm, so a Codex default named only in the Grok cell is P2c and a model in the
+wrong column is P2b; index destinations are normalised lexically, so a symlinked devlog is no
+longer a false P3 and a malformed destination cannot end the run; an all-headless window reports P1c
+instead of failing the guard; two tests that could not fail were rebuilt. `--self-test` 64/64 and
+38/38 mutants killed on the first run. Live output identical to v3 — the real columns agree with
+v3's prefix inference on today's table.
+
+The narrow jury (Codex `gpt-5.6-terra`/xhigh, Grok `grok-4.7`/xhigh, blind, on the v3→v4 diff)
+requested changes, and the load-bearing one was a **regression I introduced**: the D-c28 fence fix
+was a boolean backtick toggle. Executed against v3 and v4 — it fixed a simple closed fence, missed
+a nested one, and turned an **unclosed** fence from a correct P1c into a silent pass by swallowing
+the body. For a checker whose rule is that a silent pass is worse than a loud one, that is the wrong
+trade, so D-c28 was **reverted to v3's scanner** (juried and shipped) and reopened with the full
+specification. Everything else in v4 was traced clean and stays. After the revert: 63/63, 37/37.
+
+Filed for v5: D-c28 in full (CommonMark fences, unfenced header lines only, unclosed-fence
+fallback), D-c30 (strict column parsing — two raisers), D-c31..D-c33 (a still-dead test conjunct,
+the older-grok check reading only the Grok column, wording and coverage), and O6 — whether an
+all-headless window should also report P1a on every template field. That last one needs Christian.
+
+The pattern across four code rounds is worth stating: every round found real defects, and three of
+the four found at least one in the *previous round's fix*. Mutation testing caught weak tests, but
+it can only kill mutants I think to write — none of mine modelled a nested or unclosed fence. The
+jury found what the mutants could not imagine.
+
+Process slip: the v4 jury was dispatched with `&` inside a compound command, not as its own
+background task. It survived; a watcher was attached rather than re-dispatching a paid round.

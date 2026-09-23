@@ -47,6 +47,9 @@ can never break the check.
 """
 
 import argparse
+import contextlib
+import io
+import os
 import re
 import subprocess
 import sys
@@ -159,9 +162,32 @@ def _depth_span(proto_path):
     return lines[start:end]
 
 
+SEAT_COLUMNS = {"codex": "Codex", "grok": "Grok"}
+
+
+def _cells(row):
+    return [c.strip() for c in row.strip().strip("|").split("|")]
+
+
 def table_models(proto_path):
-    """Models named by the depth table's rows.  Rows declare the tiers."""
-    return {m for l in _depth_span(proto_path) if l.startswith("|") for m in MODEL.findall(l)}
+    """Models named by the depth table, per seat column: {seat: set of models}.
+
+    The column is found by the table's own header cell, never inferred from a model's prefix —
+    a gpt- id written in the Grok cell is a Grok-column entry, and the probes must see it there.
+    A seat whose header cell is absent is absent from the result.
+    """
+    rows = [l for l in _depth_span(proto_path) if l.startswith("|")]
+    if not rows:
+        return {}
+    header = _cells(rows[0])
+    columns = {seat: header.index(name) for seat, name in SEAT_COLUMNS.items() if name in header}
+    out = {seat: set() for seat in columns}
+    for row in rows[1:]:
+        cells = _cells(row)
+        for seat, i in columns.items():
+            if i < len(cells):
+                out[seat] |= set(MODEL.findall(cells[i]))
+    return out
 
 
 def exception_models(proto_path):
@@ -248,7 +274,9 @@ def index_targets(readme_path):
     its destination, and a destination may point into another directory; matching any of those
     would count a file as indexed when it is not.
     """
-    base = Path(readme_path).resolve().parent
+    # Lexical, not Path.resolve(): resolve() follows a symlinked devlog out of the directory and
+    # can raise on a malformed destination, and one bad index line must not end the check.
+    base = os.path.normpath(os.path.dirname(os.path.abspath(readme_path)))
     out = set()
     for l in _lines(readme_path):
         if not (m := INDEX_ENTRY.match(l)):
@@ -256,11 +284,11 @@ def index_targets(readme_path):
         target = m.group(1).split("#", 1)[0]
         if not target:
             continue
-        # A link into another directory, or a URL ending in the same name, resolves outside the
+        # A link into another directory, or a URL ending in the same name, lands outside the
         # README's own directory and indexes a different file.
-        resolved = (base / target).resolve()
-        if resolved.parent == base:
-            out.add(resolved.name)
+        joined = os.path.normpath(os.path.join(base, target))
+        if os.path.dirname(joined) == base:
+            out.add(os.path.basename(joined))
     return out
 
 
@@ -310,7 +338,7 @@ def _newest_grok(allowlist):
     return max(versions, key=versions.get) if versions else None
 
 
-def probe_models(rows, exceptions, allowlists, messages, defaults, headers, commits):
+def probe_models(columns, exceptions, allowlists, messages, defaults, headers, commits):
     """P2a-P2e.  `allowlists`, `messages` and `defaults` are keyed by seat."""
     findings = []
     reported = set()
@@ -318,8 +346,9 @@ def probe_models(rows, exceptions, allowlists, messages, defaults, headers, comm
     # The Grok seat is always the latest allowlisted grok.  That model is declared by the policy
     # itself, whether or not a row happens to name it.
     policy_grok = _newest_grok(allowlists.get("grok", set()))
-    codex_rows = {r for r in rows if _seat(r) == "codex"}
-    grok_rows = rows - codex_rows
+    rows = set().union(*columns.values()) if columns else set()
+    codex_rows = columns.get("codex", set())
+    grok_rows = columns.get("grok", set())
     declared = rows | exceptions | ({policy_grok} if policy_grok else set())
     # Older groks stay allowlisted so an earlier round can be reproduced, and a devlog recording a
     # round run while one of them was the latest is history, not drift.  The default and the rows
@@ -333,15 +362,15 @@ def probe_models(rows, exceptions, allowlists, messages, defaults, headers, comm
                          f"grok default is {d}; the policy names the latest allowlisted grok, "
                          f"{policy_grok}"))
         reported.add(d)
-    for model in sorted(grok_rows):
+    # A non-grok token in the Grok column is misplaced, which P2b reports; here only groks.
+    for model in sorted(m for m in grok_rows if m.startswith("grok-")):
         if policy_grok and model != policy_grok:
             findings.append((DRIFT, "P2c", model,
                              f"depth row names {model}; the policy names the latest allowlisted "
                              f"grok, {policy_grok}"))
             reported.add(model)
-    # The Codex default must be a model the Codex arm accepts and a Codex row names.  "Codex row"
-    # is inferred from the gpt- prefix, not read from the table's Codex cell: a gpt- id written
-    # only in the Grok cell still satisfies it.
+    # The Codex default must be a model the Codex arm accepts and the table's Codex column names;
+    # the same id written only in the Grok column satisfies neither.
     if d := defaults.get("codex"):
         if d not in allowlists.get("codex", set()):
             findings.append((DRIFT, "P2c", d, f"codex default {d} is rejected by ask_codex.sh's own arm"))
@@ -363,12 +392,15 @@ def probe_models(rows, exceptions, allowlists, messages, defaults, headers, comm
 
     # P2b - a row naming a model its own seat's wrapper would reject.  Bound to the seat: every
     # gpt row is absent from the grok allowlist and vice versa.
-    for model in sorted(rows):
-        seat = _seat(model)
-        if seat in allowlists and model not in allowlists[seat]:
-            findings.append((DRIFT, "P2b", model,
-                             f"depth row names {model}, which ask_{seat}.sh would reject"))
-    # The by-design line says "allowlisted"; an id no wrapper accepts makes that line false.
+    # Each column is checked against its own seat's arm, so a model in the wrong column is caught.
+    for seat, models in sorted(columns.items()):
+        for model in sorted(models):
+            if seat in allowlists and model not in allowlists[seat]:
+                findings.append((DRIFT, "P2b", model,
+                                 f"the {SEAT_COLUMNS[seat]} column names {model}, "
+                                 f"which ask_{seat}.sh would reject"))
+    # The by-design line says "allowlisted"; an id no wrapper accepts makes that line false.  The
+    # line has no columns, so its seat is read from the id's prefix.
     for model in sorted(exceptions):
         seat = _seat(model)
         if seat in allowlists and model not in allowlists[seat]:
@@ -443,7 +475,8 @@ def run_live(root, recent, commits_n, threshold, commit_texts=None):
     window = devlog_window(devlog_dir, recent)
     declared = template_fields(proto)
     used, denom = devlog_fields(window)
-    rows = table_models(proto)
+    columns = table_models(proto)
+    rows = set().union(*columns.values()) if columns else set()
     exceptions = exception_models(proto)
     allowlists = {s: wrapper_models(root / p) for s, (p, _) in WRAPPERS.items()}
     messages = {s: wrapper_message_models(root / p) for s, (p, _) in WRAPPERS.items()}
@@ -455,8 +488,11 @@ def run_live(root, recent, commits_n, threshold, commit_texts=None):
 
     guard_required({
         "template fields": declared,
-        "devlog headers": used,
+        # The window must be non-empty; its headers need not be — a headerless entry is P1c.
+        "devlog window": window,
         "depth table rows": rows,
+        "Codex column": columns.get("codex"),
+        "Grok column": "grok" in columns,
         "codex allowlist": allowlists["codex"],
         "grok allowlist": allowlists["grok"],
         "codex default": defaults["codex"],
@@ -467,7 +503,7 @@ def run_live(root, recent, commits_n, threshold, commit_texts=None):
         "index targets": targets,
     })
 
-    findings = probe_models(rows, exceptions, allowlists, messages, defaults, headers, commit_hits)
+    findings = probe_models(columns, exceptions, allowlists, messages, defaults, headers, commit_hits)
     findings += probe_index(files, targets)
     findings += probe_template(declared, used, len(window), threshold)
     findings += probe_dates(missing_date)
@@ -744,8 +780,8 @@ def self_test():
         nodate = plain.replace("**Date:** 2026-01-01\n", "")
         f = find(_tree(base, "p1c", extra_devlogs=[("dl20260102_nodate.md", nodate)],
                        readme=_README + "- [dl20260102_nodate.md](dl20260102_nodate.md) — x\n"))
-        check("P1c fires on a recent devlog without **Date:**", has(f, "P1c", "dl20260102_nodate.md"))
-        check("P1c does not depend on P1a", not has(f, "P1a", "Date"))
+        check("P1c fires on one missing Date while the field is in use elsewhere (P1a silent)",
+              has(f, "P1c", "dl20260102_nodate.md") and not has(f, "P1a", "Date"))
         f = find(_tree(base, "p1c_clean"))
         check("P1c is silent when every entry has a Date", not has(f, "P1c"))
 
@@ -766,7 +802,11 @@ def self_test():
         print("v3 - failures are loud:")
         gone = _tree(base, "missing_proto")
         (gone / "doc/ai_collaboration_protocol.md").unlink()
-        check("a missing input is exit 2, not a traceback", run(gone, commits=0, quiet=True) == 2)
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+            rc = run(gone, commits=0)
+        check("a missing input is exit 2 with a message, not a traceback",
+              rc == 2 and "extraction failed" in err.getvalue())
         try:
             find(_tree(base, "suffix_only", grok=("grok-4.7-build-fast", ["grok-4.7-build-fast"], None)))
             check("an allowlist with no plain grok fails the guard", False)
@@ -778,6 +818,58 @@ def self_test():
         bad = subprocess.run([sys.executable, str(Path(__file__).resolve()), "--threshold", "nan"],
                              capture_output=True, text=True)
         check("--threshold nan is rejected by the parser", bad.returncode == 2 and "must be" in bad.stderr)
+
+        print("v4 - columns are read from the table, not from a prefix:")
+        f = find(_tree(base, "col_grok_cell",
+                       row="| Plan audit | `gpt-5.6-terra`, `high` | `grok-4.7`, `gpt-5.6-luna` |",
+                       codex=("gpt-5.6-luna", ["gpt-5.6-terra", "gpt-5.6-luna"], None)))
+        check("a Codex default named only in the Grok column is P2c", has(f, "P2c", "gpt-5.6-luna"))
+        check("a gpt id in the Grok column is P2b against the Grok arm", has(f, "P2b", "gpt-5.6-luna"))
+        f = find(_tree(base, "col_codex_cell",
+                       row="| Plan audit | `gpt-5.6-terra`, `gpt-5.6-luna` | `grok-4.7`, `high` |",
+                       codex=("gpt-5.6-luna", ["gpt-5.6-terra", "gpt-5.6-luna"], None)))
+        check("the same default named in the Codex column is silent",
+              not any(s == "gpt-5.6-luna" for _, _, s, _ in f))
+        f = find(_tree(base, "col_grok_in_codex",
+                       row="| Plan audit | `gpt-5.6-terra`, `grok-4.7` | `grok-4.7`, `high` |"))
+        check("a grok id in the Codex column is P2b against the Codex arm", has(f, "P2b", "grok-4.7"))
+        noheader = _PROTO.replace("| Subject | Codex | Grok |", "| Subject | Codex | Other |")
+        root = _tree(base, "col_no_grok_header")
+        (root / "doc/ai_collaboration_protocol.md").write_text(
+            noheader.format(exceptions="", row=_ROW_GROK))
+        try:
+            run_live(root, 40, 0, 25)
+            check("a table without a Grok column header fails the guard", False)
+        except ExtractionError:
+            check("a table without a Grok column header fails the guard", True)
+
+        print("v4 - index destinations are lexical:")
+        root = _tree(base, "symlinked")
+        (root / "elsewhere").mkdir()
+        (root / "elsewhere/real.md").write_text(plain)
+        os.symlink(root / "elsewhere/real.md", root / "devlog/dl20260102_link.md")
+        (root / "devlog/README.md").write_text(_README + "- [dl20260102_link.md](dl20260102_link.md)\n")
+        f = run_live(root, 40, 0, 25)[0]
+        check("a symlinked devlog indexed under its own name is not P3", not has(f, "P3"))
+        root = _tree(base, "loop")
+        os.symlink("loop", root / "devlog/loop")
+        (root / "devlog/README.md").write_text(_README + "- [x](loop/dl20260103_x.md)\n")
+        try:
+            run_live(root, 40, 0, 25)
+            check("a malformed index destination does not end the check", True)
+        except Exception as exc:
+            check(f"a malformed index destination does not end the check ({type(exc).__name__})", False)
+
+        print("v4 - headers:")
+        headless = "# A topic phrase\n\n## Summary\n"
+        root = _tree(base, "all_headless", readme=_README)
+        (root / "devlog/dl20260101_clean.md").write_text(headless)
+        try:
+            f = run_live(root, 40, 0, 25)[0]
+            check("an all-headless window reports P1c instead of failing the guard",
+                  has(f, "P1c", "dl20260101_clean.md"))
+        except ExtractionError as exc:
+            check(f"an all-headless window reports P1c instead of failing the guard ({exc})", False)
 
         print("exit policy:")
         drifty = _tree(base, "exit_drift", extra_devlogs=[("dl20260102_unindexed.md", plain)])
