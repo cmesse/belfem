@@ -250,9 +250,10 @@ spline regressions are genuinely pinned (each a named BUG-xx test asserting the 
 - **N-51 (Ge s3#12)** EF_HEX8 `mS[7]` vs `mS[11]`: `hex8_circulation_battery` asserts per-edge
   circulation, but both callers (`test_EdgeFunctions.cpp:1472`, `:1477`) pass no `aFlipEdge`, so
   every sign is +1 and the confusion is invisible; one call flipping edges 7 and 11 closes it.
-- **N-52 (Ge s3#1)** `submat` bounds: `SubmatOnNonSquareMatrix` (`test_Matrix.cpp:424-443`) pins
-  the reused-variable half; its own comment says the bounds half is not exposed and the debug
-  section has no `submat` throw.
+- ~~**N-52 (Ge s3#1)** `submat` bounds~~ — **struck 2026-09-22:** the B1 planner found
+  `MatrixDebug.SubmatRowOutOfBoundsThrows` and `SubmatColOutOfBoundsThrows`
+  (`test_Matrix.cpp:492-507`, since `f81dd84`) already assert the bounds half on both backends.
+  The exclusion re-read missed them; the original triage exclusion was right.
 - **N-53 (As P2/B07 #10)** TET10 nondefault face orientations `mT = 1, 2, 3`: `EF_TestVolume`
   resolves every link to `mT = 0` (`cl_EF_TestVolume.hpp:57`, `:200`), so the `switch( mT[f] )`
   at `cl_EF_TET10.cpp:1237-1297` is never entered by a test. Tier 2 if the two-TET10
