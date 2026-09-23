@@ -72,6 +72,21 @@ line numbers that move.
 | N-23 | CONTRACT | both `gels` overloads suppress identically; tests cover values only |
 | N-52 | **WRONG — strike the row** | `MatrixDebug.SubmatRowOutOfBoundsThrows` / `SubmatColOutOfBoundsThrows` (`test_Matrix.cpp:492-507`) already pin the bounds half; the exclusion re-read missed them |
 
+## 4b. What B6 established (physics)
+
+| row | label | note |
+|---|---|---|
+| T-16 | **CONTRACT** (planner said LIVE; Claude re-read and downgraded) | the six rho/lambda field-dependency flags are set inside `populate_rho_database` (`cl_Material_Alloy.cpp:509-515`), reached only under `mComputeTables`; the comment at `:504-508` says that is deliberate — the flags advertise that the database exists, and an alloy without it has no field-dependent path, unlike a metal whose Kohler flags are analytic. Today's T-51 test builds alloys with tables off and is therefore not pinning a defect |
+| T-22 | **LIVE (physics half)** | the window guard is `cl_JcFunction_Database.hpp:124-130` and is a coverage test, not a width test; nothing constructs a `JcFunctionDatabase` today. The `bn_angle` identity needs a `Calculator` and moves to the fem batch |
+| T-27 | **BLOCKED** | `tests/physics/CMakeLists.txt:60-64` gates the gas suites on `USE_GASMODELS`, OFF in both trees (DR-157) |
+| T-29 | **LIVE, cheap** | `share/material/sp-ap.hdf5` ships and resolves through `material::data_file()` with `gBelfemDataPath` set by `Add_Test.cmake:41`; axes T 3→91 K, log10 B −2→1.6, angle 0→π in 1° steps, so `mBmin` really is 10 mT |
+| T-30 | **LIVE, ruling-gated** | the two λ(300 K) magnitudes land as `DISABLED_` pins printing measured / reference / deviation; the Ni magnetization half is plannable now (`cl_Material_Nickel.cpp:58-67` cites Crangle & Goodman 1971, 10.1098/rspa.1971.0044) |
+| T-58 | **WRONG as written; half covered, half blocked** | `≤ ρₙ` holds for Riva and Piecewise — the latter already covered by `HtsLaws.PiecewiseNormalRegimeAndAboveTcrit` — while `rho_powerlaw` is unbounded by design and clamped in `MaxwellData::compute_rho()`. The `share/fluid` half is gastables, blocked with T-27 |
+| N-24 | **ALREADY COVERED**, one-line residue | `tests/io/test_filetools.cpp` pins the precedence ladder; its own comment names the residue — `tests/io` cannot include `physics/materials`, so the `"material"` forwarder is inspection-only. One physics case closes it |
+
+B6 totals 16 tests across one new file and three existing ones; five rulings, two of them physics
+VALUE questions (the λ(300 K) references with DOIs, and the C1 band at `mBmin`).
+
 ## 5. Audit trail
 
 Exchange threads `tmp/ai_exchange/review_tgap2_<batch>.md`; plans `..._plan.md`; gate logs
