@@ -6,6 +6,7 @@ set( TESTLABELS fast )
 set( SOURCES
         test_StringTools.cpp
         test_AvailableMemory.cpp
+        test_Logger.cpp
         )
 
 # add the test
