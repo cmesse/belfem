@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <fstream>
 #include <string>
+#include <unistd.h>
 
 #include "typedefs.hpp"
 #include "cl_InputFile.hpp"
@@ -160,4 +161,99 @@ TEST( GhostSwitch, MeshCacheTagSeesTheSwitch )
     EXPECT_NE( tTextOn.find( "thinshell.ghost = on" ),  std::string::npos );
     EXPECT_NE( tTextOff.find( "thinshell.ghost = off" ), std::string::npos );
     EXPECT_NE( belfem::fem::maxwell::mesh_config_tag( tOn ), belfem::fem::maxwell::mesh_config_tag( tOff ) );
+}
+
+//------------------------------------------------------------------------------
+// the tag's sensitivity to the ids that feed cut construction. Each pair of
+// decks below differs in one place and must produce different texts and
+// different tags
+//------------------------------------------------------------------------------
+
+namespace
+{
+    // a whole deck, verbatim; removed again on destruction
+    struct RawDeck
+    {
+        std::string mName ;
+        RawDeck( const std::string & aName, const std::string & aBody ) :
+            mName( ::testing::TempDir() + std::to_string( ( long ) getpid() ) + "_" + aName )
+        {
+            std::ofstream tFile( mName );
+            tFile << aBody ;
+            tFile.close();
+        }
+        ~RawDeck() { std::remove( mName.c_str() ); }
+    };
+
+    std::string
+    current_deck( const std::string & aInputTerminals )
+    {
+        return "boundary conditions\n{\n    current\n    {\n"
+               "        input terminals : " + aInputTerminals + " ;\n"
+               "        output terminals : 2,4,6 ;\n"
+               "        amplitude : 90 A ;\n    }\n}\n" ;
+    }
+
+    // two unlabelled terminal pairs under circuit/topology, as in
+    // examples/tapestack_circuit minus the labels
+    std::string
+    circuit_deck( const std::string & aFirstInput, const std::string & aSecondInput )
+    {
+        return "circuit\n{\n    topology\n    {\n"
+               "        terminal pair\n        {\n"
+               "            input curves  : " + aFirstInput + " ;\n"
+               "            output curves : [7,8] ;\n        }\n"
+               "        terminal pair\n        {\n"
+               "            input curves  : " + aSecondInput + " ;\n"
+               "            output curves : [9,10] ;\n        }\n"
+               "    }\n}\n" ;
+    }
+
+    void
+    expect_distinct( const std::string & aNameA, const std::string & aBodyA,
+                     const std::string & aNameB, const std::string & aBodyB )
+    {
+        RawDeck tGuardA( aNameA, aBodyA );
+        RawDeck tGuardB( aNameB, aBodyB );
+        belfem::InputFile tA( tGuardA.mName );
+        belfem::InputFile tB( tGuardB.mName );
+
+        const std::string tTextA = belfem::fem::maxwell::mesh_config_text( tA );
+        const std::string tTextB = belfem::fem::maxwell::mesh_config_text( tB );
+
+        EXPECT_NE( tTextA, tTextB ) << "text:\n" << tTextA ;
+        EXPECT_NE( belfem::fem::maxwell::mesh_config_tag( tA ),
+                   belfem::fem::maxwell::mesh_config_tag( tB ) )
+            << "texts differ but the tags collide:\n" << tTextA << "---\n" << tTextB ;
+    }
+}
+
+TEST( MeshConfigTag, LastIdOfAListChangesTheTag )
+{
+    // an id list starts with a digit but is not a number; it must be
+    // compared verbatim, not truncated at the first separator
+    expect_distinct( "tag_ids_11.conf", current_deck( "1,3,5,7,9,11" ),
+                     "tag_ids_13.conf", current_deck( "1,3,5,7,9,13" ) );
+}
+
+TEST( MeshConfigTag, OrderWithinAListChangesTheTag )
+{
+    // same characters, same length: a hash that ignored order would collide
+    expect_distinct( "tag_order_a.conf", current_deck( "1,3,5,7,9,11,13" ),
+                     "tag_order_b.conf", current_deck( "1,3,5,7,9,13,11" ) );
+}
+
+TEST( MeshConfigTag, SwappedUnlabelledPairsChangeTheTag )
+{
+    // the ids of two unlabelled terminal pairs swapped between them: the
+    // lines differ only in which sibling they belong to
+    expect_distinct( "tag_pairs_a.conf", circuit_deck( "[1,2]", "[5,6]" ),
+                     "tag_pairs_b.conf", circuit_deck( "[5,6]", "[1,2]" ) );
+}
+
+TEST( MeshConfigTag, CircuitInputCurvesChangeTheTag )
+{
+    // the only difference is one terminal pair's input curves
+    expect_distinct( "tag_curves_a.conf", circuit_deck( "[1,2]", "[5,6]" ),
+                     "tag_curves_b.conf", circuit_deck( "[1,2]", "[5,11]" ) );
 }

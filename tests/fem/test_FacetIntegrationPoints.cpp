@@ -21,6 +21,11 @@
 #include "fn_IF_initialize_integration_points_on_facet.hpp"
 #include "fn_dot.hpp"
 #include "fn_norm.hpp"
+#include <cmath>
+#include <memory>
+#include "cl_ReferenceElement.hpp"
+#include "cl_IF_IntegrationData.hpp"
+#include "meshtools.hpp"
 
 using namespace belfem;
 
@@ -269,4 +274,210 @@ TEST( FacetIntegrationPoints, PENTA6TS )
 TEST( FacetIntegrationPoints, PENTA18TS )
 {
     test_facet_integration_points( ElementType::PENTA18TS );
+}
+
+// ---------------------------------------------------------------------------
+//  2-D volumes, master side: every edge facet against direct LINE integration
+// ---------------------------------------------------------------------------
+
+TEST( FacetIntegrationPoints, TRI3  ) { test_facet_integration_points( ElementType::TRI3,  false ); }
+TEST( FacetIntegrationPoints, TRI6  ) { test_facet_integration_points( ElementType::TRI6,  false ); }
+TEST( FacetIntegrationPoints, QUAD4 ) { test_facet_integration_points( ElementType::QUAD4, false ); }
+TEST( FacetIntegrationPoints, QUAD9 ) { test_facet_integration_points( ElementType::QUAD9, false ); }
+
+// ---------------------------------------------------------------------------
+//  2-D slave side, through IntegrationData as the calculators use it.
+//
+//  The neighbor B is the point reflection of the reference element A through
+//  the midpoint of edge f: B is a valid, counterclockwise element whose edge
+//  f covers the same segment as A's, traversed the other way. The master
+//  points of A on f and the slave points of B on f must then coincide one by
+//  one, with equal weights. Volume TRI and QUAD reverse the columns ( one
+//  implicit orientation ); QUAD*TS carries two explicit orientations, and
+//  exactly one of them must coincide while the other runs backwards.
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    //! physical coordinates of the points of aData on an element with nodes aX
+    void
+    map_points( fem::InterpolationFunction * aFunction,
+                const Matrix< real > & aX,
+                const fem::IntegrationData & aData,
+                Matrix< real > & aPhysical )
+    {
+        const Matrix< real > & tXi = aData.points() ;
+        const uint tNumPoints = tXi.n_cols() ;
+        aPhysical.set_size( 2, tNumPoints, 0.0 );
+
+        Matrix< real > tN ;
+        for ( uint k = 0; k < tNumPoints; ++k )
+        {
+            aFunction->N( tXi.col( k ), tN );
+            for ( uint d = 0; d < 2; ++d )
+            {
+                aPhysical( d, k ) = dot( tN.row( 0 ), aX.row( d ) );
+            }
+        }
+    }
+
+    //! largest distance between column k of aA and column k ( or n-1-k if
+    //! aReversed ) of aB; NaN if any distance is NaN
+    real
+    point_distance( const Matrix< real > & aA, const Matrix< real > & aB, const bool aReversed )
+    {
+        const uint n = aA.n_cols() ;
+        real tMax = 0.0 ;
+        for ( uint k = 0; k < n; ++k )
+        {
+            const uint j = aReversed ? n - 1 - k : k ;
+            const real tDistance = std::sqrt(
+                    ( aA( 0, k ) - aB( 0, j ) ) * ( aA( 0, k ) - aB( 0, j ) )
+                  + ( aA( 1, k ) - aB( 1, j ) ) * ( aA( 1, k ) - aB( 1, j ) ) );
+
+            // written so that a NaN distance makes the result NaN, which
+            // no tolerance accepts; std::max would drop it
+            if ( ! ( tDistance <= tMax ) ) tMax = tDistance ;
+        }
+        return tMax ;
+    }
+
+    void
+    test_slave_points_2d( const ElementType aType )
+    {
+        mesh::ElementFactory              tElFactory ;
+        fem::InterpolationFunctionFactory tIfFactory ;
+
+        std::unique_ptr< mesh::ReferenceElement > tRef(
+                tElFactory.create_reference_element( aType ) );
+        std::unique_ptr< fem::InterpolationFunction > tFun(
+                tIfFactory.create_lagrange_function( aType ) );
+
+        const uint tOrder = 2 * mesh::interpolation_order_numeric( aType ) + 1 ;
+        const bool tIsThinShell = aType == ElementType::QUAD4TS || aType == ElementType::QUAD9TS ;
+
+        const uint n = tRef->element()->number_of_nodes() ;
+        Matrix< real > Xa( 2, n );
+        for ( uint k = 0; k < n; ++k )
+        {
+            Xa( 0, k ) = tRef->element()->node( k )->x() ;
+            Xa( 1, k ) = tRef->element()->node( k )->y() ;
+        }
+
+        Cell< mesh::Node * > tFacetNodes ;
+        Matrix< real > tMasterX ;
+        Matrix< real > tSlaveX ;
+
+        for ( uint f = 0; f < tRef->element()->number_of_facets(); ++f )
+        {
+            // B = point reflection of A through the midpoint of edge f
+            tRef->element()->get_nodes_of_facet( f, tFacetNodes );
+            const real tMx = 0.5 * ( tFacetNodes( 0 )->x() + tFacetNodes( 1 )->x() );
+            const real tMy = 0.5 * ( tFacetNodes( 0 )->y() + tFacetNodes( 1 )->y() );
+
+            Matrix< real > Xb( 2, n );
+            for ( uint k = 0; k < n; ++k )
+            {
+                Xb( 0, k ) = 2.0 * tMx - Xa( 0, k );
+                Xb( 1, k ) = 2.0 * tMy - Xa( 1, k );
+            }
+
+            fem::IntegrationData tMaster( aType );
+            tMaster.populate_for_master( f, tOrder );
+            map_points( tFun.get(), Xa, tMaster, tMasterX );
+
+            ASSERT_GT( tMaster.weights().length(), 1u ) << "facet " << f ;
+
+            const uint tNumOrientations = tIsThinShell ? 2 : 1 ;
+            uint tNumMatches = 0 ;
+
+            for ( uint o = 0; o < tNumOrientations; ++o )
+            {
+                fem::IntegrationData tSlave( aType );
+                tSlave.populate_for_slave( f, o, tOrder );
+                map_points( tFun.get(), Xb, tSlave, tSlaveX );
+
+                ASSERT_EQ( tSlave.weights().length(), tMaster.weights().length() )
+                    << "facet " << f << " orientation " << o ;
+
+                const real tForward  = point_distance( tMasterX, tSlaveX, false );
+                const real tBackward = point_distance( tMasterX, tSlaveX, true );
+
+                if ( tForward < tEpsilon )
+                {
+                    ++tNumMatches ;
+                    for ( uint k = 0; k < tMaster.weights().length(); ++k )
+                    {
+                        EXPECT_NEAR( tSlave.weights()( k ), tMaster.weights()( k ), tEpsilon )
+                            << "facet " << f << " orientation " << o << " weight " << k ;
+                    }
+                }
+                else
+                {
+                    // the other orientation covers the same segment backwards
+                    EXPECT_TRUE( tIsThinShell )
+                        << "facet " << f << ": slave points do not coincide, distance " << tForward ;
+                    EXPECT_LT( tBackward, tEpsilon )
+                        << "facet " << f << " orientation " << o << " is not the reversal" ;
+                }
+            }
+
+            EXPECT_EQ( tNumMatches, 1u ) << "facet " << f ;
+        }
+    }
+}
+
+TEST( FacetSlavePoints, TRI3  ) { test_slave_points_2d( ElementType::TRI3  ); }
+TEST( FacetSlavePoints, TRI6  ) { test_slave_points_2d( ElementType::TRI6  ); }
+TEST( FacetSlavePoints, QUAD4 ) { test_slave_points_2d( ElementType::QUAD4 ); }
+TEST( FacetSlavePoints, QUAD9 ) { test_slave_points_2d( ElementType::QUAD9 ); }
+TEST( FacetSlavePoints, QUAD4TS_Orientations ) { test_slave_points_2d( ElementType::QUAD4TS ); }
+TEST( FacetSlavePoints, QUAD9TS_Orientations ) { test_slave_points_2d( ElementType::QUAD9TS ); }
+
+// the pairing the thin-shell factory writes for a ghost facet: the lower
+// layer's top facet is the master, the upper layer's bottom facet the slave
+// with orientation 1. The layers are stacked, not reflected
+TEST( FacetSlavePoints, QUAD4TS_GhostPairing )
+{
+    const ElementType tType = ElementType::QUAD4TS ;
+
+    mesh::ElementFactory              tElFactory ;
+    fem::InterpolationFunctionFactory tIfFactory ;
+
+    std::unique_ptr< mesh::ReferenceElement > tRef(
+            tElFactory.create_reference_element( tType ) );
+    std::unique_ptr< fem::InterpolationFunction > tFun(
+            tIfFactory.create_lagrange_function( tType ) );
+
+    real tYMin = BELFEM_REAL_MAX ;
+    real tYMax = -BELFEM_REAL_MAX ;
+    Matrix< real > Xa( 2, 4 );
+    for ( uint k = 0; k < 4; ++k )
+    {
+        Xa( 0, k ) = tRef->element()->node( k )->x() ;
+        Xa( 1, k ) = tRef->element()->node( k )->y() ;
+        tYMin = std::min( tYMin, Xa( 1, k ) );
+        tYMax = std::max( tYMax, Xa( 1, k ) );
+    }
+
+    // the upper layer sits directly on top of the lower one
+    Matrix< real > Xb = Xa ;
+    for ( uint k = 0; k < 4; ++k )
+    {
+        Xb( 1, k ) += tYMax - tYMin ;
+    }
+
+    fem::IntegrationData tMaster( tType );
+    tMaster.populate_for_master( mesh::top_facet_index( tType ), 3 );
+
+    fem::IntegrationData tSlave( tType );
+    tSlave.populate_for_slave( mesh::bottom_facet_index( tType ), 1, 3 );
+
+    Matrix< real > tMasterX ;
+    Matrix< real > tSlaveX ;
+    map_points( tFun.get(), Xa, tMaster, tMasterX );
+    map_points( tFun.get(), Xb, tSlave,  tSlaveX );
+
+    ASSERT_GT( tMasterX.n_cols(), 1u );
+    EXPECT_LT( point_distance( tMasterX, tSlaveX, false ), tEpsilon );
 }

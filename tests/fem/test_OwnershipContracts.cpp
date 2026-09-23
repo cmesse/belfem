@@ -30,6 +30,8 @@
 #include "cl_IF_ElementMapper.hpp"
 #include "cl_FEM_Kernel.hpp"
 #include "cl_FEM_Controller.hpp"
+#include "cl_IWG.hpp"
+#include "cl_Mesh.hpp"
 
 namespace
 {
@@ -62,6 +64,17 @@ static_assert( std::is_same_v< decltype( std::declval< const belfem::fem::Contro
 static_assert( std::is_same_v< decltype( std::declval< const belfem::fem::Controller & >().time_thermal() ),
                                const belfem::real & >,
                "Controller::time_thermal() must return a reference" );
+
+// the calculator keeps a const reference to the timestep: to the IWG's
+// delta_time() for a group of a kernel, to the mesh's time_stamp() for a
+// standalone one. Both must return a reference, or the member dangles
+static_assert( std::is_same_v< decltype( std::declval< belfem::fem::IWG & >().delta_time() ),
+                               belfem::real & >,
+               "IWG::delta_time() must return a reference" );
+
+static_assert( std::is_same_v< decltype( std::declval< belfem::Mesh & >().time_stamp() ),
+                               belfem::real & >,
+               "Mesh::time_stamp() must return a reference" );
 
 TEST( Ownership, ContractsHoldAtCompileTime )
 {

@@ -44,10 +44,13 @@ namespace belfem
     //! NaN until the executable or the deck sets it
     greal gTbulk ;
 
-    //! minimim resistrivity in Ohm*m, default: 0
+    //! minimum resistivity in Ohm*m, default: 0. Precondition for every
+    //! writer: gRhoMin < gRhoMax. The resistivity clamp passes both to
+    //! std::clamp, whose behavior is undefined on an inverted window, and
+    //! checks the ordering nowhere on its hot path
     greal gRhoMin ;
 
-    //! maximim resistrivity in Ohm*m, default: 1e10
+    //! maximum resistivity in Ohm*m, default: 1e10
     greal gRhoMax ;
 
     //! path to belfem data files, set by environment variable $BELFEM_DATA

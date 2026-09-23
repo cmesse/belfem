@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <random>
 #include <string>
 
 #include "typedefs.hpp"
@@ -34,6 +35,8 @@
 #include "nedelec/cl_EF_HEX8TS.hpp"
 #include "nedelec/cl_EF_HEX8TB.hpp"
 #include "meshtools.hpp"
+#include "constants.hpp"
+#include "cl_IWG_MaxwellPostproc.hpp"
 
 using namespace belfem;
 
@@ -2900,5 +2903,177 @@ TEST( InterfaceOrientation, PentaSideFacesSurfaceIncrementIntegratesToTheArea )
             << "PENTA side face " << f << ": integrated surface increment " << tSum
             << " vs physical area " << tArea << " ( ratio "
             << ( tArea > 0.0 ? tSum / tArea : 0.0 ) << " )" ;
+    }
+}
+
+//------------------------------------------------------------------------------
+// the dof count of a ghost element: IWG::number_of_dofs_per_element sums the
+// master and the slave volume, and must agree with what
+// Element::link_dofs_master_and_slave() actually links
+//------------------------------------------------------------------------------
+
+TEST( InterfaceOrientation, GhostDofCountSumsMasterAndSlave )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    fem::test::TS_TestGhostStack tStack ;
+
+    fem::Element * tGhost = tStack.ghost_element() ;
+    fem::SideSet * tSideSet = static_cast< fem::SideSet * >( tGhost->parent() );
+
+    ASSERT_EQ( tSideSet->domain_type(), DomainType::Ghost );
+    ASSERT_EQ( tSideSet->master_type(), ElementType::PENTA6TS );
+    ASSERT_EQ( tSideSet->slave_type(),  ElementType::PENTA6TS );
+
+    // the h field carries one dof per edge on both layers, and a ghost
+    // facet carries no dof of its own, so each side contributes its edges
+    const uint tMaster = mesh::number_of_edges( tSideSet->master_type() );
+    const uint tSlave  = mesh::number_of_edges( tSideSet->slave_type() );
+
+    const uint tFormula = tStack.iwg()->number_of_dofs_per_element( tSideSet );
+
+    EXPECT_EQ( tFormula, tMaster + tSlave );
+    EXPECT_EQ( tGhost->number_of_dofs(), tFormula )
+        << "the IWG's count and the linked element disagree" ;
+}
+
+//------------------------------------------------------------------------------
+// bn_angle is the UNFOLDED angle between the field and the tape normal, on
+// [ 0, pi ]. Flipping the normal must mirror it about pi/2; a folded angle
+// would map both orientations onto [ 0, pi/2 ] and lose the sign that the
+// measured, asymmetric jc(theta) tables consume
+//------------------------------------------------------------------------------
+
+namespace
+{
+    void
+    random_unit( std::mt19937 & aEngine, Vector< real > & aN )
+    {
+        std::normal_distribution< real > tGauss( 0.0, 1.0 );
+        real tNorm = 0.0 ;
+        do
+        {
+            for ( uint i = 0; i < 3; ++i )
+            {
+                aN( i ) = tGauss( aEngine );
+            }
+            tNorm = std::sqrt( aN( 0 ) * aN( 0 ) + aN( 1 ) * aN( 1 ) + aN( 2 ) * aN( 2 ) );
+        }
+        while ( tNorm < 1e-3 );
+
+        for ( uint i = 0; i < 3; ++i )
+        {
+            aN( i ) /= tNorm ;
+        }
+    }
+}
+
+TEST( InterfaceOrientation, BnAngleFlipSumsToPi )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    fem::test::TS_TestGhostStack tStack ;
+    fem::Calculator * tCalc = tStack.calculator();
+
+    std::mt19937 tEngine( 4172u );
+    std::uniform_real_distribution< real > tExponent( -9.0, 1.0 );
+
+    Vector< real > n( 3 );
+    Vector< real > tMinusN( 3 );
+    Vector< real > b( 3 );
+    Vector< real > tDirection( 3 );
+
+    real tWorst = 0.0 ;
+
+    for ( uint k = 0; k < 2000; ++k )
+    {
+        random_unit( tEngine, n );
+        random_unit( tEngine, tDirection );
+
+        // field magnitudes from 1e-9 to 10 T, so the degenerate branch
+        // ( |b| < 1e-6 ) is exercised as well
+        const real tMagnitude = std::pow( 10.0, tExponent( tEngine ) );
+        for ( uint i = 0; i < 3; ++i )
+        {
+            b( i ) = tMagnitude * tDirection( i );
+            tMinusN( i ) = -n( i );
+        }
+
+        real tNormB = 0.0 ;
+        const real tTheta      = tCalc->bn_angle( b, n, tNormB );
+        const real tThetaFlip  = tCalc->bn_angle( b, tMinusN, tNormB );
+
+        ASSERT_GE( tTheta, 0.0 );
+        ASSERT_LE( tTheta, constant::pi );
+        ASSERT_GE( tThetaFlip, 0.0 );
+        ASSERT_LE( tThetaFlip, constant::pi );
+
+        tWorst = std::max( tWorst, std::abs( tTheta + tThetaFlip - constant::pi ) );
+    }
+
+    EXPECT_LT( tWorst, 1e-12 ) << "worst | theta(n) + theta(-n) - pi | = " << tWorst ;
+}
+
+TEST( InterfaceOrientation, BnAngleIsPiForAntiparallelField )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    fem::test::TS_TestGhostStack tStack ;
+    fem::Calculator * tCalc = tStack.calculator();
+
+    // a normal that is not an axis, so no component is exactly zero
+    Vector< real > n( 3 );
+    n( 0 ) = 2.0 / 7.0 ; n( 1 ) = 3.0 / 7.0 ; n( 2 ) = 6.0 / 7.0 ;
+
+    // a unit vector perpendicular to n
+    Vector< real > tPerp( 3 );
+    tPerp( 0 ) = 3.0 / std::sqrt( 13.0 ) ; tPerp( 1 ) = -2.0 / std::sqrt( 13.0 ) ; tPerp( 2 ) = 0.0 ;
+
+    Vector< real > b( 3 );
+    real tNormB = 0.0 ;
+
+    // acos is ill-conditioned at +-1: a cosine one ulp off unity moves the
+    // angle by sqrt( 2 eps ) ~ 1.5e-8. Measured worst deviation 2.1e-8 for
+    // the parallel and antiparallel rows, exact zero for the perpendicular
+    for ( const real c : { 1e-3, 0.5, 20.0 } )
+    {
+        for ( uint i = 0; i < 3; ++i ) b( i ) = -c * n( i );
+        EXPECT_NEAR( tCalc->bn_angle( b, n, tNormB ), constant::pi, 1e-7 ) << "|b| = " << c ;
+
+        for ( uint i = 0; i < 3; ++i ) b( i ) = c * n( i );
+        EXPECT_NEAR( tCalc->bn_angle( b, n, tNormB ), 0.0, 1e-7 ) << "|b| = " << c ;
+
+        for ( uint i = 0; i < 3; ++i ) b( i ) = c * tPerp( i );
+        EXPECT_NEAR( tCalc->bn_angle( b, n, tNormB ), 0.5 * constant::pi, 1e-12 ) << "|b| = " << c ;
+        EXPECT_NEAR( tNormB, c, 1e-12 * c ) << "the norm output, |b| = " << c ;
+    }
+
+    // below the zero-field threshold the angle is defined as pi/2, whatever
+    // the direction, and the norm is still reported
+    for ( uint i = 0; i < 3; ++i ) b( i ) = -1e-9 * n( i );
+    EXPECT_EQ( tCalc->bn_angle( b, n, tNormB ), 0.5 * constant::pi );
+    EXPECT_NEAR( tNormB, 1e-9, 1e-21 );
+}
+
+//------------------------------------------------------------------------------
+// the Maxwell postprocessor IWG states its symmetry mode; it must be the
+// unsymmetric one, like every IWG that hands MUMPS the full matrix
+//------------------------------------------------------------------------------
+
+TEST( IwgDefaults, MaxwellPostprocIsUnsymmetric )
+{
+    for ( const ModelDimensionality tDim : { ModelDimensionality::TwoD, ModelDimensionality::ThreeD } )
+    {
+        fem::IWG_MaxwellPostproc tIWG( fem::maxwell::Formulation::L2PhiH, tDim );
+        EXPECT_EQ( tIWG.symmetry_mode(), SymmetryMode::Unsymmetric );
     }
 }

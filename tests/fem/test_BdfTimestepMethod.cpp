@@ -37,6 +37,16 @@
 #include "en_SolverEnums.hpp"
 #include "en_IWGs.hpp"
 #include "cl_IWG_Timestep.hpp"
+#include <memory>
+#include <string>
+#include "commtools.hpp"
+#include "cl_Mesh.hpp"
+#include "cl_Node.hpp"
+#include "cl_Block.hpp"
+#include "cl_Element_Factory.hpp"
+#include "cl_FEM_Kernel.hpp"
+#include "cl_FEM_KernelParameters.hpp"
+#include "cl_FEM_DofManager.hpp"
 
 using namespace belfem;
 using namespace belfem::fem;
@@ -113,6 +123,10 @@ namespace belfem
             real h( const uint aK ) const     { return mIWG.mH( aK ) ; }
             uint step_count() const           { return mIWG.mStepCount ; }
             real delta_time() const           { return mIWG.mDeltaTime ; }
+            bool coeffs_dirty() const         { return mIWG.mCoeffsDirty ; }
+
+            //! what an assembly does to the flag: the coefficients are current
+            void mark_assembled()             { mIWG.mCoeffsDirty = false ; }
 
             /**
              * The five-line rotation of shift_fields, WITHOUT the field
@@ -645,4 +659,225 @@ TEST( BdfWarmStart, RestoreValidation )
     delete tFresh ;
     delete tCap ;
     delete tEuler ;
+}
+
+//------------------------------------------------------------------------------
+// §6  shift_fields / reset_fields on a linked field
+//------------------------------------------------------------------------------
+
+namespace
+{
+    /**
+     * A Poisson field on a unit square ( two TRI3 ): the cheapest IWG_Timestep
+     * with a linked DofManager, which the real shift_fields and reset_fields
+     * need. aMethodFirst configures the scheme BEFORE the field is linked,
+     * otherwise after it, the two orders the controller uses
+     */
+    class LinkedPoisson
+    {
+        public:
+
+            std::unique_ptr< Mesh >                mMesh ;
+            std::unique_ptr< KernelParameters >    mParams ;
+            std::unique_ptr< Kernel >              mKernel ;
+            IWG_Timestep                         * mIWG ;     // owned by the kernel
+            DofManager                           * mField ;   // owned by the kernel
+
+            LinkedPoisson( const EulerMethod aMethod, const bool aMethodFirst )
+            {
+                // third argument must stay false: the MeshChecker in the
+                // Kernel ctor refuses pre-existing edges
+                mMesh.reset( new Mesh( 2, 0, false ) );
+
+                mesh::ElementFactory tFactory ;
+
+                Cell< mesh::Node * > & tNodes = mMesh->nodes();
+                tNodes.push( new mesh::Node( 1, 0.0, 0.0 ) );
+                tNodes.push( new mesh::Node( 2, 1.0, 0.0 ) );
+                tNodes.push( new mesh::Node( 3, 1.0, 1.0 ) );
+                tNodes.push( new mesh::Node( 4, 0.0, 1.0 ) );
+
+                mesh::Block * tBlock = new mesh::Block( 1, 2 );
+                const uint tTriangles[ 2 ][ 3 ] = { { 0, 1, 2 }, { 0, 2, 3 } };
+                for ( uint e = 0; e < 2; ++e )
+                {
+                    mesh::Element * tTri =
+                            tFactory.create_element( ElementType::TRI3, e + 1 );
+                    for ( uint k = 0; k < 3; ++k )
+                    {
+                        tTri->insert_node( tNodes( tTriangles[ e ][ k ] ), k );
+                    }
+                    tTri->set_block_id( 1 );
+                    mMesh->elements().push( tTri );
+                    tBlock->insert_element( tTri );
+                }
+                mMesh->blocks().push( tBlock );
+                mMesh->finalize();
+
+                mParams.reset( new KernelParameters( mMesh.get() ) );
+                mKernel.reset( new Kernel( mParams.get() ) );
+
+                mIWG = dynamic_cast< IWG_Timestep * >( mKernel->create_equation(
+                        IwgType::Poisson, ModelDimensionality::TwoD, { 1 } ) );
+                EXPECT_NE( mIWG, nullptr );
+
+                if ( aMethodFirst )
+                {
+                    mIWG->set_timestepping_method( aMethod );
+                }
+
+                mField = mKernel->create_field( mIWG );
+                mField->set_solver( gDefaultSolver );
+
+                if ( ! aMethodFirst )
+                {
+                    mIWG->set_timestepping_method( aMethod );
+                }
+            }
+
+            LinkedPoisson( const LinkedPoisson & ) = delete ;
+            LinkedPoisson( LinkedPoisson && ) = delete ;
+            LinkedPoisson & operator=( const LinkedPoisson & ) = delete ;
+            LinkedPoisson & operator=( LinkedPoisson && ) = delete ;
+
+            //! "phi" for aLevel < 0, else the history field "phi<aLevel>"
+            Vector< real > &
+            level( const int aLevel )
+            {
+                return mMesh->field_data( aLevel < 0 ? std::string( "phi" )
+                        : "phi" + std::to_string( aLevel ) );
+            }
+
+            //! a distinct value per level and node, level -1 is the current field
+            static real
+            value( const int aLevel, const index_t aNode )
+            {
+                return 10.0 * ( aLevel + 2 ) + static_cast< real >( aNode ) ;
+            }
+
+            void
+            seed( const uint aOrder )
+            {
+                for ( int l = -1; l < ( int ) aOrder; ++l )
+                {
+                    Vector< real > & tData = this->level( l );
+
+                    // one value per node; an empty level would pass vacuously
+                    EXPECT_EQ( tData.length(), 4u ) << "level " << l ;
+                    for ( index_t i = 0; i < tData.length(); ++i )
+                    {
+                        tData( i ) = value( l, i );
+                    }
+                }
+            }
+    };
+}
+
+// reset_fields must undo exactly one shift_fields: the step-size history
+// including the slot the shift dropped off the end ( BDF5 reads mH( 3 ) ),
+// the step counter, and the delta time of the last completed step
+TEST( BdfFieldReset, ResetUndoesOneShift )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    LinkedPoisson tProblem( EulerMethod::BackwardDifference5, true );
+    BdfCoefficientProbe tProbe( *tProblem.mIWG );
+
+    const real tHist[ 4 ] = { 3.1e-4, 2.7e-4, 3.4e-4, 2.9e-4 };
+    const real tLastDt = 2.55e-4 ;
+    tProbe.pose( tLastDt, tHist, 16 );
+
+    tProblem.mField->initialize();
+    tProblem.seed( 5 );
+
+    tProblem.mIWG->shift_fields();
+
+    // the shift itself, so the reset below is not undoing a no-op
+    ASSERT_EQ( tProbe.h( 0 ), tLastDt );
+    ASSERT_EQ( tProbe.h( 3 ), tHist[ 2 ] );
+    ASSERT_EQ( tProbe.step_count(), 17u );
+
+    // the rejected step left its own iterate in the current field, and
+    // the retry sets a smaller upcoming step first
+    {
+        Vector< real > & tCurrent = tProblem.level( -1 );
+        for ( index_t i = 0; i < tCurrent.length(); ++i )
+        {
+            tCurrent( i ) = -999.0 - static_cast< real >( i ) ;
+        }
+    }
+    tProblem.mIWG->delta_time() = 0.5 * tLastDt ;
+
+    // the failed iteration assembled, so the coefficients were current for
+    // the abandoned step; the reset must mark them stale again
+    tProbe.mark_assembled();
+
+    tProblem.mIWG->reset_fields();
+
+    EXPECT_TRUE( tProbe.coeffs_dirty() );
+
+    for ( uint k = 0; k < 4; ++k )
+    {
+        EXPECT_EQ( tProbe.h( k ), tHist[ k ] ) << "mH( " << k << " )" ;
+    }
+    EXPECT_EQ( tProbe.step_count(), 16u );
+    EXPECT_EQ( tProbe.delta_time(), tLastDt );
+
+    // the current field and every history level but the oldest are back;
+    // the oldest level was overwritten by the shift and is not recoverable
+    for ( int l = -1; l < 4; ++l )
+    {
+        const Vector< real > & tData = tProblem.level( l );
+        for ( index_t i = 0; i < tData.length(); ++i )
+        {
+            EXPECT_EQ( tData( i ), LinkedPoisson::value( l, i ) )
+                << "level " << l << ", node " << i ;
+        }
+    }
+}
+
+// the number of history levels is the order, whichever comes first: the
+// scheme or the linked field. shift_fields must rotate through all of them
+TEST( BdfFieldReset, HistoryLevelsEqualTheOrderInEitherCallOrder )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    for ( const bool tMethodFirst : { true, false } )
+    {
+        LinkedPoisson tProblem( EulerMethod::BackwardDifference3, tMethodFirst );
+
+        Cell< string > tParents ;
+        Cell< string > tHistory ;
+        tProblem.mIWG->history_field_labels( tParents, tHistory );
+
+        ASSERT_EQ( tParents.size(), 1u );
+        ASSERT_EQ( tHistory.size(), 3u ) << "method first: " << tMethodFirst ;
+        for ( uint k = 0; k < 3; ++k )
+        {
+            EXPECT_EQ( tHistory( k ), "phi" + std::to_string( k ) );
+            EXPECT_TRUE( tProblem.mMesh->field_exists( tHistory( k ) ) )
+                << tHistory( k ) << ", method first: " << tMethodFirst ;
+        }
+
+        tProblem.mField->initialize();
+        tProblem.seed( 3 );
+        tProblem.mIWG->shift_fields();
+
+        // phi -> phi0 -> phi1 -> phi2; the old phi2 falls off
+        for ( int l = 0; l < 3; ++l )
+        {
+            const Vector< real > & tData = tProblem.level( l );
+            for ( index_t i = 0; i < tData.length(); ++i )
+            {
+                EXPECT_EQ( tData( i ), LinkedPoisson::value( l - 1, i ) )
+                    << "level " << l << ", node " << i << ", method first: " << tMethodFirst ;
+            }
+        }
+    }
 }

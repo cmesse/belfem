@@ -10,6 +10,10 @@
  */
 
 #include <gtest/gtest.h>
+#include <algorithm>
+#include <cmath>
+#include <stdexcept>
+#include <string>
 
 #include "typedefs.hpp"
 #include "globals.hpp"
@@ -36,6 +40,15 @@
 #include "en_Maxwell_Formulations.hpp"
 #include "en_IWGs.hpp"
 #include "en_SolverEnums.hpp"
+#include "cl_Matrix.hpp"
+#include "cl_FEM_SideSet.hpp"
+#include "cl_TimestepMatrices.hpp"
+#include "support/cl_TS_TestStack.hpp"
+#include <memory>
+#include "cl_Protoshell.hpp"
+#include "cl_ThinShellFactory.hpp"
+#include "cl_Material.hpp"
+#include "cl_IWG_MaxwellThermal.hpp"
 
 using namespace belfem;
 
@@ -367,4 +380,338 @@ TEST( ThinShellSelection, AllShellsSelectedLinkOwnFacet )
     EXPECT_EQ( tStacks.linked_facet( 2, 2 ), tStacks.mTapeFacet[ 0 ] );
     EXPECT_EQ( tStacks.linked_facet( 3, 3 ), tStacks.mTapeFacet[ 1 ] );
     EXPECT_EQ( tStacks.linked_facet( 4, 4 ), tStacks.mTapeFacet[ 1 ] );
+}
+
+//------------------------------------------------------------------------------
+// the buffer layer: a thin-shell layer whose material has no resistivity is
+// retagged DomainType::Buffer and takes the scalar-phi role of air. The
+// cases below assert that role on a linked group, not a universal rule
+//------------------------------------------------------------------------------
+
+namespace
+{
+    //! the element matrices the magnetic IWG assembles for tri B
+    //! ( block 2 ) when block 2 carries aTypeB
+    void
+    tri_b_matrices( const DomainType aTypeB,
+                    Matrix< real > & aK, Matrix< real > & aM, Vector< real > & aF )
+    {
+        fem::test::TS_TestConductorShell2D tShell( DomainType::Air, aTypeB );
+
+        // the Maxwell factory copies the mesh block's domain type onto the
+        // fem group after the field is built; this fixture has no factory
+        fem::Block * tBlock = tShell.field()->block( 2 );
+        tBlock->set_domain_type( tShell.mesh()->block( 2 )->domain_type() );
+        ASSERT_EQ( tBlock->domain_type(), aTypeB );
+
+        fem::IWG_Maxwell * tIWG = tShell.iwg();
+        tIWG->link_to_group( tBlock );
+
+        const uint n = tIWG->number_of_dofs_per_element( tBlock );
+        Matrix< real > tJ( n, n, 0.0 );
+        Vector< real > tRHS( n, 0.0 );
+        tIWG->compute_jacobian_and_rhs( tBlock->element( tShell.tri_b()->id() ), tJ, tRHS );
+
+        aK = tIWG->matrices()->K();
+        aM = tIWG->matrices()->M();
+        aF = tIWG->matrices()->f();
+    }
+}
+
+TEST( BufferDomain, BufferBlocksTakeThePhiDispatch )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    Matrix< real > tKair, tMair, tKbuf, tMbuf ;
+    Vector< real > tFair, tFbuf ;
+
+    tri_b_matrices( DomainType::Air,    tKair, tMair, tFair );
+    tri_b_matrices( DomainType::Buffer, tKbuf, tMbuf, tFbuf );
+
+    // the same kernel on the same element: bitwise the same operator
+    ASSERT_EQ( tKbuf.n_rows(), tKair.n_rows() );
+    ASSERT_EQ( tKbuf.n_cols(), tKair.n_cols() );
+    ASSERT_GT( tKair.n_rows(), 0u );
+
+    real tMaxK = 0.0 ;
+    for ( uint j = 0; j < tKair.n_cols(); ++j )
+    {
+        for ( uint i = 0; i < tKair.n_rows(); ++i )
+        {
+            EXPECT_EQ( tKbuf( i, j ), tKair( i, j ) ) << "K( " << i << ", " << j << " )" ;
+            tMaxK = std::max( tMaxK, std::abs( tKair( i, j ) ) );
+        }
+    }
+
+    real tMaxM = 0.0 ;
+    ASSERT_EQ( tMbuf.n_rows(), tMair.n_rows() );
+    ASSERT_EQ( tMbuf.n_cols(), tMair.n_cols() );
+    for ( uint j = 0; j < tMair.n_cols(); ++j )
+    {
+        for ( uint i = 0; i < tMair.n_rows(); ++i )
+        {
+            EXPECT_EQ( tMbuf( i, j ), tMair( i, j ) ) << "M( " << i << ", " << j << " )" ;
+            tMaxM = std::max( tMaxM, std::abs( tMair( i, j ) ) );
+        }
+    }
+    EXPECT_GT( std::max( tMaxK, tMaxM ), 0.0 )
+        << "all-zero operators would compare equal to anything" ;
+
+    ASSERT_EQ( tFbuf.length(), tFair.length() );
+    for ( uint i = 0; i < tFair.length(); ++i )
+    {
+        EXPECT_EQ( tFbuf( i ), tFair( i ) ) << "f( " << i << " )" ;
+    }
+}
+
+TEST( BufferDomain, ThermalAcceptsBuffer )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    fem::test::TS_TestConductorShell2D tShell( DomainType::Air, DomainType::Buffer );
+    fem::Block * tBlock = tShell.field()->block( 2 );
+    tBlock->set_domain_type( tShell.mesh()->block( 2 )->domain_type() );
+    ASSERT_EQ( tBlock->domain_type(), DomainType::Buffer );
+
+    // link_to_group refuses, in every build, a group it has no kernel for
+    fem::IWG_MaxwellThermal tThermal( ModelDimensionality::TwoD );
+    EXPECT_NO_THROW( tThermal.link_to_group( tBlock ) );
+}
+
+TEST( BufferDomain, BufferSymmetryLinksAntiSymmetryIsRefused )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    fem::test::TS_TestConductorShell2D tShell( DomainType::Air, DomainType::Buffer );
+
+    // the tape sideset is a LINE2 group; retag it to exercise the
+    // magnetic IWG's dispatch for boundary sidesets of a buffer
+    fem::SideSet * tSideSet = tShell.field()->sideset( 10 );
+    ASSERT_NE( tSideSet, nullptr );
+    const DomainType tSaved = tSideSet->domain_type() ;
+
+    tSideSet->set_domain_type( DomainType::BufferSymmetry );
+    EXPECT_NO_THROW( tShell.iwg()->link_to_group( tSideSet ) );
+
+    // antisymmetry must be disabled for the phi side, as for air: the
+    // refusal must be the deliberate one, not the catch-all for an unknown
+    // domain type
+    for ( const DomainType tType : { DomainType::BufferAntiSymmetry, DomainType::AirAntiSymmetry } )
+    {
+        tSideSet->set_domain_type( tType );
+        bool tThrown = false ;
+        try
+        {
+            tShell.iwg()->link_to_group( tSideSet );
+        }
+        catch( const std::runtime_error & aError )
+        {
+            tThrown = true ;
+            EXPECT_NE( std::string( aError.what() ).find( "Anti Symmetry" ), std::string::npos )
+                << "message was: " << aError.what() ;
+        }
+        EXPECT_TRUE( tThrown ) << to_string( tType ) ;
+    }
+
+    tSideSet->set_domain_type( tSaved );
+}
+
+//------------------------------------------------------------------------------
+// the thin-shell factory retags a layer block as DomainType::Buffer if and
+// only if the layer's material declares no resistivity, and gives each edge
+// of that block one source per edge node
+//------------------------------------------------------------------------------
+
+namespace
+{
+    //! a material that declares rho or not, and nothing else
+    class FlagMaterial : public Material
+    {
+        public:
+            explicit FlagMaterial( const bool aHaveRho ) :
+                Material( MaterialType::NonMetal )
+            {
+                this->set_have( MaterialProperty::rho, aHaveRho );
+            }
+    };
+
+    /**
+     * two TRI3 on either side of a straight tape LINE2 along y = 0, the
+     * tape facet in sideset 10. No cut duplicates: every tape node is its
+     * own slave. The layer stack is built by ThinShellFactory::create()
+     * from aMaterials, one layer per material
+     *
+     *        4
+     *       / \      B = ( 1, 2, 4 ) above, A = ( 2, 1, 3 ) below
+     *      1---2
+     *       \ /
+     *        3
+     */
+    class TapeStack
+    {
+        public:
+
+            std::unique_ptr< Mesh >  mMesh ;
+            FlagMaterial             mConductor ;
+            FlagMaterial             mStabilizer ;
+            FlagMaterial             mInsulator ;
+            Map< string, Material * > mMaterials ;
+            mesh::ThinShell        * mShell = nullptr ;   // owned by the mesh
+
+            explicit
+            TapeStack( const Cell< string > & aMaterials ) :
+                mConductor( true ),
+                mStabilizer( true ),
+                mInsulator( false )
+            {
+                mMaterials[ "cu" ]     = & mConductor ;
+                mMaterials[ "ag" ]     = & mStabilizer ;
+                mMaterials[ "buffer" ] = & mInsulator ;
+                mMaterials[ "kapton" ] = & mInsulator ;
+
+                mMesh.reset( new Mesh( 2, 0, true ) );
+
+                mesh::ElementFactory tFactory ;
+
+                Cell< mesh::Node * > & tNodes = mMesh->nodes();
+                tNodes.push( new mesh::Node( 1, 0.0,  0.0 ) );
+                tNodes.push( new mesh::Node( 2, 2.0,  0.0 ) );
+                tNodes.push( new mesh::Node( 3, 1.0, -1.0 ) );
+                tNodes.push( new mesh::Node( 4, 1.0,  1.0 ) );
+
+                mesh::Block * tBlockA = new mesh::Block( 1, 1 );
+                tBlockA->set_domain_type( DomainType::Air );
+                mesh::Element * tA = tFactory.create_element( ElementType::TRI3, 1 );
+                tA->insert_node( tNodes( 1 ), 0 );
+                tA->insert_node( tNodes( 0 ), 1 );
+                tA->insert_node( tNodes( 2 ), 2 );
+                tA->set_block_id( 1 );
+                mMesh->elements().push( tA );
+                tBlockA->insert_element( tA );
+                mMesh->blocks().push( tBlockA );
+
+                mesh::Block * tBlockB = new mesh::Block( 2, 1 );
+                tBlockB->set_domain_type( DomainType::Air );
+                mesh::Element * tB = tFactory.create_element( ElementType::TRI3, 2 );
+                tB->insert_node( tNodes( 0 ), 0 );
+                tB->insert_node( tNodes( 1 ), 1 );
+                tB->insert_node( tNodes( 3 ), 2 );
+                tB->set_block_id( 2 );
+                mMesh->elements().push( tB );
+                tBlockB->insert_element( tB );
+                mMesh->blocks().push( tBlockB );
+
+                mesh::Element * tLine = tFactory.create_element( ElementType::LINE2, 100 );
+                tLine->insert_node( tNodes( 0 ), 0 );
+                tLine->insert_node( tNodes( 1 ), 1 );
+                mesh::Facet * tFacet = new mesh::Facet( tLine );
+                tFacet->set_master( tB, 0 );
+                tFacet->set_slave( tA, 0 );
+                tFacet->set_sideset_id( 10 );
+
+                mesh::SideSet * tTape = new mesh::SideSet( 10, 1 );
+                tTape->insert_facet( tFacet );
+                mMesh->sidesets().push( tTape );
+
+                mMesh->finalize();
+
+                Cell< mesh::Node * > tMasterNodes = { tNodes( 0 ), tNodes( 1 ) };
+                Cell< mesh::Node * > tSlaveNodes  = { tNodes( 0 ), tNodes( 1 ) };
+
+                Protoshell tProto( 1 );
+                tProto.sidesets() = { 10 };
+                tProto.materials() = aMaterials ;
+                tProto.thicknesses().set_size( aMaterials.size(), 0.01 );
+
+                mesh::ThinShellFactory tShellFactory( mMesh.get(), tMasterNodes, tSlaveNodes, & mMaterials, true );
+                mShell = tShellFactory.create( & tProto );
+            }
+    };
+}
+
+TEST( ThinShellSelection, RhoLessLayerIsTaggedBuffer )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    // the rule is the missing resistivity, not the material's name
+    TapeStack tStack( { "cu", "kapton", "cu" } );
+    ASSERT_NE( tStack.mShell, nullptr );
+    ASSERT_EQ( tStack.mShell->blocks().size(), 3u );
+
+    const DomainType tExpected[ 3 ] = { DomainType::ThinShell, DomainType::Buffer, DomainType::ThinShell };
+    for ( uint b = 0; b < 3; ++b )
+    {
+        EXPECT_EQ( tStack.mShell->blocks()( b )->domain_type(), tExpected[ b ] )
+            << "layer " << b << ": " << to_string( tStack.mShell->blocks()( b )->domain_type() ) ;
+    }
+}
+
+TEST( ThinShellSelection, BufferEdgesCarryOneSourcePerNode )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    TapeStack tStack( { "cu", "buffer", "cu" } );
+    mesh::Block * tBuffer = tStack.mShell->blocks()( 1 );
+    ASSERT_EQ( tBuffer->domain_type(), DomainType::Buffer );
+    ASSERT_GT( tBuffer->number_of_elements(), 0u );
+
+    uint tNumEdges = 0 ;
+    for ( mesh::Element * tElement : tBuffer->elements() )
+    {
+        for ( uint e = 0; e < tElement->number_of_edges(); ++e )
+        {
+            mesh::Edge * tEdge = tElement->edge( e );
+            ++tNumEdges ;
+
+            ASSERT_EQ( tEdge->number_of_sources(), tEdge->number_of_nodes() )
+                << "edge " << tEdge->id() ;
+            for ( uint k = 0; k < tEdge->number_of_nodes(); ++k )
+            {
+                EXPECT_EQ( tEdge->source( k ), tEdge->node( k ) )
+                    << "edge " << tEdge->id() << ", source " << k ;
+            }
+        }
+    }
+    EXPECT_GT( tNumEdges, 0u );
+}
+
+TEST( ThinShellSelection, NoGhostFacetAcrossABuffer )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    // controls: two and three resistive layers do get their ghost facets
+    {
+        TapeStack tStack( { "cu", "ag" } );
+        EXPECT_NE( tStack.mShell->ghost_id(), gNoID );
+        EXPECT_GT( tStack.mShell->ghost_facets().size(), 0u );
+    }
+    {
+        TapeStack tStack( { "cu", "ag", "cu" } );
+        EXPECT_NE( tStack.mShell->ghost_id(), gNoID );
+        EXPECT_GT( tStack.mShell->ghost_facets().size(), 0u );
+    }
+
+    // with a buffer between them, neither interface is a resistive pair
+    {
+        TapeStack tStack( { "cu", "buffer", "ag" } );
+        EXPECT_EQ( tStack.mShell->ghost_id(), gNoID );
+    }
 }

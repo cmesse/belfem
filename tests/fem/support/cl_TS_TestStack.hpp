@@ -1378,6 +1378,14 @@ namespace belfem
                 Mesh *
                 mesh() { return mMesh ; }
 
+                //! owned by the kernel
+                DofManager *
+                field() { return mField ; }
+
+                //! owned by the kernel
+                IWG_Maxwell *
+                iwg() { return mIWG ; }
+
                 real
                 length() const { return mLength ; }
 

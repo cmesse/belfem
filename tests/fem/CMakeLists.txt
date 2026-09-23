@@ -12,6 +12,7 @@ include_directories( ${BELFEM_SOURCE_DIR}/math/tools )
 include_directories( ${BELFEM_SOURCE_DIR}/math/graph )
 include_directories( ${BELFEM_SOURCE_DIR}/numerics/sources )
 include_directories( ${BELFEM_SOURCE_DIR}/fem/postproc )
+include_directories( ${BELFEM_SOURCE_DIR}/fem/thermal )
 
 set( SOURCES
         test_FacetIntegrationPoints.cpp
@@ -30,6 +31,12 @@ set( SOURCES
         test_Tmatrix.cpp
         test_OwnershipContracts.cpp
         test_SolverParametersDeck.cpp
+        test_RhoWindow.cpp
+        test_IwgDefaults.cpp
+        test_ElementMapper.cpp
+        test_DofSelfContainment.cpp
+        test_QoldTable.cpp
+        test_IntegrationAuto.cpp
         )
 
 set( LIBLIST
