@@ -273,3 +273,29 @@ reading: a fence opener after the last row is itself a non-`|` line and ends the
 Lesson, again and sharper: both of this night's regressions (v4's fence toggle, v6's table reader)
 came from changes *beyond* what a finding asked for — a general mechanism applied one place further
 than needed. The findings themselves were fixed cleanly both times.
+
+## v7 (2026-09-23)
+
+D-c39..D-c42, each kept to its finding's scope — both earlier regressions came from a fix reaching one
+place further than asked. `_depth_span` now bounds §9.1 by unfenced headings, fences resolved over the
+whole file, so a fenced example straddling a heading is skipped and the real table read instead of
+failing closed; `_table_rows` stays v5's loop, as the v6 revert left it. The fence resolver is one
+pass: a suffix table of the longest bare closing run per fence character decides at once whether an
+opener has a closer, instead of re-scanning per stray opener. The bare-run rule became one helper,
+`_bare_run`, after writing D-c40 had left a second copy of it inside the drift checker itself.
+
+**D-c42's premise was wrong.** Its fixture failed: a closer followed by a form feed never reached the
+fence predicate, because `str.splitlines()` breaks lines at form feed, vertical tab and six more
+separators. `_lines` now splits on CommonMark line endings only. That touches every extractor's input,
+so it was gated before it was kept: none of those characters occurs in 494 live files or the wrappers,
+and every live file splits identically.
+
+Gates: `--self-test` 88/88, including the one-pass resolver checked against the old re-scan definition
+on 3000 random documents; 57/57 mutants killed on the first run. Two v6 mutants were dropped because
+their anchor now lived only in the self-test's reference oracle — they would have mutated the oracle.
+
+The narrow jury (both seats, xhigh) refuted no functional claim. Codex compared the resolver with the
+re-scan definition on **1,111,111** documents without a mismatch. Both seats raised one case —
+an unclosed fence before a forged `### 9.1` makes the table reader adopt the forged table — and it
+was executed on v6 and v7: **identical, so not a regression**; v7 additionally fixes the closed-fence
+variant that v6 got wrong. Filed as D-c43 with one test weakness, D-c44. v7 committed.

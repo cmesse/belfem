@@ -90,7 +90,16 @@ class ExtractionError(RuntimeError):
 # Each takes its path(s) explicitly so the self-test can point it at a fixture.
 
 def _lines(path):
-    return Path(path).read_text(encoding="utf-8", errors="replace").splitlines()
+    """The file's lines, split on CommonMark line endings only.
+
+    `str.splitlines()` also breaks on form feed, vertical tab and several Unicode separators,
+    which Markdown treats as ordinary characters — a closing fence followed by a form feed would
+    then look bare and close the fence.
+    """
+    parts = re.split(r"\r\n|\r|\n", Path(path).read_text(encoding="utf-8", errors="replace"))
+    if parts and parts[-1] == "":
+        parts.pop()
+    return parts
 
 
 def template_fields(proto_path):
@@ -138,43 +147,61 @@ def _fence_open(line):
     return m.group(1)[0], len(m.group(1))
 
 
+def _bare_run(line):
+    """(character, length) if `line` is a bare fence run — a possible closer — else None.
+
+    Bare means nothing after the run but spaces or tabs; a non-breaking space is text, as
+    CommonMark has it.
+    """
+    m = FENCE.match(line)
+    if m and not m.group(2).strip(" \t"):
+        return m.group(1)[0], len(m.group(1))
+    return None
+
+
 def _fence_closes(line, fence):
     """True if `line` closes `fence`: the same character, at least as long, and nothing after it
     but spaces or tabs — a non-breaking space is text, as CommonMark has it.
 
     A shorter or different fence inside is text, which is how one fence nests inside another.
     """
-    m = FENCE.match(line)
-    return bool(m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1]
-                and not m.group(2).strip(" \t"))
+    run = _bare_run(line)
+    return bool(run and run[0] == fence[0] and run[1] >= fence[1])
 
 
 def _fenced_flags(lines):
     """For each line, whether it lies inside a fenced block (its delimiters included).
 
-    An opener that is never closed is read as ordinary text and the scan runs again, so fences
-    that closed earlier stay excluded and the lines after the stray opener are read normally.
-    CommonMark would instead run an unclosed fence to the end of the file, which would swallow a
-    devlog's body into a code block and hide every field after the opener.  Each pass demotes one
-    more opener, so the loop ends within one pass per line.
+    An opener that is never closed is read as ordinary text, so fences that closed earlier stay
+    excluded and the lines after the stray opener are read normally.  CommonMark would instead run
+    an unclosed fence to the end of the file, swallowing a devlog's body into a code block and
+    hiding every field after the opener.
+
+    One pass: `longest[c][i]` is the longest bare run of fence character `c` at or after line
+    `i`, so an opener of `c` with length L has a closer somewhere after it iff
+    `longest[c][i + 1] >= L`, and an opener without one is text at once.
     """
-    as_text = set()
-    while True:
-        flags, fence, opened_at = [], None, None
-        for i, line in enumerate(lines):
-            if fence is not None:
-                flags.append(True)
-                if _fence_closes(line, fence):
-                    fence = None
-                continue
-            if i not in as_text and (opened := _fence_open(line)) is not None:
-                fence, opened_at = opened, i
-                flags.append(True)
-                continue
-            flags.append(False)
-        if fence is None:
-            return flags
-        as_text.add(opened_at)
+    n = len(lines)
+    longest = {"`": [0] * (n + 1), "~": [0] * (n + 1)}
+    for i in range(n - 1, -1, -1):
+        for c in longest:
+            longest[c][i] = longest[c][i + 1]
+        if (run := _bare_run(lines[i])) is not None:
+            longest[run[0]][i] = max(longest[run[0]][i], run[1])
+    flags, fence = [], None
+    for i, line in enumerate(lines):
+        if fence is not None:
+            flags.append(True)
+            if _fence_closes(line, fence):
+                fence = None
+            continue
+        opened = _fence_open(line)
+        if opened is not None and longest[opened[0]][i + 1] >= opened[1]:
+            fence = opened
+            flags.append(True)
+            continue
+        flags.append(False)
+    return flags
 
 
 def _header_lines(path):
@@ -212,13 +239,20 @@ def devlogs_without_date(paths):
 
 
 def _depth_span(proto_path):
+    """The depth-selection section, from its heading to the next heading, both outside fences.
+
+    Fences are resolved over the whole protocol file, so a heading inside a fenced example is
+    text and neither starts nor ends the section.
+    """
     lines = _lines(proto_path)
+    fenced = _fenced_flags(lines)
     try:
-        start = next(i for i, l in enumerate(lines) if l.startswith(DEPTH_ANCHOR))
+        start = next(i for i, l in enumerate(lines) if not fenced[i] and l.startswith(DEPTH_ANCHOR))
     except StopIteration:
         raise ExtractionError(f"anchor not found: {DEPTH_ANCHOR}")
-    end = next((i for i, l in enumerate(lines[start + 1:], start + 1)
-                if l.startswith("### ") or l.startswith("## ")), len(lines))
+    end = next((i for i in range(start + 1, len(lines))
+                if not fenced[i] and (lines[i].startswith("### ") or lines[i].startswith("## "))),
+               len(lines))
     return lines[start:end]
 
 
@@ -239,11 +273,10 @@ def _cells(row):
 def _table_rows(proto_path):
     """The first contiguous block of `|` lines in the depth-selection span, outside fences.
 
-    The span is cut at the first `##`/`###` line with no regard for fences, so a fence that
-    straddles that cut is unclosed within the span.  It is deliberately NOT demoted to text here,
-    unlike in `_header_lines`: demoting it would expose any example table inside it as the depth
-    table.  Left open, it hides the rest of the span, no rows are found, and the required-extract
-    guard fails the run closed.
+    A fence opened here that never closes is deliberately NOT demoted to text, unlike in
+    `_header_lines`: demoting it would expose any example table inside it as the depth table.
+    Left open, it hides the rest of the span, no rows are found, and the required-extract guard
+    fails the run closed.
     """
     rows, fence = [], None
     for line in _depth_span(proto_path):
@@ -984,8 +1017,11 @@ def self_test():
             p = Path(base) / f"fence_{label}.md"
             p.write_text(text)
             return bool(devlogs_without_date([p]))
-        check("a stray opener is text, so a ## after it still ends the header",
-              missing("unclosed", "# T\n\n```markdown\n## ex\n\n## Summary\n\n**Date:** 2026-01-01\n"))
+        p = Path(base) / "fence_stray_ends.md"
+        p.write_text("# T\n\n```markdown\n**Purpose:** before\n## ex\n**Date:** after\n")
+        hdr = "\n".join(_header_lines(p))
+        check("a stray opener is text: what follows it is header until a ## ends it",
+              "**Purpose:** before" in hdr and "**Date:** after" not in hdr)
         check("an unclosed fence is a stray line: a Date after it still counts",
               not missing("unclosed_then_date", "# T\n\n```\n**Date:** 2026-01-01\n## Summary\n"))
         check("a later unclosed fence does not re-admit an earlier closed fence's Date",
@@ -1002,6 +1038,38 @@ def self_test():
         check("a shorter closer inside a longer fence does not end it",
               missing("short_closer", "# T\n\n````\n```\n**Date:** 1999-01-01\n````\n\n**Purpose:** x\n\n"
                                       "## Summary\n"))
+        check("a tilde line does not close a backtick fence",
+              missing("tilde_in_backtick", "# T\n\n```\n~~~\n**Date:** 1999-01-01\n```\n\n**Purpose:** x\n\n"
+                                           "## Summary\n"))
+        check("a closer followed by a form feed does not close the fence",
+              missing("formfeed_close", "# T\n\n```\nfoo\n```\f\n**Date:** 1999-01-01\n```\n\n"
+                                        "**Purpose:** x\n\n## Summary\n"))
+        # The one-pass resolver against its definition: re-scan, demoting each unclosed opener.
+        def reference(lines):
+            as_text = set()
+            while True:
+                flags, fence, opened_at = [], None, None
+                for i, line in enumerate(lines):
+                    if fence is not None:
+                        flags.append(True)
+                        if _fence_closes(line, fence):
+                            fence = None
+                        continue
+                    if i not in as_text and (op := _fence_open(line)) is not None:
+                        fence, opened_at = op, i
+                        flags.append(True)
+                        continue
+                    flags.append(False)
+                if fence is None:
+                    return flags
+                as_text.add(opened_at)
+        import random
+        rng = random.Random(20260923)
+        vocab = ["```", "````", "~~~", "~~~~", "```py", "``` a`b", "``` ", "```\u00a0", "  ```",
+                 "text", "## h", "**Date:** x", ""]
+        agree = all(_fenced_flags(d) == reference(d)
+                    for d in ([rng.choice(vocab) for _ in range(rng.randint(0, 14))] for _ in range(3000)))
+        check("the one-pass resolver agrees with the re-scan definition on 3000 random documents", agree)
         check("a tilde fence hides its ## heading",
               not missing("tilde", "# T\n\n~~~\n## ex\n~~~\n\n**Date:** 2026-01-01\n## Summary\n"))
         check("a longer closer closes the fence",
@@ -1059,10 +1127,28 @@ def self_test():
                    "## a heading inside the example\n```\n\n")
         try:
             f = run_live(_tree(base, "example_table_in_fence", exceptions=example), 40, 0, 25)[0]
-            check("an example table inside a fence is never adopted as the depth table",
+            check("a fenced example straddling a heading is skipped and the real table read", not f)
+        except ExtractionError as exc:
+            check(f"a fenced example straddling a heading is skipped and the real table read ({exc})", False)
+        quoted = _PROTO.format(exceptions="", row=_ROW_GROK).replace(
+            "### 9.1 Depth Selection",
+            "```\n### 9.1 Depth Selection\n| Subject | Codex | Grok |\n|---|---|---|\n"
+            "| X | `gpt-9.9-example`, `high` | `grok-4.7`, `high` |\n```\n\n### 9.1 Depth Selection", 1)
+        root = _tree(base, "quoted_heading")
+        (root / "doc/ai_collaboration_protocol.md").write_text(quoted)
+        try:
+            f = run_live(root, 40, 0, 25)[0]
+            check("a fenced copy of the section heading is not the section", not f)
+        except ExtractionError as exc:
+            check(f"a fenced copy of the section heading is not the section ({exc})", False)
+        unclosed_example = ("```markdown\n| Subject | Codex | Grok |\n|---|---|---|\n"
+                            "| X | `gpt-9.9-example`, `high` | `grok-4.7`, `high` |\n\n")
+        try:
+            f = run_live(_tree(base, "unclosed_example", exceptions=unclosed_example), 40, 0, 25)[0]
+            check("an unclosed fenced example table is never adopted as the depth table",
                   not any(s == "gpt-9.9-example" for _, _, s, _ in f))
         except ExtractionError:
-            check("an example table inside a fence is never adopted as the depth table", True)
+            check("an unclosed fenced example table is never adopted as the depth table", True)
 
         print("exit policy:")
         drifty = _tree(base, "exit_drift", extra_devlogs=[("dl20260102_unindexed.md", plain)])

@@ -10,12 +10,12 @@ practice → document direction.
 **AIs involved:** Claude Opus 5 (plan, verification, measurements). Round 1: Grok `grok-4.7`/high
 blind, 11 findings; **Codex produced no audit** (two usage-limit failures). Round 2: Codex
 `gpt-5.6-terra`/high and Grok `grok-4.7`/high, both blind, on a fresh slug — 16 findings.
-**Status:** **v6 committed — overnight run stopped at v6** (cap was v8). D-c34..D-c38 fixed: the
-devlog-header fence resolver re-reads an unclosed opener as text so earlier closed fences stay
-excluded, and closers accept only spaces and tabs after them. The table reader was briefly moved onto
-the same resolver and **reverted** when round 6 showed it adopting an example table v5 rejected.
-`--self-test` 83/83, 51/51 mutants killed. Residue D-c39..D-c42 is low-severity, for an attended session.
-Earlier: v5 `42b5e42`, v4 `e295ce8`, v3 `cff668b`, v2 `fb74ed5`.
+**Status:** **v7 committed** 2026-09-23 — D-c39..D-c42 fixed: the §9.1 section is bounded by unfenced
+headings (fences resolved over the whole file), a one-pass fence resolver, and `_lines` splitting on
+CommonMark line endings. `--self-test` 88/88, 57/57 mutants killed on the first run; Codex separately
+confirmed the resolver on 1,111,111 documents. Round 7 found one shared case (D-c43, not a regression —
+v6 fails it identically) and one test weakness (D-c44). Chain: v7, v6 `fb1cc13`, v5 `42b5e42`, v4
+`e295ce8`, v3 `cff668b`, v2 `fb74ed5`.
 
 > **Overnight run rules (Christian, 2026-09-22, "make an overnight run out of this"):**
 > - hard cap **v8** — at most three jury rounds (v6, v7, v8), each both seats at `xhigh`;
@@ -403,16 +403,34 @@ v5; a fixture now locks that an example table is never adopted. After the revert
 silent pass and no regression, so **the overnight run stopped at v6** rather than the v8 cap. None of
 the items below fires on today's tree, fails silently, or regresses v5.
 
-- [ ] **D-c39** — cut the §9.1 span at the first *unfenced* `##`/`###`, with fences resolved over the
+- [x] **D-c39** — cut the §9.1 span at the first *unfenced* `##`/`###`, with fences resolved over the
       whole protocol file, so a fenced example straddling a heading is skipped and the real table is
       read, instead of failing closed as now.
-- [ ] **D-c40** — `_fenced_flags` is O(n²) worst case (one re-scan per stray opener). Low: Python on
+- [x] **D-c40** — `_fenced_flags` is O(n²) worst case (one re-scan per stray opener). Low: Python on
       devlog-sized input.
-- [ ] **D-c41** — the fixture "a stray opener is text, so a ## after it still ends the header" is
+- [x] **D-c41** — the fixture "a stray opener is text, so a ## after it still ends the header" is
       also satisfied by a scanner that swallows to EOF; relabel it or add a lock that separates them.
       The discriminating pair already exists.
-- [ ] **D-c42** — untested: a tilde line inside a backtick fence, and a closer trailed by a form feed.
+- [x] **D-c42** — the premise was wrong: the form-feed case was NOT handled by the shared predicate,
+      because `str.splitlines()` treats a form feed as a line break before the predicate ever sees it.
+      `_lines` now splits on CommonMark line endings only (a no-op on all 494 live files, scanned).
+      Original finding: untested: a tilde line inside a backtick fence, and a closer trailed by a form feed.
       Both are handled by the shared predicate; neither is locked.
+
+### 4.7 Code-jury round 7 (narrow, on the v6→v7 diff) — open
+
+Both seats at `xhigh`, blind. Thread: `tmp/ai_exchange/review_practice_drift_v7r.md`. No functional claim
+in the diff refuted; Codex confirmed the one-pass resolver against the re-scan definition on 1,111,111
+documents. v7 committed.
+
+- [ ] **D-c43 (two raisers, shared with v6 — not a regression)** — an *unclosed* fence placed before a
+      forged `### 9.1` heading: whole-file demotion leaves the forged heading unfenced, the span starts
+      there, the slice drops the opener, and `_table_rows` adopts the forged table — executed on v6 and
+      v7 alike. Fix per Codex: keep source-indexed fence state across the slice, or resolve the anchor
+      with a strict CommonMark map in which an unclosed fence runs to EOF and extraction fails closed.
+      Fixture: an unclosed opener immediately before a forged section, a real section after it.
+- [ ] **D-c44** — the `unclosed_example` fixture accepts any `ExtractionError`, so an anchor miss or an
+      empty table would also pass it. Assert the specific failure.
 
 ## 5. Open Design Questions
 
