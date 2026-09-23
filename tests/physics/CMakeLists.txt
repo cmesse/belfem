@@ -22,6 +22,7 @@ set( SOURCES
         test_MaterialValues.cpp
         test_SplineLookupTable.cpp
         test_Database.cpp
+        test_JcDatabaseTable.cpp
         )
 
 set( LIBLIST
