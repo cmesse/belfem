@@ -44,6 +44,12 @@ line numbers that move.
 ## 3. Rulings owed (the quiz)
 
 - O1 (T-07) `Ascii` relative path: cwd or `$PWD`? — carried from the triage.
+- O-B3-1 (T-20) `SolverParameters` has no `set_max_iterations`; add one (then the one-iteration cap
+  is testable) or leave the clause untested.
+- O-B3-2 (T-09) the deck arm bypasses the setter: validate in both places, or route the deck
+  through the setter so there is one gate.
+- O-B6-1 (T-30) the λ(300 K) reference values for nickel and iron, with DOIs.
+- O-B6-2 (T-29) the C1 band at `mBmin` = 10 mT.
 - O3 (T-30) Ni/Fe λ(300 K) within 15 %: land `DISABLED_` until ruled.
 - O5 (T-53) logical size vs capacity after shrink.
 - O9 (T-06) `.bfm` foreign git hash: refuse or flag.
@@ -86,6 +92,29 @@ line numbers that move.
 
 B6 totals 16 tests across one new file and three existing ones; five rulings, two of them physics
 VALUE questions (the λ(300 K) references with DOIs, and the C1 band at `mBmin`).
+
+## 4c. What B3 established (sparse) — 42 tests, four rulings, two of which block three of them
+
+| row | label | note |
+|---|---|---|
+| T-09 | **LIVE, two halves** | `set_relative_tolerance` (`cl_SolverParameters.cpp:190-195`) assigns with no validation while both siblings validate (`:199-206`, `:294-303`) — and the deck arm (`:64-70`) writes `mRelativeTolerance` directly, bypassing the setter, so validating the setter alone would not cover a deck. Both confirmed by direct read. Consumers: `strumpacktools.cpp:225`, `cl_SolverPETSC.cpp:36`, `:518`, `cl_FEM_Controller.cpp:3452` |
+| T-17 | CONTRACT | every clause implemented; tests drive the public `set_strumpack_options`; the retired AUTO / explicit-only policy is not encoded |
+| T-18 | CONTRACT | `warning_message` is public and decodes the bits including the ambiguity arm; the free phase copies all 80 INFO slots; the −9 ladder stays owned by `SolverPolicy.MumpsWorkspaceActionTable` |
+| T-20 | CONTRACT, one clause blocked | the named defect class is CLOSED — a negative convergence reason is read, Allreduced and hard-errored (`cl_SolverPETSC.cpp:212-310`). No `set_max_iterations` exists, so the one-iteration cap is untestable → ruling |
+| T-41 | CONTRACT (two clauses of three) | the enum round trip and `check_naupd` are sparse; the restart-budget floor lives in a private fem method and is not a sparse row |
+| T-42 | **LIVE coverage gap** | `grep -c SUPERLU tests/sparse/test_Solver.cpp` = 0 with `USE_SUPERLU=ON` in both trees. Seven tests; the mutation needs an ASYMMETRIC matrix or it is invisible on a symmetric Laplacian |
+| T-57 | three labels | `rcond` BLOCKED (`USE_SUITESPARSE=OFF` both trees); the duplicate-index throw is a CONTRACT through a debug-only `check_graph`; the `multiply` NaN-prefill is a LIVE CANDIDATE — the 2-argument overload fills `y` on the MKL path and says why, the 5-argument one does not |
+| T-76 | CONTRACT | `USE_PARDISO=ON` in both trees; three restore sites, with a skip for the non-MKL arm |
+| N-22 | CONTRACT | extend `CopyPreservesTuningMembers` (the iteration budget is unchecked and `metis nodendp` default-only, as the test's own comment confesses), plus a `synchronize()` round trip over all payload slots |
+| N-28 | CONTRACT | the re-initialization guard exists and is deliberately first; the test pairs the throw with a pool-occupancy assertion so a guard moved below the create still fails |
+| N-29 | CONTRACT | `init_defaults()` runs only in the constructor, so a pre-initialize arm survives; the `set_symmetric` half is fem and is named, not planned |
+
+**Scope flag:** two rulings ask for new public setters (a max-iterations setter for T-20, and the
+T-09 validation shape), so B3 is not a pure test batch — three of its tests are blocked behind
+them. Its riskiest assumption is that `<StrumpackSparseSolver.hpp>` can be included from
+`tests/sparse` at all; SuperLU's header is known to collide with both matrix backends
+(memory `project_superlu_header_conflicts`), and if STRUMPACK's does too, the T-17 block falls
+back to reading options off a constructed wrapper.
 
 ## 5. Audit trail
 
