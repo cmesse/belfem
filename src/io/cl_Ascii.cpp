@@ -9,8 +9,10 @@
  * See the top-level LICENSE file for the complete license and disclaimer.
  */
 
+#include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <system_error>
 
 #include "cl_Ascii.hpp"
 #include "assert.hpp"
@@ -33,7 +35,15 @@ namespace belfem
         }
         else
         {
-            mPath = sprint( "%s/%s", std::getenv( "PWD" ), aPath.c_str() );
+            // relative to the process working directory, not to $PWD: a
+            // launcher may start the process somewhere other than the shell
+            // that set PWD, and PWD may be unset
+            std::error_code tError ;
+            const std::filesystem::path tWorkDir = std::filesystem::current_path( tError );
+            BELFEM_ERROR( ! tError,
+                "cannot resolve the relative path %s: the working directory is not accessible ( %s )",
+                aPath.c_str(), tError.message().c_str() );
+            mPath = ( tWorkDir / aPath ).string();
         }
 
         switch ( aMode )

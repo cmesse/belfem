@@ -5,6 +5,7 @@ set( TESTNAME io )
 set( SOURCES
         test_HDF5.cpp
         test_filetools.cpp
+        test_Ascii.cpp
         )
 
 # add the test

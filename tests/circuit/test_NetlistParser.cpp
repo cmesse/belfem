@@ -502,11 +502,8 @@ TEST( NetlistParser, ErrorMessagesCarrySourceAndLine )
 
 TEST( NetlistParser, FileConstructorSmoke )
 {
-    // one on-disk round trip through the Ascii path. The path must be
-    // ABSOLUTE: Ascii resolves relative paths against getenv("PWD")
-    // ( cl_Ascii.cpp ), which is a shell variable and goes stale when
-    // ctest/make change the working directory -- an ofstream would then
-    // write where Ascii does not look
+    // one on-disk round trip through the Ascii path, under an absolute path
+    // so the case does not depend on the working directory
     const string tPath = ::testing::TempDir() + "netlist_parser_smoke.cir";
     {
         std::ofstream tFile( tPath );

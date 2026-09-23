@@ -15,8 +15,8 @@
  * that pins the read_terminal_pair/read_output refactor as
  * behavior-preserving.
  *
- * All scratch files use absolute paths: Ascii resolves relative paths
- * against getenv("PWD"), which is stale under ctest.
+ * All scratch files use absolute paths, so the cases do not depend on the
+ * working directory ctest starts them in.
  */
 
 #include <gtest/gtest.h>

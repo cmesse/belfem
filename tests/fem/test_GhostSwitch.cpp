@@ -22,11 +22,9 @@
 namespace
 {
     // a minimal deck in the test temp directory; the parser needs a file.
-    // The path must be ABSOLUTE: Ascii resolves relative paths against
-    // getenv("PWD") ( cl_Ascii.cpp ), which goes stale when ctest changes
-    // the working directory -- the ofstream would then write where Ascii
-    // does not look. Removed again by the Deck guard below so the test
-    // leaves no litter
+    // The path is absolute, so the case does not depend on the working
+    // directory. Removed again by the Deck guard below so the test leaves
+    // no litter
     std::string
     write_deck( const std::string & aName, const std::string & aSolverBody )
     {

@@ -71,8 +71,7 @@ namespace
     };
 
     // a 'materials' deck in the test temp directory; the parser needs a
-    // file. The path must be ABSOLUTE: Ascii resolves relative paths against
-    // getenv( "PWD" ), which goes stale when ctest changes the working
+    // file. The path is absolute, so the case does not depend on the working
     // directory. Removed again by the destructor so the test leaves no litter
     struct Deck
     {

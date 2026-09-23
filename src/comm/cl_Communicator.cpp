@@ -9,6 +9,8 @@
  * See the top-level LICENSE file for the complete license and disclaimer.
  */
 
+#include <filesystem>
+#include <system_error>
 #include <cstdlib>
 #include <iostream>
 #include <sys/stat.h>
@@ -179,9 +181,11 @@ namespace belfem
         // save executable path
         mExecutablePath = std::string( argv[ 0 ] );
 
-        // save workdir
-        const char * tPwd = std::getenv("PWD");
-        mWorkDir = tPwd ? tPwd : ".";
+        // the process working directory at startup, for the banner; Ascii
+        // queries it again at each open
+        std::error_code tError ;
+        const std::filesystem::path tWorkDir = std::filesystem::current_path( tError );
+        mWorkDir = tError ? std::string( "." ) : tWorkDir.string();
 
 #ifdef BELFEM_MPI
         int tVal;
