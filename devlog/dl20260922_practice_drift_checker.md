@@ -314,3 +314,17 @@ The narrow jury refuted no functional claim and found no regression. Both seats 
 pattern's `\s` accepts a form feed where the file's rule is spaces and tabs — confirmed, but v7's prefix
 match accepted that and `### 9.10` besides, so v8 is strictly narrower. One Grok claim was refuted by
 execution: the section-end test does not match `#### Note`. Filed D-c45..D-c47, all minor.
+
+## v9 (2026-09-23)
+
+D-c45..D-c47. The depth anchor accepts only a space, tab or end of line after `### 9.1` (a form feed no
+longer counts). D-c46 resolved a disagreement inside the checker: the heading search read a stray fence
+opener above §9.1 as text while the table reader failed closed on it. Per the malformed-table ruling,
+v9 fails closed — a new helper, `_open_fence_at`, scans strictly up to the heading, and a fence still
+open there stops the run with the opener's line named. The shared resolver was left alone. The
+duplicate-anchor error lists its lines. 92/92, 63/63 on the first run, live identical to v8.
+
+The jury found the logic sound and refuted nothing; Codex judged the fail-closed scope right. Two test
+gaps, confirmed: the tab-only and bare heading forms are unpinned (two mutants survive), and the
+line-number assertions check phrases, not numbers. Filed D-c48, D-c49. For the first time a round's
+findings are about the tests alone.

@@ -75,7 +75,7 @@ TEMPLATE_ANCHOR = "### Required Header"
 TEMPLATE_SUCCESSOR = "### When to Write a Devlog"
 DEPTH_ANCHOR = "### 9.1"
 # The heading itself, not a prefix of it: `### 9.10` must not count as the depth section.
-DEPTH_HEADING = re.compile(r"^### 9\.1(?:\s|$)")
+DEPTH_HEADING = re.compile(r"^### 9\.1(?:[ \t]|$)")
 EXCEPTION_ANCHOR = "**Allowlisted but named by no row (by design):**"
 
 WRAPPERS = {"codex": (".claude/scripts/ask_codex.sh", "CODEX_MODEL"),
@@ -240,6 +240,23 @@ def devlogs_without_date(paths):
                   if not any((m := FIELD.match(l)) and m.group(1) == "Date" for l in _header_lines(p)))
 
 
+def _open_fence_at(lines, target):
+    """The index of the opener whose fence is still open at `target`, scanning strictly, or None.
+
+    Strict means CommonMark's reading: a fence opened above runs until a closer, and an unclosed one
+    runs to the end of the file.  `_fenced_flags` instead reads an unclosed opener as text.
+    """
+    fence, opener = None, None
+    for i in range(target):
+        if fence is not None:
+            if _fence_closes(lines[i], fence):
+                fence = None
+            continue
+        if (opened := _fence_open(lines[i])) is not None:
+            fence, opener = opened, i
+    return opener if fence is not None else None
+
+
 def _depth_span(proto_path):
     """The depth-selection section, from its heading to the next heading, both outside fences.
 
@@ -247,7 +264,8 @@ def _depth_span(proto_path):
     text and neither starts nor ends the section.  The heading must occur exactly once outside
     fences: a stray unclosed opener is read as text, which can expose a quoted copy of the heading,
     and with two candidates the protocol is ambiguous, so the run fails closed rather than pick
-    one.
+    one.  A single heading that a strict reading would still place inside an unclosed fence fails
+    closed too.
     """
     lines = _lines(proto_path)
     fenced = _fenced_flags(lines)
@@ -256,8 +274,13 @@ def _depth_span(proto_path):
         raise ExtractionError(f"anchor not found: {DEPTH_ANCHOR}")
     if len(starts) > 1:
         raise ExtractionError(f"depth anchor {DEPTH_ANCHOR!r} appears {len(starts)} times outside "
-                              f"fenced blocks")
+                              f"fenced blocks, at lines {', '.join(str(i + 1) for i in starts)}")
     start = starts[0]
+    # The resolver reads a stray opener as text; for the depth section that would let a heading
+    # inside an unclosed fence stand, so an unclosed fence above the heading fails the run closed.
+    if (opener := _open_fence_at(lines, start)) is not None:
+        raise ExtractionError(f"depth anchor at line {start + 1} lies inside a fence opened at line "
+                              f"{opener + 1} and never closed")
     end = next((i for i in range(start + 1, len(lines))
                 if not fenced[i] and (lines[i].startswith("### ") or lines[i].startswith("## "))),
                len(lines))
@@ -1158,8 +1181,8 @@ def self_test():
             run_live(root, 40, 0, 25)
             check("an unclosed fence before a forged section heading fails closed", False)
         except ExtractionError as exc:
-            check("an unclosed fence before a forged section heading fails closed",
-                  "appears 2 times" in str(exc))
+            check("an unclosed fence before a forged section heading fails closed, naming the lines",
+                  "appears 2 times" in str(exc) and "at lines" in str(exc))
         root = _tree(base, "later_subsection")
         (root / "doc/ai_collaboration_protocol.md").write_text(_PROTO.format(exceptions="", row=_ROW_GROK)
             .replace("### Workflow", "### 9.10 A later subsection\n\n### Workflow"))
@@ -1168,6 +1191,23 @@ def self_test():
             check("a ### 9.10 heading is not a second depth section", not f)
         except ExtractionError as exc:
             check(f"a ### 9.10 heading is not a second depth section ({exc})", False)
+        root = _tree(base, "formfeed_anchor")
+        (root / "doc/ai_collaboration_protocol.md").write_text(_PROTO.format(exceptions="", row=_ROW_GROK)
+            .replace("### Workflow", "### 9.1\f0 not a heading\n\n### Workflow"))
+        try:
+            f = run_live(root, 40, 0, 25)[0]
+            check("### 9.1 followed by a form feed is not the depth heading", not f)
+        except ExtractionError as exc:
+            check(f"### 9.1 followed by a form feed is not the depth heading ({exc})", False)
+        root = _tree(base, "anchor_in_unclosed_fence")
+        (root / "doc/ai_collaboration_protocol.md").write_text(_PROTO.format(exceptions="", row=_ROW_GROK)
+            .replace("### 9.1 Depth Selection", "```\n\n### 9.1 Depth Selection", 1))
+        try:
+            run_live(root, 40, 0, 25)
+            check("a lone depth heading inside an unclosed fence fails closed", False)
+        except ExtractionError as exc:
+            check("a lone depth heading inside an unclosed fence fails closed, naming the opener",
+                  "never closed" in str(exc) and "opened at line" in str(exc))
         unclosed_example = ("```markdown\n| Subject | Codex | Grok |\n|---|---|---|\n"
                             "| X | `gpt-9.9-example`, `high` | `grok-4.7`, `high` |\n\n")
         try:

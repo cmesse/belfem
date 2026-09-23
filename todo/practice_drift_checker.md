@@ -10,10 +10,11 @@ practice → document direction.
 **AIs involved:** Claude Opus 5 (plan, verification, measurements). Round 1: Grok `grok-4.7`/high
 blind, 11 findings; **Codex produced no audit** (two usage-limit failures). Round 2: Codex
 `gpt-5.6-terra`/high and Grok `grok-4.7`/high, both blind, on a fresh slug — 16 findings.
-**Status:** **v8 committed** 2026-09-23 — D-c43 (the §9.1 heading must be unique outside fences or the
-run fails closed; matched exactly so `### 9.10` does not count) and D-c44 fixed. `--self-test` 90/90,
-59/59 mutants killed on the first run. Round 8 found no regression; D-c45..D-c47 filed, all minor.
-Chain: v8, v7 `d74a8ab`, v6 `fb1cc13`, v5 `42b5e42`, v4 `e295ce8`, v3 `cff668b`, v2 `fb74ed5`.
+**Status:** **v9 committed** 2026-09-23 — D-c45 (the anchor accepts only space, tab or end of line
+after `### 9.1`), D-c46 (a lone depth heading inside an unclosed fence fails closed, naming the opener),
+D-c47 (the duplicate-anchor error names the lines). `--self-test` 92/92, 63/63 mutants. Round 9: logic
+sound, no regression; two test gaps filed, D-c48 and D-c49. Chain: v9, v8 `9e74a6b`, v7 `d74a8ab`, v6
+`fb1cc13`, v5 `42b5e42`, v4 `e295ce8`, v3 `cff668b`, v2 `fb74ed5`.
 
 > **Overnight run rules (Christian, 2026-09-22, "make an overnight run out of this"):**
 > - hard cap **v8** — at most three jury rounds (v6, v7, v8), each both seats at `xhigh`;
@@ -438,13 +439,25 @@ Both seats at `xhigh`, blind. Thread: `tmp/ai_exchange/review_practice_drift_v8r
 refuted, no regression (all executed or traced against v7). One Grok claim refuted: the span end does not
 match `#### Note`. v8 committed.
 
-- [ ] **D-c45 (two raisers, not a regression)** — `DEPTH_HEADING` uses `\s`, which accepts a form feed
+- [x] **D-c45 (two raisers, not a regression)** — v9. Original finding: `DEPTH_HEADING` uses `\s`, which accepts a form feed
       after `### 9.1` where the file's own rule is spaces and tabs. Use `(?:[ \t]|$)`; fixture beside
       the `### 9.10` one. v7's `startswith` matched this and `### 9.10`, so v8 is already narrower.
-- [ ] **D-c46 (shared with v7)** — with exactly one exposed `### 9.1`, an unclosed opener just above it
+- [x] **D-c46 (shared with v7)** — v9: a lone §9.1 heading that a strict reading places inside an
+      unclosed fence fails closed, naming the opener's line (the malformed-table ruling). Original finding: with exactly one exposed `### 9.1`, an unclosed opener just above it
       is outside the slice, and `_table_rows` reads the first `|` block after the heading. Only the
       two-candidate shape fails closed.
-- [ ] **D-c47** — the duplicate-anchor error reports a count, not the line numbers. Cosmetic.
+- [x] **D-c47** — v9. Original finding: the duplicate-anchor error reports a count, not the line numbers. Cosmetic.
+
+### 4.9 Code-jury round 9 (narrow, on the v8→v9 diff) — open, test gaps only
+
+Both seats at `xhigh`, blind. Thread: `tmp/ai_exchange/review_practice_drift_v9r.md`. Logic sound, no
+functional claim refuted, no regression; Codex judged the fail-closed scope of D-c46 correct. v9 committed.
+
+- [ ] **D-c48** — `DEPTH_HEADING` accepts a tab or the end of line after `### 9.1`, but only the space
+      form is exercised: mutants "space only" and "no end-of-line" both survive (executed). Add passing
+      fixtures for `### 9.1\tDepth Selection` and a bare `### 9.1`, and both mutants to the suite.
+- [ ] **D-c49 (two raisers)** — the duplicate-anchor and unclosed-fence assertions check the phrases,
+      not the line numbers; assert the fixture's expected lines.
 
 ## 5. Open Design Questions
 
