@@ -18,6 +18,8 @@
 #include <gtest/gtest.h>
 #include <cmath>
 #include <complex>
+#include <stdexcept>
+#include <string>
 
 #include "typedefs.hpp"
 #include "cl_Vector.hpp"
@@ -100,6 +102,26 @@ namespace
             aA( 2, 0 ) = S::mk( 0.25, 0.5 );
             aA( 2, 1 ) = S::mk( 0.75, -0.5 );
         }
+    }
+
+    // runs aCall, requires a std::runtime_error whose what() carries the
+    // literal part of the BELFEM_ERROR text
+    template< typename F >
+    void
+    expect_refusal( F && aCall, const char * aSubstring )
+    {
+        bool tThrown = false ;
+        try
+        {
+            aCall();
+        }
+        catch( const std::runtime_error & aError )
+        {
+            tThrown = true ;
+            EXPECT_NE( std::string( aError.what() ).find( aSubstring ), std::string::npos )
+                << "message was: " << aError.what();
+        }
+        EXPECT_TRUE( tThrown ) << "expected a refusal carrying \"" << aSubstring << "\"";
     }
 
     // reference solution vector
@@ -423,6 +445,97 @@ TYPED_TEST( LapackTest, GelsUnderdeterminedMinNorm )
         tErr = std::max( tErr, ( real ) std::abs( tSum - tRhs( i ) ) );
     }
     EXPECT_LT( tErr, S::tol() );
+}
+
+TYPED_TEST( LapackTest, GelsRankDeficientReturnsInfoUnderSuppression )
+{
+    using S = Scalar< TypeParam >;
+
+    // 4 x 2 system whose second column is EXACTLY zero. The Householder
+    // reflector built from a zero vector has tau = 0 and beta = 0, so the
+    // second diagonal entry of the triangular factor is exactly zero and the
+    // triangular solve reports info = 2. What the pair of cases below pins is
+    // that the suppression is implemented in BOTH overloads: the vector and
+    // the matrix right hand side must behave the same way.
+    // Mutation: drop the "|| ! AbortOnError" from one overload only and
+    // exactly one of the first two cases goes red; each call sits in its own
+    // EXPECT_NO_THROW so the other case still runs and reports.
+    auto tFillA = []( belfem::Matrix< TypeParam > & aA )
+    {
+        aA.set_size( 4, 2 );
+        for ( uint i = 0; i < 4; ++i )
+        {
+            aA( i, 0 ) = S::mk( 1.0 + ( real ) i, 0.5 * ( real ) i );
+            aA( i, 1 ) = S::mk( 0.0, 0.0 );
+        }
+    };
+
+    // B must be allocated with max( m, n ) = 4 entries
+    auto tFillB = []( belfem::Vector< TypeParam > & aB )
+    {
+        aB.set_size( 4 );
+        for ( uint i = 0; i < 4; ++i )
+        {
+            aB( i ) = S::mk( 2.0 - ( real ) i, 0.25 );
+        }
+    };
+
+    // (i) vector right hand side, error suppressed
+    {
+        belfem::Matrix< TypeParam > tA;
+        belfem::Vector< TypeParam > tB;
+        belfem::Vector< TypeParam > tWork;
+        tFillA( tA );
+        tFillB( tB );
+
+        belfem::int_t tInfo = 0 ;
+        EXPECT_NO_THROW( tInfo = belfem::gels( tA, tB, tWork, false ) );
+        EXPECT_EQ( tInfo, ( belfem::int_t ) 2 );
+    }
+
+    // (ii) matrix right hand side, error suppressed
+    {
+        belfem::Matrix< TypeParam > tA;
+        belfem::Matrix< TypeParam > tB( 4, 2 );
+        belfem::Vector< TypeParam > tWork;
+        tFillA( tA );
+        for ( uint i = 0; i < 4; ++i )
+        {
+            tB( i, 0 ) = S::mk( 2.0 - ( real ) i, 0.25 );
+            tB( i, 1 ) = S::mk( 0.5 * ( real ) i, -1.0 );
+        }
+
+        belfem::int_t tInfo = 0 ;
+        EXPECT_NO_THROW( tInfo = belfem::gels( tA, tB, tWork, false ) );
+        EXPECT_EQ( tInfo, ( belfem::int_t ) 2 );
+    }
+
+    // (iii) the default is to refuse, for both overloads
+    {
+        belfem::Matrix< TypeParam > tA;
+        belfem::Vector< TypeParam > tB;
+        belfem::Vector< TypeParam > tWork;
+        tFillA( tA );
+        tFillB( tB );
+
+        expect_refusal( [ & ]() { belfem::gels( tA, tB, tWork ); },
+                        "LAPACK gels has thrown an error: 2" );
+    }
+
+    {
+        belfem::Matrix< TypeParam > tA;
+        belfem::Matrix< TypeParam > tB( 4, 2 );
+        belfem::Vector< TypeParam > tWork;
+        tFillA( tA );
+        for ( uint i = 0; i < 4; ++i )
+        {
+            tB( i, 0 ) = S::mk( 2.0 - ( real ) i, 0.25 );
+            tB( i, 1 ) = S::mk( 0.5 * ( real ) i, -1.0 );
+        }
+
+        expect_refusal( [ & ]() { belfem::gels( tA, tB, tWork ); },
+                        "LAPACK gels has thrown an error: 2" );
+    }
 }
 
 // =============================================================================
