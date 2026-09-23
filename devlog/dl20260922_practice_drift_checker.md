@@ -116,3 +116,40 @@ its window.
 - `CLAUDE.md`, `.claude/skills/session-close/SKILL.md` — the checker registered
 - `.claude/skills/code-with-jury/SKILL.md` — tooling-script row in the exemption table
 - `todo/README.md` — plan registered
+
+## After the ship: the wrapper fix, D-c22, the index repair, and a file I destroyed
+
+**The wrapper fix unmasked a false positive (D-c22).** Christian moved `ask_grok.sh`'s default to
+`grok-4.7`, and P2c went quiet — but P2c's precedence had been absorbing `grok-4.6` for P2a, which
+now reported nine devlog headers and two commit bodies recording rounds run on it *while it was the
+latest*. History, not drift. Ruled: for the Grok seat a model on the wrapper's arm counts as
+declared for P2a, since §9.1 keeps older groks allowlisted to reproduce rounds; the default and the
+rows must still be the latest. Filed for v3 (`505075d`).
+
+**Six unindexed devlogs indexed (`37cca0f`).** Each line written from the devlog itself and placed
+among its date neighbours: the contact-impedance theory rewrite, the debt-register split, the DR-108
+fix round, the CurveFactory walk fix, the greedy-cleaner trace, the Smith evidence pack for Gregory.
+
+**I wiped `devlog/README.md` while doing it.** A one-liner
+`open(dst,"w").write(insert(open(src).read()))` with `src == dst` truncates the file *before* the
+argument reads it; `insert()` then raised on the empty text and left the working tree at 0 bytes.
+The file carried other sessions' uncommitted index lines. Nothing committed was at risk, and no
+backup had been taken — against a standing rule to back up endangered files first.
+
+Recovery: the README rebuilt from HEAD plus my six lines, built to a separate path and verified
+before being copied into place. Three lost lines (`dl20260918_rutherford_cable_generator.md`,
+`dl20260919_smith_inverse_branch.md`, `dl20260921_test_gap_sweep_and_dr113.md`) came back verbatim
+from a scratchpad backup taken at 01:28. Claude Code's file-history held no snapshot, because the
+edits had been made through Bash. The session "Devlog sweep test coverage index" re-added its two
+(`dl20260922_test_gap_tier1_overnight.md`, `dl20260922_homology_report_for_gregory.md`) on request,
+and corrected my attribution twice: the `dl20260922_ask_codex_cli_audit.md` line was not theirs, and
+they had made no edit to an existing line.
+
+**Still lost:** the index line for `dl20260922_ask_codex_cli_audit.md` — the devlog is untracked and
+was written by a Codex run (`gpt-6-astra`/high), so no Claude session can be asked for it — and one
+modified existing line whose author and content are unknown. The five restored lines stay
+uncommitted: three of them index devlogs that are themselves untracked, and committing those would
+put broken links into HEAD.
+
+The lesson is in the backup memory: back up a shared file before any scripted rewrite of it, and
+never read and write one path in a single expression.
