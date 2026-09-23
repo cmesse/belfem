@@ -109,6 +109,19 @@ namespace belfem
 
             ~Kernel();
 
+            // NON-COPYABLE, NON-MOVABLE. The destructor deletes the dof
+            // managers, IWGs, materials, boundary conditions and, under their
+            // mOwn* flags, the comm tables, mesh, submesh and parameters. An
+            // implicit copy would copy those flags too, and both objects would
+            // free the same resources. Copy assignment is already deleted by
+            // the const members, and the user-declared destructor suppresses
+            // the implicit moves, so a move request would bind to the copy
+            // constructor -- the same hazard under another name
+            Kernel( const Kernel & ) = delete ;
+            Kernel( Kernel && ) = delete ;
+            Kernel & operator=( const Kernel & ) = delete ;
+            Kernel & operator=( Kernel && ) = delete ;
+
 //------------------------------------------------------------------------------
 
             /**

@@ -31,6 +31,7 @@
 #include <fstream>
 #include <memory>
 #include <string>
+#include <type_traits>
 
 #include "typedefs.hpp"
 #include "cl_Vector.hpp"
@@ -41,6 +42,15 @@
 #include "cl_NgspiceCircuitFactory.hpp"
 #include "constants.hpp"
 #include "fn_norm.hpp"
+
+// ElectricalCircuit owns its nodes, components and the two matrices and frees
+// them in its destructor, so it must be neither copied nor moved. The fem
+// suite pins the same contract for Kernel, Solver and ElementMapper.
+static_assert( ! std::is_copy_constructible_v< belfem::electronics::ElectricalCircuit >
+            && ! std::is_copy_assignable_v< belfem::electronics::ElectricalCircuit >
+            && ! std::is_move_constructible_v< belfem::electronics::ElectricalCircuit >
+            && ! std::is_move_assignable_v< belfem::electronics::ElectricalCircuit >,
+               "ElectricalCircuit must not be copied or moved" );
 
 #ifdef BELFEM_HDF5
 #include "cl_HDF5.hpp"

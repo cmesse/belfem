@@ -28,6 +28,7 @@ set( SOURCES
         test_GhostSwitch.cpp
         test_BlockRebuild.cpp
         test_Tmatrix.cpp
+        test_OwnershipContracts.cpp
         )
 
 set( LIBLIST
