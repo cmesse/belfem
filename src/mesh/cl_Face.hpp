@@ -35,7 +35,7 @@ namespace belfem
             uint mIndexOnSlave ;
 
             // orientation on master is always zero
-            uint mOrientationOnSlave = gNoIndex ;
+            uint mOrientationOnSlave = BELFEM_UINT_MAX ;
 
             Face * mPeriodic = nullptr ;
 
@@ -51,7 +51,7 @@ namespace belfem
                   const uint aIndexOnMaster,
                   Element    * aSlave,
                   const uint aIndexOnSlave,
-                  const uint aOrientationOnSlave = gNoIndex );
+                  const uint aOrientationOnSlave = BELFEM_UINT_MAX );
 
 //-----------------------------------------------------------------------------
 

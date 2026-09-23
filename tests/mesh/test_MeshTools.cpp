@@ -246,10 +246,15 @@ INSTANTIATE_TEST_SUITE_P(
 
 //------------------------------------------------------------------------------
 
-// element types without a bottom/top face are refused, not silently mapped
+// element types without a bottom/top face, and types the bottom helper does
+// not carry, are refused by both helpers, not silently mapped
 TEST( MeshTools, BottomTopNodesRejectUnsupported )
 {
-    for ( const ElementType tType : { ElementType::TRI3, ElementType::TET4 } )
+    for ( const ElementType tType : { ElementType::TRI3,
+                                      ElementType::TET4,
+                                      ElementType::QUAD8,
+                                      ElementType::QUAD16,
+                                      ElementType::HEX64 } )
     {
         SCOPED_TRACE( to_string( tType ) );
 

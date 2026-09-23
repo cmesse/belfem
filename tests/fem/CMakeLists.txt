@@ -56,6 +56,8 @@ set( LIBLIST
 if( USE_MAXWELL )
     include_directories( ${BELFEM_SOURCE_DIR}/fem/maxwell )
     include_directories( ${BELFEM_SOURCE_DIR}/fem/maxwell/matrices )
+    # cl_MaxwellFactory.hpp includes cl_Topology.hpp
+    include_directories( ${BELFEM_SOURCE_DIR}/homology )
     list( APPEND SOURCES test_InterfaceOrientation.cpp )
     list( APPEND SOURCES test_SideSetRebuild.cpp )
     list( APPEND SOURCES test_ThinShellSelection.cpp )
@@ -63,6 +65,8 @@ if( USE_MAXWELL )
     list( APPEND SOURCES test_IwgPenaltyDefaults.cpp )
     list( APPEND SOURCES test_FreeCutCurrents.cpp )
     list( APPEND SOURCES test_Hex8TsVolume.cpp )
+    list( APPEND SOURCES test_BackgroundField.cpp )
+    list( APPEND SOURCES test_ThinShellTerminalCurves.cpp )
     list( APPEND LIBLIST maxwell )
 endif()
 

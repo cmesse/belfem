@@ -58,13 +58,6 @@ namespace belfem
             intersect( const id_t aSideSetA, const id_t aSideSetB, id_t aID ) ;
 
             /*
-             * This function creates a curve from an intersection between
-             * two surfaces. The intersection must be continuous.
-             */
-            Curve *
-            intersect( const id_t aThinShellSideSet, const id_t aBoundarySideSet, DynamicBitset & aBoundaryNodeBitset );
-
-            /*
             * This function creates a curve from a 1D sideset
             */
             Curve *
@@ -91,16 +84,20 @@ namespace belfem
              * as index() and is unflagged. sort_end_nodes leaves the visited
              * nodes flagged, and its "not one connected chain" refusal also
              * fires on a chain whose node flags were dirty on entry.
-             * sort_segments starts from aEndNodes( 0 ) after the sort.
+             * sort_end_nodes gives every end node its walk index 0 ... n-1
+             * and sets the closed flag; orient_segments directs each segment
+             * along the walk, so that on a closed curve the segment joining
+             * the last node to the first runs n-1 -> 0; sort_segments then
+             * orders the segments by the walk index of their node 0.
              */
             void
             sort_end_nodes( Curve * aCurve, Matrix< index_t > & aAdjacency, Cell< Node * > & aEndNodes );
 
             void
-            orient_segments(  Cell< Node * > & aEndNodes, Cell< Segment * > & aSegments );
+            orient_segments( const bool aClosed, Cell< Node * > & aEndNodes, Cell< Segment * > & aSegments );
 
             void
-            sort_segments( Node * aStart, const Matrix< index_t > & aAdjacency, Cell< Segment * > & aSegments );
+            sort_segments( Cell< Segment * > & aSegments );
 
 //------------------------------------------------------------------------------
         private:
@@ -112,22 +109,44 @@ namespace belfem
                 SideSet * aSideSetB,
                 Cell< Node * > & aEndNodes );
 
-
+            /**
+             * one pair per facet edge whose two corners are end nodes, ordered
+             * by the key max( slot ) * n + min( slot ) over the end-node slots;
+             * if aQuadratic, midpoint k is node 2 of the edge of pair k. If
+             * aSharedWith is given, only the edges that also belong to one of
+             * its facets count, and their midpoints must agree. Expects every
+             * end node to carry its slot in aEndNodes as index() and every
+             * other facet corner gNoIndex: a line facet has no other corner,
+             * so from_2d_sidesets() meets that as is, while intersect() resets
+             * all node indices first. On a refusal, the mesh node indices are
+             * restored first
+             */
             void
-            create_pairs( Cell< Node * > & aEndNodes,
-                Cell< std::pair< Node *, Node * > > & aPairs );
+            create_pairs_from_facets(
+                const Cell< Facet * > & aFacets,
+                Cell< Node * >        & aEndNodes,
+                const bool              aQuadratic,
+                Cell< std::pair< Node *, Node * > > & aPairs,
+                Cell< Node * > & aMidNodes,
+                const Cell< Facet * > * aSharedWith = nullptr );
 
-            void
-            collect_midnodes( Cell< std::pair< Node *, Node * > > & aPairs, Cell< Node * > & aMidNodes );
+            /**
+             * node 2 of the edge of aFacet's element whose corners are aA and
+             * aB, or nullptr if there is no such edge or it has no midpoint.
+             * aWork is scratch
+             */
+            Node *
+            midnode_of_facet_edge(
+                Facet * aFacet,
+                const Node * aA,
+                const Node * aB,
+                Cell< Node * > & aWork );
 
             void
             create_segments( Curve * aCurve, Cell< std::pair< Node *, Node * > > & aPairs, Cell< Node * > & aMidNodes );
 
             Node *
             next( const Matrix< index_t > & aAdjacency, Cell< Segment * > & aSegments, const Node * aNode );
-
-            Segment *
-            next( const Matrix< index_t > & aAdjacency, Cell< Segment * > & aSegments, Segment * aSegment );
 
 
             void

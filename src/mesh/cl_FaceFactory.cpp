@@ -481,7 +481,7 @@ namespace belfem
             for( index_t tIndex = 0; tIndex<tNumFaces; ++tIndex )
             {
 
-                if( aSlaveIDs( tIndex ) < gNoIndex ) // face has primary and secondary elements
+                if( aSlaveIDs( tIndex ) != gNoID ) // face has primary and secondary elements
                 {
                     Element * tMaster
                             = mMesh.element( aMasterIDs( tIndex ) );
@@ -525,7 +525,7 @@ namespace belfem
                             tMaster,
                             aMasterIndex( tIndex ),
                             nullptr,
-                            gNoIndex) ;
+                            BELFEM_UINT_MAX ) ;
 
                     tMaster->insert_face( tFace, aMasterIndex( tIndex ) );
 
@@ -533,13 +533,9 @@ namespace belfem
                 }
                 else
                 {
-                    Element * tElement = mMesh.facet( aMasterIDs( tIndex ) )->element() ;
-
-                    Face * tFace = new Face( tElement, 0, nullptr, gNoIndex );
-
-                    tElement->insert_face( tFace, aMasterIndex( tIndex ) );
-
-                    tFaces( tIndex ) = tFace ;
+                    BELFEM_ERROR( false,
+                        "Sideset facet %lu is owned by no selected block; faces can only be created on the facets of selected blocks",
+                        ( long unsigned int ) aMasterIDs( tIndex ) );
                 }
         }
         }

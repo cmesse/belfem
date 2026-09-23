@@ -143,6 +143,18 @@ one of the two must be retired before either is worked.
 
 ## Added 2026-09-22
 
+### [closed/mesh_oneliners_dr161_169_176_179_180.md](closed/mesh_oneliners_dr161_169_176_179_180.md) — five `src/mesh` one-liners from the debt register — **CLOSED 2026-09-23**
+
+DR-161 top/bottom node type lists, DR-169 `~Basis` pointer-keyed free, DR-176 HEX8TS/HEX8TB unity nodes, DR-179 FaceFactory sentinels and the sideset-only refusal, DR-180 the 2-D `Curve` null guard. Three code rounds; the gate found the LINE3 midpoint SEGV. Rows struck.
+
+### [closed/maxwell_background_ds_dr181.md](closed/maxwell_background_ds_dr181.md) — `background_phi` read the point-0 surface increment at every point — **CLOSED 2026-09-23**
+
+`dS()`→`dS( k )`; a kernel-level HEX8 fixture ran red before (K 17.6 %, f 18.8 %) and green after. By-catch DR-183 refuted. Row struck.
+
+### [closed/curvefactory_dr188.md](closed/curvefactory_dr188.md) — CurveFactory: pairs from facets on every path, closed curves oriented, closed terminals refused — **CLOSED 2026-09-23**
+
+Facet-built pairs and midpoints (2-D, 3-D intersect, thin-shell side curves), the closing-segment orientation, the Z1/O6 refusals, the dead bitset overload deleted, the `MaxwellFactory` closed-terminal refusal with its test. Mandatory A/B: 10/10 shipped 3-D decks identical. DR-188 stays `[W]` for its residue.
+
 ### [practice_drift_checker.md](practice_drift_checker.md) — a checker for convention documents that have drifted from practice
 
 **v2 SHIPPED 2026-09-22 as `scripts/check_practice_drift.py`; v3 (D-c11..D-c21) open.** Self-test

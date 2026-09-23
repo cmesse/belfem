@@ -54,6 +54,17 @@ namespace belfem
 
             ~Basis() override ;
 
+            // owns mSources, mWeights and mDofs: a shallow copy would free them twice
+            Basis( const Basis & ) = delete ;
+
+            Basis &
+            operator=( const Basis & ) = delete ;
+
+            Basis( Basis && ) = delete ;
+
+            Basis &
+            operator=( Basis && ) = delete ;
+
 //------------------------------------------------------------------------------
 
             /**

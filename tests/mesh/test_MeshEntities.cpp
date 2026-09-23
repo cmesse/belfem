@@ -112,6 +112,39 @@ TEST( ElementCatalog, FactoryUnknownTypeThrows )
         std::runtime_error );
 }
 
+// the thin-shell hexahedra share the HEX8 node table, so their unity
+// reference element carries the HEX8 corner coordinates slot for slot
+TEST( ElementCatalog, ThinShellHexUnityNodesMatchHex8 )
+{
+    belfem::mesh::ElementFactory tFactory;
+
+    belfem::mesh::ReferenceElement * tHex8 =
+        tFactory.create_reference_element( belfem::ElementType::HEX8 );
+
+    for( const belfem::ElementType tType : { belfem::ElementType::HEX8TS,
+                                             belfem::ElementType::HEX8TB } )
+    {
+        SCOPED_TRACE( belfem::to_string( tType ) );
+
+        belfem::mesh::ReferenceElement * tShell =
+            tFactory.create_reference_element( tType );
+
+        EXPECT_EQ( tShell->element()->type(), tType );
+        EXPECT_EQ( tShell->nodes().size(), 8u );
+
+        for( belfem::uint k = 0; k < tShell->nodes().size(); ++k )
+        {
+            EXPECT_NEAR( tShell->node( k )->x(), tHex8->node( k )->x(), tEps );
+            EXPECT_NEAR( tShell->node( k )->y(), tHex8->node( k )->y(), tEps );
+            EXPECT_NEAR( tShell->node( k )->z(), tHex8->node( k )->z(), tEps );
+        }
+
+        delete tShell;
+    }
+
+    delete tHex8;
+}
+
 // =============================================================================
 // §2  Node Entity  [semantic]
 // =============================================================================
@@ -721,6 +754,17 @@ TEST( MeshEntities, SourcesIncrementalPathCounterWidth )
         EXPECT_EQ( tNode.number_of_sources(), tMaxU16 );
         EXPECT_EQ( tNode.source( tMaxU16 - 1 ), tPool( tMaxU16 - 1 ) );
     }
+}
+
+// only a leak checker sees this case go red: a count-keyed destructor skips
+// both arrays when nothing has been appended
+TEST( MeshEntities, SourcesAllocatedContainerIsFreedUnfilled )
+{
+    belfem::mesh::Node tNode( 1 );
+    tNode.allocate_source_container( 3 );
+
+    EXPECT_EQ( tNode.number_of_sources(), 0u );
+    EXPECT_FALSE( tNode.is_hanging() );
 }
 
 // --- §4.5 dof counter and container ---

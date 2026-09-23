@@ -24,8 +24,10 @@ namespace belfem
             mID( aID ),
             mSideSetA( aSideSetA ),
             mSideSetB( aSideSetB ),
+            // a 2-D curve has no second sideset; its order follows sideset A alone
             mElementType( interpolation_order_numeric( mSideSetA->element_type() ) == 2 &&
-                   interpolation_order_numeric( mSideSetB->element_type() ) == 2 ?
+                   ( mSideSetB == nullptr ||
+                     interpolation_order_numeric( mSideSetB->element_type() ) == 2 ) ?
                    ElementType::LINE3 : ElementType::LINE2 )
         {
 

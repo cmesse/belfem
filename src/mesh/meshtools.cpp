@@ -1384,9 +1384,13 @@ namespace belfem
         void
         get_top_nodes( Element * aElement, Cell< Node * > & aNodes )
         {
-            switch ( geometry_type( aElement->type() ) )
+            // the case list mirrors get_bottom_nodes: a type has both faces or neither
+            switch ( aElement->type() )
             {
-                case GeometryType::QUAD:
+                case ElementType::QUAD4 :
+                case ElementType::QUAD4TS :
+                case ElementType::QUAD9 :
+                case ElementType::QUAD9TS :
                 {
                     // the facet-2 traversal {2,3} runs opposite to the bottom
                     // curve; the thin-shell hang functions need position-wise
@@ -1398,12 +1402,20 @@ namespace belfem
                     aNodes( 1 ) = tSwap ;
                     break;
                 }
-                case GeometryType::PENTA :
+                case ElementType::PENTA6 :
+                case ElementType::PENTA6TS :
+                case ElementType::PENTA15 :
+                case ElementType::PENTA18 :
+                case ElementType::PENTA18TS :
                 {
                     aElement->get_nodes_of_facet( 4, aNodes );
                     break;
                 }
-                case GeometryType::HEX  :
+                case ElementType::HEX8 :
+                case ElementType::HEX8TS :
+                case ElementType::HEX8TB :
+                case ElementType::HEX20 :
+                case ElementType::HEX27 :
                 {
                     aElement->get_nodes_of_facet( 5, aNodes );
                     break;

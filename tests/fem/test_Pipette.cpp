@@ -53,8 +53,10 @@ namespace
     //! one row of the battery. mSwap holds the transpositions the MeshChecker
     //! applies to this type; its swap methods are private, so they are
     //! reproduced here and must match cl_MeshChecker.hpp. Neither PENTA6TS
-    //! nor HEX8TS has an arm of its own there: the checker routes them
-    //! through swap_penta6 and swap_hex8
+    //! nor HEX8TS has a swap of its own there: the checker shares swap_penta6
+    //! and swap_hex8 with PENTA6 and HEX8. The reference geometry of every
+    //! row, the TS types included, comes from create_unity_nodes for the
+    //! row's own type, with no remap
     struct PipetteCase
     {
         ElementType mType ;
@@ -95,24 +97,14 @@ namespace
         }
     };
 
-    /**
-     * reference element of measure one. ElementFactory::create_unity_nodes
-     * builds physical reference elements whose measure is one for every type
-     * in the battery except HEX8TS, which has no arm there; that one gets
-     * the HEX8 geometry, which it shares -- both route to the eight-node
-     * Lagrange hex in the interpolation factory and both take swap_hex8 in
-     * the MeshChecker.
-     */
+    //! reference element of measure one from ElementFactory::create_unity_nodes
     void
     build_reference_element( const ElementType aType, PipetteElement & aOut )
     {
         mesh::ElementFactory tFactory ;
 
-        const ElementType tGeometrySource =
-                aType == ElementType::HEX8TS ? ElementType::HEX8 : aType ;
-
         mesh::ReferenceElement * tReference =
-                tFactory.create_reference_element( tGeometrySource );
+                tFactory.create_reference_element( aType );
 
         const uint tNumNodes = tReference->element()->number_of_nodes();
 

@@ -29,12 +29,11 @@ namespace belfem
 
         Basis::~Basis()
         {
-            // frees the pointer array and the weights; the sources are not freed
-            if( mNumberOfSources != 0 )
-            {
-                free( mSources );
-                free( mWeights );
-            }
+            // frees the pointer array and the weights, keyed on the pointers:
+            // a container allocated but never filled has a zero count.
+            // The sources are not freed
+            free( mSources );
+            free( mWeights );
 
             // frees the pointer array ( null until a dof manager connected );
             // the dofs are not freed

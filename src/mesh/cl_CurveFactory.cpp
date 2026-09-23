@@ -9,6 +9,7 @@
  * See the top-level LICENSE file for the complete license and disclaimer.
  */
 
+#include <memory>
 #include <string>
 
 #include "cl_CurveFactory.hpp"
@@ -92,10 +93,96 @@ namespace belfem
             this->select_edges( aThinShellSideSets, aDomainBoundaries, tAllEdges, tEdges );
             this->select_node_subset( tEdges,  tNodes );
             this->connect_edges_to_nodes( tEdges, tNodes );
-            this->identify_subchains( tNodes );
+            const index_t tNumChains = this->identify_subchains( tNodes );
+
+            // undoes the scratch state of this function on the mesh nodes
+            auto tReleaseScratch = [ & ]()
+            {
+                for ( Node * tNode : tNodes )
+                {
+                    tNode->reset_vertex_container() ;
+                }
+                for ( Edge * tEdge : tAllEdges )
+                {
+                    delete tEdge ;
+                }
+                mMesh->update_node_indices() ;
+            };
+
+            // a component with at least as many edges as nodes contains a
+            // loop. create_protocurves() cannot place the edge that closes
+            // it, so a closed side curve is refused here. identify_subchains()
+            // numbers the components from 1
+            {
+                Cell< index_t > tNodeCount( tNumChains, 0 );
+                Cell< index_t > tDegreeSum( tNumChains, 0 );
+
+                for ( Node * tNode : tNodes )
+                {
+                    ++tNodeCount( tNode->index() - 1 );
+                    tDegreeSum( tNode->index() - 1 ) += tNode->number_of_vertices() ;
+                }
+
+                for ( Node * tNode : tNodes )
+                {
+                    const index_t tChain = tNode->index() - 1 ;
+                    if ( tDegreeSum( tChain ) >= 2 * tNodeCount( tChain ) )
+                    {
+                        const id_t tNodeID = tNode->id() ;
+                        tReleaseScratch() ;
+                        BELFEM_ERROR( false,
+                            "The thin-shell side curve through node %lu is closed; closed side curves are not supported",
+                            ( long unsigned int ) tNodeID );
+                    }
+                }
+            }
 
             Cell< ProtoCurve * > tProtoCurves ;
             this->create_protocurves( tNodes, tEdges, tProtoCurves );
+
+            // the midpoints of every quadratic side curve, read from the one
+            // facet that carries each edge; gathered before any curve exists,
+            // so that a refusal has only the scratch state to undo
+            Cell< ElementType > tTypes( tProtoCurves.size(), ElementType::EMPTY );
+            Cell< Cell< Node * > > tMidNodes( tProtoCurves.size(), Cell< Node * >() );
+            {
+                Cell< Node * > tWork ;
+
+                for ( index_t k=0; k<tProtoCurves.size(); ++k )
+                {
+                    Cell< Edge * > & tChainEdges = tProtoCurves( k )->mEdges ;
+
+                    tTypes( k ) = interpolation_order_numeric(
+                        tChainEdges( 0 )->facet( 0 )->element()->type() ) == 2 ?
+                            ElementType::LINE3 : ElementType::LINE2 ;
+
+                    if ( tTypes( k ) != ElementType::LINE3 ) continue ;
+
+                    tMidNodes( k ).set_size( tChainEdges.size(), nullptr );
+
+                    for ( index_t e=0; e<tChainEdges.size(); ++e )
+                    {
+                        Edge * tEdge = tChainEdges( e );
+                        tMidNodes( k )( e ) = this->midnode_of_facet_edge(
+                            tEdge->facet( 0 ), tEdge->node( 0 ), tEdge->node( 1 ), tWork );
+
+                        if ( tMidNodes( k )( e ) == nullptr )
+                        {
+                            const id_t tA = tEdge->node( 0 )->id() ;
+                            const id_t tB = tEdge->node( 1 )->id() ;
+                            for ( ProtoCurve * tProtoCurve : tProtoCurves )
+                            {
+                                delete tProtoCurve ;
+                            }
+                            tReleaseScratch() ;
+                            BELFEM_ERROR( false,
+                                "The side curve is quadratic, but the facet edge joining nodes %lu and %lu has no midpoint",
+                                ( long unsigned int ) tA,
+                                ( long unsigned int ) tB );
+                        }
+                    }
+                }
+            }
 
             Cell< Curve * > aCurves( tProtoCurves.size(), nullptr );
 
@@ -103,10 +190,6 @@ namespace belfem
 
             for ( ProtoCurve * tProtoCurve : tProtoCurves )
             {
-                ElementType tType = interpolation_order_numeric(
-                    tProtoCurve->mEdges( 0 )->facet( 0 )->element()->type() ) == 2 ?
-                        ElementType::LINE3 : ElementType::LINE2 ;
-
                 Cell< Node * > & tEndNodes = tProtoCurve->mNodes ;
 
                 //Create node pairs on the side curve
@@ -118,22 +201,16 @@ namespace belfem
                     tPairs(i).second = tEdge->node(1) ;
                 }
 
-                Cell< Node * >   tMidNodes ;
-                if ( tType == ElementType::LINE3 )
-                {
-                    this->collect_midnodes( tPairs, tMidNodes );
-                }
+                Curve * tCurve = new Curve( ++mMaxCurveID, tTypes( tCount ) );
 
-                Curve * tCurve = new Curve( ++mMaxCurveID, tType );
-
-                this->create_segments( tCurve, tPairs, tMidNodes ) ;
+                this->create_segments( tCurve, tPairs, tMidNodes( tCount ) ) ;
 
                 Matrix< index_t > tAdjacency( tEndNodes.size(), 2, BELFEM_UINT_MAX );
                 this->sort_end_nodes( tCurve, tAdjacency, tEndNodes );
 
-                this->orient_segments( tEndNodes, tCurve->segments() ) ;
+                this->orient_segments( tCurve->is_closed(), tEndNodes, tCurve->segments() ) ;
 
-                this->sort_segments( tEndNodes( 0 ), tAdjacency, tCurve->segments() ) ;
+                this->sort_segments( tCurve->segments() ) ;
 
                 this->collect_nodes( tCurve );
 
@@ -143,17 +220,8 @@ namespace belfem
                 delete tProtoCurve ;
             }
 
-            for ( Node * tNode : tNodes )
-            {
-                tNode->reset_vertex_container() ;
-            }
-            for ( Edge * tEdge : tAllEdges )
-            {
-                delete tEdge ;
-            }
-
             // restore node indices on mesh, since we have messed with them
-            mMesh->update_node_indices() ;
+            tReleaseScratch() ;
 
             return aCurves ;
         }
@@ -541,164 +609,64 @@ namespace belfem
         {
             BELFEM_ERROR( comm_rank() == 0, "Curves are not intended to be used in parallel" );
 
-            // Step 1 : create the curve object
-            Curve * aCurve = new Curve(
+            // Step 1 : create the curve object; owned here until the return
+            std::unique_ptr< Curve > tOwner( new Curve(
                 aID,
                 mMesh->sideset( aSideSetA ),
-                mMesh->sideset( aSideSetB ) );
+                mMesh->sideset( aSideSetB ) ) );
+            Curve * tCurve = tOwner.get() ;
 
             ++mMaxCurveID ;
 
             // Step 2: collects shared corner nodes between side sets
             Cell< Node * > tEndNodes ;
-            this->collect_end_nodes_from_intersection( aCurve->sideset_a(), aCurve->sideset_b(), tEndNodes ) ;
-
-            // Step 3: forms edges from corner nodes
-            Cell< std::pair< Node *, Node * > > tPairs ;
-            this->create_pairs( tEndNodes, tPairs ) ;
+            this->collect_end_nodes_from_intersection( tCurve->sideset_a(), tCurve->sideset_b(), tEndNodes ) ;
 
             // only nodes on sideset A have been flagged so far
             // let's reset them to maintain a clean dataset
-            aCurve->sideset_a()->unflag_all_nodes() ;
+            tCurve->sideset_a()->unflag_all_nodes() ;
 
-            // Step 4 : Gathers mid-side nodes for quadratic elements
-            Cell< Node * > tMidNodes ;
-            if ( aCurve->element_type() == ElementType::LINE3 )
-            {
-                this->collect_midnodes( tPairs, tMidNodes ) ;
-            }
-
-            // Step 5: create the segments
-            this->create_segments( aCurve, tPairs, tMidNodes ) ;
-
-            // Step 6: put the end nodes into the appropriate order
-            Matrix< index_t > tAdjacency( tEndNodes.size(), 2, BELFEM_UINT_MAX );
-            this->sort_end_nodes( aCurve, tAdjacency, tEndNodes );
-
-            // Step 7: with the nodes sorted, we reorient the segments
-            this->orient_segments( tEndNodes, aCurve->segments() ) ;
-
-            // Step 8: we can now order the segments in the order they are connected
-            this->sort_segments( tEndNodes( 0 ), tAdjacency, aCurve->segments() ) ;
-
-            // Step 9: collect and sort the nodes
-            this->collect_nodes( aCurve );
-
-            // Step 10 : compute the lengths of the curve
-            this->compute_coordinates( aCurve );
-
-            // Step 11 : restore node indices on mesh, since we have messed with them
-            mMesh->update_node_indices();
-
-            return aCurve ;
-        }
-
-        Curve *
-        CurveFactory::intersect( const id_t aThinShellSideSet, const id_t aBoundarySideSet, DynamicBitset & aBoundaryNodeBitset )
-        {
-            // Step 1 : create the curve object
-            Curve * aCurve = new Curve(
-                ++mMaxCurveID,
-                mMesh->sideset( aBoundarySideSet ),
-                mMesh->sideset( aThinShellSideSet ) );
-
-            // Step 1: collects shared corner nodes between side sets
-            DynamicBitset tEndNodeBitset( mMesh->nodes().size() );
-            DynamicBitset tMidNodeBitset( mMesh->nodes().size() );
-
-            Cell< Facet * > & tFacet = mMesh->sideset( aThinShellSideSet )->facets() ;
-            for ( Facet * tFacet : tFacet )
-            {
-                for ( uint k=0; k<tFacet->number_of_corner_nodes(); ++k )
-                {
-                    tEndNodeBitset.set( tFacet->node( k )->index() ) ;
-                }
-            }
-
-            if ( aCurve->element_type() == ElementType::LINE3 )
-            {
-                for ( Facet * tFacet : tFacet )
-                {
-                    for ( uint k=tFacet->number_of_corner_nodes(); k<tFacet->number_of_nodes(); ++k )
-                    {
-                        tMidNodeBitset.set( tFacet->node( k )->index() ) ;
-                    }
-                }
-            }
-
-            tEndNodeBitset &= aBoundaryNodeBitset ;
-
-            index_t tNumEndNodes = tEndNodeBitset.count() ;
-
-            if ( tNumEndNodes == 0 )
-            {
-                return nullptr ;
-            }
-
-            index_t tNumMidNodes = 0 ;
-            if ( aCurve->element_type() == ElementType::LINE3 )
-            {
-                tMidNodeBitset &= aBoundaryNodeBitset ;
-                tNumMidNodes = tMidNodeBitset.count() ;
-            }
-
-            Cell< Node * > & tNodes = mMesh->nodes() ;
-            for ( Node * tNode : tNodes )
-            {
-                tNode->set_index( gNoIndex );
-            }
-
-            Cell< index_t > tIndices ;
-            tEndNodeBitset.where( tIndices );
-
-            index_t tCount = 0 ;
-            Cell< Node * > tEndNodes( tNumEndNodes, nullptr );
-            for ( index_t tIndex : tIndices )
-            {
-                tEndNodes( tCount ) = tNodes( tIndex ) ;
-                tNodes( tIndex )->set_index( tCount++ );
-            }
-
-            Cell< Node * > tMidNodes ;
-            if ( aCurve->element_type() == ElementType::LINE3 )
-            {
-                tIndices.clear() ;
-                tMidNodeBitset.where( tIndices );
-                tCount = 0 ;
-                tMidNodes.set_size( tNumMidNodes, nullptr );
-                for ( index_t tIndex : tIndices )
-                {
-                    tMidNodes( tCount++ ) = tNodes( tIndex ) ;
-                }
-            }
-
-            // Step 3: forms edges from corner nodes
+            // Step 3: one pair per edge that a facet of A and a facet of B
+            // share, and for a quadratic curve its midpoint
             Cell< std::pair< Node *, Node * > > tPairs ;
-            this->create_pairs( tEndNodes, tPairs ) ;
+            Cell< Node * > tMidNodes ;
+            this->create_pairs_from_facets( tCurve->sideset_a()->facets(), tEndNodes,
+                tCurve->element_type() == ElementType::LINE3, tPairs, tMidNodes,
+                & tCurve->sideset_b()->facets() ) ;
+
+            if ( tPairs.size() == 0 )
+            {
+                mMesh->update_node_indices() ;
+                BELFEM_ERROR( false,
+                    "Curve %lu: sidesets %lu and %lu share no facet edge, so the curve would be empty",
+                    ( long unsigned int ) aID,
+                    ( long unsigned int ) aSideSetA,
+                    ( long unsigned int ) aSideSetB );
+            }
 
             // Step 5: create the segments
-            this->create_segments( aCurve, tPairs, tMidNodes ) ;
+            this->create_segments( tCurve, tPairs, tMidNodes ) ;
 
             // Step 6: put the end nodes into the appropriate order
             Matrix< index_t > tAdjacency( tEndNodes.size(), 2, BELFEM_UINT_MAX );
-            this->sort_end_nodes( aCurve, tAdjacency, tEndNodes );
+            this->sort_end_nodes( tCurve, tAdjacency, tEndNodes );
 
             // Step 7: with the nodes sorted, we reorient the segments
-            this->orient_segments( tEndNodes, aCurve->segments() ) ;
+            this->orient_segments( tCurve->is_closed(), tEndNodes, tCurve->segments() ) ;
 
             // Step 8: we can now order the segments in the order they are connected
-            this->sort_segments( tEndNodes( 0 ), tAdjacency, aCurve->segments() ) ;
+            this->sort_segments( tCurve->segments() ) ;
 
             // Step 9: collect and sort the nodes
-            this->collect_nodes( aCurve );
+            this->collect_nodes( tCurve );
 
             // Step 10 : compute the lengths of the curve
-            this->compute_coordinates( aCurve );
+            this->compute_coordinates( tCurve );
 
             // Step 11 : restore node indices on mesh, since we have messed with them
             mMesh->update_node_indices();
 
-            return aCurve ;
+            return tOwner.release() ;
         }
 
         Curve *
@@ -706,13 +674,27 @@ namespace belfem
         {
             BELFEM_ERROR( comm_rank() == 0, "Curves are not intended to be used in parallel" );
 
+            BELFEM_ERROR( aSideSets.length() > 0, "Curve %lu: no sideset given", ( long unsigned int ) aID );
+
             // Step 1: Collect the facets
             Cell< Facet * > tFacets ;
             index_t tCount = 0 ;
             for ( id_t tID : aSideSets )
             {
+                // an empty sideset would make the type check below depend
+                // on the order of the sidesets
+                BELFEM_ERROR( mMesh->sideset( tID )->number_of_facets() > 0,
+                    "Curve %lu: sideset %lu has no facets",
+                    ( long unsigned int ) aID,
+                    ( long unsigned int ) tID );
+
                 tCount+=mMesh->sideset( tID )->number_of_facets() ;
             }
+
+            // SideSet::element_type() reads the first facet only, so every
+            // facet is checked against it
+            const ElementType tType = mMesh->sideset( aSideSets( 0 ) )->element_type() ;
+
             tFacets.set_size( tCount, nullptr );
             tCount = 0 ;
             for ( id_t tID : aSideSets )
@@ -720,12 +702,32 @@ namespace belfem
                 Cell< Facet * > & tSideSet = mMesh->sideset( tID )->facets() ;
                 for ( Facet * tFacet : tSideSet )
                 {
+                    const ElementType tFacetType = tFacet->element()->type() ;
+
+                    BELFEM_ERROR( tFacetType == ElementType::LINE2 || tFacetType == ElementType::LINE3,
+                        "Curve %lu: facet %lu of sideset %lu is of type %s; a 2-D curve needs LINE2 or LINE3 facets",
+                        ( long unsigned int ) aID,
+                        ( long unsigned int ) tFacet->id(),
+                        ( long unsigned int ) tID,
+                        to_string( tFacetType ).c_str() );
+
+                    BELFEM_ERROR( tFacetType == tType,
+                        "Curve %lu: facet %lu of sideset %lu is of type %s, but sideset %lu is of type %s; "
+                        "all sidesets of one curve must have the same element type",
+                        ( long unsigned int ) aID,
+                        ( long unsigned int ) tFacet->id(),
+                        ( long unsigned int ) tID,
+                        to_string( tFacetType ).c_str(),
+                        ( long unsigned int ) aSideSets( 0 ),
+                        to_string( tType ).c_str() );
+
                     tFacets( tCount++ ) = tFacet ;
                 }
             }
 
-            // Step 2: create the curve object
-            Curve * aCurve = new Curve( aID, mMesh->sideset( aSideSets(0) ), nullptr );
+            // Step 2: create the curve object; owned here until the return
+            std::unique_ptr< Curve > tCurve( new Curve( aID, mMesh->sideset( aSideSets(0) ), nullptr ) );
+            Curve * aCurve = tCurve.get() ;
             ++mMaxCurveID ;
 
             // Step 3: collect the corner nodes
@@ -737,13 +739,6 @@ namespace belfem
                 tEndNodes( tCount++ ) = tFacet->node( 1 );
             }
             unique( tEndNodes );
-            for ( Node * tNode : tEndNodes )
-            {
-                for ( uint k=0; k<tNode->number_of_nodes(); ++k )
-                {
-                    tNode->node( k )->set_index( gNoIndex );
-                }
-            }
             tCount = 0 ;
             for ( Node * tNode : tEndNodes )
             {
@@ -751,21 +746,11 @@ namespace belfem
                 tNode->unflag() ;
             }
 
-            // Step 4 : Gathers mid-side nodes for quadratic elements
-            Cell< Node * > tMidNodes ;
-            if ( aCurve->element_type() == ElementType::LINE3 )
-            {
-                tCount = 0 ;
-                tMidNodes.set_size( tFacets.size(), nullptr );
-                for ( Facet * tFacet : tFacets )
-                {
-                    tMidNodes( tCount++ ) = tFacet->node( 2 );
-                }
-            }
-
-            // Step 4: Create the Pairs
+            // Step 4: one pair per facet, and for a quadratic curve its midpoint
             Cell< std::pair< Node *, Node * > > tPairs ;
-            this->create_pairs( tEndNodes, tPairs ) ;
+            Cell< Node * > tMidNodes ;
+            this->create_pairs_from_facets( tFacets, tEndNodes,
+                aCurve->element_type() == ElementType::LINE3, tPairs, tMidNodes ) ;
 
             // Step 5: create the segments
             this->create_segments( aCurve, tPairs, tMidNodes ) ;
@@ -775,10 +760,10 @@ namespace belfem
             this->sort_end_nodes( aCurve, tAdjacency, tEndNodes );
 
             // Step 7: with the nodes sorted, we reorient the segments
-            this->orient_segments( tEndNodes, aCurve->segments() ) ;
+            this->orient_segments( aCurve->is_closed(), tEndNodes, aCurve->segments() ) ;
 
             // Step 8: we can now order the segments in the order they are connected
-            this->sort_segments( tEndNodes( 0 ), tAdjacency, aCurve->segments() ) ;
+            this->sort_segments( aCurve->segments() ) ;
 
             // Step 9: collect and sort the nodes
             this->collect_nodes( aCurve );
@@ -789,7 +774,7 @@ namespace belfem
             // Step 11 : restore node indices on mesh, since we have messed with them
             mMesh->update_node_indices();
 
-            return aCurve ;
+            return tCurve.release() ;
         }
 //------------------------------------------------------------------------------
 
@@ -834,99 +819,184 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        CurveFactory::create_pairs( Cell< Node * > & aEndNodes, Cell< std::pair< Node *, Node * > > & aPairs )
+        CurveFactory::create_pairs_from_facets(
+                const Cell< Facet * > & aFacets,
+                Cell< Node * >        & aEndNodes,
+                const bool              aQuadratic,
+                Cell< std::pair< Node *, Node * > > & aPairs,
+                Cell< Node * > & aMidNodes,
+                const Cell< Facet * > * aSharedWith )
         {
-            index_t tCount = 0 ;
-            for ( Node * tNode : aEndNodes )
+            const key_t tNumNodes = aEndNodes.size() ;
+
+            Cell< Node * > tNodes ;
+
+            // refuses two edges that join the same end nodes through
+            // different midpoints
+            auto tCheckMidNode = [ & ]( const Node * aStored, const Node * aMidNode )
             {
-                for ( uint k=0; k<tNode->number_of_nodes(); ++k )
+                if ( aQuadratic && aStored != aMidNode )
                 {
-                    if ( tNode->node( k )->index() != gNoIndex )
+                    mMesh->update_node_indices() ;
+                    BELFEM_ERROR( false,
+                        "Two facet edges join nodes %lu and %lu but carry different midpoints",
+                        ( long unsigned int ) tNodes( 0 )->id(),
+                        ( long unsigned int ) tNodes( 1 )->id() );
+                }
+            };
+
+            // refuses an edge of a quadratic curve that has no midpoint
+            auto tCheckHasMidNode = [ & ]( const Node * aMidNode )
+            {
+                if ( aQuadratic && aMidNode == nullptr )
+                {
+                    mMesh->update_node_indices() ;
+                    BELFEM_ERROR( false,
+                        "The curve is quadratic, but the facet edge joining nodes %lu and %lu has no midpoint",
+                        ( long unsigned int ) tNodes( 0 )->id(),
+                        ( long unsigned int ) tNodes( 1 )->id() );
+                }
+            };
+
+            // the edges of aSharedWith between two end nodes, with their midpoints
+            Map< key_t, Node * > tSharedMap ;
+
+            if ( aSharedWith != nullptr )
+            {
+                for ( Facet * tFacet : *aSharedWith )
+                {
+                    Element * tElement = tFacet->element() ;
+
+                    for ( uint e=0; e<tElement->number_of_edges(); ++e )
                     {
-                        ++tCount ;
+                        tElement->get_nodes_of_edge( e, tNodes );
+
+                        const index_t tA = tNodes( 0 )->index() ;
+                        const index_t tB = tNodes( 1 )->index() ;
+
+                        if ( tA == gNoIndex || tB == gNoIndex )
+                        {
+                            continue ;
+                        }
+
+                        const key_t tKey = tA > tB ? tA * tNumNodes + tB : tB * tNumNodes + tA ;
+
+                        Node * tMidNode = tNodes.size() > 2 ? tNodes( 2 ) : nullptr ;
+
+                        if ( tSharedMap.key_exists( tKey ) )
+                        {
+                            tCheckMidNode( tSharedMap( tKey ), tMidNode );
+                        }
+                        else
+                        {
+                            tCheckHasMidNode( tMidNode );
+                            tSharedMap[ tKey ] = tMidNode ;
+                        }
                     }
                 }
             }
-            key_t tNumNodes = aEndNodes.size();
 
-            Vector< key_t > tKeys( tCount ) ;
-            tCount = 0 ;
-            for ( Node * tNodeA : aEndNodes )
+            index_t tCount = 0 ;
+            for ( Facet * tFacet : aFacets )
             {
-                for ( uint k=0; k<tNodeA->number_of_nodes(); ++k )
+                tCount += tFacet->element()->number_of_edges() ;
+            }
+
+            Cell< key_t > tKeys ;
+            tKeys.reserve( tCount );
+
+            Map< key_t, Node * > tMidNodeMap ;
+
+            for ( Facet * tFacet : aFacets )
+            {
+                Element * tElement = tFacet->element() ;
+
+                for ( uint e=0; e<tElement->number_of_edges(); ++e )
                 {
-                    Node * tNodeB = tNodeA->node( k ) ;
-                    if ( tNodeB->index() != gNoIndex )
+                    tElement->get_nodes_of_edge( e, tNodes );
+
+                    const index_t tA = tNodes( 0 )->index() ;
+                    const index_t tB = tNodes( 1 )->index() ;
+
+                    if ( tA == gNoIndex || tB == gNoIndex )
                     {
-                        key_t tA = tNodeA->index() > tNodeB->index() ? tNodeA->index() : tNodeB->index() ;
-                        key_t tB = tNodeA->index() > tNodeB->index() ? tNodeB->index() : tNodeA->index() ;
-                        tKeys( tCount++ ) = tA * tNumNodes + tB ;
+                        continue ;
+                    }
+
+                    const key_t tKey = tA > tB ? tA * tNumNodes + tB : tB * tNumNodes + tA ;
+
+                    Node * tMidNode = tNodes.size() > 2 ? tNodes( 2 ) : nullptr ;
+
+                    if ( aSharedWith != nullptr )
+                    {
+                        if ( ! tSharedMap.key_exists( tKey ) )
+                        {
+                            continue ;
+                        }
+                        tCheckMidNode( tSharedMap( tKey ), tMidNode );
+                    }
+
+                    if ( tMidNodeMap.key_exists( tKey ) )
+                    {
+                        tCheckMidNode( tMidNodeMap( tKey ), tMidNode );
+                    }
+                    else
+                    {
+                        tCheckHasMidNode( tMidNode );
+                        tMidNodeMap[ tKey ] = tMidNode ;
+                        tKeys.push( tKey );
                     }
                 }
             }
 
             unique( tKeys );
 
-            aPairs.reserve( tKeys.length() );
+            aPairs.clear() ;
+            aPairs.reserve( tKeys.size() );
 
+            if ( aQuadratic )
+            {
+                aMidNodes.set_size( tKeys.size(), nullptr );
+            }
+
+            tCount = 0 ;
             for ( key_t tKey : tKeys )
             {
                 key_t tIndexA = tKey % tNumNodes ;
                 key_t tIndexB = ( tKey - tIndexA ) / tNumNodes ;
 
-                Node * tNodeA = aEndNodes( tIndexA );
-                Node * tNodeB = aEndNodes( tIndexB );
+                aPairs.push( std::make_pair( aEndNodes( tIndexA ), aEndNodes( tIndexB ) ) );
 
-                aPairs.push( std::make_pair( tNodeA, tNodeB ) );
+                if ( aQuadratic )
+                {
+                    aMidNodes( tCount ) = tMidNodeMap( tKey ) ;
+                }
+                ++tCount ;
             }
-
         }
 
 //------------------------------------------------------------------------------
 
-        void
-        CurveFactory::collect_midnodes( Cell< std::pair< Node *, Node * > > & aPairs, Cell< Node * > & aMidNodes )
+        Node *
+        CurveFactory::midnode_of_facet_edge(
+                Facet * aFacet,
+                const Node * aA,
+                const Node * aB,
+                Cell< Node * > & aWork )
         {
-            aMidNodes.set_size( aPairs.size(), nullptr ) ;
+            Element * tElement = aFacet->element() ;
 
-            index_t tCount = 0 ;
-
-            id_t tA ;
-            id_t tB ;
-            bool tFound ;
-
-            Cell< Node * > tNodes ;
-
-            for ( auto tPair : aPairs )
+            for ( uint e=0; e<tElement->number_of_edges(); ++e )
             {
-                tFound  = false ;
-                tA = tPair.first->id() ;
-                tB = tPair.second->id() ;
+                tElement->get_nodes_of_edge( e, aWork );
 
-                for ( uint e=0; e<tPair.first->number_of_elements(); ++e )
+                if ( ( aWork( 0 ) == aA && aWork( 1 ) == aB ) || ( aWork( 0 ) == aB && aWork( 1 ) == aA ) )
                 {
-                    Element * tElement = tPair.first->element( e ) ;
-
-                    for ( uint d=0; d<tElement->number_of_edges(); ++d )
-                    {
-                        tElement->get_nodes_of_edge( d, tNodes ) ;
-
-                        if (   ( tNodes( 0 )->id() == tA && tNodes( 1 )->id() == tB )
-                            || ( tNodes( 0 )->id() == tB && tNodes( 1 )->id() == tA ) )
-                        {
-                            // setting the index to none is just a precaution, we want to provoke
-                            // a crash in the sorting algorithm in which the midnodes are not relevant
-                            tNodes( 2 )->set_index( gNoIndex );
-
-                            aMidNodes( tCount++ ) = tNodes( 2 ) ;
-                            tFound = true ;
-                            break ;
-                        }
-                    }
-
-                    if ( tFound ) break ;
+                    return aWork.size() == 3 ? aWork( 2 ) : nullptr ;
                 }
             }
+
+            return nullptr ;
         }
 
 //------------------------------------------------------------------------------
@@ -957,9 +1027,11 @@ namespace belfem
             tCount = 0 ;
             if ( aCurve->element_type() == ElementType::LINE3 )
             {
+                // a segment has no node container of its own; the midpoint
+                // goes into the wrapped line element
                 for ( Segment * tSegment : tSegments )
                 {
-                    tSegment->insert_node( aMidNodes( tCount++ ), 2 );
+                    tSegment->element()->insert_node( aMidNodes( tCount++ ), 2 );
                 }
             }
         }
@@ -1135,18 +1207,25 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        CurveFactory::orient_segments(  Cell< Node * > & aEndNodes, Cell< Segment * > & aSegments )
+        CurveFactory::orient_segments( const bool aClosed, Cell< Node * > & aEndNodes, Cell< Segment * > & aSegments )
         {
-            // with the nodes sorted, we can now adjust the segments
-            // first, we orient them
+            const index_t tLast = aEndNodes.size() - 1 ;
+
             for ( Segment * tSegment : aSegments )
             {
-                if ( tSegment->node( 0 )->index() > tSegment->node( 1 )->index() )
+                const index_t tI = tSegment->node( 0 )->index() ;
+                const index_t tJ = tSegment->node( 1 )->index() ;
+
+                // an open chain of two nodes also has a segment { 0, tLast },
+                // so the closing segment is told apart by the closed flag
+                const bool tClosing = aClosed && ( ( tI == 0 && tJ == tLast ) || ( tI == tLast && tJ == 0 ) );
+
+                if ( tClosing ? tI == 0 : tI > tJ )
                 {
                     Node * tSwap = tSegment->node( 0 ) ;
 
-                    // the segment doesn't have an insert function
-                    // we access the wrapped line element
+                    // only corners 0 and 1 swap: a LINE3 midpoint stays node 2.
+                    // The segment has no insert function of its own
                     tSegment->element()->insert_node(  tSegment->node( 1 ), 0 ) ;
                     tSegment->element()->insert_node(  tSwap, 1 ) ;
                 }
@@ -1156,27 +1235,11 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        CurveFactory::sort_segments( Node * aStart, const Matrix< index_t > & aAdjacency, Cell< Segment * > & aSegments )
+        CurveFactory::sort_segments( Cell< Segment * > & aSegments )
         {
-            Segment * tSegment = aSegments( aAdjacency( aStart->index(), 0 ) );
-            tSegment->set_index( 0 );
-            tSegment->flag();
-
-            index_t tNumSegments = aSegments.size();
-            index_t tCount = 1 ;
-
-            while ( tCount < tNumSegments )
+            for ( Segment * tSegment : aSegments )
             {
-                Segment * tNext = this->next( aAdjacency, aSegments, tSegment ) ;
-
-                // if the segment has been visited, we know that we have closed the loop
-                if ( tNext->is_flagged() ) break ;
-
-                tNext->set_index( tCount++ );
-
-                tNext->flag();
-
-                tSegment = tNext ;
+                tSegment->set_index( tSegment->node( 0 )->index() );
             }
 
             sort( aSegments, opSegmentIndex );
@@ -1243,103 +1306,6 @@ namespace belfem
                     // - If aY is unflagged, return aY.
                     return aY->is_flagged() ? aX : aY;
                 }
-            }
-        }
-
-//------------------------------------------------------------------------------
-
-        /**
-         * Finds the next unflagged segment in the curve traversal.
-         *
-         * This function examines segments connected to the current segment's endpoints (nodes) and selects
-         * an unflagged (unvisited) segment to continue the traversal. It supports both open and closed curves,
-         * returning the current segment if no valid next segment exists to signal the end of traversal.
-         *
-         * @param aAdjacency Adjacency matrix mapping each node to indices of connected segments.
-         * @param aSegments List of all segments in the curve.
-         * @param aSegment The current segment being processed.
-         * @return Pointer to the next unflagged segment, or the current segment if traversal should end.
-         */
-        Segment *
-        CurveFactory::next( const Matrix< index_t > & aAdjacency, Cell< Segment * > & aSegments, Segment * aSegment )
-        {
-            index_t tIndices[ 4 ];
-
-            // First segment at start node (node 0)
-            tIndices[ 0 ] = aAdjacency( aSegment->node( 0 )->index(), 0 );
-
-            // Second segment at start node (node 0)
-            tIndices[ 1 ] = aAdjacency( aSegment->node( 0 )->index(), 1 );
-
-            // First segment at end node (node 1)
-            tIndices[ 2 ] = aAdjacency( aSegment->node( 1 )->index(), 0 );
-
-            // Second segment at end node (node 1)
-            tIndices[ 3 ] = aAdjacency( aSegment->node( 1 )->index(), 1 );
-
-            // Search for a candidate segment connected to the start node (node 0)
-            Segment * aCandidateA = nullptr ;
-            for ( uint s=0; s<2; ++s )
-            {
-                // an empty slot means the node carries only one segment: nothing
-                // to consider. The current segment cannot stand in for it:
-                // sort_segments has already overwritten aSegment->index() with its
-                // traversal counter, so aSegments( aSegment->index() ) can be an
-                // unrelated segment
-                if ( tIndices[ s ] == gNoIndex ) continue ;
-
-                // index-as-position is still valid here: the cell is not reordered
-                // until the final sort in sort_segments
-                Segment * tSegment = aSegments( tIndices[ s ] );
-
-                // Select this segment if it’s unflagged (unvisited) and not the current segment
-                if ( ! tSegment->is_flagged() && tSegment->id() != aSegment->id() )
-                {
-                    aCandidateA = tSegment ;
-                }
-            }
-
-            // Search for a candidate segment connected to the end node (node 1)
-            Segment * aCandidateB = nullptr ;
-            for ( uint s=2; s<4; ++s )
-            {
-                // empty slot: skip, see above
-                if ( tIndices[ s ] == gNoIndex ) continue ;
-
-                Segment * tSegment = aSegments( tIndices[ s ] );
-
-                // Select this segment if it’s unflagged (unvisited) and not the current segment
-                if ( ! tSegment->is_flagged() && tSegment->id() != aSegment->id() )
-                {
-                    aCandidateB = tSegment ;
-                }
-            }
-
-            // Determine which segment to return based on available candidates
-            if ( aCandidateA == nullptr )
-            {
-                if ( aCandidateB == nullptr )
-                {
-                    // No unflagged neighbors found; return the current segment
-                    // itself to end the traversal loop. It is flagged, so the
-                    // caller breaks before writing another index
-                    return aSegment ;
-                }
-                else
-                {
-                    // Only end node has a valid candidate; return it
-                    return aCandidateB ;
-                }
-            }
-            else if ( aCandidateB == nullptr )
-            {
-                // Only start node has a valid candidate; return it
-                return aCandidateA ;
-            }
-            else
-            {
-                // Both nodes have candidates; return the one with the smaller ID for consistency
-                return aCandidateA->id() < aCandidateB->id() ? aCandidateA : aCandidateB ;
             }
         }
 

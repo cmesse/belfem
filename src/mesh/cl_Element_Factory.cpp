@@ -622,6 +622,8 @@ namespace belfem
                     break;
                 }
                 case( ElementType::HEX8 ) :
+                case( ElementType::HEX8TS ) :
+                case( ElementType::HEX8TB ) :
                 {
                     const real tXiHat[][ 3 ] = {
                             { -1.0, -1.0, -1.0 }, {  1.0, -1.0, -1.0 }, {  1.0,  1.0, -1.0 }, { -1.0,  1.0, -1.0 },

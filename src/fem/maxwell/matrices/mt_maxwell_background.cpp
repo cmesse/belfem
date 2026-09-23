@@ -45,8 +45,8 @@ namespace belfem
                 for ( uint k=0; k<aCalc->num_intpoints(); ++k )
                 {
                     const Matrix< real > & B = aCalc->Bm( k );
-                    aMatrices->K() += w( k ) * trans( B ) * B * aCalc->dS();
-                    aMatrices->f()   -= w( k ) * trans( B ) * H * aCalc->dS();
+                    aMatrices->K() += w( k ) * trans( B ) * B * aCalc->dS( k );
+                    aMatrices->f()   -= w( k ) * trans( B ) * H * aCalc->dS( k );
                 }
 
             }

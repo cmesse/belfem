@@ -25,7 +25,7 @@ namespace belfem
                 mMaster( aParent ),
                 mIndexOnMaster( 0 ),
                 mSlave( nullptr ),
-                mIndexOnSlave( gNoIndex ),
+                mIndexOnSlave( BELFEM_UINT_MAX ),
                 mOrientationOnSlave( BELFEM_UINT_MAX )
         {
             // set the owner to be identical to the one of the primary element
@@ -52,7 +52,7 @@ namespace belfem
                 mIndexOnMaster( aIndexOnMaster ),
                 mSlave( aSlave ),
                 mIndexOnSlave( aIndexOnSlave ),
-                mOrientationOnSlave( ( aOrientationOnSlave == gNoIndex && aSlave != nullptr )?
+                mOrientationOnSlave( ( aOrientationOnSlave == BELFEM_UINT_MAX && aSlave != nullptr )?
                         this->compute_orientation( aMaster, aIndexOnMaster, aSlave, aIndexOnSlave ) :
                         aOrientationOnSlave )
         {

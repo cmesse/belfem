@@ -3129,7 +3129,10 @@ namespace belfem
                 // see the note on the counting loop above
                 if ( domain_type( tSection->type() ) == DomainType::ThinShell )
                 {
-                    Protoshell *tShell = new Protoshell( ++tID );
+                    // owned here until mProtoshells takes it, so that a
+                    // refusal below does not leak it
+                    std::unique_ptr< Protoshell > tOwner( new Protoshell( ++tID ) );
+                    Protoshell *tShell = tOwner.get();
                     tShell->label() = tSection->label();
 
                     if ( tSection->key_exists( "sideset" ) xor tSection->
@@ -3231,6 +3234,14 @@ namespace belfem
                         }
 
                         //Associate the open curves to the terminals of the thin shell
+                        auto tRefuseClosed = [ & ]( const mesh::Curve * aCurve )
+                        {
+                            BELFEM_ERROR( ! aCurve->is_closed(),
+                                "curve %lu on thin shell %s is closed, but a terminal curve must be open",
+                                ( long unsigned int ) aCurve->id(),
+                                tShell->label().c_str() );
+                        };
+
                         for ( id_t tSideSetID : tShell->sidesets() )
                         {
                             for ( mesh::Curve * tCurve : mMesh->curves() )
@@ -3239,6 +3250,7 @@ namespace belfem
                                 {
                                     if ( tSideSetID == tCurve->sideset_a()->id() )
                                     {
+                                        tRefuseClosed( tCurve ) ;
                                         tShell->terminal_curves().push(tCurve) ;
                                     }
                                 }
@@ -3246,6 +3258,8 @@ namespace belfem
                                 {
                                     if (tCurve->sideset_a()->id() == tSideSetID )
                                     {
+                                        tRefuseClosed( tCurve ) ;
+
                                         //Reverse SideSetA and SideSetB such that SideSetB is always the thin shell
                                         id_t tIDa =  tCurve->sideset_a()->id() ;
                                         id_t tIDb =  tCurve->sideset_b()->id() ;
@@ -3256,12 +3270,13 @@ namespace belfem
                                     }
                                     else if (tCurve->sideset_b()->id() == tSideSetID)
                                     {
+                                        tRefuseClosed( tCurve ) ;
                                         tShell->terminal_curves().push(tCurve) ;
                                     }
                                 }
                             }
                         }
-                        mProtoshells.push( tShell );
+                        mProtoshells.push( tOwner.release() );
                     }
                     else
                     {

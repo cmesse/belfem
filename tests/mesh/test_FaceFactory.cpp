@@ -11,7 +11,9 @@
  * is the master whichever element the factory visits first, and after the
  * connectivity pass every face carries its three edges and each neighbour
  * once. A HEX8 with one sideset facet pins that the face at a sideset facet
- * takes the facet's id.
+ * takes the facet's id, and a sideset facet on an unselected block is
+ * refused by an error naming the facet ( the mesh main forces the throwing
+ * reaction, so the refusal is a std::runtime_error in both builds ).
  *
  * Premises this file relies on: node indices are push positions ( the key is
  * O( N^3 ) in a 128-bit integer, far from overflow for 14 nodes ), and the
@@ -22,6 +24,8 @@
 #include <gtest/gtest.h>
 #include <cmath>
 #include <memory>
+#include <stdexcept>
+#include <string>
 
 #include "typedefs.hpp"
 #include "cl_Cell.hpp"
@@ -549,4 +553,90 @@ TEST( FaceFactory, SidesetFacetIdIsCarriedByTheFace )
     }
 
     EXPECT_EQ( tNumAtFacet, 1u );
+}
+
+//------------------------------------------------------------------------------
+
+// a sideset facet whose element lies in no selected block has no volume
+// facet to become a face of, so create_faces refuses it by id
+TEST( FaceFactory, SidesetFacetOutsideTheSelectedBlocks )
+{
+    const id_t tFacetID = 500 ;
+
+    // owner: the mesh is deleted on the way out of the throw, together
+    // with any face created before the refusal
+    std::unique_ptr< Mesh > tOwner( new Mesh( 3, 0, true ) );
+    Mesh * tMesh = tOwner.get();
+
+    Cell< Node * > & tNodes = tMesh->nodes();
+
+    // two disjoint unit cubes, gmsh corner order: bottom quad ccw, then top
+    for ( uint k = 0; k < 2; ++k )
+    {
+        const real tX = 2.0 * k ;
+        const id_t tID = 8 * k ;
+        tNodes.push( new Node( tID + 1, tX + 0.0, 0.0, 0.0 ) );
+        tNodes.push( new Node( tID + 2, tX + 1.0, 0.0, 0.0 ) );
+        tNodes.push( new Node( tID + 3, tX + 1.0, 1.0, 0.0 ) );
+        tNodes.push( new Node( tID + 4, tX + 0.0, 1.0, 0.0 ) );
+        tNodes.push( new Node( tID + 5, tX + 0.0, 0.0, 1.0 ) );
+        tNodes.push( new Node( tID + 6, tX + 1.0, 0.0, 1.0 ) );
+        tNodes.push( new Node( tID + 7, tX + 1.0, 1.0, 1.0 ) );
+        tNodes.push( new Node( tID + 8, tX + 0.0, 1.0, 1.0 ) );
+    }
+
+    ElementFactory tFactory ;
+
+    Element * tHexes[ 2 ] ;
+    for ( uint k = 0; k < 2; ++k )
+    {
+        tHexes[ k ] = tFactory.create_element( ElementType::HEX8, k + 1 );
+        for ( uint i = 0; i < 8; ++i )
+        {
+            tHexes[ k ]->insert_node( tNodes( 8 * k + i ), i );
+        }
+        tHexes[ k ]->set_block_id( k + 1 );
+
+        Block * tBlock = new Block( k + 1, 1 );
+        tMesh->elements().push( tHexes[ k ] );
+        tBlock->insert_element( tHexes[ k ] );
+        tMesh->blocks().push( tBlock );
+    }
+
+    // the facet sits on the top of the second cube, whose block is not selected
+    const uint tTop = 5 ;
+
+    Element * tSurf = tFactory.create_element( ElementType::QUAD4, tFacetID );
+    Facet * tFacet = new Facet( tSurf );
+    tFacet->set_master( tHexes[ 1 ], tTop );
+    tFacet->set_sideset_id( 1 );
+
+    SideSet * tSideSet = new SideSet( 1, 1 );
+    tSideSet->insert_facet( tFacet );
+    tMesh->sidesets().push( tSideSet );
+
+    tMesh->finalize();
+
+    Vector< id_t > tBlocks( 1, 1 );
+    Vector< id_t > tSideSets( 1, 1 );
+
+    bool tThrown = false ;
+    try
+    {
+        tMesh->create_faces( false, tBlocks, tSideSets );
+    }
+    catch( const std::runtime_error & aError )
+    {
+        tThrown = true ;
+        const std::string tMessage( aError.what() );
+        EXPECT_NE( tMessage.find( "Sideset facet 500" ), std::string::npos )
+            << "message was: " << tMessage ;
+        EXPECT_NE( tMessage.find( "owned by no selected block" ), std::string::npos )
+            << "message was: " << tMessage ;
+    }
+    EXPECT_TRUE( tThrown ) << "expected create_faces to refuse the facet" ;
+
+    // the refusal comes before the surface element is given a face
+    EXPECT_FALSE( tSurf->has_faces() );
+    EXPECT_FALSE( tHexes[ 1 ]->has_faces() );
 }
