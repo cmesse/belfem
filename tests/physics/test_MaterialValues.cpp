@@ -805,3 +805,96 @@ TEST( MaterialValueDefects, DISABLED_YbcoRawLambdaIsFiniteBelowOneKelvin )
             << "ybco raw lambda at T = " << T << " K is " << tProbe.lambda_custom( T ) ;
     }
 }
+
+//------------------------------------------------------------------------------
+// thermal conductivity at room temperature against the data the fit cites.
+// Disabled until the reference values are confirmed: the numbers below were not
+// read from the cited tables. The materials are built at RRR 50, whose
+// residual term is a few percent of 1 / lambda at 300 K.
+// Enabled once, each case prints the model value, the reference and the
+// relative deviation, so the fit's position is visible without a debugger
+//------------------------------------------------------------------------------
+
+namespace
+{
+    // Touloukian et al., Thermophysical Properties of Matter, Vol. 1, the data
+    // set the nickel fit names, recommended value for pure nickel at 300 K
+    constexpr real gNickelLambda300K = 90.7 ;
+
+    // Hust and Lankford 1984, NBSIR 84-3007, the source the iron fit names,
+    // at 300 K
+    constexpr real gIronLambda300K = 83.2 ;
+
+    // the band the rows ask for
+    constexpr real gLambdaBand = 0.15 ;
+
+    void
+    expect_lambda_at_300K( const std::string & aLabel, const real aReference )
+    {
+        MaterialFactory tFactory ;
+        Material * tMaterial = tFactory.create_material( aLabel, 50.0, false ) ;
+
+        const real tModel = tMaterial->lambda( 300.0 ) ;
+        const real tDeviation = ( tModel - aReference ) / aReference ;
+
+        EXPECT_LT( std::abs( tDeviation ), gLambdaBand )
+            << aLabel << " lambda( 300 K ): model " << tModel << " W/(m K), reference "
+            << aReference << " W/(m K), deviation " << 100.0 * tDeviation << " %" ;
+
+        delete tMaterial ;
+    }
+}
+
+TEST( MaterialValueDefects, DISABLED_NickelLambdaAt300KMatchesTheReference )
+{
+    expect_lambda_at_300K( "nickel", gNickelLambda300K ) ;
+}
+
+TEST( MaterialValueDefects, DISABLED_IronLambdaAt300KMatchesTheReference )
+{
+    expect_lambda_at_300K( "iron", gIronLambda300K ) ;
+}
+
+//------------------------------------------------------------------------------
+// the reduced magnetization of nickel, which scales the magnetic resistivity
+//------------------------------------------------------------------------------
+
+namespace
+{
+    struct NickelProbe : public belfem::material::Nickel
+    {
+        using Nickel::Nickel ;
+        using Nickel::compute_mred ;
+    };
+}
+
+TEST( NickelMagnetization, ReducedMagnetizationMatchesCrangleGoodman )
+{
+    // the Bezier in Nickel::create_magnetization_curve is fitted to Crangle
+    // and Goodman 1971, 10.1098/rspa.1971.0044, with Tc = 631 K; the class
+    // records the check m( 600 K ) = 0.47 against the measured 0.45 to 0.50.
+    // Mutation: swap the two interior control ordinates and 600 K leaves the
+    // window
+    const NickelProbe tNickel( 50.0, false ) ;
+
+    const real tTc = tNickel.constant_property( MaterialProperty::Tcurie ) ;
+
+    EXPECT_DOUBLE_EQ( tNickel.compute_mred( 0.0 ), 1.0 ) ;
+    EXPECT_NEAR( tNickel.compute_mred( tTc ), 0.0, 1e-12 ) ;
+    EXPECT_EQ( tNickel.compute_mred( tTc + 1.0 ), 0.0 ) ;
+
+    // the measured band, and the fitted value the class records inside it
+    const real tAt600 = tNickel.compute_mred( 600.0 ) ;
+    EXPECT_GE( tAt600, 0.45 ) ;
+    EXPECT_LE( tAt600, 0.50 ) ;
+    EXPECT_NEAR( tAt600, 0.47, 0.005 ) ;
+
+    // monotone decreasing on a 10 K grid up to the Curie point
+    real tPrevious = tNickel.compute_mred( 0.0 ) ;
+    for ( real T = 10.0; T < tTc; T += 10.0 )
+    {
+        const real tValue = tNickel.compute_mred( T ) ;
+        EXPECT_LE( tValue, tPrevious ) << "T = " << T << " K" ;
+        tPrevious = tValue ;
+    }
+}
