@@ -159,6 +159,43 @@ Christian is reloading the session on Opus 5.5. State at handoff:
   the const members, and `mParams` is the eighth owned resource.
 - [ ] **Next:** slice 1 implementation (Opus), both jury rounds because it touches `src/`; then B6.
 
+## 3g. Overnight run 2026-09-22/23 (Opus 5.5, same approvals as Tier 1)
+
+- [x] **Slice 1:** DR-185 `25dbc53` (Kernel copy/move deleted; `test_OwnershipContracts.cpp` pins
+  four traits for Kernel, Solver, ElementMapper, ElectricalCircuit); T-05/N-20a `a32ad4e` (the
+  release lookup names the key; container guide, examples README, schema, ThinShellFactory comment).
+  Plan + code juries astra/grok. The FaceFactory comment (`cl_FaceFactory.cpp:565-569`, peer WIP)
+  still narrates the old bare text; with a `key128_t` key the new text says "unknown" — mesh batch.
+- [x] **B6:** T-22 + T-29 `85e32c8`, T-30 `505ddec`. T-29's measurement changed the plan: the
+  low-field bridge engages at all angles only from 76 K up on sp-ap → **DR-189** (working copy of the
+  register, not staged) + two `DISABLED_` pins. T-30 λ pins disabled: model −1.7 % (Ni vs 90.7) and
+  −1.8 % (Fe vs 83.2).
+- [x] **B3:** source half `0d6b726` (T-09 validation + deck through the setter; T-20
+  `set_max_iterations( int )`; input reference + schema), tests `fe52394` (T-17, T-18, T-41, T-42,
+  T-57, T-76, N-22, N-28, N-29 + the T-09/T-20 setter and PETSc-cap cases). The T-18 code jury found
+  a live decoder defect (an unknown MUMPS warning bit dropped next to a known one) — fixed in
+  `fe52394`, report-only callers. T-57's `multiply` NaN candidate is falsified on MKL (non-MKL
+  lane unmeasured). R-11 dropped (ruled).
+- [ ] **B5a:** Opus agent writing the fem contract rows; the T-15 precondition comment is in
+  `src/core/globals.hpp` (uncommitted, rides the B5a commit).
+- **Gates:** `make check` 17/17 in both trees (Armadillo `build/`, Blaze `cmake-build-debug/`, both
+  release) after B3's first pass; post-jury B3 fixes re-run in the Blaze tree (sparse 132 + MPI
+  14 at np 2/4).
+- **For the morning quiz:**
+  - DR-189: is the flat clamp below ~56 K on sp-ap acceptable (value error < 1 %, tangent kink),
+    or should J0 below its measured range be extrapolated? The bridge comment's "measurements
+    satisfy J0 >= jc( Bmin, theta )" is false there.
+  - T-30: which λ(300 K) references — Ni 90.7, Fe 83.2 (the backlog row) or 80.2 (commonly
+    quoted)? Neither was read from Touloukian / NBSIR 84-3007; the pins stay disabled until you say.
+  - O-B3-2: add a `set_metis_nodendp` setter (then N-22 and the sync test cover it), or accept the
+    gap?
+  - O-B3-4: duplicate column indices within one CSR row — file as a Tier 3 row (planner's advice)?
+  - DR-175 extension: `JcFunctionDatabase`'s constructor throws after allocating `mDatabase`, so
+    each refused table leaks (now exercised twice per `make check`). Widen DR-175 or new row?
+  - Register header: the `[W]` count says 14; the tree has 9 open `[W]` rows incl. DR-189
+    (`check_doc_claims.py` fails on it; the mismatch predates this run).
+  - The one-sentence input-reference edit for `relative tolerance` owes a Codex prose pass.
+
 ## 4. Incidents
 
 - **P1 (credit exhaustion, 2026-09-22 ~18:20).** Eight batch planners were launched in parallel;
