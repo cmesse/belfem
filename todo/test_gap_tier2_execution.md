@@ -50,6 +50,9 @@ line numbers that move.
   through the setter so there is one gate.
 - O-B6-1 (T-30) the λ(300 K) reference values for nickel and iron, with DOIs.
 - O-B6-2 (T-29) the C1 band at `mBmin` = 10 mT.
+- O-B5a-1 (T-15) guard `gRhoMax > gRhoMin` at runtime, or document it as a caller precondition
+  (the planner recommends documenting; `std::clamp` is UB on an inverted window).
+- O-B5a-2 (N-06) strike the `unfold_row` clause: the symbol does not exist in `src/`.
 - O3 (T-30) Ni/Fe λ(300 K) within 15 %: land `DISABLED_` until ruled.
 - O5 (T-53) logical size vs capacity after shrink.
 - O9 (T-06) `.bfm` foreign git hash: refuse or flag.
@@ -115,6 +118,29 @@ them. Its riskiest assumption is that `<StrumpackSparseSolver.hpp>` can be inclu
 `tests/sparse` at all; SuperLU's header is known to collide with both matrix backends
 (memory `project_superlu_header_conflicts`), and if STRUMPACK's does too, the T-17 block falls
 back to reading options off a constructed wrapper.
+
+## 4d. What B5a established (fem contracts) — 13 rows, one live fix, one phantom
+
+| row | label | note |
+|---|---|---|
+| T-15 | CONTRACT | `gRhoMin = 0`, `gRhoMax = 1e10` are set in one place and narrowed nowhere in `src/`, so the clamp is the identity on the row's window. Latent: `std::clamp` is UB on an inverted window and nothing enforces the ordering → ruling |
+| T-21 | PARTLY COVERED | `test_GhostSwitch.cpp:147-165` already pins tag-differs-on-eta; the `…,11` / `…,13`, swapped-pair and other-`input curves` cases are open |
+| T-31 | CONTRACT | the stride carries its own anti-aliasing rationale; both guards are debug-only, so the oracle is a sentinel round trip |
+| T-35 | **WRONG as written** | a non-convergent Newton does not return false — `cl_IF_ElementMapper.cpp:369` is `BELFEM_ERROR( tCount < 100, … )`, so it aborts or throws (verified). The rest of the row is a contract |
+| T-37 | CONTRACT, cheap | `IWG` has no pure virtuals, so the probe subclass is three lines |
+| T-46 (fem half) | MOSTLY COVERED | `test_BdfTimestepMethod.cpp` covers the history levels and the warm-start round trip; open is `reset_fields` restoring the pre-shift step, which needs a field-linked IWG. The "upcoming Δt" clause is a Controller property, out of this batch |
+| T-50 | CONTRACT ×2, one WRONG, **and the batch's only live fix** | `Solver`, `ElectricalCircuit` and `ElementMapper` already delete copy; **`Kernel` declares only a constructor and destructor while holding seven raw owning pointers** (verified: `cl_FEM_Kernel.hpp:104-112`), so it is implicitly copyable and a copy would double-free. Four-line header fix, compile-time, no consumer breaks since everything holds a `Kernel *`. `Controller::time()` already returns a const reference; the "Gram at h = 1e-4" clause is a red herring (that Gram is in-plane) |
+| T-59 | PARTLY COVERED | `test_FacetIntegrationPoints.cpp:150-205` already does the mapped-point identity over every slave orientation for the 3-D types and both PENTA TS types. Open precisely: QUAD4TS / QUAD9TS run with orientations OFF, there is no 2-D volume entry so the edge-facet-versus-1-D case is untested, and `populate( 0 )` → `auto_integration_order`. The QUARTIC gap is in `mesh::interpolation_order()`, i.e. row T-03 |
+| N-01 | CONTRACT | a layer is tagged `Buffer` iff its material lacks `rho`; `create_buffers` is private, so the test asserts the observable outcome |
+| N-04 | CONTRACT, all four clauses hold | Buffer shares the Air φ branch; BufferSymmetry / AntiSymmetry register; the thermal IWG accepts Buffer |
+| N-06 | CONTRACT + **phantom** | **`unfold_row` does not exist anywhere in `src/`** (verified: zero hits) → strike that clause. The self-containment invariant is real but unenforced: at `cl_FEM_Dof.cpp:133` `this` is not yet hanging, so a self-source passes the assert, and the assert is compiled out in release — the test must be a property walk over the built dof set |
+| ghost dof count | CONTRACT | the IWG sums master and slave per entity class; the existing test pins the count through a different function |
+| bn_angle identity | CONTRACT | public on the calculator; `acos(x) + acos(−x) = π` holds including the degenerate branch, where both sides return π/2 |
+
+**Cross-cutting:** `tests/fem/test_fem_main.cpp:22` sets throw-on-error unconditionally, so
+`BELFEM_ERROR` throws in that binary under release too — which makes the `#ifndef NDEBUG` guard
+in `test_BdfTimestepMethod.cpp:296` stale. The correct guard for an assert-oracle test is
+`#if BELFEM_ASSERTIONS_ACTIVE`, not `#ifndef NDEBUG`.
 
 ## 5. Audit trail
 
