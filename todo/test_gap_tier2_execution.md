@@ -53,6 +53,11 @@ line numbers that move.
 - O-B5a-1 (T-15) guard `gRhoMax > gRhoMin` at runtime, or document it as a caller precondition
   (the planner recommends documenting; `std::clamp` is UB on an inverted window).
 - O-B5a-2 (N-06) strike the `unfold_row` clause: the symbol does not exist in `src/`.
+- O-B5b-1 (DR-186) the commented-out recovery guards: restore, fix the predicate, or document the
+  exposure. The comment records neither the deck nor the predicate that fired.
+- O-B5b-2 (DR-187) the silent thermal deactivation: refuse by name, or log it where a user sees it.
+- O-B5b-3 (N-53) is a fixture worth building for TET10 orientations 2 and 3, when the only evidence
+  any nondefault orientation occurs is a single assertion of orientation 1?
 - O3 (T-30) Ni/Fe λ(300 K) within 15 %: land `DISABLED_` until ruled.
 - O5 (T-53) logical size vs capacity after shrink.
 - O9 (T-06) `.bfm` foreign git hash: refuse or flag.
@@ -141,6 +146,32 @@ back to reading options off a constructed wrapper.
 `BELFEM_ERROR` throws in that binary under release too — which makes the `#ifndef NDEBUG` guard
 in `test_BdfTimestepMethod.cpp:296` stale. The correct guard for an assert-oracle test is
 `#if BELFEM_ASSERTIONS_ACTIVE`, not `#ifndef NDEBUG`.
+
+## 4e. What B5b established (fem admission, circuit, reopened) — six rows refuted, two defects filed
+
+| row | label | note |
+|---|---|---|
+| N-07 | CONTRACT | DR-120 already fixed the code (validation before every cast); no test exists |
+| N-20 (a) | **WRONG**, + a live quality defect | a missing sideset already aborts in both builds; but in release the message is the bare "Key not found in map." — the same defect as row T-05, so the two share one fix |
+| N-20 (b) | COVERED for the circuit factory; CONTRACT for the untested Maxwell and thermal copies of the same guard | `grep expk examples/` finds nothing |
+| N-20 (c) | **WRONG** | `"critical temperature"` is already refused three ways |
+| N-21 (a) | PARTLY COVERED | the reader end is covered; the factory consumer half is Tier 3 |
+| N-21 (b) | CONTRACT | the controller always writes the slot, so the IWG constructor default cannot survive |
+| N-21 (c) | **WRONG** | conflates three slots: `eta` and `chi` allow zero (zero is the off state), while `k_reg` must be dimensioned and refuses zero |
+| N-25 | CONTRACT | `set_currents` already leaves the surplus abstract dof free; the test pins the August ruling |
+| N-26 (i) | **LIVE** (quality) | an unknown layer material label is stored unchecked and aborts later inside the material map, naming neither the stack nor the layer |
+| N-26 (ii) | **WRONG — and worse than the row** | both guards are COMMENTED OUT (`cl_MaxwellFactory.cpp:2891-2917`, "commenting these errors because they thow on Lawrencium without cause"), so nothing rejects either configuration today → **DR-186** |
+| N-27 | **WRONG — and worse than the row** | an unsupported thermal group is silently DEACTIVATED, not rejected (`cl_ThermalFactory.cpp:204-207`, `:224-227`) — the gantry null-jump shape → **DR-187** |
+| N-30 | **WRONG** | per-field counters since DR-96; the starvation text in the header is past tense |
+| N-49 | CONTRACT | `load_state` already restores the current; no test names the class |
+| N-50 | CONTRACT | HEX8TS twin at two thicknesses |
+| N-51 | CONTRACT | there is no sign swap in the tree; the battery is already flip-aware and its two callers simply never flip |
+| N-53 | **Tier 3** | the two-TET10 fixture cannot feed `EF_TestVolume` (wrong executable, mesh-versus-fem element, and it owns its mesh) and reaches orientation 1 only; it names the fixture it would need |
+
+**No new refusal fires on a shipped deck.** The two fixes offered replace an anonymous abort with a
+named one: same decks abort, better message. The two changes that WOULD move an acceptance set —
+re-enabling the commented guards, and turning the thermal silence into an error — are carried as
+rulings, not fixes.
 
 ## 5. Audit trail
 
