@@ -2405,8 +2405,8 @@ namespace belfem
 
                 // a station pair that is not a facet edge of the shell means
                 // the curve walk and the edge map disagree. Report the station
-                // instead of letting Map::operator() abort with a bare
-                // "Key not found in map"
+                // instead of letting Map::operator() abort with "Key unknown
+                // not found in map.": key_t has no key formatter
                 BELFEM_ERROR( aEdgeMap.key_exists( tKey ),
                     "side curve %lu, station %lu of %lu: node pair is not an edge of the thin shell\n"
                     "    node A: id %lu original %lu index %lu at ( %g, %g, %g )\n"

@@ -237,13 +237,13 @@ std::unordered_map<Key, Value>& raw = ages.map_data();
 **Two operators with different semantics:**
 
 - **`operator[](key)`**: Insert-or-access, creates entry if missing (default-constructed)
-- **`operator()(key)`**: Checked access, asserts if key not found
+- **`operator()(key)`**: Checked access, rejects a missing key in every build
 
 ```cpp
 Map<string, int> m;
 m["new_key"] = 5;      // OK: creates entry
 int val = m("new_key"); // OK: key exists
-int bad = m("missing"); // ERROR: asserts in debug ( names the key ); BELFEM_ERROR in release ( generic "Key not found in map." )
+int bad = m("missing"); // ERROR in every build: "Key missing not found in map."
 ```
 
 #### When to Use

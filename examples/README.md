@@ -138,8 +138,9 @@ If you regenerate a mesh for a deck that declares `periodic { source : … ; tar
 vertices from **point elements** (gmsh element type 15), taking the id from the entity or
 geometry tag. gmsh writes point elements only for points in a physical group, or when saving
 all elements — so a mesh produced without them will abort in `MaxwellFactory::create_periodic`
-with *"Key not found in map"* (in a release build `BELFEM_ASSERT` is compiled out, so the
-readable "invalid vertex id" message in `Mesh::vertex` never appears). This is a property of
+with *"Key <id> not found in map."*, where `<id>` is the missing vertex id. In a release
+build `BELFEM_ASSERT` is compiled out, so the "invalid vertex id" message in `Mesh::vertex` never
+appears. This is a property of
 how the mesh was written, not of the format version.
 
 ### Do not write a `bearing`

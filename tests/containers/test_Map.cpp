@@ -14,6 +14,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <stdexcept>
 #include <string>
 
 #include "typedefs.hpp"
@@ -342,47 +343,108 @@ TYPED_TEST( Map, Iteration )
 }
 
 // =============================================================================
-// §5.2  Shared Tests  [debug]
+// §5.2  Shared Tests  [release and debug]
 // =============================================================================
 //
-// operator() uses BELFEM_ASSERT in debug (throws std::runtime_error)
-// and BELFEM_ERROR in release (aborts).
+// operator() checks with BELFEM_ERROR in every build, and the message names
+// the key. The test main sets throw_on_error, so the refusal is a
+// std::runtime_error whose what() carries the formatted text. Both the mutable
+// and the const overload are exercised: they are separate implementations.
 
-#ifndef NDEBUG
-
-TEST( MapDebug, LookupMissingKeyThrows_StringInt )
+namespace
 {
-    belfem::Map< belfem::string, int > tMap;
-    tMap[ "exists" ] = 42;
-
-    EXPECT_THROW( tMap( "nonexistent" ), std::runtime_error );
+    // runs aCall and requires a refusal whose message is exactly aExpected
+    template< typename F >
+    void
+    expect_lookup_refusal( F && aCall, const std::string & aExpected )
+    {
+        bool tThrown = false ;
+        try
+        {
+            aCall();
+        }
+        catch( const std::runtime_error & aError )
+        {
+            tThrown = true ;
+            EXPECT_EQ( std::string( aError.what() ), aExpected );
+        }
+        EXPECT_TRUE( tThrown ) << "expected the refusal \"" << aExpected << "\"";
+    }
 }
 
-TEST( MapDebug, LookupMissingKeyThrows_IndexReal )
+TEST( MapLookup, MissingKeyNamesTheKey_StringInt )
+{
+    // Mutation: restore the bare release text and this goes red
+    belfem::Map< belfem::string, int > tMap;
+    tMap[ "exists" ] = 42;
+    const belfem::Map< belfem::string, int > & tConst = tMap ;
+
+    expect_lookup_refusal( [ & ]() { tMap( "nonexistent" ); },
+                           "Key nonexistent not found in map." );
+    expect_lookup_refusal( [ & ]() { tConst( "nonexistent" ); },
+                           "Key nonexistent not found in map." );
+}
+
+TEST( MapLookup, MissingKeyNamesTheKey_IndexReal )
 {
     belfem::Map< belfem::index_t, belfem::real > tMap;
     tMap[ 1 ] = 3.14;
+    const belfem::Map< belfem::index_t, belfem::real > & tConst = tMap ;
 
-    EXPECT_THROW( tMap( 999u ), std::runtime_error );
+    expect_lookup_refusal( [ & ]() { tMap( 999u ); },
+                           "Key 999 not found in map." );
+    expect_lookup_refusal( [ & ]() { tConst( 999u ); },
+                           "Key 999 not found in map." );
 }
 
-TEST( OrderedMapDebug, LookupMissingKeyThrows_StringInt )
+TEST( OrderedMapLookup, MissingKeyNamesTheKey_StringInt )
 {
     belfem::OrderedMap< belfem::string, int > tMap;
     tMap[ "exists" ] = 42;
+    const belfem::OrderedMap< belfem::string, int > & tConst = tMap ;
 
-    EXPECT_THROW( tMap( "nonexistent" ), std::runtime_error );
+    expect_lookup_refusal( [ & ]() { tMap( "nonexistent" ); },
+                           "Key nonexistent not found in map." );
+    expect_lookup_refusal( [ & ]() { tConst( "nonexistent" ); },
+                           "Key nonexistent not found in map." );
 }
 
-TEST( OrderedMapDebug, LookupMissingKeyThrows_IndexReal )
+TEST( OrderedMapLookup, MissingKeyNamesTheKey_IndexReal )
 {
     belfem::OrderedMap< belfem::index_t, belfem::real > tMap;
     tMap[ 1 ] = 3.14;
+    const belfem::OrderedMap< belfem::index_t, belfem::real > & tConst = tMap ;
 
-    EXPECT_THROW( tMap( 999u ), std::runtime_error );
+    expect_lookup_refusal( [ & ]() { tMap( 999u ); },
+                           "Key 999 not found in map." );
+    expect_lookup_refusal( [ & ]() { tConst( 999u ); },
+                           "Key 999 not found in map." );
 }
 
-#endif // NDEBUG
+TEST( MapLookup, KeyTypeWithoutAFormatterSaysUnknown )
+{
+    // KeyToString is specialized for strings and the int, unsigned int and
+    // long unsigned int keys only. Any other key type, such as the 64-bit
+    // and 128-bit facet keys, is reported as "unknown": the lookup still
+    // refuses, it just cannot name the key
+    belfem::Map< long long int, int > tMap;
+    tMap[ 1 ] = 1;
+    const belfem::Map< long long int, int > & tConst = tMap ;
+
+    expect_lookup_refusal( [ & ]() { tMap( 7 ); },
+                           "Key unknown not found in map." );
+    expect_lookup_refusal( [ & ]() { tConst( 7 ); },
+                           "Key unknown not found in map." );
+
+    belfem::OrderedMap< long long int, int > tOrdered;
+    tOrdered[ 1 ] = 1;
+    const belfem::OrderedMap< long long int, int > & tOrderedConst = tOrdered ;
+
+    expect_lookup_refusal( [ & ]() { tOrdered( 7 ); },
+                           "Key unknown not found in map." );
+    expect_lookup_refusal( [ & ]() { tOrderedConst( 7 ); },
+                           "Key unknown not found in map." );
+}
 
 // =============================================================================
 // §5.1 supplement: Map-only tests  [semantic]

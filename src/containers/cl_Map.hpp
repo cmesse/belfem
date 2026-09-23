@@ -228,15 +228,9 @@ namespace belfem
         {
             auto tIterator = mMap.find( aKey );
 
-#if !defined( NDEBUG ) || defined( DEBUG )
-            BELFEM_ASSERT( tIterator != mMap.end(),
-                        "Key %s not found in map.",
-                        map::KeyToString( aKey ).c_str() );
-
-#else
             BELFEM_ERROR( tIterator != mMap.end(),
-                       "Key not found in map." );
-#endif
+                          "Key %s not found in map.",
+                          map::KeyToString( aKey ).c_str() );
 
             return tIterator->second;
         }
@@ -248,16 +242,9 @@ namespace belfem
         {
             auto tIterator = mMap.find( aKey );
 
-#if !defined( NDEBUG ) || defined( DEBUG )
-
-            BELFEM_ASSERT( tIterator != mMap.end(),
-                        "Key %s not found in map.",
-                        map::KeyToString( aKey ).c_str() );
-
-#else
             BELFEM_ERROR( tIterator != mMap.end(),
-                       "Key not found in map." );
-#endif
+                          "Key %s not found in map.",
+                          map::KeyToString( aKey ).c_str() );
 
             return tIterator->second;
         }

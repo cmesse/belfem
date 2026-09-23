@@ -2054,8 +2054,8 @@ audit_todo:
           The real corc mesh carries 10 type-15 point elements; after
           `gmsh v22.msh -save -format msh41` there are no dim-0 element blocks
           at all. BELFEM builds its vertices from those point elements, and a
-          missing vertex surfaces as a singular matrix or a bare
-          "Key not found in map". Generating FRESH from `.geo` at 4.1 keeps
+          missing vertex surfaces either as a singular matrix or, in a
+          release build, as "Key <id> not found in map.". Generating FRESH from `.geo` at 4.1 keeps
           them (helix: 132), so this is a conversion hazard only — do not
           round-trip a BELFEM mesh through a format change.
       note: >
