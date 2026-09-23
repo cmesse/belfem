@@ -23,6 +23,7 @@ set( SOURCES
         test_SplineLookupTable.cpp
         test_Database.cpp
         test_JcDatabaseTable.cpp
+        test_CriticalTemperature.cpp
         )
 
 set( LIBLIST

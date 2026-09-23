@@ -37,6 +37,9 @@ set( SOURCES
         test_DofSelfContainment.cpp
         test_QoldTable.cpp
         test_IntegrationAuto.cpp
+        test_DeckIntegers.cpp
+        test_PenaltyUnits.cpp
+        test_Hex8FlipEdges.cpp
         )
 
 set( LIBLIST
@@ -56,6 +59,10 @@ if( USE_MAXWELL )
     list( APPEND SOURCES test_InterfaceOrientation.cpp )
     list( APPEND SOURCES test_SideSetRebuild.cpp )
     list( APPEND SOURCES test_ThinShellSelection.cpp )
+    list( APPEND SOURCES test_AdmissionRefusals.cpp )
+    list( APPEND SOURCES test_IwgPenaltyDefaults.cpp )
+    list( APPEND SOURCES test_FreeCutCurrents.cpp )
+    list( APPEND SOURCES test_Hex8TsVolume.cpp )
     list( APPEND LIBLIST maxwell )
 endif()
 
