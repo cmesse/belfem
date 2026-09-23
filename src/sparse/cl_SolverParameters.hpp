@@ -259,6 +259,11 @@ namespace belfem
         uint
         max_iterations() const ;
 
+        //! validates > 0 — the single check for the deck key as well. Takes
+        //! int so that a negative value is refused rather than wrapped
+        void
+        set_max_iterations( const int aMaxIterations );
+
         //! validates > 0 and finite — the single check for the deck
         //! parser and programmatic callers alike
         void

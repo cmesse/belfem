@@ -65,8 +65,9 @@ namespace belfem
         }
         if ( aInput->key_exists( "relative tolerance" ) )
         {
-            mRelativeTolerance = aInput->get_real( "relative tolerance" );
-            mHaveRelativeTolerance = true ;
+            // one validation path: the setter checks > 0 and finite
+            this->set_relative_tolerance(
+                aInput->get_real( "relative tolerance" ) );
         }
         if ( aInput->key_exists( "absolute tolerance" ) )
         {
@@ -108,13 +109,9 @@ namespace belfem
         }
         if ( aInput->key_exists( "max iterations" ) )
         {
-            // get_int() rounds a real: validate BEFORE the uint store,
-            // where a negative value would wrap to a huge budget
-            int tMaxIter = aInput->get_int( "max iterations" );
-            BELFEM_ERROR( tMaxIter > 0,
-                "max iterations in a linear solver section must be positive, but is %i",
-                tMaxIter );
-            mMaxNumIterations = ( uint ) tMaxIter ;
+            // one validation path: the setter checks > 0 on the int,
+            // before the uint store where a negative value would wrap
+            this->set_max_iterations( aInput->get_int( "max iterations" ) );
         }
     }
 
@@ -191,6 +188,9 @@ namespace belfem
     void
     SolverParameters::set_relative_tolerance( const real aEpsilon )
     {
+        BELFEM_ERROR( std::isfinite( aEpsilon ) && aEpsilon > 0.0,
+            "relative tolerance must be positive and finite, but is %g",
+            ( double ) aEpsilon );
         mRelativeTolerance = aEpsilon ;
         mHaveRelativeTolerance = true ;
     }
@@ -282,6 +282,15 @@ namespace belfem
     SolverParameters::max_iterations() const
     {
         return mMaxNumIterations ;
+    }
+
+    void
+    SolverParameters::set_max_iterations( const int aMaxIterations )
+    {
+        BELFEM_ERROR( aMaxIterations > 0,
+            "max iterations in a linear solver section must be positive, but is %i",
+            aMaxIterations );
+        mMaxNumIterations = ( uint ) aMaxIterations ;
     }
 
     real

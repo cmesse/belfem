@@ -29,6 +29,7 @@ set( SOURCES
         test_BlockRebuild.cpp
         test_Tmatrix.cpp
         test_OwnershipContracts.cpp
+        test_SolverParametersDeck.cpp
         )
 
 set( LIBLIST

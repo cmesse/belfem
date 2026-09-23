@@ -464,6 +464,7 @@ sections:
           relative tolerance:
             type: real
             default: 1.0e-10
+            constraint: "> 0 and finite, rejected at setup otherwise"
             anchor: '"relative tolerance"'
             note: >
               PETSc KSP rtol AND STRUMPACK outer-solve rel_tol, both
@@ -528,7 +529,7 @@ sections:
               On small right-hand sides a purely relative pairing leaves the
               library's absolute floor sitting at the nonlinear target and
               Newton converges only by overshoot (DR-89). The have-flag and
-              value ride synchronize() (12 uints + 3 reals).
+              value ride synchronize() (13 integers + 3 reals).
           max iterations:
             type: int
             constraint: "> 0, rejected at setup otherwise"
