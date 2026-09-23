@@ -10,12 +10,10 @@ practice → document direction.
 **AIs involved:** Claude Opus 5 (plan, verification, measurements). Round 1: Grok `grok-4.7`/high
 blind, 11 findings; **Codex produced no audit** (two usage-limit failures). Round 2: Codex
 `gpt-5.6-terra`/high and Grok `grok-4.7`/high, both blind, on a fresh slug — 16 findings.
-**Status:** **v7 committed** 2026-09-23 — D-c39..D-c42 fixed: the §9.1 section is bounded by unfenced
-headings (fences resolved over the whole file), a one-pass fence resolver, and `_lines` splitting on
-CommonMark line endings. `--self-test` 88/88, 57/57 mutants killed on the first run; Codex separately
-confirmed the resolver on 1,111,111 documents. Round 7 found one shared case (D-c43, not a regression —
-v6 fails it identically) and one test weakness (D-c44). Chain: v7, v6 `fb1cc13`, v5 `42b5e42`, v4
-`e295ce8`, v3 `cff668b`, v2 `fb74ed5`.
+**Status:** **v8 committed** 2026-09-23 — D-c43 (the §9.1 heading must be unique outside fences or the
+run fails closed; matched exactly so `### 9.10` does not count) and D-c44 fixed. `--self-test` 90/90,
+59/59 mutants killed on the first run. Round 8 found no regression; D-c45..D-c47 filed, all minor.
+Chain: v8, v7 `d74a8ab`, v6 `fb1cc13`, v5 `42b5e42`, v4 `e295ce8`, v3 `cff668b`, v2 `fb74ed5`.
 
 > **Overnight run rules (Christian, 2026-09-22, "make an overnight run out of this"):**
 > - hard cap **v8** — at most three jury rounds (v6, v7, v8), each both seats at `xhigh`;
@@ -423,14 +421,30 @@ Both seats at `xhigh`, blind. Thread: `tmp/ai_exchange/review_practice_drift_v7r
 in the diff refuted; Codex confirmed the one-pass resolver against the re-scan definition on 1,111,111
 documents. v7 committed.
 
-- [ ] **D-c43 (two raisers, shared with v6 — not a regression)** — an *unclosed* fence placed before a
+- [x] **D-c43 (two raisers, shared with v6 — not a regression)** — v8: the depth heading must occur
+      exactly once outside fences, or the run fails closed (the existing malformed-table ruling), and it
+      is matched exactly so `### 9.10` does not count. Narrower than either option below. Original finding: an *unclosed* fence placed before a
       forged `### 9.1` heading: whole-file demotion leaves the forged heading unfenced, the span starts
       there, the slice drops the opener, and `_table_rows` adopts the forged table — executed on v6 and
       v7 alike. Fix per Codex: keep source-indexed fence state across the slice, or resolve the anchor
       with a strict CommonMark map in which an unclosed fence runs to EOF and extraction fails closed.
       Fixture: an unclosed opener immediately before a forged section, a real section after it.
-- [ ] **D-c44** — the `unclosed_example` fixture accepts any `ExtractionError`, so an anchor miss or an
+- [x] **D-c44** — v8. the `unclosed_example` fixture accepts any `ExtractionError`, so an anchor miss or an
       empty table would also pass it. Assert the specific failure.
+
+### 4.8 Code-jury round 8 (narrow, on the v7→v8 diff) — open
+
+Both seats at `xhigh`, blind. Thread: `tmp/ai_exchange/review_practice_drift_v8r.md`. No functional claim
+refuted, no regression (all executed or traced against v7). One Grok claim refuted: the span end does not
+match `#### Note`. v8 committed.
+
+- [ ] **D-c45 (two raisers, not a regression)** — `DEPTH_HEADING` uses `\s`, which accepts a form feed
+      after `### 9.1` where the file's own rule is spaces and tabs. Use `(?:[ \t]|$)`; fixture beside
+      the `### 9.10` one. v7's `startswith` matched this and `### 9.10`, so v8 is already narrower.
+- [ ] **D-c46 (shared with v7)** — with exactly one exposed `### 9.1`, an unclosed opener just above it
+      is outside the slice, and `_table_rows` reads the first `|` block after the heading. Only the
+      two-candidate shape fails closed.
+- [ ] **D-c47** — the duplicate-anchor error reports a count, not the line numbers. Cosmetic.
 
 ## 5. Open Design Questions
 

@@ -299,3 +299,18 @@ re-scan definition on **1,111,111** documents without a mismatch. Both seats rai
 an unclosed fence before a forged `### 9.1` makes the table reader adopt the forged table — and it
 was executed on v6 and v7: **identical, so not a regression**; v7 additionally fixes the closed-fence
 variant that v6 got wrong. Filed as D-c43 with one test weakness, D-c44. v7 committed.
+
+## v8 (2026-09-23)
+
+D-c43 and D-c44. For the forged-anchor case both seats raised in round 7, v8 took neither suggested
+fix: the §9.1 heading must occur exactly once outside fences, or the run fails closed — an application
+of Christian's ruling that a malformed table fails closed, not new policy. In the reported case the
+stray opener is demoted, the forged and the real heading are both unfenced, and the run stops with
+"appears 2 times" instead of picking one. Uniqueness needed the heading matched exactly: the old
+`startswith("### 9.1")` would also have counted a future `### 9.10`. The unclosed-example fixture now
+passes only on the empty-table failure it is about. 90/90, 59/59 on the first run, live identical to v7.
+
+The narrow jury refuted no functional claim and found no regression. Both seats noted the new anchor
+pattern's `\s` accepts a form feed where the file's rule is spaces and tabs — confirmed, but v7's prefix
+match accepted that and `### 9.10` besides, so v8 is strictly narrower. One Grok claim was refuted by
+execution: the section-end test does not match `#### Note`. Filed D-c45..D-c47, all minor.

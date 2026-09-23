@@ -74,6 +74,8 @@ DEVLOG_DATE = re.compile(r"dl(\d{8})")
 TEMPLATE_ANCHOR = "### Required Header"
 TEMPLATE_SUCCESSOR = "### When to Write a Devlog"
 DEPTH_ANCHOR = "### 9.1"
+# The heading itself, not a prefix of it: `### 9.10` must not count as the depth section.
+DEPTH_HEADING = re.compile(r"^### 9\.1(?:\s|$)")
 EXCEPTION_ANCHOR = "**Allowlisted but named by no row (by design):**"
 
 WRAPPERS = {"codex": (".claude/scripts/ask_codex.sh", "CODEX_MODEL"),
@@ -242,14 +244,20 @@ def _depth_span(proto_path):
     """The depth-selection section, from its heading to the next heading, both outside fences.
 
     Fences are resolved over the whole protocol file, so a heading inside a fenced example is
-    text and neither starts nor ends the section.
+    text and neither starts nor ends the section.  The heading must occur exactly once outside
+    fences: a stray unclosed opener is read as text, which can expose a quoted copy of the heading,
+    and with two candidates the protocol is ambiguous, so the run fails closed rather than pick
+    one.
     """
     lines = _lines(proto_path)
     fenced = _fenced_flags(lines)
-    try:
-        start = next(i for i, l in enumerate(lines) if not fenced[i] and l.startswith(DEPTH_ANCHOR))
-    except StopIteration:
+    starts = [i for i, l in enumerate(lines) if not fenced[i] and DEPTH_HEADING.match(l)]
+    if not starts:
         raise ExtractionError(f"anchor not found: {DEPTH_ANCHOR}")
+    if len(starts) > 1:
+        raise ExtractionError(f"depth anchor {DEPTH_ANCHOR!r} appears {len(starts)} times outside "
+                              f"fenced blocks")
+    start = starts[0]
     end = next((i for i in range(start + 1, len(lines))
                 if not fenced[i] and (lines[i].startswith("### ") or lines[i].startswith("## "))),
                len(lines))
@@ -1141,14 +1149,34 @@ def self_test():
             check("a fenced copy of the section heading is not the section", not f)
         except ExtractionError as exc:
             check(f"a fenced copy of the section heading is not the section ({exc})", False)
+        forged = ("```\n### 9.1 Depth Selection\n| Subject | Codex | Grok |\n|---|---|---|\n"
+                  "| X | `gpt-9.9-example`, `high` | `grok-4.7`, `high` |\n\n")
+        root = _tree(base, "forged_anchor")
+        (root / "doc/ai_collaboration_protocol.md").write_text(_PROTO.format(exceptions="", row=_ROW_GROK)
+            .replace("### 9.1 Depth Selection", forged + "### 9.1 Depth Selection", 1))
+        try:
+            run_live(root, 40, 0, 25)
+            check("an unclosed fence before a forged section heading fails closed", False)
+        except ExtractionError as exc:
+            check("an unclosed fence before a forged section heading fails closed",
+                  "appears 2 times" in str(exc))
+        root = _tree(base, "later_subsection")
+        (root / "doc/ai_collaboration_protocol.md").write_text(_PROTO.format(exceptions="", row=_ROW_GROK)
+            .replace("### Workflow", "### 9.10 A later subsection\n\n### Workflow"))
+        try:
+            f = run_live(root, 40, 0, 25)[0]
+            check("a ### 9.10 heading is not a second depth section", not f)
+        except ExtractionError as exc:
+            check(f"a ### 9.10 heading is not a second depth section ({exc})", False)
         unclosed_example = ("```markdown\n| Subject | Codex | Grok |\n|---|---|---|\n"
                             "| X | `gpt-9.9-example`, `high` | `grok-4.7`, `high` |\n\n")
         try:
             f = run_live(_tree(base, "unclosed_example", exceptions=unclosed_example), 40, 0, 25)[0]
             check("an unclosed fenced example table is never adopted as the depth table",
                   not any(s == "gpt-9.9-example" for _, _, s, _ in f))
-        except ExtractionError:
-            check("an unclosed fenced example table is never adopted as the depth table", True)
+        except ExtractionError as exc:
+            check("an unclosed fenced example table is never adopted as the depth table "
+                  "(fails closed on an empty table)", "depth table rows" in str(exc))
 
         print("exit policy:")
         drifty = _tree(base, "exit_drift", extra_devlogs=[("dl20260102_unindexed.md", plain)])
