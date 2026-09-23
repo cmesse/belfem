@@ -15,6 +15,7 @@
 #endif
 #include <cmath>
 #include <set>
+#include <limits>
 
 #include "typedefs.hpp"
 #include "cl_Matrix.hpp"
@@ -1829,4 +1830,114 @@ TEST( SpMatrix, CscMultiplyMatchesReferenceAcrossThreadCounts )
                 << "threads " << tThreads << " row " << i ;
         }
     }
+}
+
+// =============================================================================
+// §8  Graph index check and NaN-prefilled products  [semantic]
+// =============================================================================
+
+#ifdef DEBUG
+namespace
+{
+    // a graph of isolated vertices carrying the given indices; the caller
+    // owns the vertices and releases them with delete_graph
+    belfem::Graph
+    make_isolated_graph( const belfem::Cell< belfem::index_t > & aIndices )
+    {
+        belfem::Graph tGraph( aIndices.size(), nullptr );
+        for( belfem::index_t k = 0; k < aIndices.size(); ++k )
+        {
+            tGraph( k ) = new belfem::graph::Vertex();
+            tGraph( k )->set_id( k + 1 );
+            tGraph( k )->set_index( aIndices( k ) );
+            tGraph( k )->init_vertex_container();
+        }
+        return tGraph;
+    }
+
+    void
+    delete_graph( belfem::Graph & aGraph )
+    {
+        for( belfem::graph::Vertex * tVertex : aGraph )
+        {
+            delete tVertex;
+        }
+        aGraph.clear();
+    }
+}
+#endif
+
+// check_graph runs from the Graph constructor under DEBUG only, which is a
+// narrower gate than BELFEM_ASSERTIONS_ACTIVE
+TEST( SpMatrixGraph, DuplicateVertexIndexThrows )
+{
+#ifdef DEBUG
+    belfem::Graph tDuplicate = make_isolated_graph( { 0, 1, 1 } );
+    EXPECT_THROW( belfem::SpMatrix( tDuplicate, belfem::SpMatrixType::CSR ), std::runtime_error );
+    delete_graph( tDuplicate );
+
+    belfem::Graph tDistinct = make_isolated_graph( { 0, 1, 2 } );
+    EXPECT_NO_THROW( belfem::SpMatrix( tDistinct, belfem::SpMatrixType::CSR ) );
+    delete_graph( tDistinct );
+#else
+    GTEST_SKIP() << "SpMatrix::check_graph is compiled only under DEBUG";
+#endif
+}
+
+namespace
+{
+    // y := A x into a y whose every entry holds aFill before the call. The
+    // tridiagonal is symmetric, so op( A ) x is A x for either flag
+    void
+    expect_product_overwrites(
+            const belfem::real aFill,
+            const bool aSimpleOverload,
+            const belfem::SpMatrixType aType = belfem::SpMatrixType::CSR,
+            const bool aTransposed = false )
+    {
+        belfem::Matrix< belfem::real > tDense = make_tridiag4();
+        belfem::SpMatrix tM( tDense, aType );
+        tM.set_indexing_base( belfem::SpMatrixIndexingBase::Cpp );
+
+        belfem::Vector< belfem::real > tX = { 1.0, 2.0, 3.0, 4.0 };
+        belfem::Vector< belfem::real > tAx( tDense * tX );
+        belfem::Vector< belfem::real > tY( 4, aFill );
+
+        if( aSimpleOverload )
+        {
+            tM.multiply( tX, tY );
+        }
+        else
+        {
+            tM.multiply( tX, tY, 1.0, 0.0, aTransposed );
+        }
+
+        for( belfem::uint i = 0; i < 4; ++i )
+        {
+            EXPECT_TRUE( std::isfinite( tY( i ) ) ) << "row " << i << " is " << tY( i );
+            EXPECT_NEAR( tY( i ), tAx( i ), tEps ) << "row " << i;
+        }
+    }
+}
+
+// beta = 0 means y is not read: y := alpha op( A ) x must not inherit a NaN
+// or Inf that y held before the call
+TEST( SpMatrixMultiply, AlphaBetaOverwritesANanPrefilledY )
+{
+    for( const belfem::SpMatrixType tType : { belfem::SpMatrixType::CSR, belfem::SpMatrixType::CSC } )
+    {
+        for( const bool tTransposed : { false, true } )
+        {
+            SCOPED_TRACE( std::string( tType == belfem::SpMatrixType::CSR ? "CSR" : "CSC" )
+                          + ( tTransposed ? " transposed" : "" ) );
+            expect_product_overwrites( std::numeric_limits< belfem::real >::quiet_NaN(), false, tType, tTransposed );
+            expect_product_overwrites( std::numeric_limits< belfem::real >::infinity(), false, tType, tTransposed );
+        }
+    }
+}
+
+TEST( SpMatrixMultiply, SimpleOverloadOverwritesANanPrefilledY )
+{
+    expect_product_overwrites( std::numeric_limits< belfem::real >::quiet_NaN(), true );
+    expect_product_overwrites( std::numeric_limits< belfem::real >::infinity(), true );
 }

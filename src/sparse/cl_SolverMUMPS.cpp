@@ -1818,9 +1818,13 @@ namespace belfem
                 }
             }
 
-            if( aWarnings.size() == 0 )
+            // bits this decoder does not know are reported whether or not a
+            // known bit came with them
+            const int_t tUnknown = tFlags & ~static_cast< int_t >( 31 );
+            if( tUnknown != 0 )
             {
-                aWarnings.push( sprint( "Unknown MUMPS warning ( INFO(1)=%i ).", tFlags ) );
+                aWarnings.push( sprint( "Unknown MUMPS warning bits %i ( INFO(1)=%i ).",
+                                        ( int ) tUnknown, ( int ) tFlags ) );
             }
         }
 

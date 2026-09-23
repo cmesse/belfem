@@ -20,6 +20,9 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
+#include <cstdio>
+
 #include "typedefs.hpp"
 #include "cl_Communicator.hpp"
 #include "cl_Logger.hpp"
@@ -497,3 +500,146 @@ TEST( ParallelND, PetscSolvesWithPtscotchOrdering )
 #endif
 
 #endif // BELFEM_PETSC
+
+// =============================================================================
+// §5  SolverParameters reach every rank
+// =============================================================================
+
+// rank 0 states every member that has a setter away from its default ( the
+// METIS NodeNDP flag has none and stays at its default ), the other ranks keep
+// the defaults, and synchronize() must leave every rank with rank 0's record,
+// have-flags included. The payload is positional, so a member dropped or
+// shifted in pack or unpack desyncs the members behind it
+TEST( ParallelND, SolverParametersSynchronizeAcrossRanks )
+{
+    belfem::SolverParameters tParams( belfem::SolverType::PETSc );
+
+    if( belfem::comm_rank() == 0 )
+    {
+        tParams.set_distributed_matrix_type( belfem::DistributedMatrixType::CSC );
+        tParams.set_preconditioner( belfem::Preconditioner::GAMG );
+        tParams.set_krylov_method( belfem::KrylovMethod::GMRES );
+        tParams.set_reordering_method( belfem::ReorderingMethod::NATURAL );
+        tParams.set_compression_method( belfem::CompressionMethod::BLR );
+        tParams.set_use_initial_guess( true );
+        tParams.set_matrix_matching( false );
+        tParams.set_relative_tolerance( 1e-6 );
+        tParams.set_compression_cutoff( 1e-13 );
+        tParams.set_absolute_tolerance( 1e-12 );
+        tParams.set_memory_budget( 4000 );
+        tParams.set_max_iterations( 7 );
+    }
+
+    tParams.synchronize();
+
+    EXPECT_EQ( tParams.distributed_matrix_type(), belfem::DistributedMatrixType::CSC );
+    EXPECT_EQ( tParams.preconditioner(), belfem::Preconditioner::GAMG );
+    EXPECT_EQ( tParams.krylov_method(), belfem::KrylovMethod::GMRES );
+    EXPECT_EQ( tParams.reordering_method(), belfem::ReorderingMethod::NATURAL );
+    EXPECT_EQ( tParams.compression_method(), belfem::CompressionMethod::BLR );
+    EXPECT_TRUE( tParams.use_initial_guess() );
+    EXPECT_FALSE( tParams.use_matrix_matching() );
+    EXPECT_TRUE( tParams.have_relative_tolerance() );
+    EXPECT_EQ( tParams.relative_tolerance(), 1e-6 );
+    EXPECT_TRUE( tParams.have_compression_cutoff() );
+    EXPECT_EQ( tParams.compression_cutoff(), 1e-13 );
+    EXPECT_TRUE( tParams.have_absolute_tolerance() );
+    EXPECT_EQ( tParams.absolute_tolerance(), 1e-12 );
+    EXPECT_TRUE( tParams.have_memory_budget() );
+    EXPECT_EQ( tParams.memory_budget(), 4000u );
+    EXPECT_EQ( tParams.max_iterations(), 7u );
+}
+
+// =============================================================================
+// §6  STRUMPACK honors the caller's initial iterate in parallel
+// =============================================================================
+
+#ifdef BELFEM_STRUMPACK
+
+namespace
+{
+    // unpreconditioned GMRES on the n x n 1-D Laplacian ( condition number
+    // ~ 4 n^2 / pi^2 ) cannot reach the exit test within STRUMPACK's 50
+    // iterations from a zero start, so the answer depends on whether the
+    // guess reached the solver. Returns the max-norm error on rank 0, 0
+    // elsewhere
+    belfem::real
+    strumpack_error_from_guess( const bool aUseGuess )
+    {
+        const belfem::index_t tN = 200;
+        const bool tRoot = belfem::comm_rank() == 0;
+
+        belfem::Vector< belfem::real > tXknown;
+        belfem::Vector< belfem::real > tB;
+        belfem::Vector< belfem::real > tX;
+        belfem::SpMatrix * tA = nullptr;
+
+        if( tRoot )
+        {
+            belfem::Matrix< belfem::real > tK( tN, tN, 0.0 );
+            tXknown.set_size( tN );
+            for( belfem::index_t k = 0; k < tN; ++k )
+            {
+                tK( k, k ) = 2.0;
+                if( k > 0 )      tK( k, k - 1 ) = -1.0;
+                if( k < tN - 1 ) tK( k, k + 1 ) = -1.0;
+                tXknown( k ) = std::sin( 0.1 * static_cast< belfem::real >( k ) ) + 2.0;
+            }
+            tA = new belfem::SpMatrix( tK, belfem::SpMatrixType::CSR );
+            tB = tK * tXknown;
+
+            // the guess IS the solution
+            tX = tXknown;
+        }
+        else
+        {
+            tA = new belfem::SpMatrix();
+        }
+
+        belfem::SolverParameters tParams( belfem::SolverType::STRUMPACK );
+        tParams.set_krylov_method( belfem::KrylovMethod::GMRES );
+        tParams.set_preconditioner( belfem::Preconditioner::NONE );
+        tParams.set_use_initial_guess( aUseGuess );
+
+        belfem::Solver tSolver( tParams );
+        tSolver.solve( *tA, tX, tB );
+
+        belfem::real tError = 0.0;
+        if( tRoot )
+        {
+            // written so that a NaN entry makes the error NaN: std::max
+            // would drop it, and an undistributed guess is uninitialized
+            // memory that can hold one
+            for( belfem::index_t k = 0; k < tN; ++k )
+            {
+                const belfem::real tDiff = std::abs( tX( k ) - tXknown( k ) );
+                if( ! ( tDiff <= tError ) )
+                {
+                    tError = tDiff;
+                }
+            }
+        }
+
+        delete tA;
+        return tError;
+    }
+}
+
+TEST( ParallelND, StrumpackHonorsTheDistributedInitialIterate )
+{
+    const belfem::real tWithGuess    = strumpack_error_from_guess( true );
+    const belfem::real tWithoutGuess = strumpack_error_from_guess( false );
+
+    if( belfem::comm_rank() == 0 )
+    {
+        std::printf( "STRUMPACK max error: with guess %.3e, without %.3e\n", tWithGuess, tWithoutGuess );
+
+        EXPECT_LT( tWithGuess, 1e-10 );
+
+        // the control: without the guess the same solve lands far off, so
+        // the first expectation is a statement about the guess
+        EXPECT_GT( tWithoutGuess, 1e-3 );
+    }
+}
+
+#endif // BELFEM_STRUMPACK
