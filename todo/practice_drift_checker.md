@@ -10,10 +10,10 @@ practice → document direction.
 **AIs involved:** Claude Opus 5 (plan, verification, measurements). Round 1: Grok `grok-4.7`/high
 blind, 11 findings; **Codex produced no audit** (two usage-limit failures). Round 2: Codex
 `gpt-5.6-terra`/high and Grok `grok-4.7`/high, both blind, on a fresh slug — 16 findings.
-**Status:** **v4 committed** 2026-09-22 — D-c23..D-c27 and D-c29 fixed, D-c13 completed (the depth
-table is read by its own column headers). D-c28 was **reverted**: the v4 fence toggle turned an
-unclosed fence into a silent pass, so v4 keeps v3's header scanner and D-c28 is reopened with the full
-spec. `--self-test` 63/63, 37/37 mutants killed. Round-4 jury filed D-c30..D-c33 and O6 for v5.
+**Status:** **v5 committed** 2026-09-22 — D-c28 (CommonMark fences), D-c30 (strict table, fails
+closed), D-c31, D-c33 and O6 fixed; D-c32 resolved by design. `--self-test` 80/80, 49/49 mutants
+killed. The round-5 jury found two silent passes, both executed and **both shared with v4** — v5 is no
+worse anywhere tested — plus three test weaknesses, filed as D-c34..D-c38 for v6.
 
 > **Scope guards:**
 > - **Out of scope:** any probe needing prose parsed *for meaning*. A token search inside a prose
@@ -334,7 +334,7 @@ these open on Christian's instruction; none fires on today's tree.
       named for. Assert stderr, or print extraction errors regardless of `quiet`.
 - [x] **D-c27** — an all-headless window fails the `devlog headers` guard (exit 2) instead of
       reporting P1c for each file.
-- [ ] **D-c28 (REOPENED — v4 fix reverted, see §4.4)** — the header scan ends at the first `## `, including one inside an opening example,
+- [x] **D-c28 (REOPENED, then fixed in v5 — see §4.4)** — the header scan ends at the first `## `, including one inside an opening example,
       which can hide a later `**Date:**` and false-fire P1c.
 - [x] **D-c29** — a malformed index destination can raise `OSError` in `resolve()` and abort the
       whole run; one bad line should not end the check.
@@ -344,21 +344,42 @@ these open on Christian's instruction; none fires on today's tree.
 Both seats at `xhigh`, blind. Thread: `tmp/ai_exchange/review_practice_drift_v4r.md`. v4 committed with
 these open and D-c28 reverted to the v3 scanner. None fires on today's tree.
 
-- [ ] **D-c28, full specification (two raisers)** — the v4 fence toggle fixed the simple closed fence
+- [x] **D-c28, full specification (two raisers) — v5** — the v4 fence toggle fixed the simple closed fence
       only, missed nesting, and turned an unclosed fence into a silent pass (executed). A correct
       header scan: CommonMark fences (``` and ~~~, a closer at least as long as the opener with no
       info string, nesting), **only unfenced lines count as header** (a fenced `**Date:**` must not
       stand in for a missing one — a gap v3 shares), and an unclosed fence must fall back to the
       plain scan rather than swallow the body. Required fixtures: the three executed cases.
-- [ ] **D-c30 (two raisers)** — the column parser accepts ambiguous tables: duplicate seat headers,
+- [x] **D-c30 (two raisers) — v5; a malformed table fails closed, ruled 2026-09-22** — the column parser accepts ambiguous tables: duplicate seat headers,
       rows narrower than the header, doubled edge pipes (`strip("|")` shifts cells), and `|` lines
       anywhere in the §9.1 span. Require exactly one `Codex` and one `Grok` header and uniform width.
-- [ ] **D-c31** — the D-c25 conjunct `not has(f, "P1a", "Date")` is still dead: one headed sibling
+- [x] **D-c31 — v5, the dead conjunct dropped** — the D-c25 conjunct `not has(f, "P1a", "Date")` is still dead: one headed sibling
       keeps Date in use. The P1c half is live and carries the claim; drop or rebuild the conjunct.
-- [ ] **D-c32** — P2c's older-grok check reads only the Grok column; a `grok-4.6` in the Codex column
+- [x] **D-c32 — resolved by design, no change: a `grok-*` in the Codex column is already P2b against
+      the Codex arm; adding P2c would make one defect two findings** — P2c's older-grok check reads only the Grok column; a `grok-4.6` in the Codex column
       is only P2b. Low.
-- [ ] **D-c33** — P2c says "depth row" where P2b says "column"; no fixture removes the Codex header;
+- [x] **D-c33 — v5** — P2c says "depth row" where P2b says "column"; no fixture removes the Codex header;
       the "Codex column" guard message covers both a missing header and an empty set. Low.
+
+### 4.5 Code-jury round 5 (narrow, on the v4→v5 diff) — open, for v6
+
+Both seats at `xhigh`, blind. Thread: `tmp/ai_exchange/review_practice_drift_v5r.md`. Both silent passes
+below were executed and are **shared with v4** — v5 is no worse anywhere tested. v5 committed.
+
+- [ ] **D-c34 (silent pass, shared with v4)** — when a fence opened in the header never closes, the
+      fallback restarts the plain scan, which re-admits lines from fences that had already closed, so
+      a fenced example `**Date:**` stands in for a missing one — executed. Fix per the jury: treat an
+      unclosed opener as ordinary text and resume the fence-aware scan, keeping earlier closed fences
+      excluded. Fixture: a closed fenced Date followed by an unclosed fence.
+- [ ] **D-c35 (silent pass, shared with v4)** — `_fence_closes` accepts any trailing characters
+      `str.strip()` removes; CommonMark allows only spaces and tabs. A closer followed by NBSP ends
+      the fence early and exposes a fenced Date — executed. Use `.strip(" \t")`; NBSP fixture.
+- [ ] **D-c36** — the `fenced_row` fixture cannot fail: the blank line after the table ends the
+      block before the fence is reached. Put the fenced block directly under the last row.
+- [ ] **D-c37** — the fixture named "an unclosed fence falls back instead of swallowing the body"
+      accepts the swallow; `unclosed_then_date` is the discriminating one. Relabel or rebuild.
+- [ ] **D-c38** — `double_pipe` asserts only that no error is raised, not the column each model lands
+      in; `fenced_before` would fail by traceback rather than a named FAIL.
 
 ## 5. Open Design Questions
 
@@ -379,7 +400,8 @@ these open and D-c28 reverted to the v3 scanner. None fires on today's tree.
   underived; P2c may be too strict for a deliberate pin; and both live drifts the plan cites as
   justification are this team's own housekeeping lapses rather than errors discipline cannot catch.
   Carried, not closed.
-- **O6** — an all-headless window now reports P1a DRIFT for every template field ("used by none of
+- **O6 — RESOLVED 2026-09-22 → suppress P1a when no entry in the window has a header (Christian).**
+  An all-headless window now reports P1a DRIFT for every template field ("used by none of
   the last N entries") alongside P1c for each file. P1a applied literally, but it accuses the
   template when the entries simply have no header. Keep, or suppress P1a when the window has no
   headed entry? Christian's call.

@@ -66,6 +66,7 @@ FIELD = re.compile(r"^\*\*([A-Za-z][A-Za-z /]*):\*\*")
 # The capture is the link DESTINATION inside (...), not the label inside [...]; the two differ
 # whenever an entry is given a short name.
 INDEX_ENTRY = re.compile(r"^(?:- |#{2,4} )\[[^\]]*\]\(([^)\s]+)\)")
+FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 CASE_ARM = re.compile(r"^\s*([A-Za-z0-9.|-]+)\)\s*;;")
 OLD_TITLE = re.compile(r"^# Devlog \d{4}-\d{2}-\d{2}")
 DEVLOG_DATE = re.compile(r"dl(\d{8})")
@@ -125,13 +126,62 @@ def devlog_window(devlog_dir, recent):
     return sorted(by_name, key=date, reverse=True)[:recent]
 
 
-def _header_lines(path):
+def _fence_open(line):
+    """(character, length) if `line` opens a fenced block, else None.
+
+    CommonMark: three or more backticks or tildes, indented at most three spaces; a backtick
+    fence's info string may not itself contain a backtick.
+    """
+    m = FENCE.match(line)
+    if not m or (m.group(1)[0] == "`" and "`" in m.group(2)):
+        return None
+    return m.group(1)[0], len(m.group(1))
+
+
+def _fence_closes(line, fence):
+    """True if `line` closes `fence`: the same character, at least as long, nothing after it.
+
+    A shorter or different fence inside is text, which is how one fence nests inside another.
+    """
+    m = FENCE.match(line)
+    return bool(m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1]
+                and not m.group(2).strip())
+
+
+def _plain_header(lines):
     out = []
-    for line in _lines(path):
+    for line in lines:
         if line.startswith("## "):
             break
         out.append(line)
     return out
+
+
+def _header_lines(path):
+    """The unfenced lines before the first `## ` heading outside a fenced block.
+
+    Fenced lines are excluded, so an example `**Date:**` or model id cannot stand in for a real
+    one.  If a fence opened in the header is never closed, the scan falls back to the plain scan:
+    stop at the first `## ` anywhere and keep every line before it.  That fallback does not know
+    about fences, so it also re-admits lines from fences that *had* closed earlier in the header —
+    a fenced example `**Date:**` can then stand in for a missing one.  A closing fence is also
+    accepted with any trailing whitespace `str.strip()` removes, which is wider than CommonMark's
+    spaces and tabs.
+    """
+    lines = _lines(path)
+    out, fence = [], None
+    for line in lines:
+        if fence is not None:
+            if _fence_closes(line, fence):
+                fence = None
+            continue
+        if (opened := _fence_open(line)) is not None:
+            fence = opened
+            continue
+        if line.startswith("## "):
+            return out
+        out.append(line)
+    return out if fence is None else _plain_header(lines)
 
 
 def devlog_fields(paths):
@@ -166,7 +216,34 @@ SEAT_COLUMNS = {"codex": "Codex", "grok": "Grok"}
 
 
 def _cells(row):
-    return [c.strip() for c in row.strip().strip("|").split("|")]
+    """A table row's cells.  Exactly one edge pipe is removed on each side, so an empty first
+    cell (`|| a | b |`) stays a cell instead of shifting the rest left."""
+    s = row.strip()
+    if s.startswith("|"):
+        s = s[1:]
+    if s.endswith("|"):
+        s = s[:-1]
+    return [c.strip() for c in s.split("|")]
+
+
+def _table_rows(proto_path):
+    """The first contiguous block of `|` lines in the depth-selection span, outside fences."""
+    rows, fence = [], None
+    for line in _depth_span(proto_path):
+        if fence is not None:
+            if _fence_closes(line, fence):
+                fence = None
+            continue
+        if (opened := _fence_open(line)) is not None:
+            if rows:
+                break
+            fence = opened
+            continue
+        if line.startswith("|"):
+            rows.append(line)
+        elif rows:
+            break
+    return rows
 
 
 def table_models(proto_path):
@@ -174,19 +251,29 @@ def table_models(proto_path):
 
     The column is found by the table's own header cell, never inferred from a model's prefix —
     a gpt- id written in the Grok cell is a Grok-column entry, and the probes must see it there.
-    A seat whose header cell is absent is absent from the result.
+    A header that does not name each seat exactly once, or a row whose width differs from the
+    header's, raises ExtractionError.
     """
-    rows = [l for l in _depth_span(proto_path) if l.startswith("|")]
+    rows = _table_rows(proto_path)
     if not rows:
         return {}
     header = _cells(rows[0])
-    columns = {seat: header.index(name) for seat, name in SEAT_COLUMNS.items() if name in header}
+    # A table the probes cannot read unambiguously fails closed rather than being half-read.
+    columns = {}
+    for seat, name in SEAT_COLUMNS.items():
+        if header.count(name) != 1:
+            raise ExtractionError(f"depth table header must name {name!r} exactly once, "
+                                  f"found {header.count(name)}")
+        columns[seat] = header.index(name)
+    for k, row in enumerate(rows[1:], 2):
+        if len(_cells(row)) != len(header):
+            raise ExtractionError(f"depth table row {k} has {len(_cells(row))} cells, "
+                                  f"the header has {len(header)}")
     out = {seat: set() for seat in columns}
     for row in rows[1:]:
         cells = _cells(row)
         for seat, i in columns.items():
-            if i < len(cells):
-                out[seat] |= set(MODEL.findall(cells[i]))
+            out[seat] |= set(MODEL.findall(cells[i]))
     return out
 
 
@@ -366,8 +453,8 @@ def probe_models(columns, exceptions, allowlists, messages, defaults, headers, c
     for model in sorted(m for m in grok_rows if m.startswith("grok-")):
         if policy_grok and model != policy_grok:
             findings.append((DRIFT, "P2c", model,
-                             f"depth row names {model}; the policy names the latest allowlisted "
-                             f"grok, {policy_grok}"))
+                             f"the Grok column names {model}; the policy names the latest "
+                             f"allowlisted grok, {policy_grok}"))
             reported.add(model)
     # The Codex default must be a model the Codex arm accepts and the table's Codex column names;
     # the same id written only in the Grok column satisfies neither.
@@ -433,7 +520,7 @@ def probe_index(files, targets):
             for name in sorted(files - targets)]
 
 
-def probe_template(declared, used, window_n, threshold):
+def probe_template(declared, used, window_n, threshold, headed_n):
     """P1a (DRIFT) and P1b (INFO).
 
     The directions are not symmetric.  A declared field nobody writes means the template
@@ -442,9 +529,13 @@ def probe_template(declared, used, window_n, threshold):
     that its list is not a schema — so it is reported only once it is common (`threshold`, in
     percent of the window), and only as INFO.
     """
-    findings = [(DRIFT, "P1a", f,
-                 f"template declares **{f}:** — used by none of the last {window_n} entries")
-                for f in sorted(declared) if not used.get(f)]
+    # With no headed entry in the window, "used by none" says nothing about the template; P1c
+    # reports each missing Date instead.
+    findings = []
+    if headed_n:
+        findings += [(DRIFT, "P1a", f,
+                      f"template declares **{f}:** — used by none of the last {window_n} entries")
+                     for f in sorted(declared) if not used.get(f)]
     findings += [(INFO, "P1b", f,
                   f"**{f}:** used by {used[f]}/{window_n} recent entries, not declared by the template")
                  for f in sorted(used) if f not in declared and 100 * used[f] / window_n >= threshold]
@@ -491,8 +582,7 @@ def run_live(root, recent, commits_n, threshold, commit_texts=None):
         # The window must be non-empty; its headers need not be — a headerless entry is P1c.
         "devlog window": window,
         "depth table rows": rows,
-        "Codex column": columns.get("codex"),
-        "Grok column": "grok" in columns,
+        "Codex column models": columns.get("codex"),
         "codex allowlist": allowlists["codex"],
         "grok allowlist": allowlists["grok"],
         "codex default": defaults["codex"],
@@ -505,7 +595,7 @@ def run_live(root, recent, commits_n, threshold, commit_texts=None):
 
     findings = probe_models(columns, exceptions, allowlists, messages, defaults, headers, commit_hits)
     findings += probe_index(files, targets)
-    findings += probe_template(declared, used, len(window), threshold)
+    findings += probe_template(declared, used, len(window), threshold, denom)
     findings += probe_dates(missing_date)
     findings += probe_titles(old, total)
 
@@ -780,8 +870,8 @@ def self_test():
         nodate = plain.replace("**Date:** 2026-01-01\n", "")
         f = find(_tree(base, "p1c", extra_devlogs=[("dl20260102_nodate.md", nodate)],
                        readme=_README + "- [dl20260102_nodate.md](dl20260102_nodate.md) — x\n"))
-        check("P1c fires on one missing Date while the field is in use elsewhere (P1a silent)",
-              has(f, "P1c", "dl20260102_nodate.md") and not has(f, "P1a", "Date"))
+        check("P1c fires on one missing Date while other entries carry the field",
+              has(f, "P1c", "dl20260102_nodate.md"))
         f = find(_tree(base, "p1c_clean"))
         check("P1c is silent when every entry has a Date", not has(f, "P1c"))
 
@@ -868,8 +958,72 @@ def self_test():
             f = run_live(root, 40, 0, 25)[0]
             check("an all-headless window reports P1c instead of failing the guard",
                   has(f, "P1c", "dl20260101_clean.md"))
+            check("an all-headless window does not blame the template (no P1a)", not has(f, "P1a"))
         except ExtractionError as exc:
             check(f"an all-headless window reports P1c instead of failing the guard ({exc})", False)
+
+        print("v5 - fenced blocks in a devlog header:")
+        def missing(label, text):
+            p = Path(base) / f"fence_{label}.md"
+            p.write_text(text)
+            return bool(devlogs_without_date([p]))
+        check("an unclosed fence falls back instead of swallowing the body",
+              missing("unclosed", "# T\n\n```markdown\n## ex\n\n## Summary\n\n**Date:** 2026-01-01\n"))
+        check("an unclosed fence is a stray line: a Date after it still counts",
+              not missing("unclosed_then_date", "# T\n\n```\n**Date:** 2026-01-01\n## Summary\n"))
+        check("a fenced **Date:** does not stand in for a missing one",
+              missing("fenced_date", "# T\n\n```\n**Date:** 2026-01-01\n```\n\n**Purpose:** x\n\n## Summary\n"))
+        check("a shorter fence inside a longer one is text (nesting)",
+              not missing("nested", "# T\n\n````markdown\n```markdown\n## ex\n```\n````\n\n"
+                                    "**Date:** 2026-01-01\n## Summary\n"))
+        check("a tilde fence hides its ## heading",
+              not missing("tilde", "# T\n\n~~~\n## ex\n~~~\n\n**Date:** 2026-01-01\n## Summary\n"))
+        check("a longer closer closes the fence",
+              not missing("long_close", "# T\n\n```\n## ex\n````\n\n**Date:** 2026-01-01\n## Summary\n"))
+        check("a closer with trailing text does not close the fence",
+              missing("text_close", "# T\n\n```\n## ex\n``` not a closer\n**Date:** 2026-01-01\n"
+                                    "## Summary\n"))
+        check("a backtick in an info string means the line opens no fence",
+              not missing("info_backtick", "# T\n\n``` a`b\n**Date:** 2026-01-01\n```\n## Summary\n"))
+        f = find(_tree(base, "fenced_model", devlog_extra="\n```\nCodex `gpt-9.9-rogue`/high\n```"))
+        check("a model id inside a fenced example is not a header use", not has(f, "P2a"))
+
+        print("v5 - the depth table is read strictly:")
+        def table_err(label, proto_text):
+            root = _tree(base, label)
+            (root / "doc/ai_collaboration_protocol.md").write_text(proto_text)
+            try:
+                run_live(root, 40, 0, 25)
+                return None
+            except ExtractionError as exc:
+                return str(exc)
+        clean_proto = _PROTO.format(exceptions="", row=_ROW_GROK)
+        err = table_err("dup_grok", clean_proto.replace("| Subject | Codex | Grok |",
+                                                        "| Subject | Codex | Grok | Grok |")
+                        .replace("|---|---|---|", "|---|---|---|---|")
+                        .replace(_ROW_GROK, _ROW_GROK + " `grok-4.6`, `high` |"))
+        check("a duplicate Grok header fails closed", err is not None and "exactly once" in err)
+        err = table_err("no_codex", clean_proto.replace("| Subject | Codex | Grok |", "| Subject | Other | Grok |"))
+        check("a missing Codex header fails closed", err is not None and "Codex" in err)
+        err = table_err("uneven", clean_proto.replace(_ROW_GROK, "| Plan audit | `gpt-5.6-terra`, `high` |"))
+        check("a row narrower than the header fails closed", err is not None and "cells" in err)
+        err = table_err("double_pipe", clean_proto.replace(_ROW_GROK, "|| `gpt-5.6-terra`, `high` | `grok-4.7`, `high` |"))
+        check("an empty first cell keeps the columns aligned", err is None)
+        fenced_row = clean_proto.replace("\n### Workflow",
+                                         "\n```\n| fake | `gpt-9.9-x` | `grok-1.0` |\n```\n\n### Workflow")
+        root = _tree(base, "fenced_row")
+        (root / "doc/ai_collaboration_protocol.md").write_text(fenced_row)
+        f = run_live(root, 40, 0, 25)[0]
+        check("a | line in a fenced block after the table is not a row", not f)
+        spaced = clean_proto.replace(_ROW_GROK + "\n", _ROW_GROK + "\n\nprose between\n\n"
+                                     "| Later | `gpt-9.9-y`, `high` | `grok-4.7`, `high` |\n")
+        root = _tree(base, "second_table")
+        (root / "doc/ai_collaboration_protocol.md").write_text(spaced)
+        f = run_live(root, 40, 0, 25)[0]
+        check("a second | block after the table is not part of it", not has(f, "P2b", "gpt-9.9-y"))
+
+        f = find(_tree(base, "fenced_before", exceptions="```\n| a | b | c |\n```\n\n"))
+        check("a | line in a fenced block before the table is not its header", not f)
 
         print("exit policy:")
         drifty = _tree(base, "exit_drift", extra_devlogs=[("dl20260102_unindexed.md", plain)])

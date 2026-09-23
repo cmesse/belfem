@@ -211,3 +211,31 @@ jury found what the mutants could not imagine.
 
 Process slip: the v4 jury was dispatched with `&` inside a compound command, not as its own
 background task. It survived; a watcher was attached rather than re-dispatching a paid round.
+
+## v5
+
+Two rulings from Christian first: P1a is suppressed when no entry in the window has a header (O6), and
+a malformed §9.1 table fails closed (D-c30). Then autopilot.
+
+D-c28 done properly: CommonMark fences (``` and ~~~, a closer at least as long with nothing after it,
+nesting, the backtick info-string rule), only unfenced lines count as header — which also closes the
+gap v3 shared, a fenced `**Date:**` standing in for a missing one — and an unclosed fence falls back
+to the plain scan. D-c30: the depth table is the first contiguous `|` block outside fences, parsed
+with exactly one edge pipe removed per side, one `Codex` and one `Grok` header, uniform width. The
+fence logic is one shared helper, so the header scanner and the table reader cannot drift apart.
+
+Gates: `--self-test` 80/80, **49/49 mutants killed**. One survived the first run — the only
+unclosed-fence fixture put its Date where the fallback and a bare unfenced scan agree — and was
+closed by a discriminating fixture plus a mutant that reproduces v4's body-swallowing regression
+exactly. Live output unchanged; the real table passes the strict parser.
+
+The narrow jury (both seats, xhigh) found two more silent passes, both executed: a later unclosed
+fence makes the fallback re-admit an earlier *closed* fence's Date, and a closer followed by a
+non-breaking space is accepted where CommonMark allows only spaces and tabs. **Neither is a
+regression** — v4 fails both identically — so v5 is committed and they are filed as D-c34..D-c38
+with three test weaknesses. The fallback's docstring claimed it "errs toward reporting a missing
+field rather than hiding one"; the jury disproved that, and the docstring is corrected.
+
+Across five code rounds the useful discipline has been one question asked of every finding before
+deciding what to do: *is this a regression against what is committed?* In v4 the answer was yes, and
+the fix was reverted. In v5 it is no, and the version ships with the gaps filed.
