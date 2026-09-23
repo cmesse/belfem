@@ -16,6 +16,7 @@
 #include <limits>
 
 #include "typedefs.hpp"
+#include "assert.hpp"
 #include "cl_Vector.hpp"
 #include "cl_Matrix.hpp"
 #include "fn_sign.hpp"
@@ -794,6 +795,25 @@ TEST( QuadGradDebug, QuadraticGradientOutOfBoundsThrows )
 }
 
 #endif // NDEBUG
+
+TEST( QuadGradDebug, QuadraticGradientLengthMismatchThrows )
+{
+#if ! BELFEM_ASSERTIONS_ACTIVE
+    GTEST_SKIP() << "the length mismatch is caught by an assertion, "
+                    "which this build compiles out" ;
+#else
+    // the abscissa and the sampled function must have the same length: the
+    // right-end branch is chosen from aX.length(), so with a longer aX the
+    // last index of aF takes the interior formula and reads aF past its end.
+    // The index below is in range for both vectors and reads nothing out of
+    // range, so the length assertion is the only one that can fire.
+    // Mutation: drop that assertion and the case goes red.
+    belfem::Vector< belfem::real > tF = { 0.0, 1.0, 4.0 };
+    belfem::Vector< belfem::real > tX = { 0.0, 1.0, 2.0, 3.0 };
+
+    EXPECT_THROW( belfem::quadratic_gradient( tF, tX, 1 ), std::runtime_error );
+#endif
+}
 
 // =============================================================================
 // §8  Rotation Matrices  [semantic]
