@@ -131,6 +131,34 @@ Christian is reloading the session on Opus 5.5. State at handoff:
 - **Do not:** launch more than two planning agents at once (incident P1); run a G4 mutation chain
   while a jury reads the tree (Tier 1 incident P5); stage anything in the three shared files.
 
+## 3f. B1 test-only rows landed; slice-1 plan jury reconciled (2026-09-22 late, same session on Opus 5.5)
+
+- [x] **B1 test-only rows, one jury round, one commit each:** T-14 `d91d542`, T-19 `29fce0c`,
+  T-28 `dcf0d27`, N-05 `143b864`, N-23 `e9e0d48`. The implementing agent was stopped mid-write; its
+  five files were gated from scratch. Both trees are RELEASE today (Armadillo `build/`, Blaze
+  `cmake-build-debug/`, MKL in both): core 58, linalg 285, math 361 pass in each. N-05 skips there
+  and ran in a `-DDEBUG` probe instead.
+- **What the gate changed:** the agent's T-19 bound (1e-5) failed on Armadillo at 1.2e-5. Measured
+  worst coefficient: Armadillo/MKL 1.2e-5, Blaze/MKL 5.9e-6, reference LAPACK 6.8e-6, OpenBLAS
+  3.6e-6; bound set to 1e-4. The comment's "normal equations miss by 7e+1" was measured at 7.8e+2.
+- **Mutations:** thirteen, all on scratch copies shadowing the original (harness in the session
+  scratchpad, the shared tree never mutated), all killed. The gels pair fails on its own overload's
+  lines only, after the calls were wrapped in `EXPECT_NO_THROW`.
+- **Code jury** (`review_tgap2_b1_code`, terra/high + grok-4.7/high): no blocking defect. Folded in:
+  a strict-`<` level mutation survived (new boundary case kills it), an unopenable log read as empty,
+  the `mt19937` cross-library claim, four comment numbers, the Silver net is the Q (medium) piece.
+- [x] **Slice-1 plan jury reconciled** in `tmp/ai_exchange/review_tgap2_s1.md`: ten findings, none
+  refuted, plan approved with them folded in, no second plan round. The implementation must: drop
+  the `#ifndef NDEBUG` around `test_Map.cpp:351-385`; call both const `operator()`s; mutate `Solver`'s
+  copy ctor to `= default` and assert all four traits incl. `! is_move_constructible_v`; register the
+  ownership test with circuit include dirs (or put that assert in `tests/circuit`); fix the three docs
+  stating the bare text (`container_usage_guide.md:246`, `examples/README.md:142`,
+  `input_schema.yaml:2058`); say "unknown" for `key128_t` in the FaceFactory comment; pin `time_thermal()`.
+- **DR-185 row corrected** in the working copy of `todo/debt_register.md` (not staged; goes in at
+  Christian's close): the compiler does not supply the move, copy assignment is already deleted by
+  the const members, and `mParams` is the eighth owned resource.
+- [ ] **Next:** slice 1 implementation (Opus), both jury rounds because it touches `src/`; then B6.
+
 ## 4. Incidents
 
 - **P1 (credit exhaustion, 2026-09-22 ~18:20).** Eight batch planners were launched in parallel;
