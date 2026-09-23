@@ -14,7 +14,12 @@
  *    unperturbed generator acted on,
  *  - a disk with k holes yields k generators whose pairing matrix against the
  *    k hole rings is unimodular, whichever coreduction produced them
- *    ( Pellikka et al. 2013, Eq. 5.3 ).
+ *    ( Pellikka et al. 2013, Eq. 5.3 ),
+ *  - updatekGeneratorsFromHomology refuses more conditions than generators,
+ *    and conditions that couple to the generators with too low a rank, each
+ *    with its own message,
+ *  - clean() refuses a generator that has no unit representative on the mesh
+ *    as a thick cut, and still rectifies one that has.
  *
  * These fixtures are not the CutFactory::mSuggestHomologies sequence. They
  * build Homology( SimplicialComplex *, Mesh * ), the chain-side Smith form,
@@ -32,11 +37,18 @@
 
 #include <gtest/gtest.h>
 #include <algorithm>
+#include <cctype>
 #include <cmath>
+#include <filesystem>
 #include <map>
 #include <memory>
+#include <stdexcept>
 #include <string>
+#include <system_error>
+#include <utility>
 #include <vector>
+
+#include <unistd.h>
 
 #include "constants.hpp"
 #include "cl_Matrix.hpp"
@@ -774,4 +786,216 @@ TEST( CutData, KHoleDiskPellikkaGeneralizedTwoHoles )
 TEST( CutData, KHoleDiskPellikkaGeneralizedThreeHoles )
 {
     check_punched_strip( 3, Algorithm::PellikkaGeneralized );
+}
+
+//------------------------------------------------------------------------------
+// the guards of updatekGeneratorsFromHomology
+//------------------------------------------------------------------------------
+
+// the annulus has one generator; two conditions on it are one too many. The
+// two suggested generators are the same chain, so without this guard the
+// duplicate columns would reach the rank guard instead, with its own text
+TEST( Cohomology, MoreConditionsThanGeneratorsIsRefused )
+{
+    CleanedAnnulus tFixture( 8, Algorithm::PellikkaGeneralized );
+
+    ASSERT_EQ( tFixture.mCohomology->get_Generators()( 1 ).size(), 1u );
+    ASSERT_GE( tFixture.mHomology->get_Generators()( 1 ).size(), 1u );
+
+    Chain * tSuggested = tFixture.mHomology->get_Generators()( 1 )( 0 );
+    Cell< Chain * > tTwo = { tSuggested, tSuggested };
+
+    expect_refusal( [ & ]()
+        {
+            tFixture.mCohomology->updatekGeneratorsFromHomology( tTwo, 1 );
+        },
+        "defines 2 current or voltage conditions",
+        "only provides 1 cohomology generator," );
+}
+
+// one condition on a chain that pairs to zero with the generator: few enough
+// conditions, but the coupling matrix has rank 0
+TEST( Cohomology, ConditionOnANullChainIsRefusedAsDependent )
+{
+    CleanedAnnulus tFixture( 8, Algorithm::PellikkaGeneralized );
+
+    ASSERT_EQ( tFixture.mCohomology->get_Generators()( 1 ).size(), 1u );
+
+    std::unique_ptr< Chain > tEmpty( new Chain( 1, tFixture.mMesh.get(), false, false ) );
+    ASSERT_EQ( ( *tFixture.generator() )( tEmpty.get() ), 0 );
+
+    Cell< Chain * > tOne = { tEmpty.get() };
+
+    expect_refusal( [ & ]()
+        {
+            tFixture.mCohomology->updatekGeneratorsFromHomology( tOne, 1 );
+        },
+        "The 1 current or voltage conditions are not independent",
+        "with rank 0" );
+}
+
+//------------------------------------------------------------------------------
+// clean() on a generator without a unit representative
+//------------------------------------------------------------------------------
+
+namespace
+{
+    // a fresh directory under the system temp path that is the working
+    // directory for the lifetime of this object. clean() writes error.exo
+    // relative to the working directory, overwriting any file of that name,
+    // so the refusal case runs in here. The previous working directory is
+    // restored and the directory removed on scope exit
+    class ScratchWorkDir
+    {
+        std::filesystem::path mPrevious ;
+        std::filesystem::path mPath ;
+
+    public:
+
+        ScratchWorkDir() :
+            mPrevious( std::filesystem::current_path() ),
+            mPath( std::filesystem::temp_directory_path()
+                / ( "belfem_test_cutdata_" + std::to_string( ::getpid() ) ) )
+        {
+            std::filesystem::remove_all( mPath );
+            std::filesystem::create_directory( mPath );
+            std::filesystem::current_path( mPath );
+        }
+
+        ~ScratchWorkDir()
+        {
+            // a failed restore would leave every later case of this binary in
+            // a deleted directory, so it is reported, not swallowed
+            std::error_code tRestore ;
+            std::filesystem::current_path( mPrevious, tRestore );
+            if ( tRestore )
+            {
+                ADD_FAILURE() << "could not restore the working directory "
+                              << mPrevious << ": " << tRestore.message() ;
+            }
+            std::error_code tRemove ;
+            std::filesystem::remove_all( mPath, tRemove );
+        }
+
+        const std::filesystem::path &
+        path() const
+        {
+            return mPath ;
+        }
+    };
+
+    // multiplies every coefficient of the annulus generator by aScale after
+    // checking the premise the feasibility argument rests on: all aN edges
+    // of the inner ring are constraint edges of clean(), which builds its
+    // arcs from the complex's edges BEFORE coreduction. Returns the pairing
+    // of the scaled generator with the inner ring
+    int
+    scale_generator( CleanedAnnulus & aFixture, const uint aN, const int aScale )
+    {
+        const DynamicBitset & tDomain = aFixture.mComplex->original_edges();
+
+        uint tRingEdges = 0 ;
+        for ( Edge * tEdge : aFixture.mMesh->edges() )
+        {
+            if ( tEdge->node( 0 )->id() > aN || tEdge->node( 1 )->id() > aN ) continue ;
+            EXPECT_TRUE( tDomain.test( tEdge->index() ) )
+                << "inner-ring edge " << tEdge->id() << " is not a constraint edge" ;
+            ++tRingEdges ;
+        }
+        EXPECT_EQ( tRingEdges, aN );
+
+        Cochain * tGenerator = aFixture.generator();
+
+        // copied first: setCoefficient writes into the map being walked
+        Cell< std::pair< index_t, int > > tEntries ;
+        for ( const auto & tEntry : tGenerator->getSimplicesMap() )
+        {
+            tEntries.push( tEntry );
+        }
+
+        for ( const auto & [ tIndex, tCoeff ] : tEntries )
+        {
+            tGenerator->setCoefficient( tIndex, aScale * tCoeff );
+        }
+
+        return inner_ring_pairing( aFixture.mMesh.get(), tGenerator, aN );
+    }
+}
+
+// A unit representative exists only if |< c, z >| <= length( z ) on every
+// closed loop z of constraint edges; clean() tests this as a negative cycle
+// of its difference constraints ( src/homology/doc/thin_cut_nonunit_rectification.md,
+// sec. 2-3 ). The inner ring has 8 edges, and the cleaned generator pairs to
+// +-1 with it, so nine times the generator pairs to +-9 and the ring is a
+// negative cycle of weight 8 - 9 = -1. That makes the system infeasible
+// whatever else the complex holds; which negative cycle clean() reports is
+// its own choice, and only its form is checked below
+TEST( Cohomology, InfeasibleGeneratorIsRefusedAsAThickCut )
+{
+#ifndef BELFEM_EXODUS
+    GTEST_SKIP() << "the refusal writes its diagnostic mesh through Exodus" ;
+#endif
+    const uint tN = 8 ;
+
+    CleanedAnnulus tFixture( tN, Algorithm::PellikkaGeneralized );
+    ASSERT_EQ( tFixture.mCohomology->get_Generators()( 1 ).size(), 1u );
+
+    ASSERT_EQ( std::abs( scale_generator( tFixture, tN, 9 ) ), 9 );
+
+    ScratchWorkDir tWorkDir ;
+
+    std::string tMessage ;
+    try
+    {
+        tFixture.mCohomology->clean();
+    }
+    catch( const std::runtime_error & aError )
+    {
+        tMessage = aError.what();
+    }
+    ASSERT_FALSE( tMessage.empty() ) << "clean() accepted a generator with no unit representative" ;
+
+    // the first generator is numbered 0
+    EXPECT_NE( tMessage.find( "found cohomology generator 0," ), std::string::npos )
+        << "message was: " << tMessage ;
+    EXPECT_NE( tMessage.find( "only -1, 0, and 1" ), std::string::npos )
+        << "message was: " << tMessage ;
+
+    // the certificate: a loop length and the node pairs of its edges
+    const std::size_t tLoop = tMessage.find( "The loop of " );
+    ASSERT_NE( tLoop, std::string::npos ) << "message was: " << tMessage ;
+    EXPECT_TRUE( std::isdigit( static_cast< unsigned char >(
+        tMessage[ tLoop + std::string( "The loop of " ).size() ] ) ) )
+        << "message was: " << tMessage ;
+    EXPECT_NE( tMessage.find( "between nodes (" ), std::string::npos )
+        << "message was: " << tMessage ;
+    EXPECT_NE( tMessage.find( ")->(" ), std::string::npos )
+        << "message was: " << tMessage ;
+
+    // the diagnostic mesh landed in the scratch directory
+    EXPECT_TRUE( std::filesystem::exists( tWorkDir.path() / "error.exo" ) );
+}
+
+// the control: twice the generator pairs to +-2 <= 8 with every loop around
+// the hole, so a unit representative exists ( same note, same criterion ). It is two thin cuts, a unit
+// cochain in the class of twice the generator, and the pairing with the ring
+// is a class invariant, so it stays 2
+TEST( Cohomology, DoubledGeneratorIsStillRectified )
+{
+    const uint tN = 8 ;
+
+    CleanedAnnulus tFixture( tN, Algorithm::PellikkaGeneralized );
+    ASSERT_EQ( tFixture.mCohomology->get_Generators()( 1 ).size(), 1u );
+
+    ASSERT_EQ( std::abs( scale_generator( tFixture, tN, 2 ) ), 2 );
+
+    ASSERT_NO_THROW( tFixture.mCohomology->clean() );
+
+    Cochain * tGenerator = tFixture.generator();
+    for ( const auto & [ tIndex, tCoeff ] : tGenerator->getSimplicesMap() )
+    {
+        EXPECT_TRUE( tCoeff == 1 || tCoeff == -1 )
+            << "edge index " << tIndex << " carries coefficient " << tCoeff ;
+    }
+    EXPECT_EQ( std::abs( inner_ring_pairing( tFixture.mMesh.get(), tGenerator, tN ) ), 2 );
 }

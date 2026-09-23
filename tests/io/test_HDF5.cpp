@@ -26,7 +26,8 @@
 // BELFEM I/O Module Tests -- HDF5 Focus
 //
 // This file tests the high-level HDF5 wrapper contract exposed by belfem::HDF5,
-// not the raw HDF5 C API and not the internal hdf5:: helper templates.
+// not the internal hdf5:: helper templates. The raw HDF5 C API appears only in
+// section 11, to write a file the way a tool outside BELFEM writes it.
 //
 // Scope covered here:
 //   - file modes and file lifecycle
@@ -1222,6 +1223,67 @@ TEST_F( HDF5Test, ClassMismatchIsRefusedInEveryBuild )
         belfem::Matrix< belfem::sint > tIntMatrix;
         EXPECT_THROW( tFile.load_data( "float_matrix", tIntMatrix ),
                       std::runtime_error );
+    }
+}
+
+//-----------------------------------------------------------------------------
+// 11. Files written outside BELFEM
+//-----------------------------------------------------------------------------
+
+// h5py writes variable-length strings with the UTF-8 character set, which
+// BELFEM's own writer never produces, so the round trips above cannot reach
+// the loader's character-set copy. The dataset is written here with the raw
+// API the way h5py writes it — a test-only use of the C API, since no wrapper
+// writes UTF-8 — and must come back byte for byte. Were the
+// loader to request ASCII, H5Dread would refuse the UTF-8 to ASCII
+// conversion and the load would throw
+TEST_F( HDF5Test, Utf8VlenStringsLoadVerbatim )
+{
+    mPath = ::testing::TempDir() + this->make_path();
+    remove_file_if_exists( mPath );
+
+    // "\xc2\xb5" is U+00B5 MICRO SIGN, "\xce\xa9" is U+03A9 GREEK CAPITAL OMEGA
+    const belfem::Cell< belfem::string > tExpected = {
+        "\xc2\xb5" "0",
+        "\xce\xa9" "m",
+        "plain"
+    };
+
+    {
+        belfem::HDF5 tFile( mPath, belfem::FileMode::NEW );
+
+        const char * tRaw[ 3 ] = { tExpected( 0 ).c_str(),
+                                   tExpected( 1 ).c_str(),
+                                   tExpected( 2 ).c_str() };
+
+        hid_t tType = H5Tcopy( H5T_C_S1 );
+        ASSERT_GE( H5Tset_size( tType, H5T_VARIABLE ), 0 );
+        ASSERT_GE( H5Tset_cset( tType, H5T_CSET_UTF8 ), 0 );
+
+        const hsize_t tDims[ 1 ] = { 3 };
+        hid_t tSpace = H5Screate_simple( 1, tDims, nullptr );
+
+        hid_t tDataset = H5Dcreate2( tFile.active_group(), "cell", tType, tSpace,
+                                     H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT );
+        ASSERT_GE( tDataset, 0 );
+        EXPECT_GE( H5Dwrite( tDataset, tType, H5S_ALL, H5S_ALL, H5P_DEFAULT, tRaw ), 0 );
+
+        H5Dclose( tDataset );
+        H5Sclose( tSpace );
+        H5Tclose( tType );
+    }
+
+    {
+        belfem::Cell< belfem::string > tActual;
+        belfem::HDF5 tFile( mPath, belfem::FileMode::OPEN_RDONLY );
+        tFile.load_data( "cell", tActual );
+        expect_cell_string_eq( tActual, tExpected );
+
+        // the multibyte entries keep their byte length, so nothing was
+        // transcoded on the way in
+        ASSERT_EQ( tActual.size(), 3u );
+        EXPECT_EQ( tActual( 0 ).size(), 3u );
+        EXPECT_EQ( tActual( 1 ).size(), 3u );
     }
 }
 

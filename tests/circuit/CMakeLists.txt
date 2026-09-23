@@ -13,6 +13,7 @@ set( SOURCES
         test_SourceFunction.cpp
         test_SourcePluginPath.cpp
         test_TerminalPairRestart.cpp
+        test_TerminalPairGroups.cpp
         )
 
 include_directories( ${BELFEM_SOURCE_DIR}/circuit )

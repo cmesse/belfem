@@ -6,6 +6,7 @@ set( SOURCES
         test_HDF5.cpp
         test_filetools.cpp
         test_Ascii.cpp
+        test_InputSection.cpp
         )
 
 # add the test

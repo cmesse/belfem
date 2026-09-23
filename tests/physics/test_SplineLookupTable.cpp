@@ -35,6 +35,9 @@
 #include <gtest/gtest.h>
 
 #include "cl_Material_SplineLookupTable.hpp"
+#include "cl_Spline.hpp"
+#include "cl_SpMatrix.hpp"
+#include "cl_Vector.hpp"
 
 namespace
 {
@@ -131,4 +134,92 @@ TEST( SplineLookupTable, ParabolicEndIsNotTheCubic )
     // the start is still clamped, and the perturbation decays away from the
     // end it was introduced at
     EXPECT_NEAR( tMaterial.dcpdT( 0.0 ), tB, 1e-9 * std::abs( tB ) );
+}
+
+/*
+ * set_spline takes ownership of the spline it is handed and points the
+ * property's dispatch at it. Called again with the default nullptr it keeps
+ * the stored spline and only refreshes the dispatch; called with a different
+ * spline it deletes the stored one and keeps the new one.
+ *
+ * Not observable here: that the replaced spline is freed, and that setting
+ * the SAME pointer again keeps it alive rather than deleting and re-storing
+ * it. Both need a memory checker.
+ */
+namespace
+{
+    // a natural cubic spline through aFunction on [ 1, 10 ], 20 points; the
+    // caller owns it
+    template< typename F >
+    belfem::Spline *
+    make_spline( F && aFunction )
+    {
+        const belfem::uint tN = 20 ;
+        belfem::Vector< belfem::real > tX( tN );
+        belfem::Vector< belfem::real > tY( tN );
+        for ( belfem::uint k = 0; k < tN; ++k )
+        {
+            tX( k ) = 1.0 + 9.0 * k / ( tN - 1 );
+            tY( k ) = aFunction( tX( k ) );
+        }
+
+        belfem::SpMatrix tHelp ;
+        belfem::spline::create_helpmatrix( tN, tX( 1 ) - tX( 0 ), tHelp );
+
+        return new belfem::Spline( tX, tY, tHelp );
+    }
+
+    const belfem::real gProbeT = 4.3 ;
+}
+
+TEST( SplineLookupTable, SetSplineStoresAndDispatches )
+{
+    belfem::material::SplineLookupTable tTable( belfem::MaterialType::PureMetal );
+
+    EXPECT_FALSE( tTable.have( belfem::MaterialProperty::cp ) );
+
+    belfem::Spline * tSplineA = make_spline( []( const belfem::real aX ) { return aX * aX ; } );
+    tTable.set_spline( belfem::MaterialProperty::cp, tSplineA );
+
+    EXPECT_TRUE( tTable.have( belfem::MaterialProperty::cp ) );
+    ASSERT_EQ( tTable.spline( belfem::MaterialProperty::cp ), tSplineA );
+    EXPECT_EQ( tTable.cp( gProbeT ), tSplineA->eval( gProbeT ) );
+}
+
+TEST( SplineLookupTable, NullRefreshKeepsTheSpline )
+{
+    belfem::material::SplineLookupTable tTable( belfem::MaterialType::PureMetal );
+
+    belfem::Spline * tSplineA = make_spline( []( const belfem::real aX ) { return aX * aX ; } );
+    tTable.set_spline( belfem::MaterialProperty::cp, tSplineA );
+    const belfem::real tBefore = tTable.cp( gProbeT );
+
+    tTable.set_spline( belfem::MaterialProperty::cp );
+
+    // checked before any evaluation: a refresh that dropped the spline would
+    // leave a null pointer behind the dispatch
+    ASSERT_EQ( tTable.spline( belfem::MaterialProperty::cp ), tSplineA );
+    EXPECT_TRUE( tTable.have( belfem::MaterialProperty::cp ) );
+    EXPECT_EQ( tTable.cp( gProbeT ), tBefore );
+}
+
+TEST( SplineLookupTable, ReplacementTakesOwnership )
+{
+    belfem::material::SplineLookupTable tTable( belfem::MaterialType::PureMetal );
+
+    belfem::Spline * tSplineA = make_spline( []( const belfem::real aX ) { return aX * aX ; } );
+    tTable.set_spline( belfem::MaterialProperty::cp, tSplineA );
+    const belfem::real tOld = tTable.cp( gProbeT );
+
+    belfem::Spline * tSplineB = make_spline( []( const belfem::real aX ) { return 3.0 * aX + 1.0 ; } );
+    const belfem::real tNew = tSplineB->eval( gProbeT );
+
+    // the two laws differ at the probe, so the value below tells them apart
+    ASSERT_GT( std::abs( tNew - tOld ), 1.0 );
+
+    // tSplineA is deleted by this call and must not be touched again
+    tTable.set_spline( belfem::MaterialProperty::cp, tSplineB );
+
+    ASSERT_EQ( tTable.spline( belfem::MaterialProperty::cp ), tSplineB );
+    EXPECT_EQ( tTable.cp( gProbeT ), tNew );
 }
