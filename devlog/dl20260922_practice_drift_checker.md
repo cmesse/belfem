@@ -239,3 +239,37 @@ field rather than hiding one"; the jury disproved that, and the docstring is cor
 Across five code rounds the useful discipline has been one question asked of every finding before
 deciding what to do: *is this a regression against what is committed?* In v4 the answer was yes, and
 the fix was reverted. In v5 it is no, and the version ships with the gaps filed.
+
+## v6 — the overnight run, and why it stopped at v6
+
+**For the morning: nothing needs a ruling.** v6 is committed; the run stopped at v6 of a v8 cap
+because the last round left no silent pass and no regression. Residue D-c39..D-c42 is low-severity.
+
+Christian set the run going before leaving ("make an overnight run out of this"); the rules written
+into the plan were: cap v8, stop early on a round with no silent pass and no regression, file anything
+needing a ruling, stop on a vendor quota failure, commit only with the gates green, and revert any fix
+that regresses the committed version.
+
+v6 fixed D-c34..D-c38. The header scan now resolves fences with one pass per stray opener: an opener
+that never closes is re-read as text and the scan runs again, so fences that closed earlier stay
+excluded — v5's fallback restarted a fence-blind scan that re-admitted a closed fence's `**Date:**`.
+Closers accept only spaces and tabs after them, per CommonMark. One mutant survived the first run in
+an instructive way: with demotion in place, removing the closer-length check was *rescued* — the short
+closer ended the outer fence early, the outer closer became a stray opener, demotion made the answer
+come out right. A fixture where early closing exposes a fenced Date closed it. 83/83, 50/50.
+
+The round-6 jury (both seats, xhigh) found a **regression against v5**, executed: I had also moved the
+§9.1 table reader onto the new resolver — a consolidation no finding asked for — and on a span cut by
+a raw heading inside a fenced example, demotion exposed the example table as the depth table. v5 fails
+closed there. By the v4 rule the table reader was reverted to v5; the header fix scans the whole file
+and keeps its gain. A fixture locks "an example table is never adopted". My first attempt at a mutant
+for that regression was ineffective — it filtered lines but fed them into a loop that re-detected the
+fence — and the honest mutant is v6's actual reader substituted verbatim, which the fixture kills.
+83/83, 51/51.
+
+Codex's other finding, to restore the post-table fenced-row fixture, was refuted by Grok and by
+reading: a fence opener after the last row is itself a non-`|` line and ends the block regardless.
+
+Lesson, again and sharper: both of this night's regressions (v4's fence toggle, v6's table reader)
+came from changes *beyond* what a finding asked for — a general mechanism applied one place further
+than needed. The findings themselves were fixed cleanly both times.

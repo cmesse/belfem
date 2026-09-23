@@ -139,49 +139,59 @@ def _fence_open(line):
 
 
 def _fence_closes(line, fence):
-    """True if `line` closes `fence`: the same character, at least as long, nothing after it.
+    """True if `line` closes `fence`: the same character, at least as long, and nothing after it
+    but spaces or tabs — a non-breaking space is text, as CommonMark has it.
 
     A shorter or different fence inside is text, which is how one fence nests inside another.
     """
     m = FENCE.match(line)
     return bool(m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1]
-                and not m.group(2).strip())
+                and not m.group(2).strip(" \t"))
 
 
-def _plain_header(lines):
-    out = []
-    for line in lines:
-        if line.startswith("## "):
-            break
-        out.append(line)
-    return out
+def _fenced_flags(lines):
+    """For each line, whether it lies inside a fenced block (its delimiters included).
+
+    An opener that is never closed is read as ordinary text and the scan runs again, so fences
+    that closed earlier stay excluded and the lines after the stray opener are read normally.
+    CommonMark would instead run an unclosed fence to the end of the file, which would swallow a
+    devlog's body into a code block and hide every field after the opener.  Each pass demotes one
+    more opener, so the loop ends within one pass per line.
+    """
+    as_text = set()
+    while True:
+        flags, fence, opened_at = [], None, None
+        for i, line in enumerate(lines):
+            if fence is not None:
+                flags.append(True)
+                if _fence_closes(line, fence):
+                    fence = None
+                continue
+            if i not in as_text and (opened := _fence_open(line)) is not None:
+                fence, opened_at = opened, i
+                flags.append(True)
+                continue
+            flags.append(False)
+        if fence is None:
+            return flags
+        as_text.add(opened_at)
 
 
 def _header_lines(path):
     """The unfenced lines before the first `## ` heading outside a fenced block.
 
     Fenced lines are excluded, so an example `**Date:**` or model id cannot stand in for a real
-    one.  If a fence opened in the header is never closed, the scan falls back to the plain scan:
-    stop at the first `## ` anywhere and keep every line before it.  That fallback does not know
-    about fences, so it also re-admits lines from fences that *had* closed earlier in the header —
-    a fenced example `**Date:**` can then stand in for a missing one.  A closing fence is also
-    accepted with any trailing whitespace `str.strip()` removes, which is wider than CommonMark's
-    spaces and tabs.
+    one.  Fences are resolved by `_fenced_flags`.
     """
     lines = _lines(path)
-    out, fence = [], None
-    for line in lines:
-        if fence is not None:
-            if _fence_closes(line, fence):
-                fence = None
-            continue
-        if (opened := _fence_open(line)) is not None:
-            fence = opened
+    out = []
+    for line, fenced in zip(lines, _fenced_flags(lines)):
+        if fenced:
             continue
         if line.startswith("## "):
             return out
         out.append(line)
-    return out if fence is None else _plain_header(lines)
+    return out
 
 
 def devlog_fields(paths):
@@ -227,7 +237,14 @@ def _cells(row):
 
 
 def _table_rows(proto_path):
-    """The first contiguous block of `|` lines in the depth-selection span, outside fences."""
+    """The first contiguous block of `|` lines in the depth-selection span, outside fences.
+
+    The span is cut at the first `##`/`###` line with no regard for fences, so a fence that
+    straddles that cut is unclosed within the span.  It is deliberately NOT demoted to text here,
+    unlike in `_header_lines`: demoting it would expose any example table inside it as the depth
+    table.  Left open, it hides the rest of the span, no rows are found, and the required-extract
+    guard fails the run closed.
+    """
     rows, fence = [], None
     for line in _depth_span(proto_path):
         if fence is not None:
@@ -967,15 +984,24 @@ def self_test():
             p = Path(base) / f"fence_{label}.md"
             p.write_text(text)
             return bool(devlogs_without_date([p]))
-        check("an unclosed fence falls back instead of swallowing the body",
+        check("a stray opener is text, so a ## after it still ends the header",
               missing("unclosed", "# T\n\n```markdown\n## ex\n\n## Summary\n\n**Date:** 2026-01-01\n"))
         check("an unclosed fence is a stray line: a Date after it still counts",
               not missing("unclosed_then_date", "# T\n\n```\n**Date:** 2026-01-01\n## Summary\n"))
+        check("a later unclosed fence does not re-admit an earlier closed fence's Date",
+              missing("closed_then_unclosed", "# T\n\n```\n**Date:** 1999-01-01\n```\n\n**Purpose:** x\n\n"
+                                              "```\nnot closed\n## Summary\n"))
+        check("a closer followed by a non-breaking space does not close the fence",
+              missing("nbsp_close", "# T\n\n```\nfoo\n```\u00a0\n**Date:** 1999-01-01\n```\n\n"
+                                    "**Purpose:** x\n\n## Summary\n"))
         check("a fenced **Date:** does not stand in for a missing one",
               missing("fenced_date", "# T\n\n```\n**Date:** 2026-01-01\n```\n\n**Purpose:** x\n\n## Summary\n"))
         check("a shorter fence inside a longer one is text (nesting)",
               not missing("nested", "# T\n\n````markdown\n```markdown\n## ex\n```\n````\n\n"
                                     "**Date:** 2026-01-01\n## Summary\n"))
+        check("a shorter closer inside a longer fence does not end it",
+              missing("short_closer", "# T\n\n````\n```\n**Date:** 1999-01-01\n````\n\n**Purpose:** x\n\n"
+                                      "## Summary\n"))
         check("a tilde fence hides its ## heading",
               not missing("tilde", "# T\n\n~~~\n## ex\n~~~\n\n**Date:** 2026-01-01\n## Summary\n"))
         check("a longer closer closes the fence",
@@ -1007,14 +1033,15 @@ def self_test():
         check("a missing Codex header fails closed", err is not None and "Codex" in err)
         err = table_err("uneven", clean_proto.replace(_ROW_GROK, "| Plan audit | `gpt-5.6-terra`, `high` |"))
         check("a row narrower than the header fails closed", err is not None and "cells" in err)
-        err = table_err("double_pipe", clean_proto.replace(_ROW_GROK, "|| `gpt-5.6-terra`, `high` | `grok-4.7`, `high` |"))
-        check("an empty first cell keeps the columns aligned", err is None)
-        fenced_row = clean_proto.replace("\n### Workflow",
-                                         "\n```\n| fake | `gpt-9.9-x` | `grok-1.0` |\n```\n\n### Workflow")
-        root = _tree(base, "fenced_row")
-        (root / "doc/ai_collaboration_protocol.md").write_text(fenced_row)
-        f = run_live(root, 40, 0, 25)[0]
-        check("a | line in a fenced block after the table is not a row", not f)
+        root = _tree(base, "double_pipe")
+        (root / "doc/ai_collaboration_protocol.md").write_text(
+            clean_proto.replace(_ROW_GROK, "|| `gpt-5.6-terra`, `high` | `grok-4.7`, `high` |"))
+        try:
+            cols = table_models(root / "doc/ai_collaboration_protocol.md")
+            check("an empty first cell keeps the columns aligned",
+                  cols == {"codex": {"gpt-5.6-terra"}, "grok": {"grok-4.7"}})
+        except ExtractionError as exc:
+            check(f"an empty first cell keeps the columns aligned ({exc})", False)
         spaced = clean_proto.replace(_ROW_GROK + "\n", _ROW_GROK + "\n\nprose between\n\n"
                                      "| Later | `gpt-9.9-y`, `high` | `grok-4.7`, `high` |\n")
         root = _tree(base, "second_table")
@@ -1022,8 +1049,20 @@ def self_test():
         f = run_live(root, 40, 0, 25)[0]
         check("a second | block after the table is not part of it", not has(f, "P2b", "gpt-9.9-y"))
 
-        f = find(_tree(base, "fenced_before", exceptions="```\n| a | b | c |\n```\n\n"))
-        check("a | line in a fenced block before the table is not its header", not f)
+        try:
+            f = find(_tree(base, "fenced_before", exceptions="```\n| a | b | c |\n```\n\n"))
+            check("a | line in a fenced block before the table is not its header", not f)
+        except ExtractionError as exc:
+            check(f"a | line in a fenced block before the table is not its header ({exc})", False)
+        example = ("```markdown\n| Subject | Codex | Grok |\n|---|---|---|\n"
+                   "| X | `gpt-9.9-example`, `high` | `grok-4.7`, `high` |\n"
+                   "## a heading inside the example\n```\n\n")
+        try:
+            f = run_live(_tree(base, "example_table_in_fence", exceptions=example), 40, 0, 25)[0]
+            check("an example table inside a fence is never adopted as the depth table",
+                  not any(s == "gpt-9.9-example" for _, _, s, _ in f))
+        except ExtractionError:
+            check("an example table inside a fence is never adopted as the depth table", True)
 
         print("exit policy:")
         drifty = _tree(base, "exit_drift", extra_devlogs=[("dl20260102_unindexed.md", plain)])
