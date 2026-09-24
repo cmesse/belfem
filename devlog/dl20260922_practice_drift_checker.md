@@ -366,3 +366,11 @@ locale while the live run does not. Filed with the remaining findings as D-m2, D
 `todo/practice_drift_mutation_suite.md`; a narrow re-review is owed when Codex returns. The instrument
 built to catch false greens had one of its own — found, as every other one here was, by the jury rather
 than by its author.
+
+The re-review ran after the Codex reset with both seats (`gpt-5.6-terra`/high, `grok-4.7`/high). Both
+confirmed the baseline and encoding fixes and found no regression; both re-confirmed D-m2, D-m4 and D-m5.
+New, all filed: two more fixes the suite never mutates (the window's date `reverse=True`, the `--strict`
+exit expression), a red baseline that discards the child's output so the reason cannot be seen, pipe
+decoding still tied to the locale, and the temporary work directory that is never removed (D-m7..D-m9).
+Grok also sharpened the D-m2 remedy: requiring a `FAIL` line alone would misreport the one mutant whose
+correct kill is an escaping traceback.

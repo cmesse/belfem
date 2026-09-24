@@ -150,7 +150,7 @@ baseline run, so against a checker whose self-test is always red it still report
 and exited 0; it now runs the unmutated self-test first and stops with exit 2 if that is red, and its
 file reads are UTF-8. That guard at once surfaced a locale dependence in the checker's own self-test
 (D-m6). Open: a crash counts as a kill, an `assert` that `-O` strips, two fixed defects with no mutant,
-and D-m6. A narrow re-review is owed once Codex is back.
+and D-m6; a two-voice re-review found no regression and added D-m7..D-m9.
 
 ## Added 2026-09-22
 
