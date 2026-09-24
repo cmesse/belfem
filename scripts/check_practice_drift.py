@@ -1181,8 +1181,10 @@ def self_test():
             run_live(root, 40, 0, 25)
             check("an unclosed fence before a forged section heading fails closed", False)
         except ExtractionError as exc:
+            text = (root / "doc/ai_collaboration_protocol.md").read_text().split("\n")
+            hits = [n for n, l in enumerate(text, 1) if l == "### 9.1 Depth Selection"]
             check("an unclosed fence before a forged section heading fails closed, naming the lines",
-                  "appears 2 times" in str(exc) and "at lines" in str(exc))
+                  "appears 2 times" in str(exc) and f"at lines {hits[0]}, {hits[1]}" in str(exc))
         root = _tree(base, "later_subsection")
         (root / "doc/ai_collaboration_protocol.md").write_text(_PROTO.format(exceptions="", row=_ROW_GROK)
             .replace("### Workflow", "### 9.10 A later subsection\n\n### Workflow"))
@@ -1191,6 +1193,15 @@ def self_test():
             check("a ### 9.10 heading is not a second depth section", not f)
         except ExtractionError as exc:
             check(f"a ### 9.10 heading is not a second depth section ({exc})", False)
+        for label, heading in (("tab_anchor", "### 9.1\tDepth Selection"), ("bare_anchor", "### 9.1")):
+            root = _tree(base, label)
+            (root / "doc/ai_collaboration_protocol.md").write_text(
+                _PROTO.format(exceptions="", row=_ROW_GROK).replace("### 9.1 Depth Selection", heading, 1))
+            try:
+                f = run_live(root, 40, 0, 25)[0]
+                check(f"{heading!r} is the depth heading", not f)
+            except ExtractionError as exc:
+                check(f"{heading!r} is the depth heading ({exc})", False)
         root = _tree(base, "formfeed_anchor")
         (root / "doc/ai_collaboration_protocol.md").write_text(_PROTO.format(exceptions="", row=_ROW_GROK)
             .replace("### Workflow", "### 9.1\f0 not a heading\n\n### Workflow"))
@@ -1206,8 +1217,12 @@ def self_test():
             run_live(root, 40, 0, 25)
             check("a lone depth heading inside an unclosed fence fails closed", False)
         except ExtractionError as exc:
-            check("a lone depth heading inside an unclosed fence fails closed, naming the opener",
-                  "never closed" in str(exc) and "opened at line" in str(exc))
+            text = (root / "doc/ai_collaboration_protocol.md").read_text().split("\n")
+            heading = text.index("### 9.1 Depth Selection") + 1
+            opener = max(n for n, l in enumerate(text[:heading - 1], 1) if l == "```")
+            check("a lone depth heading inside an unclosed fence fails closed, naming both lines",
+                  f"depth anchor at line {heading} lies inside a fence opened at line {opener} "
+                  "and never closed" in str(exc))
         unclosed_example = ("```markdown\n| Subject | Codex | Grok |\n|---|---|---|\n"
                             "| X | `gpt-9.9-example`, `high` | `grok-4.7`, `high` |\n\n")
         try:

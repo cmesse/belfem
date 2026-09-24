@@ -10,11 +10,15 @@ practice → document direction.
 **AIs involved:** Claude Opus 5 (plan, verification, measurements). Round 1: Grok `grok-4.7`/high
 blind, 11 findings; **Codex produced no audit** (two usage-limit failures). Round 2: Codex
 `gpt-5.6-terra`/high and Grok `grok-4.7`/high, both blind, on a fresh slug — 16 findings.
-**Status:** **v9 committed** 2026-09-23 — D-c45 (the anchor accepts only space, tab or end of line
-after `### 9.1`), D-c46 (a lone depth heading inside an unclosed fence fails closed, naming the opener),
-D-c47 (the duplicate-anchor error names the lines). `--self-test` 92/92, 63/63 mutants. Round 9: logic
-sound, no regression; two test gaps filed, D-c48 and D-c49. Chain: v9, v8 `9e74a6b`, v7 `d74a8ab`, v6
-`fb1cc13`, v5 `42b5e42`, v4 `e295ce8`, v3 `cff668b`, v2 `fb74ed5`.
+**Status:** **✅ DONE — v10 committed 2026-09-23.** The round-10 jury approved with no findings against the
+subject (Codex: approve; Grok: nothing refuted). `scripts/check_practice_drift.py` compares the convention
+documents against practice — devlog headers against the §6 template, auditor models against §9.1 and the
+wrapper case arms and defaults, devlog files against their index — with DRIFT gating under `--strict`.
+`--self-test` 94/94, mutation testing 68/68 (suite in `tmp/ai_exchange/review_practice_drift_v10_mutate.py`).
+Ten versions, ten jury rounds; two regressions caught and reverted (v4 fence toggle, v6 table reader),
+both from a fix reaching further than its finding. No D-c item open. Chain: v10, v9 `eeaceab`, v8
+`9e74a6b`, v7 `d74a8ab`, v6 `fb1cc13`, v5 `42b5e42`, v4 `e295ce8`, v3 `cff668b`, v2 `fb74ed5`. Live:
+one DRIFT, the index line owed for `dl20260922_ask_codex_cli_audit.md`.
 
 > **Overnight run rules (Christian, 2026-09-22, "make an overnight run out of this"):**
 > - hard cap **v8** — at most three jury rounds (v6, v7, v8), each both seats at `xhigh`;
@@ -453,10 +457,10 @@ match `#### Note`. v8 committed.
 Both seats at `xhigh`, blind. Thread: `tmp/ai_exchange/review_practice_drift_v9r.md`. Logic sound, no
 functional claim refuted, no regression; Codex judged the fail-closed scope of D-c46 correct. v9 committed.
 
-- [ ] **D-c48** — `DEPTH_HEADING` accepts a tab or the end of line after `### 9.1`, but only the space
+- [x] **D-c48** — v10. Original finding: `DEPTH_HEADING` accepts a tab or the end of line after `### 9.1`, but only the space
       form is exercised: mutants "space only" and "no end-of-line" both survive (executed). Add passing
       fixtures for `### 9.1\tDepth Selection` and a bare `### 9.1`, and both mutants to the suite.
-- [ ] **D-c49 (two raisers)** — the duplicate-anchor and unclosed-fence assertions check the phrases,
+- [x] **D-c49 (two raisers)** — v10. Original finding: the duplicate-anchor and unclosed-fence assertions check the phrases,
       not the line numbers; assert the fixture's expected lines.
 
 ## 5. Open Design Questions

@@ -328,3 +328,20 @@ The jury found the logic sound and refuted nothing; Codex judged the fail-closed
 gaps, confirmed: the tab-only and bare heading forms are unpinned (two mutants survive), and the
 line-number assertions check phrases, not numbers. Filed D-c48, D-c49. For the first time a round's
 findings are about the tests alone.
+
+## v10, and done (2026-09-23)
+
+Test-only — every hunk inside `self_test()`, checked mechanically, so the jury ran at §9.1's code-diff row
+(`high`) rather than `xhigh`. D-c48 pinned the tab and bare forms of the depth heading, killing the two
+mutants that survived round 9; D-c49 asserts the exact line numbers in the two fail-closed messages,
+computed from the fixture text with a plain newline split so the oracle shares no code with the line
+reader under test. 94/94, 68/68.
+
+**The first clean round in ten.** Codex approved with no defects; Grok refuted nothing and hand-traced the
+same line numbers the self-test asserts. Its three open risks all fail loud — a reshaped fixture goes red,
+an empty oracle list aborts — so none was filed.
+
+Over ten versions the checker went from twelve self-test cases and no mutants to 94 cases and 68 mutants,
+and every probe has a fixture that must make it fire and one that must keep it silent. Two regressions
+were caught by the jury and reverted, and both came from a fix reaching one place further than its finding
+asked. The plan is closed.
