@@ -60,6 +60,14 @@ namespace
         }
     };
 
+    // a defect that leaves jc unchanged, so the defect overloads can be
+    // called on the fixtures below
+    real
+    unit_defect( const real, const real, const real, const real )
+    {
+        return 1.0 ;
+    }
+
     bool
     within( const real aA, const real aB, const real aRel, const real aAbs )
     {
@@ -546,7 +554,14 @@ TEST( HtsLaws, PiecewiseFieldDerivativeBelowJ1MatchesFiniteDifference )
 }
 
 // n = 4 makes the Bezier discriminant vanish at the upper knot; the value and
-// the temperature tangent must stay finite there
+// the temperature and current tangents must stay finite there, and at the
+// knot itself dJ is the flux-flow limit mNff rho_n / J ( mNff = 3 )
+//
+// The ( J, T ) and ( J, T, x, y, z, t ) overloads of drho_piecewise_dJ read
+// jc_custom / n_custom, which the factory's YBCO does not provide ( they
+// abort ), so neither fixture can call them. The ( J, |B|, theta ) forms need
+// a JcFunction and run on the Kim fixture, whose n = 27 is not degenerate:
+// there only finiteness at its own j3 is checked
 TEST( HtsLaws, PiecewiseDegenerateBlendStaysFinite )
 {
     TbulkGuard tGuard( 77.0 ) ;
@@ -556,8 +571,15 @@ TEST( HtsLaws, PiecewiseDegenerateBlendStaysFinite )
     const real B     = 1.3 ;
     const real tBeta = 0.37 ;
 
+    // placeholder coordinates for the defect overloads
+    const real tX = 0.1 ;
+    const real tY = 0.2 ;
+    const real tZ = 0.3 ;
+    const real tTime = 0.4 ;
+
     Material * tHts = make_constant_hts( tFactory, 4.0 ) ;
     tHts->set_resistivity_law( ResistivityLaw::Piecewise ) ;
+    tHts->set_user_defined_defect( unit_defect ) ;
 
     const PiecewiseKnots tKnots( tHts, T ) ;
     ASSERT_LT( tKnots.mJ1, tKnots.mJ3 ) ;
@@ -570,9 +592,72 @@ TEST( HtsLaws, PiecewiseDegenerateBlendStaysFinite )
             << "value at J / j3 = " << tFactor ;
         EXPECT_TRUE( std::isfinite( tHts->drho_piecewise_dT( J, T, B, tBeta ) ) )
             << "dT at J / j3 = " << tFactor ;
+
+        const real tDJ1 = tHts->drho_piecewise_dJ( J ) ;
+        const real tDJ4 = tHts->drho_piecewise_dJ( J, T, B, tBeta ) ;
+
+        EXPECT_TRUE( std::isfinite( tDJ1 ) )
+            << "dJ( J ) at J / j3 = " << tFactor ;
+        EXPECT_TRUE( std::isfinite( tDJ4 ) )
+            << "dJ( J, T, B, beta ) at J / j3 = " << tFactor ;
+        EXPECT_TRUE( std::isfinite( tHts->drho_piecewise_dJ( J, tX, tY, tZ, tTime ) ) )
+            << "dJ( J, x, y, z, t ) at J / j3 = " << tFactor ;
+        EXPECT_TRUE( std::isfinite( tHts->drho_piecewise_dJ( J, T, B, tBeta, tX, tY, tZ, tTime ) ) )
+            << "dJ( J, T, B, beta, x, y, z, t ) at J / j3 = " << tFactor ;
+
+        if ( tFactor == 1.0 )
+        {
+            const real tLimit = 3.0 * tHts->rho( T ) / J ;
+            EXPECT_NEAR( tDJ1, tLimit, 1e-6 * tLimit ) << "dJ( J ) at the knot" ;
+            EXPECT_NEAR( tDJ4, tLimit, 1e-6 * tLimit ) << "dJ( J, T, B, beta ) at the knot" ;
+        }
     }
 
     delete tHts ;
+
+    // near the coincident knots: n = 4 + 1e-6 keeps the discriminant above the
+    // guard's threshold ( the root path ), n = 4 + 1e-9 falls inside it ( the
+    // fallback ); both must be finite, and the fallback equals the limit
+    for ( real tN : { 4.0 + 1e-6, 4.0 + 1e-9 } )
+    {
+        Material * tNear = make_constant_hts( tFactory, tN ) ;
+        tNear->set_resistivity_law( ResistivityLaw::Piecewise ) ;
+
+        const PiecewiseKnots tNearKnots( tNear, T ) ;
+        const real J = tNearKnots.mJ3 ;
+        const real tDJ = tNear->drho_piecewise_dJ( J, T, B, tBeta ) ;
+
+        EXPECT_TRUE( std::isfinite( tDJ ) ) << "dJ at the knot for n = " << tN ;
+        EXPECT_TRUE( std::isfinite( tNear->drho_piecewise_dT( J, T, B, tBeta ) ) ) << "dT at the knot for n = " << tN ;
+        EXPECT_LE( std::abs( tDJ ), 1.001 * 3.0 * tNear->rho( T ) / J ) << "dJ bounded by the coincident limit for n = " << tN ;
+
+        delete tNear ;
+    }
+
+    const belfem::material::JcFunction * tKimLaw = tFactory.create_jc_function( 3.1e10, 0.13, 0.7, 1.4 ) ;
+    Material * tKim = make_field_hts( tFactory, tKimLaw ) ;
+    tKim->set_resistivity_law( ResistivityLaw::Piecewise ) ;
+    tKim->set_user_defined_defect( unit_defect ) ;
+
+    const real tEcKim = tKim->constant_property( MaterialProperty::ec ) ;
+    const real tNKim  = tKim->constant_property( MaterialProperty::n ) ;
+    const real tJcB   = tKimLaw->eval( B, tBeta ) ;
+    const real tJ1Kim = tJcB * std::pow( 10.0, 2.5 / tNKim ) ;
+    const real tRho1  = ( tEcKim / tJcB ) * std::pow( tJ1Kim / tJcB, tNKim - 1.0 ) ;
+    const real tJ3Kim = tJ1Kim * std::pow( tKim->rho( T ) / tRho1, 1.0 / 3.0 ) ;
+    ASSERT_LT( tJ1Kim, tJ3Kim ) ;
+
+    for ( real tFactor : { 1.0, 1.0 - 1e-7, 1.0 - 1e-3 } )
+    {
+        const real J = tFactor * tJ3Kim ;
+
+        EXPECT_TRUE( std::isfinite( tKim->drho_piecewise_dJ( J, B, tBeta ) ) )
+            << "Kim dJ( J, B, beta ) at J / j3 = " << tFactor ;
+        EXPECT_TRUE( std::isfinite( tKim->drho_piecewise_dJ( J, B, tBeta, tX, tY, tZ, tTime ) ) )
+            << "Kim dJ( J, B, beta, x, y, z, t ) at J / j3 = " << tFactor ;
+    }
+
+    delete tKim ;
 }
 
 // contract pinned: below j1 drho_piecewise_dJ differentiates the raw power law that rho_piecewise returns there

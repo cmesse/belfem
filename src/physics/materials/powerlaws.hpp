@@ -1378,6 +1378,15 @@ namespace belfem
             "Piecewise power law derivative: degenerate Bezier transition (|a| = %g) for material %s",
             ( double ) std::abs( a ), mLabel.c_str() ) ;
 
+        // at the coincident knots ( n - 1 == mNff ) the discriminant vanishes at J = j3,
+        // where the blend is rho_n ( J / j3 )^mNff and d(rho)/dJ -> mNff rho_n / J; the
+        // test is on the discriminant with the comparison negated, so a NaN takes it too.
+        // For n within roundoff of the coincident value the guard also fires within a
+        // few ulps of j3, where the exact left derivative is 0: the returned limit is a
+        // bounded tangent of the right magnitude at a point where the tangent jumps anyway
+        real tDisc = b * b + a * c ;
+        if ( ! ( tDisc > BELFEM_EPSILON * ( b * b + 1.0 ) ) ) return mNff * rhon / normJ ;
+
         // t parameter from quadratic formula
         real tParam = (b + std::pow(b*b + a*c, 0.5)) / a ;
 
@@ -1463,6 +1472,10 @@ namespace belfem
             "Piecewise power law derivative: degenerate Bezier transition (|a| = %g) for material %s",
             ( double ) std::abs( a ), mLabel.c_str() ) ;
 
+        // coincident-knot limit, see drho_piecewise_dJ( normJ )
+        real tDisc = b * b + a * c ;
+        if ( ! ( tDisc > BELFEM_EPSILON * ( b * b + 1.0 ) ) ) return mNff * rhon / normJ ;
+
         // t parameter from quadratic formula
         real tParam = (b + std::pow(b*b + a*c, 0.5)) / a ;
 
@@ -1541,6 +1554,10 @@ namespace belfem
             "Piecewise power law derivative: degenerate Bezier transition (|a| = %g) for material %s",
             ( double ) std::abs( a ), mLabel.c_str() ) ;
 
+        // coincident-knot limit, see drho_piecewise_dJ( normJ )
+        real tDisc = b * b + a * c ;
+        if ( ! ( tDisc > BELFEM_EPSILON * ( b * b + 1.0 ) ) ) return mNff * rhon / normJ ;
+
         real tParam = (b + std::pow(b*b + a*c, 0.5)) / a ;
 
         real dt_dc = 0.5 / std::pow(b*b + a*c, 0.5) ;
@@ -1611,6 +1628,10 @@ namespace belfem
         BELFEM_ASSERT( std::abs( a ) > BELFEM_EPSILON,
             "Piecewise power law derivative: degenerate Bezier transition (|a| = %g) for material %s",
             ( double ) std::abs( a ), mLabel.c_str() ) ;
+
+        // coincident-knot limit, see drho_piecewise_dJ( normJ )
+        real tDisc = b * b + a * c ;
+        if ( ! ( tDisc > BELFEM_EPSILON * ( b * b + 1.0 ) ) ) return mNff * rhon / normJ ;
 
         real tParam = (b + std::pow(b*b + a*c, 0.5)) / a ;
 
@@ -1688,6 +1709,10 @@ namespace belfem
             "Piecewise power law derivative: degenerate Bezier transition (|a| = %g) for material %s",
             ( double ) std::abs( a ), mLabel.c_str() ) ;
 
+        // coincident-knot limit, see drho_piecewise_dJ( normJ )
+        real tDisc = b * b + a * c ;
+        if ( ! ( tDisc > BELFEM_EPSILON * ( b * b + 1.0 ) ) ) return mNff * rhon / normJ ;
+
         real tParam = (b + std::pow(b*b + a*c, 0.5)) / a ;
 
         real dt_dc = 0.5 / std::pow(b*b + a*c, 0.5) ;
@@ -1763,6 +1788,10 @@ namespace belfem
             "Piecewise power law derivative: degenerate Bezier transition (|a| = %g) for material %s",
             ( double ) std::abs( a ), mLabel.c_str() ) ;
 
+        // coincident-knot limit, see drho_piecewise_dJ( normJ )
+        real tDisc = b * b + a * c ;
+        if ( ! ( tDisc > BELFEM_EPSILON * ( b * b + 1.0 ) ) ) return mNff * rhon / normJ ;
+
         real tParam = (b + std::pow(b*b + a*c, 0.5)) / a ;
 
         real dt_dc = 0.5 / std::pow(b*b + a*c, 0.5) ;
@@ -1836,10 +1865,11 @@ namespace belfem
             "Piecewise power law derivative: degenerate Bezier transition (|a| = %g) for material %s",
             ( double ) std::abs( a ), mLabel.c_str() ) ;
 
-        cplx d = b*b + a*c ;
-        BELFEM_ERROR( std::abs( d ) > BELFEM_EPSILON,
-           "Piecewise power law derivative: degenerate Bezier transition (|a| = %g) for material %s",
-           ( double ) std::abs( d ), mLabel.c_str() ) ;
+        // coincident-knot limit, see drho_piecewise_dJ( normJ )
+        real tDisc = b * b + a * c ;
+        if ( ! ( tDisc > BELFEM_EPSILON * ( b * b + 1.0 ) ) ) return mNff * rhon / normJ ;
+
+        cplx d = tDisc ;
 
         cplx tParam = ( b + std::sqrt( d ) ) / a ;
 
@@ -1919,6 +1949,10 @@ namespace belfem
         BELFEM_ASSERT( std::abs( a ) > BELFEM_EPSILON,
             "Piecewise power law derivative: degenerate Bezier transition (|a| = %g) for material %s",
             ( double ) std::abs( a ), mLabel.c_str() ) ;
+
+        // coincident-knot limit, see drho_piecewise_dJ( normJ )
+        real tDisc = b * b + a * c ;
+        if ( ! ( tDisc > BELFEM_EPSILON * ( b * b + 1.0 ) ) ) return mNff * rhon / normJ ;
 
         real tParam = (b + std::pow(b*b + a*c, 0.5)) / a ;
 
