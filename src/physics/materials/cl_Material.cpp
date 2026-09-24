@@ -1022,7 +1022,8 @@ namespace belfem
         const uint aStartBC,
         const uint aEndBC,
         const real adYdX0,
-        const real adYdX1 )
+        const real adYdX1,
+        const real aStep )
     {
         BELFEM_ERROR( false, "Not implemented for main material class" );
     }
@@ -1035,7 +1036,7 @@ namespace belfem
     }
 
     void
-    Material::create_spline(  const MaterialProperty aProperty, const real adYdX0, const real adYdX1 )
+    Material::create_spline(  const MaterialProperty aProperty, const real adYdX0, const real adYdX1, const real aStep )
     {
         BELFEM_ASSERT( this->have( aProperty ), "Material %s does not have property %s", mLabel.c_str(), to_string(aProperty).c_str() );
         BELFEM_ASSERT( this->have( MaterialProperty::T_max ), "Material %s does not have a maximum temperature set (needed for %s).", mLabel.c_str(), to_string(aProperty).c_str() );
@@ -1117,7 +1118,8 @@ namespace belfem
             static_cast< uint > ( tStartBC ),
             static_cast< uint > ( tEndBC  ),
             adYdX0,
-            adYdX1 );
+            adYdX1,
+            aStep );
     }
 
 //------------------------------------------------------------------------------

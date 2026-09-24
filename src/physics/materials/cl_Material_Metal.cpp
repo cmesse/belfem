@@ -215,7 +215,7 @@ namespace belfem
                 mTCpSwitch( 4 ) = T4 ;
             }
             this->set_have( MaterialProperty::cp );
-            this->create_spline( MaterialProperty::cp, gamma );
+            this->create_spline( MaterialProperty::cp, gamma, BELFEM_QUIET_NAN, 1.0 );
         }
 
         void

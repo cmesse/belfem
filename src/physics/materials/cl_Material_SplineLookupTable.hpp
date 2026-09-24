@@ -62,7 +62,7 @@ namespace belfem
 
         protected:
 
-            // un-hide the convenience overload create_spline( aProperty, adYdX0, adYdX1 )
+            // un-hide the convenience overload create_spline( aProperty, adYdX0, adYdX1, aStep )
             using Material::create_spline ;
 
             void
@@ -74,7 +74,8 @@ namespace belfem
                 const uint aStartBC,
                 const uint aEndBC,
                 const real adYdX0,
-                const real adYdX1 ) override ;
+                const real adYdX1,
+                const real aStep ) override ;
 
             void
             create_cryo_expansion(

@@ -10,15 +10,16 @@
  * between their knots where a sample can miss an undershoot, and the
  * Hastelloy resistivity switch is recomputed from the fit it comes from.
  *
- * Two measured defect windows are left out of the sweeps that cross them and
- * are held instead by a disabled case each, which is red until the fit behind
- * it is repaired; everything above a window is swept as usual.
+ * A measured defect window can be left out of the sweeps that cross it and
+ * held instead by a disabled case, which is red until the fit behind it is
+ * repaired; everything above a window is swept as usual. No window is open.
  *
  * Not covered here: the field-dependent overloads, the HTS resistivity laws,
  * the mechanical and expansion properties, and the raw-law seams below the
  * resolution of the public spline.
  */
 
+#include <array>
 #include <cmath>
 #include <string>
 
@@ -53,9 +54,9 @@ namespace
     // every label the factory builds: the nine Kohler metals, the alloy, the
     // buffer and the superconductor. The false constructor flag skips the
     // angle-dependent resistivity database only; it does not select an
-    // analytic path. Public cp and lambda are the 4 K splines sampled from the
-    // raw laws, a metal's public rho is the raw law itself, and Hastelloy's
-    // public rho is a spline
+    // analytic path. Public cp and lambda are splines sampled from the raw
+    // laws ( a metal's cp on a 1 K grid, everything else on 4 K ), a metal's
+    // public rho is the raw law itself, and Hastelloy's public rho is a spline
     const char * gBuiltinLabels[] = { "copper", "aluminum", "silver", "nickel", "iron",
                                       "chromium", "indium", "lead", "tin",
                                       "hastelloyc276", "magnesia", "ybco" } ;
@@ -126,7 +127,8 @@ namespace
     // of that ( label, surface, property ) and is pinned by a DISABLED_ case in
     // MaterialValueDefects below. Every grid point above the window, and every
     // other property of the same label, is tested as usual. The bound itself
-    // belongs to the window: lead's offending step is the pair that ends at 3.0 K.
+    // belongs to the window: a pair of grid points that ends at mBelow is exempted.
+    // The table may be empty.
     enum class Surface
     {
         Public,
@@ -142,9 +144,7 @@ namespace
         const char * mDefect ;
     };
 
-    const KnownDefect gKnownDefects[] = {
-        { "lead", Surface::Public, "cp",     3.0, "negative below 3 K" },
-    } ;
+    const std::array< KnownDefect, 0 > gKnownDefects {} ;
 
     // the defect of a ( label, surface, property ) check, nullptr if none
     const KnownDefect *
@@ -765,13 +765,12 @@ TEST( HastelloyResistivity, HastelloyRhoSwitchIsTheLogSpaceRoot )
 }
 
 //------------------------------------------------------------------------------
-// the exempted windows: the contract that the sweeps above leave out, red
-// until the fit behind it is repaired
+// low-temperature contracts pinned on their own points
 //------------------------------------------------------------------------------
 
-// the public cp of lead is positive on the half-kelvin grid up to 3 K, and the
-// pair that ends there stays inside the step envelope
-TEST( MaterialValueDefects, DISABLED_LeadCpIsNegativeBelowThreeKelvin )
+// the public cp of lead is positive at 0.5, 1, 1.5 and 2 K, and the pair
+// that ends at 3 K stays inside the log-step envelope
+TEST( MaterialValueDefects, LeadCpIsPositiveBelowThreeKelvin )
 {
     MaterialFactory tFactory ;
     Material * tLead = tFactory.create_material( "lead", 50.0, false ) ;

@@ -125,10 +125,17 @@ namespace belfem
             const uint aStartBC,
             const uint aEndBC,
             const real adYdX0,
-            const real adYdX1 )
+            const real adYdX1,
+            const real aStep )
         {
-            // we always make steps in 4-K width, we need to be equidistant and with 4 K, Helium is captured properly
-            const real dT = 4.0 ;
+            // Equidistant knots from 0 K, aStep apart; the caller chooses the spacing
+            // ( 4 K by default; Metal::create_cp passes 1 K, because a T^3 start between
+            // two 4 K knots undershoots the cubic segment )
+            BELFEM_ERROR( std::isfinite( aStep ) && aStep > 0.0,
+                "Spline step for %s of %s must be finite and positive, got %g",
+                to_string( aProperty ).c_str(), this->label().c_str(), ( double ) aStep );
+
+            const real dT = aStep ;
 
             size_t tNumPoints = static_cast< size_t >( std::ceil( this->constant_property( MaterialProperty::T_max ) / dT ) + 1 ) ;
 

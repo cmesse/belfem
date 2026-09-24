@@ -1344,13 +1344,14 @@ namespace belfem
 
         /**
          * A NaN end derivative selects a parabolic end condition; a finite
-         * one is imposed as the tangent. Requires the property and T_max
-         * to be set.
+         * one is imposed as the tangent. aStep is the knot spacing in K,
+         * starting from 0 K. Requires the property and T_max to be set.
          */
         void
         create_spline(  const MaterialProperty aProperty,
             const real adYdX0=BELFEM_QUIET_NAN,
-            const real adXdX1=BELFEM_QUIET_NAN ) ;
+            const real adYdX1=BELFEM_QUIET_NAN,
+            const real aStep=4.0 ) ;
 
         /**
          * @brief Temperature below which alpha is taken from the Grueneisen branch
@@ -1556,7 +1557,8 @@ namespace belfem
             const uint aStartBC,
             const uint aEndBC,
             const real adYdX0=BELFEM_QUIET_NAN,
-            const real adYdX1=BELFEM_QUIET_NAN ) ;
+            const real adYdX1=BELFEM_QUIET_NAN,
+            const real aStep=4.0 ) ;
 
     };
 
