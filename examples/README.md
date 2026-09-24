@@ -15,8 +15,8 @@ cd examples/helix
 gmsh -3 helix.geo -o helix.msh
 ```
 
-Seventeen of the nineteen decks ship a `.geo` file. `corc_twolayer` and `pancake` build their
-meshes with `python/main.py` instead, run from the deck directory. `examples/scripts/Allrun`
+Seventeen of the twenty decks ship a `.geo` file. `corc_twolayer`, `pancake` and `rutherford`
+build their meshes with `python/main.py` instead, run from the deck directory. `examples/scripts/Allrun`
 handles both cases. Each deck has a `README.md` describing what it shows and how to run it.
 
 Use the `.geo` basename that the deck's `mesh { file : ... ; }` entry names. gmsh 4.x writes
@@ -81,7 +81,7 @@ Nothing extra is needed — a first parallel run builds any missing material dat
 
 ## 5. The decks
 
-Each of the nineteen decks has its own `input.conf` and `README.md`. The columns show which
+Each of the twenty decks has its own `input.conf` and `README.md`. The columns show which
 BELFEM features each deck exercises.
 
 | deck | dim | conductors | thermal | periodic | circuit | plugins | mesh from |
@@ -103,6 +103,7 @@ BELFEM features each deck exercises.
 | `corc_periodic_bc` | 3D | 1-layer CORC, 3 tapes | | translated | | | `.geo` |
 | `corc_garber_effect` | 3D | 1-layer CORC, 3 tapes | | twisted | | | `.geo` |
 | `corc_twolayer` | 3D | 2-layer CORC, 6 tapes | | twisted | | | `python/main.py` |
+| `rutherford` | 3D | 5 thin-shell tapes on a flat core | | translated | | | `python/main.py` |
 | `racetrack_usermat` | 3D | 3 racetrack coils, thin shells | | | | material | `.geo` |
 | `tape_quench_usermat` | 3D | 1 thin-shell tape | coupled | | | material, defect, source | `.geo` |
 

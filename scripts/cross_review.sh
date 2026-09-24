@@ -48,7 +48,7 @@ if [ "$MODE" = "quick" ]; then
     # Unattended, per-commit, and paid for on every commit — the cheap rung, pinned here
     # rather than left to the wrapper defaults, which are tuned for interactive audits.
     CODEX_MODEL="gpt-5.6-luna"; CODEX_EFFORT="medium"
-    GROK_MODEL="grok-4.6";      GROK_EFFORT="medium"
+    GROK_MODEL="grok-4.7";      GROK_EFFORT="medium"
 else
     MISSING=""
     for V in CODEX_MODEL CODEX_EFFORT GROK_MODEL GROK_EFFORT; do
@@ -58,7 +58,7 @@ else
         echo "cross_review.sh: --$MODE needs an explicit depth. Unset:$MISSING" >&2
         echo "A jury round without a recorded depth cannot be compared to any other round." >&2
         echo "Pick a row from the depth-selection table in doc/ai_collaboration_protocol.md, e.g." >&2
-        echo "  CODEX_MODEL=gpt-5.6-terra CODEX_EFFORT=high GROK_MODEL=grok-4.6 GROK_EFFORT=high \\" >&2
+        echo "  CODEX_MODEL=gpt-5.6-terra CODEX_EFFORT=high GROK_MODEL=grok-4.7 GROK_EFFORT=high \\" >&2
         echo "  AI_EXCHANGE_SLUG=$SLUG scripts/cross_review.sh --$MODE${TARGET:+ $TARGET}" >&2
         exit 1
     fi
@@ -72,7 +72,7 @@ else
         *) echo "cross_review.sh: bad CODEX_MODEL '$CODEX_MODEL' (see the depth table)" >&2; exit 1 ;;
     esac
     case "$GROK_MODEL" in
-        grok-4.6|grok-4.5) ;;
+        grok-4.7|grok-4.6|grok-4.5) ;;
         *) echo "cross_review.sh: bad GROK_MODEL '$GROK_MODEL' (see the depth table)" >&2; exit 1 ;;
     esac
     for V in CODEX_EFFORT GROK_EFFORT; do

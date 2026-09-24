@@ -20,6 +20,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <stdexcept>
 #include <string>
 
 #include "typedefs.hpp"
@@ -830,6 +831,151 @@ TEST( ShareReceive, ShareEmptyVectorIsWellDefined )
         belfem::receive( tData );
         EXPECT_EQ( tData.length(), 0u );
     }
+}
+
+// =============================================================================
+// comm_drain_check: the debug-build tripwire for the fabric ordering contract
+//
+// Two tests, and they must stay last in this translation unit: the second one
+// puts a deliberate stray on the fabric, gtest runs a unit's tests in
+// definition order, and a later collect on the same tag would consume the
+// stray instead of its own payload. Everything the tests do goes through the
+// commtools wrappers -- no direct MPI call here.
+// =============================================================================
+
+TEST( DrainCheck, CleanFabricIsSilent )
+{
+    if( belfem::comm_size() < 2 ) GTEST_SKIP() << "Requires 2 ranks";
+
+    const belfem::proc_t tRank = belfem::comm_rank();
+    const belfem::proc_t tSize = belfem::comm_size();
+
+    // touch both fabric tags of every rank pair: the lower rank sends a small
+    // vector ( length on the base tag, payload on tag + 1 ), the higher rank
+    // receives it. Every rank walks the same global pair list in the same
+    // order, so no rank waits on an operation a peer has not posted yet.
+    // Non-fatal checks only: a fatal one would return this rank before the
+    // broadcast below and leave its peers in the collective
+    for( belfem::proc_t i = 0; i < tSize; ++i )
+    {
+        for( belfem::proc_t j = i + 1; j < tSize; ++j )
+        {
+            if( tRank == i )
+            {
+                belfem::Vector< belfem::real > tVec( 4 );
+                for( belfem::index_t k = 0; k < 4; ++k )
+                {
+                    tVec( k ) = static_cast< belfem::real >( i * 10 + k );
+                }
+                belfem::send( tVec, j );
+            }
+            else if( tRank == j )
+            {
+                belfem::Vector< belfem::real > tVec;
+                belfem::receive( tVec, i );
+                EXPECT_EQ( tVec.length(), 4u );
+                for( belfem::index_t k = 0; k < tVec.length(); ++k )
+                {
+                    EXPECT_NEAR( tVec( k ), static_cast< belfem::real >( i * 10 + k ), tEps );
+                }
+            }
+        }
+    }
+
+    belfem::real tVal = ( tRank == 0 ) ? 7.0 : 0.0;
+    belfem::broadcast( tVal, 0 );
+    EXPECT_NEAR( tVal, 7.0, tEps );
+
+    belfem::comm_barrier();
+
+    // the assertions above are the release-build content of this test: there
+    // the check compiles to nothing and this line cannot fail. A rank left
+    // blocked by the exchange never reaches it and shows as the ctest timeout
+    EXPECT_NO_THROW( belfem::comm_drain_check( "test: clean fabric" ) );
+}
+
+TEST( DrainCheck, StrayScalarFiresOnEveryRank )
+{
+#if !BELFEM_ASSERTIONS_ACTIVE
+    GTEST_SKIP() << "comm_drain_check compiles to a no-op without assertions; "
+                    "a stray posted here would never be detected";
+#else
+    if( belfem::comm_size() < 2 ) GTEST_SKIP() << "Requires 2 ranks";
+
+    const belfem::proc_t tRank = belfem::comm_rank();
+
+    // The DR-100 class: a message on a pair's size/scalar tag that nobody
+    // receives ( the historical stray was a matrix header; one int lands on
+    // the same tag and takes the same probe branch ). send() waits for its
+    // MPI_Isend to complete, which for a message this small Open MPI does
+    // eagerly, without a matching receive ( btl_sm_eager_limit and
+    // btl_tcp_eager_limit are both far above one int ). The MPI standard does
+    // not promise that, and this tree supports Open MPI only. On a transport
+    // that falls back to rendezvous the send blocks, no rank reaches the
+    // collective below, and the case ends in the ctest TIMEOUT: a loud
+    // failure, never a silent pass.
+    const int tStray = 42;
+    if( tRank == 1 )
+    {
+        belfem::send( tStray, 0 );
+    }
+
+    // The check folds its verdict through allreduce before any rank throws,
+    // so on the hit/miss path every rank throws in the same sweep or none
+    // does and the loop needs no communication of its own. Only a failing
+    // MPI call inside the probe itself ( comm_check ) can throw on one rank
+    // ahead of the fold; that is the broken-MPI path and not what this test
+    // exercises. A barrier does not guarantee an eager message is already
+    // visible to the probe, so the sweep is repeated; each probe drives
+    // progress and the bound turns a flake into a loud failure that names
+    // the sweep count.
+    const int   tMaxSweeps = 1000;
+    bool        tCaught    = false;
+    std::string tMessage;
+    int         tSweeps    = 0;
+
+    for( ; tSweeps < tMaxSweeps && ! tCaught; ++tSweeps )
+    {
+        try
+        {
+            belfem::comm_drain_check( "test: stray" );
+        }
+        catch( const std::runtime_error & aError )
+        {
+            tCaught  = true;
+            tMessage = aError.what();
+        }
+    }
+
+    // non-fatal on purpose: every rank must still reach the drain and the
+    // barrier below, or a single failing rank strands its peers until the
+    // ctest TIMEOUT and the verdict fold in main() is never reached
+    EXPECT_TRUE( tCaught ) << "rank " << tRank << ": no stray reported after "
+                           << tSweeps << " sweeps";
+
+    if( tRank == 0 )
+    {
+        EXPECT_NE( tMessage.find( "source 1 -> rank 0" ), std::string::npos ) << tMessage;
+        EXPECT_NE( tMessage.find( "size/scalar" ), std::string::npos ) << tMessage;
+    }
+    else
+    {
+        EXPECT_NE( tMessage.find( "detected on another rank" ), std::string::npos ) << tMessage;
+    }
+
+    // the check probes and never receives: the stray is still there, and
+    // draining it is what leaves the fabric clean for the sentinel's fold
+    if( tRank == 0 )
+    {
+        int tVal = 0;
+        belfem::receive( tVal, 1 );
+        EXPECT_EQ( tVal, tStray );
+    }
+
+    belfem::comm_barrier();
+
+    EXPECT_NO_THROW( belfem::comm_drain_check( "test: after drain" ) );
+#endif
 }
 
 #endif // BELFEM_MPI

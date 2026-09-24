@@ -15,6 +15,13 @@ All notable changes to BELFEM are recorded here. The format follows
   apart. It is the worked example for combining a `userdefined` current boundary condition
   with a material `defect { }` plugin in a single shared object. Nineteen decks now ship.
 
+- **New example deck `examples/rutherford`.** REBCO tapes wound around a flat
+  Rutherford-type copper core with rounded edges, the flat flexible cable of Romancew (2026):
+  a Python generator builds the tapes as thin shells on a stadium-shaped mandrel at a given
+  lay angle, closes a fraction of a pitch with a translated periodic condition, and writes
+  the matching `topology` section. Tapes per layer, criss-crossed layers and the pitch count are
+  parameters; the copper core itself is meshed as air. Twenty decks now ship.
+
 - **The dependency stack is now documented.** `doc/scls_toolchain.md` names SCLS — the
   Scientific Core Library Stack BELFEM is built, tested and run against — and covers what it
   supplies, how to install and activate a flavor, and the four separate mechanisms that read

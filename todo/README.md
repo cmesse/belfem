@@ -26,8 +26,9 @@ checkboxes, `On` open questions, definition-of-done, audit trail.
 ---
 
 ## Currentness sweep 2026-09-03 — round 3: purpose-served and relevance
+- [smith_inverse_grouped_terminals.md](smith_inverse_grouped_terminals.md) — branch `Claude` experiment: unit-normalized Smith diagonal + weighted cut jump for bracket groups whose curves cross one conductor k times (Rutherford 5×); evidence for Gregory, never merged. ✅ COMPLETE 2026-09-19, report in devlog
 
-**Active plans: 4** (6 after round 3; `user_api_header_install` split and deferred 2026-09-04,
+**Active plans: 5** (`test_gap_backlog` added 2026-09-21; 6 after round 3; `user_api_header_install` split and deferred 2026-09-04,
 `linalg_backend_verification` closed 2026-09-04 — see their entries). Rounds 1 and 2 (below) took the directory from 57 to 29 by asking whether a
 plan's work was in the tree. Christian's review of the 29 set a sharper standard, and round 3
 applied it: **a plan is closed when its purpose is served in the tree, even if its own refined
@@ -154,6 +155,18 @@ and D-m6; v11 fixed D-m3..D-m9 with a clean jury, leaving D-m2 (attribution) and
 
 ## Added 2026-09-22
 
+### [closed/mesh_oneliners_dr161_169_176_179_180.md](closed/mesh_oneliners_dr161_169_176_179_180.md) — five `src/mesh` one-liners from the debt register — **CLOSED 2026-09-23**
+
+DR-161 top/bottom node type lists, DR-169 `~Basis` pointer-keyed free, DR-176 HEX8TS/HEX8TB unity nodes, DR-179 FaceFactory sentinels and the sideset-only refusal, DR-180 the 2-D `Curve` null guard. Three code rounds; the gate found the LINE3 midpoint SEGV. Rows struck.
+
+### [closed/maxwell_background_ds_dr181.md](closed/maxwell_background_ds_dr181.md) — `background_phi` read the point-0 surface increment at every point — **CLOSED 2026-09-23**
+
+`dS()`→`dS( k )`; a kernel-level HEX8 fixture ran red before (K 17.6 %, f 18.8 %) and green after. By-catch DR-183 refuted. Row struck.
+
+### [closed/curvefactory_dr188.md](closed/curvefactory_dr188.md) — CurveFactory: pairs from facets on every path, closed curves oriented, closed terminals refused — **CLOSED 2026-09-23**
+
+Facet-built pairs and midpoints (2-D, 3-D intersect, thin-shell side curves), the closing-segment orientation, the Z1/O6 refusals, the dead bitset overload deleted, the `MaxwellFactory` closed-terminal refusal with its test. Mandatory A/B: 10/10 shipped 3-D decks identical. DR-188 stays `[W]` for its residue.
+
 ### [periodic_postprocessor_fields.md](periodic_postprocessor_fields.md) — make the recovered nodal fields periodic
 
 **PLAN — audited (Codex astra + Grok 4.7), C1–C12 folded in, plain mean decided; no source modified.** Each
@@ -176,17 +189,15 @@ ybco current sheet is displayed in the silver and buffer layers. Fix: a node-loc
 scaled Cartesian everywhere, curvilinear `(s1, s2, η)` for PENTA6TS/QUAD4TS layers, and an order-0
 fallback instead of the `posv` abort. Offline probe: κ 4e12 → 16, bend error 52 % → 1e-15.
 
-### [closed/mesh_oneliners_dr161_169_176_179_180.md](closed/mesh_oneliners_dr161_169_176_179_180.md) — five `src/mesh` one-liners from the debt register — **CLOSED 2026-09-23**
+### [test_gap_followups.md](test_gap_followups.md) — the rulings of the Tier 1 test-gap run turned into twelve small rows
 
-DR-161 top/bottom node type lists, DR-169 `~Basis` pointer-keyed free, DR-176 HEX8TS/HEX8TB unity nodes, DR-179 FaceFactory sentinels and the sideset-only refusal, DR-180 the 2-D `Curve` null guard. Three code rounds; the gate found the LINE3 midpoint SEGV. Rows struck.
-
-### [closed/maxwell_background_ds_dr181.md](closed/maxwell_background_ds_dr181.md) — `background_phi` read the point-0 surface increment at every point — **CLOSED 2026-09-23**
-
-`dS()`→`dS( k )`; a kernel-level HEX8 fixture ran red before (K 17.6 %, f 18.8 %) and green after. By-catch DR-183 refuted. Row struck.
-
-### [closed/curvefactory_dr188.md](closed/curvefactory_dr188.md) — CurveFactory: pairs from facets on every path, closed curves oriented, closed terminals refused — **CLOSED 2026-09-23**
-
-Facet-built pairs and midpoints (2-D, 3-D intersect, thin-shell side curves), the closing-segment orientation, the Z1/O6 refusals, the dead bitset overload deleted, the `MaxwellFactory` closed-terminal refusal with its test. Mandatory A/B: 10/10 shipped 3-D decks identical. DR-188 stays `[W]` for its residue.
+**OPEN — 0 of 12; every item ruled by Christian on 2026-09-22.** Source changes the overnight run
+surfaced but did not land: the connector-loop guard (DR-162, supported), one shared facet-node type
+list with HEX20 refused, deleting the callerless bitset `intersect` overload, a debug assert in
+`update_facet_nodes`, the ferromagnet RRR with `rho_mag`, the ghost-interface fixture that separates
+jump from SWIP average (DR-168), the `n = 4` tangent fallback (DR-170), the material-deck
+contradiction refusals (DR-171), the multi-source Dirichlet decision (DR-172) and the piecewise
+parallel-factor physics round (DR-163). Each takes the standing loop and a consumer inventory first.
 
 ### [closed/practice_drift_checker.md](closed/practice_drift_checker.md) — a checker for convention documents that have drifted from practice
 
@@ -212,6 +223,18 @@ Bathe's second edition was credited to Prentice Hall, *Finite Element Exterior C
 three authors instead of Arnold alone, and `Herrmann 1978` turned out to name no existing
 work (the theorem is Barlow 1976). Left open: whether the checker becomes a gate (R6), and
 whether the index should mark which works are held locally (O2).
+
+### [test_gap_backlog.md](test_gap_backlog.md) — the ranked list of tests the suite is missing, distilled from the incident record
+
+**OPEN — list compiled and citation-checked 2026-09-21; no test written.** Seventy-seven test
+proposals in four tiers (red today / pin the fix P0 / P1–P2 / blocked on a fixture), seven
+enabling fixtures whose feasibility is the ranking's largest unknown, nine rulings, and a §2
+of nineteen defects the sweep found still in the tree (two of them, the HEX20 `node( 21 )` read
+and the thin-shell facet-id overrun, were catalogued as "latent" and are live). Inputs: the
+601-row incident catalog in seven thread groups, the 49 September devlogs, the seven open
+register rows and two web-API pre-sweeps, each to a blind reviewer with tree access; every
+cited id resolves and the top "red today" claims were re-read in source. Codex and Grok take
+the jury per test as it is written, not on the list.
 
 ## Added 2026-09-18
 

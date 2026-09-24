@@ -13,17 +13,18 @@
 ## Table of Contents
 
 1. [Introduction](#introduction)
-2. [Core Principles](#core-principles)
-3. [Naming Conventions](#naming-conventions)
-4. [Container Selection Strategy](#container-selection-strategy)
-5. [Memory Management Philosophy](#memory-management-philosophy)
-6. [Performance-First Design Patterns](#performance-first-design-patterns)
-7. [Error Handling Strategy](#error-handling-strategy)
-8. [Thread Safety and MPI](#thread-safety-and-mpi)
-9. [Benchmarks We Owe Ourselves](#benchmarks-we-owe-ourselves)
-10. [Summary Checklist](#summary-checklist)
-11. [Further Reading](#further-reading)
-12. [Appendix: Source Reconciliation](#appendix-source-reconciliation)
+2. [The Manifest: Six "First" Rules](#the-manifest-six-first-rules)
+3. [Core Principles](#core-principles)
+4. [Naming Conventions](#naming-conventions)
+5. [Container Selection Strategy](#container-selection-strategy)
+6. [Memory Management Philosophy](#memory-management-philosophy)
+7. [Performance-First Design Patterns](#performance-first-design-patterns)
+8. [Error Handling Strategy](#error-handling-strategy)
+9. [Thread Safety and MPI](#thread-safety-and-mpi)
+10. [Benchmarks We Owe Ourselves](#benchmarks-we-owe-ourselves)
+11. [Summary Checklist](#summary-checklist)
+12. [Further Reading](#further-reading)
+13. [Appendix: Source Reconciliation](#appendix-source-reconciliation)
 
 ---
 
@@ -41,6 +42,23 @@ This document explains the "why" behind BELFEM's coding conventions. For contrib
 **Target audience:** Developers contributing to BELFEM, code reviewers, and anyone wondering why the code looks different from typical C++14/17 practices.
 
 **Provenance of claims:** Facts in this document are anchored to the source with `file:line` citations, current as of 2026-08-08. Code blocks are either verbatim excerpts (cited) or explicitly labeled *pseudocode*. Where a claim could not be verified from the repository, it is either cited to external literature and labeled a **literature heuristic**, or it has been removed — see the [Source Reconciliation appendix](#appendix-source-reconciliation).
+
+---
+
+## The Manifest: Six "First" Rules
+
+Every convention in this document reflects one of six priorities. They are listed, not ranked. When two priorities meet, the section named in the last column records which one gave way and why. Where a rule departs from what mainstream C++ practice or one of the books in [Further Reading](#further-reading) would prescribe, the fourth column says what is given up, so readers can distinguish a considered departure from an oversight. One rule, literature first, gives up nothing in the code and is listed for completeness.
+
+| # | Rule | What it means here | What it deliberately gives up | Where the rationale lives |
+|---|---|---|---|---|
+| 1 | **Performance first** | The release build is the target. Use manual memory on hot paths, with no smart pointers or reference counting there. Bounds and invariant checks (`BELFEM_ASSERT`) are compiled out of release builds. Safety comes from tests rather than runtime guards. | The modern-C++ "safety by default" posture; the "leave assertions on in production" default of Thomas & Hunt, taken under that book's own carve-out and applied by tier rather than check by check. | [Core Principles §1](#1-performance-first-safety-through-testing), [Memory Management Philosophy](#memory-management-philosophy), [Error Handling Strategy](#error-handling-strategy) |
+| 2 | **MPI first** | Use one parallel model: distributed memory, with one single-threaded process per rank. There are no threads, mutexes, or thread-safety obligations for data structures. Solver-internal threading is the one sanctioned exception. | Hybrid MPI+X, and with it every thread-safety rule, until a measurement on a memory-bound configuration justifies the cost. | [Thread Safety and MPI](#thread-safety-and-mpi), [Benchmarks We Owe Ourselves](#benchmarks-we-owe-ourselves) |
+| 3 | **Literature first** | Every equation, algorithm, formulation, validation choice, and material property has a citable source. Cite the source at the statement (`// Messe et al. 2023, Eq. 13`). | Nothing in the code; the cost is a curated library and the routing tables that make it usable. | [Mathematical Readability](#4-mathematical-readability); `CLAUDE.md` "Literature and References"; `doc/literature_references.md` |
+| 4 | **Modularity first** | Build one library from per-module object libraries. Reach third-party libraries only through their dedicated wrapper module (`scripts/check_wrapper_policy.py` flags direct vendor calls made outside it; header inclusion and vendor constants are policed by review, not by the script). Keep the input contract in two artifacts that move together. | The convenience of calling a vendor API at the point of use, and of including a vendor header anywhere. | [Minimal Dependencies, Maximum Control](#2-minimal-dependencies-maximum-control); `doc/lessons_learned.md` L-21; `CLAUDE.md` "The Input Contract" |
+| 5 | **Readability first** | Use Allman braces (`.clang-format`), the `a`/`t`/`m`/`g` prefixes in framework code, and linear-algebra syntax in which `Vector`/`Matrix` expressions read like MATLAB. A kernel should resemble the published equation it implements. | *Clean Code*'s small-method decomposition inside numerical kernels, because scattering a kernel across many methods breaks the correspondence with the equation. | [Naming Conventions](#naming-conventions), [Mathematical Readability](#4-mathematical-readability), the note on *Clean Code* under [Further Reading](#further-reading) |
+| 6 | **Community first** | Prefer established, maintained community packages (Open MPI, Armadillo or Blaze, MUMPS, STRUMPACK, PETSc, SuperLU, ARPACK, HDF5, Exodus) to in-house reimplementation. Choose them so that research and enterprise users can both adopt the result: use licenses that permit redistribution, while keeping copyleft up to GPL-3 out of the default build. SuiteSparse is the one exception, opt-in (`USE_SUITESPARSE` defaults `OFF`, "not for binary redistribution"), because UMFPACK has no permissive equivalent. | Solvers and utilities whose license would bind the downstream user; and the control that an in-house implementation would give over every line. | [Minimal Dependencies, Maximum Control](#2-minimal-dependencies-maximum-control); `CMakeLists.txt` option text; `LICENSE` |
+
+**How the manifest is used against the literature.** The library in `doc/literature_references.md` is used to find gaps in this strategy, not to overrule it. When a source contradicts one of the six rules, classify the contradiction as either *deliberate and reasoned*, in which case the reason is written into the section the table points at, or an *oversight*, in which case it goes to the debt register as an open item. Three contradictions are already classified as deliberate and carry their reason in this document: assertions compiled out of release (rule 1, by the frequency rule in [Error Handling Strategy](#error-handling-strategy)), no internal thread safety (rule 2), and no small-function decomposition in kernels (rule 5). Until a written reason exists, treat a contradiction as an oversight.
 
 ---
 
@@ -632,7 +650,7 @@ Both funnel through `belfem::assert::belfem_assert(...)`, which calls `assert::e
 
 The flag is initialized to the build's compile-time behavior — throwing where assertions are active, aborting otherwise — so a debug run still throws and a production run still aborts, at any rank count, with no caller involvement. **A debug run throws in parallel too**, deliberately: that is what keeps a failed check inspectable while the other ranks are still alive. `MPI_Abort` is the production reaction. It is a **test hook, not a configuration knob**: a production run must keep the abort, because a throw that escapes `main` terminates one rank and leaves its peers blocked in a collective, and nothing in `src/` catches BELFEM errors. The state deliberately lives in `assert.cpp` rather than as a header static, because `assert::error` is a function template instantiated in the *calling* translation unit — a per-TU copy would mean a test binary could not change the reaction of an already-compiled library.
 
-The reason the hook exists: `BELFEM_ERROR` covers the failures that survive into release (file I/O, MPI, allocation, unsupported configuration), so those paths are worth unit-testing in the shipped configuration. Each test `main` calls `set_throw_on_error( true )` after `gComm.init`, which makes `EXPECT_THROW` work under `NDEBUG` instead of aborting the whole test binary. Two consequences for test authors. First, guard assertion-tier tests with `#if BELFEM_ASSERTIONS_ACTIVE`, the macro exported by `assert.hpp` — not a restated `#ifndef NDEBUG`, which is not equivalent when both `NDEBUG` and `DEBUG` are defined. Second, the two predicates are distinct: a release binary in throw mode can catch a `BELFEM_ERROR` while `BELFEM_ASSERT` still expands to nothing. What such a test verifies is that the check fires with the right message, **not** that the process aborts; release and test runs take different reactions by construction.
+The reason the hook exists: `BELFEM_ERROR` covers the failures that survive into release (file I/O, MPI, allocation, unsupported configuration), so those paths are worth unit-testing in the shipped configuration. Each serial test `main` calls `set_throw_on_error( true )` after `gComm.init`, which makes `EXPECT_THROW` work under `NDEBUG` instead of aborting the whole test binary. The Tier 2 (multi-rank) mains are the exception and leave the flag at its build default: a release-mode throw on one rank would strand its peers in a collective, where the production reaction, `MPI_Abort`, ends the job instead. Their throw expectations are therefore assertion-tier and skip in release (`tests/comm/test_commmpi_main.cpp`). Two consequences for test authors. First, guard assertion-tier tests with `#if BELFEM_ASSERTIONS_ACTIVE`, the macro exported by `assert.hpp` — not a restated `#ifndef NDEBUG`, which is not equivalent when both `NDEBUG` and `DEBUG` are defined. Second, the two predicates are distinct: a release binary in throw mode can catch a `BELFEM_ERROR` while `BELFEM_ASSERT` still expands to nothing. What such a test verifies is that the check fires with the right message, **not** that the process aborts; release and test runs take different reactions by construction.
 
 Note precisely what drives the default abort-vs-throw split: the **`NDEBUG` macro**, not the exception model. Exceptions are currently enabled in every build configuration (see Core Principles); an uncaught `std::bad_alloc` from a failed `std::vector` reallocation in a debug build unwinds and terminates with a diagnosable message rather than aborting. Under the aspirational `-fno-exceptions` regime, allocation failure would become an immediate abort inside the library — one more reason that switch is a deliberate future decision, not a checkbox.
 

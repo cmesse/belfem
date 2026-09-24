@@ -479,8 +479,8 @@ above carry an effort and no model: the model follows a standing policy, not the
 a version in every row would give six places to go stale instead of one. Older versions stay
 allowlisted in `ask_grok.sh` so an earlier round can be reproduced, never so a new round can pick
 one. **A wrapper default or a depth row that names an older grok is a defect**, not a tier: on 2026-09-22
-`ask_grok.sh` still defaulted to `grok-4.6`, which is how fourteen recent records name a model this
-table does not.
+`ask_grok.sh` defaulted to `grok-4.6`, which is how fourteen recent records name a model this
+table does not. The wrapper default is `grok-4.7`.
 
 ```bash
 CODEX_MODEL=gpt-5.6-terra CODEX_EFFORT=high AI_EXCHANGE_SLUG=<slug> .claude/scripts/ask_codex.sh - < prompt.md

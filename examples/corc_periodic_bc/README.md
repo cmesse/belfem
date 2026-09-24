@@ -8,8 +8,10 @@
 ## What it shows
 
 This deck models one layer of three REBCO tapes wound around a round core, as thin shells.
-A **translated** periodic condition shifts the top plane along the axis, so each tape
-connects to itself. A 160 A, 50 Hz sine drives the cable for 20 ms with Picard and
+A **translated** periodic condition shifts the top plane along the axis; with a third of a
+pitch each tape continues into its neighbor, so the three tapes form one conductor and the
+deck drives it through one crossing of one tape (`[1,2]` are the two half-width sidesets of
+that crossing). A 160 A, 50 Hz sine drives the cable for 20 ms with Picard and
 STRUMPACK. Compare it with `corc_garber_effect`, which uses a twisted periodic condition.
 
 CORC(R) is a registered trademark of Advanced Conductor Technologies LLC, Boulder, CO,

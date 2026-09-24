@@ -75,8 +75,16 @@ section [ : label ]
 - Bracket **groups** (terminal lists): `1,3,5` = three separate groups;
   `[1,2]` = one group of two; `[1],[2]` = two groups
   (`cl_Input_Section.cpp:632-712`). The brackets carry the electrical intent:
-  ids inside one `[ ]` are electrically connected and act as a single
-  terminal; each separate group is its own independent connection.
+  ids inside one `[ ]` are pieces of a single terminal surface (the two
+  half-width sidesets of one tape end in `corc_periodic_bc`, `[1,2]`) and
+  act as one terminal; each separate group is its own independent
+  connection. **Do not use a bracket to collect the several crossings of
+  one conductor on a periodic model.** A translated or twisted periodic
+  condition chains the tapes into one connected component, and that
+  component takes exactly ONE terminal pair, on any one of its crossings.
+  Summing k crossings into one group makes the terminal chain link the
+  conductor k times, which inflates the cut-to-terminal pairing by k and
+  imposes the amplitude k times per crossing without a refusal.
   **A range outside a bracket expands the same way**, one group per member:
   `42:48` is seven groups, i.e. seven boundary conditions, not one terminal
   of seven sidesets. Write `[42:48]` for the single terminal. The expansion

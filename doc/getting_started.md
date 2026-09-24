@@ -75,8 +75,9 @@ make doc      # generate this documentation (requires Doxygen)
 ## 2. First simulation
 
 The `examples/` directory ships working decks. Most decks carry the
-*geometry* (`.geo`) — generate the mesh with [gmsh](https://gmsh.info) first; two
-(`corc_twolayer`, `pancake`) build theirs with `python/main.py` instead, as their READMEs say.
+*geometry* (`.geo`) — generate the mesh with [gmsh](https://gmsh.info) first; three
+(`corc_twolayer`, `pancake`, `rutherford`) build theirs with `python/main.py` instead, as
+their READMEs say.
 Starting from the repository root:
 
 ```bash

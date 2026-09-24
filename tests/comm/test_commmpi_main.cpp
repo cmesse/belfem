@@ -59,11 +59,11 @@ main( int    argc,
     //
     // test_comm_main.cpp sets BOTH set_throw_on_error( true ) and
     // set_syslog_on_error( false ), because its tests exercise error paths
-    // deliberately with EXPECT_THROW. This file has no throw expectation at all
-    // ( grep EXPECT_THROW/ASSERT_THROW over test_CommMPI.cpp: none; the one
-    // throw-related line is an EXPECT_NO_THROW ), and test_Communicator.cpp,
-    // which does exercise them, compiles into test_comm rather than into this
-    // binary. So neither call could be copied over on that justification.
+    // deliberately with EXPECT_THROW. The one throw expectation in
+    // test_CommMPI.cpp ( the DrainCheck stray test ) catches what the debug
+    // policy below already throws, and skips itself in release where the
+    // check it provokes is compiled out. So neither call could be copied
+    // over on that justification.
     //
     // throw_on_error is therefore NOT set: forcing it true would override the
     // RELEASE reaction, where a failed check must call MPI_Abort rather than

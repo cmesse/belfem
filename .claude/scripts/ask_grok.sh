@@ -24,16 +24,22 @@
 #   GROK_SANDBOX          Sandbox profile (default: read-only)
 #   GROK_TOOLS            Comma-separated tool allowlist (default: read_file,grep,list_dir)
 #                         Shell/write tools MUST stay off this list — see "Headless footgun" below.
-#   GROK_MAX_TURNS        Agent turn budget (default: 30; raise for large multi-file audits)
-#   GROK_MODEL            grok-4.6|grok-4.5 (default: grok-4.6)
+#   GROK_MAX_TURNS        Agent turn budget (default: 80). Multi-file audits were cut off
+#                         at 30 and again at 60 while still reading. A body that already
+#                         contains a ## audit is kept when that cap is reported as cancelled.
+#   GROK_MODEL            grok-4.7|grok-4.6|grok-4.5 (default: grok-4.7, the latest allowlisted
+#                         seat). Older ids stay allowlisted so an earlier round can be reproduced.
+#                         grok-4.7-build-fast is the CLI's coding model, not an audit tier, and is
+#                         deliberately not listed.
 #   GROK_EFFORT           low|medium|high|xhigh (default: xhigh)
-#                         The old list here also advertised none|minimal|max, which grok-4.6 does
-#                         not offer; max and ultra are excluded on purpose (ultra delegates to
+#                         The old list here also advertised none|minimal|max, which these models
+#                         do not offer; max and ultra are excluded on purpose (ultra delegates to
 #                         subagents, against the --no-subagents this wrapper passes).
-#                         The xhigh default was chosen to reproduce what ~/.grok/config.toml gave
-#                         on 2026-08-30, so turning the knob on changed the record, not the depth.
-#                         That is an observation, not a guarantee — if the vendor config drifts,
-#                         this default stays put and the two diverge.
+#                         grok-4.5's menu is low|medium|high. Pairing it with the xhigh default
+#                         is rejected before the call.
+#                         The xhigh default is not read back from ~/.grok/config.toml. It was set
+#                         to match that file on 2026-08-30; the file has since moved, and this
+#                         default stays put so a config edit does not retune every audit.
 #                         Historical note: GROK_EFFORT once failed with HTTP 400. That came from
 #                         the retired grok-build backend and expired with it; see INC-487 in
 #                         doc/lessons_learned_evidence.md.
@@ -42,9 +48,14 @@
 #   GROK_REQUIRE_HEADING  Require a '##' markdown section (default: 1). Set 0 only for diagnostics.
 #   GROK_RESUME_SALVAGE   If 1 (default), on narration-only/Cancelled try one --resume finish pass
 #                         reusing the session that already read files.
-#   GROK_PERMISSION_MODE  Optional --permission-mode override. Only `default` and
-#                         `bypassPermissions` are meaningful via the CLI flag on grok ≥0.2.x;
-#                         omit (default) and rely on sandbox + tool allowlist for read-only.
+#   GROK_PERMISSION_MODE  Optional --permission-mode override. Omit it (the default).
+#                         The read-only contract is the sandbox, the tool allowlist, and
+#                         GROK_DISALLOWED_TOOLS. An omitted flag inherits [ui] permission_mode
+#                         from the user config.
+#   GROK_DISALLOWED_TOOLS Removed even when --tools would keep them
+#                         (default: search_tool,use_tool). The allowlist cannot drop those
+#                         MCP meta-tools; --disallowed-tools can, and it wins when both are set.
+#                         Set it to empty to leave them available. Unset keeps the default.
 # Project root is auto-detected from the script location (<root>/.claude/scripts/).
 #
 # Headless footgun (grok CLI 0.2.111 — root cause of "narration-only" audits):
@@ -59,12 +70,12 @@
 #
 # Invocation notes:
 #   - --prompt-file + --output-format json (extract .text / stopReason / sessionId)
-#   - --sandbox read-only + --tools allowlist (NOT --permission-mode plan — that is a no-op policy)
+#   - --sandbox read-only + --tools allowlist + --disallowed-tools for MCP meta-tools
 #   - --verbatim, --no-memory, --no-subagents
 #
 # After successful run it appends:
 #     ---
-#     # GROK 2026-06-12 12:34:56 PDT  (model=grok-4.6, effort=xhigh)
+#     # GROK 2026-06-12 12:34:56 PDT  (model=grok-4.7, effort=xhigh)
 #     <Grok's full response body>
 # An unchosen knob is stamped [defaulted] so the record distinguishes a selected depth from
 # an inherited one.
@@ -124,19 +135,24 @@ GROK_SANDBOX="${GROK_SANDBOX:-read-only}"
 # Read-only audit tool surface. Shell/write tools must stay OFF this list.
 # Expand via GROK_TOOLS only if an audit legitimately needs more (e.g. web_search).
 GROK_TOOLS="${GROK_TOOLS:-read_file,grep,list_dir}"
-GROK_MAX_TURNS="${GROK_MAX_TURNS:-30}"
+# search_tool / use_tool stay in the schema after --tools. Disallow them unless the
+# caller sets GROK_DISALLOWED_TOOLS (including to empty, which leaves them available).
+if [ -z "${GROK_DISALLOWED_TOOLS+x}" ]; then
+    GROK_DISALLOWED_TOOLS="search_tool,use_tool"
+fi
+GROK_MAX_TURNS="${GROK_MAX_TURNS:-80}"
 
 # --- Depth selection: model + reasoning effort -------------------------------
 # Validated before any prompt is read, so a typo costs no billed call.
 GROK_MODEL_CHOSEN=1
 GROK_EFFORT_CHOSEN=1
-if [ -z "${GROK_MODEL:-}" ];  then GROK_MODEL="grok-4.6"; GROK_MODEL_CHOSEN=0;  fi
+if [ -z "${GROK_MODEL:-}" ];  then GROK_MODEL="grok-4.7"; GROK_MODEL_CHOSEN=0;  fi
 if [ -z "${GROK_EFFORT:-}" ]; then GROK_EFFORT="xhigh";   GROK_EFFORT_CHOSEN=0; fi
 
 case "$GROK_MODEL" in
-    grok-4.6|grok-4.5) ;;
+    grok-4.7|grok-4.6|grok-4.5) ;;
     *)
-        echo "ask_grok.sh: unknown GROK_MODEL '$GROK_MODEL'. Allowed: grok-4.6 grok-4.5" >&2
+        echo "ask_grok.sh: unknown GROK_MODEL '$GROK_MODEL'. Allowed: grok-4.7 grok-4.6 grok-4.5" >&2
         exit 1
         ;;
 esac
@@ -148,6 +164,12 @@ case "$GROK_EFFORT" in
         exit 1
         ;;
 esac
+# grok-4.5 advertises low|medium|high only. The xhigh default would 400 on that menu.
+if [ "$GROK_MODEL" = "grok-4.5" ] && [ "$GROK_EFFORT" = "xhigh" ]; then
+    echo "ask_grok.sh: grok-4.5 does not offer effort xhigh (menu: low medium high)." >&2
+    echo "Set GROK_EFFORT=high, or use grok-4.6 / grok-4.7 for xhigh." >&2
+    exit 1
+fi
 
 # Per-knob provenance, so the stamp says WHICH knob was left unchosen.
 GROK_MODEL_TAG="$GROK_MODEL"
@@ -248,20 +270,33 @@ if [ -n "$GROK_PERMISSION_MODE" ]; then
     PERM_ARGS=(--permission-mode "$GROK_PERMISSION_MODE")
 fi
 
-# Parse grok JSON → writes META_FILE as: stopReason\nsessionId\ntext_byte_length
+# Parse grok JSON → writes META_FILE as:
+#   stopReason\nsessionId\ntext_byte_length\ncancellationCategory
 # prints body text on stdout. Exit 2 = unparseable.
+# cancellationCategory is optional. grok 1.0.41 reports a turn-budget death as
+# stopReason=cancelled; the category, when the projector includes it, says why.
 parse_grok_json() {
     local aJsonFile="$1"
     local aMetaFile="$2"
     python3 - "$aJsonFile" "$aMetaFile" <<'PY'
 import json, sys
 path, meta_path = sys.argv[1], sys.argv[2]
+
+def first_str(obj, keys):
+    if not isinstance(obj, dict):
+        return ""
+    for key in keys:
+        value = obj.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
 try:
     with open(path, "r", encoding="utf-8") as f:
         raw = f.read().strip()
     if not raw:
         with open(meta_path, "w", encoding="utf-8") as m:
-            m.write("\n\n0\n")
+            m.write("\n\n0\n\n")
         sys.exit(0)
     data = json.loads(raw)
 except (OSError, json.JSONDecodeError) as e:
@@ -276,9 +311,16 @@ if not isinstance(text, str):
 
 stop = data.get("stopReason") or data.get("stop_reason") or ""
 sid = data.get("sessionId") or data.get("session_id") or ""
+cat_keys = ("cancellationCategory", "cancellation_category")
+category = first_str(data, cat_keys)
+if not category:
+    for nest in ("cancellationContext", "cancellation_context"):
+        category = first_str(data.get(nest), cat_keys + ("reason",))
+        if category:
+            break
 
 with open(meta_path, "w", encoding="utf-8") as m:
-    m.write(f"{stop}\n{sid}\n{len(text)}\n")
+    m.write(f"{stop}\n{sid}\n{len(text)}\n{category}\n")
 
 sys.stdout.write(text)
 if text and not text.endswith("\n"):
@@ -292,21 +334,24 @@ fix_fused_heading() {
 }
 
 # Quality gate: 0 = usable, 1 = reject (retry/salvage).
-# Rejects: empty, a cancelled/aborted/refusal stopReason, missing ## (if required),
-# below GROK_MIN_CHARS, pure lead-in narration patterns.
-# grok CLI 1.0.13 reports the TURN stop reason in snake_case.  Documented set
-# (docs/user-guide/14-headless-mode.md): end_turn, max_tokens, max_turn_requests,
-# refusal, cancelled.  Earlier builds used CamelCase (EndTurn, Cancelled), and the
-# docs call the list non-exhaustive.
+# Rejects: empty, permission-cancel / refusal / aborted, missing ## (if required),
+# below GROK_MIN_CHARS.
+# A cancelled stop with a real ## body is kept. On grok 1.0.41 a turn that hits
+# --max-turns is reported as stopReason=cancelled (category max_turns_reached when
+# the projector sends it), not as the documented max_turn_requests. Rejecting every
+# cancelled stop discarded finished audits and retried the same cap from scratch.
+# A cancelled stop whose text is only a lead-in still fails the ## / length checks.
 #
-# permission_cancelled and aborted are NOT turn stop reasons -- permission_cancelled
-# is a StopCancelled hook-matcher reason (docs/user-guide/10-hooks.md).  They are
-# matched below only as forward-defensive coverage in case the headless projector
-# ever promotes a category token into this field; a 1.0.13 cancel arrives as
-# 'cancelled' and is caught by that arm.
+# grok CLI 1.0.13+ reports the turn stop reason in snake_case. Documented set
+# (docs/user-guide/14-headless-mode.md): end_turn, max_tokens, max_turn_requests,
+# refusal, cancelled. Earlier builds used CamelCase (EndTurn, Cancelled).
+#
+# permission_cancelled and aborted are not the usual turn stop reasons.
+# permission_cancelled is a StopCancelled hook-matcher reason. They are matched
+# as forward-defensive coverage if the projector promotes that token into this field.
 #
 # Fold spellings to one token so a future casing change cannot silently disable
-# the gates below.  Display still uses the raw value.
+# the gates below. Display still uses the raw value.
 normalize_stop_reason() {
     printf '%s' "$1" | tr -d '_-' | tr '[:upper:]' '[:lower:]'
 }
@@ -314,8 +359,10 @@ normalize_stop_reason() {
 quality_gate() {
     local aText="$1"
     local aStop="$2"
+    local aCategory="${3:-}"
     local aLen
     local tStop
+    local tWhy=""
 
     tStop=$(normalize_stop_reason "$aStop")
     case "$tStop" in
@@ -323,13 +370,15 @@ quality_gate() {
             echo "quality_gate: stopReason=$aStop (headless permission cancel — usually shell tool)" >&2
             return 1
             ;;
-        cancelled|canceled|aborted)
-            echo "quality_gate: stopReason=$aStop (turn did not finish; cause not classified)" >&2
+        aborted)
+            echo "quality_gate: stopReason=$aStop (turn aborted)" >&2
             return 1
             ;;
         refusal)
             echo "quality_gate: stopReason=$aStop (model refused the prompt)" >&2
             return 1
+            ;;
+        cancelled|canceled)
             ;;
     esac
 
@@ -337,21 +386,22 @@ quality_gate() {
     aLen=$(printf '%s' "$aText" | wc -c | tr -d ' ')
 
     if [ -z "$aText" ] || [ "$aLen" -eq 0 ]; then
-        echo "quality_gate: empty body" >&2
+        tWhy="empty body"
+    elif [ "$GROK_REQUIRE_HEADING" != "0" ] && ! grep -q '##' <<< "$aText"; then
+        tWhy="no '##' section heading (narration-only lead-in likely); len=$aLen"
+    elif [ "$aLen" -lt "$GROK_MIN_CHARS" ]; then
+        tWhy="body too short ($aLen < GROK_MIN_CHARS=$GROK_MIN_CHARS)"
+    fi
+
+    if [ -n "$tWhy" ]; then
+        if [ "$tStop" = "cancelled" ] || [ "$tStop" = "canceled" ]; then
+            echo "quality_gate: $tWhy; stopReason=$aStop${aCategory:+ category=$aCategory}" >&2
+        else
+            echo "quality_gate: $tWhy" >&2
+        fi
         return 1
     fi
 
-    if [ "$GROK_REQUIRE_HEADING" != "0" ] && ! grep -q '##' <<< "$aText"; then
-        echo "quality_gate: no '##' section heading (narration-only lead-in likely); len=$aLen" >&2
-        return 1
-    fi
-
-    if [ "$aLen" -lt "$GROK_MIN_CHARS" ]; then
-        echo "quality_gate: body too short ($aLen < GROK_MIN_CHARS=$GROK_MIN_CHARS)" >&2
-        return 1
-    fi
-
-    # Lead-in-only patterns that still managed a tiny ## stub are rare; the min-chars gate covers them.
     return 0
 }
 
@@ -362,11 +412,16 @@ run_grok() {
     # --model and --effort belong here, not at the call site: this function also runs the
     # --resume salvage pass, and a depth set only on the fresh attempt would be silently
     # dropped exactly when the audit is being rescued.
+    local tDisallow=()
+    if [ -n "${GROK_DISALLOWED_TOOLS:-}" ]; then
+        tDisallow=(--disallowed-tools "$GROK_DISALLOWED_TOOLS")
+    fi
     "$GROK_BIN" "$@" \
         --cwd "$BELFEM" \
         --model "$GROK_MODEL" \
         --sandbox "$GROK_SANDBOX" \
         --tools "$GROK_TOOLS" \
+        "${tDisallow[@]}" \
         --no-memory \
         --no-subagents \
         --max-turns "$GROK_MAX_TURNS" \
@@ -412,6 +467,7 @@ handle_sandbox_or_hard_fail() {
 RESULT=""
 STOP_REASON=""
 SESSION_ID=""
+CANCEL_CATEGORY=""
 USABLE=0
 
 for (( ATTEMPT = 1; ATTEMPT <= GROK_RETRIES; ATTEMPT++ )); do
@@ -438,21 +494,21 @@ for (( ATTEMPT = 1; ATTEMPT <= GROK_RETRIES; ATTEMPT++ )); do
 
     STOP_REASON=$(sed -n '1p' "$META_FILE" | tr -d '\r')
     SESSION_ID=$(sed -n '2p' "$META_FILE" | tr -d '\r')
+    CANCEL_CATEGORY=$(sed -n '4p' "$META_FILE" | tr -d '\r')
     RESULT=$(fix_fused_heading <<< "$RESULT")
 
-    if quality_gate "$RESULT" "$STOP_REASON"; then
+    if quality_gate "$RESULT" "$STOP_REASON" "$CANCEL_CATEGORY"; then
         USABLE=1
         break
     fi
 
-    echo "ask_grok.sh: attempt $ATTEMPT rejected (stopReason=${STOP_REASON:-unknown}, session=${SESSION_ID:-none})" >&2
+    echo "ask_grok.sh: attempt $ATTEMPT rejected (stopReason=${STOP_REASON:-unknown}, category=${CANCEL_CATEGORY:-none}, session=${SESSION_ID:-none})" >&2
     if [ -n "$RESULT" ]; then
         echo "ask_grok.sh: rejected body preview: $(printf '%s' "$RESULT" | head -c 160 | tr '\n' ' ')…" >&2
     fi
 
     # Resume salvage: finish the audit in the same session that already read files.
-    # This specifically targets permission_cancelled turns where tool results exist but
-    # the final ## body never arrived.
+    # Used when the body is narration-only, including a max-turns cutoff reported as cancelled.
     if [ "$GROK_RESUME_SALVAGE" = "1" ] && [ -n "$SESSION_ID" ]; then
         echo "ask_grok.sh: resume salvage on session $SESSION_ID …" >&2
         : > "$TMPOUT"; : > "$TMPERR"; : > "$META_FILE"
@@ -468,13 +524,14 @@ for (( ATTEMPT = 1; ATTEMPT <= GROK_RETRIES; ATTEMPT++ )); do
             set -e
             if [ $PARSE_EXIT -eq 0 ]; then
                 STOP_REASON=$(sed -n '1p' "$META_FILE" | tr -d '\r')
+                CANCEL_CATEGORY=$(sed -n '4p' "$META_FILE" | tr -d '\r')
                 RESULT=$(fix_fused_heading <<< "$RESULT")
-                if quality_gate "$RESULT" "$STOP_REASON"; then
+                if quality_gate "$RESULT" "$STOP_REASON" "$CANCEL_CATEGORY"; then
                     echo "ask_grok.sh: resume salvage succeeded" >&2
                     USABLE=1
                     break
                 fi
-                echo "ask_grok.sh: resume salvage still failed quality gate (stopReason=${STOP_REASON:-unknown})" >&2
+                echo "ask_grok.sh: resume salvage still failed quality gate (stopReason=${STOP_REASON:-unknown}, category=${CANCEL_CATEGORY:-none})" >&2
             fi
         else
             echo "ask_grok.sh: resume salvage invoke failed (exit $GROK_EXIT); continuing retries" >&2
@@ -482,6 +539,8 @@ for (( ATTEMPT = 1; ATTEMPT <= GROK_RETRIES; ATTEMPT++ )); do
                 cat "$TMPERR" >&2
             fi
         fi
+    elif [ "$GROK_RESUME_SALVAGE" = "1" ]; then
+        echo "ask_grok.sh: no sessionId on the rejected turn; resume salvage skipped" >&2
     fi
 
     # Backoff grows with attempt index; failures can cluster in time, so wait longer than
@@ -495,7 +554,7 @@ done
 
 if [ "$USABLE" -ne 1 ]; then
     echo "ask_grok.sh: failed to obtain a usable audit after $GROK_RETRIES attempt(s)." >&2
-    echo "Last stopReason=${STOP_REASON:-unknown} session=${SESSION_ID:-none}" >&2
+    echo "Last stopReason=${STOP_REASON:-unknown} category=${CANCEL_CATEGORY:-none} session=${SESSION_ID:-none}" >&2
     echo "Nothing was appended to $EXCHANGE." >&2
     echo "Hints:" >&2
     echo "  - Ensure GROK_TOOLS has no shell tools (current: $GROK_TOOLS)" >&2
@@ -514,7 +573,7 @@ case "$(normalize_stop_reason "$STOP_REASON")" in
     endturn|"")
         ;;
     *)
-        echo "ask_grok.sh: WARNING — stopReason='$STOP_REASON' (accepted after quality gate)." >&2
+        echo "ask_grok.sh: WARNING — stopReason='$STOP_REASON'${CANCEL_CATEGORY:+ category=$CANCEL_CATEGORY} (accepted after quality gate)." >&2
         echo "Consider raising GROK_MAX_TURNS (current: $GROK_MAX_TURNS) if the body looks truncated." >&2
         ;;
 esac
