@@ -115,6 +115,30 @@ namespace belfem
                         std::sqrt( ( mK2 * s2 + c2 ) ) * normB / mB0, mAlpha );
 
             }
+
+            /**
+             * @brief Derivative of eval with respect to the field magnitude
+             * @param normB Magnetic field magnitude [T]
+             * @param angle Angle between surface normal and field [rad]
+             * @param T Temperature [K], unused: the law has no temperature dependence
+             * @return d(Jc)/d|B| [A/m²/T]
+             *
+             * With s = √(k²·sin²(θ) + cos²(θ)):
+             * dJc/dB = -α · Jc · s / ( B0 + s·B )
+             *
+             * Exact for the law in eval().
+             */
+            real
+            deval_dB( const real normB, const real angle, const real T ) const override
+            {
+                real c = std::cos( angle );
+                real c2 = c * c;
+                real s2 = 1.0 - c2;
+                real s = std::sqrt( mK2 * s2 + c2 );
+                real jc = mJc0 / std::pow( 1. + s * normB / mB0, mAlpha );
+
+                return -mAlpha * jc * s / ( mB0 + s * normB );
+            }
         };
     }
 }

@@ -102,7 +102,7 @@ namespace belfem
          *
          * - JcFunctionModifiedKim: Analytical modified Kim model
          *   * Dependencies: normB, angleNxB
-         *   * Overrides: eval(B, angle)
+         *   * Overrides: eval(B, angle), deval_dB
          *
          * - JcFunctionDatabase: Lookup table from HDF5 file
          *   * Dependencies: normB, angleNxB, T
@@ -199,8 +199,8 @@ namespace belfem
              *
              * The base implementation returns 0, which is EXACT for constant
              * functions and the conservative fallback for derived classes
-             * that have not implemented an analytic form ( ModifiedKim,
-             * UserDefined ): a zero here reproduces the pre-lookup-derivative tangent
+             * that have not implemented an analytic form ( UserDefined ):
+             * a zero here reproduces the pre-lookup-derivative tangent
              * for that function rather than inventing a wrong one. Unlike
              * eval(), it does not abort — the Newton consumer
              * ( add_rho_field_tangent ) treats 0 as "no field channel" and

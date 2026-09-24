@@ -9,11 +9,10 @@
  * central difference of the value they claim to differentiate, and the
  * overload families of the HTS laws are checked against each other.
  *
- * Not covered here: the factory Kim law's field tangent and the piecewise
- * dJ tangent below j1 ( both pinned by DISABLED_ cases that document a
- * known inconsistency ), the piecewise dB tangent inside the Bezier blend
- * ( staged zero ), the defect overloads, rho_riva, and drho_piecewise_dJ
- * at the n = 4 knot, where it aborts by design.
+ * Not covered here: the piecewise dJ tangent below j1 ( pinned by a
+ * DISABLED_ case that documents a known inconsistency ), the piecewise dB
+ * tangent inside the Bezier blend ( staged zero ), the defect overloads
+ * beyond finiteness of drho_piecewise_dJ, and rho_riva.
  */
 
 #include <algorithm>
@@ -401,8 +400,8 @@ TEST( HtsLaws, PowerLawFieldDerivativeMatchesFiniteDifference )
     delete tHts ;
 }
 
-// contract pinned: drho_powerlaw_dB equals the field derivative of rho_powerlaw on the factory's Kim law
-TEST( HtsLaws, DISABLED_KimFieldDerivativeMatchesFiniteDifference )
+// drho_powerlaw_dB equals the field derivative of rho_powerlaw on the factory's Kim law
+TEST( HtsLaws, KimFieldDerivativeMatchesFiniteDifference )
 {
     TbulkGuard tGuard( 77.0 ) ;
     MaterialFactory tFactory ;
