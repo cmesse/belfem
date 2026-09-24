@@ -51,6 +51,18 @@ namespace belfem
         real * mN = nullptr ;
         uint  mNumNodesPerElement = 0 ;
 
+        //! 3-D only: the tensor indices ( per axis, 0 ... order ) of each
+        //! local node, read off the element's own shape functions, so the
+        //! mixed derivatives and the face bounds follow the node numbering
+        //! of eval_hex* without restating it
+        Cell< uint > mTensorIndexX ;
+        Cell< uint > mTensorIndexY ;
+        Cell< uint > mTensorIndexZ ;
+
+        //! maps the values of a 1-D polynomial of the element's order at its
+        //! equispaced nodes to its Bernstein coefficients
+        real mToBernstein[ 4 ][ 4 ] ;
+
     public:
 
         Database( const string & aFilePath, const string & aMaterial );
@@ -82,6 +94,27 @@ namespace belfem
         real
         evaluate_derivz( const real aX, const real aY, const real aZ ) const ;
 
+        //! mixed physical derivatives d2f / dx dy and d2f / dy dz ( 3-D )
+        real
+        evaluate_derivxy( const real aX, const real aY, const real aZ ) const ;
+
+        real
+        evaluate_derivyz( const real aX, const real aY, const real aZ ) const ;
+
+        //! certified upper bound of df/dy over the face y = min( 1 ): the
+        //! largest Bernstein coefficient of the face polynomial over all
+        //! elements. Non-positive means df/dy <= 0 everywhere on that face,
+        //! not only at its nodes ( 3-D )
+        real
+        upper_bound_derivy_on_lower_y_face() const ;
+
+        //! certified lower bound of f over the face y = min( 1 ) ( 3-D )
+        real
+        lower_bound_on_lower_y_face() const ;
+
+        uint
+        dimension() const ;
+
         real
         min( const uint aDimension ) const ;
 
@@ -106,6 +139,24 @@ namespace belfem
 
         void
         set_element_type();
+
+        //! 3-D: fills mTensorIndex* and mToBernstein
+        void
+        build_tensor_map();
+
+        //! 1-D Lagrange basis a of order aOrder on the equispaced nodes of
+        //! [ -1, 1 ], and its derivative
+        static real
+        lagrange_1d( const uint aOrder, const uint a, const real t ) ;
+
+        static real
+        dlagrange_1d( const uint aOrder, const uint a, const real t ) ;
+
+        //! the local element index and the three parameter coordinates of a
+        //! point, as the evaluate functions compute them
+        index_t
+        locate( const real aX, const real aY, const real aZ,
+                real & aXi, real & aEta, real & aZeta ) const ;
 
         index_t
         nidx( const index_t i, const index_t j ) const;

@@ -223,8 +223,10 @@ the factory builds from an HDF5 B-H database.
 `eval( B, angle )` and `eval( B, angle, T )`, each function overriding the arity that matches
 the dependencies it declares through `JcParameter`; both base versions raise an error. Three implementations:
 `JcFunctionModifiedKim` (analytic, §9.6), `JcFunctionDatabase` (tensor-mesh table over
-(T, log₁₀B, angle), log-scaled values; T and B are clamped to the table range, the angle is
-wrapped with π periodicity), `JcFunctionUserDefined`
+(T, log₁₀B, angle) with log-scaled values; T and B above the table are clamped to the table
+range, the angle is wrapped with π periodicity, and below the table's lowest field, `n` and a `jc`
+table with a measured self-field curve are continued to B = 0 with a C1 join in B and no increase
+with |B|; see `share/material/README.md`), `JcFunctionUserDefined`
 (plugin).
 
 ### 3.5 `Abundance`

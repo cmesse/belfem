@@ -66,8 +66,17 @@ that use the same `t_eff`.
   For `bscco-2223`, the two halves are mirrors, and the angular gradient
   vanishes at 0 and 90 degrees. For the REBCO tables, the asymmetry about
   90 degrees is measured and must not be folded away.
-- Outside the T and B windows, the consumer clamps the values and sets the
-  corresponding tangents to zero.
+- Outside the T window and above the top of the B window, the consumer
+  clamps the values and sets the corresponding tangents to zero.
+- Below `Bmin` = 10 mT, the tables have no data. BELFEM continues `n` and
+  `jc` for the five REBCO tables down to B = 0. The value and its field slope
+  are continuous at `Bmin`, and the value does not increase with `|B|`; `jc`
+  also does not increase with T. `n` follows a parabola with zero slope at
+  B = 0, so `n(0)` is slightly above `n(Bmin)`. `jc` increases toward the
+  self-field level measured at B = 0, which the file stores in `source`. If
+  that level is too low for a monotone join, the reader raises it, most
+  strongly below the lowest measured temperature and near Tc. `bscco-2223`
+  has no self-field measurement, so its `jc` remains clamped below `Bmin`.
 - The tables reproduce the measurements used to build them. When evaluated at
   the measured points with the shipped reader, the mean ratio of table values
   to measured `Ic/w` is 0.997 – 1.003 for all five Robinson tapes at 77.5 K
@@ -86,7 +95,8 @@ table also carries its inputs in `source` and its generator in `python`, so you
 can rebuild and check it without BELFEM. For the five REBCO tables `source`
 holds the raw measurement rows. For `bscco-2223` it holds the digitised figure
 extractions instead, under `source/fig5` and `source/figs7and8.csv`. `python/howtoread.py` reads any of these files with the same
-interpolation as the solver.
+interpolation as the solver for B >= `Bmin`. Below `Bmin`, this reader clamps
+the values, while the solver continues them as described above.
 
 The same reader is installed beside this directory at
 `share/python/database/howtoread.py`:

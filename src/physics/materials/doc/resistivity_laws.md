@@ -21,7 +21,9 @@ All three laws share the same inputs:
 - `jc(T, |B|, θ)` and `n(T, |B|, θ)` — either constants from the deck or measured tables loaded
   from an HDF5 file (the `file` key). Both are evaluated through the same dependency routing
   (`Material::jc_eval` / `n_eval`, `powerlaws.hpp`). Table lookups are clamped to the table hull
-  in all three coordinates.
+  in T and above the table in B. Below the table's lowest field, `n` and a `jc` table with a
+  measured self-field curve are continued to B = 0 with a continuous field slope. A `jc` table
+  without that curve remains clamped.
 - θ is the **field-to-tape-normal angle** (`bn_angle`, unfolded to [0, π] since 2026-08-16). The
   measured jc(θ) tables are asymmetric about π/2 and consume the angle as is.
 - The intrinsic power-law channel shared by all three laws is Rhyner's E-J power law

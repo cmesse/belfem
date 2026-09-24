@@ -47,7 +47,9 @@ metal / alloy ``rho``         T [K], log10(B/T),         ln(rho [Ohm m])
 Some files carry additional self-describing groups: ``meta`` (provenance,
 DOIs, accuracy, an embedded markdown ``documentation``), ``source`` (the raw
 measurement export) and ``python`` (the generator pipeline, or a copy of this
-file). None of these are read by the solver. Strings written by the BELFEM
+file). The solver reads only the B = 0 rows of ``source`` and the two
+scalars ``meta/Icw_77p5K_sf_A_per_m`` and ``meta/t_eff_m``, to continue a
+``jc`` table below its lowest field. Strings written by the BELFEM
 C++ side are fixed-size datasets of shape (1,); to extract one with h5py::
 
     text = np.ravel(f['python/howtoread.py'][()])[0].decode()
@@ -61,7 +63,9 @@ Classes
 ``JcFunctionDatabase``
     physical jc/n lookup: clamps T and B into the table window, wraps the
     angle with the +-pi periodicity, returns 10**(interpolated value) --
-    mirrors ``src/physics/materials/cl_JcFunction_Database.hpp``.
+    mirrors ``src/physics/materials/cl_JcFunction_Database.hpp`` for
+    B >= Bmin; below Bmin the C++ reader continues the table, this one
+    clamps.
 ``MetalRhoDatabase``
     physical resistivity lookup for metal/alloy tables: clamps T and B to
     the ``Tmin/Tmax/Bmin/Bmax`` scalars stored beside the group, wraps beta,
@@ -254,12 +258,17 @@ _LN10 = np.log(10.0)
 class JcFunctionDatabase:
     """Physical jc / n lookup on a superconductor table (log10 storage).
 
-    Mirrors ``belfem::material::JcFunctionDatabase``: T and B are clamped
-    into the table window, the angle theta (measured from the tape normal)
-    is wrapped with the +-pi periodicity, values within 1e-6 rad of the
-    window are snapped onto the boundary, and the returned quantity is
+    Mirrors ``belfem::material::JcFunctionDatabase`` for B > Bmin: T and B
+    are clamped into the table window, the angle theta (measured from the
+    tape normal) is wrapped with the +-pi periodicity, values within 1e-6 rad
+    of the window are snapped onto the boundary, and the returned quantity is
     ``10**(interpolated value)``. The derivative methods implement the same
     clamp-consistent tangents as the C++ (zero outside the T and B windows).
+
+    Below Bmin this reader clamps B, but the C++ reader does not: it
+    continues ``n``, and ``jc`` of a table with a measured self-field curve
+    in ``source``, down to B = 0, C1 at Bmin and non-increasing in |B|. Only
+    ``jc`` without such a curve (``bscco-2223``) is clamped there by both.
     """
 
     def __init__(self, path, label):
@@ -276,7 +285,7 @@ class JcFunctionDatabase:
         # outside the snap band, and the boundary snap (clamp) ONLY for
         # angles already inside it. An angle that is still outside the window
         # after one shift extrapolates, exactly as the solver does -- it is
-        # NOT clipped (audit finding R2, 2026-08-28).
+        # NOT clipped.
         a = np.asarray(angle, float)
         return np.where(a < self.amin - 1e-6, a + np.pi,
                         np.where(a > self.amax + 1e-6, a - np.pi,
@@ -310,7 +319,11 @@ class JcFunctionDatabase:
     def deval_dbeta(self, normB, angle, T):
         v = self.eval(normB, angle, T)
         t, lb, a = self._args(normB, angle, T)
-        return v * self.db.evaluate_derivz(t, lb, a) * _LN10
+        # an angle snapped onto a window end holds the value
+        th = np.asarray(angle, float)
+        snapped = ((th >= self.amin - 1e-6) & (th < self.amin)) \
+            | ((th > self.amax) & (th <= self.amax + 1e-6))
+        return np.where(snapped, 0.0, v * self.db.evaluate_derivz(t, lb, a) * _LN10)
 
 
 class MetalRhoDatabase:

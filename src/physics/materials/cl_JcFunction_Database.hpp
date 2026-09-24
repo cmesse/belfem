@@ -13,6 +13,7 @@
 #define BELFEM_CL_JCFUNCTION_DATABASE_HPP
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include "constants.hpp"
 #include "commtools.hpp"
 #include "cl_JcFunction.hpp"
@@ -40,8 +41,10 @@ namespace belfem
          * - Values: log10(Jc) or log10(n)
          *
          * The database clamps out-of-range T and high-field inputs to the valid
-         * domain and handles periodic angle wrapping (angle ± π); below Bmin a
-         * table with a /source group uses the self-field bridge instead of a clamp.
+         * domain and handles periodic angle wrapping (angle ± π). Below Bmin,
+         * n and a jc table with a measured self-field curve continue the table
+         * C1 and non-increasing in |B| ( see the low-field notes below ); a jc
+         * table without that curve keeps the clamp.
          *
          * Dependencies: normB, angleNxB, T
          *
@@ -60,7 +63,7 @@ namespace belfem
          */
         class JcFunctionDatabase : public JcFunction
         {
-            Database * mDatabase ;   //!< Tensor mesh database for interpolation
+            std::unique_ptr< Database > mDatabase ;   //!< Tensor mesh database for interpolation
             const real mTmin ;       //!< Minimum temperature [K]
             const real mTmax ;       //!< Maximum temperature [K]
             const real mBmin ;       //!< Minimum field magnitude [T] (10^log10_min)
@@ -69,13 +72,35 @@ namespace belfem
             const real mAngleMax ;   //!< Maximum angle [rad]
             const real mInvLn10 = 1.0/std::log( 10. );  //!< 1/ln(10) for log conversion
 
-            //! Measured self-field level, read from the table's embedded
-            //! /source rows at B = 0 and angle-averaged. Empty when
-            //! the file carries no /source group, in which case the historical
-            //! clamp below mBmin is kept and behaviour is unchanged.
+            //! Measured self-field level of a jc table, read from the table's
+            //! embedded /source rows at B = 0 and angle-averaged, projected to
+            //! be non-increasing in T. Empty when the file carries no usable
+            //! /source rows; such a jc table keeps the clamp below mBmin.
             Vector< real > mSelfFieldT ;      //!< temperatures [K], ascending
             Vector< real > mSelfFieldValue ;  //!< angle-free value at B = 0
+            Vector< real > mSelfFieldSlope ;  //!< its dT at the knots ( Fritsch & Butland 1984, Eq. 5 )
             bool mHaveSelfField = false ;
+
+            //! any label but "jc" is an n table
+            bool mIsN = false ;
+
+            //! width of the smooth maximum that forms the jc anchor, relative
+            //! to the requirement b
+            static constexpr real mSmoothWidth = 1e-3 ;
+
+            //! the table and its derivatives on the face log10 B = log10 Bmin,
+            //! at the clamped temperature and the wrapped angle. d/dT terms are
+            //! zero outside [ Tmin, Tmax ], where the value is held
+            struct Edge
+            {
+                real V   = 0.0 ;   //!< value at Bmin
+                real S   = 0.0 ;   //!< d value / dB at Bmin
+                real V_T = 0.0 ;
+                real V_A = 0.0 ;   //!< d / d angle
+                real S_T = 0.0 ;
+                real S_A = 0.0 ;
+            };
+
 
         public:
 
@@ -83,9 +108,9 @@ namespace belfem
              * @brief Constructor - loads database from file
              * @param aPath Path to HDF5 database file
              * @param aLabel Group name inside the HDF5 file — "jc" or "n" for the
-             *        shipped tables. The self-field bridge keys on this label: only
-             *        "jc" reads the icw column and applies the Icw/t_eff calibration;
-             *        anything else is treated as an n table.
+             *        shipped tables. Only "jc" reads the measured self-field curve
+             *        ( icw column, Icw/t_eff calibration ); anything else is an n
+             *        table, continued below Bmin from the table alone.
              *
              * Loads a database-driven Jc or n function from file.
              * The constructor reads the database dimensions and extracts
@@ -108,7 +133,7 @@ namespace belfem
              */
             JcFunctionDatabase( const string & aPath, const string & aLabel ) :
                 JcFunction(),
-                mDatabase( new Database( aPath, aLabel ) ),
+                mDatabase( open_checked( aPath, aLabel ) ),
                 mTmin( mDatabase->min( 0 ) ),
                 mTmax( mDatabase->max( 0 ) ),
                 mBmin( std::pow( 10., mDatabase->min( 1 ) ) ),
@@ -116,24 +141,76 @@ namespace belfem
                 mAngleMin( mDatabase->min( 2 ) ),
                 mAngleMax( mDatabase->max( 2 ) )
             {
-                // the caller delivers the UNFOLDED angle theta in [ 0, pi ]
-                // a folded export covering less than that range
-                // would silently wrap or extrapolate — the angle coordinate
-                // is not clamped by Database::evaluate. Coverage test, not a
-                // width test: [ -pi/2, pi/2 ] has width pi and is still wrong
-                BELFEM_ERROR(    mAngleMin <= 1e-6
-                              && mAngleMax >= constant::pi - 1e-6,
-                    "angular range of database %s spans [ %g, %g ] rad, but the unfolded\n"
-                    "bn_angle contract requires coverage of [ 0, pi ]: a folded export\n"
-                    "would silently mis-sample theta > pi/2",
-                    aLabel.c_str(), ( double ) mAngleMin, ( double ) mAngleMax );
-
                 this->set_dependency( JcParameter::normB );
                 this->set_dependency( JcParameter::angleNxB );
                 this->set_dependency( JcParameter::T );
 
-                this->load_self_field( aPath, aLabel );
+                mIsN = aLabel != "jc" ;
+
+                // n continues from the table alone; jc anchors on the measured
+                // self-field curve where the file carries one
+                if ( ! mIsN )
+                {
+                    this->load_self_field( aPath, aLabel );
+                    if ( mHaveSelfField )
+                    {
+                        this->finalize_self_field();
+                    }
+                }
             }
+
+            /**
+             * @brief Open the table and refuse one the reader cannot serve
+             *
+             * Runs before any member reads the database, and owns it until every
+             * check has passed, so a refusal does not leak it. Every rank holds
+             * the same values ( Database broadcasts them ), so every rank refuses
+             * together.
+             */
+            static Database *
+            open_checked( const string & aPath, const string & aLabel )
+            {
+                std::unique_ptr< Database > tDatabase( new Database( aPath, aLabel ) );
+
+                BELFEM_ERROR( tDatabase->dimension() == 3,
+                    "database %s in %s has %u axes; a jc or n table needs T, log10 B and theta",
+                    aLabel.c_str(), aPath.c_str(), ( unsigned int ) tDatabase->dimension() );
+
+                // the caller delivers the UNFOLDED angle theta in [ 0, pi ]; a
+                // folded export covering less than that range would silently
+                // wrap or extrapolate. Coverage test, not a width test:
+                // [ -pi/2, pi/2 ] has width pi and is still wrong
+                BELFEM_ERROR(    tDatabase->min( 2 ) <= 1e-6
+                              && tDatabase->max( 2 ) >= constant::pi - 1e-6,
+                    "angular range of database %s spans [ %g, %g ] rad, but the unfolded\n"
+                    "bn_angle contract requires coverage of [ 0, pi ]: a folded export\n"
+                    "would silently mis-sample theta > pi/2",
+                    aLabel.c_str(), ( double ) tDatabase->min( 2 ), ( double ) tDatabase->max( 2 ) );
+
+                // the continuation below Bmin is monotone only if the table does
+                // not rise with |B| on its lowest-field face. Certified over the
+                // whole face ( Bernstein bound ), not sampled; the tolerance
+                // accepts the rounding residue of a zero slope
+                const real tSlopeBound = tDatabase->upper_bound_derivy_on_lower_y_face() ;
+                BELFEM_ERROR( tSlopeBound <= 1e-10,
+                    "database %s in %s cannot be certified not to rise with |B| at its "
+                    "lowest field ( bound on d log10 value / d log10 B: %g ), so it "
+                    "cannot be continued monotonically below Bmin",
+                    aLabel.c_str(), aPath.c_str(), ( double ) tSlopeBound );
+
+                if ( aLabel != "jc" )
+                {
+                    // n below Bmin is at least its value at Bmin, which must
+                    // keep the power law a power law
+                    const real tFloor = tDatabase->lower_bound_on_lower_y_face() ;
+                    BELFEM_ERROR( tFloor >= std::log10( 1.01 ),
+                        "database %s in %s reaches n = %g at its lowest field; n must be at least 1.01",
+                        aLabel.c_str(), aPath.c_str(), ( double ) std::pow( 10., tFloor ) );
+                }
+
+                return tDatabase.release() ;
+            }
+
 
             /**
              * @brief Read the measured B = 0 level from the table's /source
@@ -147,8 +224,7 @@ namespace belfem
              * there being only a few tenths of a percent.
              *
              * Silently inert on any file without /source: mHaveSelfField stays
-             * false and every accessor keeps the historical clamp, so older
-             * tables behave exactly as before.
+             * false and the jc table keeps the clamp below Bmin.
              */
             void
             load_self_field( const string & aPath,
@@ -214,7 +290,7 @@ namespace belfem
 
                                     // the schema promises columns.size() == points.n_cols,
                                     // but a malformed file must not become out-of-bounds
-                                    // access in a release build ( code-audit finding 4 )
+                                    // access in a release build
                                     if (    tIt < tPoints.n_cols()
                                          && tIb < tPoints.n_cols()
                                          && tIv < tPoints.n_cols()
@@ -427,10 +503,7 @@ namespace belfem
             /**
              * @brief Destructor - deletes the database
              */
-            ~JcFunctionDatabase() override
-            {
-                delete mDatabase ;
-            }
+            ~JcFunctionDatabase() override = default ;
 
             //! smallest value the table can produce; values are stored as
             //! log10, so exponentiate the raw minimum
@@ -440,52 +513,47 @@ namespace belfem
                 return std::pow( 10., min( mDatabase->values() ) ) ;
             }
 
-            //--------------------------------------------------------------
-            // low-field transition
-            //--------------------------------------------------------------
-            //
-            // Below mBmin the table has no data and the historical behaviour
-            // was a hard clamp: jc constant in B, d/dB identically zero. Two
-            // problems, both measured. The clamp is wrong by up to 23 % near
-            // Tc ( the deck's whole self-field range sits under the floor ),
-            // and the tangent jumps from 0 to the spline slope the instant
-            // |B| crosses mBmin, which is a Newton tangent.
-            //
-            // The replacement is a quadratic in LINEAR B -- the same move
-            // Copper::create_kohler makes for magnetoresistance, where the
-            // physical boundary condition is built into the polynomial's form
-            // rather than imposed afterwards:
-            //
-            //     jc(B) = J0 + c B + b B^2
-            //
-            // anchored at the MEASURED angle-free self-field level J0(T) and
-            // matching the table's own value and slope at mBmin, so the join
-            // is C1 and nothing at or above mBmin changes.
-            //
-            // Two properties are not conveniences, they are what the data and
-            // the literature require:
-            //
-            //  * The linear term is KEPT. The Kim family used throughout the
-            //    HTS literature -- jc = jc0 / ( 1 + |B_eff|/B0 )^alpha, e.g.
-            //    Riva et al. 2023 Eq. 2 and Denis et al. 2026 Eq. 11, with
-            //    Messe et al. 2023 §2.6 naming Kim 1962 -- has
-            //    d jc / d|B| = -jc0 alpha / B0 at B = 0: FINITE and non-zero.
-            //    A form with zero slope at the origin would contradict it.
-            //  * J0 is ANGLE-FREE, and by measurement rather than by fiat. In
-            //    the Kim family the anisotropy enters only inside |B_eff|, so
-            //    it vanishes with the field; the embedded source rows agree,
-            //    scattering only 0.25-0.73 % across 55 stage angles at B = 0
-            //    while the table spreads ~4 % at mBmin. Carrying the mBmin
-            //    angular shape down to the axis was measured to overshoot the
-            //    permitted spread by an order of magnitude, which is why J0
-            //    cannot be extrapolated from the table and is read instead.
-            //
-            // Monotone as long as J0 >= jc(mBmin, theta) for every theta,
-            // which the measurements satisfy; see the guard in eval().
 
-            //! measured angle-free value at B = 0 and its dT, by linear
-            //! interpolation on the stored curve. Clamped at both ends: the
-            //! curve spans the measured temperature range, not the table's
+            //--------------------------------------------------------------
+            // below Bmin
+            //--------------------------------------------------------------
+            //
+            // The table's field axis is log10 B and ends at Bmin; B = 0 is out
+            // of its reach. Below Bmin the value is continued in LINEAR B from
+            // the table's own value V and slope S = dV/dB at Bmin, so the join
+            // is C1 and nothing at or above Bmin changes. The table does not
+            // rise with |B| on that face ( certified at load ), so S <= 0.
+            //
+            // n: the parabola with value V and slope S at Bmin and slope 0 at
+            // B = 0, n = V + S ( B^2 - Bmin^2 ) / ( 2 Bmin ). n depends on |B|,
+            // so a zero slope at the origin is the smooth choice.
+            //
+            // jc: a cubic Hermite from an anchor J at B = 0 to ( V, S ). The
+            // anchor is the MEASURED angle-free self-field level a( T ) of the
+            // table's /source rows. In the Kim family used throughout the HTS
+            // literature, jc = jc0 / ( 1 + |B_eff| / B0 )^alpha ( Riva et al.
+            // 2023 Eq. 2, Denis et al. 2026 Eq. 11; Messe et al. 2023 §2.6 names
+            // Kim 1962 ), the slope at B = 0 is finite and non-zero, and the
+            // anisotropy vanishes with the field. A monotone C1 join needs
+            // J >= b = V - S Bmin / 3. The measured level sits within a few
+            // percent of b over most of the range and below it at some angles,
+            // and outside the measured temperatures its linear continuation
+            // can fall well short ( at low T and near Tc ), so the anchor is
+            // J = smax( a, b ): the measured level where it clears b, lifted
+            // smoothly to b elsewhere, and angle-dependent only where lifted.
+            // With Delta = ( V - J ) / Bmin < 0 and beta = S / Delta in
+            // [ 0, 3 ), the slope at B = 0 is s0 = 2 Delta - S for beta <= 2
+            // ( the exact quadratic, a finite Kim slope ) and 0 for beta > 2,
+            // which is common wherever the anchor is lifted. Either way
+            // ( alpha, beta ) = ( s0 / Delta, beta ) lies in the square
+            // 0 <= alpha, beta <= 3, which suffices for a monotone cubic
+            // ( Fritsch & Carlson 1980, §4 ), so the join does not rise with
+            // |B| at any point. At beta = 2 the value is continuous but its T
+            // and angle tangents are not. A jc table without a measured curve
+            // keeps the clamp below Bmin.
+
+            //! linear interpolation on the raw curve, clamped at both ends;
+            //! used only to calibrate the curve at 77.5 K
             static real
             interp_curve( const Vector< real > & aT,
                           const Vector< real > & aValue,
@@ -514,33 +582,199 @@ namespace belfem
                      + dJ0dT * ( T - aT( k - 1 ) ) ;
             }
 
-            real
-            self_field( const real T, real & dJ0dT ) const
+            //! isotonic projection ( the running maximum from high to low T )
+            //! of the measured curve, and its knot slopes ( Fritsch & Butland
+            //! 1984, Eq. 5; one-sided secants at the ends ), which keep every segment
+            //! monotone ( Fritsch & Carlson 1980, §4 )
+            void
+            finalize_self_field()
             {
-                // every internal caller sits behind mHaveSelfField; a future
-                // external caller must not turn an empty curve into an
-                // out-of-bounds read
-                BELFEM_ASSERT( mHaveSelfField,
-                    "self_field() called on a table without a self-field curve" );
-                return interp_curve( mSelfFieldT, mSelfFieldValue, T, dJ0dT ) ;
+                const index_t tN = mSelfFieldT.length() ;
+
+                for ( index_t k = tN - 1; k > 0; --k )
+                {
+                    mSelfFieldValue( k - 1 ) = std::max( mSelfFieldValue( k - 1 ), mSelfFieldValue( k ) );
+                }
+
+                mSelfFieldSlope.set_size( tN, 0.0 );
+                for ( index_t k = 1; k + 1 < tN; ++k )
+                {
+                    const real h0 = mSelfFieldT( k ) - mSelfFieldT( k - 1 ) ;
+                    const real h1 = mSelfFieldT( k + 1 ) - mSelfFieldT( k ) ;
+                    const real d0 = ( mSelfFieldValue( k ) - mSelfFieldValue( k - 1 ) ) / h0 ;
+                    const real d1 = ( mSelfFieldValue( k + 1 ) - mSelfFieldValue( k ) ) / h1 ;
+
+                    // zero where the secants differ in sign or one vanishes,
+                    // else the weighted harmonic mean
+                    if ( d0 * d1 > 0.0 )
+                    {
+                        const real w0 = 2.0 * h1 + h0 ;
+                        const real w1 = h1 + 2.0 * h0 ;
+                        mSelfFieldSlope( k ) = ( w0 + w1 ) / ( w0 / d0 + w1 / d1 ) ;
+                    }
+                }
+                mSelfFieldSlope( 0 ) = ( mSelfFieldValue( 1 ) - mSelfFieldValue( 0 ) )
+                                     / ( mSelfFieldT( 1 ) - mSelfFieldT( 0 ) ) ;
+                mSelfFieldSlope( tN - 1 ) = ( mSelfFieldValue( tN - 1 ) - mSelfFieldValue( tN - 2 ) )
+                                          / ( mSelfFieldT( tN - 1 ) - mSelfFieldT( tN - 2 ) ) ;
             }
 
-            //! the table's own value and d/dB at the low-field edge
-            void
-            edge_value_and_slope( const real angle, const real T,
-                                  real & V, real & S ) const
+            //! the measured anchor and its dT: the C1 Hermite of the knots,
+            //! continued linearly from the end knots outside them
+            real
+            self_field( const real T, real & aDT ) const
             {
-                const real tTc = std::clamp( T, mTmin, mTmax ) ;
-                const real tU  = std::log( mBmin ) * mInvLn10 ;
-                const real tTh = this->wrap_angle( angle ) ;
+                const index_t tN = mSelfFieldT.length() ;
 
-                // the VALUE goes through eval() rather than the raw spline so
-                // that anything eval() applies to the stored field ( e.g. a
-                // lift-factor reference shift ) reaches the bridge too; the
-                // log-slope is invariant under such an additive shift, so the
-                // derivative may read the spline directly
-                V = this->eval( mBmin, angle, T ) ;
-                S = V * mDatabase->evaluate_derivy( tTc, tU, tTh ) / mBmin ;
+                if ( T <= mSelfFieldT( 0 ) )
+                {
+                    aDT = mSelfFieldSlope( 0 ) ;
+                    return mSelfFieldValue( 0 ) + aDT * ( T - mSelfFieldT( 0 ) ) ;
+                }
+                if ( T >= mSelfFieldT( tN - 1 ) )
+                {
+                    aDT = mSelfFieldSlope( tN - 1 ) ;
+                    return mSelfFieldValue( tN - 1 ) + aDT * ( T - mSelfFieldT( tN - 1 ) ) ;
+                }
+
+                index_t k = 1 ;
+                while ( k < tN - 1 && mSelfFieldT( k ) < T ) ++k ;
+
+                const real h = mSelfFieldT( k ) - mSelfFieldT( k - 1 ) ;
+                const real s = ( T - mSelfFieldT( k - 1 ) ) / h ;
+                const real y0 = mSelfFieldValue( k - 1 ) ;
+                const real y1 = mSelfFieldValue( k ) ;
+                const real m0 = mSelfFieldSlope( k - 1 ) * h ;
+                const real m1 = mSelfFieldSlope( k ) * h ;
+
+                aDT = ( ( 6. * s * s - 6. * s ) * y0 + ( 3. * s * s - 4. * s + 1. ) * m0
+                      + ( -6. * s * s + 6. * s ) * y1 + ( 3. * s * s - 2. * s ) * m1 ) / h ;
+
+                return ( 2. * s * s * s - 3. * s * s + 1. ) * y0
+                     + ( s * s * s - 2. * s * s + s ) * m0
+                     + ( -2. * s * s * s + 3. * s * s ) * y1
+                     + ( s * s * s - s * s ) * m1 ;
+            }
+
+            //! the table on the face log10 B = log10 Bmin; d/dT and d/dangle
+            //! terms only when asked for
+            void
+            edge( const real angle, const real T,
+                  const bool aWithT, const bool aWithAngle, Edge & aEdge ) const
+            {
+                const real tT = std::clamp( T, mTmin, mTmax ) ;
+                const real tU = mDatabase->min( 1 ) ;
+                const real tA = this->wrap_angle( angle ) ;
+                const real tLn10 = 1.0 / mInvLn10 ;
+
+                const real f_u = mDatabase->evaluate_derivy( tT, tU, tA ) ;
+
+                aEdge.V = std::pow( 10., mDatabase->evaluate( tT, tU, tA ) ) ;
+                aEdge.S = aEdge.V * f_u / mBmin ;
+
+                if ( aWithT && T > mTmin && T < mTmax )
+                {
+                    aEdge.V_T = aEdge.V * tLn10 * mDatabase->evaluate_derivx( tT, tU, tA ) ;
+                    aEdge.S_T = ( aEdge.V_T * f_u
+                                + aEdge.V * mDatabase->evaluate_derivxy( tT, tU, tA ) ) / mBmin ;
+                }
+                if ( aWithAngle )
+                {
+                    aEdge.V_A = aEdge.V * tLn10 * mDatabase->evaluate_derivz( tT, tU, tA ) ;
+                    aEdge.S_A = ( aEdge.V_A * f_u
+                                + aEdge.V * mDatabase->evaluate_derivyz( tT, tU, tA ) ) / mBmin ;
+                }
+            }
+
+            //! true if B lies on the continuation of this label
+            bool
+            continued( const real normB ) const
+            {
+                return normB < mBmin && ( mIsN || mHaveSelfField ) ;
+            }
+
+            //! the jc anchor J = smax( a, b ) and its derivative along one of
+            //! T or angle; aA_q, aV_q, aS_q are that derivative of a, V, S
+            real
+            anchor( const real a, const real V, const real S,
+                    const real aA_q, const real aV_q, const real aS_q,
+                    real & aJ_q ) const
+            {
+                const real b   = V - S * mBmin / 3. ;
+                const real b_q = aV_q - aS_q * mBmin / 3. ;
+                // the width scales with b, which is at least V > 0: a width
+                // built on |a| would kink where the continued curve crosses 0
+                const real e   = mSmoothWidth * b ;
+                const real e_q = mSmoothWidth * b_q ;
+                const real w   = std::sqrt( ( a - b ) * ( a - b ) + e * e ) ;
+
+                aJ_q = 0.5 * ( aA_q + b_q + ( ( a - b ) * ( aA_q - b_q ) + e * e_q ) / w ) ;
+                return 0.5 * ( a + b + w ) ;
+            }
+
+            //! the jc Hermite on [ 0, Bmin ]: value, and the slope at B = 0
+            //! with its derivative along T or angle
+            real
+            jc_join( const real x, const real J, const real V, const real S,
+                     const real aJ_q, const real aV_q, const real aS_q,
+                     real & aValue_q, real & aDB ) const
+            {
+                const real tDelta = ( V - J ) / mBmin ;
+                const real tBeta  = S / tDelta ;
+                const bool tExact = tBeta <= 2.0 ;
+
+                const real s0   = tExact ? 2. * tDelta - S : 0.0 ;
+                const real s0_q = tExact ? 2. * ( aV_q - aJ_q ) / mBmin - aS_q : 0.0 ;
+
+                const real h00 = 2. * x * x * x - 3. * x * x + 1. ;
+                const real h10 = x * x * x - 2. * x * x + x ;
+                const real h01 = -2. * x * x * x + 3. * x * x ;
+                const real h11 = x * x * x - x * x ;
+
+                aValue_q = h00 * aJ_q + h10 * mBmin * s0_q + h01 * aV_q + h11 * mBmin * aS_q ;
+
+                aDB = ( ( 6. * x * x - 6. * x ) * J
+                      + ( 3. * x * x - 4. * x + 1. ) * mBmin * s0
+                      + ( -6. * x * x + 6. * x ) * V
+                      + ( 3. * x * x - 2. * x ) * mBmin * S ) / mBmin ;
+
+                return h00 * J + h10 * mBmin * s0 + h01 * V + h11 * mBmin * S ;
+            }
+
+            //! value below Bmin and one derivative of it: aMode 0 d/dB,
+            //! 1 d/dT, 2 d/dangle
+            real
+            continuation( const real normB, const real angle, const real T,
+                          const uint aMode, real & aDerivative ) const
+            {
+                Edge tEdge ;
+                this->edge( angle, T, aMode == 1, aMode == 2, tEdge ) ;
+
+                const real tV_q = aMode == 1 ? tEdge.V_T : tEdge.V_A ;
+                const real tS_q = aMode == 1 ? tEdge.S_T : tEdge.S_A ;
+
+                if ( mIsN )
+                {
+                    const real tShape = ( normB * normB - mBmin * mBmin ) / ( 2. * mBmin ) ;
+                    aDerivative = aMode == 0 ? tEdge.S * normB / mBmin
+                                             : tV_q + tS_q * tShape ;
+                    return tEdge.V + tEdge.S * tShape ;
+                }
+
+                const bool tInside = T > mTmin && T < mTmax ;
+                real a_T ;
+                const real a = this->self_field( std::clamp( T, mTmin, mTmax ), a_T ) ;
+                const real tA_q = ( aMode == 1 && tInside ) ? a_T : 0.0 ;
+
+                real tJ_q ;
+                const real J = this->anchor( a, tEdge.V, tEdge.S, tA_q, tV_q, tS_q, tJ_q ) ;
+
+                real tValue_q, tDB ;
+                const real tValue = this->jc_join( normB / mBmin, J, tEdge.V, tEdge.S,
+                                                   tJ_q, tV_q, tS_q, tValue_q, tDB ) ;
+
+                aDerivative = aMode == 0 ? tDB : tValue_q ;
+                return tValue ;
             }
 
             /**
@@ -552,6 +786,15 @@ namespace belfem
              * ulp inside 0 or pi must not swap poles at exactly theta = 0
              * or pi. Anything further out uses the +-pi periodicity.
              */
+            //! true where wrap_angle holds the angle on a window end, so the
+            //! value does not change with it
+            bool
+            angle_is_snapped( const real angle ) const
+            {
+                return ( angle >= mAngleMin - 1e-6 && angle < mAngleMin )
+                    || ( angle >  mAngleMax && angle <= mAngleMax + 1e-6 ) ;
+            }
+
             real
             wrap_angle( const real angle ) const
             {
@@ -565,62 +808,20 @@ namespace belfem
              * @param normB Magnetic field magnitude [T]
              * @param angle Angle between surface normal and field [rad]
              * @param T Temperature [K]
-             * @return Jc [A/m²] or n [-] interpolated from database
+             * @return Jc [A/m²] or n [-]
              *
-             * Performs 3D tensor interpolation:
-             * 1. Clamps T to [Tmin, Tmax]
-             * 2. |B| ≥ Bmin: clamps B to [Bmin, Bmax] and converts to log10(B).
-             *    |B| < Bmin: if the file carries a /source group, evaluates the
-             *    C1 self-field bridge jc = J0(T) + c·B + b·B² ( see the
-             *    low-field transition notes above ); otherwise clamps to Bmin
-             * 3. Wraps angle into [angle_min, angle_max] using ±π periodicity;
-             *    the caller delivers the unfolded θ ∈ [0, π], which
-             *    passes through untouched — θ = π reads the stored 180° node,
-             *    honoring the measured asymmetry about 90°
-             * 4. Interpolates log10(Jc) or log10(n) using FEM shape functions
-             * 5. Returns 10^(interpolated value)
-             *
-             * Above Bmax and outside [Tmin, Tmax] inputs are clamped to the
-             * database bounds; below Bmin only tables without /source clamp.
+             * T is clamped to [ Tmin, Tmax ] and B above Bmax to Bmax; the
+             * angle is wrapped into the table window. Below Bmin the value is
+             * the continuation described above ( a jc table without a measured
+             * self-field curve keeps the clamp ).
              */
             real
             eval( const real normB, const real angle, const real T ) const override
             {
-                if ( mHaveSelfField && normB < mBmin )
+                if ( this->continued( normB ) )
                 {
-                    real tJ0dT ;
-                    const real tJ0 = this->self_field( T, tJ0dT ) ;
-                    real tV, tS ;
-                    this->edge_value_and_slope( angle, T, tV, tS ) ;
-
-                    // a table whose edge value exceeds the measured
-                    // self-field level cannot be bridged monotonically --
-                    // that is an inconsistent table, not a physical case
-                    if ( tJ0 < tV ) return tV ;
-
-                    const real tD = tV - tJ0 ;
-                    real tC = 2. * tD / mBmin - tS ;
-                    real tB ;
-
-                    // monotone limiter ( code-audit finding 2 ): with a steep
-                    // table slope and a small lift the exact-match quadratic
-                    // turns non-monotone ( measured: 60 % of (T,theta) pairs,
-                    // worst interior hump 6.1 % near Tc ). Where c would be
-                    // positive, fall to the pure parabola: value match kept,
-                    // monotone by construction, tangents endpoint-exact; the
-                    // cost is a bounded one-sided slope kink at the join, at
-                    // angles where the lift is nearly zero anyway
-                    if ( tC > 0.0 )
-                    {
-                        tC = 0.0 ;
-                        tB = tD / ( mBmin * mBmin ) ;
-                    }
-                    else
-                    {
-                        tB = ( tS - tD / mBmin ) / mBmin ;
-                    }
-
-                    return tJ0 + normB * ( tC + normB * tB ) ;
+                    real tUnused ;
+                    return this->continuation( normB, angle, T, 0, tUnused ) ;
                 }
 
                 return std::pow( 10.,
@@ -631,57 +832,26 @@ namespace belfem
             }
 
             /**
-             * @brief d(value)/d|B| from the spline, clamp-consistent
+             * @brief d(value)/d|B|, the exact derivative of eval
              *
-             * The table stores f = log10(value) over ( T, u = log10 B, θ ),
-             * so with value = 10^f and du/dB = 1/( B ln10 ):
-             *
-             *     d(value)/dB = value · ln10 · (∂f/∂u) · du/dB
-             *                 = value · (∂f/∂u) / B          — ln10 CANCELS.
-             *
-             * When |B| is
-             * outside the table window, eval() returns the CLAMPED value,
-             * which is constant in |B| — the consistent tangent is exactly
-             * zero, and the derivative implements that clamp decision
-             * itself rather than trusting a caller to. One exception: with
-             * a /source group, |B| below Bmin takes the self-field bridge
-             * instead of the clamp ( first branch below ), and the tangent
-             * is the bridge's own -- zero only where the bridge is idle
-             * because the table edge already exceeds the self-field level.
+             * The table stores f = log10( value ) over u = log10 B, so
+             * d(value)/dB = value · (∂f/∂u) / B — ln10 cancels. Zero where
+             * eval clamps B ( above Bmax, and below Bmin for a jc table
+             * without a measured self-field curve ); at Bmin itself the
+             * continuation and the table share the slope.
              */
             real
             deval_dB( const real normB, const real angle, const real T ) const override
             {
-                if ( mHaveSelfField && normB < mBmin )
+                if ( this->continued( normB ) )
                 {
-                    real tJ0dT ;
-                    const real tJ0 = this->self_field( T, tJ0dT ) ;
-                    real tV, tS ;
-                    this->edge_value_and_slope( angle, T, tV, tS ) ;
-                    if ( tJ0 < tV ) return 0.0 ;
-
-                    const real tD = tV - tJ0 ;
-                    real tC = 2. * tD / mBmin - tS ;
-                    real tB ;
-
-                    // monotone limiter -- same branch as eval(), so the
-                    // tangent differentiates the returned value exactly
-                    if ( tC > 0.0 )
-                    {
-                        tC = 0.0 ;
-                        tB = tD / ( mBmin * mBmin ) ;
-                    }
-                    else
-                    {
-                        tB = ( tS - tD / mBmin ) / mBmin ;
-                    }
-
-                    // -> tS at mBmin ( C1 ) on the exact branch, -> tC
-                    // finite at B = 0 ( Kim ) where the limiter is idle
-                    return tC + 2. * tB * normB ;
+                    real tDB ;
+                    this->continuation( normB, angle, T, 0, tDB ) ;
+                    return tDB ;
                 }
 
-                if ( normB <= mBmin || normB >= mBmax ) return 0.0 ;
+                if ( normB >= mBmax ) return 0.0 ;
+                if ( normB <= mBmin && ! ( mIsN || mHaveSelfField ) ) return 0.0 ;
 
                 return this->eval( normB, angle, T )
                     * mDatabase->evaluate_derivy(
@@ -692,57 +862,22 @@ namespace belfem
             }
 
             /**
-             * @brief d(value)/dθ from the spline
+             * @brief d(value)/dθ, the exact derivative of eval
              *
-             * θ is stored linearly, so the log10 storage contributes the
-             * full ln10: d(value)/dθ = value · ln10 · ∂f/∂θ. The ±π wrap is
-             * a shift ( dθ_wrapped/dθ = 1 ), applied identically to eval().
+             * θ is stored linearly, so d(value)/dθ = value · ln10 · ∂f/∂θ; the
+             * ±π wrap is a shift ( dθ_wrapped/dθ = 1 ), and the snap onto a
+             * window end holds the value ( zero ).
              */
             real
             deval_dbeta( const real normB, const real angle, const real T ) const override
             {
-                if ( mHaveSelfField && normB < mBmin )
+                if ( this->angle_is_snapped( angle ) ) return 0.0 ;
+
+                if ( this->continued( normB ) )
                 {
-                    // J0 is angle-free, so only c and b carry theta:
-                    //   d/dtheta = Vth ( 2 beta - beta^2 )
-                    //            + Sth mBmin ( beta^2 - beta ),   beta = B/mBmin
-                    // EXACT at both ends -- the second bracket vanishes at
-                    // beta = 0 and beta = 1, so this reproduces 0 at zero
-                    // field and the table's own dV/dtheta at mBmin.
-                    //
-                    // DECLARED APPROXIMATION: Sth = d/dtheta ( dV/dB ) needs a
-                    // MIXED spline partial that Database does not expose, and
-                    // is taken as zero. The dropped term is bounded by
-                    // |Sth| mBmin/4 ( the extremum of beta^2 - beta ), i.e. it
-                    // is worst mid-interval and exactly zero where the tangent
-                    // has to match. Supplying mixed partials would remove it.
-                    real tJ0dT ;
-                    const real tJ0 = this->self_field( T, tJ0dT ) ;
-                    real tV, tS ;
-                    this->edge_value_and_slope( angle, T, tV, tS ) ;
-
-                    const real tVth0 = tV * mDatabase->evaluate_derivz(
-                            std::clamp( T, mTmin, mTmax ),
-                            std::log( mBmin ) * mInvLn10,
-                            this->wrap_angle( angle ) ) / mInvLn10 ;
-
-                    // inconsistent table: eval() degrades to the historical
-                    // clamp, so the tangent must be the CLAMP's tangent --
-                    // the value still varies with theta there, and a zero
-                    // here would hand Newton a derivative that does not
-                    // differentiate the value ( code-audit finding 1 )
-                    if ( tJ0 < tV ) return tVth0 ;
-
-                    const real tBeta = normB / mBmin ;
-
-                    // limiter branch: value = J0 + D(theta) beta^2, so the
-                    // theta shape factor is beta^2 instead of beta( 2-beta );
-                    // both are endpoint-exact ( 0 at B = 0, tVth0 at mBmin )
-                    const real tD = tV - tJ0 ;
-                    const bool tLimited = ( 2. * tD / mBmin - tS ) > 0.0 ;
-
-                    return tVth0 * ( tLimited ? tBeta * tBeta
-                                              : tBeta * ( 2. - tBeta ) ) ;
+                    real tDA ;
+                    this->continuation( normB, angle, T, 2, tDA ) ;
+                    return tDA ;
                 }
 
                 return this->eval( normB, angle, T )
@@ -754,49 +889,22 @@ namespace belfem
             }
 
             /**
-             * @brief d(value)/dT from the spline, clamp-consistent
+             * @brief d(value)/dT, the exact derivative of eval
              *
-             * T is stored linearly: d(value)/dT = value · ln10 · ∂f/∂T.
-             * Outside the temperature window the clamped value is constant
-             * in T — the consistent tangent is zero.
+             * T is stored linearly: d(value)/dT = value · ln10 · ∂f/∂T. Outside
+             * the temperature window the value is held, so the tangent is zero.
              */
             real
             deval_dT( const real normB, const real angle, const real T ) const override
             {
-                if ( mHaveSelfField && normB < mBmin )
-                {
-                    //   d/dT = J0' + ( VT - J0' )( 2 beta - beta^2 )
-                    //               + ST mBmin ( beta^2 - beta )
-                    // exact at beta = 0 ( -> J0', the measured self-field
-                    // slope ) and at beta = 1 ( -> VT, the table's own dV/dT ).
-                    // ST is dropped on the same bound as Sth in deval_dbeta.
-                    real tJ0dT ;
-                    const real tJ0 = this->self_field( T, tJ0dT ) ;
-                    real tV, tS ;
-                    this->edge_value_and_slope( angle, T, tV, tS ) ;
-
-                    const real tVT = ( T <= mTmin || T >= mTmax ) ? 0.0 :
-                          tV * mDatabase->evaluate_derivx(
-                              T,
-                              std::log( mBmin ) * mInvLn10,
-                              this->wrap_angle( angle ) ) / mInvLn10 ;
-
-                    // inconsistent table: clamp value, clamp tangent -- see
-                    // deval_dbeta. dT is a live thermal Newton tangent
-                    if ( tJ0 < tV ) return tVT ;
-
-                    const real tBeta = normB / mBmin ;
-
-                    // shape factor follows eval()'s limiter branch
-                    const real tD = tV - tJ0 ;
-                    const bool tLimited = ( 2. * tD / mBmin - tS ) > 0.0 ;
-                    const real tShape = tLimited ? tBeta * tBeta
-                                                 : tBeta * ( 2. - tBeta ) ;
-
-                    return tJ0dT + ( tVT - tJ0dT ) * tShape ;
-                }
-
                 if ( T <= mTmin || T >= mTmax ) return 0.0 ;
+
+                if ( this->continued( normB ) )
+                {
+                    real tDT ;
+                    this->continuation( normB, angle, T, 1, tDT ) ;
+                    return tDT ;
+                }
 
                 return this->eval( normB, angle, T )
                     * mDatabase->evaluate_derivx(
