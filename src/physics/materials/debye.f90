@@ -41,9 +41,9 @@ contains
         real( quadruple ), intent( in ) :: z
         real( quadruple ) :: exp_z
 
-        exp_z = exp( z )
+        exp_z = exp( -z )
 
-        f = z**n * exp_z / ( ( exp_z - 1_QP ) * ( exp_z - 1_QP ) )
+        f = z**n * exp_z / ( ( 1_QP - exp_z ) * ( 1_QP - exp_z ) )
 
     end function debye_function
 
@@ -192,9 +192,9 @@ contains
         ! Matthiessen's rule
         tau = 1.0_QP/( iTauU + iTauM + iTauB + iTauPhE )
 
-        exp_z = exp( z )
+        exp_z = exp( -z )
 
-        f = tau * z**n * exp_z / ( ( exp_z - 1_QP ) * ( exp_z - 1_QP ) )
+        f = tau * z**n * exp_z / ( ( 1_QP - exp_z ) * ( 1_QP - exp_z ) )
 
     end function scatter_function
 
@@ -324,9 +324,9 @@ contains
             ! see the conversion above; the earlier extra factor hbar made U
             ! ~ 1e-32 and switched the optical channel off
             U = omega_opt / ( kB * T )
-            V = exp( U )
 
-            A = ne * kB * T / ( rho * vg * vg ) * ( U * U * V ) /( V - 1.0_QP )
+            ! U^2 e^U/(e^U - 1) = U^2/(1 - e^-U): the right form cannot overflow ( U = omega_opt/(kB T) grows as 1/T )
+            A = ne * kB * T / ( rho * vg * vg ) * ( U * U ) / ( 1.0_QP - exp( -U ) )
 
             K(5) = A * lambda_opt
 

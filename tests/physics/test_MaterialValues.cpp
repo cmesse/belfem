@@ -126,8 +126,7 @@ namespace
     // of that ( label, surface, property ) and is pinned by a DISABLED_ case in
     // MaterialValueDefects below. Every grid point above the window, and every
     // other property of the same label, is tested as usual. The bound itself
-    // belongs to the window: the YBCO NaN reaches 1.0 K, and lead's offending
-    // step is the pair that ends at 3.0 K.
+    // belongs to the window: lead's offending step is the pair that ends at 3.0 K.
     enum class Surface
     {
         Public,
@@ -145,7 +144,6 @@ namespace
 
     const KnownDefect gKnownDefects[] = {
         { "lead", Surface::Public, "cp",     3.0, "negative below 3 K" },
-        { "ybco", Surface::Raw,    "lambda", 1.0, "NaN up to 1 K" },
     } ;
 
     // the defect of a ( label, surface, property ) check, nullptr if none
@@ -794,7 +792,7 @@ TEST( MaterialValueDefects, DISABLED_LeadCpIsNegativeBelowThreeKelvin )
 }
 
 // the raw Callaway conductivity of YBCO is finite on the 0.05 K grid up to 1 K
-TEST( MaterialValueDefects, DISABLED_YbcoRawLambdaIsFiniteBelowOneKelvin )
+TEST( MaterialValueDefects, YbcoRawLambdaIsFiniteBelowOneKelvin )
 {
     RawProbe< belfem::material::YBCO > tProbe ;
 
