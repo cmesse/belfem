@@ -396,3 +396,22 @@ Where the day ends: `scripts/check_practice_drift.py` at v10 logic plus locale-s
 drift on the live tree with `--strict` clean; its mutation suite at 73/73 with a baseline, in
 `scripts/tests/`. Open: D-m2 and D-m10..D-m14 in `todo/practice_drift_mutation_suite.md`, none of which
 makes the checker report a wrong result.
+
+## Retrospective: why eleven versions took a day
+
+Christian's question at the close, answered plainly. The checker was done at about v3: it had found the
+real drifts (a wrapper default lagging the latest-grok policy, a ruling that lived only in memory, seven
+devlogs missing from their index), and they were fixed. From v4 onward almost every jury finding carried
+the note "none fires on today's tree" — nested and exotic fences, forged headings inside unclosed code
+blocks, a test harness that cannot name which fixture killed a mutant. That note was the stop signal, and
+it was not acted on. An adversarial two-vendor review of a parser never runs out of edge cases; without a
+finish line, the loop does not converge on its own. The review weight — plan jury, code jury,
+verification, reconciliation, a private-index commit, an hour or so per round, two vendor outages on top
+— is sized for kernel and MPI code, where a wrong answer is expensive, not for an advisory doc linter.
+Two rounds went to reverting fixes that reached further than their finding asked, and one hour to
+repairing a README a script had truncated. The stop was recommended at v8 and again at v10, but softly,
+without stating the cost of the next round against what it would buy.
+
+The rule that follows, now in the collaboration memory: set the finish line before round one; fix a
+finding only if it fires on real data or is a regression; file the rest; and when asked to continue, say
+what another round costs and what it protects against.
