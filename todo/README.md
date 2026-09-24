@@ -141,6 +141,17 @@ one of the two must be retired before either is worked.
 
 ---
 
+## Added 2026-09-23
+
+### [practice_drift_mutation_suite.md](practice_drift_mutation_suite.md) — follow-ups for the practice-drift checker's mutation suite
+
+**OPEN — two of six fixed before the commit.** `scripts/tests/mutate_check_practice_drift.py` had no
+baseline run, so against a checker whose self-test is always red it still reported every mutant killed
+and exited 0; it now runs the unmutated self-test first and stops with exit 2 if that is red, and its
+file reads are UTF-8. That guard at once surfaced a locale dependence in the checker's own self-test
+(D-m6). Open: a crash counts as a kill, an `assert` that `-O` strips, two fixed defects with no mutant,
+and D-m6. A narrow re-review is owed once Codex is back.
+
 ## Added 2026-09-22
 
 ### [closed/mesh_oneliners_dr161_169_176_179_180.md](closed/mesh_oneliners_dr161_169_176_179_180.md) — five `src/mesh` one-liners from the debt register — **CLOSED 2026-09-23**

@@ -34,6 +34,7 @@ scripts/check_wrapper_policy.py            # L-21: direct third-party calls outs
 scripts/check_citations.py [--verbose]     # every author-year citation in src/ and doc/ resolves to a known work
 scripts/check_practice_drift.py [--strict]  # convention documents vs practice: devlog headers, index coverage,
                                            # auditor models and wrapper defaults; --self-test is the gate
+scripts/tests/mutate_check_practice_drift.py  # proves that gate can go red; anchors are exact checker substrings
 ```
 
 `check_doc_claims.py` guards the class of error a reader cannot catch: a convention document

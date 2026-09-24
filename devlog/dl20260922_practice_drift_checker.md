@@ -345,3 +345,24 @@ Over ten versions the checker went from twelve self-test cases and no mutants to
 and every probe has a fixture that must make it fire and one that must keep it silent. Two regressions
 were caught by the jury and reverted, and both came from a fix reaching one place further than its finding
 asked. The plan is closed.
+
+## The last DRIFT fixed, and the mutation suite given a home (2026-09-23)
+
+The one DRIFT the checker still reported — no index line for `dl20260922_ask_codex_cli_audit.md` — was a
+line I had destroyed in the README wipe; the entry's own "Files Updated" lists the README. It was
+reconstructed from the devlog and committed with the devlog itself, which had never been committed
+(`09d6289`). The checker now reports no DRIFT and `--strict` exits 0.
+
+The mutation suite moved out of sweepable `tmp/` to `scripts/tests/mutate_check_practice_drift.py`, next to
+its subject, on Christian's ruling. Its review ran with one voice — Codex hit its usage limit — and Grok
+found, confirmed by execution, that **the suite has no baseline**: against a checker whose self-test
+always fails, it reports all 68 mutants killed and exits 0. Every earlier run was genuine, because the
+real self-test passes; but the suite cannot tell. A crash in an unrelated fixture also counts as a kill.
+Christian ruled to fix the baseline and the file encoding before committing. The suite now runs the
+unmutated self-test first and stops with exit 2 if it is red — proven on the same always-red checker,
+which went from "68/68, exit 0" to exit 2. That guard immediately surfaced something new: the checker's
+own `--self-test` is locale-dependent, writing its fixtures without an encoding, so it fails under a C
+locale while the live run does not. Filed with the remaining findings as D-m2, D-m4..D-m6 in
+`todo/practice_drift_mutation_suite.md`; a narrow re-review is owed when Codex returns. The instrument
+built to catch false greens had one of its own — found, as every other one here was, by the jury rather
+than by its author.

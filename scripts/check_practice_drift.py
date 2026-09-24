@@ -44,6 +44,9 @@ under `--strict`.
 `--self-test` is the gate, and every probe has at least one fixture that must make it fire and one
 that must keep it silent.  The live run reports and asserts no exact set, so repairing a real drift
 can never break the check.
+
+The gate is itself tested by `scripts/tests/mutate_check_practice_drift.py`, whose anchors are exact
+substrings of this file: change the two together, and add a mutant for every new probe.
 """
 
 import argparse
