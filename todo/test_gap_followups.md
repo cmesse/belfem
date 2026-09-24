@@ -43,7 +43,7 @@ consumer inventory before anything that changes a value or refuses an input.
   intended, Claude's assessment (04:15 entry in the tracker) says the two may coincide up to the
   factor 2 depending on the slave slope's sign convention. The fixture decides; no kernel edit before
   it. Depth astra/high.
-- [ ] **R8 (D21, DR-170)** `drho_piecewise_dJ`: replace the `BELFEM_ERROR` at the vanishing
+- [x] **R8 (D21, DR-170)** — landed `9373e44` 2026-09-23 via `todo/materials_tangent_cluster.md` R6 (exact endpoint limit `mNff·ρ_n/J` in all eight overloads, not a frozen-knot fallback). Original text: `drho_piecewise_dJ`: replace the `BELFEM_ERROR` at the vanishing
   discriminant (`powerlaws.hpp:1839-1842`) by the frozen-knot fallback `drho_piecewise_dT` uses
   (`:2305-2307`). Ruled: `n = 4` is legal; the abort tier in a Newton tangent is the defect.
   Depth terra/high.
@@ -61,7 +61,7 @@ consumer inventory before anything that changes a value or refuses an input.
   "refusing sounds reasonable, but it might cause a regression" — the narrow form fires on nothing
   in the tree; the gate that settles the medium-confidence rows is a `gantry` or `costheta` run
   counting multi-source hanging nodes per Dirichlet sideset. Depth astra/high.
-- [ ] **R11 (D24, DR-163)** Physics round (Codex + Grok; Messe et al. 2023 §2.6, Rhyner 1993) on
+- [◐] **R11 (D24, DR-163)** — physics round RUN 2026-09-23 (`tmp/ai_exchange/review_dr163_physics.md`): both voices recommend the tangent follows the raw value (the Bézier joins the raw law C1 at j1); the literature pair is Duron 2004 + the piecewise header, Messe §2.6 is the Kim pointer; ruling owed. Original text: Physics round (Codex + Grok; Messe et al. 2023 §2.6, Rhyner 1993) on
   which side of the piecewise resistivity carries the parallel combination below `j1`; Christian
   leans to "parallel is right" and asked for a jury. Consumer inventory before any fix: changing
   `rho_piecewise` changes every piecewise residual.

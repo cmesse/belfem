@@ -207,8 +207,10 @@ Christian is reloading the session on Opus 5.5. State at handoff:
     each refused table leaks (now exercised twice per `make check`). Widen DR-175 or new row?~~
     **Moot since `bc1ca8c`:** the refusals run in `open_checked` under a `unique_ptr`, and
     `mDatabase` is itself a `unique_ptr` member.
-  - Register header: the `[W]` count says 14; the tree has 9 open `[W]` rows incl. DR-189
-    (`check_doc_claims.py` fails on it; the mismatch predates this run).
+  - ~~Register header: the `[W]` count says 14; the tree has 9 open `[W]` rows incl. DR-189
+    (`check_doc_claims.py` fails on it; the mismatch predates this run).~~ **Resolved
+    2026-09-23:** the recount log in the header was removed, DR-189 struck and archived on
+    Christian's ruling; the header now reads 16 `[P]` / 9 `[W]` and `check_doc_claims.py` is green.
   - (done) the input-reference sentence took its Codex prose pass.
   - **DR-187, the ruling needs narrowing (consumer inventory, 2026-09-23).** Both `default:` arms of
     the thermal dispatch (`cl_ThermalFactory.cpp`, blocks and sidesets) also carry BY-DESIGN
