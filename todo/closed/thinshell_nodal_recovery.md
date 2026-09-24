@@ -8,7 +8,7 @@ where `η` follows the element's own through-thickness coordinate. A degenerate 
 a lower order instead of aborting.
 **Module:** `src/fem/kernel` (`cl_FEM_Postprocessor`), `src/fem/maxwell` (`cl_MaxwellPostprocessor`)
 **AIs involved:** Claude (probe, plan), Codex `gpt-6-astra` + Grok `grok-4.7` (plan and code juries)
-**Status:** PLAN — audited 2026-09-22 (Codex astra/high + Grok 4.7/high), amendments A1–A13 folded in (§4.1); approved with source edits 2026-09-22 (Christian; fallback = truncated pseudo-inverse, κ_max = 1e10); IN PROGRESS — gates G1–G4 PASSED on the clean A/B (2026-09-22 night, §4 R8); G5 and R9 open; R1–R6 implemented in `cl_FEM_Postprocessor.{hpp,cpp}`, syntax-gated only (both backends); code jury done (Codex astra/high + Grok 4.7/high), fixes F1–F7 applied and syntax-gated; R7 docs next, R8 gates (Christian), R9 → follow-up fixture plan (A13).
+**Status:** CLOSED 2026-09-23 — landed in `5ab4d41` with G1–G4 passed, R7 docs swept and the R9 tests in `closed/thinshell_recovery_unit_test.md`. G5 passed 2026-09-24 on `tapestack2d_layered`. Earlier status: PLAN — audited 2026-09-22 (Codex astra/high + Grok 4.7/high), amendments A1–A13 folded in (§4.1); approved with source edits 2026-09-22 (Christian; fallback = truncated pseudo-inverse, κ_max = 1e10); IN PROGRESS — gates G1–G4 PASSED on the clean A/B (2026-09-22 night, §4 R8); G5 and R9 open; R1–R6 implemented in `cl_FEM_Postprocessor.{hpp,cpp}`, syntax-gated only (both backends); code jury done (Codex astra/high + Grok 4.7/high), fixes F1–F7 applied and syntax-gated; R7 docs next, R8 gates (Christian), R9 → follow-up fixture plan (A13).
 
 > **Scope guards (rulings, Christian, 2026-09-22):**
 > - Shared layer-interface nodes stay shared (last writer wins); documented in
@@ -149,7 +149,7 @@ polynomial values, because the basis now depends on the node, and nothing else. 
     - [x] **G2 PASS** where the patch is a true flat: 2460 nodes clear of the flat/bend junction, H 2.6e-7, J 1.6e-7 of the peak (floor 8e-7). The 168 nodes whose patch reaches within 0.3 mm of the junction differ up to 2.5e-3 (H), 9e-5 (J): the layer there is extruded along averaged node normals and tilts up to 1.25° from y, so it is not a prism and the Cartesian fit carries the bend defect in small; B is the correct one. The "flat by x" criterion of the gate was too loose.
     - [x] **G3 PASS vs floor:** air off the shell A→B max 2.2e-6 / median 5e-9, B→B max 1.85e-6 / median 7e-9.
     - [x] **G4 PASS off the partition boundaries:** `-np 4` vs serial max 5.4e-6 (99 % 6.4e-7); all 320 nodes above 1e-3 are thin-shell nodes on partition boundaries — the thin-shell aura skip, unchanged and out of scope (not re-measured for A).
-    - [ ] G5 (a QUAD4TS deck) open.
+    - [x] **G5 PASS** on `tapestack2d_layered` (2026-09-24, scratch A/B, 150 saves): A → B ≤ 2.1e-9 of the field on every block, floor B → B2 bitwise 0. `tapestack2d_racetrack`: agrees to 2e-8 through 1.2 ms, then the solve itself diverges (recovered fields feed it; devlog `dl20260924_bezier_root_nightly_and_todo_tidy.md` O1). *Candidates (2026-09-24): `examples/tapestack2d_layered` and `examples/tapestack2d_racetrack`, whose `thinshell : tape` layers are QUAD4TS. Their tapes are straight, so G5 there is a flat agreement gate like G2, not a curvature gate.*
   - *G1 run 2026-09-22 22:00 (Claude, scratch copy of the deck, `cmake-build-debug` binary with the final code): **PASS** — YBCO holds 99.9 % of the across-tape jump in 720/720 bend columns (was 0.5 %) and 2520/2520 flat columns (114 were wrong before); silver/buffer jumps ≤ 0.09 mT; zero truncated patches; largest κ: air 12, shell conductors 3.2, YBCO 3.2 (was ~4e12). G2 **inconclusive**: median change 1e-7 but 34 flat YBCO nodes change by up to 0.022 Jc (isolated one-element footprints); the old fit on those patches is exact to 50 digits, so the difference is in the element input, and the baseline binary (17:38) predates the peer session's `src/mesh` edits (U₂ differs by 4e-5, `.bfm` byte-identical). A clean A/B needs a baseline from the same tree minus this change. G3: air median 1.8e-8, max 5.8e-6 (gate 1e-6 missed, same confound).*
   - **G1** rutherford (fresh run; delete `*.bfm`, `memdump.hdf5`, `iv_results.csv` first):
     `bcols.py` step 100 — ybco carries ≥ 95 % of the across-tape jump in ≥ 95 % of bend columns;
@@ -203,7 +203,7 @@ polynomial values, because the basis now depends on the node, and nothing else. 
 - [x] **A11** (Grok) Side-connector walls copy tape H/B after the ybco pass
   (`cl_MaxwellFactory.cpp:2464-2471`); they inherit the corrected values. Named in R7.
 - [x] **A12** (Grok) Naming: `a`/`t` prefixes in `src/fem/kernel` (no math exemption there).
-- [x] **A13** (Codex) **R9** — *done 2026-09-23 (11 tests, M1–M5; see `todo/thinshell_recovery_unit_test.md`); moved to `todo/thinshell_recovery_unit_test.md` (2026-09-23); was blocked 2026-09-22, routed by Christian to a DofManager-based thin-shell fixture:* `TS_TestStack2D` builds a `DofManagerBase` without IWG, while `Postprocessor` needs a `DofManager` (`iwg()`, block calculators, `_Volumes`); needs a DofManager fixture or the basis/inversion as free functions (plan amendment for Christian). — new unit test `tests/fem/test_PostprocessorRecovery.cpp` on the
+- [x] **A13** (Codex) **R9** — *done 2026-09-23 (11 tests, M1–M5; see `todo/closed/thinshell_recovery_unit_test.md`); moved to `todo/closed/thinshell_recovery_unit_test.md` (2026-09-23); was blocked 2026-09-22, routed by Christian to a DofManager-based thin-shell fixture:* `TS_TestStack2D` builds a `DofManagerBase` without IWG, while `Postprocessor` needs a `DofManager` (`iwg()`, block calculators, `_Volumes`); needs a DofManager fixture or the basis/inversion as free functions (plan amendment for Christian). — new unit test `tests/fem/test_PostprocessorRecovery.cpp` on the
   existing `tests/fem/support/cl_TS_TestStack.hpp` fixture where it fits, else a direct fit-kernel
   test: (a) a linear field on a translated and scaled TET patch is reproduced to 1e-12; (b) a field
   linear in η on a curved PENTA6TS stack is reproduced at both faces to 1e-12; (c) a degenerate
@@ -233,7 +233,7 @@ coordinate. `MaxwellPostprocessor` unchanged unless R2 needs the block element t
 ## 7. Definition of Done
 
 - [ ] Every gap-table row mapped to a step or an open question.
-- [ ] G0–G5 passed and recorded in the devlog with the numbers.
+- [x] G0–G5 passed and recorded in the devlog with the numbers.
 - [ ] Docs updated (R7) and swept.
 - [ ] `thinshell_postprocessor_node_sharing.md` §2.5 states the fix.
 

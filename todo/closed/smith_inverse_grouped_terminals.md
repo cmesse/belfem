@@ -15,7 +15,7 @@ and does not define how the amplitude scales with crossings (Grok plan audit C1)
 Christian's grant of 2026-09-18; `cl_CutProcessor`, `cl_CutSet`; new `fn_terminal_transform`)
 **AIs involved:** Claude Fable (plan + code), Codex gpt-6-astra (plan and code audits), Grok grok-4.6
 (third voice); Opus (build orchestration). Evidence round: `tmp/ai_exchange/review_rutherford_saturation.md`.
-**Status:** ✅ COMPLETE 2026-09-19 (branch `Claude`, never merged). 2026-09-20: Gregory's single-crossing convention tested and confirmed exact on devel; this patch is option (b) of the report's addendum, a guard on `s < t` with corrected message and docs is option (a). Landed: `fn_terminal_transform`
+**Status:** CLOSED 2026-09-23 — the experiment served its purpose: the report went to Gregory, and branch `Claude` stays unmerged by design. Earlier status: ✅ COMPLETE 2026-09-19 (branch `Claude`, never merged). 2026-09-20: Gregory's single-crossing convention tested and confirmed exact on devel; this patch is option (b) of the report's addendum, a guard on `s < t` with corrected message and docs is option (a). Landed: `fn_terminal_transform`
 (lcm-of-the-rational-row factor, unit generators, visibility and free-row checks), the call site
 and `terminal_factor()` in `cl_Cohomology`, jump weights 1/k through `CutProcessor`/`CutSet`, 9
 unit tests. Verified: five-tape Rutherford deck 30.0 A per crossing at 150 A on the 1.5 mm and

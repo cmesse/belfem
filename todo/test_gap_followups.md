@@ -1,13 +1,13 @@
 # Test-Gap Follow-Ups: The Rulings of 2026-09-22 Turned Into Work
 
 **Date:** 2026-09-22
-**Purpose:** Christian's rulings from the Tier 1 test-gap run (the "quiz", `todo/test_gap_tier1_execution.md` §4)
+**Purpose:** Christian's rulings from the Tier 1 test-gap run (the "quiz", `todo/closed/test_gap_tier1_execution.md` §4)
 produced a queue of small source changes, one fixture and two physics questions. This plan holds
 them so the next session can land each through the standing loop (plan → jury → code → jury) with a
 consumer inventory before anything that changes a value or refuses an input.
 **Module:** `src/mesh`, `src/fem/kernel`, `src/physics/materials`, `src/io`, `tests/`
 **AIs involved:** Claude (plan + orchestration), Codex and Grok (juries), Opus (implementation)
-**Status:** OPEN — 0 of 12 steps done; every step ruled by Christian on 2026-09-22 unless marked
+**Status:** OPEN — 2 of 12 steps done (R8, R11); every step ruled by Christian on 2026-09-22 unless marked; R7 and R10 re-ruled 2026-09-24
 
 > **Scope guards:**
 > - Each item is its own row: own-files diff, jury, gate in both trees, one commit.
@@ -38,7 +38,7 @@ consumer inventory before anything that changes a value or refuses an input.
   `Ferromagnetic::rho_custom`). Changes iron/nickel resistivity values → consumer inventory first
   (every deck with `iron`/`ferro`/`nickel`), physics check against the RRR data source, then the
   T-10 RRR identity test is extended to the ferromagnets. Depth terra/high.
-- [ ] **R7 (D20, DR-168)** The unequal-thickness / unequal-ρ two-shell fixture that separates the
+- [ ] **R7 (D20, DR-168)** **Ruled 2026-09-24 (quiz): a Codex + Grok physics round on Ern et al. 2009 vs the coded operator comes FIRST (the DR-163 shape, magnesia φ-layer case worked explicitly); the fixture is built to what the round says separates the forms.** The unequal-thickness / unequal-ρ two-shell fixture that separates the
   ghost-interface JUMP of outward slopes from the SWIP weighted average; Christian reads the jump as
   intended, Claude's assessment (04:15 entry in the tracker) says the two may coincide up to the
   factor 2 depending on the slave slope's sign convention. The fixture decides; no kernel edit before
@@ -52,7 +52,7 @@ consumer inventory before anything that changes a value or refuses an input.
   `builtin` beside `curve` naming a different material is refused). Update
   `doc/input_file_reference.md` and `doc/input_schema.yaml` in the same session (input contract
   rule). Depth terra/high.
-- [ ] **R10 (D23, DR-172)** NARROW refusal only: `BELFEM_ERROR` on
+- [ ] **R10 (D23, DR-172)** **Confirmed 2026-09-24 (quiz).** NARROW refusal only: `BELFEM_ERROR` on
   `is_hanging() && number_of_sources() > 1 && ! is_duplicate()` in the `impose_dirichlet` fallback
   (`cl_FEM_SideSet.cpp:344-350`), naming sideset, node and sources as `Bearing::impose_dirichlet`
   does (`cl_FEM_Bearing.cpp:151-157`); the duplicate branch stays inert and is documented as
@@ -87,5 +87,5 @@ DR-177 and O10 / O18 go to Gregory by `devlog/dl20260922_homology_report_for_gre
 
 ## 4. Audit trail
 
-Rulings: `todo/test_gap_tier1_execution.md` §4 (quiz entries 03:35–04:15, 2026-09-22). Consumer
+Rulings: `todo/closed/test_gap_tier1_execution.md` §4 (quiz entries 03:35–04:15, 2026-09-22). Consumer
 inventories: `tmp/ai_exchange/consumer_impact_*.md` (ephemeral; distilled into the tracker table).

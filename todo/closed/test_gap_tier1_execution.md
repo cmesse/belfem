@@ -9,7 +9,7 @@ the debug tree, commit own files. Findings that need a ruling or a wider fix go 
 **Module:** `tests/` (all suites); `src/` only for jury-confirmed local fixes
 **AIs involved:** Claude Fable 5.1 (loop), Codex (`gpt-6-astra`/high on critical rows,
 `gpt-5.6-sol`/medium plan jury and `gpt-5.6-terra`/high code jury otherwise), Grok `grok-4.7`/high
-**Status:** ✅ RUN CLOSED 2026-09-22 (afternoon wall clock after the jump) — 21 of 22 rows committed on `devel` (`b5a18cf` … `f2d34c2`, plus `8f317e8` comment), T-08 carried with plan v3 rulings; DR-161..182 filed, DR-178 fixed and closed; every src fix consumer-swept (8/8 LOW); the quiz answered O1–O21 and DR-163/168/170/171/172; follow-ups in `todo/test_gap_followups.md`; Gregory's items in `devlog/dl20260922_homology_report_for_gregory.md`; final `make check-fast` in both trees at close
+**Status:** CLOSED 2026-09-23 — the run is finished; its rulings are carried as rows in `todo/test_gap_followups.md`. Earlier status: ✅ RUN CLOSED 2026-09-22 (afternoon wall clock after the jump) — 21 of 22 rows committed on `devel` (`b5a18cf` … `f2d34c2`, plus `8f317e8` comment), T-08 carried with plan v3 rulings; DR-161..182 filed, DR-178 fixed and closed; every src fix consumer-swept (8/8 LOW); the quiz answered O1–O21 and DR-163/168/170/171/172; follow-ups in `todo/test_gap_followups.md`; Gregory's items in `devlog/dl20260922_homology_report_for_gregory.md`; final `make check-fast` in both trees at close
 
 > **Standing approvals (Christian, 2026-09-21, recorded in memory `test-gap-overnight-run`):**
 > blanket approval for tests and for jury-confirmed local `src/` fixes; I run `make`/`ctest`

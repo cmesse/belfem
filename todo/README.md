@@ -26,7 +26,7 @@ checkboxes, `On` open questions, definition-of-done, audit trail.
 ---
 
 ## Currentness sweep 2026-09-03 — round 3: purpose-served and relevance
-- [smith_inverse_grouped_terminals.md](smith_inverse_grouped_terminals.md) — branch `Claude` experiment: unit-normalized Smith diagonal + weighted cut jump for bracket groups whose curves cross one conductor k times (Rutherford 5×); evidence for Gregory, never merged. ✅ COMPLETE 2026-09-19, report in devlog
+- [closed/smith_inverse_grouped_terminals.md](closed/smith_inverse_grouped_terminals.md) — branch `Claude` experiment: unit-normalized Smith diagonal + weighted cut jump for bracket groups whose curves cross one conductor k times (Rutherford 5×); evidence for Gregory, never merged. ✅ COMPLETE 2026-09-19, report in devlog — **CLOSED 2026-09-23**
 
 **Active plans: 5** (`test_gap_backlog` added 2026-09-21; 6 after round 3; `user_api_header_install` split and deferred 2026-09-04,
 `linalg_backend_verification` closed 2026-09-04 — see their entries). Rounds 1 and 2 (below) took the directory from 57 to 29 by asking whether a
@@ -142,6 +142,12 @@ one of the two must be retired before either is worked.
 
 ---
 
+## Added 2026-09-24
+
+### [closed/piecewise_bezier_root.md](closed/piecewise_bezier_root.md) — one clamped Bézier root for the piecewise power law's value and both tangents — **CLOSED 2026-09-24**
+
+Nightly pipeline 41 failed `PiecewiseDegenerateBlendStaysFinite`: at the coincident knots (n − 1 == mNff) the discriminant is exactly zero and roundoff lands it below, where `pow( d, 0.5 )` is NaN; the eight value overloads were unguarded and the dT guard came after the root. `Material::piecewise_bezier_sqrt` now serves all 26 root sites; two tests pin the sweep and the clamp itself. Landed `aa468c3` behind both juries. Owed: shared-tree `check-fast` and the manual pipeline (Christian).
+
 ## Added 2026-09-23
 
 ### [materials_tangent_cluster.md](materials_tangent_cluster.md) — debt cluster A: DR-163, DR-164, DR-170, DR-173, DR-174 in `src/physics/materials`
@@ -184,20 +190,24 @@ periodic node pair gets one combined value after the rank-0 gather: vectors (H, 
 periodic transform rebuilt from the plane nodes, scalars averaged. Visualization only; the solve already ties the dofs. The union patch across
 the planes was rejected (partner elements are not on one rank).
 
-### [thinshell_recovery_unit_test.md](thinshell_recovery_unit_test.md) — unit tests that run the node-local recovery on code-built meshes
+### [closed/thinshell_recovery_unit_test.md](closed/thinshell_recovery_unit_test.md) — unit tests that run the node-local recovery on code-built meshes — **CLOSED 2026-09-23**
 
-**IMPLEMENTED 2026-09-23 — T5 (2D) open.** 11 tests in `tests/fem/test_PostprocessorRecovery.cpp` through a
+**IMPLEMENTED 2026-09-23 in `5ab4d41` — T5 (the optional 2-D analogue) not built.** 11 tests in `tests/fem/test_PostprocessorRecovery.cpp` through a
 real `Kernel`/`DofManager` plus direct tests of the extracted `recovery_block_inverse`; mutations M1–M5 each red on
 their own tests; the round-2 jury's round-off floor landed with its regression test.
 
-### [thinshell_nodal_recovery.md](thinshell_nodal_recovery.md) — correct nodal H, B, J in curved thin-shell layers
+### [closed/thinshell_nodal_recovery.md](closed/thinshell_nodal_recovery.md) — correct nodal H, B, J in curved thin-shell layers — **CLOSED 2026-09-23**
 
-**IMPLEMENTED 2026-09-22/23 — G5 (a QUAD4TS deck) open.** Verified on rutherford by a clean A/B (G1–G4); R9 tests
+**IMPLEMENTED 2026-09-22/23 in `5ab4d41`; G5 passed 2026-09-24 on `tapestack2d_layered` (≤ 2.1e-9, floor 0).** Verified on rutherford by a clean A/B (G1–G4); R9 tests
 landed. The patch recovery fitted `{1, x, y, z}` in absolute
 coordinates, which cannot follow a through-thickness jump on a curved shell: on the rutherford bends the
 ybco current sheet is displayed in the silver and buffer layers. Fix: a node-local basis, centered and
 scaled Cartesian everywhere, curvilinear `(s1, s2, η)` for PENTA6TS/QUAD4TS layers, and an order-0
 fallback instead of the `posv` abort. Offline probe: κ 4e12 → 16, bend error 52 % → 1e-15.
+
+### [closed/test_gap_tier1_execution.md](closed/test_gap_tier1_execution.md) — the Tier 1 test-gap overnight run — **CLOSED 2026-09-23**
+
+21 of 22 rows committed on `devel` (`b5a18cf` … `f2d34c2`), T-08 carried; DR-161..182 filed, DR-178 fixed. The quiz rulings live on as the rows of `test_gap_followups.md`. Devlog `dl20260922_test_gap_tier1_overnight.md`.
 
 ### [test_gap_followups.md](test_gap_followups.md) — the rulings of the Tier 1 test-gap run turned into twelve small rows
 
@@ -221,7 +231,7 @@ came from a fix reaching one place further than its finding. Live today: one DRI
 
 ## Added 2026-09-21
 
-### [citation_index_completion.md](citation_index_completion.md) — closing the gap between the works the tree cites and the works it can identify
+### [closed/citation_index_completion.md](closed/citation_index_completion.md) — closing the gap between the works the tree cites and the works it can identify — **CLOSED 2026-09-23**
 
 **✅ CHECKER GREEN 2026-09-22 — R1–R5 and R7 done, O1 and O3 resolved; R6 and O2 open.**
 `doc/literature_references.md` gained a machine-checked citation key index (122 works, 234
@@ -232,7 +242,7 @@ the tree, filed away from the citations that needed them. Three real defects fel
 Bathe's second edition was credited to Prentice Hall, *Finite Element Exterior Calculus* to
 three authors instead of Arnold alone, and `Herrmann 1978` turned out to name no existing
 work (the theorem is Barlow 1976). Left open: whether the checker becomes a gate (R6), and
-whether the index should mark which works are held locally (O2).
+whether the index should mark which works are held locally (O2). Both are rulings, not work, so the plan is closed.
 
 ### [test_gap_backlog.md](test_gap_backlog.md) — the ranked list of tests the suite is missing, distilled from the incident record
 

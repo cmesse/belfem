@@ -8,7 +8,7 @@ them. The mechanism is transcription, not research: most of these works are name
 reference in the module document that cites them, and need the full reference plus a DOI.
 **Module:** `doc` (+ `src/physics/gasmodels`, `src/physics/materials`, `src/fem`, `src/sparse`)
 **AIs involved:** Claude (index + checker)
-**Status:** ✅ CHECKER GREEN — R1–R5 and R7 done, O1 and O3 resolved, all 2026-09-22. **`scripts/check_citations.py` reports 509 resolved, 0 unresolved, and exits 0.** Every author-year citation in `src/` and `doc/` now resolves to a full reference. Remaining: R6 (whether the checker becomes a gate — now a real choice, since it no longer fails by design) and O2 (marking which indexed works are held locally)
+**Status:** CLOSED 2026-09-23 — the checker is green with 0 unresolved citations. R6 (make `check_citations.py` a gate) and O2 (an `unheld` marker) are rulings for Christian, not missing work. Earlier status: ✅ CHECKER GREEN — R1–R5 and R7 done, O1 and O3 resolved, all 2026-09-22. **`scripts/check_citations.py` reports 509 resolved, 0 unresolved, and exits 0.** Every author-year citation in `src/` and `doc/` now resolves to a full reference. Remaining: R6 (whether the checker becomes a gate — now a real choice, since it no longer fails by design) and O2 (marking which indexed works are held locally)
 
 > **Scope guards:**
 > - Out of scope: adding the works to `literature/`. The index records the reference so a reader

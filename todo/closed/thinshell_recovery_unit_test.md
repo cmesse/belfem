@@ -9,7 +9,7 @@ inversion must reproduce a constant on a degenerate patch. Mechanism: a test sub
 point, runs `initialize()` and `run()`, and reads the recovered nodal field.
 **Module:** `tests/fem` (+ possibly `src/fem/kernel`, see O1)
 **AIs involved:** Claude (plan, implementation), Codex `gpt-6-astra` + Grok `grok-4.7` (juries)
-**Status:** IN PROGRESS — implemented; round-2 code jury: Codex astra/xhigh (2 findings, both fixed
+**Status:** CLOSED 2026-09-23 — landed in `5ab4d41`: 11 tests, mutations M1–M5 each red on their own tests. Residue: T5, the optional 2-D analogue, not built. Earlier status: IN PROGRESS — implemented; round-2 code jury: Codex astra/xhigh (2 findings, both fixed
 with approval: a round-off floor in `recovery_block_inverse`, and T8 checked against the unsplit
 patch), Grok rerun at 150 turns pending. Gate (scratch worktree, Blaze/MKL, `-Werror`; Armadillo
 syntax-gated): 11/11 new tests; full `test_fem` 210 release / 212 debug; mutations each red on their
@@ -144,6 +144,6 @@ evaluates a `std::function< real( const Vector<real> & x, real zeta ) >` at the 
 
 ## 5. Audit Trail
 
-- Parent: `todo/thinshell_nodal_recovery.md` (A13, R9); juries
+- Parent: `todo/closed/thinshell_nodal_recovery.md` (A13, R9); juries
   `tmp/ai_exchange/review_thinshell_recovery_plan.md`.
 - This plan: `tmp/ai_exchange/review_recovery_unit_test.md`.
