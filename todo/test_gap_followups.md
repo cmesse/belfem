@@ -61,7 +61,7 @@ consumer inventory before anything that changes a value or refuses an input.
   "refusing sounds reasonable, but it might cause a regression" — the narrow form fires on nothing
   in the tree; the gate that settles the medium-confidence rows is a `gantry` or `costheta` run
   counting multi-source hanging nodes per Dirichlet sideset. Depth astra/high.
-- [◐] **R11 (D24, DR-163)** — physics round RUN 2026-09-23 (`tmp/ai_exchange/review_dr163_physics.md`): both voices recommend the tangent follows the raw value (the Bézier joins the raw law C1 at j1); the literature pair is Duron 2004 + the piecewise header, Messe §2.6 is the Kim pointer; ruling owed. Original text: Physics round (Codex + Grok; Messe et al. 2023 §2.6, Rhyner 1993) on
+- [x] **R11 (D24, DR-163)** — ruled A and landed `31737f5` 2026-09-24; physics round RUN 2026-09-23 (`tmp/ai_exchange/review_dr163_physics.md`): both voices recommend the tangent follows the raw value (the Bézier joins the raw law C1 at j1); the literature pair is Duron 2004 + the piecewise header, Messe §2.6 is the Kim pointer; ruling owed. Original text: Physics round (Codex + Grok; Messe et al. 2023 §2.6, Rhyner 1993) on
   which side of the piecewise resistivity carries the parallel combination below `j1`; Christian
   leans to "parallel is right" and asked for a jury. Consumer inventory before any fix: changing
   `rho_piecewise` changes every piecewise residual.

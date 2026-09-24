@@ -9,7 +9,7 @@ diagnoses were wrong and are corrected here.
 **AIs involved:** Claude Fable 5.1 (plan, probes, juries, close-out), Opus 5.5 (implementation),
 Codex `gpt-5.6-terra`/high and Grok `grok-4.7`/high (plan jury, code jury, DR-163 physics round);
 `belfem-3c` (the concurrent v0.9.2..HEAD reviewer, coordination only)
-**Status:** COMPLETE for the night's scope — DR-174 `e3a9b6b`, DR-164 `b5c42a9`, DR-170 `9373e44` committed on `devel` behind both juries and green gates in both trees; DR-173 and DR-163 wait on Christian's rulings with executed numbers (§5)
+**Status:** COMPLETE — all five rows landed on `devel`: DR-174 `e3a9b6b`, DR-164 `b5c42a9`, DR-170 `9373e44` (struck on Christian's ruling), DR-173 `fcb8536`, DR-163 `31737f5` (rulings (c) and A from the 00:05 quiz; strikes owed), each behind both juries and green gates in both trees; the debug-assert leg is owed
 **Exchange:** `tmp/ai_exchange/review_materials_tangent_cluster.md` (plan and code rounds),
 `review_dr163_physics.md` (physics round)
 
@@ -68,7 +68,7 @@ Code jury: see §6.
   enabled; `PiecewiseDegenerateBlendStaysFinite` now calls every reachable `dJ` overload at the
   knot and checks the limit to 1e-6.
 
-## 5. Rulings owed (morning quiz, details in the plan's R4 and O1)
+## 5. Rulings (quiz answered 2026-09-24 00:05 — DR-173: (c); DR-163: A; the three landed rows struck; the DR-170 guard band accepted as bounded)
 
 - **DR-173:** (c) `dT = 1 K` for the cp spline only (a trailing step parameter on
   `create_spline`, callers unchanged) vs (b) 1 K for every property. Recommended (c). The lead
@@ -111,6 +111,33 @@ Code jury: see §6.
   the probe evidence, the jury depth and the gates. Verified at the suite rung in release on both
   backends; the debug-assert leg is owed (both trees are release-configured tonight).
 
+## 6b. Stage 3 — the two ruled rows (2026-09-24, 00:05 ruling → implementation)
+
+- **DR-173 (c):** `create_spline( aProperty, adYdX0, adYdX1, aStep = 4.0 )` on `Material`,
+  forwarded to the function-pointer overload and its `SplineLookupTable` override; the 4 K
+  literal is now the default step; only `Metal::create_cp` passes 1 K. All 26 other call sites
+  keep 4 K (enumerated by the implementation agent, syntax-gated in both flag sets and with the
+  asserts compiled in). `LeadCpIsPositiveBelowThreeKelvin` enabled (renamed from the "IsNegative"
+  pin); the known-defect table of the value sweep is empty.
+- **DR-163 (A):** the eight `drho_piecewise_dJ` power-law branches return the raw derivative;
+  the dead `rhoPL` locals are gone; the family's header states the value/tangent contract.
+  `PowerLawRegimeTangentMatchesRawResidual` enabled.
+- **Gate, `build/` (Armadillo, release), 00:55:** rebuilt clean; targeted 10/10 (both pins, the
+  lead sweeps, the degenerate and Kim cases); full `test_physics` 150 ran, 149 passed, the same
+  designed skip; `check-fast` 8/8. **`cmake-build-debug/` (Blaze, release), 01:00:** rebuilt
+  clean (1 m 17 s), targeted 10/10, full suite 150 ran / 149 passed / the same skip, `check-fast`
+  8/8 (3.8 s). Release only in both trees; the debug-assert leg stays owed.
+- **Code jury (stage 3; Codex terra/high, Grok 4.7/high), reconciled 01:20:** both found the
+  unvalidated `aStep` (setup path → `BELFEM_ERROR` on finite, positive) and the six
+  un-differenced sibling overloads (the raw-residual test now checks the 1-argument and both
+  defect twins); Grok's comment corrections applied (the sampler comment, the value-test
+  banner, the `adYdX1` rename) and the Doxygen names the zero floor. Residue recorded: the
+  positional third `real` of `create_spline`, `Alloy::create_tables`' own 4 K cp grid (a
+  one-component lead alloy would rebuild the old undershoot), the sweeps' 0.5 K start.
+  Re-gate after these edits, 01:35: both trees rebuilt clean, targeted 10/10, `test_physics`
+  149 + 1 designed skip, `check-fast` 8/8 each. **Commits 01:45:** `fcb8536` DR-173 (six files),
+  `31737f5` DR-163 (two files); no shared file, private index.
+
 ## 7. Residue
 
 - `intpoints.f90:16`: the kind named `quadruple` is double — misleading name, widen onto DR-174.
@@ -119,3 +146,7 @@ Code jury: see §6.
 - The `n = 7` window (`a = 0`) aborts in the 4-argument `dJ` and divides by zero elsewhere —
   pre-existing, out of DR-170's scope, recorded on its row.
 - Both trees are release-configured; the debug-assert leg of the gates is owed.
+- `Alloy::create_tables` samples component cp on its own 4 K grid; the third optional `real` of
+  `create_spline` is positional; the value sweeps' strict positivity starts at 0.5 K (DR-173 row).
+- The `( J, T )` overloads of the HTS laws abort on the factory YBCO (`jc_custom`) and remain
+  untested by the derivative suite (DR-163 row).

@@ -146,7 +146,7 @@ one of the two must be retired before either is worked.
 
 ### [materials_tangent_cluster.md](materials_tangent_cluster.md) — debt cluster A: DR-163, DR-164, DR-170, DR-173, DR-174 in `src/physics/materials`
 
-**IN PROGRESS — DR-174 `e3a9b6b`, DR-164 `b5c42a9`, DR-170 `9373e44` landed 2026-09-23 behind both juries and green gates in both trees; DR-173 and DR-163 wait on rulings with executed numbers.** Five open rows with one module and one gate
+**CODE COMPLETE 2026-09-24 — all five rows landed on `devel` behind plan jury, code juries and green gates in both trees: DR-174 `e3a9b6b`, DR-164 `b5c42a9`, DR-170 `9373e44` (struck on Christian's ruling), DR-173 (option c, 1 K cp knots) and DR-163 (option A, raw tangent) in the stage-3 commits; the debug-assert leg of every gate is owed.** Five open rows with one module and one gate
 shape (a `DISABLED_` pin each, red today). Staged for the v0.9.2..HEAD reviewer: stage 1 (Kim
 `deval_dB`, the Callaway `e^{-z}` rewrite, lead's cp spline start) touches only files outside its
 read set; stage 2 (`powerlaws.hpp`: DR-170's fallback tier, DR-163 per the physics ruling) waits

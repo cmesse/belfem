@@ -4,7 +4,7 @@
 **Purpose:** Close five open debt-register rows that share one module (`src/physics/materials`), one test pair and one gate shape — four rows carry a `DISABLED_` pin that is red today and green after the fix; DR-170's test is enabled and goes red only once its `dJ` call is added.
 **Module:** `src/physics/materials` (+ `debye.f90`)
 **AIs involved:** Claude Fable (plan, juries, close-out), Codex + Grok (plan and code juries, terra/high + grok-4.7/high), Opus (implementation), the `belfem-3c` reviewer session (coordination)
-**Status:** IN PROGRESS — three of five rows LANDED 2026-09-23 23:15 on `devel` (DR-174 `e3a9b6b`, DR-164 `b5c42a9`, DR-170 `9373e44`), each behind the plan jury, the code jury (Codex terra/high + Grok 4.7/high, reconciled) and `test_physics` 147 + 1 designed skip plus `make check-fast` 8/8 in BOTH trees (release only — the debug-assert leg is owed). Remaining: R4 (DR-173, ruling (c) vs (b), probe numbers in R4) and R8/R9 (DR-163, both physics voices recommend A; ruling). Strikes of the three landed rows: Christian's ruling (quiz)
+**Status:** CODE COMPLETE 2026-09-24 01:45 — all five rows LANDED on `devel` (DR-173 `fcb8536`, DR-163 `31737f5` added to the three below), each behind both juries and green gates in both trees; DR-164/170/174 struck on Christian's ruling, DR-173/DR-163 strikes owed; the debug-assert leg of every gate owed; residue on the rows. Earlier state: three of five rows LANDED 2026-09-23 23:15 on `devel` (DR-174 `e3a9b6b`, DR-164 `b5c42a9`, DR-170 `9373e44`), each behind the plan jury, the code jury (Codex terra/high + Grok 4.7/high, reconciled) and `test_physics` 147 + 1 designed skip plus `make check-fast` 8/8 in BOTH trees (release only — the debug-assert leg is owed). Remaining: R4 (DR-173, ruling (c) vs (b), probe numbers in R4) and R8/R9 (DR-163, both physics voices recommend A; ruling). **Quiz answered 2026-09-24 00:05:** DR-173 → (c); DR-163 → A; DR-164/170/174 STRUCK and archived; the DR-170 guard band accepted as a bounded approximation. R4 and R9 in implementation (stage 3)
 
 ## Context
 
@@ -81,8 +81,7 @@ sequenced last so the rest of the cluster does not wait on it.
   defect is the 4 K public spline on a T³ start, not the Touloukian fit. By-catch: between knots
   the spline sits up to +0.148 J/(kg·K) (≈ 5 %) above `cp_custom` at 5.8 K — the knot spacing is
   coarse for lead's low θ everywhere below ~10 K, not only in the first segment.
-- [ ] **R4** DR-173 fix — two candidates, **ruling owed (design, Christian)**; the jury may
-  comment but does not decide:
+- [x] **R4** DR-173 fix — **RULED 2026-09-24 00:05 (Christian, quiz): option (c), 1 K knots for cp only; LANDED `fcb8536` 01:45** (step parameter guarded finite and positive after the code jury). The two candidates as they stood before the ruling:
   - (a) *dispatch below the first knot*: `cp_spline`/`dcpdT_spline`/`d2cpdT2_spline` return
     `cp_custom`/`dcpdT_custom`/… for `T < first interior knot` (4 K). Local, every metal keeps its
     values above 4 K; below 4 K every metal moves to its own analytic law (small for the eight,
@@ -123,7 +122,7 @@ sequenced last so the rest of the cluster does not wait on it.
   is acceptable. (a) is withdrawn: it leaves tin/indium wrong below 4 K and breaks C1 at 4 K.
   **No default is taken overnight**: DR-173 goes to the morning quiz as (c) vs (b); the pin stays
   `DISABLED_` until it lands. Probe sources: scratchpad `probe_dr173/probe{,2,6}.cpp`.
-- [◐] **R5** (Kim and YBCO pins enabled in `b5c42a9`/`e3a9b6b`; the lead pin waits for R4) Enable pins: rename `DISABLED_KimFieldDerivativeMatchesFiniteDifference`,
+- [x] **R5** (Kim and YBCO pins enabled in `b5c42a9`/`e3a9b6b`; the lead pin in `fcb8536`; the raw-residual pin in `31737f5`) Enable pins: rename `DISABLED_KimFieldDerivativeMatchesFiniteDifference`,
   `DISABLED_LeadCpIsNegativeBelowThreeKelvin`, `DISABLED_YbcoRawLambdaIsFiniteBelowOneKelvin`;
   remove lead from the known-defect table in `test_MaterialValues.cpp` (~line 126).
 
@@ -157,14 +156,14 @@ sequenced last so the rest of the cluster does not wait on it.
   is absent from `powerlaws.hpp`), and every constant-preconditioned derivative reads
   `constant_property( n )` (1-argument `dJ` `:1336-1338`) or routes through `n_eval` (4-argument
   `dJ` `:1801`). Record the result; no edit expected.
-- [ ] **R8** DR-163 physics round (literature + Codex/Grok, single-claim depth). Start from
+- [x] **R8** (run 2026-09-23 21:18/21:24, reconciled 22:15; both voices A) DR-163 physics round (literature + Codex/Grok, single-claim depth). Start from
   **Duron et al. 2004** (the parallel combination, `doc/literature_references.md:475-478`) and
   the piecewise header `powerlaws.hpp:1291-1295`, NOT Messe 2023 §2.6 (that section is the
   routing table's pointer for the Kim model, `:128`). Neither Duron 2004 nor Rhyner 1993 is in
   `literature/`; the round says so. Consumer inventory to `tmp/ai_exchange/consumer_impact_dr163.md`
   — nine `rho_piecewise` overloads, both `dB` and both `dT` twins, `drho_piecewise_dT` consumers
   at `cl_FEM_Calculator.hpp:3200-3270`, `rho_piecewise` at `:3808…`; ruling via question form.
-- [ ] **R9** DR-163 fix per ruling on all sites of the chosen side; enable
+- [x] **R9** (ruled A 2026-09-24; LANDED `31737f5` 01:45, with the sibling-overload checks the code jury asked for) DR-163 fix per ruling on all sites of the chosen side; enable
   `DISABLED_PowerLawRegimeTangentMatchesRawResidual` (rewritten to pin whichever side was ruled).
 
 **Close-out (text, no jury):** devlog `devlog/dl20260923_materials_tangent_cluster.md` +
@@ -237,7 +236,7 @@ registered in `todo/README.md` (§ Added 2026-09-23).
   `tmp/ai_exchange/review_dr163_physics.md`. **Quiz item, ready:** rule A (tangent follows the
   documented raw value; decks keep their residual; eight one-line edits + enable the pin as
   written + fix the header note) or B (parallel value below j1 — requires re-deriving ρ1, j2, j3
-  and the dB/dT legs, i.e. a third law beside `riva`). Recommended: A.
+  and the dB/dT legs, i.e. a third law beside `riva`). Recommended: A. **RULED A, 2026-09-24 00:05 (Christian, quiz); R9 in implementation.**
   **Literature status (read 2026-09-23):** Messe et al. 2023 §2.6 says only that HTS resistivity
   is modeled "using the parameters of the power law or variations of it" — it does not define the
   piecewise law. Rhyner 1993 and Duron et al. 2004 are **not in `literature/`**, so neither can be
