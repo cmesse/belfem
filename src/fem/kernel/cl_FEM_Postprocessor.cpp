@@ -10,13 +10,20 @@
  */
 
 #include "cl_FEM_Postprocessor.hpp"
-#include "fn_posv.hpp"
+#include "cl_Logger.hpp"
+#include "fn_FEM_recovery_inverse.hpp"
 #include "fn_trans.hpp"
+#include "fn_dot.hpp"
+#include "fn_norm.hpp"
 
 namespace belfem
 {
     namespace fem
     {
+        // singular values of a gradient block below its largest one over this
+        // number are dropped from the node fit
+        constexpr real gMaxRecoveryCondition = 1e10 ;
+
         Postprocessor::Postprocessor( Kernel * aKernel, DofManager * aField ) :
             mCommRank( comm_rank() ),
             mCommSize( comm_size() ),
@@ -49,10 +56,7 @@ namespace belfem
 
         Postprocessor::~Postprocessor()
         {
-            for ( auto tPair : mNodeMatrices )
-            {
-                delete tPair.second ;
-            }
+            this->delete_node_matrices();
             if ( mNodeBitset != nullptr )    delete mNodeBitset;
             if ( mEdgeBitset != nullptr )    delete mEdgeBitset;
             if ( mFaceBitset != nullptr )    delete mFaceBitset;
@@ -653,7 +657,7 @@ namespace belfem
 
             mElementType = tElements( mMyElementIndices( 0 ) )->type() ;
 
-            // flag selected elements for the is_flagged() checks in the node loop
+            // flag selected elements for the is_flagged() checks in the patch loops
             mMesh->unflag_all_elements();
             mMesh->unflag_all_nodes();
             for ( index_t e : mMyElementIndices )
@@ -663,68 +667,488 @@ namespace belfem
                 tElements( e )->flag( 0 );
             }
 
+            this->select_recovery_mode();
+
             // allocate node matrices (must match recover_fields() indexing)
             index_t tCount = 0 ;
 
             for ( index_t i : mMyNodeIndices )
             {
                 tNodes( i )->flag( 0 );       // node is selected
-                tNodes( i )->unflag( 1 );     // not yet processed
                 tNodes( i )->set_index( tCount++ );
             }
 
-            Matrix< real > tNodeCoords(
-                mesh::number_of_nodes( mElementType ), mNumDimensions );
-
             mLastElementID = gNoID ;
             mLastBlockID = gNoID ;
+            mNumTruncated = 0 ;
 
-            mVandermonde.set_size( mNumCoefficients, mNumCoefficients );
-            Map< mesh::Element *, Matrix< real > * > tElementData ;
-            Matrix< real > tEye( mNumCoefficients, mNumCoefficients, 0.0 );
-            for ( uint i = 0; i < mNumCoefficients; ++i )
-            {
-                tEye( i, i ) = 1.0 ;
-            }
+            // a second initialize() after a thrown error must not leak the first attempt
+            this->delete_node_matrices();
 
-            tCount = 0 ;
             for ( index_t i : mMyNodeIndices )
             {
-                Matrix< real > * tInv = new Matrix< real >( mNumCoefficients, mNumCoefficients, 0.0 );
                 mesh::Node * tNode = tNodes( i );
 
+                // the maps own the objects from the moment they exist
+                NodeFrame * tFrame = new NodeFrame();
+                mNodeFrames[ tNode ] = tFrame ;
+                this->compute_node_frame( tNode, *tFrame );
+
                 mVandermonde.fill( 0.0 );
+                this->add_node_gram( tNode, *tFrame );
 
-                // the patch spans this node and all registered siblings that are
-                // selected in this postprocessor ( the is_flagged(0) guard inside
-                // compute_element_coeffs ). same-domain pairs ( cohomology cuts )
-                // thus recover from the full disc, while cross-domain siblings
-                // ( material interfaces ) are not selected here and stay side-local
-                this->compute_element_coeffs( tNode->original(), tNodeCoords, tElementData );
-                for ( uint d=0; d<tNode->original()->number_of_duplicates(); ++d )
-                {
-                    this->compute_element_coeffs( tNode->original()->duplicate( d ), tNodeCoords, tElementData );
-                }
-
-                // store the inverse matrix via Cholesky factor/solve
-
-                *tInv = tEye ;
-                posv( mVandermonde, *tInv );
-
+                Matrix< real > * tInv = new Matrix< real >( mNumCoefficients, mNumCoefficients, 0.0 );
                 mNodeMatrices[ tNode ] = tInv ;
-
-                // mark node as processed
-                tNode->flag( 1 );
+                this->invert_node_matrix( *tInv );
             }
 
-            // tidy up any remaining element data
-            for ( auto tPair : tElementData )
+            if ( mNumTruncated > 0 )
             {
-                delete tPair.second ;
+                message( InfoLevel::Default,
+                    "    ... warning: %lu recovery patches on proc %u are near-singular, a fit direction was dropped",
+                    ( long unsigned int ) mNumTruncated,
+                    ( unsigned int ) mCommRank );
             }
 
             mMesh->update_node_indices();
         }
+
+//------------------------------------------------------------------------------
+
+        void
+        Postprocessor::delete_node_matrices()
+        {
+            for ( auto tPair : mNodeMatrices )
+            {
+                delete tPair.second ;
+            }
+            mNodeMatrices.clear();
+
+            for ( auto tPair : mNodeFrames )
+            {
+                delete tPair.second ;
+            }
+            mNodeFrames.clear();
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        Postprocessor::select_recovery_mode()
+        {
+            mShellLocal = mElementType == ElementType::PENTA6TS
+                       || mElementType == ElementType::QUAD4TS ;
+
+            const uint tNumNodes = mesh::number_of_nodes( mElementType );
+
+            if ( mShellLocal )
+            {
+                // ( s1, s2, eta ) in 3D, ( s, eta ) in 2D, whatever the mesh order
+                mNumCoefficients = mNumDimensions + 1 ;
+
+                // the bottom facet is the face at zeta = -1 of the reference element
+                const uint tBottomFacet = mElementType == ElementType::PENTA6TS ? 3 : 0 ;
+
+                Cell< mesh::Element * > & tElements = mMesh->elements();
+                Cell< mesh::Node * > tFacetNodes ;
+
+                mIsBottomNode.set_size( tNumNodes, 0 );
+
+                bool tIsFirst = true ;
+                for ( index_t e : mMyElementIndices )
+                {
+                    mesh::Element * tElement = tElements( e );
+                    tElement->get_nodes_of_facet( tBottomFacet, tFacetNodes );
+
+                    for ( uint k=0; k<tNumNodes; ++k )
+                    {
+                        uint tIsBottom = 0 ;
+                        for ( mesh::Node * tFacetNode : tFacetNodes )
+                        {
+                            if ( tFacetNode == tElement->node( k ) )
+                            {
+                                tIsBottom = 1 ;
+                            }
+                        }
+
+                        if ( tIsFirst )
+                        {
+                            mIsBottomNode( k ) = tIsBottom ;
+                        }
+                        else
+                        {
+                            BELFEM_ERROR( mIsBottomNode( k ) == tIsBottom,
+                                "thin shell element %lu does not share the face numbering of its block: local node %u",
+                                ( long unsigned int ) tElement->id(), ( unsigned int ) k );
+                        }
+                    }
+                    tIsFirst = false ;
+                }
+
+                // the thickness coordinate of the reference element is read as
+                // the last row of the integration rule
+                const Matrix< real > & tXi = mField->block(
+                        tElements( mMyElementIndices( 0 ) )->block_id() )->calculator()->integration()->points() ;
+                BELFEM_ERROR( tXi.n_rows() == mNumDimensions,
+                    "the integration rule of thin shell block %lu has %lu coordinates, expected %u",
+                    ( long unsigned int ) tElements( mMyElementIndices( 0 ) )->block_id(),
+                    ( long unsigned int ) tXi.n_rows(),
+                    ( unsigned int ) mNumDimensions );
+
+                mZeta.set_size( 0 );
+                mShellDirection.set_size( mNumDimensions, 0.0 );
+            }
+
+            mPoly.set_size( mNumCoefficients, 1 );
+            mVandermonde.set_size( mNumCoefficients, mNumCoefficients );
+            mSchur.set_size( mNumCoefficients - 1, mNumCoefficients - 1 );
+            mCoupling.set_size( mNumCoefficients - 1 );
+            mSchurCoupling.set_size( mNumCoefficients - 1 );
+            mNodeCoords.set_size( tNumNodes, mNumDimensions );
+            mLocalPoint.set_size( mNumDimensions );
+            mOffset.set_size( mNumDimensions );
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        Postprocessor::link_patch_element( mesh::Element * aElement )
+        {
+            if ( mLastBlockID != aElement->block_id() )
+            {
+                mLastBlockID = aElement->block_id();
+                mBlock = mField->block( mLastBlockID );
+                mMaterial = mBlock->material();
+                mCalculator = mBlock->calculator();
+            }
+
+            if ( mLastElementID == aElement->id() ) return ;
+
+            mLastElementID = aElement->id();
+            mElement = mBlock->element( mLastElementID );
+            mCalculator->link( mElement );
+            mElement->get_node_coors( mNodeCoords );
+
+            const uint tNumPoints = mCalculator->num_intpoints() ;
+            if ( mIntPoints.n_rows() != tNumPoints )
+            {
+                mIntPoints.set_size( tNumPoints, mNumDimensions );
+            }
+
+            for ( uint k=0; k<tNumPoints; ++k )
+            {
+                mLocalPoint = trans( mNodeCoords ) * mCalculator->Nvec( k );
+                for ( uint d=0; d<mNumDimensions; ++d )
+                {
+                    mIntPoints( k, d ) = mLocalPoint( d );
+                }
+            }
+
+            if ( mShellLocal )
+            {
+                // the thickness coordinate of the reference element is its last one
+                const Matrix< real > & tXi = mCalculator->integration()->points() ;
+                if ( mZeta.length() != tNumPoints )
+                {
+                    mZeta.set_size( tNumPoints );
+                }
+                for ( uint k=0; k<tNumPoints; ++k )
+                {
+                    mZeta( k ) = tXi( mNumDimensions - 1, k );
+                }
+
+                // bottom-face centroid to top-face centroid
+                mShellDirection.fill( 0.0 );
+                for ( uint i=0; i<mNodeCoords.n_rows(); ++i )
+                {
+                    const real tSign = mIsBottomNode( i ) == 1 ? -1.0 : 1.0 ;
+                    for ( uint d=0; d<mNumDimensions; ++d )
+                    {
+                        mShellDirection( d ) += tSign * mNodeCoords( i, d );
+                    }
+                }
+                mShellDirection *= 2.0 / ( real ) mNodeCoords.n_rows() ;
+
+                const real tGap = norm( mShellDirection );
+                BELFEM_ERROR( tGap > 0.0 && std::isfinite( tGap ),
+                    "thin shell element %lu: its bottom and top faces coincide",
+                    ( long unsigned int ) aElement->id() );
+
+                // the edge functions blend the faces over the prescribed layer
+                // thickness, the geometric one only stands in when none is set
+                mElementThickness = mMesh->block( aElement->block_id() )->thickness() ;
+                if ( std::isnan( mElementThickness ) )
+                {
+                    mElementThickness = tGap ;
+                }
+
+                mShellDirection /= tGap ;
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        uint
+        Postprocessor::local_node_index( const mesh::Element * aElement, const mesh::Node * aNode ) const
+        {
+            for ( uint k=0; k<aElement->number_of_nodes(); ++k )
+            {
+                if ( aElement->node( k ) == aNode )
+                {
+                    return k ;
+                }
+            }
+            BELFEM_ERROR( false, "node %lu is not a node of element %lu",
+                ( long unsigned int ) aNode->id(), ( long unsigned int ) aElement->id() );
+            return 0 ;
+        }
+
+//------------------------------------------------------------------------------
+
+        real
+        Postprocessor::shell_offset( const uint aLocalNode, const uint aK ) const
+        {
+            // eta runs from the node through the element along the stack:
+            // positive into the element above a bottom-face node, negative
+            // into the element below a top-face node
+            return mIsBottomNode( aLocalNode ) == 1 ?
+                     0.5 * ( 1.0 + mZeta( aK ) ) * mElementThickness :
+                    -0.5 * ( 1.0 - mZeta( aK ) ) * mElementThickness ;
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        Postprocessor::compute_node_frame( mesh::Node * aNode, NodeFrame & aFrame )
+        {
+            aFrame.Origin.set_size( mNumDimensions );
+            for ( uint d=0; d<mNumDimensions; ++d )
+            {
+                aFrame.Origin( d ) = aNode->x( d );
+            }
+
+            if ( mShellLocal )
+            {
+                aFrame.Normal.set_size( mNumDimensions, 0.0 );
+            }
+
+            real tH = 0.0 ;
+            real tTau = 0.0 ;
+            bool tFinite = true ;
+
+            // the patch is the same union of selected siblings the fit uses
+            mesh::Node * tOrg = aNode->original() ;
+            for ( uint d=0; d<=tOrg->number_of_duplicates(); ++d )
+            {
+                mesh::Node * tSibling = d == 0 ? tOrg : tOrg->duplicate( d-1 );
+                if ( ! tSibling->is_flagged( 0 ) ) continue ;
+
+                for ( uint e=0; e<tSibling->number_of_elements(); ++e )
+                {
+                    mesh::Element * tElement = tSibling->element( e );
+                    if ( ! tElement->is_flagged() ) continue ;
+
+                    this->link_patch_element( tElement );
+                    const uint tLocalNode = this->local_node_index( tElement, tSibling );
+
+                    for ( uint k=0; k<mIntPoints.n_rows(); ++k )
+                    {
+                        real tDistance = 0.0 ;
+                        for ( uint i=0; i<mNumDimensions; ++i )
+                        {
+                            const real tDelta = mIntPoints( k, i ) - aFrame.Origin( i );
+                            tDistance += tDelta * tDelta ;
+                        }
+                        // std::max keeps the running value against a NaN, so
+                        // finiteness is tracked separately
+                        tFinite = tFinite && std::isfinite( tDistance );
+                        tH = std::max( tH, std::sqrt( tDistance ) );
+
+                        if ( mShellLocal )
+                        {
+                            const real tOffset = this->shell_offset( tLocalNode, k );
+                            tFinite = tFinite && std::isfinite( tOffset );
+                            tTau = std::max( tTau, std::abs( tOffset ) );
+                        }
+                    }
+
+                    if ( mShellLocal )
+                    {
+                        aFrame.Normal += mShellDirection ;
+                    }
+                }
+            }
+
+            BELFEM_ERROR( tFinite,
+                "recovery patch of node %lu has non-finite coordinates",
+                ( long unsigned int ) aNode->id() );
+
+            // a degenerate scale is left at one, invert_node_matrix() catches the patch
+            aFrame.H   = tH   > 0.0 ? tH   : 1.0 ;
+            aFrame.Tau = tTau > 0.0 ? tTau : 1.0 ;
+
+            if ( mShellLocal )
+            {
+                const real tLength = norm( aFrame.Normal );
+                BELFEM_ERROR( tLength > 0.0,
+                    "thin shell elements around node %lu point in opposing stack directions",
+                    ( long unsigned int ) aNode->id() );
+                aFrame.Normal /= tLength ;
+
+                aFrame.T1.set_size( mNumDimensions, 0.0 );
+                if ( mNumDimensions == 2 )
+                {
+                    aFrame.T1( 0 ) = -aFrame.Normal( 1 );
+                    aFrame.T1( 1 ) =  aFrame.Normal( 0 );
+                }
+                else
+                {
+                    // the axis least aligned with the normal keeps the cross product regular
+                    uint tAxis = 0 ;
+                    for ( uint i=1; i<3; ++i )
+                    {
+                        if ( std::abs( aFrame.Normal( i ) ) < std::abs( aFrame.Normal( tAxis ) ) )
+                        {
+                            tAxis = i ;
+                        }
+                    }
+                    const uint tA = ( tAxis + 1 ) % 3 ;
+                    const uint tB = ( tAxis + 2 ) % 3 ;
+
+                    // T1 = e_axis x n
+                    aFrame.T1( tA ) = -aFrame.Normal( tB );
+                    aFrame.T1( tB ) =  aFrame.Normal( tA );
+                    aFrame.T1 /= norm( aFrame.T1 );
+
+                    // T2 = n x T1
+                    aFrame.T2.set_size( 3 );
+                    aFrame.T2( 0 ) = aFrame.Normal( 1 ) * aFrame.T1( 2 ) - aFrame.Normal( 2 ) * aFrame.T1( 1 );
+                    aFrame.T2( 1 ) = aFrame.Normal( 2 ) * aFrame.T1( 0 ) - aFrame.Normal( 0 ) * aFrame.T1( 2 );
+                    aFrame.T2( 2 ) = aFrame.Normal( 0 ) * aFrame.T1( 1 ) - aFrame.Normal( 1 ) * aFrame.T1( 0 );
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        Postprocessor::add_node_gram( mesh::Node * aNode, const NodeFrame & aFrame )
+        {
+            // weighted least-squares patch fit ( Zienkiewicz & Zhu 1992 ),
+            // written in the node's own frame; the shell coordinates ( s1, s2,
+            // eta ) are BELFEM's extension, see postprocessor_recovery_theory.md
+            const Vector< real > & tVolumes = mMesh->field_data( "_Volumes" );
+
+            mesh::Node * tOrg = aNode->original() ;
+            for ( uint d=0; d<=tOrg->number_of_duplicates(); ++d )
+            {
+                mesh::Node * tSibling = d == 0 ? tOrg : tOrg->duplicate( d-1 );
+                if ( ! tSibling->is_flagged( 0 ) ) continue ;
+
+                for ( uint e=0; e<tSibling->number_of_elements(); ++e )
+                {
+                    mesh::Element * tElement = tSibling->element( e );
+                    if ( ! tElement->is_flagged() ) continue ;
+
+                    this->link_patch_element( tElement );
+                    const uint tLocalNode = this->local_node_index( tElement, tSibling );
+
+                    // use element volume as weight
+                    const real tW = tVolumes( tElement->index() );
+
+                    for ( uint k=0; k<mIntPoints.n_rows(); ++k )
+                    {
+                        this->compute_local_poly( aFrame, tLocalNode, k );
+                        mVandermonde += tW * mPoly * trans( mPoly );
+                    }
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        Postprocessor::compute_local_poly( const NodeFrame & aFrame, const uint aLocalNode, const uint aK )
+        {
+            for ( uint d=0; d<mNumDimensions; ++d )
+            {
+                mOffset( d ) = mIntPoints( aK, d ) - aFrame.Origin( d );
+            }
+
+            if ( mShellLocal )
+            {
+                mPoly( 0, 0 ) = 1.0 ;
+                mPoly( 1, 0 ) = dot( mOffset, aFrame.T1 ) / aFrame.H ;
+                if ( mNumDimensions == 3 )
+                {
+                    mPoly( 2, 0 ) = dot( mOffset, aFrame.T2 ) / aFrame.H ;
+                }
+                mPoly( mNumDimensions, 0 ) = this->shell_offset( aLocalNode, aK ) / aFrame.Tau ;
+            }
+            else
+            {
+                mOffset /= aFrame.H ;
+                this->compute_poly( mOffset );
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        Postprocessor::invert_node_matrix( Matrix< real > & aInverse )
+        {
+            // with a basis centered at the node, G( 0, 0 ) is the patch weight
+            const real tWeightSum = mVandermonde( 0, 0 );
+            BELFEM_ERROR( tWeightSum > 0.0 && std::isfinite( tWeightSum ),
+                "recovery patch with weight sum %g", tWeightSum );
+
+            real tCondition = 0.0 ;
+            if ( recovery_block_inverse( mVandermonde, gMaxRecoveryCondition, aInverse, tCondition,
+                    mSchur, mCoupling, mSchurCoupling, mSvdU, mSvdVT, mSvdS, mSvdWork ) )
+            {
+                ++mNumTruncated ;
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        Postprocessor::accumulate_node_rhs(
+                mesh::Node * aTarget,
+                const uint   aLocalNode,
+                const real   aWeight,
+                Map< mesh::Node *, Matrix< real > * > & aNodeCoeffs )
+        {
+            BELFEM_ASSERT( mNodeFrames.key_exists( aTarget ),
+                "node %lu has no recovery frame", ( long unsigned int ) aTarget->id() );
+
+            const NodeFrame & tFrame = *mNodeFrames( aTarget );
+
+            mNodeRhs.fill( 0.0 );
+            for ( uint k=0; k<mIntPoints.n_rows(); ++k )
+            {
+                this->compute_local_poly( tFrame, aLocalNode, k );
+
+                for ( uint i=0; i<mNumCoefficients; ++i )
+                {
+                    for ( uint j=0; j<mNumTargetFields; ++j )
+                    {
+                        mNodeRhs( i, j ) += aWeight * mPoly( i, 0 ) * mPointValues( k, j );
+                    }
+                }
+            }
+
+            if ( aNodeCoeffs.key_exists( aTarget ) )
+            {
+                *aNodeCoeffs( aTarget ) += mNodeRhs ;
+            }
+            else
+            {
+                aNodeCoeffs[ aTarget ] = new Matrix< real >( mNodeRhs );
+            }
+        }
+
+//------------------------------------------------------------------------------
 
         void
         Postprocessor::synch_source_field( const string & aField )
@@ -814,139 +1238,6 @@ namespace belfem
 
 
         void
-        Postprocessor::compute_element_coeffs(
-            mesh::Node * aNode,
-            Matrix< real > & aNodeCoords,
-            Map< mesh::Element*, Matrix< real > * > & aElementData )
-        {
-            if ( ! aNode->is_flagged( 0 ) ) return ;
-
-            const Vector< real > & tVolumes = mMesh->field_data( "_Volumes" );
-
-            // loop over all elements of this node
-            for ( uint e = 0; e < aNode->number_of_elements(); ++e )
-            {
-                mesh::Element * tElement = aNode->element( e );
-
-                // skip if element is not selected
-                if ( ! tElement->is_flagged() ) continue ;
-
-                // compute element coefficients if they don't exist yet
-                this->compute_element_coeffs( tElement, aNodeCoords, aElementData );
-
-                // use element volume as weight
-                real tW = tVolumes( tElement->index() );
-
-                for ( uint k = 0; k < mCalculator->num_intpoints(); ++k )
-                {
-                    mPoly.set_col( 0, aElementData( tElement )->col( k ) );
-                    mVandermonde += tW * mPoly * trans( mPoly );
-                }
-
-                // delete element coefficients if they are not needed anymore
-                this->check_element_coeffs_done( tElement, aElementData );
-            }
-        }
-
-
-        void
-        Postprocessor::compute_element_coeffs( mesh::Element * aElement,
-                Matrix< real > & aNodeCoords,
-                Map< mesh::Element* , Matrix< real > * > & aElementData   )
-        {
-
-            if ( aElementData.key_exists( aElement ) )
-            {
-                if ( mLastElementID == aElement->id() ) return ;
-
-                mLastElementID = aElement->id();
-
-                if ( mLastBlockID != aElement->block_id() )
-                {
-                    mLastBlockID = aElement->block_id();
-
-                    // set mBlock so that compute_element_coeffs can access it
-                    mBlock = mField->block( mLastBlockID );
-                }
-
-                mElement = mBlock->element( mLastElementID );
-
-                // get the calculator
-                mCalculator = mBlock->calculator();
-
-                // link calculator to element
-                mCalculator->link( mElement );
-
-                // node coordinates at this element
-                mElement->get_node_coors( aNodeCoords );
-
-                return;
-            }
-            
-            mLastElementID = aElement->id();
-
-            if ( mLastBlockID != aElement->block_id() )
-            {
-                mLastBlockID = aElement->block_id();
-
-                // set mBlock so that compute_element_coeffs can access it
-                mBlock = mField->block( mLastBlockID );
-            }
-
-            mElement = mBlock->element( mLastElementID );
-
-            // get the calculator
-            mCalculator = mBlock->calculator();
-
-            // link calculator to element
-            mCalculator->link( mElement );
-
-            // node coordinates at this element
-            mElement->get_node_coors( aNodeCoords );
-
-            Vector< real > tPoint ;
-
-            Matrix< real > * tPointer = new Matrix< real >(
-                mNumCoefficients, mCalculator->num_intpoints(), 0. );
-
-            aElementData[ aElement ] = tPointer ;
-
-            Matrix< real > & tMatrix = *tPointer ;
-
-            for ( uint k=0; k<mCalculator->num_intpoints(); ++k )
-            {
-                // compute point coordinates
-                tPoint = trans( aNodeCoords ) * mCalculator->Nvec( k );
-
-                // evaluate polynomial
-                this->compute_poly( tPoint );
-
-                // store polynomial
-                tMatrix.set_col( k, mPoly.col( 0 ) );
-            }
-        }
-
-        void
-        Postprocessor::check_element_coeffs_done( mesh::Element * aElement, Map< mesh::Element* , Matrix< real > *  > & aElementData  )
-        {
-            if ( ! aElement->is_flagged( 0 ) ) return ;
-
-            // note: we don't check duplicates, periodic nodes, etc.
-            //       because it is faster to just compute these few matrices again
-            //       rather than checking all nodes all the time
-            for ( uint k=0; k<aElement->number_of_nodes(); ++k )
-            {
-                if ( aElement->node( k )->is_flagged( 0 ) && ! aElement->node( k )->is_flagged( 1 ) ) return ;
-            }
-
-            if ( aElementData.key_exists( aElement ) )
-            {
-                delete aElementData( aElement );
-                aElementData.erase_key( aElement );
-            }
-        }
-
-        void
         Postprocessor::recover_fields()
         {
             this->synch_source_fields();
@@ -973,23 +1264,10 @@ namespace belfem
 
             Map< mesh::Node *, Matrix< real > * > tNodeCoeffs ;
 
-            for ( mesh::Element * tElement : tElements )
+            if ( mNodeRhs.n_rows() != mNumCoefficients || mNodeRhs.n_cols() != mNumTargetFields )
             {
-                tElement->flag( 0 );
+                mNodeRhs.set_size( mNumCoefficients, mNumTargetFields );
             }
-            for ( index_t e : mMyElementIndices )
-            {
-                tElements( e )->unflag(  );
-            }
-
-            // point coordinates
-            Vector< real > tPoint( mNumDimensions );
-
-            // node coordinates
-            Matrix< real > tCoords( mesh::number_of_nodes( mElementType ) , mNumDimensions );
-
-            // work vector
-            Matrix< real > tB( mNumCoefficients, mNumTargetFields );
 
             mLastBlockID = gNoID ;
             mLastElementID = gNoID ;
@@ -999,29 +1277,7 @@ namespace belfem
             {
                 mesh::Element * tElement = tElements( e );
 
-                if ( mLastBlockID != tElement->block_id() )
-                {
-                    mLastBlockID = tElement->block_id();
-                    mBlock = mField->block( mLastBlockID );
-
-                    mMaterial = mBlock->material();
-
-                    // get the calculator
-                    mCalculator = mBlock->calculator();
-                }
-
-                if ( mLastElementID != tElement->id() )
-                {
-                    mLastElementID = tElement->id();
-
-                    mElement = mBlock->element( tElement->id() );
-
-                    // link calculator to element
-                    mCalculator->link( mElement );
-
-                    // node coordinates at this element
-                    mElement->get_node_coors( tCoords );
-                }
+                this->link_patch_element( tElement );
 
                 // update dof vector
                 this->update_element_dofs();
@@ -1042,25 +1298,18 @@ namespace belfem
                     ( unsigned int ) mCommRank,
                     tWeight );
 
-                // loop over all integration points
-                tB.fill( 0.0 );
-                for ( uint k=0; k<mCalculator->num_intpoints(); ++k )
+                // the target values of every integration point, once per element
+                const uint tNumPoints = mIntPoints.n_rows() ;
+                if ( mPointValues.n_rows() != tNumPoints || mPointValues.n_cols() != mNumTargetFields )
                 {
-                    // compute point coordinates
-                    tPoint = trans( tCoords ) * mCalculator->Nvec( k );
-
-                    // evaluate polynomial
-                    this->compute_poly( tPoint );
-
-                    // compute work matrix
+                    mPointValues.set_size( tNumPoints, mNumTargetFields );
+                }
+                for ( uint k=0; k<tNumPoints; ++k )
+                {
                     const Vector< real > & tY = this->compute( k );
-
-                    for ( uint i=0; i<mNumCoefficients; ++i )
+                    for ( uint j=0; j<mNumTargetFields; ++j )
                     {
-                        for ( uint j=0; j<mNumTargetFields; ++j )
-                        {
-                            tB( i, j ) += tWeight * mPoly( i, 0 ) * tY( j );
-                        }
+                        mPointValues( k, j ) = tY( j );
                     }
                 }
 
@@ -1068,20 +1317,15 @@ namespace belfem
                 // element references, plus registered siblings that are selected in
                 // this postprocessor: same-domain pairs ( cohomology cuts ) recover
                 // continuous fields from the full disc, while cross-domain siblings
-                // ( material interfaces ) are not selected here and may jump
+                // ( material interfaces ) are not selected here and may jump. Each
+                // target is fit in its own frame; the face the element sees is the
+                // one of the node it references
                 for ( uint i=0; i<tElement->number_of_nodes(); ++i )
                 {
                     mesh::Node * tNode = tElement->node( i );
                     if ( tNode->owner() == mCommRank )
                     {
-                        if ( tNodeCoeffs.key_exists( tNode ) )
-                        {
-                            *tNodeCoeffs( tNode ) += tB ;
-                        }
-                        else
-                        {
-                            tNodeCoeffs[ tNode ] = new Matrix< real >( tB );
-                        }
+                        this->accumulate_node_rhs( tNode, i, tWeight, tNodeCoeffs );
                     }
 
                     // fast path: node is not part of a registered pair
@@ -1095,14 +1339,7 @@ namespace belfem
                          && tOrg->owner() == mCommRank
                          && mNodeMatrices.key_exists( tOrg ) )
                     {
-                        if ( tNodeCoeffs.key_exists( tOrg ) )
-                        {
-                            *tNodeCoeffs( tOrg ) += tB ;
-                        }
-                        else
-                        {
-                            tNodeCoeffs[ tOrg ] = new Matrix< real >( tB );
-                        }
+                        this->accumulate_node_rhs( tOrg, i, tWeight, tNodeCoeffs );
                     }
                     for ( uint d=0; d<tOrg->number_of_duplicates(); ++d )
                     {
@@ -1111,14 +1348,7 @@ namespace belfem
                         if (    tSib->owner() == mCommRank
                              && mNodeMatrices.key_exists( tSib ) )
                         {
-                            if ( tNodeCoeffs.key_exists( tSib ) )
-                            {
-                                *tNodeCoeffs( tSib ) += tB ;
-                            }
-                            else
-                            {
-                                tNodeCoeffs[ tSib ] = new Matrix< real >( tB );
-                            }
+                            this->accumulate_node_rhs( tSib, i, tWeight, tNodeCoeffs );
                         }
                     }
                 }
@@ -1131,25 +1361,25 @@ namespace belfem
                 tNodes( tIndex )->set_index( tCount++ );
             }
 
-            Matrix< real > tPointData( 1, mNumTargetFields );
-
-
             for ( auto & tPair : tNodeCoeffs )
             {
                 mesh::Node * tNode = tPair.first ;
-                Matrix< real > * tMatrix = tPair.second ;
+                const Matrix< real > & tRhs = *tPair.second ;
+                const Matrix< real > & tInv = *mNodeMatrices( tNode );
 
-                for ( uint d=0; d<mNumDimensions; ++d )
+                // the local basis is one at the node in slot 0 and zero in every
+                // other slot, so the recovered value is row 0 of G^-1 b
+                for ( uint j=0; j<mNumTargetFields; ++j )
                 {
-                    tPoint( d ) = tNode->x( d );
+                    real tValue = 0.0 ;
+                    for ( uint i=0; i<mNumCoefficients; ++i )
+                    {
+                        tValue += tInv( 0, i ) * tRhs( i, j );
+                    }
+                    tMyData( tNode->index(), j ) = tValue ;
                 }
-                this->compute_poly( tPoint );
 
-                tPointData = trans( mPoly ) * (*mNodeMatrices( tNode )) * (*tMatrix) ;
-
-                tMyData.set_row( tNode->index(), tPointData.row( 0 ) );
-
-                delete tMatrix ;
+                delete tPair.second ;
             }
             this->synch_target_fields( tMyData );
 

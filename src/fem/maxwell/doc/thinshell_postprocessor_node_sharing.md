@@ -1,7 +1,8 @@
 # Thin-Shell Postprocessor: Shared Interface Nodes {#fem_maxwell_thinshell_postprocessor_node_sharing}
 
 **Date:** 2026-04-06
-**Status:** Known limitation. **Math is correct; visualization only is affected.**
+**Status:** Known limitation. The mathematics is correct; only recovered nodal output is affected.
+On curved shells, this includes nodal `H` and `B` inside the layers (§2.5), not just `J/Jc`.
 **Module:** `src/fem/maxwell` and `src/mesh`
 **Related:**
 - [postprocessor_recovery_theory.md](postprocessor_recovery_theory.md)
@@ -47,8 +48,9 @@ block. After running, the recovered `J/Jc` field is non-zero on the
 Hastelloy-layer side of the layer interface — exactly at the row of nodes that
 sits between Hastelloy and YBCO.
 
-The H field, B field, and assembled DOF system show no equivalent
-contamination.
+For this flat stack, the H field, B field, and assembled DOF system show no
+equivalent contamination. This does not extend to curved shells: there, the
+nodal H and B fields inside the layers are also wrong (§2.5).
 
 ---
 
@@ -147,6 +149,54 @@ The same mechanism applies to any per-node recovered field on a thin shell
 where the layer materials differ. `J/Jc` is just the most visually obvious
 because it is only meaningful on one side of the interface.
 
+### 2.5 Curved shells: the patch fit loses the through-thickness jump
+
+The transport current in a superconducting layer appears as a jump in tangential
+H across the layer thickness. The element preserves this variation:
+`EF_PENTA6TS` blends the bottom-face and top-face edge values linearly through
+the thickness (`src/fem/interpolation/nedelec/cl_EF_PENTA6TS.cpp:221-224`).
+Nodal recovery loses the jump on a curved shell. At order 1, recovery fits one
+polynomial in global Cartesian coordinates, `{1, x, y, z}`
+(`src/fem/kernel/cl_FEM_Postprocessor.hpp:370-376`), to the integration-point
+values from every selected element that touches the node, then evaluates that
+polynomial at the node (`src/fem/kernel/cl_FEM_Postprocessor.cpp:1148`).
+
+- On a flat patch, the thickness direction is a fixed Cartesian axis. The
+  linear term reproduces the linear through-thickness profile, so the two face
+  nodes of the superconducting layer receive the two corresponding face values.
+- On a curved patch, the shell normal varies from element to element. A single
+  linear polynomial cannot follow a layer 1.6 µm thick that bends at a radius of
+  about 1 mm. The fit returns roughly the patch mean at both face nodes, causing
+  the jump across the superconducting layer to vanish.
+
+The shared interface nodes from §2.4 then move the jump. The superconducting
+postprocessor is created after the normal-conductor postprocessor
+(`src/fem/maxwell/cl_MaxwellFactory.cpp:2528-2544`), and `synch_target_fields`
+assigns values rather than combining them. The mean values therefore overwrite
+the correct side-local values that the normal-conductor pass wrote on neighboring
+layer faces. In ParaView, the current sheet then appears in the two layers next
+to the superconductor, such as silver and buffer, while the superconducting
+layer itself shows almost no jump. The sum of the jumps through the whole stack
+remains correct because the per-layer jumps telescope to the outer face minus the
+inner face.
+
+Measured on the five-tape `rutherford` example (4 mm tapes around a core with
+0.9 mm edge radius), the jump on the flat faces sits in the YBCO layer and matches the sheet
+current (a B jump of μ0 J d) to about 1 %. On the bends, the YBCO layer carries an average of 0.5 % of
+that jump. Columns on the flat whose node patches reach the bend are affected as
+well.
+
+The solve does not use these nodal fields. Assembly, the thermal Joule source,
+and `dotQ` all evaluate `C q` and `E q` at integration points. The affected
+outputs are the Exodus nodal fields and the `J/Jc_max` value printed in the step
+footer, which is taken from the nodal `JJC*`.
+
+**Fix:** thin-shell layer blocks now use the shell coordinates `(s₁, s₂, η)`, where `η` is
+the offset through the stack computed from each element's thickness coordinate
+(`postprocessor_recovery_theory.md` §2.1.2). On a flat patch, this basis spans the same
+space as the previous basis. On a bend, it preserves the jump. The shared-node overwrite
+described in §2.4 remains, but it now copies the correct face values.
+
 ---
 
 ## 3. Decision: do not fix this right now
@@ -226,9 +276,11 @@ work is:
    condensation / explicit constraint pass that re-merges the duplicate node
    pair at the temperature DOF level only.
 
-5. **Postprocessor** — no changes required. Once the nodes are physically
-   distinct, the existing SPR pipeline writes only into the appropriate
-   layer's nodes and the visualization is clean automatically.
+5. **Postprocessor** — duplicated nodes fix the leak described in §2.4 because
+   the existing SPR pipeline then writes only to the appropriate layer's nodes.
+   They do not fix §2.5. On a curved shell, the global Cartesian patch fit still
+   averages away the through-thickness jump, so thin-shell recovery needs a
+   separate change, such as a shell-local basis or per-face output.
 
 ---
 
@@ -242,6 +294,8 @@ When the duplicate-node path is implemented, confirm:
       belongs only to the Hastelloy block (no SPR leak).
 - [ ] Temperature field across the layer interface is still continuous (this
       is the thermal-side requirement that motivates the deferral).
+- [ ] On a curved stack, the jump of the tangential B across the superconducting
+      layer equals μ0 J d on the bends as well as on the flats.
 - [ ] Cohomology cuts and ghost facets still resolve correctly.
 - [ ] Periodic thin-shell stacks still satisfy the periodicity constraints on
       both the originals and the duplicates.

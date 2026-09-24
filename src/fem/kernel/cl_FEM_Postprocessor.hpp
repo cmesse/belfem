@@ -74,9 +74,55 @@ namespace belfem
             Matrix< real > mVandermonde ;
             Map< mesh::Node * , Matrix< real > * > mNodeMatrices ;
 
-            //Cell< Matrix< real > > mNodeCoefficients ;
+            // the local frame the fit of one node is written in: origin and
+            // in-plane scale for every postprocessor; shell normal, tangents
+            // and thickness scale only in shell mode
+            struct NodeFrame
+            {
+                Vector< real > Origin ;
+                Vector< real > Normal ;
+                Vector< real > T1 ;
+                Vector< real > T2 ;
+                real H   = 1.0 ;
+                real Tau = 1.0 ;
+            };
+
+            Map< mesh::Node * , NodeFrame * > mNodeFrames ;
 
             uint mNumCoefficients = 0 ;
+
+            // shell mode: linear thin-shell layers ( PENTA6TS, QUAD4TS ) are fit
+            // in ( s1, s2, eta ), eta the curvilinear offset through the stack
+            bool mShellLocal = false ;
+
+            // shell mode, per local node index: 1 if the node lies on the
+            // element's bottom face, 0 if on its top face
+            Cell< uint > mIsBottomNode ;
+
+            // scratch of the element currently linked by link_patch_element()
+            Matrix< real > mNodeCoords ;
+            Matrix< real > mIntPoints ;
+            Vector< real > mZeta ;
+            Vector< real > mShellDirection ;
+            real mElementThickness = 1.0 ;
+
+            // scratch for one local coordinate, and for the per-point results
+            Vector< real > mLocalPoint ;
+            Vector< real > mOffset ;
+            Matrix< real > mPointValues ;
+            Matrix< real > mNodeRhs ;
+
+            // scratch for recovery_block_inverse(), called by invert_node_matrix()
+            Matrix< real > mSchur ;
+            Vector< real > mCoupling ;
+            Vector< real > mSchurCoupling ;
+            Matrix< real > mSvdU ;
+            Matrix< real > mSvdVT ;
+            Vector< real > mSvdS ;
+            Vector< real > mSvdWork ;
+
+            // node fits in which invert_node_matrix() dropped a direction
+            index_t mNumTruncated = 0 ;
 
             Vector< real > mNull ;
 
@@ -147,6 +193,11 @@ namespace belfem
             DofManager *
             projector() ;
 
+            /** node fits of this rank in which the inversion dropped a
+             *  direction; set by initialize() */
+            index_t
+            number_of_truncated_patches() const ;
+
 //------------------------------------------------------------------------------
         protected:
 //------------------------------------------------------------------------------
@@ -207,20 +258,38 @@ namespace belfem
             compute_node_matrices();
 
             void
-            compute_element_coeffs(
-               mesh::Node * aNode,
-               Matrix< real > & aNodeCoords,
-               Map< mesh::Element*, Matrix< real > * > & aElementData );
-
+            select_recovery_mode();
 
             void
-            compute_element_coeffs(
-                mesh::Element * aElement,
-                Matrix< real > & aNodeCoords,
-                Map< mesh::Element*, Matrix< real > * > & aElementData );
+            link_patch_element( mesh::Element * aElement );
+
+            uint
+            local_node_index( const mesh::Element * aElement, const mesh::Node * aNode ) const ;
+
+            real
+            shell_offset( const uint aLocalNode, const uint aK ) const ;
 
             void
-            check_element_coeffs_done( mesh::Element * aElement, Map< mesh::Element*, Matrix< real > * > & aElementData );
+            compute_node_frame( mesh::Node * aNode, NodeFrame & aFrame );
+
+            void
+            add_node_gram( mesh::Node * aNode, const NodeFrame & aFrame );
+
+            void
+            compute_local_poly( const NodeFrame & aFrame, const uint aLocalNode, const uint aK );
+
+            void
+            invert_node_matrix( Matrix< real > & aInverse );
+
+            void
+            delete_node_matrices();
+
+            void
+            accumulate_node_rhs(
+                    mesh::Node * aTarget,
+                    const uint   aLocalNode,
+                    const real   aWeight,
+                    Map< mesh::Node *, Matrix< real > * > & aNodeCoeffs );
 
             void
             synch_source_field( const string & aField );
@@ -265,6 +334,12 @@ namespace belfem
         Postprocessor::projector()
         {
             return mField;
+        }
+
+        inline index_t
+        Postprocessor::number_of_truncated_patches() const
+        {
+            return mNumTruncated ;
         }
 
         inline void

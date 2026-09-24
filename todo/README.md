@@ -154,6 +154,28 @@ and D-m6. A narrow re-review is owed once Codex is back.
 
 ## Added 2026-09-22
 
+### [periodic_postprocessor_fields.md](periodic_postprocessor_fields.md) — make the recovered nodal fields periodic
+
+**PLAN — audited (Codex astra + Grok 4.7), C1–C12 folded in, plain mean decided; no source modified.** Each
+periodic node pair gets one combined value after the rank-0 gather: vectors (H, B, J, J/Jc) rotated through the
+periodic transform rebuilt from the plane nodes, scalars averaged. Visualization only; the solve already ties the dofs. The union patch across
+the planes was rejected (partner elements are not on one rank).
+
+### [thinshell_recovery_unit_test.md](thinshell_recovery_unit_test.md) — unit tests that run the node-local recovery on code-built meshes
+
+**IMPLEMENTED 2026-09-23 — T5 (2D) open.** 11 tests in `tests/fem/test_PostprocessorRecovery.cpp` through a
+real `Kernel`/`DofManager` plus direct tests of the extracted `recovery_block_inverse`; mutations M1–M5 each red on
+their own tests; the round-2 jury's round-off floor landed with its regression test.
+
+### [thinshell_nodal_recovery.md](thinshell_nodal_recovery.md) — correct nodal H, B, J in curved thin-shell layers
+
+**IMPLEMENTED 2026-09-22/23 — G5 (a QUAD4TS deck) open.** Verified on rutherford by a clean A/B (G1–G4); R9 tests
+landed. The patch recovery fitted `{1, x, y, z}` in absolute
+coordinates, which cannot follow a through-thickness jump on a curved shell: on the rutherford bends the
+ybco current sheet is displayed in the silver and buffer layers. Fix: a node-local basis, centered and
+scaled Cartesian everywhere, curvilinear `(s1, s2, η)` for PENTA6TS/QUAD4TS layers, and an order-0
+fallback instead of the `posv` abort. Offline probe: κ 4e12 → 16, bend error 52 % → 1e-15.
+
 ### [closed/mesh_oneliners_dr161_169_176_179_180.md](closed/mesh_oneliners_dr161_169_176_179_180.md) — five `src/mesh` one-liners from the debt register — **CLOSED 2026-09-23**
 
 DR-161 top/bottom node type lists, DR-169 `~Basis` pointer-keyed free, DR-176 HEX8TS/HEX8TB unity nodes, DR-179 FaceFactory sentinels and the sideset-only refusal, DR-180 the 2-D `Curve` null guard. Three code rounds; the gate found the LINE3 midpoint SEGV. Rows struck.

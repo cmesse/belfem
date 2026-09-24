@@ -100,9 +100,57 @@ where:
 
 **Step 3: Solve and evaluate**
 ```
-V · c = b           (solve via Cholesky: V is SPD)
-σ*(x₀) = p(x₀)ᵀ·c   (evaluate at node location)
+V · c = b           (block solve, §3.2: the constant exactly, the gradient block by a truncated SVD)
+σ*(x₀) = c₀         (the basis is centered at the node, so p(x₀) = e₀)
 ```
+
+### 2.1.1 Node-local coordinates
+
+The monomials are expressed in local coordinates rather than global coordinates. For each node,
+the basis is centered at that node and scaled by the patch radius:
+`p( (x − x₀)/h )`, where `h` is the greatest distance from the node to an integration point
+in its patch. A complete polynomial space of fixed degree is unchanged by an affine
+coordinate transformation, so centering and scaling affect the recovered value only through
+round-off. They do, however, improve conditioning. In the `rutherford` example, the Gramian
+for a micrometer-thin layer patch located millimeters from the origin had a condition number
+of about 4e12 in absolute coordinates. After centering and scaling, the condition number was
+about 4e5, and the result no longer depended on the mesh origin.
+
+### 2.1.2 Shell coordinates for thin-shell layers
+
+Linear thin-shell layer blocks (`PENTA6TS`, `QUAD4TS`) use curvilinear coordinates:
+`p = [1, s₁/h, s₂/h, η/τ]ᵀ` in 3D and `[1, s/h, η/τ]ᵀ` in 2D. Here, `s₁` and `s₂` are the
+integration point's offsets from the node after projection onto the node's tangent plane. The
+node normal is the mean of the bottom-to-top directions of the patch elements, and the
+tangents complete a right-handed frame. The offset `η` through the stack is computed from
+the element's thickness coordinate `ζ ∈ [−1, 1]` and the layer's prescribed thickness `t`:
+
+```
+η = ½ (1 + ζ) t     if the node lies on the element's bottom face
+η = −½ (1 − ζ) t    if the node lies on its top face
+```
+
+`τ` is the largest `|η|` in the patch. The value of `η` is zero at the node in every patch
+element. It is also signed consistently across a node shared by two layers: negative below
+the node and positive above it. Thus, the basis is `e₀` at the node, and the single `η` term
+can represent a profile that is linear through each layer.
+
+This shell basis is BELFEM's extension of the patch fit; it is not part of Zienkiewicz & Zhu
+1992. It is needed because a thin-shell element stores the tangential field on its two faces
+as separate edge values and blends those values linearly through the thickness. The transport
+current of a superconducting layer therefore appears as a jump in that profile. A linear
+polynomial in `x, y, z` can represent the jump only when the thickness direction is the same
+Cartesian direction throughout the patch, as on a flat surface. On a curved shell, the patch
+sagitta is tens of times larger than the layer thickness. The Cartesian fit then spends its
+gradient on the curvature, and both faces of the layer receive approximately the patch mean.
+On the `rutherford` mesh, an offline probe with a manufactured through-thickness field lost
+52 % of the jump at every bend node with the Cartesian basis; the shell basis reproduced it to
+machine precision. On a flat surface, the two bases span the same
+space.
+
+Limit: if a field is linear in `η` within each of two adjacent layers handled by one
+postprocessor but has a kink at their interface, the fit still uses one line. Exact recovery
+is guaranteed only for fields that are linear in `(s₁, s₂, η)` over the patch.
 
 ### 2.2 Polynomial Basis Selection
 
@@ -275,18 +323,42 @@ SPD. This is functionally correct but suboptimal.
 
 ### 3.2 Numerical Properties
 
-**Gramian Matrix V:**
-- **Type:** Symmetric positive definite (SPD)
-- **Size:** m × m, where m = number of polynomial coefficients (3-35)
-- **Condition number:** Typically well-conditioned for volume-weighted patches
-- **Solver:** Cholesky factorization via LAPACK `posv` (optimal for SPD)
+**Gramian matrix `V`:**
 
-**Failure modes:**
-- Singular V: patch too small or all integration points collinear
-- Ill-conditioned V: highly stretched elements or large aspect ratios
-- Recovery: code does not explicitly check; `posv` may fail silently
+- **Type:** symmetric positive semidefinite; positive definite when the patch determines every
+  coefficient
+- **Size:** m × m, where m is the number of polynomial coefficients (3–35)
+- **Condition number**, measured on the `rutherford` example (1.6 µm YBCO layer, 0.4 mm
+  elements, 0.9 mm bend radius): about 4e12 in absolute coordinates, 4e5 with node-centered
+  scaling, and 16 (at most 41) in the shell coordinates of §2.1.2
 
-**Potential improvement:** Add condition number check or SVD fallback.
+**Solve (`recovery_block_inverse` in `src/fem/kernel/fn_FEM_recovery_inverse.hpp`, called by
+`Postprocessor::invert_node_matrix`):** the constant coefficient is eliminated
+exactly using the Schur complement of `V₀₀`, which is the patch weight:
+
+```
+a = V₀ᵣ / V₀₀,   S = Vᵣᵣ − Vᵣ₀ a          (gradient block)
+cᵣ = S⁺ ( bᵣ − a b₀ ),   c₀ = ( b₀ − V₀ᵣ cᵣ ) / V₀₀
+```
+
+`S⁺` is the truncated pseudoinverse obtained from the SVD of `S` (for a symmetric positive
+semidefinite block, this is its eigen decomposition). Singular values below `σ_max / 10¹⁰`
+are dropped. On a healthy patch, no singular values are dropped, so the result equals the
+exact inverse. On a degenerate patch, such as one with too few points or coplanar points,
+undetermined directions are dropped while well-determined directions are retained. A
+constant field is reproduced exactly because `c₀` does not pass through the truncation. The
+stored node matrix is the block inverse:
+
+```
+[ 1/V₀₀ + aᵀ S⁺ a    −(S⁺ a)ᵀ ]
+[     −S⁺ a              S⁺   ]
+```
+
+The recovered value is the zeroth row of this matrix multiplied by `b`. A rank on which
+any patch required truncation prints a warning with their number. A zero weight sum, a non-finite coordinate, a
+collapsed layer element, or an integration rule without a thickness coordinate is a setup
+error (`BELFEM_ERROR`), not a truncation.
+
 
 ---
 
@@ -370,6 +442,11 @@ Jc = Jc(||b||, β, T)
 ```
 
 This accounts for the angular dependence of critical current in anisotropic superconductors.
+
+**Recovery basis:** thin-shell layer blocks use the shell coordinates from §2.1.2. This
+preserves the jump in tangential field across a superconducting layer, including on curved
+shells. Nodes shared by adjacent blocks are still written by both passes, with the
+superconductor pass running last (see `thinshell_postprocessor_node_sharing.md`).
 
 **Code reference:** `cl_MaxwellPostprocessor.cpp` — the `mJJc /= mMaterial->jc(...)` normalization block (search `mJJc`)
 
@@ -789,12 +866,14 @@ This is used for **adaptive mesh refinement** (h-adaptivity).
 
 ## 12. Summary
 
-The Maxwell postprocessor implements a **mathematically rigorous** Zienkiewicz-Zhu Superconvergent Patch Recovery:
+The Maxwell postprocessor implements Zienkiewicz-Zhu Superconvergent Patch Recovery in
+node-local coordinates, with a curvilinear basis for thin-shell layers:
 
 ✅ **Exploits superconvergence** at Gauss integration points
-✅ **Polynomial fitting** via weighted least-squares
-✅ **Volume-weighted** Gramian ensures stability
-✅ **Cholesky solver** for SPD systems (optimal)
+✅ **Uses centered and scaled polynomial fits** with weighted least squares (§2.1.1)
+✅ **Uses shell coordinates** `(s₁, s₂, η)` for `PENTA6TS` / `QUAD4TS` layers (§2.1.2)
+✅ **Solves the constant exactly and truncates only the gradient block with SVD** (§3.2);
+no abort occurs for a degenerate patch
 ✅ **Domain-aware** field computation (H, B, J, Jc)
 ✅ **MPI-parallel** with local patch assembly
 
