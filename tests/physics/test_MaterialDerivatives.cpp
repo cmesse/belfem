@@ -9,10 +9,9 @@
  * central difference of the value they claim to differentiate, and the
  * overload families of the HTS laws are checked against each other.
  *
- * Not covered here: the piecewise dJ tangent below j1 ( pinned by a
- * DISABLED_ case that documents a known inconsistency ), the piecewise dB
- * tangent inside the Bezier blend ( staged zero ), the defect overloads
- * beyond finiteness of drho_piecewise_dJ, and rho_riva.
+ * Not covered here: the piecewise dB tangent inside the Bezier blend
+ * ( staged zero ), the defect overloads beyond finiteness of
+ * drho_piecewise_dJ, and rho_riva.
  */
 
 #include <algorithm>
@@ -660,8 +659,8 @@ TEST( HtsLaws, PiecewiseDegenerateBlendStaysFinite )
     delete tKim ;
 }
 
-// contract pinned: below j1 drho_piecewise_dJ differentiates the raw power law that rho_piecewise returns there
-TEST( HtsLaws, DISABLED_PowerLawRegimeTangentMatchesRawResidual )
+// below j1 drho_piecewise_dJ differentiates the raw power law that rho_piecewise returns there
+TEST( HtsLaws, PowerLawRegimeTangentMatchesRawResidual )
 {
     TbulkGuard tGuard( 77.0 ) ;
     MaterialFactory tFactory ;
@@ -696,6 +695,24 @@ TEST( HtsLaws, DISABLED_PowerLawRegimeTangentMatchesRawResidual )
 
     EXPECT_TRUE( tFdJ.matches( tHts->drho_piecewise_dJ( J, T, B, tBeta ) ) )
         << "analytic " << tHts->drho_piecewise_dJ( J, T, B, tBeta ) << " fd " << tFdJ.mBest ;
+
+    // the sibling overloads carry the same branch: the 1-argument form reads
+    // gTbulk ( = T here ), the defect forms scale jc by a unit defect. The
+    // ( J, T ) forms read jc_custom / n_custom, which the factory YBCO does
+    // not provide, and are not callable on this fixture
+    tHts->set_user_defined_defect( unit_defect ) ;
+
+    const real tX = 0.1 ;
+    const real tY = 0.2 ;
+    const real tZ = 0.3 ;
+    const real tTime = 0.4 ;
+
+    EXPECT_TRUE( tFdJ.matches( tHts->drho_piecewise_dJ( J ) ) )
+        << "1-argument analytic " << tHts->drho_piecewise_dJ( J ) << " fd " << tFdJ.mBest ;
+    EXPECT_TRUE( tFdJ.matches( tHts->drho_piecewise_dJ( J, tX, tY, tZ, tTime ) ) )
+        << "defect analytic " << tHts->drho_piecewise_dJ( J, tX, tY, tZ, tTime ) << " fd " << tFdJ.mBest ;
+    EXPECT_TRUE( tFdJ.matches( tHts->drho_piecewise_dJ( J, T, B, tBeta, tX, tY, tZ, tTime ) ) )
+        << "defect ( T, B, beta ) analytic " << tHts->drho_piecewise_dJ( J, T, B, tBeta, tX, tY, tZ, tTime ) << " fd " << tFdJ.mBest ;
 
     delete tHts ;
 }

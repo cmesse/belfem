@@ -1288,11 +1288,13 @@ namespace belfem
      *
      * Branches mirror those of rho_piecewise():
      *
-     *  - **Power-law regime** \f$(J \le J_1)\f$: the parallel-combined
-     *    chain rule of drho_powerlaw_dJ() is applied here. NOTE:
-     *    rho_piecewise() returns the RAW power law in this regime (no
-     *    parallel combination), so unlike drho_piecewise_dB/dT this
-     *    tangent is not consistent with the residual there.
+     *  - **Power-law regime** \f$(J \le J_1)\f$: rho_piecewise() returns
+     *    the raw power law \f$\rho_{PL}\f$ (no parallel combination with
+     *    \f$\rho_n\f$), and the tangent is its derivative
+     *    \f$d\rho_{PL}/dJ\f$, consistent with the residual as in
+     *    drho_piecewise_dB/dT. Like those legs it differentiates the
+     *    unfloored law: with the zero default of mRhoMin the floor never
+     *    binds.
      *  - **Normal regime** \f$(J > J_3)\f$: \f$\rho\f$ is constant, so the
      *    derivative is exactly zero.
      *  - **Flux-flow transition** \f$(J_1 < J \le J_3)\f$: differentiate the
@@ -1348,10 +1350,9 @@ namespace belfem
 
         if (normJ <= j1)
         {
-            // Power-law region: same derivative as power-law
-            real rhoPL = std::max(( ec / jc ) * std::pow( normJ / jc, n - 1 ), mRhoMin ) ;
+            // Power-law region: derivative of the raw law rho_piecewise() returns
             real drho_PL_dJ = ( ec / std::pow(jc, 2) ) * ( n - 1.0 ) * std::pow( normJ/jc, n - 2.0 );
-            return drho_PL_dJ/std::pow((1+rhoPL/rhon),2.0) ;
+            return drho_PL_dJ ;
         }
 
         real j3 = j1 * std::pow((rhon/rho1), 1.0/(mNff)) ;
@@ -1442,10 +1443,9 @@ namespace belfem
 
         if (normJ <= j1)
         {
-            // Power-law region: same derivative as power-law
-            real rhoPL = std::max(( ec / jc ) * std::pow( normJ / jc, n - 1 ), mRhoMin ) ;
+            // Power-law region: derivative of the raw law rho_piecewise() returns
             real drho_PL_dJ = ( ec / std::pow(jc, 2) ) * ( n - 1.0 ) * std::pow( normJ/jc, n - 2.0 );
-            return drho_PL_dJ/std::pow((1+rhoPL/rhon),2.0) ;
+            return drho_PL_dJ ;
         }
 
         real j3 = j1 * std::pow((rhon/rho1), 1.0/(mNff)) ;
@@ -1528,9 +1528,8 @@ namespace belfem
 
         if (normJ <= j1)
         {
-            real rhoPL = std::max(( ec / jc ) * std::pow( normJ / jc, n - 1 ), mRhoMin ) ;
             real drho_PL_dJ = ( ec / std::pow(jc, 2) ) * ( n - 1.0 ) * std::pow( normJ/jc, n - 2.0 );
-            return drho_PL_dJ/std::pow((1+rhoPL/rhon),2.0) ;
+            return drho_PL_dJ ;
         }
 
         real j3 = j1 * std::pow((rhon/rho1), 1.0/(mNff)) ;
@@ -1603,9 +1602,8 @@ namespace belfem
 
         if (normJ <= j1)
         {
-            real rhoPL = std::max(( ec / jc ) * std::pow( normJ / jc, n - 1 ), mRhoMin ) ;
             real drho_PL_dJ = ( ec / std::pow(jc, 2) ) * ( n - 1.0 ) * std::pow( normJ/jc, n - 2.0 );
-            return drho_PL_dJ/std::pow((1+rhoPL/rhon),2.0) ;
+            return drho_PL_dJ ;
         }
 
         real j3 = j1 * std::pow((rhon/rho1), 1.0/(mNff)) ;
@@ -1683,9 +1681,8 @@ namespace belfem
 
         if (normJ <= j1)
         {
-            real rhoPL = std::max(( ec / jc ) * std::pow( normJ / jc, n - 1 ), mRhoMin ) ;
             real drho_PL_dJ = ( ec / std::pow(jc, 2) ) * ( n - 1.0 ) * std::pow( normJ/jc, n - 2.0 );
-            return drho_PL_dJ/std::pow((1+rhoPL/rhon),2.0) ;
+            return drho_PL_dJ ;
         }
 
         real j3 = j1 * std::pow((rhon/rho1), 1.0/(mNff)) ;
@@ -1762,9 +1759,8 @@ namespace belfem
 
         if (normJ <= j1)
         {
-            real rhoPL = std::max(( ec / jc ) * std::pow( normJ / jc, n - 1 ), mRhoMin );
             real drho_PL_dJ = ( ec / std::pow(jc, 2) ) * ( n - 1.0 ) * std::pow( normJ/jc, n - 2.0 );
-            return drho_PL_dJ/std::pow((1+rhoPL/rhon),2.0) ;
+            return drho_PL_dJ ;
         }
 
         real j3 = j1 * std::pow((rhon/rho1), 1.0/(mNff)) ;
@@ -1839,9 +1835,8 @@ namespace belfem
 
         if (normJ <= j1)
         {
-            real rhoPL = std::max(( ec / jc ) * std::pow( normJ / jc, n - 1 ), mRhoMin ) ;
             real drho_PL_dJ = ( ec / std::pow(jc, 2) ) * ( n - 1.0 ) * std::pow( normJ/jc, n - 2.0 );
-            return drho_PL_dJ/std::pow((1+rhoPL/rhon),2.0) ;
+            return drho_PL_dJ ;
         }
 
         real j3 = j1 * std::pow((rhon/rho1), 1.0/(mNff)) ;
@@ -1924,9 +1919,8 @@ namespace belfem
 
         if (normJ <= j1)
         {
-            real rhoPL = std::max(( ec / jc ) * std::pow( normJ / jc, n - 1 ), mRhoMin ) ;
             real drho_PL_dJ = ( ec / std::pow(jc, 2) ) * ( n - 1.0 ) * std::pow( normJ/jc, n - 2.0 );
-            return drho_PL_dJ/std::pow((1+rhoPL/rhon),2.0) ;
+            return drho_PL_dJ ;
         }
 
         real j3 = j1 * std::pow((rhon/rho1), 1.0/(mNff)) ;
