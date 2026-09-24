@@ -659,6 +659,81 @@ TEST( HtsLaws, PiecewiseDegenerateBlendStaysFinite )
     delete tKim ;
 }
 
+// the degenerate blend across jc: whether b² + ac at the knot rounds to +0
+// or a few ulps below depends on the last bits of log10( j1 ) and log10( j3 ),
+// so a single point is a coin toss per build; the sweep crosses the binade of
+// the partial sum from jc ~ 2.5e11 upward, where the unclamped root was NaN
+TEST( HtsLaws, PiecewiseDegenerateBlendFiniteAcrossJc )
+{
+    MaterialFactory tFactory ;
+
+    const real B     = 1.3 ;
+    const real tBeta = 0.37 ;
+
+    for ( uint k = 0; k <= 7; ++k )
+    {
+        const real T = 20.0 + 10.0 * k ;
+        TbulkGuard tGuard( T ) ;
+
+        // rho( T ) does not depend on jc, so one material per T serves the sweep
+        Material * tHts = tFactory.create_material( "ybco", 50.0, false ) ;
+        tHts->set_constant( MaterialProperty::ec, 1e-4 ) ;
+        tHts->set_constant( MaterialProperty::n, 4.0 ) ;
+        tHts->set_resistivity_law( ResistivityLaw::Piecewise ) ;
+
+        for ( uint i = 0; i <= 60; ++i )
+        {
+            const real jc = std::pow( 10.0, 9.0 + 0.1 * i ) ;
+            tHts->set_constant( MaterialProperty::jc, jc ) ;
+
+            const PiecewiseKnots tKnots( tHts, T ) ;
+            const real J = tKnots.mJ3 ;
+
+            const real tRho  = tHts->rho_piecewise( J, T, B, tBeta ) ;
+            const real tRhoJ = tHts->rho_piecewise( J ) ;
+            const real tDT   = tHts->drho_piecewise_dT( J, T, B, tBeta ) ;
+            const real tDJ   = tHts->drho_piecewise_dJ( J, T, B, tBeta ) ;
+
+            EXPECT_TRUE( std::isfinite( tRho ) )  << "value at jc = " << jc << ", T = " << T ;
+            EXPECT_TRUE( std::isfinite( tRhoJ ) ) << "value( J ) at jc = " << jc << ", T = " << T ;
+            EXPECT_TRUE( std::isfinite( tDT ) )   << "dT at jc = " << jc << ", T = " << T ;
+            EXPECT_TRUE( std::isfinite( tDJ ) )   << "dJ at jc = " << jc << ", T = " << T ;
+
+            // at the knot the blend meets the normal state
+            EXPECT_NEAR( tRho / tHts->rho( T ), 1.0, 1e-9 ) << "endpoint at jc = " << jc << ", T = " << T ;
+        }
+
+        delete tHts ;
+    }
+}
+
+namespace
+{
+    // the root helper is protected; a derived type exposes it without an object
+    struct BezierRootSeam : public Material
+    {
+        using Material::piecewise_bezier_sqrt ;
+    };
+}
+
+// the clamp's contract, independent of which way a build's roundoff falls:
+// a = b = -1 and c = 1 ± 2 ulp give b² + ac = ∓4.4e-16 exactly ( Sterbenz )
+TEST( HtsLaws, PiecewiseBezierRootClampsRoundoff )
+{
+    const real tAbove = 1.0 + 4e-16 ;
+    const real tBelow = 1.0 - 4e-16 ;
+
+    EXPECT_EQ( BezierRootSeam::piecewise_bezier_sqrt( -1.0, -1.0, tAbove ), 0.0 ) ;
+    EXPECT_EQ( BezierRootSeam::piecewise_bezier_sqrt( -1.0, -1.0, tBelow ), std::sqrt( 1.0 - tBelow ) ) ;
+    EXPECT_EQ( BezierRootSeam::piecewise_bezier_sqrt( 2.0, 3.0, 1.0 ), std::sqrt( 11.0 ) ) ;
+    EXPECT_TRUE( std::isnan( BezierRootSeam::piecewise_bezier_sqrt( 1.0, BELFEM_QUIET_NAN, 1.0 ) ) ) ;
+
+#if BELFEM_ASSERTIONS_ACTIVE
+    // a discriminant below the roundoff band is a broken invariant, not roundoff
+    EXPECT_THROW( BezierRootSeam::piecewise_bezier_sqrt( -1.0, -1.0, 1.0 + 1e-8 ), std::runtime_error ) ;
+#endif
+}
+
 // below j1 drho_piecewise_dJ differentiates the raw power law that rho_piecewise returns there
 TEST( HtsLaws, PowerLawRegimeTangentMatchesRawResidual )
 {

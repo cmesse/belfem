@@ -1327,6 +1327,13 @@ namespace belfem
         bool
         riva_rho_pl( const real normJ, const real jc, const real n, const real ec, real & rhoPL ) const ;
 
+        //! root of the piecewise blend's Bezier discriminant b² + ac, clamped
+        //! at zero: at the coincident knots ( n − 1 == mNff, J = j3 ) it is
+        //! exactly zero and roundoff lands it a few ulps below, where a bare
+        //! root is NaN. Zero there gives t = 1 and rho = rho_n to roundoff
+        static real
+        piecewise_bezier_sqrt( const real a, const real b, const real c ) ;
+
 //------------------------------------------------------------------------------
         /**
          * PROPERTY EVALUATION FUNCTIONS

@@ -60,6 +60,23 @@
 namespace belfem
 {
 //------------------------------------------------------------------------------
+// Bezier root shared by the piecewise value and its tangents
+//------------------------------------------------------------------------------
+
+    inline real
+    Material::piecewise_bezier_sqrt( const real a, const real b, const real c )
+    {
+        real d = b * b + a * c ;
+
+        // the coincident-knot roundoff sits a few ulps below zero; further
+        // below is not a blend of these knots. A NaN passes both tests
+        BELFEM_ASSERT( ! ( d < -BELFEM_EPSILON * ( b * b + 1.0 ) ),
+            "Piecewise power law: Bezier discriminant %g below the roundoff band", ( double ) d ) ;
+
+        return std::sqrt( d < 0.0 ? 0.0 : d ) ;
+    }
+
+//------------------------------------------------------------------------------
 // Power-law resistivity model
 //------------------------------------------------------------------------------
 
@@ -466,7 +483,7 @@ namespace belfem
             "Piecewise power law: degenerate Bezier transition (|a| = %g) for material %s",
             ( double ) std::abs( a ), mLabel.c_str() ) ;
 
-        real tParam = (b+std::pow(b*b+a*c,0.5))/a ;
+        real tParam = ( b + piecewise_bezier_sqrt( a, b, c ) ) / a ;
 
         real rhoFF = std::pow(10.0,std::log10(rho1)*(1.0-tParam)*(1.0-tParam) + std::log10(rho2)*2.0*(1.0-tParam)*tParam + std::log10(rho3)*tParam*tParam );
 
@@ -535,7 +552,7 @@ namespace belfem
             "Piecewise power law: degenerate Bezier transition (|a| = %g) for material %s",
             ( double ) std::abs( a ), mLabel.c_str() ) ;
 
-        real tParam = (b+std::pow(b*b+a*c,0.5))/a ;
+        real tParam = ( b + piecewise_bezier_sqrt( a, b, c ) ) / a ;
 
         real rhoFF = std::pow(10.0,std::log10(rho1)*(1.0-tParam)*(1.0-tParam) + std::log10(rho2)*2.0*(1.0-tParam)*tParam + std::log10(rho3)*tParam*tParam );
 
@@ -610,7 +627,7 @@ namespace belfem
             "Piecewise power law: degenerate Bezier transition (|a| = %g) for material %s",
             ( double ) std::abs( a ), mLabel.c_str() ) ;
 
-        real tParam = (b+std::pow(b*b+a*c,0.5))/a ;
+        real tParam = ( b + piecewise_bezier_sqrt( a, b, c ) ) / a ;
 
         real rhoFF = std::pow(10.0,std::log10(rho1)*(1.0-tParam)*(1.0-tParam) + std::log10(rho2)*2.0*(1.0-tParam)*tParam + std::log10(rho3)*tParam*tParam );
 
@@ -685,7 +702,7 @@ namespace belfem
             "Piecewise power law: degenerate Bezier transition (|a| = %g) for material %s",
             ( double ) std::abs( a ), mLabel.c_str() ) ;
 
-        real tParam = (b+std::pow(b*b+a*c,0.5))/a ;
+        real tParam = ( b + piecewise_bezier_sqrt( a, b, c ) ) / a ;
 
         real rhoFF = std::pow(10.0,std::log10(rho1)*(1.0-tParam)*(1.0-tParam) + std::log10(rho2)*2.0*(1.0-tParam)*tParam + std::log10(rho3)*tParam*tParam );
 
@@ -753,7 +770,7 @@ namespace belfem
             "Piecewise power law: degenerate Bezier transition (|a| = %g) for material %s",
             ( double ) std::abs( a ), mLabel.c_str() ) ;
 
-        real tParam = (b+std::pow(b*b+a*c,0.5))/a ;
+        real tParam = ( b + piecewise_bezier_sqrt( a, b, c ) ) / a ;
 
         real rhoFF = std::pow(10.0,std::log10(rho1)*(1.0-tParam)*(1.0-tParam) + std::log10(rho2)*2.0*(1.0-tParam)*tParam + std::log10(rho3)*tParam*tParam );
 
@@ -820,7 +837,7 @@ namespace belfem
             "Piecewise power law: degenerate Bezier transition (|a| = %g) for material %s",
             ( double ) std::abs( a ), mLabel.c_str() ) ;
 
-        real tParam = (b+std::pow(b*b+a*c,0.5))/a ;
+        real tParam = ( b + piecewise_bezier_sqrt( a, b, c ) ) / a ;
 
         real rhoFF = std::pow(10.0,std::log10(rho1)*(1.0-tParam)*(1.0-tParam) + std::log10(rho2)*2.0*(1.0-tParam)*tParam + std::log10(rho3)*tParam*tParam );
 
@@ -886,7 +903,7 @@ namespace belfem
             "Piecewise power law: degenerate Bezier transition (|a| = %g) for material %s",
             ( double ) std::abs( a ), mLabel.c_str() ) ;
 
-        real tParam = (b+std::pow(b*b+a*c,0.5))/a ;
+        real tParam = ( b + piecewise_bezier_sqrt( a, b, c ) ) / a ;
 
         real rhoFF = std::pow(10.0,std::log10(rho1)*(1.0-tParam)*(1.0-tParam) + std::log10(rho2)*2.0*(1.0-tParam)*tParam + std::log10(rho3)*tParam*tParam );
 
@@ -951,7 +968,7 @@ namespace belfem
             "Piecewise power law: degenerate Bezier transition (|a| = %g) for material %s",
             ( double ) std::abs( a ), mLabel.c_str() ) ;
 
-        real tParam = (b+std::pow(b*b+a*c,0.5))/a ;
+        real tParam = ( b + piecewise_bezier_sqrt( a, b, c ) ) / a ;
 
         real rhoFF = std::pow(10.0,std::log10(rho1)*(1.0-tParam)*(1.0-tParam) + std::log10(rho2)*2.0*(1.0-tParam)*tParam + std::log10(rho3)*tParam*tParam );
 
@@ -1389,10 +1406,11 @@ namespace belfem
         if ( ! ( tDisc > BELFEM_EPSILON * ( b * b + 1.0 ) ) ) return mNff * rhon / normJ ;
 
         // t parameter from quadratic formula
-        real tParam = (b + std::pow(b*b + a*c, 0.5)) / a ;
+        real tSqrt  = piecewise_bezier_sqrt( a, b, c ) ;
+        real tParam = ( b + tSqrt ) / a ;
 
         // Derivative dt/dJ
-        real dt_dc = 0.5 / std::pow(b*b + a*c, 0.5) ;
+        real dt_dc = 0.5 / tSqrt ;
         real dc_dJ = 1.0 / (normJ * std::log(10.0)) ;
         real dt_dJ = dt_dc * dc_dJ ;
 
@@ -1477,10 +1495,11 @@ namespace belfem
         if ( ! ( tDisc > BELFEM_EPSILON * ( b * b + 1.0 ) ) ) return mNff * rhon / normJ ;
 
         // t parameter from quadratic formula
-        real tParam = (b + std::pow(b*b + a*c, 0.5)) / a ;
+        real tSqrt  = piecewise_bezier_sqrt( a, b, c ) ;
+        real tParam = ( b + tSqrt ) / a ;
 
         // Derivative dt/dJ
-        real dt_dc = 0.5 / std::pow(b*b + a*c, 0.5) ;
+        real dt_dc = 0.5 / tSqrt ;
         real dc_dJ = 1.0 / (normJ * std::log(10.0)) ;
         real dt_dJ = dt_dc * dc_dJ ;
 
@@ -1557,9 +1576,10 @@ namespace belfem
         real tDisc = b * b + a * c ;
         if ( ! ( tDisc > BELFEM_EPSILON * ( b * b + 1.0 ) ) ) return mNff * rhon / normJ ;
 
-        real tParam = (b + std::pow(b*b + a*c, 0.5)) / a ;
+        real tSqrt  = piecewise_bezier_sqrt( a, b, c ) ;
+        real tParam = ( b + tSqrt ) / a ;
 
-        real dt_dc = 0.5 / std::pow(b*b + a*c, 0.5) ;
+        real dt_dc = 0.5 / tSqrt ;
         real dc_dJ = 1.0 / (normJ * std::log(10.0)) ;
         real dt_dJ = dt_dc * dc_dJ ;
 
@@ -1631,9 +1651,10 @@ namespace belfem
         real tDisc = b * b + a * c ;
         if ( ! ( tDisc > BELFEM_EPSILON * ( b * b + 1.0 ) ) ) return mNff * rhon / normJ ;
 
-        real tParam = (b + std::pow(b*b + a*c, 0.5)) / a ;
+        real tSqrt  = piecewise_bezier_sqrt( a, b, c ) ;
+        real tParam = ( b + tSqrt ) / a ;
 
-        real dt_dc = 0.5 / std::pow(b*b + a*c, 0.5) ;
+        real dt_dc = 0.5 / tSqrt ;
         real dc_dJ = 1.0 / (normJ * std::log(10.0)) ;
         real dt_dJ = dt_dc * dc_dJ ;
 
@@ -1710,9 +1731,10 @@ namespace belfem
         real tDisc = b * b + a * c ;
         if ( ! ( tDisc > BELFEM_EPSILON * ( b * b + 1.0 ) ) ) return mNff * rhon / normJ ;
 
-        real tParam = (b + std::pow(b*b + a*c, 0.5)) / a ;
+        real tSqrt  = piecewise_bezier_sqrt( a, b, c ) ;
+        real tParam = ( b + tSqrt ) / a ;
 
-        real dt_dc = 0.5 / std::pow(b*b + a*c, 0.5) ;
+        real dt_dc = 0.5 / tSqrt ;
         real dc_dJ = 1.0 / (normJ * std::log(10.0)) ;
         real dt_dJ = dt_dc * dc_dJ ;
 
@@ -1788,9 +1810,10 @@ namespace belfem
         real tDisc = b * b + a * c ;
         if ( ! ( tDisc > BELFEM_EPSILON * ( b * b + 1.0 ) ) ) return mNff * rhon / normJ ;
 
-        real tParam = (b + std::pow(b*b + a*c, 0.5)) / a ;
+        real tSqrt  = piecewise_bezier_sqrt( a, b, c ) ;
+        real tParam = ( b + tSqrt ) / a ;
 
-        real dt_dc = 0.5 / std::pow(b*b + a*c, 0.5) ;
+        real dt_dc = 0.5 / tSqrt ;
         real dc_dJ = 1.0 / (normJ * std::log(10.0)) ;
         real dt_dJ = dt_dc * dc_dJ ;
 
@@ -1864,29 +1887,22 @@ namespace belfem
         real tDisc = b * b + a * c ;
         if ( ! ( tDisc > BELFEM_EPSILON * ( b * b + 1.0 ) ) ) return mNff * rhon / normJ ;
 
-        cplx d = tDisc ;
+        real tSqrt  = piecewise_bezier_sqrt( a, b, c ) ;
+        real tParam = ( b + tSqrt ) / a ;
 
-        cplx tParam = ( b + std::sqrt( d ) ) / a ;
-
-        cplx dt_dc = 0.5 / std::sqrt( d ) ;
+        real dt_dc = 0.5 / tSqrt ;
         real dc_dJ = 1.0 / (normJ * std::log(10.0)) ;
-        cplx dt_dJ = dt_dc * dc_dJ ;
+        real dt_dJ = dt_dc * dc_dJ ;
 
         real logrho1 = std::log10(rho1) ;
         real logrho2 = std::log10(rhon) ;
         real logrho3 = std::log10(rhon) ;
 
-        cplx dlogrho_dt = -2.0*(1.0-tParam)*logrho1 + 2.0*(1.0-2.0*tParam)*logrho2 + 2.0*tParam*logrho3 ;
+        real dlogrho_dt = -2.0*(1.0-tParam)*logrho1 + 2.0*(1.0-2.0*tParam)*logrho2 + 2.0*tParam*logrho3 ;
 
-        cplx rho = std::pow(10.0, (1.0-tParam)*(1.0-tParam)*logrho1 + 2.0*(1.0-tParam)*tParam*logrho2 + tParam*tParam*logrho3) ;
+        real rho = std::pow(10.0, (1.0-tParam)*(1.0-tParam)*logrho1 + 2.0*(1.0-tParam)*tParam*logrho2 + tParam*tParam*logrho3) ;
 
-        cplx drho_dJ = rho * std::log(10.0) * dlogrho_dt * dt_dJ ;
-
-        BELFEM_ERROR( std::imag( drho_dJ ) < BELFEM_EPSILON,
-           "Piecewise power law derivative: imaginary part of drho_dJ is non-zero (|a| = %g) for material %s, %g + i * %g",
-           ( double ) std::imag( drho_dJ ), mLabel.c_str(), std::real( drho_dJ ) , std::imag( drho_dJ ) ) ;
-
-        return std::real( drho_dJ ) ;
+        return rho * std::log(10.0) * dlogrho_dt * dt_dJ ;
     }
 
     /**
@@ -1948,9 +1964,10 @@ namespace belfem
         real tDisc = b * b + a * c ;
         if ( ! ( tDisc > BELFEM_EPSILON * ( b * b + 1.0 ) ) ) return mNff * rhon / normJ ;
 
-        real tParam = (b + std::pow(b*b + a*c, 0.5)) / a ;
+        real tSqrt  = piecewise_bezier_sqrt( a, b, c ) ;
+        real tParam = ( b + tSqrt ) / a ;
 
-        real dt_dc = 0.5 / std::pow(b*b + a*c, 0.5) ;
+        real dt_dc = 0.5 / tSqrt ;
         real dc_dJ = 1.0 / (normJ * std::log(10.0)) ;
         real dt_dJ = dt_dc * dc_dJ ;
 
@@ -2259,7 +2276,7 @@ namespace belfem
             ( double ) std::abs( a ), mLabel.c_str() ) ;
 
         real tDisc  = b * b + a * c ;
-        real tSqrt  = std::pow( tDisc, 0.5 ) ;
+        real tSqrt  = piecewise_bezier_sqrt( a, b, c ) ;
         real tParam = ( b + tSqrt ) / a ;
 
         real rhoFF = std::pow( 10.0,
@@ -2324,12 +2341,9 @@ namespace belfem
         // material ( n = 4 ), not a mechanism any REBCO deck reaches.
         // Guarded relative to |b|, the natural scale of the root
         // ( tSqrt = |b| at c = 0 ).
-        // Tested on the DISCRIMINANT, not on its root, and with the
-        // comparison negated: roundoff can push tDisc slightly negative at
-        // the degenerate point, which makes tSqrt a NaN — and a NaN fails
-        // every ordinary comparison, so a `tSqrt <= tol` guard would be
-        // bypassed and the NaN would propagate into the tangent. `!( x > tol )`
-        // takes the fallback for NaN as well.
+        // tSqrt is clamped at zero, so tFrozen is finite here; the guard
+        // protects the 1 / tSqrt in dSdT below. Tested on the discriminant
+        // with the comparison negated, so a NaN takes the fallback as well.
         if ( ! ( tDisc > BELFEM_EPSILON * ( b * b + 1.0 ) ) )
         {
             return tFrozen ;
@@ -2400,7 +2414,7 @@ namespace belfem
             ( double ) std::abs( a ), mLabel.c_str() ) ;
 
         real tDisc  = b * b + a * c ;
-        real tSqrt  = std::pow( tDisc, 0.5 ) ;
+        real tSqrt  = piecewise_bezier_sqrt( a, b, c ) ;
         real tParam = ( b + tSqrt ) / a ;
 
         real rhoFF = std::pow( 10.0,
@@ -2465,12 +2479,9 @@ namespace belfem
         // material ( n = 4 ), not a mechanism any REBCO deck reaches.
         // Guarded relative to |b|, the natural scale of the root
         // ( tSqrt = |b| at c = 0 ).
-        // Tested on the DISCRIMINANT, not on its root, and with the
-        // comparison negated: roundoff can push tDisc slightly negative at
-        // the degenerate point, which makes tSqrt a NaN — and a NaN fails
-        // every ordinary comparison, so a `tSqrt <= tol` guard would be
-        // bypassed and the NaN would propagate into the tangent. `!( x > tol )`
-        // takes the fallback for NaN as well.
+        // tSqrt is clamped at zero, so tFrozen is finite here; the guard
+        // protects the 1 / tSqrt in dSdT below. Tested on the discriminant
+        // with the comparison negated, so a NaN takes the fallback as well.
         if ( ! ( tDisc > BELFEM_EPSILON * ( b * b + 1.0 ) ) )
         {
             return tFrozen ;
