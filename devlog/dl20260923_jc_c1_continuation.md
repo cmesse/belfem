@@ -7,7 +7,18 @@ Bmin = 10 mT down to B = 0, C1 and monotone, with exact derivatives, without tou
 `share/python/database`
 **AIs involved:** Claude Opus 5.5 (plan v1–v4, implementation, measurement, mutations), Codex
 (`gpt-6-astra`/high: plan rounds 1–3, code jury, confirmation round), Grok `grok-4.7`/high (plan
-rounds 1–4, code jury)
+rounds 1–4, code jury), Codex `gpt-5.6-luna`/medium (language sweep)
+**Status:** COMPLETE — landed in `bc1ca8c`; both jury voices folded in and the fixes confirmed; DR-189
+stays `[W]` until Christian strikes it; "Open" lists the residue
+**Literature References:** Fritsch & Carlson 1980, §4 (10.1137/0717021); Fritsch & Butland 1984,
+Eq. 5 (10.1137/0905021); Kim 1962 via Messe et al. 2023 §2.6; Riva et al. 2023 Eq. 2; Denis et al.
+2026 Eq. 11
+**Verification:** full regression — `make check` 17/17 in `build/` (Armadillo) and
+`cmake-build-debug/` (Blaze) on the tree committed as `bc1ca8c`, before and after the jury fixes;
+27 mutants each killed by their test ( scratch copies, `TREE=cmake-build-debug` harness )
+**Exchange:** `tmp/ai_exchange/review_jc_c1.md` ( plan rounds 1–4 ), `review_jc_c1_plan{,_v2,_v3,_v4}.md`,
+`review_jc_c1_code_brief.md`, `review_jc_c1_code_grok.md`, `review_jc_c1_code_codex.md` ( audit and
+confirmation ), `review_jc_c1_sweep.md`
 
 ## Summary
 
@@ -20,6 +31,27 @@ Christian's rulings, taken through the plan rounds: keep the measured, angle-fre
 Kim finite slope (DR-128); C1 and monotone everywhere wins over the measured anchor near Tc; n
 continues from the table alone as a parabola with zero slope at B = 0; the HDF5 databases are not
 changed; the derivatives must be exact; below Tmin the clamp stays for now.
+
+## Plan rounds ( v1 → v4 )
+
+Four blind rounds, Codex astra/high and Grok grok-4.7/high; round 4's Codex leg failed on the
+usage limit, Grok confirmed the algebra. What the rounds changed:
+
+- v1 claimed that a decreasing anchor and edge make the join decrease in T. Codex refuted it with
+  an algebraic counterexample ( J0 = 12 − T, V = 10 − T, S = −1 − 8T: F_T = +1 at r = 1/2 ), so
+  the T-monotonicity became a constraint on the whole join, not an implication.
+- v2 certified the edge by sampling ( quarter- and eighth-element points ). Codex's HEX27
+  counterexample f = −( q − 1/16 )² passes every sample yet violates the condition; v3 moved to
+  certified Bernstein bounds.
+- v3 checked the face nodes. Codex's f = C + ( u − u0 )[ 0.1 − ( ξ − 0.5 )² ] has a negative slope
+  at all three temperature nodes and +0.1 inside; v4 bounds the full tensor Bernstein net
+  ( Grok: M C Mᵀ, not the node lines ). That counterexample is now a refusal test.
+- A uniform raise of the measured curve distorted the near-Tc anchor and was withdrawn;
+  Christian ruled "C1 + monotone everywhere" instead, which the smooth maximum implements.
+- Grok round 4 added the implementation items: ownership until the refusals pass, the 3-axis
+  refusal, the gate in physical f_u units, the split `deval_dB` predicate, slopes computed on
+  every rank after the broadcast, no allocation on the hot path, and FD tests that avoid seams
+  and faces.
 
 ## What changed
 

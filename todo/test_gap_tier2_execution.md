@@ -192,17 +192,21 @@ Christian is reloading the session on Opus 5.5. State at handoff:
   release) after B3's first pass; post-jury B3 fixes re-run in the Blaze tree (sparse 132 + MPI
   14 at np 2/4).
 - **For the morning quiz:**
-  - DR-189 (an evaluator issue in `JcFunctionDatabase`, not a table defect): the self-field curve
+  - ~~DR-189 (an evaluator issue in `JcFunctionDatabase`, not a table defect): the self-field curve
     is calibrated at 77.5 K only and sits up to 2.7 % below the table's 10 mT value at low T, so
     `eval` continues the 10 mT value flat below 10 mT there (a tangent kink at 10 mT). Calibrate
-    per temperature, or bridge to the table value with its own slope?
+    per temperature, or bridge to the table value with its own slope?~~ **Ruled and landed
+    2026-09-23 in `bc1ca8c`:** C1 + monotone continuation with a smoothly lifted measured anchor,
+    tables unchanged; the two `DISABLED_` pins replaced (`devlog/dl20260923_jc_c1_continuation.md`).
   - T-30: which λ(300 K) references — Ni 90.7, Fe 83.2 (the backlog row) or 80.2 (commonly
     quoted)? Neither was read from Touloukian / NBSIR 84-3007; the pins stay disabled until you say.
   - O-B3-2: add a `set_metis_nodendp` setter (then N-22 and the sync test cover it), or accept the
     gap?
   - O-B3-4: duplicate column indices within one CSR row — file as a Tier 3 row (planner's advice)?
-  - DR-175 extension: `JcFunctionDatabase`'s constructor throws after allocating `mDatabase`, so
-    each refused table leaks (now exercised twice per `make check`). Widen DR-175 or new row?
+  - ~~DR-175 extension: `JcFunctionDatabase`'s constructor throws after allocating `mDatabase`, so
+    each refused table leaks (now exercised twice per `make check`). Widen DR-175 or new row?~~
+    **Moot since `bc1ca8c`:** the refusals run in `open_checked` under a `unique_ptr`, and
+    `mDatabase` is itself a `unique_ptr` member.
   - Register header: the `[W]` count says 14; the tree has 9 open `[W]` rows incl. DR-189
     (`check_doc_claims.py` fails on it; the mismatch predates this run).
   - (done) the input-reference sentence took its Codex prose pass.
