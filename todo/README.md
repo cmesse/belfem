@@ -145,12 +145,12 @@ one of the two must be retired before either is worked.
 
 ### [practice_drift_mutation_suite.md](practice_drift_mutation_suite.md) — follow-ups for the practice-drift checker's mutation suite
 
-**OPEN — two of six fixed before the commit.** `scripts/tests/mutate_check_practice_drift.py` had no
+**OPEN — v11 committed; D-m2 and D-m10..D-m14 remain, none affects the checker's results.** `scripts/tests/mutate_check_practice_drift.py` had no
 baseline run, so against a checker whose self-test is always red it still reported every mutant killed
 and exited 0; it now runs the unmutated self-test first and stops with exit 2 if that is red, and its
 file reads are UTF-8. That guard at once surfaced a locale dependence in the checker's own self-test
 (D-m6). Open: a crash counts as a kill, an `assert` that `-O` strips, two fixed defects with no mutant,
-and D-m6; a two-voice re-review found no regression and added D-m7..D-m9.
+and D-m6; v11 fixed D-m3..D-m9 with a clean jury, leaving D-m2 (attribution) and five low items.
 
 ## Added 2026-09-22
 

@@ -781,13 +781,13 @@ def _tree(base, name, *, row=_ROW_GROK, exceptions="", template_extra="",
     if template_extra:
         proto = proto.replace("**AIs involved:** Claude Opus 5\n",
                               "**AIs involved:** Claude Opus 5\n" + template_extra + "\n")
-    (root / "doc/ai_collaboration_protocol.md").write_text(proto)
-    (root / ".claude/scripts/ask_codex.sh").write_text(_sh("CODEX_MODEL", *codex))
-    (root / ".claude/scripts/ask_grok.sh").write_text(_sh("GROK_MODEL", *grok))
-    (root / "devlog/dl20260101_clean.md").write_text(_DEVLOG.format(title=title, extra=devlog_extra))
-    (root / "devlog/README.md").write_text(readme)
+    (root / "doc/ai_collaboration_protocol.md").write_text(proto, encoding="utf-8")
+    (root / ".claude/scripts/ask_codex.sh").write_text(_sh("CODEX_MODEL", *codex), encoding="utf-8")
+    (root / ".claude/scripts/ask_grok.sh").write_text(_sh("GROK_MODEL", *grok), encoding="utf-8")
+    (root / "devlog/dl20260101_clean.md").write_text(_DEVLOG.format(title=title, extra=devlog_extra), encoding="utf-8")
+    (root / "devlog/README.md").write_text(readme, encoding="utf-8")
     for fname, text in extra_devlogs:
-        (root / "devlog" / fname).write_text(text)
+        (root / "devlog" / fname).write_text(text, encoding="utf-8")
     return root
 
 
@@ -963,7 +963,7 @@ def self_test():
         wdir = Path(base) / "window" / "devlog"
         wdir.mkdir(parents=True)
         for n in ("dl20260101_z.md", "dl20260101_a.md", "dl20260102_m.md"):
-            (wdir / n).write_text(plain)
+            (wdir / n).write_text(plain, encoding="utf-8")
         check("the window is newest date first, then name ascending",
               [p.name for p in devlog_window(wdir, 3)] ==
               ["dl20260102_m.md", "dl20260101_a.md", "dl20260101_z.md"])
@@ -1010,7 +1010,7 @@ def self_test():
         noheader = _PROTO.replace("| Subject | Codex | Grok |", "| Subject | Codex | Other |")
         root = _tree(base, "col_no_grok_header")
         (root / "doc/ai_collaboration_protocol.md").write_text(
-            noheader.format(exceptions="", row=_ROW_GROK))
+            noheader.format(exceptions="", row=_ROW_GROK), encoding="utf-8")
         try:
             run_live(root, 40, 0, 25)
             check("a table without a Grok column header fails the guard", False)
@@ -1020,14 +1020,14 @@ def self_test():
         print("v4 - index destinations are lexical:")
         root = _tree(base, "symlinked")
         (root / "elsewhere").mkdir()
-        (root / "elsewhere/real.md").write_text(plain)
+        (root / "elsewhere/real.md").write_text(plain, encoding="utf-8")
         os.symlink(root / "elsewhere/real.md", root / "devlog/dl20260102_link.md")
-        (root / "devlog/README.md").write_text(_README + "- [dl20260102_link.md](dl20260102_link.md)\n")
+        (root / "devlog/README.md").write_text(_README + "- [dl20260102_link.md](dl20260102_link.md)\n", encoding="utf-8")
         f = run_live(root, 40, 0, 25)[0]
         check("a symlinked devlog indexed under its own name is not P3", not has(f, "P3"))
         root = _tree(base, "loop")
         os.symlink("loop", root / "devlog/loop")
-        (root / "devlog/README.md").write_text(_README + "- [x](loop/dl20260103_x.md)\n")
+        (root / "devlog/README.md").write_text(_README + "- [x](loop/dl20260103_x.md)\n", encoding="utf-8")
         try:
             run_live(root, 40, 0, 25)
             check("a malformed index destination does not end the check", True)
@@ -1037,7 +1037,7 @@ def self_test():
         print("v4 - headers:")
         headless = "# A topic phrase\n\n## Summary\n"
         root = _tree(base, "all_headless", readme=_README)
-        (root / "devlog/dl20260101_clean.md").write_text(headless)
+        (root / "devlog/dl20260101_clean.md").write_text(headless, encoding="utf-8")
         try:
             f = run_live(root, 40, 0, 25)[0]
             check("an all-headless window reports P1c instead of failing the guard",
@@ -1049,10 +1049,10 @@ def self_test():
         print("v5 - fenced blocks in a devlog header:")
         def missing(label, text):
             p = Path(base) / f"fence_{label}.md"
-            p.write_text(text)
+            p.write_text(text, encoding="utf-8")
             return bool(devlogs_without_date([p]))
         p = Path(base) / "fence_stray_ends.md"
-        p.write_text("# T\n\n```markdown\n**Purpose:** before\n## ex\n**Date:** after\n")
+        p.write_text("# T\n\n```markdown\n**Purpose:** before\n## ex\n**Date:** after\n", encoding="utf-8")
         hdr = "\n".join(_header_lines(p))
         check("a stray opener is text: what follows it is header until a ## ends it",
               "**Purpose:** before" in hdr and "**Date:** after" not in hdr)
@@ -1119,7 +1119,7 @@ def self_test():
         print("v5 - the depth table is read strictly:")
         def table_err(label, proto_text):
             root = _tree(base, label)
-            (root / "doc/ai_collaboration_protocol.md").write_text(proto_text)
+            (root / "doc/ai_collaboration_protocol.md").write_text(proto_text, encoding="utf-8")
             try:
                 run_live(root, 40, 0, 25)
                 return None
@@ -1137,7 +1137,7 @@ def self_test():
         check("a row narrower than the header fails closed", err is not None and "cells" in err)
         root = _tree(base, "double_pipe")
         (root / "doc/ai_collaboration_protocol.md").write_text(
-            clean_proto.replace(_ROW_GROK, "|| `gpt-5.6-terra`, `high` | `grok-4.7`, `high` |"))
+            clean_proto.replace(_ROW_GROK, "|| `gpt-5.6-terra`, `high` | `grok-4.7`, `high` |"), encoding="utf-8")
         try:
             cols = table_models(root / "doc/ai_collaboration_protocol.md")
             check("an empty first cell keeps the columns aligned",
@@ -1147,7 +1147,7 @@ def self_test():
         spaced = clean_proto.replace(_ROW_GROK + "\n", _ROW_GROK + "\n\nprose between\n\n"
                                      "| Later | `gpt-9.9-y`, `high` | `grok-4.7`, `high` |\n")
         root = _tree(base, "second_table")
-        (root / "doc/ai_collaboration_protocol.md").write_text(spaced)
+        (root / "doc/ai_collaboration_protocol.md").write_text(spaced, encoding="utf-8")
         f = run_live(root, 40, 0, 25)[0]
         check("a second | block after the table is not part of it", not has(f, "P2b", "gpt-9.9-y"))
 
@@ -1169,7 +1169,7 @@ def self_test():
             "```\n### 9.1 Depth Selection\n| Subject | Codex | Grok |\n|---|---|---|\n"
             "| X | `gpt-9.9-example`, `high` | `grok-4.7`, `high` |\n```\n\n### 9.1 Depth Selection", 1)
         root = _tree(base, "quoted_heading")
-        (root / "doc/ai_collaboration_protocol.md").write_text(quoted)
+        (root / "doc/ai_collaboration_protocol.md").write_text(quoted, encoding="utf-8")
         try:
             f = run_live(root, 40, 0, 25)[0]
             check("a fenced copy of the section heading is not the section", not f)
@@ -1179,18 +1179,18 @@ def self_test():
                   "| X | `gpt-9.9-example`, `high` | `grok-4.7`, `high` |\n\n")
         root = _tree(base, "forged_anchor")
         (root / "doc/ai_collaboration_protocol.md").write_text(_PROTO.format(exceptions="", row=_ROW_GROK)
-            .replace("### 9.1 Depth Selection", forged + "### 9.1 Depth Selection", 1))
+            .replace("### 9.1 Depth Selection", forged + "### 9.1 Depth Selection", 1), encoding="utf-8")
         try:
             run_live(root, 40, 0, 25)
             check("an unclosed fence before a forged section heading fails closed", False)
         except ExtractionError as exc:
-            text = (root / "doc/ai_collaboration_protocol.md").read_text().split("\n")
+            text = (root / "doc/ai_collaboration_protocol.md").read_text(encoding="utf-8").split("\n")
             hits = [n for n, l in enumerate(text, 1) if l == "### 9.1 Depth Selection"]
             check("an unclosed fence before a forged section heading fails closed, naming the lines",
                   "appears 2 times" in str(exc) and f"at lines {hits[0]}, {hits[1]}" in str(exc))
         root = _tree(base, "later_subsection")
         (root / "doc/ai_collaboration_protocol.md").write_text(_PROTO.format(exceptions="", row=_ROW_GROK)
-            .replace("### Workflow", "### 9.10 A later subsection\n\n### Workflow"))
+            .replace("### Workflow", "### 9.10 A later subsection\n\n### Workflow"), encoding="utf-8")
         try:
             f = run_live(root, 40, 0, 25)[0]
             check("a ### 9.10 heading is not a second depth section", not f)
@@ -1199,7 +1199,7 @@ def self_test():
         for label, heading in (("tab_anchor", "### 9.1\tDepth Selection"), ("bare_anchor", "### 9.1")):
             root = _tree(base, label)
             (root / "doc/ai_collaboration_protocol.md").write_text(
-                _PROTO.format(exceptions="", row=_ROW_GROK).replace("### 9.1 Depth Selection", heading, 1))
+                _PROTO.format(exceptions="", row=_ROW_GROK).replace("### 9.1 Depth Selection", heading, 1), encoding="utf-8")
             try:
                 f = run_live(root, 40, 0, 25)[0]
                 check(f"{heading!r} is the depth heading", not f)
@@ -1207,7 +1207,7 @@ def self_test():
                 check(f"{heading!r} is the depth heading ({exc})", False)
         root = _tree(base, "formfeed_anchor")
         (root / "doc/ai_collaboration_protocol.md").write_text(_PROTO.format(exceptions="", row=_ROW_GROK)
-            .replace("### Workflow", "### 9.1\f0 not a heading\n\n### Workflow"))
+            .replace("### Workflow", "### 9.1\f0 not a heading\n\n### Workflow"), encoding="utf-8")
         try:
             f = run_live(root, 40, 0, 25)[0]
             check("### 9.1 followed by a form feed is not the depth heading", not f)
@@ -1215,12 +1215,12 @@ def self_test():
             check(f"### 9.1 followed by a form feed is not the depth heading ({exc})", False)
         root = _tree(base, "anchor_in_unclosed_fence")
         (root / "doc/ai_collaboration_protocol.md").write_text(_PROTO.format(exceptions="", row=_ROW_GROK)
-            .replace("### 9.1 Depth Selection", "```\n\n### 9.1 Depth Selection", 1))
+            .replace("### 9.1 Depth Selection", "```\n\n### 9.1 Depth Selection", 1), encoding="utf-8")
         try:
             run_live(root, 40, 0, 25)
             check("a lone depth heading inside an unclosed fence fails closed", False)
         except ExtractionError as exc:
-            text = (root / "doc/ai_collaboration_protocol.md").read_text().split("\n")
+            text = (root / "doc/ai_collaboration_protocol.md").read_text(encoding="utf-8").split("\n")
             heading = text.index("### 9.1 Depth Selection") + 1
             opener = max(n for n, l in enumerate(text[:heading - 1], 1) if l == "```")
             check("a lone depth heading inside an unclosed fence fails closed, naming both lines",

@@ -374,3 +374,25 @@ exit expression), a red baseline that discards the child's output so the reason 
 decoding still tied to the locale, and the temporary work directory that is never removed (D-m7..D-m9).
 Grok also sharpened the D-m2 remedy: requiring a `FAIL` line alone would misreport the one mutant whose
 correct kill is an escaping traceback.
+
+## v11 — the suite's findings closed, and the day's end (2026-09-23)
+
+On autopilot, with Christian's instruction to close when ready. v11 fixed D-m3..D-m9 and left D-m2 open on
+purpose: attributing each kill to its fixture needs an expected label for each of 73 mutants, a design
+task. The checker's self-test got `encoding="utf-8"` on all 25 of its file calls — inserted by an `ast`
+walk at each call's closing parenthesis, not by hand — and now passes under a C locale. The suite's
+anchor `assert` became an explicit check that reports a broken anchor by name and fails the run without
+aborting it; five mutants cover the four behaviours the round-2 review found unpinned; a red baseline
+shows its status and output tail; pipes decode as UTF-8; the work directory is removed. 73/73, in a
+normal and a C locale; each new behaviour proven directly (an anchor edited away, a crashing baseline, a
+default run leaving `/tmp` clean).
+
+The narrow jury (both seats, `high`) found no regression and no defect in the fixes. Its five findings are
+low-severity (D-m10..D-m14); one of them caught the suite's docstring claiming a red baseline "shows why",
+when a 20-line tail need not contain the failing fixture — corrected in the commit, the only change made
+in response.
+
+Where the day ends: `scripts/check_practice_drift.py` at v10 logic plus locale-safe tests, reporting no
+drift on the live tree with `--strict` clean; its mutation suite at 73/73 with a baseline, in
+`scripts/tests/`. Open: D-m2 and D-m10..D-m14 in `todo/practice_drift_mutation_suite.md`, none of which
+makes the checker report a wrong result.

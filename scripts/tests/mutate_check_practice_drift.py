@@ -21,32 +21,55 @@ edit to the checker can break an anchor.  That is deliberate: change the checker
 together, and add a mutant for each new probe or fixed defect.
 
 Usage: python3 scripts/tests/mutate_check_practice_drift.py [checker] [workdir]
-Defaults: the checker next to this directory, and a fresh temporary directory.  The unmutated
-checker's self-test runs first and must pass: if it is already red, every mutant would look killed,
-so the suite stops with exit 2.  Otherwise exit 0 only if every mutant is killed.  A mutant that hangs
-is stopped after 180 s and counted as killed.
+Defaults: the checker next to this directory, and a fresh temporary directory, removed afterwards.
+The unmutated checker's self-test runs first and must pass: if it is already red, every mutant would
+look killed, so the suite stops with exit 2, printing the child's exit status (or that it timed out)
+and the last 20 lines of its output — which need not include the failing fixture, because the
+self-test prints each FAIL where it occurs and only a count at the end.  An anchor that does not occur exactly once
+is reported as BROKEN and fails the run.  Otherwise exit 0 only if every mutant is killed.  A mutant
+that hangs is stopped after 180 s and counted as killed.
+
+A kill is any non-zero exit of the mutant's self-test.  It shows the edit made the gate go red, not
+which fixture did it.
 """
 
+import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
 target = sys.argv[1] if len(sys.argv) > 1 else str(Path(__file__).resolve().parent.parent / "check_practice_drift.py")
-work = sys.argv[2] if len(sys.argv) > 2 else tempfile.mkdtemp(prefix="mutate_practice_drift_")
+created = len(sys.argv) <= 2
+work = sys.argv[2] if not created else tempfile.mkdtemp(prefix="mutate_practice_drift_")
 src = open(target, encoding="utf-8").read()
 
+
+def self_test(path):
+    """(exit status, combined output) of `path --self-test`; status None if it timed out."""
+    try:
+        r = subprocess.run([sys.executable, path, "--self-test"], capture_output=True,
+                           encoding="utf-8", errors="replace", timeout=180)
+        return r.returncode, r.stdout + r.stderr
+    except subprocess.TimeoutExpired:
+        return None, ""
+
+
+def finish(code):
+    if created:
+        shutil.rmtree(work, ignore_errors=True)
+    sys.exit(code)
+
+
 # A kill means something only if the unmutated self-test passes.
-try:
-    baseline = subprocess.run([sys.executable, target, "--self-test"], capture_output=True, text=True,
-                              timeout=180)
-    baseline_ok = baseline.returncode == 0
-except subprocess.TimeoutExpired:
-    baseline_ok = False
-if not baseline_ok:
-    print("the unmutated checker's --self-test does not pass, so no kill below would mean anything",
-          file=sys.stderr)
-    sys.exit(2)
+status, output = self_test(target)
+if status != 0:
+    why = "timed out after 180 s" if status is None else f"exited {status}"
+    print(f"the unmutated checker's --self-test {why}, so no kill below would mean anything; its last "
+          "output:", file=sys.stderr)
+    print("\n".join(output.strip().splitlines()[-20:]), file=sys.stderr)
+    finish(2)
+
 M = {
  'P2a disabled': ('findings.append((DRIFT, "P2a"', 'None and findings.append((DRIFT, "P2a"'),
  'P2b columns disabled': ('for model in sorted(models):', 'for model in []:'),
@@ -116,18 +139,25 @@ M = {
  'D-c49 duplicate lines off by one': ('str(i + 1) for i in starts)', 'str(i) for i in starts)'),
  'D-c49 heading line off by one': ('f"depth anchor at line {start + 1} lies', 'f"depth anchor at line {start} lies'),
  'D-c49 opener line off by one': ('f"{opener + 1} and never closed")', 'f"{opener} and never closed")'),
+ 'D-m5 commit bodies counted per occurrence': ('commits.update(set(MODEL.findall(body)))', 'commits.update(MODEL.findall(body))'),
+ 'D-m5 trailing period absorbed': ('MODEL = re.compile(r"\\b((?:gpt|grok)-\\d+(?:\\.\\d+)*(?:-[A-Za-z][A-Za-z0-9]*)*)")', 'MODEL = re.compile(r"\\b((?:gpt|grok)-[\\d.]+(?:-[A-Za-z][A-Za-z0-9]*)*)")'),
+ 'D-m5 seat names admitted': ('MODEL = re.compile(r"\\b((?:gpt|grok)-\\d+(?:\\.\\d+)*(?:-[A-Za-z][A-Za-z0-9]*)*)")', 'MODEL = re.compile(r"\\b((?:gpt|grok|Opus)[- ]\\d+(?:\\.\\d+)*(?:-[A-Za-z][A-Za-z0-9]*)*)")'),
+ 'D-m5 window date order dropped': ('sorted(by_name, key=date, reverse=True)', 'sorted(by_name, key=date)'),
+ 'D-m5 --strict ignored': ('return 1 if (strict and drift) else 0', 'return 0'),
 }
-killed = 0
+killed = broken = 0
 for name, (a, b) in M.items():
-    assert src.count(a) == 1, f'anchor not unique for {name}: {src.count(a)}'
-    open(f'{work}/mut.py', 'w', encoding='utf-8').write(src.replace(a, b))
-    try:
-        r = subprocess.run([sys.executable, f'{work}/mut.py', '--self-test'], capture_output=True, text=True, timeout=180)
-        ok = r.returncode != 0
-    except subprocess.TimeoutExpired:
-        ok = True
-        name += ' (timeout)'
+    found = src.count(a)
+    if found != 1:
+        print(f"  BROKEN   {name}: anchor occurs {found} times, must be exactly once")
+        broken += 1
+        continue
+    open(f"{work}/mut.py", "w", encoding="utf-8").write(src.replace(a, b))
+    status, _ = self_test(f"{work}/mut.py")
+    ok = status != 0
+    if status is None:
+        name += " (timeout)"
     killed += ok
     print(f"  {'killed  ' if ok else 'SURVIVED'} {name}")
-print(f'\n{killed}/{len(M)} mutants killed')
-sys.exit(0 if killed == len(M) else 1)
+print(f"\n{killed}/{len(M)} mutants killed" + (f", {broken} BROKEN anchors" if broken else ""))
+finish(0 if killed == len(M) else 1)
