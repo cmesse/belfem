@@ -13,6 +13,7 @@ set( SOURCES
         test_Periodicity.cpp
         test_FaceFactory.cpp
         test_FacetNodes.cpp
+        test_FacetTables.cpp
         test_CurveFactory.cpp
         test_BfmFile.cpp
         )

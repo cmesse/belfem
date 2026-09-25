@@ -48,7 +48,7 @@ namespace belfem
         void
         Vertex::init_vertex_container( const uint aSize )
         {
-            BELFEM_ASSERT( aSize < std::numeric_limits<uint32_t>::max(), "Too many vertices on Vertex %lu",
+            BELFEM_ASSERT( aSize < std::numeric_limits< decltype( mVertexCounter ) >::max(), "Too many vertices on Vertex %lu",
                 ( long unsigned int ) this->id() );
 
             if ( mVertices != nullptr ) free( mVertices );

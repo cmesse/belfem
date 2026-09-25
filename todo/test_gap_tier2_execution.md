@@ -65,6 +65,8 @@ B4 (mesh) waits on the peer's live `src/mesh` edits.
   code together, on the finished diff); a row that touches `src/` keeps both. Standing rule.
 - **DR-186:** investigate the Lawrencium trigger first — which deck, which predicate — then restore
   the guards (real misconfiguration) or fix the predicate (false positive). No change until known.
+  **Superseded 2026-09-24 (quiz): the trigger is not on record; both guards are restored as
+  `BELFEM_ASSERT` plus an always-active warning naming what fired. Register row DR-186.**
 - **DR-187:** refuse by name — `BELFEM_ERROR` naming the group and its domain type replaces the
   silent `activate( false )`. Consumer inventory before it lands (a deck that hits it today
   solves with a missing contribution; afterwards it stops at setup).
@@ -218,7 +220,7 @@ Christian is reloading the session on Opus 5.5. State at handoff:
     `Cut` blocks, and every interface / symmetry / periodic / terminal sideset, lands there. "Refuse
     by name" on the whole arm would abort decks that run correctly today. Proposal: list the
     by-design exclusions explicitly, keep them silent, and refuse only an unexpected type by name.
-    Not implemented until you confirm.
+    **Confirmed 2026-09-24 (quiz); queued in the DR-18x cluster session, register row DR-187.**
   - **T-04 HELD (two plan rounds, both "request changes").** The HDF5 existence helpers are used
     as link probes for DATASETS: `group_exists` on `abstract`, `pinned`, `orphaned`
     (`cl_Mesh_BfmFile.cpp:411-435`) and `extra` (`cl_Spline.cpp:380`), plus 16 BfmFile probes on

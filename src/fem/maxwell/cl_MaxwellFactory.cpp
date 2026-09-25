@@ -14,6 +14,7 @@
 #include <memory>
 #include <utility>
 
+#include "cl_Set.hpp"
 #include "cl_MaxwellFactory.hpp"
 #include "fn_check_facet_orientation.hpp"
 #include "fn_check_unit.hpp"
@@ -2866,16 +2867,27 @@ namespace belfem
             }
 
             // A thin shell next to an h-conductor recovers its normal field
-            // from the conductor's own Nedelec trace ( compute_h_trace ),
-            // which equals the shell's normal field only where [ n . B ] = 0
-            // reduces to n . H continuity, i.e. for a nonmagnetic conductor.
-            // Same predicate as MaxwellData's constant-mu0 branch. Setup
-            // code, runs once: always-active check. The thin-shell records
-            // live on the master mesh.
+            // from the conductor's own Nedelec trace ( compute_h_trace ).
+            // That recovery gathers one edge dof per edge of the conductor
+            // element into a vector sized for all of its Nedelec dofs, so a
+            // higher-order neighbor ( face and second edge dofs ) leaves the
+            // tail stale, and it equates the trace with the shell's normal
+            // field, which holds only where [ n . B ] = 0 reduces to n . H
+            // continuity, i.e. for mu = mu0 ( MaxwellData's constant-mu0 branch
+            // asks the same with exact equality; this refusal allows a
+            // roundoff band ). Setup code, rank 0, once per shell and
+            // conductor block, always active. The material comes from the
+            // factory's own map: the dof manager's blocks on this rank are
+            // only the ones it owns or borders, and its empty block carries
+            // no material. The thin-shell records live on the master mesh
             if ( mCommRank == 0 )
             {
+                Set< id_t > tChecked ;
+
                 for ( mesh::ThinShell * tShell : tMesh->thin_shells() )
                 {
+                    tChecked.clear() ;
+
                     for ( mesh::Facet * tFacet : tShell->facets() )
                     {
                         mesh::Element * tSides[ 2 ] = { tFacet->master(), tFacet->slave() };
@@ -2888,33 +2900,38 @@ namespace belfem
 
                             if ( tMesh->block( tBlockID )->domain_type() != DomainType::Conductor ) continue ;
 
-                            /* commenting these errors because they thow on Lawrencium without cause
-                            // The recovery gathers one edge dof per edge of the
-                            // conductor element ( nedelec_data_master_h /
-                            // _slave_h ) into a vector sized for ALL of its
-                            // Nedelec dofs. A higher-order conductor ( TET10,
-                            // TRI6: face and second edge dofs ) would leave the
-                            // tail of that vector stale, and E * q would read
-                            // it. The length check inside the gather is a
-                            // debug-only assert; this is the always-active
-                            // rejection of the configuration ( no thin-shell
-                            // element above linear exists today )
+                            if ( tChecked.key_exists( tBlockID ) ) continue ;
+
+                            tChecked.insert( tBlockID );
+
+                            const string & tLabel = mMaterialBlockAssignment( tBlockID ) ;
+
+                            const Material * tMat = mMaterialMap.key_exists( tLabel ) ?
+                                mMaterialMap( tLabel ) : nullptr ;
+
                             BELFEM_ERROR( mesh::interpolation_order( tVolume->type() ) == InterpolationOrder::LINEAR,
                                 "conductor block %lu ( %s ) is a volume neighbor of thin shell %s but is not linear ( %s ): the shell's normal-field recovery reads one edge dof per edge of the conductor element",
                                 ( long unsigned int ) tBlockID,
-                                mMaterialBlockAssignment( tBlockID ).c_str(),
+                                tLabel.c_str(),
                                 tShell->label().c_str(),
                                 to_string( tVolume->type() ).c_str() );
 
-                            const Material * tMat = mMagneticField->block( tBlockID )->material() ;
+                            // the message names which of the three ways a
+                            // material fails the mu = mu0 test, so the abort
+                            // can be diagnosed from the log alone
+                            const bool tHasConstantMu = tMat != nullptr && tMat->is_constant( MaterialProperty::mu ) ;
 
-                            BELFEM_ERROR( tMat != nullptr
-                                && tMat->is_constant( MaterialProperty::mu )
-                                && std::abs( tMat->constant_property( MaterialProperty::mu ) - constant::mu0 ) < BELFEM_EPSILON,
-                                "conductor block %lu ( %s ) is a volume neighbor of thin shell %s but is not nonmagnetic: the shell's normal-field recovery needs mu = mu0 on an h-conductor side",
+                            const bool tIsNonmagnetic = tHasConstantMu
+                                && std::abs( tMat->constant_property( MaterialProperty::mu ) - constant::mu0 ) < BELFEM_EPSILON ;
+
+                            BELFEM_ERROR( tIsNonmagnetic,
+                                "conductor block %lu ( %s ) is a volume neighbor of thin shell %s but is not nonmagnetic ( %s ): the shell's normal-field recovery needs mu = mu0 on an h-conductor side",
                                 ( long unsigned int ) tBlockID,
-                                mMaterialBlockAssignment( tBlockID ).c_str(),
-                                tShell->label().c_str() ); */
+                                tLabel.c_str(),
+                                tShell->label().c_str(),
+                                tMat == nullptr ? "the block has no material" :
+                                    ( tHasConstantMu ? "its constant permeability is not mu0"
+                                                     : "its permeability is a B-H curve or a function, not a constant" ) );
                         }
                     }
                 }

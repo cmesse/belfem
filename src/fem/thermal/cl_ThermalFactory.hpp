@@ -60,7 +60,6 @@ namespace belfem
 
 
 
-            bool mUseEnrichment = false ;
 
 //------------------------------------------------------------------------------
         public:
@@ -83,6 +82,14 @@ namespace belfem
 
             std::shared_ptr< Kernel >
             create_thermal_kernel();
+
+//------------------------------------------------------------------------------
+
+            // the block domain types that carry a thermal kernel; the
+            // selection in create_thermal_kernel() and the dispatch over
+            // the selected blocks both read this, so they cannot disagree
+            static bool
+            block_is_supported( const DomainType aType );
 
 //------------------------------------------------------------------------------
         private:

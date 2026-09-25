@@ -1775,6 +1775,17 @@ namespace belfem
 
                 if ( tIsMaster || tIsSlave )
                 {
+                    // the tag replaces the sideset's type, and no consumer
+                    // reads the old one again: a typed sideset would keep
+                    // its facets and lose its kernel
+                    const DomainType tType = tSideSet->domain_type() ;
+
+                    BELFEM_ERROR( tType == DomainType::Default || tType == DomainType::Periodic,
+                        "sideset %lu lies on the %s periodic plane but is declared %s: a sideset on a periodic plane must be untyped or periodic",
+                        ( long unsigned int ) tSideSet->id(),
+                        tIsMaster ? "master" : "slave",
+                        to_string( tType ).c_str() );
+
                     tSideSet->set_domain_type( DomainType::Periodic );
                 }
 

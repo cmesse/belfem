@@ -299,10 +299,12 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        // Debug tier: both counter guards run once per adjacency entry.
+        // A release build wraps at the counter's width instead of aborting
         void
         Vertex::increment_vertex_counter()
         {
-            BELFEM_ASSERT( mVertexCounter < std::numeric_limits<uint32_t>::max(), "Vertex counter overflow." );
+            BELFEM_ASSERT( mVertexCounter < std::numeric_limits< decltype( mVertexCounter ) >::max(), "Vertex counter overflow." );
             ++mVertexCounter;
         }
 
@@ -311,7 +313,7 @@ namespace belfem
         void
         Vertex::insert_vertex( Vertex * aVertex )
         {
-            BELFEM_ASSERT( mVertexCounter < std::numeric_limits<uint32_t>::max(), "Vertex counter overflow." );
+            BELFEM_ASSERT( mVertexCounter < std::numeric_limits< decltype( mVertexCounter ) >::max(), "Vertex counter overflow." );
             mVertices[ mVertexCounter++ ] = aVertex;
         }
 

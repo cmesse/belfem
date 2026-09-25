@@ -63,7 +63,7 @@ namespace belfem
                     aNodes( 0 ) = mNodes[ 1 ];
                     aNodes( 1 ) = mNodes[ 2 ];
                     aNodes( 2 ) = mNodes[ 6 ];
-                    aNodes( 3 ) = mNodes[ 8 ];
+                    aNodes( 3 ) = mNodes[ 7 ];
                     break;
                 }
                 case( 2 ):

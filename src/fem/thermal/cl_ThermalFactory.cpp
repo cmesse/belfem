@@ -67,6 +67,27 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        bool
+        ThermalFactory::block_is_supported( const DomainType aType )
+        {
+            switch ( aType )
+            {
+                case DomainType::Conductor :
+                case DomainType::ThinShell :
+                case DomainType::Ferro :
+                case DomainType::Buffer :
+                {
+                    return true ;
+                }
+                default :
+                {
+                    return false ;
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
         std::shared_ptr< Kernel >
         ThermalFactory::create_thermal_kernel()
         {
@@ -76,45 +97,21 @@ namespace belfem
 
             if ( mCommRank == 0 )
             {
-                // count how many blocks are not air
                 index_t tCount = 0 ;
                 for ( mesh::Block * tBlock : mMesh->blocks() )
                 {
-                    switch ( tBlock->domain_type() )
-                    {
-                    case DomainType::Conductor :
-                    case DomainType::ThinShell :
-                    case DomainType::Ferro :
-                    case DomainType::Buffer :
+                    if ( ThermalFactory::block_is_supported( tBlock->domain_type() ) )
                     {
                         ++tCount ;
-                        break ;
-                    }
-                    default:
-                    {
-                        break ;
-                    }
                     }
                 }
                 tBlocks.set_size( tCount );
                 tCount = 0 ;
                 for ( mesh::Block * tBlock : mMesh->blocks() )
                 {
-                    switch ( tBlock->domain_type() )
+                    if ( ThermalFactory::block_is_supported( tBlock->domain_type() ) )
                     {
-                        case DomainType::Conductor :
-                        case DomainType::ThinShell :
-                        case DomainType::Ferro :
-                        case DomainType::Buffer :
-
-                        {
-                            tBlocks( tCount++ ) = tBlock->id() ;
-                            break ;
-                        }
-                        default:
-                        {
-                            break ;
-                        }
+                        tBlocks( tCount++ ) = tBlock->id() ;
                     }
                 }
                 comm_barrier() ;
@@ -187,46 +184,25 @@ namespace belfem
 
             this->configure_solver( tLinearSection, mThermalField );
 
+            // the dof manager holds the selected blocks only, so the
+            // refusal cannot fire unless the selection and this dispatch
+            // stop reading the same predicate
             for( Block * tGroup : mThermalKernel->dofmgr()->blocks() )
             {
-                switch( mMesh->block( tGroup->id() )->domain_type() )
-                {
-                    case DomainType::Conductor :
-                    case DomainType::ThinShell :
-                    case DomainType::Air :
-                    case DomainType::Ferro :
-                    case DomainType::Buffer :
-                    {
-                        tGroup->activate( true );
-                        tGroup->set_domain_type( mMesh->block( tGroup->id() )->domain_type() );
-                        break ;
-                    }
-                    default:
-                    {
-                        tGroup->activate( false );
-                    }
-                }
+                const DomainType tType = mMesh->block( tGroup->id() )->domain_type() ;
+
+                BELFEM_ERROR( ThermalFactory::block_is_supported( tType ),
+                    "block %lu reached the thermal kernel with domain type %s, which is not a thermal block type: the selection in create_thermal_kernel and this dispatch disagree",
+                    ( long unsigned int ) tGroup->id(),
+                    to_string( tType ).c_str() );
+
+                tGroup->activate( true );
+                tGroup->set_domain_type( tType );
             }
 
-            // get enriched order
-            uint tOrder = mUseEnrichment ? ( mMesh->max_element_order() == 1 ? 5 : 13 ) : 0 ;
-            for( SideSet * tGroup : mThermalKernel->dofmgr()->sidesets())
-            {
-                switch ( mMesh->sideset( tGroup->id() )->domain_type() )
-                {
-                    case( DomainType::Dirichlet ) :
-                    case( DomainType::Neumann ) :
-                    {
-                        tGroup->calculator()->set_integration_order( tOrder ) ;
-                        tGroup->activate( true );
-                        break;
-                    }
-                    default:
-                    {
-                        tGroup->activate( false );
-                    }
-                }
-            }
+            // the thermal equation selects no sidesets, so the dof manager
+            // holds none; a thermal boundary condition on a sideset is not
+            // supported
 
             //Send the dofmngr to the boundary conditions
             mBoundaryConditionFactory->set_fields( mThermalField );

@@ -144,6 +144,10 @@ one of the two must be retired before either is worked.
 
 ## Added 2026-09-24
 
+### [closed/dr18x_cluster.md](closed/dr18x_cluster.md) — DR-184 / DR-182 / DR-186 / DR-187 / DR-166 as five small rounds — **CLOSED 2026-09-24**
+
+The five register rows Christian ruled on 2026-09-24, each its own diff and gate in one session. A scratchpad oracle over all 32 Lagrange element types proved DR-184 is one token (QUAD16 facet 1 only). Premise correction on DR-187: the block `default:` arm is unreachable (the selection is the same four types) and the sideset loop is dead (the thermal equation selects no sidesets), so thermal sideset conditions are unsupported today (a Dirichlet one dereferences a null dummy, a Neumann one is refused at parse), not silently inactive. Landed behind plan jury, code jury and a narrow xhigh round 2; the code jury found the DR-186 Lawrencium mechanism (rank 0's dof manager returns a null-material empty block for blocks it does not own), so the guards are always-active refusals with the material taken by label. Owed: `make check`, a 2-rank deck run, the commit.
+
 ### [closed/piecewise_bezier_root.md](closed/piecewise_bezier_root.md) — one clamped Bézier root for the piecewise power law's value and both tangents — **CLOSED 2026-09-24**
 
 Nightly pipeline 41 failed `PiecewiseDegenerateBlendStaysFinite`: at the coincident knots (n − 1 == mNff) the discriminant is exactly zero and roundoff lands it below, where `pow( d, 0.5 )` is NaN; the eight value overloads were unguarded and the dT guard came after the root. `Material::piecewise_bezier_sqrt` now serves all 26 root sites; two tests pin the sweep and the clamp itself. Landed `aa468c3` behind both juries. Owed: shared-tree `check-fast` and the manual pipeline (Christian).

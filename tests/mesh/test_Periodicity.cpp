@@ -198,6 +198,24 @@ namespace
             mMesh->sidesets().push( tTop );
         }
 
+        // one side face of the first brick in sideset 3: two of its nodes
+        // lie on the z = 0 cap and two do not, so it is on neither plane
+        void
+        add_lateral_sideset()
+        {
+            uint tSide = 0 ;
+            while ( tSide == bottom_facet_index( ElementType::HEX8 )
+                 || tSide == top_facet_index( ElementType::HEX8 ) )
+            {
+                ++tSide ;
+            }
+            ElementFactory tFactory ;
+            SideSet * tSet = new SideSet( 3, 1 );
+            tSet->insert_facet( create_cap_facet( tFactory, 3001,
+                mMesh->elements()( 0 ), tSide, 3 ) );
+            mMesh->sidesets().push( tSet );
+        }
+
         ~PeriodicBrick()
         {
             delete mMesh ;   // owns nodes, elements, blocks, sidesets, edges, periodicity
@@ -623,3 +641,67 @@ TEST( Periodicity, ConductorEdgesAreTiedThroughTheMasterFallback )
         expect_edges_tied( tPeriodicity, 12, 6 );
     }
 }
+
+//------------------------------------------------------------------------------
+// tag_periodic_sidesets: a sideset on a periodic plane becomes Periodic; a
+// sideset that already carries another type is refused, since the tag would
+// replace it and no consumer reads the old type again
+//------------------------------------------------------------------------------
+
+TEST( Periodicity, TagPeriodicSidesetsTagsBothCapsOnly )
+{
+    PeriodicBrick tBar( 1, 2, false );
+    tBar.add_lateral_sideset();
+    tBar.finalize();
+
+    PeriodicityFactory tFactory( tBar.mMesh );
+    tBar.set_translation_planes( tFactory );
+    tFactory.tag_periodic_sidesets();
+
+    // the lateral sideset must carry nodes, or the tagger skips it and
+    // the Default expectation would hold for nothing
+    EXPECT_GT( tBar.mMesh->sideset( 3 )->nodes().size(), 0u );
+    EXPECT_EQ( tBar.mMesh->sideset( 1 )->domain_type(), DomainType::Periodic );
+    EXPECT_EQ( tBar.mMesh->sideset( 2 )->domain_type(), DomainType::Periodic );
+    EXPECT_EQ( tBar.mMesh->sideset( 3 )->domain_type(), DomainType::Default );
+}
+
+TEST( Periodicity, TypedSidesetOnPeriodicPlaneIsRefused )
+{
+    PeriodicBrick tBar( 1, 2, false );
+    tBar.add_lateral_sideset();
+    tBar.finalize();
+
+    tBar.mMesh->sideset( 1 )->set_domain_type( DomainType::AirSymmetry );
+
+    PeriodicityFactory tFactory( tBar.mMesh );
+    tBar.set_translation_planes( tFactory );
+
+    expect_refusal( [&]() { tFactory.tag_periodic_sidesets(); },
+        "sideset 1 lies on the master periodic plane but is declared "
+        + to_string( DomainType::AirSymmetry ) );
+
+    // the refusal leaves the typed sideset as it was
+    EXPECT_EQ( tBar.mMesh->sideset( 1 )->domain_type(), DomainType::AirSymmetry );
+}
+
+TEST( Periodicity, PeriodicTypedSidesetIsAccepted )
+{
+    PeriodicBrick tBar( 1, 2, false );
+    tBar.add_lateral_sideset();
+    tBar.finalize();
+
+    tBar.mMesh->sideset( 2 )->set_domain_type( DomainType::Periodic );
+
+    PeriodicityFactory tFactory( tBar.mMesh );
+    tBar.set_translation_planes( tFactory );
+    EXPECT_NO_THROW( tFactory.tag_periodic_sidesets() );
+
+    // the lateral sideset must carry nodes, or the tagger skips it and
+    // the Default expectation would hold for nothing
+    EXPECT_GT( tBar.mMesh->sideset( 3 )->nodes().size(), 0u );
+    EXPECT_EQ( tBar.mMesh->sideset( 1 )->domain_type(), DomainType::Periodic );
+    EXPECT_EQ( tBar.mMesh->sideset( 2 )->domain_type(), DomainType::Periodic );
+    EXPECT_EQ( tBar.mMesh->sideset( 3 )->domain_type(), DomainType::Default );
+}
+
