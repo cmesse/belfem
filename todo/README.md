@@ -142,6 +142,15 @@ one of the two must be retired before either is worked.
 
 ---
 
+## Added 2026-09-25
+
+### [mkl_num_threads_allrun.md](mkl_num_threads_allrun.md) — Allrun pins `MKL_NUM_THREADS` to `NTHREADS` beside `OMP_NUM_THREADS`, and `MKL_DYNAMIC` gets decided
+
+**OPEN 2026-09-25 — not started.** Since SCLS unified the `mkl` flavor on `gnu_thread`, ScaLAPACK's
+MKL BLAS runs threaded; an inherited `MKL_NUM_THREADS` overrides `OMP_NUM_THREADS` and defeats the
+oversubscription guard silently. R1–R5 (export + NOTE, Slurm path, policy doc, one measurement);
+O1 (`MKL_DYNAMIC`) is Christian's. No SCLS change (ruled 2026-09-25).
+
 ## Added 2026-09-24
 
 ### [closed/dr18x_cluster.md](closed/dr18x_cluster.md) — DR-184 / DR-182 / DR-186 / DR-187 / DR-166 as five small rounds — **CLOSED 2026-09-24**
