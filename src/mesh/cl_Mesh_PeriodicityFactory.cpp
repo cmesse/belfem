@@ -10,6 +10,7 @@
  */
 
 #include <map>
+#include <memory>
 #include <set>
 #include <vector>
 
@@ -25,6 +26,30 @@ namespace belfem
 {
     namespace mesh
     {
+        namespace
+        {
+            // Deletes every pointee, and with it the kd-tree containers inside
+            // each node; null slots are allowed.
+            struct TemporaryNodes
+            {
+                Cell< Node * > mNodes ;
+
+                TemporaryNodes() = default ;
+                TemporaryNodes( const TemporaryNodes & ) = delete ;
+                TemporaryNodes & operator=( const TemporaryNodes & ) = delete ;
+                TemporaryNodes( TemporaryNodes && ) = delete ;
+                TemporaryNodes & operator=( TemporaryNodes && ) = delete ;
+
+                ~TemporaryNodes()
+                {
+                    for ( Node * tNode : mNodes )
+                    {
+                        delete tNode ;
+                    }
+                }
+            };
+        }
+
         PeriodicityFactory::PeriodicityFactory( Mesh * aMesh, ProtoMesh * aProtoMesh ) :
             mMesh( aMesh ),
             mProtoMesh( aProtoMesh )
@@ -128,7 +153,10 @@ namespace belfem
             BELFEM_ERROR( mSourcePlane.size() == 3, "Master plane must have 3 nodes" );
             BELFEM_ERROR( mTargetPlane.size() == 3, "Slave plane must have 3 nodes" );
 
-            Periodicity * aPeriodicity = new Periodicity( mMesh ) ;
+            // exists for the refusal path, where a BELFEM_ERROR throws in throw
+            // mode; the accepted path hands the object to the caller as before
+            std::unique_ptr< Periodicity > tOwner( new Periodicity( mMesh ) );
+            Periodicity * aPeriodicity = tOwner.get() ;
 
             aPeriodicity->master_plane() = mSourcePlane;
             aPeriodicity->slave_plane()  = mTargetPlane;
@@ -136,7 +164,7 @@ namespace belfem
             aPeriodicity->slave_hesse()  = mTargetHesse;
 
             this->update_periodicity( aPeriodicity );
-            return aPeriodicity ;
+            return tOwner.release() ;
         }
 
         proto::PeriodicityData *
@@ -238,7 +266,10 @@ namespace belfem
 
             BELFEM_ASSERT( mProtoMesh != nullptr, "no proto mesh assigned to PeriodicityFactory" );
 
-            Periodicity * aPeriodicity = new Periodicity( mMesh ) ;
+            // exists for the refusal path, where a BELFEM_ERROR throws in throw
+            // mode; the accepted path hands the object to the caller as before
+            std::unique_ptr< Periodicity > tOwner( new Periodicity( mMesh ) );
+            Periodicity * aPeriodicity = tOwner.get() ;
 
             index_t tCount = 0 ;
             aPeriodicity->mMasterPlane.set_size( aData->mMasterPlane.size() );
@@ -329,7 +360,7 @@ namespace belfem
             // geometrically re-match a mesh that contains coincident duplicates
             aPeriodicity->mNodePairsRestored = true ;
 
-            return aPeriodicity ;
+            return tOwner.release() ;
         }
 
         void
@@ -474,12 +505,15 @@ namespace belfem
                 mSourceDistance,
                 tSourceSideSets );
 
-            Cell< Node * > tSourceNodes ;
+            // the centroid nodes are owned for the refusal path, where a
+            // BELFEM_ERROR throws in throw mode; the accepted path deletes them
+            // at the end of this function as before
+            TemporaryNodes tSourceNodes ;
             this->create_temporary_nodes(
                 mSourceTransform,
                 mSourceDistance,
                 tSourceSideSets,
-                tSourceNodes );
+                tSourceNodes.mNodes );
 
             Cell< SideSet * > tTargetSideSets ;
             this->select_sidesets(
@@ -487,12 +521,12 @@ namespace belfem
                 mTargetDistance,
                 tTargetSideSets );
 
-            Cell< Node * > tTargetNodes ;
+            TemporaryNodes tTargetNodes ;
             this->create_temporary_nodes(
                 mTargetTransform,
                 mTargetDistance,
                 tTargetSideSets,
-                tTargetNodes );
+                tTargetNodes.mNodes );
 
             Map< id_t, Facet * > tSourceMap ;
             for ( SideSet * tSideSet : tSourceSideSets )
@@ -510,19 +544,19 @@ namespace belfem
                     tTargetMap[ tFacet->id() ] = tFacet ;
                 }
             }
-            BELFEM_ERROR( tSourceNodes.size() == tTargetNodes.size(), "Number of facets does not match" );
+            BELFEM_ERROR( tSourceNodes.mNodes.size() == tTargetNodes.mNodes.size(), "Number of facets does not match" );
 
             // creating the tree
-            Node * tRoot = this->create_kdtree( tTargetNodes );
+            Node * tRoot = this->create_kdtree( tTargetNodes.mNodes );
 
             // now we rearrange the nodes in the target container
             index_t tCount = 0 ;
-            for ( Node * tNode : tTargetNodes )
+            for ( Node * tNode : tTargetNodes.mNodes )
             {
                 tNode->set_index( tCount++ );
             }
 
-            for ( Node * tSource : tSourceNodes )
+            for ( Node * tSource : tSourceNodes.mNodes )
             {
                 real tBestDist = BELFEM_REAL_MAX ;
                 Node * tTarget = this->find_closest_node(
@@ -539,7 +573,7 @@ namespace belfem
 
                 tSource->set_index( tTarget->index() );
             }
-            sort( tSourceNodes.begin(), tSourceNodes.end(), []( Node * a, Node * b ) { return a->index() < b->index(); } );
+            sort( tSourceNodes.mNodes.begin(), tSourceNodes.mNodes.end(), []( Node * a, Node * b ) { return a->index() < b->index(); } );
 
             // with the facet mapping in place, we can now set the periodicities
             aSourceFacets.set_size( tCount, nullptr );
@@ -547,22 +581,12 @@ namespace belfem
 
             for ( index_t k=0; k<tCount; ++k )
             {
-                Facet * A = tSourceMap( tSourceNodes( k )->id() );
-                Facet * B = tTargetMap( tTargetNodes( k )->id() );
+                Facet * A = tSourceMap( tSourceNodes.mNodes( k )->id() );
+                Facet * B = tTargetMap( tTargetNodes.mNodes( k )->id() );
                 A->set_index( k );
                 B->set_index( k );
                 aSourceFacets( k ) = A ;
                 aTargetFacets( k ) = B ;
-            }
-
-            // the temporary nodes have done their job, we can delete them now
-            for ( Node * tNode : tSourceNodes )
-            {
-                delete tNode ;
-            }
-            for ( Node * tNode : tTargetNodes )
-            {
-                delete tNode ;
             }
         }
 
