@@ -41,8 +41,10 @@ namespace
     // the contract under test: a Dirichlet condition imposed on a sideset
     // node whose dof is condensed onto ONE unit-weight source lands on that
     // SOURCE dof ( the alias stays unfixed and reconstructs through the
-    // T-matrix ); a non-unit single-source weight and a first free-to-fixed
-    // flip after initialize() are refused in every build
+    // T-matrix ); a non-unit single-source weight, a first free-to-fixed
+    // flip after initialize(), and a non-duplicate dof condensed onto more
+    // than one source are refused in every build. A duplicate node keeps
+    // the fix on its alias
 
     constexpr real tDirichletValue = 7.5 ;
 
@@ -93,10 +95,12 @@ namespace
             //! aWeight: weight of node 6 on node 3 ( node 5 always hangs on
             //! node 2 with unit weight ). With aTieToBothCorners, node 6
             //! hangs on nodes 3 and 2 with weights 0.5 each and aWeight is
-            //! ignored
+            //! ignored. With aMarkTieAsDuplicate, node 6 is a duplicate of
+            //! node 3 ( one-way link, no reverse registration on node 3 )
             explicit
             GluedStrip( const real aWeight = 1.0,
-                        const bool aTieToBothCorners = false )
+                        const bool aTieToBothCorners = false,
+                        const bool aMarkTieAsDuplicate = false )
             {
                 // third argument must stay false: connectivity computation
                 // would create edges in finalize() and the MeshChecker in
@@ -115,8 +119,14 @@ namespace
                 tNodes.push( new mesh::Node( 7, 2.0, 0.0 ) );
                 tNodes.push( new mesh::Node( 8, 2.0, 1.0 ) );
 
-                // the ties must exist before the Kernel is built: its ctor
-                // collects the hanging bases from the mesh
+                // the duplicate link and the ties must exist before the
+                // Kernel is built: its ctor collects the hanging bases from
+                // the mesh and walks element adjacency through original()
+                if ( aMarkTieAsDuplicate )
+                {
+                    tNodes( 5 )->set_original( tNodes( 2 ) );
+                }
+
                 {
                     Cell< mesh::Node * > tSources = { tNodes( 1 ) };
                     Vector< real >       tWeights( 1, 1.0 );
@@ -390,20 +400,48 @@ TEST( DirichletPin, ReimpositionAfterInitializationIsAccepted )
 
 //------------------------------------------------------------------------------
 
-TEST( DirichletPin, TwoSourcesFallBackToTheAliasFix )
+TEST( DirichletPin, TwoSourcesAreRefused )
 {
     if ( comm_size() != 1 )
     {
         GTEST_SKIP() << "serial-only fixture" ;
     }
 
-    // this locks the helper's documented fallback for the two-source shape:
-    // it returns false and the caller keeps fixing the alias ( a single
-    // non-unit source is refused instead, see above ). It does NOT show that
-    // the multi-source condition is enforced: the alias is eliminated from
-    // the system and reconstructed from its ( free ) sources, so with both
-    // sources outside the sideset the condition is lost
+    // a non-duplicate alias on two sources outside the sideset: the alias is
+    // eliminated from the system and reconstructed from its free sources
+    // after every solve, so a fix on it would be lost silently. The helper
+    // refuses this shape
     GluedStrip tStrip( 1.0, true );
+
+    fem::Dof * tAlias = tStrip.node_dof( 6 );
+
+    ASSERT_TRUE( tAlias->is_hanging() );
+    ASSERT_EQ( tAlias->number_of_sources(), 2u );
+
+    expect_refusal( [ & ]() { tStrip.impose_top( tDirichletValue ); },
+                    "condensed onto 2 sources" );
+
+    EXPECT_FALSE( tStrip.node_dof( 3 )->is_fixed() );
+    EXPECT_FALSE( tStrip.node_dof( 2 )->is_fixed() );
+}
+
+//------------------------------------------------------------------------------
+
+TEST( DirichletPin, DuplicateWithTwoSourcesKeepsTheAliasFix )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    // a duplicate never reaches the helper: a cut duplicate reconstructs as
+    // its original plus the cut currents at unit weight, and enforcing the
+    // value would constrain the sum of those currents, so the alias fix
+    // stays inert by design. This checks the flag before any solve; it does not show
+    // what the reconstruction makes of it
+    GluedStrip tStrip( 1.0, true, true );
+
+    ASSERT_TRUE( tStrip.mMesh->node( 6 )->is_duplicate() );
 
     fem::Dof * tAlias = tStrip.node_dof( 6 );
 

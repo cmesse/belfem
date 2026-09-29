@@ -37,13 +37,17 @@ namespace belfem
          * both sites apply ONE shape test. If the dof is condensed
          * onto a single source with unit weight, the SOURCE is fixed to
          * aValue / weight and the function returns true ( incrementing
-         * aNumFirstFlips when the source was still free ); every other shape
-         * returns false and the CALLER keeps its historical behaviour.
-         * BELFEM_ERRORs on a non-unit single-source weight, a broken source,
-         * or a first free-to-fixed flip after aParent->is_initialized().
-         * Call only for non-duplicate nodes: duplicate-pair condensations
-         * ( cuts, thin shells ) can carry an inhomogeneous relation that a
-         * plain source pin would violate.
+         * aNumFirstFlips when the source was still free ); a dof that is not
+         * hanging returns false and the CALLER fixes it directly.
+         * BELFEM_ERRORs on a hanging dof with more than one source ( the
+         * reconstruction would overwrite a fix on the alias after every
+         * solve ), a non-unit single-source weight, a broken source, or a
+         * first free-to-fixed flip after aParent->is_initialized().
+         * Call only for non-duplicate nodes: a cut duplicate hangs on its
+         * original plus the cut currents at unit weight, and its caller
+         * fixes the alias deliberately, where the fix is inert: enforcing
+         * the value would constrain the sum of those currents, to zero
+         * when the original is held at the same value.
          */
         bool
         pin_dirichlet_dof(

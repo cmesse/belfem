@@ -41,13 +41,20 @@ namespace belfem
                 const id_t             aNodeID,
                       index_t        & aNumFirstFlips )
         {
-            // only the single-source unit-weight condensation shape is
-            // safely reroutable ( see header ); everything else is the
-            // caller's business
-            if ( ! ( aDof->is_hanging() && aDof->number_of_sources() == 1 ) )
+            // a plain dof is the caller's business ( see header )
+            if ( ! aDof->is_hanging() )
             {
                 return false ;
             }
+
+            // the reconstruction overwrites an alias from its free sources
+            // after every solve, so fixing the alias of a multi-source
+            // condensation would drop the condition silently
+            BELFEM_ERROR( aDof->number_of_sources() == 1,
+                "Dirichlet group %lu ( node %lu ): the dof is condensed onto %u sources; a Dirichlet value on such an alias is not enforced ( the reconstruction overwrites it after every solve ) - only a single-source unit-weight condensation or a cut duplicate is supported on a Dirichlet group",
+                ( long unsigned int ) aGroupID,
+                ( long unsigned int ) aNodeID,
+                ( unsigned int ) aDof->number_of_sources() );
 
             const real tWeight = aDof->weight( 0 );
 
@@ -327,21 +334,15 @@ namespace belfem
                 Dof * tDof = mParent->dof(
                         mParent->calculate_dof_id( tNode, aDofType ) );
 
-                // A condensed ( hanging ) dof is eliminated from the system;
-                // fix() on it is historically ineffective for elimination —
-                // the T-matrix reconstructs its value from the sources. For a
-                // NON-DUPLICATE node with a single-source unit-weight
-                // condensation the source sits outside this sideset and the
-                // constraint would be lost silently — the shared
-                // helper pins the source instead ( same rule as the Maxwell
-                // factory pre-fix; Bearing::impose_dirichlet is the
-                // template ). Everything else keeps the historical
-                // behaviour: a multi-source condensation ( e.g. a refinement
-                // hanging node, whose sources this loop typically fixes
-                // itself ) is indistinguishable from other provenances at
-                // the Dof level, and duplicate-pair condensations ( cuts,
-                // thin shells ) can carry an inhomogeneous relation that a
-                // plain source pin would violate
+                // A plain dof takes the direct fix. A single-source
+                // unit-weight condensation is rerouted by the helper to its
+                // source, which sits outside this sideset. A DUPLICATE keeps
+                // the fix on its alias on purpose, although the fix is
+                // inert: a cut duplicate reconstructs as its original plus
+                // the cut currents at unit weight ( CutSet ), and enforcing
+                // the value would constrain the sum of those currents, to
+                // zero when the original is held at the same value. Any
+                // other hanging shape is refused inside the helper
                 if ( tNode->is_duplicate()
                      || ! pin_dirichlet_dof( mParent, tDof, aValue,
                                              this->id(), tNode->id(),

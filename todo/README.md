@@ -153,6 +153,13 @@ O1 (`MKL_DYNAMIC`) is Christian's. No SCLS change (ruled 2026-09-25).
 
 ## Added 2026-09-24
 
+### [closed/ruled_refusals_cluster.md](closed/ruled_refusals_cluster.md) — DR-162, DR-171, DR-172: the side-connector guard and refusal in both linkers, the material-deck contradiction refusals with both input artifacts, the narrow multi-source Dirichlet refusal — **CLOSED 2026-09-29**
+
+Three commits behind one plan jury, one code jury (astra/high + grok-4.7/high) and a quick check on
+the fix delta; `make check` green in release and debug; the gantry/costheta probe counted zero
+multi-source hanging nodes on all 16 Dirichlet sidesets. R1, R9, R10 of `test_gap_followups.md`
+ticked. Residue: a new `[W]` row for the per-rank half of the linker entry gate.
+
 ### [closed/dr18x_cluster.md](closed/dr18x_cluster.md) — DR-184 / DR-182 / DR-186 / DR-187 / DR-166 as five small rounds — **CLOSED 2026-09-24**
 
 The five register rows Christian ruled on 2026-09-24, each its own diff and gate in one session. A scratchpad oracle over all 32 Lagrange element types proved DR-184 is one token (QUAD16 facet 1 only). Premise correction on DR-187: the block `default:` arm is unreachable (the selection is the same four types) and the sideset loop is dead (the thermal equation selects no sidesets), so thermal sideset conditions are unsupported today (a Dirichlet one dereferences a null dummy, a Neumann one is refused at parse), not silently inactive. Landed behind plan jury, code jury and a narrow xhigh round 2; the code jury found the DR-186 Lawrencium mechanism (rank 0's dof manager returns a null-material empty block for blocks it does not own), so the guards are always-active refusals with the material taken by label. Owed: `make check`, a 2-rank deck run, the commit.

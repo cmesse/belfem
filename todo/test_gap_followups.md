@@ -7,7 +7,7 @@ them so the next session can land each through the standing loop (plan → jury 
 consumer inventory before anything that changes a value or refuses an input.
 **Module:** `src/mesh`, `src/fem/kernel`, `src/physics/materials`, `src/io`, `tests/`
 **AIs involved:** Claude (plan + orchestration), Codex and Grok (juries), Opus (implementation)
-**Status:** OPEN — 2 of 12 steps done (R8, R11); every step ruled by Christian on 2026-09-22 unless marked; R7 and R10 re-ruled 2026-09-24
+**Status:** OPEN — 5 of 12 steps done (R1, R8, R9, R10, R11); R1, R9, R10 landed 2026-09-29 via `todo/closed/ruled_refusals_cluster.md`; every step ruled by Christian on 2026-09-22 unless marked; R7 and R10 re-ruled 2026-09-24
 
 > **Scope guards:**
 > - Each item is its own row: own-files diff, jury, gate in both trees, one commit.
@@ -17,7 +17,7 @@ consumer inventory before anything that changes a value or refuses an input.
 
 ## 1. Steps
 
-- [ ] **R1 (D12, DR-162)** Guard the serial side-connector loop in `cl_FEM_DofMgr_BlockData.cpp`
+- [x] **R1 (D12, DR-162)** — landed 2026-09-29 (`ruled_refusals_cluster.md` R1-R2; guard in both linkers, refusal on a connector without its layer block, entry gate widened, four fixture cases). Original text: Guard the serial side-connector loop in `cl_FEM_DofMgr_BlockData.cpp`
   (`:481`, `:501`) with `key_exists` as the parallel twin does (`:617`, `:660-661`); add a
   side-connector fixture to `tests/fem/test_ThinShellSelection.cpp`. Ruled: partial selection is
   SUPPORTED. Depth astra/high.
@@ -47,12 +47,12 @@ consumer inventory before anything that changes a value or refuses an input.
   discriminant (`powerlaws.hpp:1839-1842`) by the frozen-knot fallback `drho_piecewise_dT` uses
   (`:2305-2307`). Ruled: `n = 4` is legal; the abort tier in a Newton tangent is the defect.
   Depth terra/high.
-- [ ] **R9 (D22, DR-171)** `MaterialFactory`: refuse contradictions, allow agreeing redundancy
+- [x] **R9 (D22, DR-171)** — landed 2026-09-29 (`ruled_refusals_cluster.md` R3-R8; rule C for the curve exemption, both input artifacts). Original text: `MaterialFactory`: refuse contradictions, allow agreeing redundancy
   (`builtin : pb40sn60rrr5 ; RRR : 5 ;` passes, `RRR : 100` beside it is refused naming both;
   `builtin` beside `curve` naming a different material is refused). Update
   `doc/input_file_reference.md` and `doc/input_schema.yaml` in the same session (input contract
   rule). Depth terra/high.
-- [ ] **R10 (D23, DR-172)** **Confirmed 2026-09-24 (quiz).** NARROW refusal only: `BELFEM_ERROR` on
+- [x] **R10 (D23, DR-172)** — landed 2026-09-29 (`ruled_refusals_cluster.md` R9-R10; refusal in the shared helper, gantry + costheta probe counts zero). **Confirmed 2026-09-24 (quiz).** NARROW refusal only: `BELFEM_ERROR` on
   `is_hanging() && number_of_sources() > 1 && ! is_duplicate()` in the `impose_dirichlet` fallback
   (`cl_FEM_SideSet.cpp:344-350`), naming sideset, node and sources as `Bearing::impose_dirichlet`
   does (`cl_FEM_Bearing.cpp:151-157`); the duplicate branch stays inert and is documented as
