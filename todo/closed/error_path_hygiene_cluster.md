@@ -18,8 +18,8 @@ grok-4.7/high, 18 findings, none refuted), one code jury (astra/xhigh + grok-4.7
 probe, four P2, two P3) and a terra/medium quick check on the fix delta F1-F6. Verified on a private
 non-MKL tree against `/opt/scls/debug`: valgrind clean of every BELFEM frame on the three refusal filters
 after a positive control at `HEAD` showed the leaks; the DR-165 assertion red at `HEAD` and green on the
-fix; io 67/67, mesh 130/130, fem 299/299, physics 158 + 1 pre-existing skip. Owed: `make check` in the
-shared tree (Christian). Residue: DR-190 widened with the `DofManager` ownership gap; DR-191 filed for the
+fix; io 67/67, mesh 130/130, fem 299/299, physics 158 + 1 pre-existing skip; Christian's `make check` in
+the shared tree 17/17 (2026-09-29). Residue: DR-190 widened with the `DofManager` ownership gap; DR-191 filed for the
 uninitialised read in `Lead::kohler` / `WhiteTin::kohler` the new table-building case exposed
 
 > **Scope guards:**
@@ -279,7 +279,7 @@ built or run at this point):**
   natively io 67/67, mesh 130/130, fem 299/299, physics 158 + 1 pre-existing skip. **(b) ran
   2026-09-29:** the `HEAD` worktree with only the accessors and the test rebuilt, `test_io` red with open
   datasets 1, 2, 3, 4 and datatypes 1, 2, 3 across the refused reads; green on the diff. **(a) `make
-  check` in the shared tree: owed (Christian).**
+  check` in the shared tree, Christian, 2026-09-29: 17/17, fast 8 + mpi 4, 21.39 s real.**
 
 **Defects and residues found during implementation:**
 

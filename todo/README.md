@@ -148,7 +148,7 @@ one of the two must be retired before either is worked.
 
 **CLOSED 2026-09-29.** Three commits (`cd71661`, `84df884`, the DR-175 commit) behind one plan jury, one
 xhigh code jury and a quick check; valgrind clean on a non-MKL tree with a positive control at `HEAD`; the
-DR-165 assertion seen red then green. DR-190 widened, DR-191 filed. Christian's `make check` owed.
+DR-165 assertion seen red then green. DR-190 widened, DR-191 filed. Christian's `make check` 17/17.
 Two mechanisms only: check before allocate where the predicate reads inputs (the alloy's RRR gate
 and component names), a scope owner at setup scope where it does not (a handle owner struct for the
 eight loaders, `unique_ptr` for the `Periodicity` and each factory product, a try/catch-rethrow for

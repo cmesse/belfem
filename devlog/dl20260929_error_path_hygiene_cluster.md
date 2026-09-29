@@ -20,7 +20,7 @@ this entry); the three rows struck; DR-190 widened with the `DofManager` residue
 pre-existing skip; `valgrind --leak-check=full` over the refusal filters clean of every BELFEM frame, after
 a positive control on a worktree at `HEAD` (`2fc3ba3`) that showed the leaks at the filed sites; the DR-165
 object-count assertion red on that `HEAD` worktree (1, 2, 3, 4 open datasets across the refused reads) and
-green on the diff. **Not run: `make check` in the shared trees** (Christian's, owed) and the MPI suites
+green on the diff. **`make check` in the shared tree, Christian, 2026-09-29: 17/17** (fast 8 tests, 12.63 s·proc; mpi 4 tests, 3.13 s·proc; 21.39 s real). Not run: the other shared tree
 **Exchange:** `tmp/ai_exchange/review_error_path_hygiene.md` (plan round, code round, fix step, quick check in
 one thread), `review_error_path_hygiene{,_fix,_v2}.diff`
 
@@ -93,7 +93,7 @@ evidence for the no-order claim).
 | same filters on the diff | working tree, non-MKL | 29 / 29 / 29 records, every frame `Communicator::init_thread` (the Open MPI baseline) |
 | the DR-165 assertion at `HEAD` with only the accessors and the test | worktree at `HEAD` | red: open datasets 1, 2, 3, 4 and datatypes 1, 2, 3 across the refused reads |
 | the four suites natively on the diff | working tree, non-MKL | io 67/67, mesh 130/130, fem 299/299, physics 158 + 1 pre-existing skip |
-| `make check` in `cmake-build-debug` | shared | **owed (Christian)** |
+| `make check` | shared, Christian | 17/17, fast 8 + mpi 4, 21.39 s real |
 
 The new rho-database case costs 6.7 s in that debug build; `test_physics` carries no `fast` label, so
 `check-fast` is untouched.
