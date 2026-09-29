@@ -14,10 +14,9 @@
  *
  * Both factories are built straight from a 'boundary conditions' section; no
  * mesh is involved. They hand ownership of their conditions to the kernel, so
- * an accepted deck deletes them here. On a refused deck the condition and its
- * source function created before the throw leak: the factory has no
- * destructor that owns them, and one condition per refused deck bounds that
- * to a single case.
+ * an accepted deck deletes them here. On a refused deck the factory frees
+ * what it built before the throw: every condition, with the source function
+ * it already owns, and the function of the condition being refused.
  */
 
 #include <gtest/gtest.h>
@@ -208,6 +207,18 @@ TEST( AdmissionRefusals, MaxwellBcWithoutExpkStillBuilds )
 }
 
 //------------------------------------------------------------------------------
+
+// the first section is built with its function before the second is refused,
+// so the refusal runs over a condition that already owns its function. The
+// freeing itself can only turn red under valgrind
+TEST( AdmissionRefusals, ARefusedSecondMaxwellBcFreesTheFirst )
+{
+    const std::string tMessage = maxwell_refusal( "expk_mx_second.conf",
+        background( gMaxwellConstant, false ) + "\n" + background( gMaxwellSigmoid, true ) );
+    EXPECT_TRUE( contains( tMessage, gExpkRefusal ) ) << tMessage ;
+}
+
+//------------------------------------------------------------------------------
 // thermal
 //------------------------------------------------------------------------------
 
@@ -236,4 +247,14 @@ TEST( AdmissionRefusals, ThermalBcWithoutExpkStillBuilds )
     tMessage = thermal_refusal( "noexpk_th_constant.conf",
                                 dirichlet( gThermalConstant, false ) );
     EXPECT_EQ( tMessage, "" );
+}
+
+//------------------------------------------------------------------------------
+
+// the thermal twin of ARefusedSecondMaxwellBcFreesTheFirst
+TEST( AdmissionRefusals, ARefusedSecondThermalBcFreesTheFirst )
+{
+    const std::string tMessage = thermal_refusal( "expk_th_second.conf",
+        dirichlet( gThermalConstant, false ) + "\n" + dirichlet( gThermalSigmoid, true ) );
+    EXPECT_TRUE( contains( tMessage, gExpkRefusal ) ) << tMessage ;
 }

@@ -8,6 +8,8 @@
  * 
  * See the top-level LICENSE file for the complete license and disclaimer.
  */
+#include <memory>
+
 #include "commtools.hpp"
 
 #include "fn_sum.hpp"
@@ -30,6 +32,34 @@
 
 namespace belfem
 {
+    namespace
+    {
+        // owns the tensor scratch of Alloy::create_tables, so a refusal
+        // inside the self-consistent iteration frees it
+        struct TensorScratch
+        {
+            Cell< Tensor< real > * > mTensors ;
+
+            explicit TensorScratch( const index_t aSize ) :
+                mTensors( aSize, nullptr )
+            {
+            }
+
+            TensorScratch( const TensorScratch & ) = delete ;
+            TensorScratch( TensorScratch && ) = delete ;
+            TensorScratch & operator=( const TensorScratch & ) = delete ;
+            TensorScratch & operator=( TensorScratch && ) = delete ;
+
+            ~TensorScratch()
+            {
+                for ( Tensor< real > * tTensor : mTensors )
+                {
+                    delete tTensor ;
+                }
+            }
+        };
+    }
+
     namespace material
     {
         Alloy::Alloy( const string & aName, const bool aBuildTables ) :
@@ -131,6 +161,26 @@ namespace belfem
             BELFEM_ERROR( aMassFractions.length() == aComponents.size(),
                 "Mass fractions must be the same size as the number of components" );
 
+            // the RRR and the component names are checked before anything is
+            // built, so their refusals allocate nothing
+            real tRRR = RRR ;
+
+            if ( std::isnan( tRRR ) && this->is_constant( MaterialProperty::RRR ) )
+            {
+                tRRR = this->constant_property( MaterialProperty::RRR );
+            }
+
+            BELFEM_ERROR( !std::isnan( tRRR ) && tRRR > 1.0,
+                "Alloy '%s' requires a valid RRR > 1 (got %f)",
+                this->label().c_str(), tRRR );
+
+            for ( const string & tName : aComponents )
+            {
+                BELFEM_ERROR( MaterialFactory::is_pure_metal_label( tName ),
+                    "Alloy '%s' names the component '%s', which is not a known pure metal",
+                    this->label().c_str(), tName.c_str() );
+            }
+
             this->delete_components();
 
             uint n = aComponents.size() ;
@@ -172,19 +222,6 @@ namespace belfem
             this->set_constant( MaterialProperty::T_max, tTmax );
             this->set_constant( MaterialProperty::M, dot( X, M ) );
 
-            // check if the RRR value has already been set
-            real tRRR = RRR ;
-
-            if ( std::isnan( tRRR ) && this->is_constant( MaterialProperty::RRR ) )
-            {
-                tRRR = this->constant_property( MaterialProperty::RRR );
-            }
-
-            // compute the alloy's residual resistivity from the user-specified RRR
-            BELFEM_ERROR( !std::isnan( tRRR ) && tRRR > 1.0,
-                "Alloy '%s' requires a valid RRR > 1 (got %f)",
-                this->label().c_str(), tRRR );
-
             real tRhoI = 0.0 ;
             for ( uint i = 0; i < n; ++i )
             {
@@ -192,10 +229,25 @@ namespace belfem
             }
             this->set_constant( MaterialProperty::rho_0, tRhoI / ( tRRR - 1.0 ) );
             this->set_constant( MaterialProperty::RRR, tRRR );
-            this->create_tables();
-            if ( mComputeTables )
+
+            // a refusal in the table build leaves the alloy without
+            // components and without a database, the state the destructor
+            // would produce. Reached in throw mode only: a release build
+            // aborts inside BELFEM_ERROR
+            try
             {
-                this->populate_rho_database();
+                this->create_tables();
+                if ( mComputeTables )
+                {
+                    this->populate_rho_database();
+                }
+            }
+            catch ( ... )
+            {
+                this->delete_components() ;
+                delete mRhoData ;
+                mRhoData = nullptr ;
+                throw ;
             }
 
             bool tIsMu0 = true ;
@@ -238,11 +290,11 @@ namespace belfem
             string tName = string_to_lower( aName );
 
             MaterialFactory tFactory;
-            Material * tMaterial = tFactory.create_material( tName, BELFEM_QUIET_NAN, false );
+            std::unique_ptr< Material > tMaterial( tFactory.create_material( tName, BELFEM_QUIET_NAN, false ) );
 
             BELFEM_ERROR( tMaterial->type() == MaterialType::PureMetal , "%s is not a pure metal", aName.c_str() );
 
-            Metal * aMetal = reinterpret_cast< Metal * >( tMaterial );
+            Metal * aMetal = reinterpret_cast< Metal * >( tMaterial.release() );
 
             real rho_0 = aMetal->constant_property( MaterialProperty::rho0_pure );
 
@@ -283,7 +335,8 @@ namespace belfem
             Vector< real > rho( n );    // means electric resistivity
             Vector< real > w( n );
 
-            Cell< Tensor< real > * > tTensors( n+8, nullptr );
+            TensorScratch tScratch( n+8 );
+            Cell< Tensor< real > * > & tTensors = tScratch.mTensors ;
             for ( index_t k=0; k<n+8; ++k )
             {
                 tTensors( k ) = new Tensor< real > ( 3, 3, 3, 3 );
@@ -411,13 +464,6 @@ namespace belfem
                 T+=dT;
             }
 
-
-            for ( Tensor< real > * tTensor : tTensors )
-            {
-                delete tTensor ;
-            }
-            tTensors.clear();
-
             spline::SplineBC tStartBC = spline::SplineBC::Tangent ;
             spline::SplineBC tEndBC = spline::SplineBC::Parabolic  ;
 
@@ -451,10 +497,8 @@ namespace belfem
         void
         Alloy::populate_rho_database()
         {
-            if ( mRhoData != nullptr )
-            {
-                delete mRhoData ;
-            }
+            delete mRhoData ;
+            mRhoData = nullptr ;
 
             string tFile = sprint( "%s_RRR%u.hdf5" ,
                 this->label().c_str(),

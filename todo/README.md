@@ -28,7 +28,7 @@ checkboxes, `On` open questions, definition-of-done, audit trail.
 ## Currentness sweep 2026-09-03 — round 3: purpose-served and relevance
 - [closed/smith_inverse_grouped_terminals.md](closed/smith_inverse_grouped_terminals.md) — branch `Claude` experiment: unit-normalized Smith diagonal + weighted cut jump for bracket groups whose curves cross one conductor k times (Rutherford 5×); evidence for Gregory, never merged. ✅ COMPLETE 2026-09-19, report in devlog — **CLOSED 2026-09-23**
 
-**Active plans: 5** (`test_gap_backlog` added 2026-09-21; 6 after round 3; `user_api_header_install` split and deferred 2026-09-04,
+**Active plans: 8** (the eight `.md` files beside `README.md`, `plan_template.md` and the two registers, counted 2026-09-29; `error_path_hygiene_cluster` added and closed 2026-09-29; `test_gap_backlog` added 2026-09-21; 6 after round 3; `user_api_header_install` split and deferred 2026-09-04,
 `linalg_backend_verification` closed 2026-09-04 — see their entries). Rounds 1 and 2 (below) took the directory from 57 to 29 by asking whether a
 plan's work was in the tree. Christian's review of the 29 set a sharper standard, and round 3
 applied it: **a plan is closed when its purpose is served in the tree, even if its own refined
@@ -141,6 +141,22 @@ doc pass) directly contradicts `rho_lambda_b_first_reorder` (Christian's B-first
 one of the two must be retired before either is worked.
 
 ---
+
+## Added 2026-09-29
+
+### [closed/error_path_hygiene_cluster.md](closed/error_path_hygiene_cluster.md) — DR-165, DR-167, DR-175: the HDF5 loaders' dataset handles, the periodicity factory's centroid nodes and object under construction, the material and boundary-condition factories' products, each owned across its refusal
+
+**CLOSED 2026-09-29.** Three commits (`cd71661`, `84df884`, the DR-175 commit) behind one plan jury, one
+xhigh code jury and a quick check; valgrind clean on a non-MKL tree with a positive control at `HEAD`; the
+DR-165 assertion seen red then green. DR-190 widened, DR-191 filed. Christian's `make check` owed.
+Two mechanisms only: check before allocate where the predicate reads inputs (the alloy's RRR gate
+and component names), a scope owner at setup scope where it does not (a handle owner struct for the
+eight loaders, `unique_ptr` for the `Periodicity` and each factory product, a try/catch-rethrow for
+the products a throwing factory constructor already handed to a member). The `JcFunctionDatabase`
+clause of DR-175 was already closed by `bc1ca8c`. Gates: an `HDF5::number_of_open_objects()`
+assertion for DR-165, valgrind on a non-MKL tree for DR-167/175 with a positive control on `HEAD`.
+O2 (second-layer mechanism), O4 (the half-built `DofManager`, kernel, out of scope), O5 (the
+valgrind tree) are Christian's.
 
 ## Added 2026-09-25
 
@@ -1509,6 +1525,7 @@ parking.
 ---
 
 ## Closed ([`closed/`](closed/))
+- [error_path_hygiene_cluster.md](closed/error_path_hygiene_cluster.md) — **CLOSED 2026-09-29** — DR-165 / 167 / 175: scope owners on every refusal path of the HDF5 loaders, the periodicity factory and the three material and boundary-condition factories; valgrind gate with a positive control.
 
 Completed, resolved, or done. Retained for the historical record.
 

@@ -9,6 +9,8 @@
  * See the top-level LICENSE file for the complete license and disclaimer.
  */
 
+#include <memory>
+
 #include "assert.hpp"
 #include "stringtools.hpp"
 #include "fn_check_unit.hpp"
@@ -116,6 +118,27 @@ namespace belfem
 
     MaterialFactory::MaterialFactory( const input::Section* aSection, const bool aBuildTables )
     {
+        // a constructor that throws runs no destructor, so the materials
+        // already in the map would be stranded. Reached in throw mode only:
+        // a release build aborts inside BELFEM_ERROR
+        try
+        {
+            this->create_materials( aSection, aBuildTables ) ;
+        }
+        catch ( ... )
+        {
+            for ( auto & tEntry : mMaterialsMap )
+            {
+                delete tEntry.second ;
+            }
+            mMaterialsMap.clear() ;
+            throw ;
+        }
+    }
+
+    void
+    MaterialFactory::create_materials( const input::Section * aSection, const bool aBuildTables )
+    {
         uint n = aSection->num_sections();
 
         for ( uint d=0; d<n; ++d )
@@ -123,7 +146,7 @@ namespace belfem
             const input::Section * tMatSection = aSection->section( d ) ;
             string tMatLabel = tMatSection->type();
 
-            Material * tMat = nullptr ;
+            std::unique_ptr< Material > tMat ;
 
             // Ferromagnetic material: pull a named B-H curve from an HDF5
             // database, e.g.
@@ -151,7 +174,7 @@ namespace belfem
                 const string tBhFile = tMatSection->key_exists( "bhfile" )
                     ? tMatSection->get_string( "bhfile" ) : "bhdata.hdf5" ;
 
-                tMat = new material::Iron( BELFEM_QUIET_NAN, false ) ;
+                tMat.reset( new material::Iron( BELFEM_QUIET_NAN, false ) ) ;
                 tMat->load_bh_curve(
                     this->create_bh_curve( tBhFile, tMatSection->get_string( "curve" ) ) ) ;
 
@@ -172,7 +195,10 @@ namespace belfem
                     "definition used to win silently and leak the earlier one.",
                     tMatLabel.c_str() ) ;
 
-                mMaterialsMap[ tMatLabel ] = tMat ;
+                // the insert may throw, so the owner keeps the material
+                // until the slot exists
+                Material * & tSlot = mMaterialsMap[ tMatLabel ] ;
+                tSlot = tMat.release() ;
                 continue ;
             }
 
@@ -228,7 +254,7 @@ namespace belfem
                     }
                 }
 
-                tMat = create_material( tMatType, tRRR, aBuildTables ) ;
+                tMat.reset( create_material( tMatType, tRRR, aBuildTables ) ) ;
                 switch ( tMat->type() )
                 {
                     case MaterialType::HTS :
@@ -317,7 +343,7 @@ namespace belfem
                     //Access the user defined material library
                     string tMatLib = tUserMatSection->get_string( "file" ) ;
                     BELFEM_ERROR( tUserMatSection->key_exists( "label" ), "A 'usermat' section requires a 'label' key naming the plugin's init symbol." ) ;
-                    tMat = create_material( tUserMatSection->get_string( "file" ), tUserMatSection->get_string( "label" ) ) ;
+                    tMat.reset( create_material( tUserMatSection->get_string( "file" ), tUserMatSection->get_string( "label" ) ) ) ;
 
                     if ( tMat->have(MaterialProperty::jc) ) // check if is userdefined superconductor
                     {
@@ -518,7 +544,8 @@ namespace belfem
                 "used to win silently and leak the earlier one.",
                 tMatLabel.c_str() ) ;
 
-            mMaterialsMap[tMatLabel] = tMat ;
+            Material * & tSlot = mMaterialsMap[ tMatLabel ] ;
+            tSlot = tMat.release() ;
         }
     }
 
@@ -697,6 +724,14 @@ namespace belfem
         }
 
         return tHaveMetal ? BuiltinKind::OtherKnown : BuiltinKind::Unknown ;
+    }
+
+//------------------------------------------------------------------------------
+
+    bool
+    MaterialFactory::is_pure_metal_label( const string & aLabel )
+    {
+        return is_pure_metal( builtin_name( string_to_lower( aLabel ) ) ) ;
     }
 
 //------------------------------------------------------------------------------

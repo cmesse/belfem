@@ -38,6 +38,11 @@ namespace belfem
 
             Cell < PhysicalBoundaryCondition * > mPhysicalBoundaryConditions ; //the boundary conditions are actually owned by the Kernel
 
+            // the body of the input-section constructor; the constructor
+            // frees the conditions if it throws
+            void
+            create_conditions( const input::Section * aSection ) ;
+
         public:
 
             ThermalBoundaryConditionFactory() ;

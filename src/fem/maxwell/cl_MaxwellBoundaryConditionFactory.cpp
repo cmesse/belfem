@@ -9,6 +9,7 @@
  * See the top-level LICENSE file for the complete license and disclaimer.
  */
 
+#include <memory>
 #include <variant>
 #include "cl_MaxwellBoundaryConditionFactory.hpp"
 #include "cl_Vector.hpp"
@@ -23,6 +24,30 @@ namespace belfem
 
         MaxwellBoundaryConditionFactory::MaxwellBoundaryConditionFactory( const input::Section * aSection, const uint aNumberOfDimensions ) :
             mNumDimensions( aNumberOfDimensions )
+        {
+            // a constructor that throws runs no destructor, so the conditions
+            // already built would be stranded; each condition deletes its own
+            // source function, which is null until it is stored. Reached in
+            // throw mode only: a release build aborts inside BELFEM_ERROR
+            try
+            {
+                this->create_conditions( aSection ) ;
+            }
+            catch ( ... )
+            {
+                for ( PhysicalBoundaryCondition * tBC : mPhysicalBoundaryConditions )
+                {
+                    delete tBC ;
+                }
+                mPhysicalBoundaryConditions.clear() ;
+                throw ;
+            }
+        }
+
+//-------------------------------------------------------------------------------
+
+        void
+        MaxwellBoundaryConditionFactory::create_conditions( const input::Section * aSection )
         {
             BELFEM_ERROR( aSection->type()=="boundary conditions" || aSection->parent()->type()=="boundary conditions" ,"Maxwell Boundary Condition Factory should be defined with a Boundary Condition section" ) ;
             uint n = aSection->num_sections();
@@ -372,7 +397,7 @@ namespace belfem
                     }
 
                     //Define the function on the boundary
-                    SourceFunction * tFunction = new SourceFunction() ;
+                    std::unique_ptr< SourceFunction > tFunction( new SourceFunction() ) ;
                     switch ( tType )
                     {
                         case BoundaryConditionType::Bearing :
@@ -557,7 +582,7 @@ namespace belfem
                         }
 
                     }
-                    mPhysicalBoundaryConditions( tCount-i )->set_function( tFunction ) ;
+                    mPhysicalBoundaryConditions( tCount-i )->set_function( tFunction.release() ) ;
                 }
 
 

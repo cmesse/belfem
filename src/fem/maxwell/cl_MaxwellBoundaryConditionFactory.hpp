@@ -44,6 +44,11 @@ namespace belfem
             Map< string, uint > mGlobalNameCount ;
             Map< string, uint > mGlobalNameSeen ;
 
+            // the body of the input-section constructor; the constructor
+            // frees the conditions if it throws
+            void
+            create_conditions( const input::Section * aSection ) ;
+
 
         public:
 

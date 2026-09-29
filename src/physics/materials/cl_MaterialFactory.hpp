@@ -74,6 +74,11 @@ namespace belfem
     {
 
         Map < string ,Material * > mMaterialsMap ; //the material map, with labels as keys
+
+        // the body of the input-section constructor; the constructor frees
+        // the map if it throws
+        void
+        create_materials( const input::Section * aSection, const bool aBuildTables );
 //------------------------------------------------------------------------------
     public:
 //------------------------------------------------------------------------------
@@ -161,6 +166,15 @@ namespace belfem
          */
         static bool
         curve_tolerates_builtin( const string & aValue );
+
+        /**
+         * @brief Whether a name is an alias of a builtin pure metal
+         *
+         * Case-insensitive; builds no material. An alloy formula is not a
+         * pure metal, even though create_material() types it PureMetal.
+         */
+        static bool
+        is_pure_metal_label( const string & aLabel );
 
 //------------------------------------------------------------------------------
 

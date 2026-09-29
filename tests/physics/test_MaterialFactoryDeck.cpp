@@ -22,16 +22,19 @@
  * leave the power law finite, with ec defaulted when none is given.
  *
  * Every factory here is built with tables off: no rho database is written
- * into the working directory; the temperature splines are still built. On a
- * refused deck whatever was built before the throw leaks: the factory does
- * not own its materials, a throwing constructor runs no destructor, and an
- * alloy refused inside its own constructor leaks its components too. One
- * material per refused deck bounds that to a single case.
+ * into the working directory; the temperature splines are still built. The
+ * one exception, the stale rho database, builds its tables in a scratch
+ * working directory of its own. On a refused deck the factory frees the
+ * materials it built before the throw, and an alloy refused inside its own
+ * constructor frees its components; that freeing can only turn red under
+ * valgrind.
  */
 
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <stdexcept>
 #include <string>
@@ -91,6 +94,41 @@ namespace
         ~Deck()
         {
             std::remove( mPath.c_str() );
+        }
+    };
+
+    // a fresh directory under the test temp directory, made the working
+    // directory for the guard's lifetime; on scope exit the previous working
+    // directory is restored and this one removed with its contents
+    class WorkDir
+    {
+        const std::filesystem::path mPrevious ;
+        std::filesystem::path mPath ;
+
+    public:
+
+        explicit WorkDir( const std::string & aName ) :
+            mPrevious( std::filesystem::current_path() )
+        {
+            std::string tTemplate = ::testing::TempDir() + aName + "_XXXXXX" ;
+            if ( mkdtemp( tTemplate.data() ) == nullptr )
+            {
+                throw std::runtime_error( "could not create a directory from " + tTemplate );
+            }
+            mPath = tTemplate ;
+            std::filesystem::current_path( mPath );
+        }
+
+        WorkDir( const WorkDir & ) = delete ;
+        WorkDir( WorkDir && ) = delete ;
+        WorkDir & operator=( const WorkDir & ) = delete ;
+        WorkDir & operator=( WorkDir && ) = delete ;
+
+        ~WorkDir()
+        {
+            std::error_code tIgnored ;
+            std::filesystem::current_path( mPrevious, tIgnored );
+            std::filesystem::remove_all( mPath, tIgnored );
         }
     };
 
@@ -189,6 +227,35 @@ TEST( AlloyRRR, AlloyWithoutValidRRRIsRefused )
     tMessage = refusal( "alloy_rrr_one",
         "    solder\n    {\n        builtin : pb40sn60 ;\n        RRR : 1 ;\n    }" );
     EXPECT_TRUE( contains( tMessage, gAlloyRefusal ) ) << tMessage ;
+}
+
+// the rho database is cached in the working directory under a name that
+// carries the RRR as an integer, so RRR 5 and 5.5 share Pb40Sn60_RRR5.hdf5 and
+// the second build reloads the first one's file. The alloy refused after its
+// components exist frees them; that can only turn red under valgrind
+TEST( AlloyRRR, ARhoDatabaseForAnotherRRRIsRefused )
+{
+#ifndef BELFEM_HDF5
+    GTEST_SKIP() << "the rho database is an HDF5 file" ;
+#endif
+    WorkDir tDir( "t51_alloy_rho_database" );
+    MaterialFactory tFactory ;
+
+    Material * tFirst = tFactory.create_material( "Pb40Sn60", 5.0, true );
+    ASSERT_NE( tFirst, nullptr );
+    delete tFirst ;
+    ASSERT_TRUE( std::filesystem::exists( "Pb40Sn60_RRR5.hdf5" ) );
+
+    try
+    {
+        Material * tSecond = tFactory.create_material( "Pb40Sn60", 5.5, true );
+        delete tSecond ;
+        ADD_FAILURE() << "a rho database written for another RRR was loaded" ;
+    }
+    catch ( const std::runtime_error & aError )
+    {
+        EXPECT_TRUE( contains( aError.what(), "Found RRR" ) ) << aError.what();
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -386,6 +453,17 @@ TEST( AllowList, UnusedMaterialKeysAreRefused )
         "    ybco\n    {\n        builtin : ybco ;\n        jc : 3e10 A/m^2 ;\n"
         "        n : 25 ;\n        defect : mine\n        {\n        }\n    }" );
     EXPECT_TRUE( contains( tMessage, "carries a labelled subsection" ) ) << tMessage ;
+}
+
+// the copper is in the map when the ybco is refused, so the factory must
+// free it; that can only turn red under valgrind
+TEST( AllowList, ARefusedSecondMaterialFreesTheFirst )
+{
+    const std::string tMessage = refusal( "copper_then_ybco_rrr",
+        "    cu\n    {\n        builtin : copper ;\n        RRR : 100 ;\n    }\n"
+        "    ybco\n    {\n        builtin : ybco ;\n        jc : 3e10 A/m^2 ;\n"
+        "        n : 25 ;\n        RRR : 50 ;\n    }" );
+    EXPECT_TRUE( contains( tMessage, "never reads the key 'rrr'" ) ) << tMessage ;
 }
 
 //------------------------------------------------------------------------------
