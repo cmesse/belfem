@@ -10,6 +10,7 @@
  */
 
 #include "assert.hpp"
+#include "stringtools.hpp"
 #include "fn_check_unit.hpp"
 #include "fn_material_data_path.hpp"
 #include "cl_MaterialFactory.hpp"
@@ -40,6 +41,79 @@
 
 namespace belfem
 {
+    namespace
+    {
+        // the pure metals come first, in this order, so is_pure_metal() is a
+        // range test
+        enum class BuiltinName
+        {
+            Aluminum,
+            Chromium,
+            Iron,
+            Nickel,
+            Copper,
+            Silver,
+            Indium,
+            Tin,
+            Lead,
+            HastelloyC276,
+            YBCO,
+            Magnesia,
+            None
+        };
+
+        // the one alias table behind create_material() and builtin_kind();
+        // aLower must already be lowercase
+        BuiltinName
+        builtin_name( const string & aLower )
+        {
+            static const std::pair< const char *, BuiltinName > tAliases[] = {
+                { "aluminum",      BuiltinName::Aluminum },
+                { "aluminium",     BuiltinName::Aluminum },
+                { "al",            BuiltinName::Aluminum },
+                { "chromium",      BuiltinName::Chromium },
+                { "cr",            BuiltinName::Chromium },
+                { "iron",          BuiltinName::Iron },
+                { "ferro",         BuiltinName::Iron },
+                { "fe",            BuiltinName::Iron },
+                { "nickel",        BuiltinName::Nickel },
+                { "ni",            BuiltinName::Nickel },
+                { "copper",        BuiltinName::Copper },
+                { "cu",            BuiltinName::Copper },
+                { "silver",        BuiltinName::Silver },
+                { "ag",            BuiltinName::Silver },
+                { "indium",        BuiltinName::Indium },
+                { "in",            BuiltinName::Indium },
+                { "tin",           BuiltinName::Tin },
+                { "sn",            BuiltinName::Tin },
+                { "lead",          BuiltinName::Lead },
+                { "pb",            BuiltinName::Lead },
+                { "hastelloy",     BuiltinName::HastelloyC276 },
+                { "hastelloyc276", BuiltinName::HastelloyC276 },
+                { "ybco",          BuiltinName::YBCO },
+                { "magnesia",      BuiltinName::Magnesia },
+                { "mgo",           BuiltinName::Magnesia },
+                { "buffer",        BuiltinName::Magnesia } };
+
+            for ( const auto & tAlias : tAliases )
+            {
+                if ( aLower == tAlias.first )
+                {
+                    return tAlias.second ;
+                }
+            }
+            return BuiltinName::None ;
+        }
+
+        bool
+        is_pure_metal( const BuiltinName aName )
+        {
+            return aName <= BuiltinName::Lead ;
+        }
+    }
+
+//------------------------------------------------------------------------------
+
     MaterialFactory::MaterialFactory( const input::Section* aSection, const bool aBuildTables )
     {
         uint n = aSection->num_sections();
@@ -58,6 +132,22 @@ namespace belfem
             // optional 'bhfile' key overrides the default database path.
             if ( tMatSection->key_exists( "curve" ) )
             {
+                // the curve always builds an iron. A 'builtin' value is
+                // tolerated when it cannot contradict that: the valueless
+                // marker ( stored as "true" ), an iron alias, or a name the
+                // factory does not know, such as a user's nameplate
+                if ( tMatSection->key_exists( "builtin" ) )
+                {
+                    const string tBuiltin = tMatSection->get_string( "builtin" ) ;
+
+                    BELFEM_ERROR( curve_tolerates_builtin( tBuiltin ),
+                        "Material '%s' names the builtin '%s' beside the b-h curve '%s', "
+                        "but a curve always builds an iron. Remove the 'builtin' value, "
+                        "or drop the curve to get '%s'.",
+                        tMatLabel.c_str(), tBuiltin.c_str(),
+                        tMatSection->get_string( "curve" ).c_str(), tBuiltin.c_str() ) ;
+                }
+
                 const string tBhFile = tMatSection->key_exists( "bhfile" )
                     ? tMatSection->get_string( "bhfile" ) : "bhdata.hdf5" ;
 
@@ -66,12 +156,12 @@ namespace belfem
                     this->create_bh_curve( tBhFile, tMatSection->get_string( "curve" ) ) ) ;
 
                 // The curve branch leaves the loop below, so it needs
-                // its own check. 'builtin' is tolerated and ONLY here: a
-                // valueless 'builtin ;' beside 'curve' is a losing selector
-                // that two shipped decks carry and that input_schema.yaml
-                // already documents as inert. The exemption is exactly that
-                // one key -- 'builtin iron' is a different key name and stays
-                // an error, because it does nothing and reads as if it did
+                // its own check. 'builtin' is tolerated and ONLY here, with
+                // the values admitted above: beside 'curve' it is a losing
+                // selector that two shipped decks carry valueless. The
+                // exemption is exactly that one key -- 'builtin iron' is a
+                // different key name and stays an error, because it does
+                // nothing and reads as if it did
                 check_unused_input( tMatSection, tMatLabel,
                                     "b-h curve ferromagnet",
                                     { "curve", "bhfile", "builtin" },
@@ -118,6 +208,26 @@ namespace belfem
                 const real tRRR = tMatSection->key_exists( "RRR" )
                         ? tMatSection->get_real( "RRR" ) : BELFEM_QUIET_NAN ;
 
+                // an alloy name's rrr<N> token wins over the argument in
+                // the constructor, so a differing RRR key would be dropped
+                // silently. Checked on the name, before anything is built
+                if ( tMatSection->key_exists( "RRR" ) )
+                {
+                    Cell< std::pair< string, real > > tComponents ;
+                    to_pair( tMatType, tComponents ) ;
+
+                    for ( const auto & tComponent : tComponents )
+                    {
+                        BELFEM_ERROR( string_to_lower( tComponent.first ) != "rrr"
+                                      || tComponent.second == tRRR,
+                            "Material '%s': the builtin name '%s' carries RRR %g, but the key "
+                            "says RRR %g. The token in the name is read as an integer, so give "
+                            "a fractional RRR through the key alone.",
+                            tMatLabel.c_str(), tMatType.c_str(),
+                            ( double ) tComponent.second, ( double ) tRRR ) ;
+                    }
+                }
+
                 tMat = create_material( tMatType, tRRR, aBuildTables ) ;
                 switch ( tMat->type() )
                 {
@@ -144,12 +254,10 @@ namespace belfem
                             tMat->set_constant( MaterialProperty::n,
                                                 tMatSection->get_real( "n" ) ) ;
 
-                            // ec defaults to 1e-4 V/m to match the file-path
-                            // behaviour in Material::set_jc_function
                             tMat->set_constant( MaterialProperty::ec,
                                                 tMatSection->key_exists( "ec" )
                                                     ? tMatSection->get_value( "ec", "V/m" ).first
-                                                    : 1e-4 ) ;
+                                                    : gDefaultEcrit ) ;
                         }
 
                         if (tMatSection->section_exists( "defect" ))
@@ -490,32 +598,22 @@ namespace belfem
     Material *
     MaterialFactory::create_material( const string & aLabel,  const real aRRR, const bool aBuildTables )
     {
-        string tLabel = string_to_lower( aLabel );
-
-        if ( tLabel == "aluminum" ||tLabel == "aluminium"  || tLabel == "al" ) return new material::Aluminum( aRRR, aBuildTables ) ;
-        if ( tLabel == "chromium"  || tLabel == "cr" ) return new material::Chromium( aRRR, aBuildTables ) ;
-
-        if ( tLabel == "iron" || tLabel == "ferro" || tLabel == "fe" )  return new material::Iron( aRRR, aBuildTables ) ;
-
-        if ( tLabel == "nickel" || tLabel == "ni")   return new material::Nickel( aRRR, aBuildTables );
-
-        if ( tLabel == "copper" || tLabel == "cu")   return new material::Copper( aRRR, aBuildTables );
-
-        if ( tLabel == "silver" || tLabel == "ag") return new material::Silver( aRRR, aBuildTables ) ;
-
-        if ( tLabel == "indium" || tLabel == "in") return new material::Indium( aRRR, aBuildTables ) ;
-
-        if ( tLabel == "tin" || tLabel == "sn" ) return new material::WhiteTin( aRRR, aBuildTables ) ;
-
-        if ( tLabel == "lead" || tLabel == "pb") return new material::Lead( aRRR, aBuildTables ) ;
-
-
-        if ( tLabel == "hastelloy" || tLabel == "hastelloyc276"  ) return new material::HastelloyC276 ;
-        if ( tLabel == "ybco" ) return new material::YBCO ;
-
-        if ( tLabel == "magnesia" || tLabel == "mgo" || tLabel == "buffer" ) return new material::Magnesia ;
-
-
+        switch ( builtin_name( string_to_lower( aLabel ) ) )
+        {
+            case BuiltinName::Aluminum      : return new material::Aluminum( aRRR, aBuildTables ) ;
+            case BuiltinName::Chromium      : return new material::Chromium( aRRR, aBuildTables ) ;
+            case BuiltinName::Iron          : return new material::Iron( aRRR, aBuildTables ) ;
+            case BuiltinName::Nickel        : return new material::Nickel( aRRR, aBuildTables ) ;
+            case BuiltinName::Copper        : return new material::Copper( aRRR, aBuildTables ) ;
+            case BuiltinName::Silver        : return new material::Silver( aRRR, aBuildTables ) ;
+            case BuiltinName::Indium        : return new material::Indium( aRRR, aBuildTables ) ;
+            case BuiltinName::Tin           : return new material::WhiteTin( aRRR, aBuildTables ) ;
+            case BuiltinName::Lead          : return new material::Lead( aRRR, aBuildTables ) ;
+            case BuiltinName::HastelloyC276 : return new material::HastelloyC276 ;
+            case BuiltinName::YBCO          : return new material::YBCO ;
+            case BuiltinName::Magnesia      : return new material::Magnesia ;
+            case BuiltinName::None          : break ;
+        }
 
         Cell< std::pair< string, real > > tComponents ;
         to_pair( aLabel, tComponents );
@@ -527,6 +625,87 @@ namespace belfem
 
         BELFEM_ERROR( false, "Material %s is not known", aLabel.c_str() );
         return nullptr ;
+    }
+
+//------------------------------------------------------------------------------
+
+    MaterialFactory::BuiltinKind
+    MaterialFactory::builtin_kind( const string & aName )
+    {
+        const BuiltinName tName = builtin_name( string_to_lower( aName ) ) ;
+
+        if ( tName == BuiltinName::Iron )
+        {
+            return BuiltinKind::Iron ;
+        }
+        if ( tName != BuiltinName::None )
+        {
+            return BuiltinKind::OtherKnown ;
+        }
+
+        // a formula: at least one pure metal, and nothing but pure metals
+        // and the rrr token. The labels are the letter runs that to_pair()
+        // matches, a maximal run of letters directly followed by a digit;
+        // the digits are skipped, never converted, so no length overflows
+        const auto tIsLetter = []( const char c )
+        {
+            return ( c >= 'A' && c <= 'Z' ) || ( c >= 'a' && c <= 'z' ) ;
+        };
+        const auto tIsDigit = []( const char c )
+        {
+            return c >= '0' && c <= '9' ;
+        };
+
+        const std::size_t tLength = aName.size() ;
+        std::size_t tPos = 0 ;
+        bool tHaveMetal = false ;
+
+        while ( tPos < tLength )
+        {
+            if ( ! tIsLetter( aName[ tPos ] ) )
+            {
+                ++tPos ;
+                continue ;
+            }
+
+            const std::size_t tStart = tPos ;
+            while ( tPos < tLength && tIsLetter( aName[ tPos ] ) )
+            {
+                ++tPos ;
+            }
+
+            if ( tPos == tLength || ! tIsDigit( aName[ tPos ] ) )
+            {
+                continue ;
+            }
+
+            const string tLabel = string_to_lower( aName.substr( tStart, tPos - tStart ) ) ;
+
+            while ( tPos < tLength && tIsDigit( aName[ tPos ] ) )
+            {
+                ++tPos ;
+            }
+
+            if ( is_pure_metal( builtin_name( tLabel ) ) )
+            {
+                tHaveMetal = true ;
+            }
+            else if ( tLabel != "rrr" )
+            {
+                return BuiltinKind::Unknown ;
+            }
+        }
+
+        return tHaveMetal ? BuiltinKind::OtherKnown : BuiltinKind::Unknown ;
+    }
+
+//------------------------------------------------------------------------------
+
+    bool
+    MaterialFactory::curve_tolerates_builtin( const string & aValue )
+    {
+        return string_to_lower( aValue ) == "true"
+            || builtin_kind( aValue ) != BuiltinKind::OtherKnown ;
     }
 
     void

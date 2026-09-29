@@ -984,19 +984,16 @@ namespace belfem
      *        \f$\angle(n,B)\f$ and \f$T\f$.
      *
      * Used by post-processing and by overloads of rho_powerlaw() / rho_piecewise()
-     * that take a JcFunction-supplied \f$n(B,\angle,T)\f$. For materials with
-     * a constant \f$n\f$, use Material::constant_property(MaterialProperty::n)
-     * instead.
-     *
-     * \pre mNFunction must have been installed (checked in debug mode).
+     * that take a JcFunction-supplied \f$n(B,\angle,T)\f$. A material without
+     * an n function returns constant_property(MaterialProperty::n), as jc()
+     * does for a constant \f$J_c\f$.
      */
     inline real
     Material::n( const real normB, const real angleNxB, const real T  ) const
     {
-        BELFEM_ASSERT( mNFunction != nullptr,
-            "Material %s does not have an N function", mLabel.c_str() ) ;
-
-        return mNFunction->eval( normB, angleNxB, T ) ;
+        return ( mNFunction != nullptr )
+               ? mNFunction->eval( normB, angleNxB, T )
+               : this->constant_property( MaterialProperty::n ) ;
     }
 
     /**
@@ -1006,10 +1003,9 @@ namespace belfem
     inline real
     Material::n( const real normB, const real angleNxB  ) const
     {
-        BELFEM_ASSERT( mNFunction != nullptr,
-            "Material %s does not have an N function", mLabel.c_str() ) ;
-
-        return mNFunction->eval( normB, angleNxB ) ;
+        return ( mNFunction != nullptr )
+               ? mNFunction->eval( normB, angleNxB )
+               : this->constant_property( MaterialProperty::n ) ;
     }
 
     /**
@@ -1018,13 +1014,10 @@ namespace belfem
      *
      * Used by post-processing and by overloads of rho_powerlaw() /
      * rho_piecewise() that take a JcFunction-supplied
-     * \f$J_c(B,\angle,T)\f$. For materials with a constant \f$J_c\f$,
-     * use Material::constant_property(MaterialProperty::jc) instead.
-     *
-     * \pre mJcFunction must have been installed (checked in debug mode).
-     *      Note: Material::have(jc) is true even when \f$J_c\f$ was set as a
-     *      plain constant, so it is *not* sufficient to guard the function
-     *      pointer — the explicit nullptr check is required.
+     * \f$J_c(B,\angle,T)\f$. A material without a Jc function returns
+     * constant_property(MaterialProperty::jc); have(jc) is true for a plain
+     * constant too, so the null test on the function pointer, not the have
+     * flag, selects the path.
      */
     inline real
     Material::jc( const real B, const real angleNxB, const real T ) const

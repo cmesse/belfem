@@ -45,6 +45,14 @@ namespace belfem
      * expansion data ( under 5 % for copper, aluminum, iron and nickel ).
      */
     constexpr real gTAlphaSwitchMax = 273.15 ;
+
+    /**
+     * @brief Critical electric field of the power law, in V/m, when none is given
+     *
+     * Applied by every path that installs a jc without an ec: the jc function
+     * setter, the jc constant setter and the deck's constant jc/n form.
+     */
+    constexpr real gDefaultEcrit = 1e-4 ;
 }
 
 //#include "cl_Mesh.hpp"

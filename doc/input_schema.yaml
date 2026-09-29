@@ -893,9 +893,10 @@ sections:
     # The structured form of `shapes_tested_in_order`: the FIRST selector
     # present decides the shape. Keys belonging to the other shapes are now a
     # FATAL error rather than silently unread ( see unknown_input below ). The
-    # single exception is the bare `builtin` key on a section that resolved to
-    # `curve`, which `examples/costheta` and `examples/gantry` carry as inert
-    # documentation and which stays tolerated.
+    # single exception is the `builtin` key on a section that resolved to
+    # `curve`, which `examples/costheta` and `examples/gantry` carry valueless
+    # as inert documentation. It stays tolerated as long as its value cannot
+    # contradict the iron the curve builds ( see curve_exemption ).
     select_first:
       - {selector: curve,   shape: bh_curve_ferromagnet}
       - {selector: builtin, shape: builtin}
@@ -912,11 +913,18 @@ sections:
       usermat_gated: "resistivity type, critical temperature and the defect subsection require the plugin to carry jc"
       labelled_subsections: "refused -- only unlabelled subsections are ever looked up"
       duplicate_material_label: fatal
-      curve_exemption: "a section resolving to `curve` may carry the bare key `builtin`; nothing else"
+      curve_exemption: >
+        a section resolving to `curve` may carry the key `builtin` and nothing
+        else. Its value must be empty, `true` in any case ( the parser stores
+        the valueless key as `true`, so the two are indistinguishable ), an
+        iron alias ( iron, ferro, fe ), or a name the factory does not know
+        ( a nameplate such as aisi305 ). A value naming any other builtin or a
+        formula of known pure metals ( Pb38Sn62 ) is fatal, naming the
+        material, the value and the curve.
     shapes_tested_in_order:
       - name: bh_curve_ferromagnet
         selected_by: presence of `curve`
-        note: any other key is fatal, except the tolerated bare `builtin`
+        note: any other key is fatal, except `builtin` with a value curve_exemption tolerates
       - name: builtin
         selected_by: >
           THREE paths, tested in this order:
@@ -998,8 +1006,11 @@ sections:
             letters+digits token in the string becomes one component with that
             mass percentage; ORDER IS NOT SIGNIFICANT and the tokens need not
             cover the whole string. At least one token must match, or
-            create_material hard-errors. A token named RRR is not a component
-            -- it sets the residual-resistivity ratio.
+            create_material hard-errors. A token named RRR ( any case ) is not
+            a component -- it sets the residual-resistivity ratio. The token is
+            read as an INTEGER ( `rrr1.5` reads as 1 ). A section that also
+            gives the `RRR` key must give the same value; a differing one is
+            fatal, naming both.
           component_must_be: pure_metal
           # The subset of `values` above whose constructor reports
           # MaterialType::PureMetal, which Alloy::create_component requires
@@ -1031,6 +1042,10 @@ sections:
           silently inert on those three; it is now REFUSED there. The gate is
           the constructed type() == PureMetal, which covers the pure metals
           and the alloys, so a newly added material inherits the right answer.
+          Beside an alloy name carrying an rrr<N> token the key must equal the
+          token, which the constructor would otherwise keep over the key; a
+          differing value is REFUSED, naming both. The token is an integer, so
+          a fractional RRR belongs in the key, not in the name.
       file:   {type: path, resolution: material_data_path, applies_to_material_shape: HTS, anchor: '"file"', note: "Jc(B,theta,T) and n(B,theta,T) tables; sets both"}
       jc:     {type: value, dimension: current_density, applies_to_material_shape: HTS without file, anchor: '"jc"'}
       n:      {type: real, applies_to_material_shape: HTS without file, anchor: '"n"'}

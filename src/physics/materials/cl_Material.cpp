@@ -260,6 +260,13 @@ namespace belfem
         mConstantProperties( tIndex ) = aValue ;
         mHaveProperty.set( tIndex );
 
+        // a constant jc without an ec is a NaN power law in release builds;
+        // default ec exactly as set_jc_function does
+        if ( aProperty == MaterialProperty::jc && ! this->have( MaterialProperty::ec ) )
+        {
+            this->set_constant( MaterialProperty::ec, gDefaultEcrit ) ;
+        }
+
         // riva already selected -- gate a late constant n ( same rule as
         // set_n_function; keeps the check order-independent )
         if ( aProperty == MaterialProperty::n &&
@@ -688,10 +695,9 @@ namespace belfem
 
         this->set_have( MaterialProperty::jc );
 
-        // set default value of ecrit if not specified
         if ( ! this->have( MaterialProperty::ec ) )
         {
-            this->set_constant( MaterialProperty::ec, 1e-4 );
+            this->set_constant( MaterialProperty::ec, gDefaultEcrit );
         }
     }
 

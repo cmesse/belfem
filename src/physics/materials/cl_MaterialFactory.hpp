@@ -132,6 +132,38 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        enum class BuiltinKind
+        {
+            Iron,       //!< an iron alias: iron, ferro, fe
+            OtherKnown, //!< any other alias, or an alloy formula of pure metals
+            Unknown     //!< a name create_material() cannot resolve to either
+        };
+
+        /**
+         * @brief Classify a builtin name the way create_material() resolves it
+         *
+         * Case-insensitive; builds no material.
+         * An alloy formula counts as known only if its to_pair() labels are
+         * at least one pure-metal alias and nothing but pure-metal aliases and
+         * the rrr token, so a nameplate such as aisi305 is Unknown even though
+         * create_material() would hand it to the Alloy constructor.
+         */
+        static BuiltinKind
+        builtin_kind( const string & aName );
+
+        /**
+         * @brief Whether a 'builtin' value may stand beside a b-h curve
+         *
+         * Case-insensitive; builds no material. The valueless marker
+         * ( stored as "true" ), an iron alias, or a name the factory does not
+         * know pass; a known non-iron builtin or a formula of known pure
+         * metals is refused, since the curve always builds an iron.
+         */
+        static bool
+        curve_tolerates_builtin( const string & aValue );
+
+//------------------------------------------------------------------------------
+
         void
         print_material_list( std::ostream & aStream );
 

@@ -5,7 +5,8 @@
  * AlloyRRR: an alloy derives its residual resistivity from RRR in the
  * constructor, so a missing or non-physical RRR is refused there, whether the
  * value comes from the factory argument or from the deck; an in-formula
- * rrr<N> token and the RRR key build the same material.
+ * rrr<N> token and the RRR key build the same material, and may stand side by
+ * side only if they agree.
  *
  * BuiltinForms: the three spellings of a builtin section -- the inner key,
  * the section label, and the legacy 'name : builtin ;' header -- each select
@@ -14,8 +15,11 @@
  * AllowList: a key or subsection the resolved shape never reads is refused
  * instead of dropped.
  *
- * ConstantLaws: constant jc and n through the deck leave the power law
- * finite, with ec defaulted by the factory.
+ * CurveShape: a b-h curve section refuses a 'builtin' value that names a
+ * known material other than iron, and tolerates everything else.
+ *
+ * ConstantLaws: constant jc and n through the deck, or set programmatically,
+ * leave the power law finite, with ec defaulted when none is given.
  *
  * Every factory here is built with tables off: no rho database is written
  * into the working directory; the temperature splines are still built. On a
@@ -248,6 +252,26 @@ TEST( AlloyRRR, RRRTokenAndArgumentAgree )
     delete_materials( tFactory );
 }
 
+TEST( AlloyRRR, RRRKeyMustAgreeWithTheToken )
+{
+    // the agreeing pair is redundant, not contradictory
+    Deck tDeck( "alloy_token_and_key",
+        "    solder\n    {\n        builtin : pb40sn60rrr5 ;\n        RRR : 5 ;\n    }" );
+    belfem::InputFile tFile( tDeck.mPath );
+    MaterialFactory tFactory( tFile.section( "materials" ), false );
+
+    ASSERT_TRUE( tFactory.materials().key_exists( "solder" ) );
+    EXPECT_DOUBLE_EQ( tFactory.materials()( "solder" )->constant_property( MaterialProperty::RRR ), 5.0 );
+    delete_materials( tFactory );
+
+    // a differing key is refused, naming both values
+    const std::string tMessage = refusal( "alloy_token_against_key",
+        "    solder\n    {\n        builtin : pb40sn60rrr5 ;\n        RRR : 100 ;\n    }" );
+    EXPECT_TRUE( contains( tMessage, "carries RRR 5," ) ) << tMessage ;
+    EXPECT_TRUE( contains( tMessage, "says RRR 100." ) ) << tMessage ;
+    EXPECT_TRUE( contains( tMessage, "'solder'" ) ) << tMessage ;
+}
+
 //------------------------------------------------------------------------------
 // R3: the three builtin forms
 //------------------------------------------------------------------------------
@@ -365,6 +389,63 @@ TEST( AllowList, UnusedMaterialKeysAreRefused )
 }
 
 //------------------------------------------------------------------------------
+// the builtin value beside a b-h curve
+//------------------------------------------------------------------------------
+
+TEST( CurveShape, BuiltinKindClassifiesNames )
+{
+    using Kind = MaterialFactory::BuiltinKind ;
+
+    // the valueless marker names nothing the factory knows
+    EXPECT_EQ( MaterialFactory::builtin_kind( "true" ),         Kind::Unknown );
+
+    EXPECT_EQ( MaterialFactory::builtin_kind( "iron" ),         Kind::Iron );
+    EXPECT_EQ( MaterialFactory::builtin_kind( "FERRO" ),        Kind::Iron );
+    EXPECT_EQ( MaterialFactory::builtin_kind( "fe" ),           Kind::Iron );
+
+    // a nameplate splits into a non-metal component
+    EXPECT_EQ( MaterialFactory::builtin_kind( "aisi305" ),      Kind::Unknown );
+
+    EXPECT_EQ( MaterialFactory::builtin_kind( "copper" ),       Kind::OtherKnown );
+    EXPECT_EQ( MaterialFactory::builtin_kind( "YBCO" ),         Kind::OtherKnown );
+    EXPECT_EQ( MaterialFactory::builtin_kind( "magnesia" ),     Kind::OtherKnown );
+    EXPECT_EQ( MaterialFactory::builtin_kind( "Pb38Sn62" ),     Kind::OtherKnown );
+    EXPECT_EQ( MaterialFactory::builtin_kind( "pb40sn60rrr5" ), Kind::OtherKnown );
+
+    // a digit run too long for an int is skipped, not converted
+    EXPECT_EQ( MaterialFactory::builtin_kind( "lot999999999999999999999999" ), Kind::Unknown );
+
+    // zinc is not an alias, so the formula is not known
+    EXPECT_EQ( MaterialFactory::builtin_kind( "Cu50Zn50" ),     Kind::Unknown );
+}
+
+TEST( CurveShape, CurveToleratesBuiltinValues )
+{
+    EXPECT_TRUE(  MaterialFactory::curve_tolerates_builtin( "true" ) );
+    EXPECT_TRUE(  MaterialFactory::curve_tolerates_builtin( "TRUE" ) );
+    EXPECT_TRUE(  MaterialFactory::curve_tolerates_builtin( "iron" ) );
+    EXPECT_TRUE(  MaterialFactory::curve_tolerates_builtin( "ferro" ) );
+    EXPECT_TRUE(  MaterialFactory::curve_tolerates_builtin( "Fe" ) );
+    EXPECT_TRUE(  MaterialFactory::curve_tolerates_builtin( "aisi305" ) );
+    EXPECT_TRUE(  MaterialFactory::curve_tolerates_builtin( "Cu50Zn50" ) );
+
+    EXPECT_FALSE( MaterialFactory::curve_tolerates_builtin( "copper" ) );
+    EXPECT_FALSE( MaterialFactory::curve_tolerates_builtin( "YBCO" ) );
+    EXPECT_FALSE( MaterialFactory::curve_tolerates_builtin( "Pb38Sn62" ) );
+    EXPECT_FALSE( MaterialFactory::curve_tolerates_builtin( "pb40sn60rrr5" ) );
+    EXPECT_FALSE( MaterialFactory::curve_tolerates_builtin( "magnesia" ) );
+}
+
+TEST( CurveShape, KnownNonIronBuiltinBesideACurveIsRefused )
+{
+    // refused before the curve database is opened
+    const std::string tMessage = refusal( "curve_beside_copper",
+        "    yoke\n    {\n        builtin : copper ;\n        curve : RoxieIron ;\n    }" );
+    EXPECT_TRUE( contains( tMessage, "'copper'" ) ) << tMessage ;
+    EXPECT_TRUE( contains( tMessage, "'RoxieIron'" ) ) << tMessage ;
+}
+
+//------------------------------------------------------------------------------
 // R5: constant jc and n
 //------------------------------------------------------------------------------
 
@@ -436,4 +517,30 @@ TEST( ConstantLaws, ConstantJcAndNLeaveThePowerLawFinite )
     EXPECT_EQ( tRivaFactory.materials()( "ybco" )->resistivity_law(), ResistivityLaw::Riva );
 
     delete_materials( tRivaFactory );
+}
+
+TEST( ConstantLaws, ProgrammaticConstantsDefaultEcAndN )
+{
+    TbulkGuard tGuard( 77.0 );
+
+    MaterialFactory tFactory ;
+    Material * tHts = tFactory.create_material( "ybco", 50.0, false );
+    ASSERT_NE( tHts, nullptr );
+
+    // no ec: the jc setter supplies the default
+    tHts->set_constant( MaterialProperty::jc, 3.1e10 );
+    tHts->set_constant( MaterialProperty::n, 25.0 );
+
+    ASSERT_TRUE( tHts->is_constant( MaterialProperty::ec ) );
+    EXPECT_DOUBLE_EQ( tHts->constant_property( MaterialProperty::ec ), belfem::gDefaultEcrit );
+
+    const real tRho = tHts->rho_powerlaw( 0.9 * 3.1e10 );
+    EXPECT_TRUE( std::isfinite( tRho ) );
+    EXPECT_GT( tRho, 0.0 );
+
+    // without an n function the field accessors return the constant
+    EXPECT_DOUBLE_EQ( tHts->n( 0.7, 0.4 ), 25.0 );
+    EXPECT_DOUBLE_EQ( tHts->n( 0.7, 0.4, 77.0 ), 25.0 );
+
+    delete tHts ;
 }

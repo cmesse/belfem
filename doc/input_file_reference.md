@@ -481,14 +481,21 @@ Three consequences worth knowing before writing a deck:
 - A material name may be defined only once. The later definition used to win
   silently and leak the earlier one.
 
-The one deliberate exemption: a section that selected the **curve** shape may
-still carry a valueless `builtin ;`, which some decks use as documentation. It
-is inert, and only that exact key is tolerated.
+The one deliberate exemption: a section that selects the **curve** shape may
+also carry `builtin`, which some decks use as documentation. A curve always
+builds an iron, so its value must not name anything else. Tolerated and inert:
+valueless `builtin ;`; `builtin : true ;` in any case, which the parser cannot
+distinguish from a valueless key; an iron alias (`iron`/`ferro`/`fe`); and a
+name the factory does not know, such as a nameplate like `aisi305`. A value
+that names any other builtin (`builtin : copper ;`) or a formula of known pure
+metals (`builtin : Pb38Sn62 ;`) is refused at setup, naming the material, the
+value and the curve; a formula with an unknown element (`Cu50Zn50`) counts as
+an unknown name and passes. `builtin` is the only extra key tolerated.
 
-1. **B-H curve ferromagnet** — presence of `curve` selects it:
+1. **B-H curve ferromagnet** — `curve` selects it:
    `curve : RoxieIron ;` (HDF5 group name), `bhfile : path.hdf5 ;`
-   (default `bhdata.hdf5`). Any other key is fatal, except the tolerated
-   bare `builtin` described above.
+   (default `bhdata.hdf5`). Any other key is fatal except `builtin` with a
+   tolerated value, as described above.
 2. **Builtin** — selected by the first matching form: `builtin : <type> ;`
    inside the material section; a material section *labeled* `builtin`
    (`copper : builtin { }`); or a `materials`-level key named exactly like the
@@ -542,7 +549,7 @@ Keys inside a material section (the `Applies to` column says which shapes read e
 
 | Key | Applies to | Type / unit | Notes | Site |
 |---|---|---|---|---|
-| `RRR` | pure metals and alloys | real | residual resistivity ratio; legal only when the constructed type is `PureMetal` (pure metals and alloys). On `ybco`, `hastelloy`/`hastelloyc276` and `magnesia`/`mgo`/`buffer` it is **refused at setup** by `check_unused_input`, not discarded | `:100-101` |
+| `RRR` | pure metals and alloys | real | residual resistivity ratio; legal only when the constructed type is `PureMetal` (pure metals and alloys). On `ybco`, `hastelloy`/`hastelloyc276` and `magnesia`/`mgo`/`buffer`, it is **refused at setup** by `check_unused_input`, not discarded. With an alloy name that carries an `rrr<N>` token (`pb40sn60rrr5`), `RRR` must equal the token; a different value is **refused at setup**, naming both. The token is read as an integer (`rrr1.5` reads as 1), so give a fractional RRR through the key alone | `:100-101` |
 | `file` | HTS | HDF5 path | Jc(B,θ,T) and n(B,θ,T) tables; sets both functions. Exclusive with `jc`/`n`/`ec`, which are then not read | `:111-115` |
 | `jc` | HTS without `file` | value, A/m² | required together with `n` | `:118-124` |
 | `n` | HTS without `file` | real | required | `:126-127` |
