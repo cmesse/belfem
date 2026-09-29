@@ -131,7 +131,22 @@ namespace belfem
 
                 mEmptyBlock = new Block( mParent ) ;
 
-                if ( tAllSelectedThinShellFacets.length() > 0 )
+                // the connector loop's refusal must also see a selection that
+                // holds a coating block and no layer block. The linker is
+                // collective, so the test reads the IWG's block-type map, which
+                // every rank holds alike
+                bool tHaveConnectorBlocks = false ;
+                for ( id_t tID : tBlockIDs )
+                {
+                    const DomainType tType = mParent->iwg()->block_type( tID ) ;
+                    if ( tType == DomainType::LeftCoating || tType == DomainType::RightCoating )
+                    {
+                        tHaveConnectorBlocks = true ;
+                        break ;
+                    }
+                }
+
+                if ( tAllSelectedThinShellFacets.length() > 0 || tHaveConnectorBlocks )
                 {
                     this->link_thin_shell_facets() ;
                 }
@@ -476,8 +491,13 @@ namespace belfem
                     // we don't have the connectors in the thermal problem
                     if ( mParent->iwg()->type() != IwgType::Maxwell ) continue ;
 
+                    // the connector block and its master's layer block are tested
+                    // independently: a programmatic selection may hold one without
+                    // the other, the factory always selects both
                     for ( mesh::Block * tMeshBlock : tShell->side_connector_blocks() )
                     {
+                        if ( ! mBlockMap.key_exists( tMeshBlock->id() ) ) continue ;
+
                         Block * tBlock = mBlockMap( tMeshBlock->id() ) ;
 
                         for ( mesh::Element * tElement : tMeshBlock->elements() )
@@ -496,10 +516,18 @@ namespace belfem
                             // the kernel reads element()->facet() and facet()->index_on_master()
                             tWall->set_facet( tFacet );
 
-                            // the facet's master is the layer block element the wall spans
+                            // the facet's master is the layer block element the wall spans;
+                            // an unset reference would be dereferenced by the calculator
+                            mesh::Element * tMaster = tFacet->master() ;
+
+                            BELFEM_ERROR( mBlockMap.key_exists( tMaster->block_id() ),
+                                "side connector block %lu is selected but the layer block %lu of its recovery facet %lu is not - select the shell's layer blocks together with its connectors",
+                                ( long unsigned int ) tMeshBlock->id(),
+                                ( long unsigned int ) tMaster->block_id(),
+                                ( long unsigned int ) tFacet->id() );
+
                             tWall->set_reference(
-                                mBlockMap( tFacet->master()->block_id() )
-                                    ->element( tFacet->master()->id() ) );
+                                mBlockMap( tMaster->block_id() )->element( tMaster->id() ) );
                         }
                     }
                 }
@@ -657,6 +685,29 @@ namespace belfem
 
                     mesh::Element * tMaster = tFacet->master() ;
 
+                    // an unselected layer block is refused as in the serial linker.
+                    // The test reads the IWG's selection, which every rank holds
+                    // alike; the block map holds only the blocks with elements on
+                    // this rank
+                    bool tMasterIsSelected = false ;
+                    for ( id_t tID : mParent->iwg()->selected_blocks() )
+                    {
+                        if ( tID == tMaster->block_id() )
+                        {
+                            tMasterIsSelected = true ;
+                            break ;
+                        }
+                    }
+
+                    BELFEM_ERROR( tMasterIsSelected,
+                        "side connector block %lu is selected but the layer block %lu of its recovery facet %lu is not - select the shell's layer blocks together with its connectors",
+                        ( long unsigned int ) tElement->block_id(),
+                        ( long unsigned int ) tMaster->block_id(),
+                        ( long unsigned int ) tFacet->id() );
+
+                    // a selected master that is not present on this rank is
+                    // skipped, as before; an aura copy of the wall is the
+                    // expected reason
                     if ( ! mBlockMap.key_exists( tMaster->block_id() ) ) continue ;
                     if ( ! mBlockMap( tMaster->block_id() )->element_exists( tMaster->id() ) ) continue ;
 

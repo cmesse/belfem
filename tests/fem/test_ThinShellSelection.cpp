@@ -60,9 +60,11 @@ namespace
     //! and a ThinShell record. Stack s uses blocks 2s+1, 2s+2, ghost sideset
     //! 10(s+1), tape sideset 10(s+1)+1, ghost facet id 100(s+1), tape facet
     //! id 100(s+1)+1; node, element and edge ids continue across the stacks.
-    //! The IWG selects both shells or only the second one. Serial only: the
-    //! fixture never enters Kernel::partition_mesh, so the parallel linker
-    //! is not exercised here
+    //! Optionally the first stack carries a one-element side connector: a
+    //! HEX8TB wall in coating block 5 across the lower layer ( block 1 ),
+    //! with its recovery facet at wall id + 1 in the hidden sideset 12.
+    //! Serial only: the fixture never enters Kernel::partition_mesh, so the
+    //! parallel linker is not exercised here
     class TwoShellStacks
     {
         //! h_ghost falls back to the nodal "T" field when gTbulk is NaN
@@ -86,10 +88,35 @@ namespace
             mesh::Facet   * mTapeFacet[ 2 ] = { nullptr, nullptr };
             mesh::Element * mLayer[ 2 ][ 2 ] = { { nullptr, nullptr }, { nullptr, nullptr } };
 
+            //! the side connector of the first stack, if built
+            mesh::Element * mWall          = nullptr ;
+            mesh::Facet   * mRecoveryFacet = nullptr ;
+
+            static constexpr id_t sCoatingBlockID     = 5 ;
+            static constexpr id_t sRecoverySideSetID  = 12 ;
+
+            //! the blocks the IWG selects
+            enum class Selection
+            {
+                SecondShell,              //!< blocks 3-4
+                AllShells,                //!< blocks 1-4
+                AllShellsAndConnector,    //!< blocks 1-4 and the coating block
+                SecondShellAndConnector,  //!< the coating block and blocks 3-4, not its layer blocks
+                ConnectorOnly             //!< the coating block alone, no layer block, no sideset
+            };
+
 //------------------------------------------------------------------------------
 
-            explicit TwoShellStacks( const bool aSelectAllShells )
+            explicit TwoShellStacks( const Selection aSelection, const bool aWithConnector = false )
             {
+                const bool tSelectsConnector =
+                           aSelection == Selection::AllShellsAndConnector
+                        || aSelection == Selection::SecondShellAndConnector
+                        || aSelection == Selection::ConnectorOnly ;
+
+                BELFEM_ERROR( aWithConnector || ! tSelectsConnector,
+                    "a selection that holds the coating block needs the connector" );
+
                 const real tThickness = 0.1 ;
 
                 // third argument false: the MeshChecker below must run
@@ -189,6 +216,11 @@ namespace
                     mMesh->thin_shells().push( tShell );
                 }
 
+                if ( aWithConnector )
+                {
+                    this->create_side_connector( tFactory, tNodeID, tElementID, tX, tY );
+                }
+
                 mMesh->finalize();
 
                 // reorientation check runs BEFORE edges exist; it sets the
@@ -201,27 +233,42 @@ namespace
                 {
                     id_t tEdgeID = 1 ;
                     Cell< mesh::Node * > tEdgeNodes ;
-                    for ( uint s = 0; s < 2; ++s )
+                    Cell< mesh::Element * > tElementsWithEdges =
+                        { mLayer[ 0 ][ 0 ], mLayer[ 0 ][ 1 ], mLayer[ 1 ][ 0 ], mLayer[ 1 ][ 1 ] };
+                    if ( mWall != nullptr )
                     {
-                        for ( uint l = 0; l < 2; ++l )
+                        tElementsWithEdges.push( mWall );
+                    }
+
+                    for ( mesh::Element * tElement : tElementsWithEdges )
+                    {
+                        const uint tNumEdges = tElement->number_of_edges();
+                        tElement->allocate_edge_container();
+                        for ( uint e = 0; e < tNumEdges; ++e )
                         {
-                            mesh::Element * tElement = mLayer[ s ][ l ];
-                            const uint tNumEdges = tElement->number_of_edges();
-                            tElement->allocate_edge_container();
-                            for ( uint e = 0; e < tNumEdges; ++e )
-                            {
-                                tElement->get_nodes_of_edge( e, tEdgeNodes );
-                                mesh::Edge * tEdge = new mesh::Edge();
-                                tEdge->set_id( tEdgeID++ );
-                                tEdge->allocate_node_container( 2 );
-                                tEdge->insert_node( tEdgeNodes( 0 ), 0 );
-                                tEdge->insert_node( tEdgeNodes( 1 ), 1 );
-                                tEdge->set_owner( 0 );
-                                tElement->insert_edge( tEdge, e );
-                                mMesh->edges().push( tEdge );
-                            }
+                            tElement->get_nodes_of_edge( e, tEdgeNodes );
+                            mesh::Edge * tEdge = new mesh::Edge();
+                            tEdge->set_id( tEdgeID++ );
+                            tEdge->allocate_node_container( 2 );
+                            tEdge->insert_node( tEdgeNodes( 0 ), 0 );
+                            tEdge->insert_node( tEdgeNodes( 1 ), 1 );
+                            tEdge->set_owner( 0 );
+                            tElement->insert_edge( tEdge, e );
+                            mMesh->edges().push( tEdge );
                         }
                     }
+
+                    // the recovery facet carries the wall's two inner
+                    // longitudinal edges, bottom first; slots 2 and 3 stay
+                    // empty as in the ThinShellFactory
+                    if ( mWall != nullptr )
+                    {
+                        mesh::Element * tFace = mRecoveryFacet->element() ;
+                        tFace->allocate_edge_container();
+                        tFace->insert_edge( mWall->edge( 0 ), 0 );
+                        tFace->insert_edge( mWall->edge( 2 ), 1 );
+                    }
+
                     mMesh->finalize_edges();
                 }
 
@@ -233,13 +280,42 @@ namespace
                         ModelDimensionality::ThreeD,
                         false, false );
 
-                if ( aSelectAllShells )
-                {
-                    Vector< id_t > tBlockIDs( 4 );
-                    tBlockIDs( 0 ) = 1 ; tBlockIDs( 1 ) = 2 ; tBlockIDs( 2 ) = 3 ; tBlockIDs( 3 ) = 4 ;
-                    Cell< DomainType > tBlockTypes( 4, DomainType::ThinShell );
-                    mIWG->set_blocks( tBlockIDs, tBlockTypes );
+                const bool tSelectsFirstShell =
+                           aSelection == Selection::AllShells
+                        || aSelection == Selection::AllShellsAndConnector ;
 
+                {
+                    Cell< id_t > tIDs ;
+                    Cell< DomainType > tTypes ;
+                    if ( tSelectsFirstShell )
+                    {
+                        tIDs.push( 1 ); tTypes.push( DomainType::ThinShell );
+                        tIDs.push( 2 ); tTypes.push( DomainType::ThinShell );
+                    }
+                    if ( aSelection != Selection::ConnectorOnly )
+                    {
+                        tIDs.push( 3 ); tTypes.push( DomainType::ThinShell );
+                        tIDs.push( 4 ); tTypes.push( DomainType::ThinShell );
+                    }
+                    if ( tSelectsConnector )
+                    {
+                        tIDs.push( sCoatingBlockID ); tTypes.push( DomainType::LeftCoating );
+                    }
+
+                    Vector< id_t > tBlockIDs( tIDs.size() );
+                    for ( uint k = 0; k < tIDs.size(); ++k )
+                    {
+                        tBlockIDs( k ) = tIDs( k );
+                    }
+                    mIWG->set_blocks( tBlockIDs, tTypes );
+                }
+
+                if ( aSelection == Selection::ConnectorOnly )
+                {
+                    mIWG->set_sidesets( Vector< id_t >(), Cell< DomainType >() );
+                }
+                else if ( tSelectsFirstShell )
+                {
                     Vector< id_t > tSideSetIDs( 2 );
                     tSideSetIDs( 0 ) = 10 ; tSideSetIDs( 1 ) = 20 ;
                     Cell< DomainType > tSideSetTypes( 2, DomainType::Ghost );
@@ -247,11 +323,6 @@ namespace
                 }
                 else
                 {
-                    Vector< id_t > tBlockIDs( 2 );
-                    tBlockIDs( 0 ) = 3 ; tBlockIDs( 1 ) = 4 ;
-                    Cell< DomainType > tBlockTypes( 2, DomainType::ThinShell );
-                    mIWG->set_blocks( tBlockIDs, tBlockTypes );
-
                     Vector< id_t > tSideSetIDs( 1 );
                     tSideSetIDs( 0 ) = 20 ;
                     Cell< DomainType > tSideSetTypes( 1, DomainType::Ghost );
@@ -300,7 +371,118 @@ namespace
             {
                 return mField->block( aBlockID )->element( aElementID )->facet();
             }
+
+//------------------------------------------------------------------------------
+        private:
+//------------------------------------------------------------------------------
+
+            /**
+             * the wall spans the tape edge A -> B of the first stack's lower
+             * layer. HEX8TB numbering: nodes 0-3 at the bottom, 4-7 at the
+             * top; edges 0 ( 0, 1 ) and 2 ( 4, 5 ) are the inner longitudinal
+             * edges on face 0 ( 0, 1, 5, 4 ), edges 1 ( 3, 2 ) and 3 ( 7, 6 )
+             * the outer ones. With xi along B -> A, eta outward and zeta up
+             * the element is right-handed, so the MeshChecker leaves it alone.
+             * The inner nodes are the prism's own nodes, where the factory
+             * would place sourced duplicates
+             */
+            void
+            create_side_connector(
+                    mesh::ElementFactory & aFactory,
+                    id_t                 & aNodeID,
+                    id_t                 & aElementID,
+                    const real           * aX,
+                    const real           * aY )
+            {
+                const real tWidth = 0.05 ;
+
+                // unit outward normal of the tape edge A -> B in the footprint
+                const real tDx = aX[ 1 ] - aX[ 0 ];
+                const real tDy = aY[ 1 ] - aY[ 0 ];
+                const real tLength = std::sqrt( tDx * tDx + tDy * tDy );
+                const real tNx =  tDy / tLength ;
+                const real tNy = -tDx / tLength ;
+
+                Cell< mesh::Node * > & tNodes = mMesh->nodes();
+
+                // lower prism of the first stack: 0 = A, 1 = B at z = 0,
+                // 3 = A, 4 = B at z = h
+                mesh::Element * tPrism = mLayer[ 0 ][ 0 ];
+
+                auto tOuter = [ & ]( mesh::Node * aInner )
+                {
+                    mesh::Node * tNode = new mesh::Node( aNodeID++,
+                            aInner->x() + tWidth * tNx,
+                            aInner->y() + tWidth * tNy,
+                            aInner->z() );
+                    tNodes.push( tNode );
+                    return tNode ;
+                };
+
+                mesh::Node * tA0 = tPrism->node( 0 );
+                mesh::Node * tB0 = tPrism->node( 1 );
+                mesh::Node * tA1 = tPrism->node( 3 );
+                mesh::Node * tB1 = tPrism->node( 4 );
+
+                mesh::Node * tWallNodes[ 8 ] =
+                    { tB0, tA0, tOuter( tA0 ), tOuter( tB0 ),
+                      tB1, tA1, tOuter( tA1 ), tOuter( tB1 ) };
+
+                // the linker finds the recovery facet at wall id + 1
+                mWall = aFactory.create_element( ElementType::HEX8TB, aElementID++ );
+                for ( uint k = 0; k < 8; ++k )
+                {
+                    mWall->insert_node( tWallNodes[ k ], k );
+                }
+                mWall->set_block_id( sCoatingBlockID );
+                mMesh->elements().push( mWall );
+
+                mesh::Block * tCoating = new mesh::Block( sCoatingBlockID, 1 );
+                tCoating->set_thickness( tWidth );
+                tCoating->set_domain_type( DomainType::LeftCoating );
+                tCoating->insert_element( mWall );
+                mMesh->blocks().push( tCoating );
+
+                mesh::Element * tFace = aFactory.create_element( ElementType::QUAD4, aElementID++ );
+                mRecoveryFacet = new mesh::Facet( tFace );
+                mRecoveryFacet->set_master( tPrism, 0, true );
+                mRecoveryFacet->set_slave( mWall, 0 );
+                mRecoveryFacet->compute_orientation();
+                mRecoveryFacet->set_sideset_id( sRecoverySideSetID );
+
+                mesh::SideSet * tRecovery = new mesh::SideSet( sRecoverySideSetID, 1 );
+                tRecovery->hide();
+                tRecovery->insert_facet( mRecoveryFacet );
+
+                // Mesh::facet() reads the facet map, which finalize() fills
+                // from the mesh sidesets only
+                mMesh->sidesets().push( tRecovery );
+
+                mesh::ThinShell * tShell = mMesh->thin_shells()( 0 );
+                tShell->side_connector_blocks().push( tCoating );
+                tShell->side_connector_sidesets().push( tRecovery );
+            }
     };
+
+    // runs aCall, requires a std::runtime_error whose what() carries the
+    // literal part of the BELFEM_ERROR text
+    template< typename F >
+    void
+    expect_refusal( F && aCall, const char * aSubstring )
+    {
+        bool tThrown = false ;
+        try
+        {
+            aCall();
+        }
+        catch( const std::runtime_error & aError )
+        {
+            tThrown = true ;
+            EXPECT_NE( std::string( aError.what() ).find( aSubstring ), std::string::npos )
+                << "message was: " << aError.what();
+        }
+        EXPECT_TRUE( tThrown ) << "expected a refusal carrying \"" << aSubstring << "\"";
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -310,7 +492,7 @@ namespace
 // the fill must follow one predicate, or the vector is overrun
 TEST( ThinShellSelection, CollectorReturnsSelectedShellsOnly )
 {
-    TwoShellStacks tStacks( false );
+    TwoShellStacks tStacks( TwoShellStacks::Selection::SecondShell );
 
     Map< id_t, index_t > tSecondOnly ;
     tSecondOnly[ 3 ] = 0 ;
@@ -353,7 +535,7 @@ TEST( ThinShellSelection, CollectorReturnsSelectedShellsOnly )
 // facet
 TEST( ThinShellSelection, UnselectedShellIsSkipped )
 {
-    TwoShellStacks tStacks( false );
+    TwoShellStacks tStacks( TwoShellStacks::Selection::SecondShell );
 
     ASSERT_NO_THROW( tStacks.create_field() );
 
@@ -372,7 +554,7 @@ TEST( ThinShellSelection, UnselectedShellIsSkipped )
 // own shell's tape facet
 TEST( ThinShellSelection, AllShellsSelectedLinkOwnFacet )
 {
-    TwoShellStacks tStacks( true );
+    TwoShellStacks tStacks( TwoShellStacks::Selection::AllShells );
 
     ASSERT_NO_THROW( tStacks.create_field() );
 
@@ -380,6 +562,95 @@ TEST( ThinShellSelection, AllShellsSelectedLinkOwnFacet )
     EXPECT_EQ( tStacks.linked_facet( 2, 2 ), tStacks.mTapeFacet[ 0 ] );
     EXPECT_EQ( tStacks.linked_facet( 3, 3 ), tStacks.mTapeFacet[ 1 ] );
     EXPECT_EQ( tStacks.linked_facet( 4, 4 ), tStacks.mTapeFacet[ 1 ] );
+}
+
+//------------------------------------------------------------------------------
+
+// a side connector whose shell the IWG did not select has no fem block: the
+// serial linker skips it, as it skips the shell's layer blocks
+TEST( ThinShellSelection, ConnectorOfUnselectedShellIsSkipped )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    TwoShellStacks tStacks( TwoShellStacks::Selection::SecondShell, true );
+
+    ASSERT_NO_THROW( tStacks.create_field() );
+
+    EXPECT_FALSE( tStacks.mField->block_exists( TwoShellStacks::sCoatingBlockID ) );
+    EXPECT_FALSE( tStacks.mField->block_exists( 1 ) );
+    EXPECT_FALSE( tStacks.mField->block_exists( 2 ) );
+    ASSERT_TRUE( tStacks.mField->block_exists( 3 ) );
+    ASSERT_TRUE( tStacks.mField->block_exists( 4 ) );
+
+    EXPECT_EQ( tStacks.linked_facet( 3, 3 ), tStacks.mTapeFacet[ 1 ] );
+    EXPECT_EQ( tStacks.linked_facet( 4, 4 ), tStacks.mTapeFacet[ 1 ] );
+}
+
+//------------------------------------------------------------------------------
+
+// a selected connector with its layer blocks: the wall carries its recovery
+// facet, and its reference is the layer element the facet's master names
+TEST( ThinShellSelection, SelectedConnectorLinksFacetAndReference )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    TwoShellStacks tStacks( TwoShellStacks::Selection::AllShellsAndConnector, true );
+
+    ASSERT_NO_THROW( tStacks.create_field() );
+
+    ASSERT_TRUE( tStacks.mField->block_exists( TwoShellStacks::sCoatingBlockID ) );
+    ASSERT_TRUE( tStacks.mField->block_exists( 1 ) );
+
+    fem::Element * tWall = tStacks.mField->block( TwoShellStacks::sCoatingBlockID )
+                                         ->element( tStacks.mWall->id() );
+
+    EXPECT_EQ( tWall->facet(), tStacks.mRecoveryFacet );
+    EXPECT_EQ( tWall->reference(),
+               tStacks.mField->block( 1 )->element( tStacks.mLayer[ 0 ][ 0 ]->id() ) );
+    EXPECT_NE( tWall->reference(), nullptr );
+
+    EXPECT_EQ( tStacks.linked_facet( 1, 1 ), tStacks.mTapeFacet[ 0 ] );
+    EXPECT_EQ( tStacks.linked_facet( 3, 3 ), tStacks.mTapeFacet[ 1 ] );
+}
+
+//------------------------------------------------------------------------------
+
+// a selected connector whose layer block is not selected would leave the
+// wall without a reference element: setup refuses it
+TEST( ThinShellSelection, ConnectorWithoutItsLayerBlockIsRefused )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    TwoShellStacks tStacks( TwoShellStacks::Selection::SecondShellAndConnector, true );
+
+    expect_refusal( [ & ]() { tStacks.create_field(); },
+                    "is selected but the layer block" );
+}
+
+//------------------------------------------------------------------------------
+
+// with no layer block selected the linker used to be skipped entirely and
+// the wall kept a null reference: the connector alone is refused as well
+TEST( ThinShellSelection, ConnectorOnlyIsRefused )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    TwoShellStacks tStacks( TwoShellStacks::Selection::ConnectorOnly, true );
+
+    expect_refusal( [ & ]() { tStacks.create_field(); },
+                    "is selected but the layer block" );
 }
 
 //------------------------------------------------------------------------------
