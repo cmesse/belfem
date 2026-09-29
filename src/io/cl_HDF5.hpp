@@ -138,6 +138,33 @@ namespace belfem
         tree() const ;
 
 //------------------------------------------------------------------------------
+// Handle census
+//------------------------------------------------------------------------------
+
+        /**
+         * Number of objects open in this file other than the file itself:
+         * datasets, groups, named datatypes and attributes. The root
+         * selection is the file and counts zero; every group opened by
+         * select_group() counts one while it stays on the tree. Transient
+         * datatypes from H5Dget_type are not file objects, see
+         * number_of_open_datatypes(); dataspaces have no census at all.
+         * The file must be open. Returns 0 without HDF5.
+         */
+        index_t
+        number_of_open_objects() const ;
+
+//------------------------------------------------------------------------------
+
+        /**
+         * Number of datatype identifiers open in the whole library: those of
+         * every open file plus the transient ones tied to no file, which is
+         * what H5Dget_type hands out. Read it as a delta around an operation.
+         * Returns 0 without HDF5.
+         */
+        static index_t
+        number_of_open_datatypes() ;
+
+//------------------------------------------------------------------------------
 // Save Strings
 //------------------------------------------------------------------------------
 

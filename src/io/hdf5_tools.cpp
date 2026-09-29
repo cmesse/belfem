@@ -84,20 +84,22 @@ namespace belfem
                       aLabel.c_str(),
                       datatype_string<bool>().c_str());
 
-            hid_t tDataSet = H5Dopen1( aFileID, aLabel.c_str() );
+            DatasetHandles tHandles ;
 
-            hid_t tDataType = H5Dget_type( tDataSet );
+            tHandles.mDataSet = H5Dopen1( aFileID, aLabel.c_str() );
+
+            tHandles.mDataType = H5Dget_type( tHandles.mDataSet );
 
             // the file type must be convertible into a bool; the read
             // below then uses datatype<bool>() so HDF5 does the conversion
-            check_read_datatype< bool >( tDataType, aLabel );
+            check_read_datatype< bool >( tHandles.mDataType, aLabel );
 
-            hid_t tDataSpace = H5Dget_space( tDataSet );
+            tHandles.mDataSpace = H5Dget_space( tHandles.mDataSet );
 
             hbool_t tValue;
 
             aStatus = H5Dread(
-                    tDataSet,
+                    tHandles.mDataSet,
                     datatype< bool >(),   // MEMORY type: let HDF5 convert
                     H5S_ALL,
                     H5S_ALL,
@@ -105,10 +107,6 @@ namespace belfem
                     &tValue );
 
             aValue = ( bool ) tValue;
-
-            H5Tclose( tDataType );
-            H5Dclose( tDataSet );
-            H5Sclose( tDataSpace );
 
             BELFEM_ASSERT( aStatus == 0,
                        "Something went wrong while trying to load variable %s of type %s",
@@ -189,19 +187,21 @@ namespace belfem
                       aLabel.c_str(),
                       datatype_string<std::string>().c_str());
 
-            hid_t tDataSet = H5Dopen1( aFileID, aLabel.c_str() );
+            DatasetHandles tHandles ;
 
-            hid_t tDataSpace = H5Dget_space( tDataSet );
+            tHandles.mDataSet = H5Dopen1( aFileID, aLabel.c_str() );
 
-            hid_t tDataType = H5Dget_type( tDataSet );
+            tHandles.mDataSpace = H5Dget_space( tHandles.mDataSet );
 
-            hsize_t tSize = H5Dget_storage_size( tDataSet );
+            tHandles.mDataType = H5Dget_type( tHandles.mDataSet );
+
+            hsize_t tSize = H5Dget_storage_size( tHandles.mDataSet );
 
             char * tBuffer = ( char * ) malloc( tSize * sizeof( char ) );
 
             aStatus = H5Dread(
-                    tDataSet,
-                    tDataType,
+                    tHandles.mDataSet,
+                    tHandles.mDataType,
                     H5S_ALL,
                     H5S_ALL,
                     H5P_DEFAULT,
@@ -210,10 +210,6 @@ namespace belfem
             aValue.assign( tBuffer, tSize );
 
             free( tBuffer );
-
-            H5Sclose( tDataSpace );
-            H5Tclose( tDataType );
-            H5Dclose( tDataSet );
 
             BELFEM_ASSERT( aStatus == 0,
                       "Something went wrong while trying to load string %s.",
@@ -229,9 +225,11 @@ namespace belfem
                 const std::string & aLabel  )
         {
 #ifdef BELFEM_HDF5
-            hid_t tDataSet = H5Dopen1( aFileID, aLabel.c_str() );
+            DatasetHandles tHandles ;
 
-            hid_t tDataSpace = H5Dget_space( tDataSet );
+            tHandles.mDataSet = H5Dopen1( aFileID, aLabel.c_str() );
+
+            tHandles.mDataSpace = H5Dget_space( tHandles.mDataSet );
 
             hsize_t tDims[ 1 ];
 
@@ -240,16 +238,13 @@ namespace belfem
             // extent_dims writes one entry per rank, so a rank>1 dataset would
             // overflow tDims. H5Sget_simple_extent_ndims returns the rank (>=0)
             // on success and a negative value on failure.
-            const int tRank = H5Sget_simple_extent_ndims( tDataSpace );
+            const int tRank = H5Sget_simple_extent_ndims( tHandles.mDataSpace );
 
             BELFEM_ERROR( tRank == 1, "Dataset %s is not a 1-D array (rank %i)",
                 aLabel.c_str(), tRank );
 
             // now safe: exactly one dimension is written into tDims
-            H5Sget_simple_extent_dims( tDataSpace, tDims, nullptr );
-
-            H5Dclose( tDataSet );
-            H5Sclose( tDataSpace );
+            H5Sget_simple_extent_dims( tHandles.mDataSpace, tDims, nullptr );
 
             return tDims[ 0 ];
 #else

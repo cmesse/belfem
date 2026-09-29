@@ -519,4 +519,44 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+    index_t
+    HDF5::number_of_open_objects() const
+    {
+#ifdef BELFEM_HDF5
+        BELFEM_ERROR( mFileIsOpen, "File %s is not open", mPath.c_str() );
+
+        const ssize_t tCount = H5Fget_obj_count( mFile,
+                H5F_OBJ_DATASET | H5F_OBJ_GROUP | H5F_OBJ_DATATYPE | H5F_OBJ_ATTR );
+
+        BELFEM_ERROR( tCount >= 0,
+            "H5Fget_obj_count failed on file %s", mPath.c_str() );
+
+        return static_cast< index_t >( tCount );
+#else
+        return 0 ;
+#endif
+    }
+
+//------------------------------------------------------------------------------
+
+    index_t
+    HDF5::number_of_open_datatypes()
+    {
+#ifdef BELFEM_HDF5
+        // H5Inmembers refuses the library-defined identifier types; the
+        // object count with H5F_OBJ_ALL as the file is the supported census,
+        // and the only one that includes the transient datatypes
+        const ssize_t tCount = H5Fget_obj_count( ( hid_t ) H5F_OBJ_ALL, H5F_OBJ_DATATYPE );
+
+        BELFEM_ERROR( tCount >= 0,
+            "H5Fget_obj_count failed to count the open datatype identifiers" );
+
+        return static_cast< index_t >( tCount );
+#else
+        return 0 ;
+#endif
+    }
+
+//------------------------------------------------------------------------------
+
 }

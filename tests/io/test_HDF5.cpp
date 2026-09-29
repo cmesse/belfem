@@ -127,6 +127,22 @@ namespace
             EXPECT_EQ( aA( k ), aB( k ) );
         }
     }
+
+    // the library-wide transient datatype count taken before a refused read,
+    // so the assertion is a delta and does not depend on what else is open
+    struct HandleCensus
+    {
+        belfem::index_t mDataTypes = belfem::HDF5::number_of_open_datatypes();
+    };
+
+    // a refused read must leave no dataset or datatype open. Dataspaces have
+    // no census in the library; the same owner closes them
+    void
+    expect_no_handle_left( const belfem::HDF5 & aFile, const HandleCensus & aBefore )
+    {
+        EXPECT_EQ( aFile.number_of_open_objects(), 0u );
+        EXPECT_EQ( belfem::HDF5::number_of_open_datatypes(), aBefore.mDataTypes );
+    }
 }
 
 class HDF5Test : public ::testing::Test
@@ -1205,24 +1221,66 @@ TEST_F( HDF5Test, ClassMismatchIsRefusedInEveryBuild )
         belfem::HDF5 tFile( mPath, belfem::FileMode::OPEN_RDONLY );
 
         belfem::sint tIntTarget = 0;
+        const HandleCensus tBeforeScalar ;
         EXPECT_THROW( tFile.load_data( "float_scalar", tIntTarget ),
                       std::runtime_error );
+        expect_no_handle_left( tFile, tBeforeScalar );
 
         belfem::Vector< belfem::sint > tIntVector;
+        const HandleCensus tBeforeVector ;
         EXPECT_THROW( tFile.load_data( "float_vector", tIntVector ),
                       std::runtime_error );
+        expect_no_handle_left( tFile, tBeforeVector );
 
         belfem::real tRealTarget = 0.0;
+        const HandleCensus tBeforeReal ;
         EXPECT_THROW( tFile.load_data( "int_scalar", tRealTarget ),
                       std::runtime_error );
+        expect_no_handle_left( tFile, tBeforeReal );
 
         belfem::Cell< belfem::sint > tIntCell;
+        const HandleCensus tBeforeCell ;
         EXPECT_THROW( tFile.load_data( "float_cell", tIntCell ),
                       std::runtime_error );
+        expect_no_handle_left( tFile, tBeforeCell );
 
         belfem::Matrix< belfem::sint > tIntMatrix;
+        const HandleCensus tBeforeMatrix ;
         EXPECT_THROW( tFile.load_data( "float_matrix", tIntMatrix ),
                       std::runtime_error );
+        expect_no_handle_left( tFile, tBeforeMatrix );
+    }
+}
+
+// the two refusals the class check does not cover: a raw-array read whose
+// expected length differs from the dataset, and a 1-D read of a 2-D dataset
+TEST_F( HDF5Test, RefusedReadsLeaveNoHandleBehind )
+{
+    this->reset_path();
+
+    const belfem::Vector< belfem::real > tFloatVector = { 0.25, 0.5, 1.0, 2.0 };
+    const belfem::Matrix< belfem::real > tFloatMatrix( 2, 3, 0.5 );
+
+    {
+        belfem::HDF5 tFile( mPath, belfem::FileMode::NEW );
+        tFile.save_data( "float_vector", tFloatVector );
+        tFile.save_data( "float_matrix", tFloatMatrix );
+    }
+
+    {
+        belfem::HDF5 tFile( mPath, belfem::FileMode::OPEN_RDONLY );
+
+        belfem::real tShortBuffer[ 3 ] = { 0.0, 0.0, 0.0 };
+        const HandleCensus tBeforeLength ;
+        EXPECT_THROW( tFile.load_data( "float_vector", tShortBuffer, 3 ),
+                      std::runtime_error );
+        expect_no_handle_left( tFile, tBeforeLength );
+
+        belfem::Cell< belfem::real > tFloatCell;
+        const HandleCensus tBeforeRank ;
+        EXPECT_THROW( tFile.load_data( "float_matrix", tFloatCell ),
+                      std::runtime_error );
+        expect_no_handle_left( tFile, tBeforeRank );
     }
 }
 

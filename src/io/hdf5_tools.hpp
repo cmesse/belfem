@@ -27,6 +27,48 @@ namespace belfem
     {
 //------------------------------------------------------------------------------
 
+#ifdef BELFEM_HDF5
+        /**
+         * Scope owner of the three identifiers a dataset read or write opens.
+         * Each member is assigned at the call that opens it; the destructor
+         * closes every member that is a valid identifier, so a refusal that
+         * throws between open and scope exit leaves no handle behind.
+         * Close order: dataspace, datatype, dataset.
+         */
+        struct DatasetHandles
+        {
+            hid_t mDataSet   = H5I_INVALID_HID ;
+            hid_t mDataType  = H5I_INVALID_HID ;
+            hid_t mDataSpace = H5I_INVALID_HID ;
+
+            DatasetHandles() = default ;
+
+            // a copy or a move would close the same identifiers twice
+            DatasetHandles( const DatasetHandles & ) = delete ;
+            DatasetHandles & operator=( const DatasetHandles & ) = delete ;
+            DatasetHandles( DatasetHandles && ) = delete ;
+            DatasetHandles & operator=( DatasetHandles && ) = delete ;
+
+            ~DatasetHandles()
+            {
+                if( mDataSpace >= 0 )
+                {
+                    H5Sclose( mDataSpace );
+                }
+                if( mDataType >= 0 )
+                {
+                    H5Tclose( mDataType );
+                }
+                if( mDataSet >= 0 )
+                {
+                    H5Dclose( mDataSet );
+                }
+            }
+        };
+#endif
+
+//------------------------------------------------------------------------------
+
         /**
          * test if a dataset exists ( tests for a link of that name;
          * the link type is not checked )
@@ -303,27 +345,25 @@ namespace belfem
                         "Error in datatype size of type %s.",
                         datatype_string<T>().c_str() );
 
-            hid_t tDataSet = H5Dopen1( aLoc, aLabel.c_str() );
+            DatasetHandles tHandles ;
 
-            hid_t tDataType = H5Dget_type( tDataSet );
+            tHandles.mDataSet = H5Dopen1( aLoc, aLabel.c_str() );
+
+            tHandles.mDataType = H5Dget_type( tHandles.mDataSet );
 
             // the file type must be convertible into T; the read
             // below then uses datatype<T>() so HDF5 does the conversion
-            check_read_datatype< T >( tDataType, aLabel );
+            check_read_datatype< T >( tHandles.mDataType, aLabel );
 
-            hid_t tDataSpace = H5Dget_space( tDataSet );
+            tHandles.mDataSpace = H5Dget_space( tHandles.mDataSet );
 
             aStatus = H5Dread(
-                    tDataSet,
+                    tHandles.mDataSet,
                     datatype< T >(),   // MEMORY type: let HDF5 convert
                     H5S_ALL,
                     H5S_ALL,
                     H5P_DEFAULT,
                     &aValue );
-
-            H5Tclose( tDataType );
-            H5Dclose( tDataSet );
-            H5Sclose( tDataSpace );
 
             BELFEM_ASSERT( aStatus == 0,
                        "Something went wrong while trying to load scalar %s of type %s",
@@ -459,19 +499,28 @@ namespace belfem
                         "Error in datatype size of type %s.",
                         datatype_string<T>().c_str() );
 
-            hid_t tDataSet = H5Dopen1( aLoc, aLabel.c_str() );
+            DatasetHandles tHandles ;
 
-            hid_t tDataType = H5Dget_type( tDataSet );
+            tHandles.mDataSet = H5Dopen1( aLoc, aLabel.c_str() );
+
+            tHandles.mDataType = H5Dget_type( tHandles.mDataSet );
 
             // the file type must be convertible into T; the read
             // below then uses datatype<T>() so HDF5 does the conversion
-            check_read_datatype< T >( tDataType, aLabel );
+            check_read_datatype< T >( tHandles.mDataType, aLabel );
 
-            hid_t tDataSpace = H5Dget_space( tDataSet );
+            tHandles.mDataSpace = H5Dget_space( tHandles.mDataSet );
 
             hsize_t tDims[ 1 ];
 
-            aStatus  = H5Sget_simple_extent_dims( tDataSpace, tDims, nullptr );
+            // the extent buffer holds one entry; a dataset of another rank is
+            // refused before the extents are read into it
+            const int tRank = H5Sget_simple_extent_ndims( tHandles.mDataSpace );
+
+            BELFEM_ERROR( tRank == 1, "Dataset %s is not a 1-D array (rank %i)",
+                aLabel.c_str(), tRank );
+
+            aStatus  = H5Sget_simple_extent_dims( tHandles.mDataSpace, tDims, nullptr );
 
             BELFEM_ERROR( tDims[ 0 ] == aLength, "Lengths do not match: is %lu, expect %lu.",
                          ( long unsigned int ) tDims[ 0 ], ( long unsigned int ) aLength );
@@ -479,7 +528,7 @@ namespace belfem
             if( aLength > 0 )
             {
                 aStatus = H5Dread(
-                        tDataSet,
+                        tHandles.mDataSet,
                         datatype< T >(),   // MEMORY type: let HDF5 convert
                         H5S_ALL,
                         H5S_ALL,
@@ -490,10 +539,6 @@ namespace belfem
             {
                 aStatus = 0;
             }
-
-            H5Tclose( tDataType );
-            H5Dclose( tDataSet );
-            H5Sclose( tDataSpace );
 
             BELFEM_ASSERT( aStatus == 0,
                         "Something went wrong while trying to load vector %s of type %s",
@@ -594,19 +639,28 @@ namespace belfem
                         "Error in datatype size of type %s.",
                         datatype_string<T>().c_str() );
 
-            hid_t tDataSet = H5Dopen1( aLoc, aLabel.c_str() );
+            DatasetHandles tHandles ;
 
-            hid_t tDataType = H5Dget_type( tDataSet );
+            tHandles.mDataSet = H5Dopen1( aLoc, aLabel.c_str() );
+
+            tHandles.mDataType = H5Dget_type( tHandles.mDataSet );
 
             // the file type must be convertible into T; the read
             // below then uses datatype<T>() so HDF5 does the conversion
-            check_read_datatype< T >( tDataType, aLabel );
+            check_read_datatype< T >( tHandles.mDataType, aLabel );
 
-            hid_t tDataSpace = H5Dget_space( tDataSet );
+            tHandles.mDataSpace = H5Dget_space( tHandles.mDataSet );
 
             hsize_t tDims[ 1 ];
 
-            aStatus  = H5Sget_simple_extent_dims( tDataSpace, tDims, nullptr );
+            // the extent buffer holds one entry; a dataset of another rank is
+            // refused before the extents are read into it
+            const int tRank = H5Sget_simple_extent_ndims( tHandles.mDataSpace );
+
+            BELFEM_ERROR( tRank == 1, "Dataset %s is not a 1-D array (rank %i)",
+                aLabel.c_str(), tRank );
+
+            aStatus  = H5Sget_simple_extent_dims( tHandles.mDataSpace, tDims, nullptr );
 
             hsize_t tLength = tDims[ 0 ];
 
@@ -617,7 +671,7 @@ namespace belfem
                 T* tData = ( T* ) malloc( tLength * sizeof( T ) );
 
                 aStatus = H5Dread(
-                        tDataSet,
+                        tHandles.mDataSet,
                         datatype< T >(),   // MEMORY type: let HDF5 convert
                         H5S_ALL,
                         H5S_ALL,
@@ -635,10 +689,6 @@ namespace belfem
             {
                 aStatus = 0;
             }
-
-            H5Tclose( tDataType );
-            H5Dclose( tDataSet );
-            H5Sclose( tDataSpace );
 
             BELFEM_ASSERT( aStatus == 0,
                         "Something went wrong while trying to load vector %s of type %s",
@@ -773,25 +823,21 @@ namespace belfem
                         "Error in datatype size of type %s.",
                         datatype_string<T>().c_str() );
 
-            hid_t tDataSet = H5Dopen1( aLoc, aLabel.c_str() );
+            DatasetHandles tHandles ;
 
-            hid_t tDataType = H5Dget_type( tDataSet );
+            tHandles.mDataSet = H5Dopen1( aLoc, aLabel.c_str() );
+
+            tHandles.mDataType = H5Dget_type( tHandles.mDataSet );
 
             // the file type must be convertible into T; the read
             // below then uses datatype<T>() so HDF5 does the conversion
-            check_read_datatype< T >( tDataType, aLabel );
+            check_read_datatype< T >( tHandles.mDataType, aLabel );
 
-            BELFEM_ASSERT(   H5Tget_class( tDataType )
-                          ==  H5Tget_class( datatype<T>() ),
-                        "Dataset %s does not seem to be %s.",
-                        aLabel.c_str(),
-                        datatype_string<T>().c_str() );
-
-            hid_t tDataSpace = H5Dget_space( tDataSet );
+            tHandles.mDataSpace = H5Dget_space( tHandles.mDataSet );
 
             hsize_t tDims[ 2 ];
 
-            aStatus  = H5Sget_simple_extent_dims( tDataSpace, tDims, nullptr );
+            aStatus  = H5Sget_simple_extent_dims( tHandles.mDataSpace, tDims, nullptr );
 
             // allocate memory for output (transpose swaps the on-disk dimensions)
             if ( aTranspose )
@@ -817,7 +863,7 @@ namespace belfem
                 }
 
                 aStatus = H5Dread(
-                        tDataSet,
+                        tHandles.mDataSet,
                         datatype< T >(),   // MEMORY type: let HDF5 convert
                         H5S_ALL,
                         H5S_ALL,
@@ -853,10 +899,6 @@ namespace belfem
                 aStatus = 0;
             }
 
-            H5Tclose( tDataType );
-            H5Dclose( tDataSet );
-            H5Sclose( tDataSpace );
-
             BELFEM_ASSERT( aStatus == 0,
                         "Something went wrong while trying to load matrix %s of type %s",
                         aLabel.c_str(),
@@ -872,23 +914,25 @@ namespace belfem
         {
 #ifdef BELFEM_HDF5
 
+            DatasetHandles tHandles ;
+
             hsize_t tNumStrings = aCell.size();
             hsize_t tDim[ 1 ] = { tNumStrings };
-            hid_t   tDataSpace = H5Screate_simple( 1, tDim, NULL );
+            tHandles.mDataSpace = H5Screate_simple( 1, tDim, NULL );
 
-            hid_t tType = H5Tcopy( H5T_C_S1 );
-            H5Tset_size( tType, H5T_VARIABLE );
+            tHandles.mDataType = H5Tcopy( H5T_C_S1 );
+            H5Tset_size( tHandles.mDataType, H5T_VARIABLE );
 
-            hid_t tDataset = H5Dcreate2(
+            tHandles.mDataSet = H5Dcreate2(
                     aLoc,
                     aLabel.c_str(),
-                    tType,
-                    tDataSpace,
+                    tHandles.mDataType,
+                    tHandles.mDataSpace,
                     H5P_DEFAULT,
                     H5P_DEFAULT,
                     H5P_DEFAULT );
 
-            BELFEM_ERROR( tDataset > -1, "Error creating dataset" );
+            BELFEM_ERROR( tHandles.mDataSet > -1, "Error creating dataset" );
 
             Cell< const char * > tBuffer( tNumStrings, nullptr );
             for ( hsize_t i=0; i<tNumStrings; ++i )
@@ -897,18 +941,14 @@ namespace belfem
             }
 
             aStatus = H5Dwrite(
-                    tDataset,
-                    tType,
+                    tHandles.mDataSet,
+                    tHandles.mDataType,
                     H5S_ALL,
                     H5S_ALL,
                     H5P_DEFAULT,
                     tBuffer.data() );
 
             BELFEM_ERROR( aStatus ==0, "Error writing data" );
-
-            H5Dclose( tDataset );
-            H5Tclose( tType );
-            H5Sclose( tDataSpace );
 #endif
         }
 
@@ -924,12 +964,22 @@ namespace belfem
             BELFEM_ERROR( hdf5::dataset_exists( aLoc, aLabel ),
                 "Dataset %s does not exist at expected location.", aLabel.c_str() );
 
-            hid_t tDataset = H5Dopen1( aLoc, aLabel.c_str() );
+            DatasetHandles tHandles ;
 
-            hid_t tDataSpace = H5Dget_space( tDataset );
+            tHandles.mDataSet = H5Dopen1( aLoc, aLabel.c_str() );
+
+            tHandles.mDataSpace = H5Dget_space( tHandles.mDataSet );
 
             hsize_t tDim[ 1 ] ;
-            BELFEM_ERROR( H5Sget_simple_extent_dims( tDataSpace, tDim, nullptr ) > -1 ,
+
+            // the extent buffer holds one entry; a dataset of another rank is
+            // refused before the extents are read into it
+            const int tRank = H5Sget_simple_extent_ndims( tHandles.mDataSpace );
+
+            BELFEM_ERROR( tRank == 1, "Dataset %s is not a 1-D array (rank %i)",
+                aLabel.c_str(), tRank );
+
+            BELFEM_ERROR( H5Sget_simple_extent_dims( tHandles.mDataSpace, tDim, nullptr ) > -1 ,
                 "Error getting dataspace dimensions" );
 
             hsize_t tNumStrings = tDim[ 0 ];
@@ -941,32 +991,40 @@ namespace belfem
             // diagnostic than a nonzero status. Copy the cset from the
             // dataset itself so BELFEM-written ASCII files behave as before
             // and Python-written UTF-8 files become readable.
-            hid_t tType = H5Tcopy( H5T_C_S1 );
-            H5Tset_size( tType, H5T_VARIABLE );
+            tHandles.mDataType = H5Tcopy( H5T_C_S1 );
+            H5Tset_size( tHandles.mDataType, H5T_VARIABLE );
 
-            hid_t tFileType = H5Dget_type( tDataset );
-            H5Tset_cset( tType, H5Tget_cset( tFileType ) );
+            hid_t tFileType = H5Dget_type( tHandles.mDataSet );
+            H5Tset_cset( tHandles.mDataType, H5Tget_cset( tFileType ) );
             H5Tclose( tFileType );
 
-            // HDF5 will allocate the actual strings when reading.
-            char ** tBuffer = new char *[ tNumStrings  ];
+            // HDF5 allocates the strings during the read. The null slots let
+            // the reclaim below free exactly what a failed read left allocated,
+            // so it runs on both paths, before the refusal and before the owner
+            // closes the type and the dataspace it needs. An empty Cell may
+            // hand out a null data(), which H5Dread accepts at zero elements
+            // and H5Dvlen_reclaim refuses, hence the size guard.
+            Cell< char * > tBuffer( tNumStrings, nullptr );
 
-            BELFEM_ERROR( H5Dread( tDataset, tType, H5S_ALL, H5S_ALL, H5P_DEFAULT, tBuffer ) == 0,
-                "Failed to read strings from file." );
+            const herr_t tReadStatus = H5Dread( tHandles.mDataSet, tHandles.mDataType,
+                    H5S_ALL, H5S_ALL, H5P_DEFAULT, tBuffer.data() );
 
-            aCell.set_size( tNumStrings, "" );
-
-            for ( hsize_t i=0; i<tNumStrings; ++i )
+            if( tReadStatus == 0 )
             {
-                aCell( i ) = std::string( tBuffer[ i ] );
+                aCell.set_size( tNumStrings, "" );
+
+                for ( hsize_t i=0; i<tNumStrings; ++i )
+                {
+                    aCell( i ) = std::string( tBuffer( i ) );
+                }
             }
 
-            H5Dvlen_reclaim( tType, tDataSpace, H5P_DEFAULT, tBuffer );
-            delete [] tBuffer;
+            if( tNumStrings > 0 )
+            {
+                H5Dvlen_reclaim( tHandles.mDataType, tHandles.mDataSpace, H5P_DEFAULT, tBuffer.data() );
+            }
 
-            H5Tclose( tType );
-            H5Sclose( tDataSpace );
-            H5Dclose( tDataset );
+            BELFEM_ERROR( tReadStatus == 0, "Failed to read strings from file." );
 #endif
         }
 //------------------------------------------------------------------------------
