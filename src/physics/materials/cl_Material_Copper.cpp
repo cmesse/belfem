@@ -275,15 +275,11 @@ namespace belfem
             { 2.3, 5.7581541250, 5.3025840143, 10.0 },
             {-6.7358206535,-1.7358206535, 0.2114121663,   0.2114121663 } );
 
-            // polynomial for low field area
-            mBSKohlerSwitch.set_size( 2 );
-
             real w = 2.3; // w = ln(x) w' = 1/x w'' = -1/x^2
             real x = std::exp( w );
 
-            // transition points
-            mBSKohlerSwitch( 0 ) = x ;
-            mBSKohlerSwitch( 1 ) = std::exp( 10.0 ); // field saturates here
+            // transition points; the field saturates at the second
+            mBSKohlerSwitch = { x, std::exp( 10.0 ) };
 
 
             mKohlerLongPolys.set_size( 2 );

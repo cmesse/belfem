@@ -14,9 +14,11 @@
  */
 
 #include <cmath>
+#include <string>
 
 #include <gtest/gtest.h>
 
+#include "cl_Cell.hpp"
 #include "cl_Material.hpp"
 #include "cl_Material_Metal.hpp"
 #include "cl_MaterialFactory.hpp"
@@ -155,72 +157,105 @@ TEST( MetalRRR, SecantSatisfiesTheRRRIdentity )
     }
 }
 
-// Lead and tin switch the transverse Kohler term from a low-field cubic to
-// exp( q1( ln BS ) ) at the point where the cubic matches value, slope and
-// curvature of the power law. The switch must carry that matching point: the
-// far-point checks at x / 4 and 2 x pin which branch is taken on each side,
-// against an oracle built here from the published q1. Continuity at x alone is
-// no mutation gate, since a switch outside the sweep selects one smooth branch
+// Lead, tin and silver switch a Kohler term from a low-field cubic to
+// exp( g( ln BS ) ) at the point where the cubic matches value, slope and
+// curvature of the log polynomial g. The switch must carry that matching
+// point: the samples on either side pin which branch is taken, against an
+// oracle built here from the published g. Continuity at x alone is no
+// mutation gate, since a switch outside the sweep selects one smooth branch
 // throughout and both branches are increasing there
-TEST( MetalFieldDependence, KohlerTransverseBranchesMeetAtTheStoredSwitch )
+TEST( MetalFieldDependence, KohlerBranchesMeetAtTheStoredSwitch )
 {
-    struct KohlerTrans
+    // a low-field cubic, matched in value, slope and curvature to the log
+    // polynomial g( w ) at w = ln x, holds below the stored switch x and the
+    // log polynomial above it
+    struct KohlerBranch
     {
-        const char * mLabel ;
-        belfem::real mExponent ;   // q1( 0 ): A = exp( mOffset ) * BS^mExponent
-        belfem::real mOffset ;     // q1( 1 )
-        belfem::real mLogSwitch ;  // ln of the matching point
+        const char *          mLabel ;
+        belfem::real          mBeta ;      // pi/2 selects the transverse branch, 0 the longitudinal
+        belfem::Cell< belfem::real > mLogPoly ;   // g( w ), highest power first
+        belfem::real          mLogSwitch ; // ln x
     };
 
-    const KohlerTrans tCases[] = { { "lead", 1.458,  -9.7936, 3.0 },
-                                   { "tin",  1.8073, -12.545, 8.4 } };
+    const belfem::real tHalfPi = 0.5 * belfem::constant::pi ;
 
-    const belfem::real tBeta = 0.5 * belfem::constant::pi ;
+    // silver switches both branches at the stationary point of q1 - p1, where
+    // the distance between its two log polynomials is extreme
+    const belfem::real tSilverLogSwitch = -5.344600736593178 ;
+
+    const KohlerBranch tCases[] = {
+        { "lead",   tHalfPi, { 1.458, -9.7936 }, 3.0 },
+        { "tin",    tHalfPi, { 1.8073, -12.545 }, 8.4 },
+        { "silver", tHalfPi, { 2.48185096E-03, -1.37777811E-01, 2.44232600E+00, -1.02282979E+01 }, tSilverLogSwitch },
+        { "silver", 0.0,     { -1.46572872E-01, 2.56099423E+00, -1.09120064E+01 }, tSilverLogSwitch } };
+
+    // g, g' and g'' at w by Horner's scheme
+    auto tLogPoly = [ ]( const belfem::Cell< belfem::real > & aPoly, const belfem::real aW,
+                         belfem::real & aG, belfem::real & aG1, belfem::real & aG2 )
+    {
+        aG = 0.0 ; aG1 = 0.0 ; aG2 = 0.0 ;
+        for ( belfem::real tCoeff : aPoly )
+        {
+            aG2 = aG2 * aW + 2.0 * aG1 ;
+            aG1 = aG1 * aW + aG ;
+            aG  = aG  * aW + tCoeff ;
+        }
+    };
 
     belfem::MaterialFactory tFactory ;
 
-    for ( const KohlerTrans & tCase : tCases )
+    for ( const KohlerBranch & tCase : tCases )
     {
-        SCOPED_TRACE( tCase.mLabel );
+        SCOPED_TRACE( std::string( tCase.mLabel ) + ( tCase.mBeta > 0.0 ? " transverse" : " longitudinal" ) );
 
         belfem::material::Metal * tMetal = dynamic_cast< belfem::material::Metal * >(
                 tFactory.create_material( tCase.mLabel, 50.0, false ) );
         ASSERT_NE( tMetal, nullptr );
 
-        const belfem::real k = tCase.mExponent ;
         const belfem::real x = std::exp( tCase.mLogSwitch );
 
-        // power law and its first two derivatives at the matching point
-        const belfem::real F  = std::exp( tCase.mOffset ) * std::pow( x, k );
-        const belfem::real F1 = k * F / x ;
-        const belfem::real F2 = k * ( k - 1.0 ) * F / ( x * x );
+        // F = exp( g( ln t ) ) and its first two derivatives at t = x
+        belfem::real g, g1, g2 ;
+        tLogPoly( tCase.mLogPoly, tCase.mLogSwitch, g, g1, g2 );
+        const belfem::real F  = std::exp( g );
+        const belfem::real F1 = F * g1 / x ;
+        const belfem::real F2 = F * ( g1 * g1 + g2 - g1 ) / ( x * x );
 
         // a t^3 + b t^2 + c t with value, slope and curvature F, F1, F2 at t = x
         const belfem::real a = ( F / x - F1 + 0.5 * F2 * x ) / ( x * x );
         const belfem::real b = 0.5 * F2 - 3.0 * a * x ;
         const belfem::real c = F / x - a * x * x - b * x ;
 
-        auto tHigh  = [ & ]( const belfem::real t ) { return std::exp( tCase.mOffset ) * std::pow( t, k ); };
+        auto tHigh = [ & ]( const belfem::real t )
+        {
+            belfem::real tG, tG1, tG2 ;
+            tLogPoly( tCase.mLogPoly, std::log( t ), tG, tG1, tG2 );
+            return std::exp( tG );
+        };
         auto tCubic = [ & ]( const belfem::real t ) { return ( ( a * t + b ) * t + c ) * t ; };
 
-        const belfem::real tLow = 0.25 * x ;
-        const belfem::real tUp  = 2.0 * x ;
+        // the two branches differ at every sample, so a switch stored outside
+        // ( 0.9 x, 1.1 x ) sends one sample to the wrong oracle: the far points
+        // differ by percent, the near points by around 1e-5 or more
+        const belfem::real tSamples[ 4 ] = { 0.25 * x, 0.9 * x, 1.1 * x, 2.0 * x };
+        const belfem::real tSeparation[ 4 ] = { 1e-2, 1e-6, 1e-6, 1e-2 };
 
-        // the far points discriminate: the two branches differ there
-        EXPECT_GT( std::abs( tCubic( tLow ) - tHigh( tLow ) ), 1e-2 * tHigh( tLow ) );
-        EXPECT_GT( std::abs( tCubic( tUp ) - tHigh( tUp ) ), 1e-2 * tHigh( tUp ) );
+        for ( std::size_t k = 0; k < 4; ++k )
+        {
+            const belfem::real t = tSamples[ k ];
+            EXPECT_GT( std::abs( tCubic( t ) - tHigh( t ) ), tSeparation[ k ] * tHigh( t ) ) << "t/x = " << t / x ;
 
-        const belfem::real tKLow = tMetal->kohler( tLow, 1.0, tBeta );
-        const belfem::real tKUp  = tMetal->kohler( tUp, 1.0, tBeta );
-        EXPECT_NEAR( tKLow, tCubic( tLow ), 1e-10 * std::abs( tCubic( tLow ) ) );
-        EXPECT_NEAR( tKUp, tHigh( tUp ), 1e-10 * tHigh( tUp ) );
+            const belfem::real tExpect = t < x ? tCubic( t ) : tHigh( t );
+            EXPECT_NEAR( tMetal->kohler( t, 1.0, tCase.mBeta ), tExpect, 1e-10 * std::abs( tExpect ) )
+                << "t/x = " << t / x ;
+        }
 
         // control: the branches meet at the switch. Each side is compared with the
-        // power law at its own point; the C2 match leaves an O( delta^3 ) gap,
+        // log polynomial at its own point; the C2 match leaves an O( delta^3 ) gap,
         // while the slope alone separates the two points by O( delta )
         for ( belfem::real t : { x * ( 1.0 - 1e-4 ), x * ( 1.0 + 1e-4 ) } )
         {
-            EXPECT_NEAR( tMetal->kohler( t, 1.0, tBeta ), tHigh( t ), 1e-6 * tHigh( t ) )
+            EXPECT_NEAR( tMetal->kohler( t, 1.0, tCase.mBeta ), tHigh( t ), 1e-6 * tHigh( t ) )
                 << "BS = " << t ;
         }
 

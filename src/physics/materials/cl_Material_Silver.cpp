@@ -254,7 +254,6 @@ namespace belfem
         void
         Silver::create_kohler()
         {
-            mBSKohlerSwitch.set_size( 2 );
             mKohlerLongPolys.set_size( 3 );
             mKohlerTransPolys.set_size( 3 );
             Vector< real > & p0 = mKohlerLongPolys( 0 );
@@ -282,7 +281,8 @@ namespace belfem
             real c = q1(2) - p1(1);
             real w0 = ( -b - std::sqrt( b*b - 4*a*c ) ) / (2*a);
 
-            // low field longitudinal
+            // low field longitudinal: cubic matched in value, slope and
+            // curvature to the log polynomial at w0
             real g      = polyval( p1, w0 );
             real dgdw   = dpolyval( p1, w0 ) ;
             real d2dgw2 = ddpolyval( p1, w0 ) ;
@@ -295,16 +295,18 @@ namespace belfem
             real dfdx = f * dgdw / x ;
             real d2fdx2 = f * ( dgdx * dgdx + d2gdx2 ) ;
 
-            q0.set_size( 4 );
-            q0( 0 ) = ( f  + x * ( 0.5 * d2fdx2*x- dfdx) ) / ( x*x*x );
-            q0( 1 ) = ( x*(3.*dfdx-d2fdx2*x) - 3.*f ) / ( x*x );
-            q0( 2 ) = ( 3.*f + x * ( 0.5 * d2fdx2 * x - 2. * dfdx ) ) / x ;
-            q0( 3 ) = 0.0 ;
+            p0.set_size( 4 );
+            p0( 0 ) = ( f  + x * ( 0.5 * d2fdx2*x- dfdx) ) / ( x*x*x );
+            p0( 1 ) = ( x*(3.*dfdx-d2fdx2*x) - 3.*f ) / ( x*x );
+            p0( 2 ) = ( 3.*f + x * ( 0.5 * d2fdx2 * x - 2. * dfdx ) ) / x ;
+            p0( 3 ) = 0.0 ;
 
-            // low field transversal
+            // low field transversal, the same match at the same point
             g = polyval( q1, w0 );
             dgdw = dpolyval( q1, w0 ) ;
             d2dgw2 = ddpolyval( q1, w0 ) ;
+            dgdx = dgdw / x ;
+            d2gdx2 = ( d2dgw2 - dgdw)/(x*x);
             f = std::exp( g );
             dfdx = f * dgdw / x ;
             d2fdx2 = f * ( dgdx * dgdx + d2gdx2 ) ;
@@ -314,26 +316,11 @@ namespace belfem
             q0( 2 ) = ( 3.*f + x * ( 0.5 * d2fdx2 * x - 2. * dfdx ) ) / x ;
             q0( 3 ) = 0.0 ;
 
-            // low field parallel
-            g = polyval( p1, w0 );
-            dgdw = dpolyval( p1, w0 ) ;
-            d2dgw2 = ddpolyval( p1, w0 ) ;
-            f = std::exp( g );
-            dfdx = f * dgdw / x ;
-            d2fdx2 = f * ( dgdx * dgdx + d2dgw2 ) ;
-            p0.set_size( 4 );
-            p0( 0 ) = ( f  + x * ( 0.5 * d2fdx2*x- dfdx) ) / ( x*x*x );
-            q0( 1 ) = ( x*(3.*dfdx-d2fdx2*x) - 3.*f ) / ( x*x );
-            q0( 2 ) = ( 3.*f + x * ( 0.5 * d2fdx2 * x - 2. * dfdx ) ) / x ;
-            q0( 3 ) = 0.0 ;
-
-            mBSKohlerSwitch( 0 ) = x;
-
-
             // compute transition point
             real w1 = -0.5*p1(1)/p1(0);
 
-            mBSKohlerSwitch( 1 ) = std::exp( w1 );
+            // both cubics hold below x, the log polynomials up to the saturation
+            mBSKohlerSwitch = { x, std::exp( w1 ) };
 
             // longitudinal extension (constant)
             p2.set_size( 1, std::exp(polyval( p1, w1 ) ));

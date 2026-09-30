@@ -606,9 +606,20 @@ namespace belfem
 
             comm_barrier() ;
 
-            tField->set_equation( aEquation );
+            try
+            {
+                tField->set_equation( aEquation );
 
-            mDofManagers.push( tField );
+                mDofManagers.push( tField );
+            }
+            catch( ... )
+            {
+                // set_equation links the equation to the field before it can
+                // refuse, and the field dies with tOwner
+                aEquation->detach_field( tField );
+                throw ;
+            }
+
             tOwner.release() ;
 
             return tField ;

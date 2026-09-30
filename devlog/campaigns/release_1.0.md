@@ -66,6 +66,7 @@ Details: dl20260814_doc_sweep_fixes_and_release_packaging. Owed gates: real
 
 ## Dated entries
 
+- **2026-09-30** — DR-190 and DR-191 struck (the post-catch dangling field closed; `KEEP(40)` named from the MUMPS driver and zeroed on a fresh pool; Silver's low-field Kohler cubics, stored into the wrong vector since they were written, repaired; tin's cubic accepted by ruling), DR-113's verified `make check` leg recorded. Open: 7 rows, none `[F]`. `dl20260930_dr113_dr190_dr191_residues`.
 - **2026-09-29** — the freeze list is empty: DR-168 (the only `[F]` row) struck — `h_ghost` assembles the SWIP average flux, verified against Ern, Stephansen & Zunino 2009 Eqs. 7/8/15/16. DR-190 narrowed (gate half refuted, leak fixed), DR-191 fixed in part (Kohler switch), DR-159's premise refuted (the log's Picard line is the lagged residual; the deck converges to its 1e-7 every step, marginally). `dl20260929_dr159_dr168_dr190_dr191`.
 
 todo/debt_register.md (the row-level lens) · dl20260615_architecture_structure_review ·

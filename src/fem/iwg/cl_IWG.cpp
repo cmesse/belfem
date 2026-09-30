@@ -111,6 +111,8 @@ namespace belfem
         void
         IWG::set_wetted_sidesets( const Vector< id_t > & aSideSets )
         {
+            BELFEM_ERROR( mField != nullptr, "equation is not linked to a field" );
+
             uint tCount = 0;
 
             for ( id_t tID : aSideSets )
@@ -716,6 +718,17 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
+        IWG::detach_field( const DofManagerBase * aField )
+        {
+            if ( mField == aField )
+            {
+                mField = nullptr ;
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
         IWG::collect_node_data(
                 Element        * aElement,
                 Cell< string > & aFieldLabels,
@@ -989,6 +1002,8 @@ namespace belfem
         void
         IWG::set_omega( const real & aOmega )
         {
+            BELFEM_ERROR( mField != nullptr, "equation is not linked to a field" );
+
             if( mField->rank() == 0 ) mOmega = aOmega;
 
             broadcast( mOmega );
@@ -999,6 +1014,8 @@ namespace belfem
         void
         IWG::set_penalty( const real aPsi, const uint aIndex )
         {
+            BELFEM_ERROR( mField != nullptr, "equation is not linked to a field" );
+
             if( mField->rank() == 0 ) mPenalty( aIndex ) = aPsi ;
 
             broadcast( mPenalty );

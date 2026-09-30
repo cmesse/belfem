@@ -669,6 +669,14 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            /** forgets aField if it is the linked one. The kernel calls this
+             *  when a field refused to link and is about to be freed, so the
+             *  equation does not keep pointing at that dof manager */
+            void
+            detach_field( const DofManagerBase * aField );
+
+//------------------------------------------------------------------------------
+
              IwgType
              type() const ;
 

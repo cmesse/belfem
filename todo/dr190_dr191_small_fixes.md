@@ -10,7 +10,7 @@ struck with the evidence. DR-191: valgrind's uninitialised read in `Lead::kohler
 makes, plus a continuity test across the switch.
 **Module:** `src/fem/kernel` (DR-190), `src/physics/materials` (DR-191), `tests/physics`
 **AIs involved:** Claude (plan + implementation), Codex `gpt-6-astra` + Grok (juries; the kernel puts the round on the astra row)
-**Status:** IN PROGRESS — approved 2026-09-29 (Christian, quiz); R1-R5 done: plan jury and code jury both Codex astra/high + Grok 4.7/high, reconciled (no P0/P1 in the code round); Claude's gates on the private non-MKL tree green (10/10, 9/9, no `create_field` leak record, no `kohler` valgrind context; mutation red at `x/4`). Two residues ruled 2026-09-29 (Christian, quiz: file, commit as is): the dangling `IWG::mField` after a CAUGHT refusal (fix shape `IWG::detach_field()` + try/catch, no in-tree caller reuses an equation after a catch) and the test's `( x/4, 2x )` window (samples at `0.9x`/`1.1x` would pin the stored switch). R6 close-out and Christian's `make check-fast` owed
+**Status:** IN PROGRESS — approved 2026-09-29 (Christian, quiz); R1-R5 done: plan jury and code jury both Codex astra/high + Grok 4.7/high, reconciled (no P0/P1 in the code round); Claude's gates on the private non-MKL tree green (10/10, 9/9, no `create_field` leak record, no `kohler` valgrind context; mutation red at `x/4`). Two residues ruled 2026-09-29 (Christian, quiz: file, commit as is): the dangling `IWG::mField` after a CAUGHT refusal (fix shape `IWG::detach_field()` + try/catch, no in-tree caller reuses an equation after a catch) and the test's `( x/4, 2x )` window (samples at `0.9x`/`1.1x` would pin the stored switch). R6 closed 2026-09-30 by the residue plan `dr113_dr190_dr191_residues.md` (both rows struck); `make check` in the shared tree, Christian, 2026-09-30: 17/17 (fast 8, mpi 4, 21.24 s real)
 
 > **Scope guards:**
 > - DR-190: ownership in `create_field` only. No change to what is refused, to `set_equation`'s
@@ -208,7 +208,7 @@ the MUMPS 5.9 user guide or driver source.
 - [x] **R3** DR-191 assignments, WhiteTin size, the continuity test.
 - [x] **R4** code jury on the own-files diff, same slug and depth.
 - [x] **R5** gates of §3 on the private tree, mutation checks recorded; Christian's `make check-fast`.
-- [ ] **R6** close-out: register (DR-190 → `[W]` row struck if the leak is the whole remainder; DR-191 struck), devlog, `todo/README.md`.
+- [x] **R6** close-out — done 2026-09-30 through `todo/dr113_dr190_dr191_residues.md`: both rows struck, devlog `dl20260930_dr113_dr190_dr191_residues`, `todo/README.md`.
 
 Defects found on the way:
 - **D1** (DR-191, this session) the unset switch, §2.1. Confidence high (valgrind origin + source).

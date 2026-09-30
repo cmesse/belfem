@@ -67,6 +67,13 @@ subroutine mumpstools_create_solver( aSolverID, aInfo, aHostIsWorking, aSymmetry
         allocate( gOccupied( gMaxNumSolvers ) )
         forall( k=1:gMaxNumSolvers  ) gOccupied( k ) = 0
         gNumSolvers = 0
+
+        ! the driver reads KEEP( 40 ), its last-phase tag, at the top of
+        ! JOB = -1 before it initializes anything ( the OLDJOB check in
+        ! dmumps_driver.F ), and a fresh allocate leaves it undefined
+        do k = 1, gMaxNumSolvers
+            gSolvers( k )%KEEP( 40 ) = 0
+        end do
     end if
 
     ! first-free scan: the occupancy table is the authority, not a

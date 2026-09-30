@@ -151,6 +151,10 @@ code jury at terra/high + grok-4.7/high; the SWIP equations verified from the pa
 15, 16) and the DOI resolved; 38/38 on a private non-MKL tree with both mutation checks red at the
 predicted values. Christian's Blaze `make check-fast` owed; then the file moves to `closed/`.
 
+### [dr113_dr190_dr191_residues.md](dr113_dr190_dr191_residues.md) — the residues of the small-fixes cluster: `IWG::detach_field()` across a caught `create_field` refusal (DR-190), the MUMPS pool's `KEEP(40)` zeroed at allocation because the 5.9.1 driver reads it before `JOB = -1` initializes anything, brace-assigned Kohler switch vectors in the five size-then-store metals and the near-switch test samples (DR-191), DR-113's verified `make check` leg recorded
+
+**LANDED 2026-09-30 (the `dl20260930_dr113_dr190_dr191_residues` commit), DR-190 and DR-191 struck.** Both juries Codex astra/high + Grok 4.7/high. Grok found Silver's low-field cubics stored into the wrong vector, repaired in the same round; the `dmumps_` field named from the driver source (`dmumps_driver.F:942-946`) and its fix verified by valgrind (1 → 0 contexts); positive controls on HEAD, `test_physics` 159/159 and `test_fem` 300/300 on a private non-MKL tree; `make check` in the shared tree, Christian, 2026-09-30: 17/17 (fast 8, mpi 4, 21.24 s real). Both this file and `dr190_dr191_small_fixes.md` move to `closed/` next session.
+
 ### [dr190_dr191_small_fixes.md](dr190_dr191_small_fixes.md) — DR-190: the `DofManager` owned across a `create_field` refusal (the rank-dependent-gate half is refuted by the source); DR-191: `mBSKohlerTransSwitch( 0 )` never assigned in Lead and WhiteTin, localized by valgrind
 
 **LANDED 2026-09-29 (the `dl20260929_dr159_dr168_dr190_dr191` commits).** Both juries astra/high +

@@ -202,9 +202,7 @@ namespace belfem
         Lead::create_kohler()
         {
             mKohlerLongPolys.set_size( 3, {} );
-            mBSKohlerLongSwitch.set_size( 2 );
             mKohlerTransPolys.set_size( 2, {} );
-            mBSKohlerTransSwitch.set_size( 1 );
 
             Vector< real > & p0 = mKohlerLongPolys( 0 );
             Vector< real > & p1 = mKohlerLongPolys( 1 );
@@ -244,8 +242,7 @@ namespace belfem
 
             p2 = { std::exp( polyval( p1, w2 ) ) };
 
-            mBSKohlerLongSwitch( 0 ) = std::exp(w1);
-            mBSKohlerLongSwitch( 1 ) = std::exp(w2);
+            mBSKohlerLongSwitch = { std::exp( w1 ), std::exp( w2 ) };
 
             real w = 3.0 ;
                  x = std::exp( w );
@@ -267,7 +264,7 @@ namespace belfem
             q0( 3 ) = 0.0 ;
 
             // the transverse cubic holds below its matching point, the log polynomial above
-            mBSKohlerTransSwitch( 0 ) = x ;
+            mBSKohlerTransSwitch = { x };
 
             this->set_kohler_dependencies();
         }

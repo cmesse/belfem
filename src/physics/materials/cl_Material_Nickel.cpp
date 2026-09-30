@@ -183,17 +183,13 @@ namespace belfem
             mKohlerLongBezier = new Bezier(  {  3.000000000000, 5.901022203328, 6.079578875969, 6.237686705000 },
                       { -3.935015144441, -1.091459238608, -1.091459238608, -1.091459238608 } );
 
-            // polynomial for low field area
-            mBSKohlerSwitch.set_size( 2 );
-
             real w = mKohlerLongBezier->basis_x()(0);
             real x = std::exp( w );
 
-            // transition points
+            // transition points; the field saturates at the second
             real w1 = mKohlerLongBezier->basis_x()(3);
             real x1 = std::exp( w1 );
-            mBSKohlerSwitch( 0 ) = x ;
-            mBSKohlerSwitch( 1 ) = x1; // field saturates here
+            mBSKohlerSwitch = { x, x1 };
 
 
             mKohlerLongPolys.set_size( 2 );

@@ -634,6 +634,10 @@ TEST( ThinShellSelection, ConnectorWithoutItsLayerBlockIsRefused )
 
     expect_refusal( [ & ]() { tStacks.create_field(); },
                     "is selected but the layer block" );
+
+    // the equation outlives the refused field; reconfiguring it must not
+    // walk the freed dof manager ( valgrind is the observer )
+    tStacks.mIWG->set_timestepping_method( EulerMethod::BackwardDifference1 );
 }
 
 //------------------------------------------------------------------------------
@@ -651,6 +655,8 @@ TEST( ThinShellSelection, ConnectorOnlyIsRefused )
 
     expect_refusal( [ & ]() { tStacks.create_field(); },
                     "is selected but the layer block" );
+
+    tStacks.mIWG->set_timestepping_method( EulerMethod::BackwardDifference1 );
 }
 
 //------------------------------------------------------------------------------
