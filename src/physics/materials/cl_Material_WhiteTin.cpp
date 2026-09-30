@@ -209,7 +209,7 @@ namespace belfem
         WhiteTin::create_kohler()
         {
             mKohlerLongPolys.set_size( 3, {} );
-            mBSKohlerLongSwitch.set_size( 3 );
+            mBSKohlerLongSwitch.set_size( 2 );
             mKohlerTransPolys.set_size( 2, {} );
             mBSKohlerTransSwitch.set_size( 1 );
 
@@ -281,6 +281,9 @@ namespace belfem
             q0( 1 ) = ( x*(3.*dfdx-d2fdx2*x) - 3.*f ) / ( x*x );
             q0( 2 ) = ( 3.*f + x * ( 0.5 * d2fdx2 * x - 2. * dfdx ) ) / x ;
             q0( 3 ) = 0.0 ;
+
+            // the transverse cubic holds below its matching point, the log polynomial above
+            mBSKohlerTransSwitch( 0 ) = x ;
 
             this->set_kohler_dependencies();
         }

@@ -9,6 +9,8 @@
  * See the top-level LICENSE file for the complete license and disclaimer.
  */
 
+#include <memory>
+
 #include "commtools.hpp"
 #include "stringtools.hpp"
 
@@ -588,11 +590,15 @@ namespace belfem
         Kernel::create_field( IWG * aEquation )
         {
             aEquation->initialize() ;
-            DofManager * aField = new DofManager( this, mDofManagers.size() ) ;
+
+            // a refusal in check_mesh() or set_equation() must free the field;
+            // the kernel owns it only once the push has succeeded
+            std::unique_ptr< DofManager > tOwner( new DofManager( this, mDofManagers.size() ) ) ;
+            DofManager * tField = tOwner.get() ;
 
             if( mCommRank == 0 )
             {
-                int tStatus = aEquation->check_mesh( aField->mesh(), 0) ;
+                int tStatus = aEquation->check_mesh( tField->mesh(), 0) ;
 
                 BELFEM_ERROR( tStatus == 0 , " mIWG->check_mesh() failed with error code %d",
                          tStatus );
@@ -600,11 +606,12 @@ namespace belfem
 
             comm_barrier() ;
 
-            aField->set_equation( aEquation );
+            tField->set_equation( aEquation );
 
-            mDofManagers.push( aField );
+            mDofManagers.push( tField );
+            tOwner.release() ;
 
-            return aField ;
+            return tField ;
         }
 
 //------------------------------------------------------------------------------

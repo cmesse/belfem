@@ -266,6 +266,9 @@ namespace belfem
             q0( 2 ) = ( 3.*f + x * ( 0.5 * d2fdx2 * x - 2. * dfdx ) ) / x ;
             q0( 3 ) = 0.0 ;
 
+            // the transverse cubic holds below its matching point, the log polynomial above
+            mBSKohlerTransSwitch( 0 ) = x ;
+
             this->set_kohler_dependencies();
         }
 

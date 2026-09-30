@@ -154,3 +154,85 @@ TEST( MetalRRR, SecantSatisfiesTheRRRIdentity )
         delete tMetal ;
     }
 }
+
+// Lead and tin switch the transverse Kohler term from a low-field cubic to
+// exp( q1( ln BS ) ) at the point where the cubic matches value, slope and
+// curvature of the power law. The switch must carry that matching point: the
+// far-point checks at x / 4 and 2 x pin which branch is taken on each side,
+// against an oracle built here from the published q1. Continuity at x alone is
+// no mutation gate, since a switch outside the sweep selects one smooth branch
+// throughout and both branches are increasing there
+TEST( MetalFieldDependence, KohlerTransverseBranchesMeetAtTheStoredSwitch )
+{
+    struct KohlerTrans
+    {
+        const char * mLabel ;
+        belfem::real mExponent ;   // q1( 0 ): A = exp( mOffset ) * BS^mExponent
+        belfem::real mOffset ;     // q1( 1 )
+        belfem::real mLogSwitch ;  // ln of the matching point
+    };
+
+    const KohlerTrans tCases[] = { { "lead", 1.458,  -9.7936, 3.0 },
+                                   { "tin",  1.8073, -12.545, 8.4 } };
+
+    const belfem::real tBeta = 0.5 * belfem::constant::pi ;
+
+    belfem::MaterialFactory tFactory ;
+
+    for ( const KohlerTrans & tCase : tCases )
+    {
+        SCOPED_TRACE( tCase.mLabel );
+
+        belfem::material::Metal * tMetal = dynamic_cast< belfem::material::Metal * >(
+                tFactory.create_material( tCase.mLabel, 50.0, false ) );
+        ASSERT_NE( tMetal, nullptr );
+
+        const belfem::real k = tCase.mExponent ;
+        const belfem::real x = std::exp( tCase.mLogSwitch );
+
+        // power law and its first two derivatives at the matching point
+        const belfem::real F  = std::exp( tCase.mOffset ) * std::pow( x, k );
+        const belfem::real F1 = k * F / x ;
+        const belfem::real F2 = k * ( k - 1.0 ) * F / ( x * x );
+
+        // a t^3 + b t^2 + c t with value, slope and curvature F, F1, F2 at t = x
+        const belfem::real a = ( F / x - F1 + 0.5 * F2 * x ) / ( x * x );
+        const belfem::real b = 0.5 * F2 - 3.0 * a * x ;
+        const belfem::real c = F / x - a * x * x - b * x ;
+
+        auto tHigh  = [ & ]( const belfem::real t ) { return std::exp( tCase.mOffset ) * std::pow( t, k ); };
+        auto tCubic = [ & ]( const belfem::real t ) { return ( ( a * t + b ) * t + c ) * t ; };
+
+        const belfem::real tLow = 0.25 * x ;
+        const belfem::real tUp  = 2.0 * x ;
+
+        // the far points discriminate: the two branches differ there
+        EXPECT_GT( std::abs( tCubic( tLow ) - tHigh( tLow ) ), 1e-2 * tHigh( tLow ) );
+        EXPECT_GT( std::abs( tCubic( tUp ) - tHigh( tUp ) ), 1e-2 * tHigh( tUp ) );
+
+        const belfem::real tKLow = tMetal->kohler( tLow, 1.0, tBeta );
+        const belfem::real tKUp  = tMetal->kohler( tUp, 1.0, tBeta );
+        EXPECT_NEAR( tKLow, tCubic( tLow ), 1e-10 * std::abs( tCubic( tLow ) ) );
+        EXPECT_NEAR( tKUp, tHigh( tUp ), 1e-10 * tHigh( tUp ) );
+
+        // control: the branches meet at the switch. Each side is compared with the
+        // power law at its own point; the C2 match leaves an O( delta^3 ) gap,
+        // while the slope alone separates the two points by O( delta )
+        for ( belfem::real t : { x * ( 1.0 - 1e-4 ), x * ( 1.0 + 1e-4 ) } )
+        {
+            EXPECT_NEAR( tMetal->kohler( t, 1.0, tBeta ), tHigh( t ), 1e-6 * tHigh( t ) )
+                << "BS = " << t ;
+        }
+
+        // longitudinal smoke control, below the first and above the last switch;
+        // tin's low-field longitudinal cubic is negative below about 4 T
+        for ( belfem::real B : { 6.0, 1e7 } )
+        {
+            const belfem::real tKLong = tMetal->kohler( B, 1.0, 0.0 );
+            EXPECT_TRUE( std::isfinite( tKLong ) ) << "B = " << B ;
+            EXPECT_GT( tKLong, 0.0 ) << "B = " << B ;
+        }
+
+        delete tMetal ;
+    }
+}
