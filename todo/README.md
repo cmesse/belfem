@@ -144,6 +144,22 @@ one of the two must be retired before either is worked.
 
 ## Added 2026-09-29
 
+### [ghost_swip_average.md](ghost_swip_average.md) — DR-168: the SWIP average flux weight replaces the slope jump in `h_ghost`, the coefficient tests follow, the manufactured-flux fixture (R7) lands, the doc and the kernel comment stop disagreeing on the α floor
+
+**LANDED 2026-09-29 (the `dl20260929_dr159_dr168_dr190_dr191` commits), DR-168 struck.** Plan jury and
+code jury at terra/high + grok-4.7/high; the SWIP equations verified from the paper's own text (Eqs. 7, 8,
+15, 16) and the DOI resolved; 38/38 on a private non-MKL tree with both mutation checks red at the
+predicted values. Christian's Blaze `make check-fast` owed; then the file moves to `closed/`.
+
+### [dr190_dr191_small_fixes.md](dr190_dr191_small_fixes.md) — DR-190: the `DofManager` owned across a `create_field` refusal (the rank-dependent-gate half is refuted by the source); DR-191: `mBSKohlerTransSwitch( 0 )` never assigned in Lead and WhiteTin, localized by valgrind
+
+**LANDED 2026-09-29 (the `dl20260929_dr159_dr168_dr190_dr191` commits).** Both juries astra/high +
+grok-4.7/high. DR-190's gate half refuted, its leak fixed (valgrind clean), the row narrowed to the
+dangling `IWG::mField` after a caught refusal (filed, Christian's ruling); DR-191's switch stored in both
+metals with a far-point branch test, the `dmumps_` context and a negative tin low-field cubic filed.
+Christian's `make check-fast` owed; then the file moves to `closed/`.
+
+
 ### [closed/error_path_hygiene_cluster.md](closed/error_path_hygiene_cluster.md) — DR-165, DR-167, DR-175: the HDF5 loaders' dataset handles, the periodicity factory's centroid nodes and object under construction, the material and boundary-condition factories' products, each owned across its refusal
 
 **CLOSED 2026-09-29.** Three commits (`cd71661`, `84df884`, the DR-175 commit) behind one plan jury, one

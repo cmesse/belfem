@@ -7,7 +7,7 @@ them so the next session can land each through the standing loop (plan → jury 
 consumer inventory before anything that changes a value or refuses an input.
 **Module:** `src/mesh`, `src/fem/kernel`, `src/physics/materials`, `src/io`, `tests/`
 **AIs involved:** Claude (plan + orchestration), Codex and Grok (juries), Opus (implementation)
-**Status:** OPEN — 5 of 12 steps done (R1, R8, R9, R10, R11); R1, R9, R10 landed 2026-09-29 via `todo/closed/ruled_refusals_cluster.md`; every step ruled by Christian on 2026-09-22 unless marked; R7 and R10 re-ruled 2026-09-24
+**Status:** OPEN — 6 of 12 steps done (R1, R7, R8, R9, R10, R11); R7 landed 2026-09-29 via `todo/ghost_swip_average.md`; R1, R9, R10 landed 2026-09-29 via `todo/closed/ruled_refusals_cluster.md`; every step ruled by Christian on 2026-09-22 unless marked; R7 and R10 re-ruled 2026-09-24
 
 > **Scope guards:**
 > - Each item is its own row: own-files diff, jury, gate in both trees, one commit.
@@ -38,7 +38,7 @@ consumer inventory before anything that changes a value or refuses an input.
   `Ferromagnetic::rho_custom`). Changes iron/nickel resistivity values → consumer inventory first
   (every deck with `iron`/`ferro`/`nickel`), physics check against the RRR data source, then the
   T-10 RRR identity test is extended to the ferromagnets. Depth terra/high.
-- [ ] **R7 (D20, DR-168)** **Ruled 2026-09-24 (quiz): a Codex + Grok physics round on Ern et al. 2009 vs the coded operator comes FIRST (the DR-163 shape, magnesia φ-layer case worked explicitly); the fixture is built to what the round says separates the forms.** The unequal-thickness / unequal-ρ two-shell fixture that separates the
+- [x] **R7 (D20, DR-168)** — **landed 2026-09-29 as `InterfaceOrientation.GhostConsistencyManufacturedFlux` via `todo/ghost_swip_average.md` (the physics round of 2026-09-24 plus the code round; ~~unequal-thickness~~ struck: thickness is inert in the oracle, `(q_top − q_bottom)/h` cancels the slope's `h`; ~~no kernel edit before it~~ struck: the round ran and the kernel now assembles the SWIP average).** Original text: **Ruled 2026-09-24 (quiz): a Codex + Grok physics round on Ern et al. 2009 vs the coded operator comes FIRST (the DR-163 shape, magnesia φ-layer case worked explicitly); the fixture is built to what the round says separates the forms.** The unequal-thickness / unequal-ρ two-shell fixture that separates the
   ghost-interface JUMP of outward slopes from the SWIP weighted average; Christian reads the jump as
   intended, Claude's assessment (04:15 entry in the tracker) says the two may coincide up to the
   factor 2 depending on the slave slope's sign convention. The fixture decides; no kernel edit before
@@ -82,7 +82,7 @@ DR-177 and O10 / O18 go to Gregory by `devlog/dl20260922_homology_report_for_gre
 
 - **O1** R6 changes shipped iron/nickel results; which decks are reference runs Christian wants
   re-baselined afterwards?
-- **O2** R7's fixture geometry: two layers of unequal thickness and ρ ratio 10, or the production
+- **O2** **RESOLVED 2026-09-29 → equal thickness (inert), ρ ratio 10 and 1:10 plus equal ρ, on the existing `TS_TestGhostStack`; the magnesia pair is a φ-layer and never meets `h_ghost`.** R7's fixture geometry: two layers of unequal thickness and ρ ratio 10, or the production
   magnesia-on-conductor pair (ρ_s → ∞)?
 
 ## 4. Audit trail

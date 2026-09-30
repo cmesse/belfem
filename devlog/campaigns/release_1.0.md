@@ -66,6 +66,8 @@ Details: dl20260814_doc_sweep_fixes_and_release_packaging. Owed gates: real
 
 ## Dated entries
 
+- **2026-09-29** — the freeze list is empty: DR-168 (the only `[F]` row) struck — `h_ghost` assembles the SWIP average flux, verified against Ern, Stephansen & Zunino 2009 Eqs. 7/8/15/16. DR-190 narrowed (gate half refuted, leak fixed), DR-191 fixed in part (Kohler switch), DR-159's premise refuted (the log's Picard line is the lagged residual; the deck converges to its 1e-7 every step, marginally). `dl20260929_dr159_dr168_dr190_dr191`.
+
 todo/debt_register.md (the row-level lens) · dl20260615_architecture_structure_review ·
 dl20260805_cross_review_tooling · dl20260809_todo_currentness_sweep ·
 dl20260810_examples_and_rho_database_repair (first-run repair; DR-54 is the residue)
