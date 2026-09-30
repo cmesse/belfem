@@ -639,7 +639,7 @@ TEST( InterfaceOrientation, TopBottomNodeAlignment )
 //   1. 12 dofs, and the kernel's silent 2m == n assumption ( n nedelec
 //      dofs on the layer element, m on the facet )
 //   2. interface locality: dofs away from the interface ( master bottom,
-//      slave top ) couple only through the rho_harm-scaled gradient
+//      slave top ) couple only through the rho_w-scaled slope-average
 //      terms — their columns scale linearly in rho while the
 //      k_reg-dominated penalty columns stay put
 //   3. annihilation: a constant tangential field continuous across the
@@ -777,7 +777,7 @@ TEST( InterfaceOrientation, GhostElementContract )
         EXPECT_LT( tMaxFar, 1.0e-4 * tMinNear )
             << "far-from-interface dofs must couple only at rho scale" ;
 
-        // 10x the resistivity: far columns are linear in rho_harm and
+        // 10x the resistivity: far columns are linear in rho_w and
         // must scale by 10; near columns are k_reg-dominated and must
         // stay put ( h_ghost re-reads element_rho, no re-link needed )
         tStack.set_rho( 1.0e-7 );
@@ -838,7 +838,7 @@ TEST( InterfaceOrientation, GhostElementContract )
 }
 
 //------------------------------------------------------------------------------
-// h_ghost coefficient contract: consistency ( rho_harm / h ) and penalty
+// h_ghost coefficient contract: consistency ( rho_w / h ) and penalty
 // ( alpha ) read back from the residual of a one-sided field
 //------------------------------------------------------------------------------
 
@@ -849,23 +849,25 @@ TEST( InterfaceOrientation, GhostElementContract )
 // and Em q = c on the interface, so with the interface projections
 //   g_m( j ) = sum_k w_k dS_k Em_k( :, 3+j ) . c
 //   g_s( j ) = sum_k w_k dS_k Es_k( :, j )   . c
-// the residual r = K q reads, block by block,
-//   rows 0-2  ( master bottom ) : + ( rho_harm / hm )         g_m
-//   rows 3-5  ( master top )    :   ( alpha - rho_harm / hm ) g_m
-//   rows 6-8  ( slave bottom )  : - ( alpha + rho_harm / hs ) g_s
-//   rows 9-11 ( slave top )     : + ( rho_harm / hs )         g_s
+// the residual r = K q reads, block by block, with the SWIP flux weight
+// rho_w = rho_m rho_s / ( rho_m + rho_s ) on the weighted average of the
+// two +z slopes ( only the adjoint term D^T [[q]] survives, [[q]] = c ):
+//   rows 0-2  ( master bottom ) : + ( rho_w / hm )           g_m
+//   rows 3-5  ( master top )    :   ( alpha - rho_w / hm )   g_m
+//   rows 6-8  ( slave bottom )  : - ( alpha - rho_w / hs )   g_s
+//   rows 9-11 ( slave top )     : - ( rho_w / hs )           g_s
 // The two premises ( bottom-face columns of Em vanish on the top face,
 // Em q reproduces c ) are asserted on the same integration points.
 namespace
 {
-    // the kernel's consistency resistivity: harmonic mean of the two
-    // layers, 0 when both vanish ( no consistency term across an
-    // SC-SC facet )
+    // the kernel's SWIP flux weight rho_w = omega_m rho_m = omega_s rho_s
+    // = rho_m rho_s / ( rho_m + rho_s ), 0 when both vanish ( no
+    // consistency term across an SC-SC facet )
     real
-    ghost_rho_harm( const real aRhoM, const real aRhoS )
+    ghost_rho_w( const real aRhoM, const real aRhoS )
     {
         return ( aRhoM + aRhoS < BELFEM_EPSILON ) ? 0.0
-             : 2.0 * aRhoM * aRhoS / ( aRhoM + aRhoS );
+             : aRhoM * aRhoS / ( aRhoM + aRhoS );
     }
 
     // the kernel's penalty: eta times the harmonic mean of the
@@ -1083,11 +1085,11 @@ namespace
     }
 }
 
-// Far rows 0-2 and 9-11: the consistency coefficient is rho_harm / h with
-// the harmonic mean, finite at equal rho, and 0 by the guard when both
-// layers are superconducting. Rows 9-11 pin the coded jump form of the
-// slave slope ( same sign as the master rows, D- being the slave's own
-// outward quotient ).
+// Far rows 0-2 and 9-11: the consistency coefficient is rho_w / h with the
+// SWIP flux weight, finite at equal rho, and 0 by the guard when both
+// layers are superconducting. Rows 9-11 carry the opposite sign of rows
+// 0-2: D- is the slave's +z slope, like D+, so the adjoint term puts
+// -1/hs on the slave far face where D+ puts +1/hm on the master far face.
 TEST( InterfaceOrientation, GhostConsistencyCoefficient )
 {
     if ( comm_size() != 1 )
@@ -1130,15 +1132,15 @@ TEST( InterfaceOrientation, GhostConsistencyCoefficient )
             ghost_assemble( tCalc, tK );
             ghost_residual( tK, tS.mQ, tR );
 
-            const real tRhoH  = ghost_rho_harm( tRhoM, tRhoS );
+            const real tRhoW  = ghost_rho_w( tRhoM, tRhoS );
             const real tAlpha = ghost_alpha( tS.mEta, tS.mKreg,
                     tRhoM, tRhoS, tS.mHm, tS.mHs );
-            ASSERT_TRUE( std::isfinite( tRhoH ) );
-            const real tTol = 1.0e-12 * ( tAlpha + tRhoH / tS.mHm ) * tS.mP.mMaxG ;
+            ASSERT_TRUE( std::isfinite( tRhoW ) );
+            const real tTol = 1.0e-12 * ( tAlpha + tRhoW / tS.mHm ) * tS.mP.mMaxG ;
 
-            ghost_expect_rows( tR, 0,  tRhoH / tS.mHm, tS.mP.mGm, tTol,
+            ghost_expect_rows( tR, 0,  tRhoW / tS.mHm, tS.mP.mGm, tTol,
                     "master bottom rows" );
-            ghost_expect_rows( tR, 9,  tRhoH / tS.mHs, tS.mP.mGs, tTol,
+            ghost_expect_rows( tR, 9, -tRhoW / tS.mHs, tS.mP.mGs, tTol,
                     "slave top rows" );
         }
     }
@@ -1186,14 +1188,14 @@ TEST( InterfaceOrientation, GhostPenaltyCoefficient )
             ghost_assemble( tCalc, tK );
             ghost_residual( tK, tS.mQ, tR );
 
-            const real tRhoH  = ghost_rho_harm( tRhoM, tRhoS );
+            const real tRhoW  = ghost_rho_w( tRhoM, tRhoS );
             const real tAlpha = ghost_alpha( tS.mEta, tS.mKreg,
                     tRhoM, tRhoS, tS.mHm, tS.mHs );
-            const real tTol = 1.0e-12 * ( tAlpha + tRhoH / tS.mHm ) * tS.mP.mMaxG ;
+            const real tTol = 1.0e-12 * ( tAlpha + tRhoW / tS.mHm ) * tS.mP.mMaxG ;
 
-            ghost_expect_rows( tR, 3, tAlpha - tRhoH / tS.mHm, tS.mP.mGm, tTol,
+            ghost_expect_rows( tR, 3, tAlpha - tRhoW / tS.mHm, tS.mP.mGm, tTol,
                     "master top rows" );
-            ghost_expect_rows( tR, 6, -( tAlpha + tRhoH / tS.mHs ), tS.mP.mGs, tTol,
+            ghost_expect_rows( tR, 6, -( tAlpha - tRhoW / tS.mHs ), tS.mP.mGs, tTol,
                     "slave bottom rows" );
 
             // the bound holds for the hand value and for the coefficient
@@ -1209,7 +1211,7 @@ TEST( InterfaceOrientation, GhostPenaltyCoefficient )
                 tGG += tS.mP.mGm( j ) * tS.mP.mGm( j );
             }
             ASSERT_GT( tGG, 0.0 );
-            const real tAlphaRead = tRG / tGG + tRhoH / tS.mHm ;
+            const real tAlphaRead = tRG / tGG + tRhoW / tS.mHm ;
             EXPECT_LE( tAlpha, tBound * ( 1.0 + 1.0e-12 ) );
             EXPECT_LE( tAlphaRead, tBound * ( 1.0 + 1.0e-12 ) )
                 << "alpha read back from the residual exceeds its bound" ;
@@ -1220,6 +1222,134 @@ TEST( InterfaceOrientation, GhostPenaltyCoefficient )
                         1.0e-12 * tS.mEta * tS.mKreg )
                     << "SC-SC penalty must floor at eta * k_reg" ;
             }
+        }
+    }
+}
+
+// Manufactured flux: a field that is linear in z inside each layer, with
+// the tangential direction c = ( 0.7, -0.4, 0 ) and the profile 1 + s z in
+// interface-relative z ( master on [ -hm, 0 ], slave on [ 0, hs ] ). The
+// slopes s_m = phi / rho_m and s_s = phi / rho_s give a continuous flux
+// rho_m s_m = rho_s s_s = phi. The dofs are built from the edge line
+// integrals only: interface faces carry c, the far faces ( 1 - s_m hm ) c
+// and ( 1 + s_s hs ) c, each side on its own edge objects.
+//
+// The trace is continuous, [[q]] = 0, so the penalty alpha and eta drop
+// out and the adjoint term vanishes; the slope quotients ( q_top -
+// q_bottom ) / h return s c exactly, so the thickness cancels. What is
+// left is the consistency term, which must reproduce the single-valued
+// flux: rows 3-5 read -phi g_m, rows 6-8 +phi g_s, the far rows 0.
+//
+// Master-top rows, in units of phi g_m, for rho_m : rho_s = 1:1, 1:10, 10:1:
+//   slope jump, full harmonic weight 2 rho_w :  0,  -18/11,  +18/11
+//   slope jump, SWIP weight rho_w            :  0,   -9/11,   +9/11
+//   slope average, full harmonic weight      : -2,   -2,      -2
+//   slope average, SWIP weight rho_w         : -1,   -1,      -1
+// Equal rho alone cannot separate the two jump forms; the unequal ratios
+// separate all four.
+TEST( InterfaceOrientation, GhostConsistencyManufacturedFlux )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    const real tC[ 3 ] = { 0.7, -0.4, 0.0 };
+    const real tNormC  = std::sqrt( tC[ 0 ] * tC[ 0 ] + tC[ 1 ] * tC[ 1 ] + tC[ 2 ] * tC[ 2 ] );
+    const real tPhi    = 1.0e-6 ;
+
+    const real tPairs[ 3 ][ 2 ] = { { 1.0e-8, 1.0e-8 },
+                                    { 1.0e-8, 1.0e-7 },
+                                    { 1.0e-7, 1.0e-8 } };
+
+    for ( int tFlip : { -1, 1 } )
+    {
+        SCOPED_TRACE( "flip " + std::to_string( tFlip ) );
+        fem::test::TS_TestGhostStack tStack( 0.1, tFlip );
+        fem::Calculator * tCalc = tStack.calculator();
+        tCalc->link( tStack.ghost_element() );
+
+        Mesh * tMesh = tStack.mesh();
+        const real tHm   = tMesh->block( tStack.master()->block_id() )->thickness();
+        const real tHs   = tMesh->block( tStack.slave()->block_id() )->thickness();
+        const real tEta  = tStack.iwg()->penalty( 0 );
+        const real tKreg = tStack.iwg()->penalty( 1 );
+        ASSERT_GT( tHm, 0.0 );
+        ASSERT_GT( tHs, 0.0 );
+
+        Matrix< real >   tK ;
+        Vector< real >   tQ( 12, 0.0 );
+        Vector< real >   tR ;
+        GhostProjections tP ;
+
+        for ( uint p = 0; p < 3; ++p )
+        {
+            const real tRhoM = tPairs[ p ][ 0 ];
+            const real tRhoS = tPairs[ p ][ 1 ];
+            SCOPED_TRACE( "rho_m " + std::to_string( tRhoM )
+                        + " rho_s " + std::to_string( tRhoS ) );
+
+            const real tSm = tPhi / tRhoM ;
+            const real tSs = tPhi / tRhoS ;
+
+            for ( uint e = 0; e < 3; ++e )
+            {
+                tQ( e )     = ( 1.0 - tSm * tHm )
+                            * ghost_edge_dof( tStack.master()->edge( e ), tC );
+                tQ( 3 + e ) = ghost_edge_dof( tStack.master()->edge( 3 + e ), tC );
+                tQ( 6 + e ) = ghost_edge_dof( tStack.slave()->edge( e ), tC );
+                tQ( 9 + e ) = ( 1.0 + tSs * tHs )
+                            * ghost_edge_dof( tStack.slave()->edge( 3 + e ), tC );
+            }
+
+            // premise: the traces of both sides agree on the interface and
+            // reproduce c
+            real tMaxJump  = 0.0 ;
+            real tMaxTrace = 0.0 ;
+            {
+                const Vector< real > & tW = tCalc->integration()->weights();
+                for ( uint k = 0; k < tW.length(); ++k )
+                {
+                    const Matrix< real > & tEm = tCalc->Em( k );
+                    const Matrix< real > & tEs = tCalc->Es( k );
+                    for ( uint i = 0; i < 3; ++i )
+                    {
+                        real tTraceM = 0.0 ;
+                        real tTraceS = 0.0 ;
+                        for ( uint j = 0; j < 6; ++j )
+                        {
+                            tTraceM += tEm( i, j ) * tQ( j );
+                            tTraceS += tEs( i, j ) * tQ( 6 + j );
+                        }
+                        tMaxJump  = std::max( tMaxJump, std::abs( tTraceM - tTraceS ) );
+                        tMaxTrace = std::max( tMaxTrace, std::abs( tTraceM - tC[ i ] ) );
+                    }
+                }
+            }
+            EXPECT_LT( tMaxJump, 1.0e-12 * tNormC )
+                << "manufactured field must have a continuous trace" ;
+            EXPECT_LT( tMaxTrace, 1.0e-12 * tNormC )
+                << "Em q must reproduce the constant field on the interface" ;
+
+            ghost_interface_projections( tCalc, tC, tQ, tP );
+            EXPECT_LT( tP.mMaxEmBottom, 1.0e-14 )
+                << "master bottom-face columns must vanish on the interface" ;
+            EXPECT_LT( tP.mMaxEsTop, 1.0e-14 )
+                << "slave top-face columns must vanish on the interface" ;
+            ASSERT_GT( tP.mMaxG, 0.0 ) << "empty interface projection" ;
+
+            tStack.set_rho( tRhoM, tRhoS );
+            ghost_assemble( tCalc, tK );
+            ghost_residual( tK, tQ, tR );
+
+            const real tAlpha = ghost_alpha( tEta, tKreg,
+                    tRhoM, tRhoS, tHm, tHs );
+            const real tTol = 1.0e-12 * ( tPhi + tAlpha ) * tP.mMaxG ;
+
+            ghost_expect_rows( tR, 0, 0.0,   tP.mGm, tTol, "master bottom rows" );
+            ghost_expect_rows( tR, 3, -tPhi, tP.mGm, tTol, "master top rows" );
+            ghost_expect_rows( tR, 6,  tPhi, tP.mGs, tTol, "slave bottom rows" );
+            ghost_expect_rows( tR, 9, 0.0,   tP.mGs, tTol, "slave top rows" );
         }
     }
 }

@@ -470,8 +470,18 @@ namespace belfem
 
                 real rho_s = get_resistivity( aCalc, tFacet->slave()->index() );
 
-                // harmonic mean of resistivities
-                real rho_harm = rho_m + rho_s < BELFEM_EPSILON ? 0.0 : 2.0 * rho_m * rho_s / ( rho_m + rho_s ) ;
+                // SWIP flux weight (Ern, Stephansen & Zunino 2009, Eq. 15; the
+                // weighted average is their Eq. 7, the bilinear form Eq. 8):
+                //   omega_m = rho_s / ( rho_m + rho_s ),  omega_s = rho_m / ( rho_m + rho_s ),
+                //   omega_m rho_m = omega_s rho_s = rho_m rho_s / ( rho_m + rho_s ) = rho_w .
+                // The consistency operator is the weighted average of the two
+                // through-thickness slopes, each taken from the layer's local
+                // bottom row to its top row over its thickness ( the stack
+                // direction, not a global axis ):
+                //   rho_w ( dn h_m + dn h_s ) = omega_m rho_m dn h_m + omega_s rho_s dn h_s ,
+                // which reproduces the single-valued interface flux for a field with
+                // continuous flux. The guard returns 0 when both layers are superconducting.
+                real rho_w = rho_m + rho_s < BELFEM_EPSILON ? 0.0 : rho_m * rho_s / ( rho_m + rho_s ) ;
 
 
                 // penalty parameter
@@ -493,8 +503,10 @@ namespace belfem
                 // harmonic mean turns both singular limits into bounded
                 // smooth limits:
                 //   - k_reg -> 0          recovers Burman-Zunino
-                //   - both k tiny         alpha ~ 2 k_reg (no collapse)
-                //   - one k huge          alpha ~ 2 * min( other_k, k_reg )
+                //   - both k tiny         alpha = eta k_reg (no collapse)
+                //   - one layer superconducting (k -> 0), the other a metal
+                //     with k >> k_reg     alpha -> 2 eta k_reg
+                //   - one k huge          alpha -> 2 eta ( other_k + k_reg )
                 //                                                (no blow-up)
                 //
                 // k_reg should be chosen as a small fraction of the typical
@@ -556,12 +568,12 @@ namespace belfem
                         for ( uint j=0; j<m; ++j )
                         {
                             Dm( i, j )   = -Em( i, j+m );
-                            Ds( i, j )   =  Es( i, j );
+                            Ds( i, j )   = -Es( i, j );
                         }
                         for ( uint j=0; j<m; ++j )
                         {
                             Dm( i, m+j ) =  Em( i, j+m );
-                            Ds( i, m+j ) = -Es( i, j );
+                            Ds( i, m+j ) =  Es( i, j );
                         }
                     }
                     Dm /= hm ;
@@ -569,7 +581,7 @@ namespace belfem
 
                     real wdS = w( k ) * aCalc->dS( k );
                     real awdS = alpha * wdS ;
-                    real rwdS = rho_harm * wdS ;
+                    real rwdS = rho_w * wdS ;
                     Kmm +=  trans( Em ) * Em * awdS - trans(Em) * Dm * rwdS - trans( Dm ) * Em * rwdS ;
                     Kms -=  trans( Em ) * Es * awdS + trans(Em) * Ds * rwdS - trans( Dm ) * Es * rwdS ;
                     Ksm -=  trans( Es ) * Em * awdS - trans(Es) * Dm * rwdS + trans( Ds ) * Em * rwdS ;

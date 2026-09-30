@@ -32,25 +32,49 @@ that sit between stacked thin-shell layers.
 ## 2. How it works
 
 The kernel (`h_ghost()` in `src/fem/maxwell/matrices/mt_maxwell_h.cpp`) assembles a
-**symmetric weighted interior-penalty (Nitsche)** bilinear form on each ghost facet,
-coupling the master (`+`) and slave (`−`) layer DOFs through four blocks
-`K++, K+-, K-+, K--`. At each integration point, each block carries:
+**symmetric weighted interior-penalty (Nitsche)** bilinear form on each ghost facet.
+It couples the master (`+`, the lower layer) and slave (`−`, the upper layer) DOFs
+through four blocks: `K++, K+-, K-+, K--`. The form is
 
-- a **penalty term** `α · ⟨Eᵀ E⟩` that penalizes the tangential-`H` jump, and
-- the **consistency and adjoint-consistency terms** `∓ ρ_harm · ⟨Eᵀ D + Dᵀ E⟩` (the
-  flux terms that make the penalty *consistent* — they vanish for the exact solution),
+```
+a(q, v) = α ⟨[[q]], [[v]]⟩ − ⟨ρ_w F(q), [[v]]⟩ − ⟨[[q]], ρ_w F(v)⟩
 
-where `E` is the edge interpolation operator, `D` the per-layer normal-derivative
-operator scaled by layer thickness `h`, and `ρ_harm` the harmonic mean of the two layer
-resistivities. The adjoint-consistency terms mirror the consistency terms block by
-block, so the assembled operator is **exactly symmetric**: `K-+ = (K+-)ᵀ`
-term-for-term. The `GhostElementContract` test
-(`tests/fem/test_InterfaceOrientation.cpp`) measures `max|K − Kᵀ| = 0.0` on real edge
-functions. The kernel began as the nonsymmetric variant (consistency terms only) and
-was deliberately symmetrized in April 2026 by adding the adjoint terms; the resulting
+[[q]]  = Em q_m − Es q_s                  tangential-H jump across the interface
+F(q)   = ∂n h_m + ∂n h_s                  both layers' through-thickness slopes
+ρ_w    = ρm ρs / ( ρm + ρs )              SWIP flux weight
+ρ_w F  = ω_m ρm ∂n h_m + ω_s ρs ∂n h_s    with ω_m = ρs/(ρm+ρs), ω_s = ρm/(ρm+ρs)
+```
+
+Here, `Em` and `Es` are the edge interpolation operators for the two layers on the
+interface. Each slope `∂n h` is the difference quotient `(q_top − q_bottom)/h` from the
+layer's local bottom row to its top row over its thickness `h`: the stack direction of the
+shell, which is a global axis only on a flat patch.
+
+The three terms have distinct roles:
+
+- The **penalty term**, `α ⟨[[q]], [[v]]⟩`, penalizes a tangential-`H` jump.
+- The **consistency term**, `−⟨ρ_w F(q), [[v]]⟩`, uses `ρ_w F` as the weighted
+  average of the two layer fluxes. If the flux is continuous,
+  `φ = ρm ∂n h_m = ρs ∂n h_s`, this weighted average reproduces the
+  single-valued interface flux `φ` exactly. That property makes the form consistent.
+- The **adjoint-consistency term**, `−⟨[[q]], ρ_w F(v)⟩`, is the matching term
+  for the test function. It vanishes when the trace is continuous.
+
+For an interface between two superconducting layers (`ρm + ρs → 0`),
+`ρ_w = 0`, so only the penalty term couples the layers. The
+adjoint-consistency term mirrors the consistency term block by block. As a result,
+the assembled operator is **exactly symmetric**:
+`K-+ = (K+-)ᵀ` term-for-term.
+
+The `GhostElementContract` test (`tests/fem/test_InterfaceOrientation.cpp`) measures
+`max|K − Kᵀ| = 0.0` on real edge functions. The kernel began as the nonsymmetric
+variant, which contained only the consistency terms. It was deliberately
+symmetrized in April 2026 by adding the adjoint terms. The resulting
 symmetric-with-harmonic-weighting scheme is the SWIP method of Ern, Stephansen &
 Zunino (2009). Ruled intentional 2026-08-28: the symmetric form is the formulation of
-record.
+record. Until 2026-09-29 the flux operator was the *jump* of the two layers' outward
+slopes with twice the weight above, which reproduced the interface flux only at the
+ratio `ρs = 3ρm`; the weighted average replaced it.
 
 The **penalty coefficient** is:
 
@@ -61,18 +85,27 @@ k_pen = 2 · km_reg · ks_reg / ( km_reg + ks_reg )    regularized harmonic mean
 α = eta · k_pen
 ```
 
-The plain harmonic mean `2·km·ks/(km+ks)` is the standard heterogeneous-DG weighting
-(**Burman & Zunino 2006**), robust to the coefficient contrast. It is bounded above by
-`2·min(km, ks)` (well-behaved for an insulating neighbor, `ρ → ∞`), but it **collapses
-to zero** when one layer is superconducting (`ρ → 0`). Adding the regularization offset
-`k_reg` to each stiffness before taking the mean keeps the coefficient bounded in both
-singular limits:
-`k_reg → 0` recovers Burman–Zunino; both `k` tiny → `α ~ 2·eta·k_reg` (no collapse); one
+The plain harmonic mean, `2·km·ks/(km+ks)`, is the standard heterogeneous-DG
+weighting (**Burman & Zunino 2006**). It is robust to coefficient contrast. It is
+bounded above by `2·min(km, ks)`, so it remains well behaved for an insulating
+neighbor, `ρ → ∞`. However, it **collapses to zero** when one layer is
+superconducting, `ρ → 0`.
+
+Adding the regularization offset `k_reg` to each stiffness before taking the mean
+keeps the coefficient bounded in both singular limits:
+
+`k_reg → 0` recovers Burman–Zunino; both `k` tiny → `α ~ eta·k_reg` (no collapse);
+one layer superconducting (`k → 0`) and the other a metal with `k ≫ k_reg` →
+`α → 2·eta·k_reg` (the case the regularization exists for); one
 `k` huge → `α ~ 2·eta·(other_k + k_reg)` (no blow-up).
 
 **Literature.**
 - Symmetric weighted interior penalty with harmonic flux weighting (the scheme
   implemented here): Ern, Stephansen & Zunino (2009), *IMA J. Numer. Anal.* 29:235–256.
+  The weighted average is their Eq. 7, the SWIP bilinear form Eq. 8, the weights
+  `ω⁻ = δ⁺/(δ⁺+δ⁻)`, `ω⁺ = δ⁻/(δ⁺+δ⁻)` Eq. 15 and the resulting `γ_K = δ⁺δ⁻/(δ⁺+δ⁻)`
+  ("2γ_K is the harmonic average") Eq. 16 — equation numbers as in the authors' preprint
+  of November 2007; `δ` is the normal component of the diffusivity, `ρ` here.
 - Interior-penalty family and coercivity: Brenner & Scott §10.5
   (`literature/books/brenner.txt`). Unlike the nonsymmetric variant, which is coercive
   for any `eta > 0`, the symmetric form is coercive only for `eta` above a mesh- and
@@ -82,10 +115,10 @@ singular limits:
 - Coefficient regularization (floor/ceiling on resistivity, same *principle* as `k_reg`):
   Dular et al. (2021), `literature/papers/fem/dular2021.txt:1109`.
 
-**Restriction.** The kernel supports only first-order `PENTA6TS` facets: LINEAR
-interpolation is asserted in `h_ghost` in `mt_maxwell_h.cpp`, and block sizes
-come from `number_of_nedelec_dofs`. That gives 6 DOFs per TS element, 3 per
-facet. Higher order requires adapting the `Dm/Ds` assembly.
+**Restriction.** The kernel supports only first-order `PENTA6TS` facets.
+LINEAR interpolation is asserted in `h_ghost` in `mt_maxwell_h.cpp`, and block
+sizes come from `number_of_nedelec_dofs`. This gives 6 DOFs per TS element and
+3 per facet. Higher order requires adapting the `Dm/Ds` assembly.
 
 ## 3. The two parameters
 
