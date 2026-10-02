@@ -162,7 +162,7 @@ on that path (Grok).
   `:283`) need the same deck with `coupling : segregated` — the cheapest thermal example
   (`examples/corc_twolayer`, `tapestack3d`, `tapestack3d_quench`, `tape_quench_usermat`, all 3D),
   run for two or three timesteps each in this session's private HEAD tree (`treeB`, idle since the
-  DR-192 runs) and killed; the lines are read against §3 and §4. Then Christian's `make check-fast`.
+  DR-192 runs) and killed; the lines are read against §3 and §4. Then Christian's `make check`.
   A loop whose deck does not run in this session is reported as not gated, not as gated (Codex).
 - No test is added for these lines: none of the existing tests reads them, and a stdout-gold
   assertion on a log line would pin formatting rather than behavior.
@@ -280,7 +280,7 @@ thermal trip the thermal line prints the stale `mEpsilon2` today and will print 
 - Syntax gate on the two files (`-fsyntax-only -std=gnu++17`, the tree's warning flags).
 - Executable: rebuild the private HEAD tree of this session (`treeB`, already configured) with
   the diff applied once the DR-192 comparison run has released it, run `examples/2D_Tapestack`
-  for a few steps, and read the new lines against the box. Then Christian's `make check-fast`.
+  for a few steps, and read the new lines against the box. Then Christian's `make check`.
 - Nothing in `tests/` asserts on the log line; no test is added — a test that parses stdout
   would be the same false-precision class as T-67's log-driven assertions.
 
