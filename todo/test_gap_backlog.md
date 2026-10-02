@@ -325,8 +325,12 @@ Read-and-report only; no BELFEM-side session starts these.
 
 - **O1** `Ascii` relative paths: is `$PWD` the intended contract or the process cwd? T-07's
   polarity follows. The `GhostSwitch` test was patched to absolute paths; the library was not.
-- **O2** DR-159 stall exit: is an accepted step at −20 to −30 dB a silent failure or intended?
-  T-67's stall assertion follows.
+- **O2** ~~DR-159 stall exit: is an accepted step at −20 to −30 dB a silent failure or intended?~~
+  **RESOLVED 2026-09-29 → premise refuted:** the −20 to −30 dB Picard lines are the pre-update
+  residual of the iterate each solve started from ( one iterate behind the solve count ); the
+  accept reads the head residual of the last iterate and the stall guard cuts the timestep, it
+  never accepts. T-67's stall assertion: a stall exit is a cut, not an acceptance. The residue ( marginal
+  exits, two-build divergence ) continues as DR-192.
 - **O3** Nickel λ refit (L12): fix the coefficient set, or land T-30 `DISABLED_` with the
   handbook value as the target.
 - **O4** HEX8TB wall reload twin rule (L15): FIRST twin at reconstruct or LAST twin at

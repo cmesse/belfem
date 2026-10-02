@@ -144,6 +144,10 @@ one of the two must be retired before either is worked.
 
 ## Added 2026-09-29
 
+### [picard_line_head_residual.md](picard_line_head_residual.md) — DR-192 item 2: the per-iterate `Magnetic Picard` line prints the head residual ( what the accept reads ) beside the lagged one ( what the guards act on ), so a −25 dB line before a converged `timestep succeeded` stops reading as an accepted stall
+
+**COMPLETE 2026-10-01** — v1 withdrawn by its jury (the Picard line already printed a pre-update head, one iterate behind); v2 (print at the head, state-indexed, Christian's choice) landed after an xhigh plan jury and a clean code jury, gated on three decks in a private tree; `make check-fast` owed. Moves to `closed/` next session.
+
 ### [ghost_swip_average.md](ghost_swip_average.md) — DR-168: the SWIP average flux weight replaces the slope jump in `h_ghost`, the coefficient tests follow, the manufactured-flux fixture (R7) lands, the doc and the kernel comment stop disagreeing on the α floor
 
 **LANDED 2026-09-29 (the `dl20260929_dr159_dr168_dr190_dr191` commits), DR-168 struck.** Plan jury and

@@ -795,14 +795,15 @@ namespace belfem
             void
             print_header();
 
+            //! the iteration line of one field, printed where its head is
+            //! measured: aEpsilon is the state's residual under the fresh
+            //! assembly, the index is the body solves of that field so far,
+            //! aOmega the initial trial relaxation the next solve starts with
             void
-            print_line( const real aOmega, const real aOmega2 );
+            print_line_magnetic( const real aEpsilon, const real aOmega );
 
             void
-            print_line_magnetic( const real aOmega );
-
-            void
-            print_line_thermal( const real aOmega );
+            print_line_thermal( const real aEpsilon, const real aOmega );
 
             void
             print_footer();

@@ -45,6 +45,25 @@ loop every residual keeps its historical meaning, and always-accept Picard stays
 published — the head certificate is an **additional** measurement of the committed state
 that gates only the exit.
 
+**Reading the iteration line.** `Magnetic Picard k, residual ε ( dB ), relax ω` is printed
+where the head is measured, so it names a *state*: k is the number of body solves of that field so
+far (magnetic and thermal count separately in coupled mode), ε is that state's residual under the
+fresh assembly, and the label and ω are the algorithm and the initial trial relaxation the next
+solve starts with (the coupled Newton line search may halve ω after the line; a promotion trip
+shows the damped entry value; on the certifying line no solve follows). On the success path the
+column runs 0 … n and the certificate line carries the same value in scientific notation — read
+the dB cell, because the line's fixed-point field shows `0.000000` for anything below 5e-7. With
+`min iterations` above 1 the last lines can all sit at tolerance. A NaN head prints no line; the
+reset block follows. Exceptions in coupled mode: a trip whose magnetic head certifies while the
+thermal field still iterates runs no magnetic body, so the *next magnetic* line (after that trip's
+thermal row) repeats the index with a different residual; a head followed by a solver failure, a
+line-search cut or a watchdog cut still prints its line before the reset block; and `accepted at
+stall` prints the last thermal *body* residual — on the trip that detects the stall this is the
+head just printed (Picard) or the lagged recompute (Newton), and on a trip entered with the stall
+already latched no thermal head is measured at all. It is the uncertified exit and says so. The
+controller's own `mEpsilon` keeps the historical meaning described below; only the printed column
+changed.
+
 ## 2. Hybrid Picard → Newton iteration
 
 Each timestep starts on Picard (Messe et al. 2023, Section 4): the relaxed fixed-point step is robust

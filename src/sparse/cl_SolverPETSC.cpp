@@ -267,7 +267,7 @@ namespace belfem
                     {
                         // This lands INSIDE the controller's iteration box,
                         // so it is drawn as a box line: "   │ " + 69 columns
-                        // + "│", matching Controller::print_line(). Written
+                        // + "│", matching Controller::print_line_magnetic(). Written
                         // straight to cout for the same reason the box is —
                         // message() would prepend its own decoration.
                         // rank 0 may be here because a PEER diverged while

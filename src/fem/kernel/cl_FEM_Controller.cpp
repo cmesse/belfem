@@ -1110,6 +1110,11 @@ namespace belfem
                 return ;
             }
 
+            if ( mCommRank == 0 && gLog.info_level() > 0 )
+            {
+                this->print_line_magnetic( tEpsilonHead, tOmega );
+            }
+
             const bool tConvergedM = tEpsilonHead    <= mRelativeEpsilonTarget
                                   || tEpsilonHeadAbs <= mAbsoluteEpsilonTarget ;
 
@@ -1609,6 +1614,11 @@ namespace belfem
                     return ;
                 }
 
+                if ( mCommRank == 0 && gLog.info_level() > 0 )
+                {
+                    this->print_line_thermal( tEpsilonTHead, tOmega2 );
+                }
+
                 const bool tConvergedT = tEpsilonTHead    <= mRelativeEpsilonTarget2
                                       || tEpsilonTHeadAbs <= mAbsoluteEpsilonTarget2 ;
 
@@ -1775,14 +1785,6 @@ namespace belfem
             {
                 // increment iteration counter ( a BODY count )
                 ++mIteration ;
-            }
-
-            // print the line ( body trips and thermal-only trips both moved
-            // state; pure certification trips exited above with their own
-            // certificate line )
-            if( mCommRank == 0 && gLog.info_level() > 0 )
-            {
-                this->print_line( tOmega, tOmega2 );
             }
 
             if ( tSolveM )
@@ -2124,6 +2126,11 @@ namespace belfem
                 return ;
             }
 
+            if ( mCommRank == 0 && gLog.info_level() > 0 )
+            {
+                this->print_line_magnetic( tEpsilonHead, tOmega );
+            }
+
             const bool tConvergedM = tEpsilonHead    <= mRelativeEpsilonTarget
                                   || tEpsilonHeadAbs <= mAbsoluteEpsilonTarget ;
 
@@ -2189,11 +2196,6 @@ namespace belfem
             this->anderson_commit_magnetic() ;
 
             ++mIteration ;
-
-            if( mCommRank == 0 && gLog.info_level() > 0 )
-            {
-                this->print_line_magnetic( tOmega );
-            }
 
             // remember this residual (in dB) for the stagnation guard
             mResidualHistory.push( 10. * std::log10( mEpsilon ) ) ;
@@ -2374,6 +2376,11 @@ namespace belfem
                 return ;
             }
 
+            if ( mCommRank == 0 && gLog.info_level() > 0 )
+            {
+                this->print_line_thermal( tEpsilonTHead, tOmega );
+            }
+
             const bool tConvergedT = tEpsilonTHead    <= mRelativeEpsilonTarget2
                                   || tEpsilonTHeadAbs <= mAbsoluteEpsilonTarget2 ;
 
@@ -2430,11 +2437,6 @@ namespace belfem
             this->anderson_commit_thermal() ;
 
             ++mIteration2 ;
-
-            if( mCommRank == 0 && gLog.info_level() > 0 )
-            {
-                this->print_line_thermal( tOmega );
-            }
 
             if( mIteration2 > mMaxNumIterations2 || ((mEpsilon2 > 1E1 && mIteration2 > mMinNumIterations2) || std::isnan( mEpsilon2 ) ) )
             {
@@ -3575,59 +3577,29 @@ namespace belfem
         }
 
         void
-        Controller::print_line( const real aOmega, const real aOmega2 )
+        Controller::print_line_magnetic( const real aEpsilon, const real aOmega )
         {
-
-            real dB = 10. * std::log10( mEpsilon );
+            real dB = 10. * std::log10( aEpsilon );
             string tFormat = "   │ Magnetic" ;
             tFormat += mEquation->algorithm() == SolverAlgorithm::Picard ? " Picard " : " Newton " ;
             tFormat += "%5u, residual %s (%7.2f dB ), relax %7.5f │" ;
 
             string tMessage = sprint( tFormat.c_str(), mIteration,
-                residual_string( mEpsilon ).c_str(), dB, aOmega );
-
-            std::cout << tMessage << std::endl ;
-
-            if (mKernel2 != nullptr)
-            {
-                dB = 10. * std::log10( mEpsilon2 );
-                tFormat = "   │ Thermal " ;
-                tFormat += mEquation2->algorithm() == SolverAlgorithm::Picard ? " Picard " : " Newton " ;
-                tFormat += "%5u, residual %s (%7.2f dB ), relax %7.5f │" ;
-
-                tMessage = sprint( tFormat.c_str(), mIteration,
-                    residual_string( mEpsilon2 ).c_str(), dB, aOmega2 );
-
-                std::cout << tMessage << std::endl ;
-            }
-        }
-
-        void
-        Controller::print_line_magnetic( const real aOmega )
-        {
-
-            real dB = 10. * std::log10( mEpsilon );
-            string tFormat = "   │ Magnetic" ;
-            tFormat += mEquation->algorithm() == SolverAlgorithm::Picard ? " Picard " : " Newton " ;
-            tFormat += "%5u, residual %s (%7.2f dB ), relax %7.5f │" ;
-
-            string tMessage = sprint( tFormat.c_str(), mIteration,
-                residual_string( mEpsilon ).c_str(), dB, aOmega );
+                residual_string( aEpsilon ).c_str(), dB, aOmega );
 
             std::cout << tMessage << std::endl ;
         }
 
         void
-        Controller::print_line_thermal( const real aOmega )
+        Controller::print_line_thermal( const real aEpsilon, const real aOmega )
         {
-
-            real dB = 10. * std::log10( mEpsilon2 );
+            real dB = 10. * std::log10( aEpsilon );
             string tFormat = "   │ Thermal " ;
             tFormat += mEquation2->algorithm() == SolverAlgorithm::Picard ? " Picard " : " Newton " ;
             tFormat += "%5u, residual %s (%7.2f dB ), relax %7.5f │" ;
 
             string tMessage = sprint( tFormat.c_str(), mIteration2,
-                residual_string( mEpsilon2 ).c_str(), dB, aOmega );
+                residual_string( aEpsilon ).c_str(), dB, aOmega );
 
             std::cout << tMessage << std::endl ;
         }
