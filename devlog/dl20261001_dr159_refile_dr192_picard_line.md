@@ -51,8 +51,12 @@ bit-identical at −107.7 dB (1.7e-11) for five iterates at Δt = 0.01 ms. That 
 floor (STRUMPACK at its default `relative tolerance : 1e-10`) landing just above the target; the
 cut halves Δt and the floor drops under it. 354 attempts instead of 108, Δt down to 0.001 ms,
 5 h 17 min against ~75 min. Two variants were launched to settle the deck: V1 keeps 1e-11 and sets
-the linear tolerance to 1e-12, V2 uses 1e-10; both were at 0.17 ms with no rejection when this was
-written. The shipped deck is unchanged until Christian rules on their result.
+the linear tolerance to 1e-12 — nine rejections by 0.56 ms, so the floor is not the linear exit
+test alone; V2 uses 1e-10 — 108 steps, no rejection, Δt never cut, 1 h 37 min, max head 9.65e-11,
+the shipped deck's shape at the literature's order. V2's fields differ from the 1e-11 run's by up
+to 12 % of Jz at 0.9 ms, which measures the two Δt histories and not reproducibility; the 1e-10
+deck on the second binary (B2) was launched for that. The shipped deck is unchanged until Christian
+rules on the result.
 
 **The print ruling, twice.** The first plan proposed printing a "head" residual beside a "lagged"
 one on the Picard line, on the mechanism the 2026-09-29 session had written into the register: that
@@ -95,8 +99,9 @@ exit is a cut, not an acceptance".
 |---|---|---|---|---|---|---|---|
 | A1 | `cmake-build-debug` at `0af5c62`, pinned | 1e-11 | 1e-10 (default) | 314 | 40 | 0.001 ms | 5 h 17 min |
 | B1 | private rebuild of `0af5c62`, same options | 1e-11 | 1e-10 | 314 | 40 (same steps) | same | 5 h 12 min |
-| V1 | A | 1e-11 | 1e-12 | running | | | |
-| V2 | A | 1e-10 | 1e-10 | running | | | |
+| V1 | A | 1e-11 | 1e-12 | ≥ 103 (running) | 9 by 0.56 ms | | |
+| V2 | A | 1e-10 | 1e-10 | 108 | 0 | 0.01 ms (never cut) | 1 h 37 min |
+| B2 | B | 1e-10 | 1e-10 | launched 19:20 | | | |
 
 A1 vs B1, worst relative difference per field (scale = max |field| at that step):
 
