@@ -10,12 +10,12 @@ plan whose premise its own jury refuted, a corrected mechanism, a second plan, a
 the two print helpers, `cl_FEM_Controller.hpp`), `src/sparse` (`cl_SolverPETSC.cpp`, one comment),
 `src/fem/kernel/doc/nonlinear_controller_theory.md`; `todo/debt_register.md`,
 `todo/debt_register_closed.md`, `todo/test_gap_backlog.md`, `todo/picard_line_head_residual.md`;
-`examples/corc_periodic_bc` (runs only, deck unchanged)
+`examples/corc_periodic_bc/input.conf` (`tolerance : 1e-10`, Anderson on)
 **AIs involved:** Claude Fable 5.1 (register, runs, plans, implementation, verification, gates); Codex
 `gpt-6-astra` (plan v1 high, plan v2 xhigh, code high) + Grok `grok-4.7` (same depths), blind juries
 **Status:** code landed, gated in a private tree, code jury clean (no code finding; three doc
-sentences corrected); `make check` 17/17 in the private tree and pass in Christian's shared tree, 2026-10-01; two follow-up deck variants (V1, V2) running at close, their result and the
-deck ruling owed on DR-192
+sentences corrected); `make check` 17/17 in the private tree and pass in Christian's shared tree, 2026-10-01; the deck ruled and landed 2026-10-02 (`tolerance : 1e-10`, Anderson on), DR-192 struck with its
+executable evidence; live register 6, archive 181
 **Literature References:** Messe et al. 2023 §4 (always-accept Picard, pre-update residual — the
 comment at `cl_FEM_DofMgr_SolverData.cpp:2346-2349` cites it) and §2.7 (the < 1e-11 recommendation
 for HTS Picard, the reason the deck was tightened); Ern, Stephansen & Zunino 2009 not touched
@@ -55,8 +55,10 @@ the linear tolerance to 1e-12 — nine rejections by 0.56 ms, so the floor is no
 test alone; V2 uses 1e-10 — 108 steps, no rejection, Δt never cut, 1 h 37 min, max head 9.65e-11,
 the shipped deck's shape at the literature's order. V2's fields differ from the 1e-11 run's by up
 to 12 % of Jz at 0.9 ms, which measures the two Δt histories and not reproducibility; the 1e-10
-deck on the second binary (B2) was launched for that. The shipped deck is unchanged until Christian
-rules on the result.
+deck on the second binary (B2) agrees with V2 to 1e-11 through 0.7 ms and 3e-8 on Jz at 1 ms. Christian ruled 1e-10 with Anderson; the shipped deck
+carries it since this session, and DR-192 is struck: the gate restriction is replaced by a 1e-7
+relative field tolerance for regression gates on this deck through 1 ms, and the inherent
+marginal exit is now four orders below the fields' reproducibility.
 
 **The print ruling, twice.** The first plan proposed printing a "head" residual beside a "lagged"
 one on the Picard line, on the mechanism the 2026-09-29 session had written into the register: that
@@ -86,7 +88,7 @@ misread is no longer available. Gated on all three loops, since a magnetic-only 
 ## DR-159 → DR-192
 
 The closed DR-159 row keeps the 2026-09-29 status text as evidence, prefixed with the strike record
-and the correction of its mechanism sentence. DR-192 (P2, `[MIXED]` `[P]`) carries: the measured
+and the correction of its mechanism sentence. DR-192 (P2, `[MIXED]` `[P]`; struck 2026-10-02 once the deck landed) carried: the measured
 marginal exits (10 / 8 / 1 of 108 / 108 / 152 steps within 2× of 1e-7 on the three 2026-09-29
 variants), the two-build divergence of 2026-09-19 as its consequence, the corrected observability
 statement, the 1e-11 result above, the pre-0.6 ms gate restriction until the deck is settled, and
@@ -99,9 +101,9 @@ exit is a cut, not an acceptance".
 |---|---|---|---|---|---|---|---|
 | A1 | `cmake-build-debug` at `0af5c62`, pinned | 1e-11 | 1e-10 (default) | 314 | 40 | 0.001 ms | 5 h 17 min |
 | B1 | private rebuild of `0af5c62`, same options | 1e-11 | 1e-10 | 314 | 40 (same steps) | same | 5 h 12 min |
-| V1 | A | 1e-11 | 1e-12 | ≥ 103 (running) | 9 by 0.56 ms | | |
+| V1 | A | 1e-11 | 1e-12 | 314 | 40 (same as A1) | 0.001 ms | 5 h 10 min |
 | V2 | A | 1e-10 | 1e-10 | 108 | 0 | 0.01 ms (never cut) | 1 h 37 min |
-| B2 | B | 1e-10 | 1e-10 | launched 19:20 | | | |
+| B2 | B | 1e-10 | 1e-10 | 108 | 0 (identical Δt history to V2) | 0.01 ms | 1 h 36 min |
 
 A1 vs B1, worst relative difference per field (scale = max |field| at that step):
 
@@ -112,7 +114,19 @@ A1 vs B1, worst relative difference per field (scale = max |field| at that step)
 | 0.7 | 1.4e-12 | 4.6e-12 | 4.3e-12 | 2.2e-11 |
 | 1.0 | 3.2e-13 | 8.5e-11 | 4.8e-11 | 1.5e-11 |
 
-For comparison, the 2026-09-29 1e-7 pair (shipped vs Anderson, different knobs, same binary) agrees
+V2 vs B2 at 1e-10, two binaries, worst relative difference per field:
+
+| t [ms] | phi | Jz | Jx | Hx |
+|---|---|---|---|---|
+| 0.1 | 8.1e-13 | 1.4e-11 | 9.7e-12 | 1.2e-11 |
+| 0.7 | 4.1e-13 | 9.7e-12 | 5.5e-12 | 2.2e-12 |
+| 0.8 | 4.9e-13 | 6.0e-10 | 5.3e-10 | 1.1e-10 |
+| 1.0 | 9.5e-13 | 3.0e-8 | 1.3e-8 | 6.4e-9 |
+
+The two binaries took different Picard paths at 1e-10 (mean 2.52 vs 3.52 iterates per step,
+4 vs 36 relaxed exits, identical Δt history) and still met within 1e-8, because each step
+converges to the same state at that tolerance; at 1e-7 the same path difference became the 12 %
+field split. For comparison, the 2026-09-29 1e-7 pair (shipped vs Anderson, different knobs, same binary) agrees
 to 1e-12 through 0.5 ms and parts by 71 % of Jz at 0.6 ms. The rejection mechanism, step 28 of A1:
 `Picard 1 … -13.02 dB`, then five lines at exactly `-107.68 dB`, then `timestep rejected │ retrying
 step 28 │ Δt = 0.0050 ms`. The deck's `stall tolerance : 0.001` is doing what it is for; the floor
@@ -161,10 +175,8 @@ exception.
 
 ## Open
 
-- V1 and V2 (scratchpad `dr159/runV1`, `runV2`; ~5 h each from 2026-10-01 17:2x); then the deck
-  ruling on DR-192 item 1 (1e-11 + linear 1e-12, 1e-10, or leave 1e-7 with the gate restriction).
-- The `git worktree` `treeB` in the scratchpad is removed at session end; the pinned binary copy
-  `binA` goes with the scratchpad.
+- The `git worktree` `treeB` was removed at session end; the pinned binary copy `binA` and the
+  six run directories go with the scratchpad.
 - The 2026-09-29 devlog's `:103-105` mechanism sentence is wrong as written (records are kept); this
   entry, DR-192 and the closed DR-159 row carry the correction.
 
@@ -175,4 +187,5 @@ exception.
 - `todo/debt_register.md` (DR-192 filed in DR-159's place), `todo/debt_register_closed.md`
   (DR-159), `todo/test_gap_backlog.md` (O2), `todo/picard_line_head_residual.md` (new),
   `todo/README.md`
+- `examples/corc_periodic_bc/input.conf`
 - `devlog/README.md`, `devlog/campaigns/release_1.0.md`
