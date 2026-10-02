@@ -14,7 +14,7 @@ the two print helpers, `cl_FEM_Controller.hpp`), `src/sparse` (`cl_SolverPETSC.c
 **AIs involved:** Claude Fable 5.1 (register, runs, plans, implementation, verification, gates); Codex
 `gpt-6-astra` (plan v1 high, plan v2 xhigh, code high) + Grok `grok-4.7` (same depths), blind juries
 **Status:** code landed, gated in a private tree, code jury clean (no code finding; three doc
-sentences corrected); Christian's `make check-fast` owed; two follow-up deck variants (V1, V2) running at close, their result and the
+sentences corrected); `make check-fast` in the shared tree, Christian, 2026-10-01: pass; two follow-up deck variants (V1, V2) running at close, their result and the
 deck ruling owed on DR-192
 **Literature References:** Messe et al. 2023 §4 (always-accept Picard, pre-update residual — the
 comment at `cl_FEM_DofMgr_SolverData.cpp:2346-2349` cites it) and §2.7 (the < 1e-11 recommendation
@@ -26,7 +26,7 @@ Anderson on, 1 ms, on the shared `cmake-build-debug` binary (pinned copy, `LD_LI
 the private rebuild, compared field by field with `scipy.io.netcdf_file` at all ten saved steps.
 Print change: syntax gate, private-tree build, three decks (`tapestack2d_layered`;
 `tape_quench_usermat` fully coupled and `coupling : segregated`, plugins built in the scratchpad)
-read line by line against the certificates. `make check-fast` in the shared tree not run by Claude
+read line by line against the certificates; then `make check-fast` in the shared tree, Christian, 2026-10-01: pass
 **Exchange:** `tmp/ai_exchange/review_picard_line_head_residual.md` (v1 pre-registration, two
 refuting entries, verification; v2 pre-registration, two entries, verification; code pre-registration,
 two entries, verification; gate evidence) and `.diff` — ephemeral, distilled here and in DR-192
@@ -156,7 +156,6 @@ exception.
 
 ## Open
 
-- Christian's `make check-fast` on the shared trees.
 - V1 and V2 (scratchpad `dr159/runV1`, `runV2`; ~5 h each from 2026-10-01 17:2x); then the deck
   ruling on DR-192 item 1 (1e-11 + linear 1e-12, 1e-10, or leave 1e-7 with the gate restriction).
 - The `git worktree` `treeB` in the scratchpad is removed at session end; the pinned binary copy
