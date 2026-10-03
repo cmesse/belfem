@@ -189,3 +189,22 @@ exception.
   `todo/README.md`
 - `examples/corc_periodic_bc/input.conf`
 - `devlog/README.md`, `devlog/campaigns/release_1.0.md`
+
+## Addendum 2026-10-02 — DR-105 weekend campaign launched
+
+Christian noted that DR-105 and DR-113 are the only non-homology rows left and offered the weekend
+for DR-105 as an unattended run. The reconstructed T5 deck, gone from `cmake-build-claude/`,
+was found intact in `~/codes/belfem_transfer/cmake-build-claude/tape_quench_dr105/` with both
+August logs, the serial memdump and fifteen snapshots; its old-API plugins build unchanged against
+HEAD (their data paths are compiled from `__FILE__`, so they were rebuilt where the deck now
+lives). A four-minute serial smoke test on a private debug HEAD binary ran 84 steps to 1.58 ms
+with no rejection and a 4.3-decade Picard descent per step, straight through the 0.77 ms wall at
+the Δt cap: 24 ms/h against the 1.0 ms/h of 2026-08-27, so the 0.3 s rerun is a 13-hour job even
+serially on a debug binary. Christian approved the campaign and its phase-2 shape (serial plus
+the first clean parallel configuration, both debug, assertions armed). It runs under `setsid`
+from `tmp/dr105_weekend/` with a pre-registered `ANALYSIS_PLAN.md`, a parser calibrated on the
+August logs (np=8: 263 accepted, 213 floor warnings, 81 %, class "floor"; serial 1.1 %), pinned
+binaries and a driver-written `STATUS.md`; phase 1 (np 1/2/4 together, then np 8, np 8 with
+conditioning, np 8 with MUMPS magnetic) started 18:02, phase 2 follows until Sunday 22:00. The
+analysis, the devlog of the campaign and any DR-105 ruling belong to the Monday session; every
+file under `tmp/dr105_weekend/` is held until then.
