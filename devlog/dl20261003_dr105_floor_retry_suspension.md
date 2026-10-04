@@ -28,8 +28,9 @@ post-round fixes; R0a (guard switched off by `stall tolerance : 0`, serial, 25 m
 guard kills resolves by itself in every quench step (flat runs up to 13 iterates, 28 steps with a
 run ≥ 8), the 32 rejections all by the watchdog at the Δt cap, no floor retry — the measurement R1
 is sized by; the serial R1 run to 20 ms: 0 floor retries, but on a different trajectory than the
-HEAD abort (see §What the gate taught), so it is not the reproducer; `make check` in Christian's
-shared tree not yet run
+HEAD abort (see §What the gate taught), so it is not the reproducer; after the commit, `make check`
+on the committed HEAD `b01911f` in the private tree (controller sources byte-identical to the
+commit), at Christian's request because he was away from the office: 17/17 in 36.75 s
 **Exchange:** `tmp/ai_exchange/review_dr105_picard_stall.md` (code pre-registration, two auditor
 entries, verification + reconciliation, the post-round fixes note) and `.diff`
 
@@ -84,14 +85,16 @@ between 10.6 and 33 ms.
   is the bound; Δt never reached the floor. This is the direct support for the suspension.
 - **R0c, np = 4 cold on HEAD, 13 ms:** clean — the 11.745 ms abort of the campaign's np = 4 run
   did not reproduce, as expected for a parallel trajectory.
-- **R0b, Anderson off, serial, 20 ms:** running at close (18 ms, clean so far); result in the
-  campaign status file.
+- **R0b, Anderson off, serial, 20 ms:** clean, 1173 accepted, 66 rejected, no floor retry. In the
+  quench plain Picard needs more iterates (median 27 against 19 with Anderson 3) and shows the same
+  first-body kick (+23.9 against +23.6 dB), but almost no flat plateau: longest flat run median 2,
+  max 5, two steps with a run ≥ 5, against 4, 10 and nine steps with Anderson. The map makes the
+  kick and a slow descent; Anderson's mixing makes the flat cluster the five-sample guard trips on.
 
 ## Open
 
 - The mechanism gate: a suspended floor retry observed to recover (or to end on the watchdog or
   budget) on the R1 binary; R3a's Picard-vs-hybrid temperature comparison from the same runs.
-- Christian's `make check` in the shared tree.
 - R2 (the T5 deck on the hybrid) waits for the Picard gate runs, which need the Picard deck.
 - O4 (`target iterations : 100`), the table extension (O3's separate task).
 - The run-to-run sensitivity of this deck to any binary or deck change (observed, not explained).

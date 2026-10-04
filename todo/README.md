@@ -146,7 +146,7 @@ one of the two must be retired before either is worked.
 
 ### [dr105_picard_stall_plan.md](dr105_picard_stall_plan.md) — DR-105: the pure-Picard T5 quench deck aborts on the floor-retry limit because the stagnation guard ends every attempt at iterate 6 and the floor retry raises budgets the guard never consumes while resetting ω (a replay ×20); plan: a reason-aware floor retry (stall patience ×2^k), the deck on the hybrid, the Anderson-0 and guard-off diagnostics, and the 1770 K routed to the tables' validity range
 
-**R1 LANDED 2026-10-03** (approved plan v2; code jury astra/xhigh + grok-4.7/xhigh clean; make check 17/17 private; R0a supports it); the floor-retry gate on the R1 binary and Christian's make check owed; R2/R3 open.
+**R1 LANDED 2026-10-03** (approved plan v2; code jury astra/xhigh + grok-4.7/xhigh clean; make check 17/17 private; R0a supports it); make check 17/17 on the committed HEAD in Claude's private tree at Christian's request; the floor-retry gate on the R1 binary owed; R2/R3 open.
 
 ### [picard_line_head_residual.md](picard_line_head_residual.md) — DR-192 item 2: the per-iterate `Magnetic Picard` line prints the head residual ( what the accept reads ) beside the lagged one ( what the guards act on ), so a −25 dB line before a converged `timestep succeeded` stops reading as an accepted stall
 
