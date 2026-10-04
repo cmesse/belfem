@@ -134,7 +134,19 @@ discussion in `doc/coding_philosophy.md`. Two terminal conditions bound the retr
    doubles `max iterations` and `watchdog window` (both fields), up to
    `mFloorEscalationCap = 4` times the deck values, prints a warning box, and retries at the
    minimum. A slowly converging attempt gets the iterations it needs; the budgets return to
-   the deck values with the next accepted step.
+   the deck values with the next accepted step. The retry addresses the failure that occurred:
+   `reset_timestep` receives the cut reason. When a cut caused by the magnetic stagnation guard
+   finds Δt already at the minimum, the guard's Picard verdict is **suspended** for the rest of
+   the floor regime. Newton escalation keeps its one chance per attempt, and Newton→Picard
+   demotion is unaffected. The cut that first pins Δt at the minimum still applies the clamp, so
+   the first attempt at the minimum runs with the guard armed; suspension starts with the first
+   floor retry. Without suspension, a stall-cut attempt at the floor is replayed: the guard fires
+   as soon as its window is full and flat, before the raised ceiling is consulted, and the next
+   attempt's initializer restores the deck's relaxation, so the magnetic iteration block of every
+   retry (twenty by default) reproduces one attempt to printed precision. With suspension, the
+   attempt is bounded by the raised iteration budget and by the watchdog when its conditions
+   hold: no new residual minimum for its window, the residual above 10× tolerance, and ω not
+   rising. That is why the retry raises those budgets.
 3. **The floor backstop:** escalation is not unbounded. After `floor retries` consecutive
    attempts at the minimum (default 20, `0` disables the backstop) the run stops with a
    diagnosis. The rationale is that a residual which responds to neither the timestep nor a

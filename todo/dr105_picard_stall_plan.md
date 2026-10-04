@@ -14,7 +14,7 @@ decks) to Christian. No code is edited before the plan jury and his approval.
 floor block, `finalize`); `tmp/dr105_weekend/deck` (T5 deck, not shipped); `todo/debt_register.md`
 **AIs involved:** Claude Fable 5.1 (campaign, brief, plan); Codex `gpt-6-astra`/xhigh + Grok
 `grok-4.7`/xhigh (blind survey on the brief; plan jury to follow at the same depth)
-**Status:** PLAN v2 APPROVED 2026-10-03 (Christian: plan, O1 unconditional, O2 leave the five decks, O3 report against the 199 K envelope; R0 launched the same hour; O4 open); implementation is a later, separately approved round — v1's R1 (a patience factor) withdrawn on the plan jury's finding that it delays the cut by at most three iterates; R1 is now the suspension of the guard's Picard verdict at the floor with the reason passed to `reset_timestep`; R0c, R3a–c and two F-sentences corrected on the same round (astra/xhigh + grok-4.7/xhigh, all CONFIRMED). Awaiting Christian's approval and the rulings O1–O4; no source edited
+**Status:** R1 LANDED 2026-10-03 (code jury astra/xhigh + grok-4.7/xhigh: no defect; two post-round fixes applied on Christian's approval; make check 17/17 in the private tree; R0a supports the suspension; the mechanism's own gate — a suspended floor retry on the R1 binary — not yet observed: a cross-binary replay of the HEAD abort is impossible, the deck's trajectory moves with any binary or deck change; `g4_restart_r1`, `g2_serial_r1_full`, `g3_np8_r1_full` running; Christian's `make check` owed) — earlier: PLAN v2 APPROVED 2026-10-03 (Christian: plan, O1 unconditional, O2 leave the five decks, O3 report against the 199 K envelope; R0 launched the same hour; O4 open); implementation is a later, separately approved round — v1's R1 (a patience factor) withdrawn on the plan jury's finding that it delays the cut by at most three iterates; R1 is now the suspension of the guard's Picard verdict at the floor with the reason passed to `reset_timestep`; R0c, R3a–c and two F-sentences corrected on the same round (astra/xhigh + grok-4.7/xhigh, all CONFIRMED). Awaiting Christian's approval and the rulings O1–O4; no source edited
 **Literature References:** Messe et al. 2023 §4, Eqs. 12–14 (lagged-conductivity Picard, the
 quasi-Newton hand-over, the Eq. 14 relaxation rule; the 10⁻¹¹ final tolerance against
 checkerboarding) — not §2.7, which is kernel layout; Walker & Ni 2011 (Anderson type II, as
@@ -90,7 +90,7 @@ guard let it (every surviving attempt at larger Δt did resolve, 8–27 iterates
 
 ### R0 — diagnostics before the code change (runs only, no source edit; ≈ 3 h of machine time)
 
-- [◐] **R0a** (launched 2026-10-03, `tmp/dr105_weekend/r0a_stall0`) Serial, T5 deck, cold, `stall tolerance : 0` (legal: the band is stored unchecked
+- [x] **R0a** — **RESULT 2026-10-03:** serial, guard off, 25 ms, exit 0: 1338 accepted (840 in the quench), 32 rejected — every one by the watchdog at Δt ≈ 0.02 ms (31–38 iterates), none at the floor, zero floor retries. In the quench the steps take a median of 21 iterates (max 58); the longest flat run per step is 4 (median), up to 13; 114 steps carry a flat run ≥ 5 and 28 a run ≥ 8, and all of them resolved to tolerance. So the plateau the guard kills does resolve when left alone, within the iteration budget, and the watchdog is the bound that fires on the genuinely slow steps — at the cap, not at the floor. R1's suspension is sized by this. (`tmp/dr105_weekend/r0a_stall0`) Serial, T5 deck, cold, `stall tolerance : 0` (legal: the band is stored unchecked
   and the test is strict `<`, so 0 never fires), to 25 ms: does the plateau resolve when the guard
   lets it, and within how many iterates? **Record the stopping predicate of every cut attempt**
   (watchdog — conditional: a new minimum refreshes it, a residual within 10× tolerance or a rising
@@ -116,25 +116,26 @@ v1 proposed a patience factor on the guard; the plan jury showed it delays the c
 `tFactor − 1 ≤ 3` iterates (overlapping 5-windows, `tFactor` capped at 4) and never reaches the
 budgets the retry raises. v2 makes the trade §2 names:
 
-- [ ] **R1a** `reset_timestep( const ResetReason aReason )`: an `enum class ResetReason { Stall,
+- [x] **R1a** `reset_timestep( const ResetReason aReason )`: an `enum class ResetReason { Stall,
   Watchdog, Budget, Divergence, SolverFailure, NaN, LineSearch, Thermal }` argument at all 20 call
   sites (a missed site is a compile error); stored in `mLastReset` as identical member math on
   every rank, outside the rank-0 print, like the floor factor (`:2683-2684`). `Stall` is the only
   value consumed; the others feed the retry line's text.
-- [ ] **R1b** The floor block (`:2679-2717`): when `mLastReset == Stall`, set `mStallSuspended =
+- [x] **R1b** The floor block (`:2679-2717`): when `mLastReset == Stall`, set `mStallSuspended =
   true` beside the ×`tFactor` on the budgets and the watchdog windows; the retry line names what
   was raised ("stall guard suspended, iteration budget 800, watchdog 60"). Any other reason leaves
   the guard armed, as today.
-- [ ] **R1c** `magnetic_stagnation_forces_reset`: the Picard arm (escalate or return true) is
-  skipped while `mStallSuspended`; the Newton→Picard demotion arm is unchanged, so a hybrid deck
-  at the floor still demotes. The attempt is then bounded by the raised watchdog (conditional) and
+- [x] **R1c** `magnetic_stagnation_forces_reset`: while `mStallSuspended` the Picard arm keeps
+  its one Newton escalation per attempt and withholds the cut (landed 2026-10-03 this way, not
+  as the literal skip v2 wrote — a hybrid deck at the floor keeps its rescue; the code jury noted
+  the divergence and the doc matches the code); the Newton→Picard demotion arm is unchanged. The attempt is then bounded by the raised watchdog (conditional) and
   the raised iteration budget (hard, `:1818`), which is exactly the budget the retry exists to grant.
-- [ ] **R1d** Resets: `mStallSuspended = false` and `mLastReset = None` on the accepted-step path
+- [x] **R1d** Resets: `mStallSuspended = false` and `mLastReset = None` on the accepted-step path
   where the deck budgets are restored (`finalize`, `:3065`), and `mLastReset = None` at the top of
   every attempt; no per-iterate counter exists, so the six `mResidualHistory.clear()` sites
   (`:204`, `:336`, `:722`, `:924`, `:1048`, `:1413`, and `:2646` in `reset_timestep`) need no
   change. `mStallSuspended` survives `reset_timestep` (it is set there) and dies with the accept.
-- [ ] **R1e** `nonlinear_controller_theory.md`: the floor-retry paragraph states the reason-aware
+- [x] **R1e** `nonlinear_controller_theory.md`: the floor-retry paragraph states the reason-aware
   policy. No new deck key; if the jury or Christian asks for one (e.g. `floor stall suspension :
   false`), `doc/input_file_reference.md` and `doc/input_schema.yaml` change in the same session.
 - What could break: nothing away from the floor (`mStallSuspended` is false there); at the floor

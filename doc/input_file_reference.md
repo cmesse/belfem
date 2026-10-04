@@ -354,11 +354,16 @@ Same shape as §4.2; only differences are listed
 | `anderson stabilization` | bool master switch | **`false`** (opt-in); guidance §4.5. `true` fills default depths (magnetic 3, thermal 1) only where `anderson depth` is absent. Explicit `anderson depth` always wins, including explicit `0`. `false` zeroes both depths and hard-errors with explicit nonzero `anderson depth`. | `:3227-3258` |
 | `save every` | value, s | Absent: save every step. | `:3260-3273` |
 
-Floor policy (revised 2026-08-10): a cut requested while Δt is already at the
-`minimum timestep` does not abort immediately. The controller doubles the iteration budgets
-(`max iterations`, `watchdog window`, both fields), up to 4× the deck values, prints a warning
-box, and retries at the minimum. The budgets return to deck values with the next accepted
-step; the warning box counts retries against `floor retries`. Before the backstop trips,
+Floor policy (revised 2026-08-10, reason-aware since 2026-10-03): a cut requested while Δt is
+already at the `minimum timestep` does not abort immediately. The controller doubles both
+iteration budgets, `max iterations` and `watchdog window`, up to 4× the deck values, prints a
+warning box, and retries at the minimum. If the magnetic stall guard (`stall window` /
+`stall tolerance`) caused the cut, its Picard verdict is suspended until the next accepted
+step. Otherwise it would end every retry at the same iterate, so the raised budgets would
+never be reached; the warning box names the suspension. The budgets and the suspension return
+to deck state with the next accepted step. The warning box counts retries against
+`floor retries`. With `floor retries : 0`, a suspended attempt uses the raised iteration
+budget on every retry without bound. Before the backstop trips,
 diagnose with `compute conditioning` (§4) and accept a genuine noise floor with
 `absolute tolerance` (§4.2).
 

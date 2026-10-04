@@ -275,7 +275,7 @@ namespace belfem
             }
             if ( ! tCircuitOK )
             {
-                this->reset_timestep() ;
+                this->reset_timestep( ResetReason::Circuit ) ;
                 return ;
             }
 
@@ -400,7 +400,7 @@ namespace belfem
             }
             if ( ! tCircuitOK )
             {
-                this->reset_timestep() ;
+                this->reset_timestep( ResetReason::Circuit ) ;
                 return ;
             }
 
@@ -929,6 +929,16 @@ namespace belfem
                         // Picard stalled. Try the Newton tangent once before declaring the
                         // timestep too large ( see try_escalate_to_newton ); only if Newton
                         // is unavailable or already spent does the caller cut the timestep.
+                        // At the Delta t floor a cut cannot change the timestep and this
+                        // verdict is what kept every earlier attempt from reaching the
+                        // raised iteration budget, so while the floor retry it caused is in
+                        // force the escalation keeps its chance and the cut is withheld;
+                        // the raised budget and watchdog window bound the attempt
+                        if ( mStallSuspended )
+                        {
+                            this->try_escalate_to_newton() ;
+                            return false ;
+                        }
                         return ! this->try_escalate_to_newton() ;
                     }
                 }
@@ -1106,7 +1116,7 @@ namespace belfem
             // decision uses the BROADCAST scalar only, never mRhsNorm )
             if ( std::isnan( tEpsilonHead ) )
             {
-                this->reset_timestep() ;
+                this->reset_timestep( ResetReason::NaN ) ;
                 return ;
             }
 
@@ -1223,7 +1233,7 @@ namespace belfem
                     BELFEM_ERROR( ++mSolverFailCount < 8,
                         "linear solver failed on %u consecutive timestep attempts - the cause is in the solver messages above ( e.g. a singular system, non-convergence, or repeated workspace exhaustion )",
                         ( unsigned int ) mSolverFailCount );
-                    this->reset_timestep() ;
+                    this->reset_timestep( ResetReason::SolverFailure ) ;
                     return ;
                 }
 
@@ -1435,7 +1445,7 @@ namespace belfem
                     else if ( mIteration > mMinNumIterations
                          && ( ( tLogEpsilon > 0.9 && ! mForceNewton ) || tBacktracks >= 8 ) )
                     {
-                        this->reset_timestep() ;
+                        this->reset_timestep( ResetReason::LineSearch ) ;
                         return ;
                     }
 
@@ -1610,7 +1620,7 @@ namespace belfem
 
                 if ( std::isnan( tEpsilonTHead ) )
                 {
-                    this->reset_timestep() ;
+                    this->reset_timestep( ResetReason::NaN ) ;
                     return ;
                 }
 
@@ -1647,7 +1657,7 @@ namespace belfem
                     BELFEM_ERROR( ++mSolverFailCount < 8,
                         "thermal solver failed on %u consecutive timestep attempts - the cause is in the solver messages above ( e.g. a singular system, non-convergence, or repeated workspace exhaustion )",
                         ( unsigned int ) mSolverFailCount );
-                    this->reset_timestep() ;
+                    this->reset_timestep( ResetReason::SolverFailure ) ;
                     return ;
                 }
 
@@ -1710,7 +1720,7 @@ namespace belfem
                 // trips the eps2 > 1E1 divergence rule
                 if ( this->watchdog_thermal( tOmega2 ) )
                 {
-                    this->reset_timestep() ;
+                    this->reset_timestep( ResetReason::Watchdog ) ;
                     return ;
                 }
 
@@ -1865,7 +1875,7 @@ namespace belfem
                 }
                 else
                 {
-                    this->reset_timestep() ;
+                    this->reset_timestep( ResetReason::Budget ) ;
                     return;
                 }
             }
@@ -1876,7 +1886,7 @@ namespace belfem
             // trips must neither feed nor trigger them
             if ( tSolveM && this->magnetic_stagnation_forces_reset() )
             {
-                this->reset_timestep() ;
+                this->reset_timestep( ResetReason::Stall ) ;
                 return;
             }
 
@@ -1885,7 +1895,7 @@ namespace belfem
             // cycles the flat-band guard cannot see, cf. ts15 )
             if ( tSolveM && this->watchdog_magnetic( tOmega ) )
             {
-                this->reset_timestep() ;
+                this->reset_timestep( ResetReason::Watchdog ) ;
                 return;
             }
 
@@ -2122,7 +2132,7 @@ namespace belfem
 
             if ( std::isnan( tEpsilonHead ) )
             {
-                this->reset_timestep() ;
+                this->reset_timestep( ResetReason::NaN ) ;
                 return ;
             }
 
@@ -2178,7 +2188,7 @@ namespace belfem
                 BELFEM_ERROR( ++mSolverFailCount < 8,
                     "linear solver failed on %u consecutive timestep attempts - the cause is in the solver messages above ( e.g. a singular system, non-convergence, or repeated workspace exhaustion )",
                     ( unsigned int ) mSolverFailCount );
-                this->reset_timestep() ;
+                this->reset_timestep( ResetReason::SolverFailure ) ;
                 return ;
             }
 
@@ -2218,7 +2228,7 @@ namespace belfem
                 }
                 else
                 {
-                    this->reset_timestep() ;
+                    this->reset_timestep( ResetReason::Budget ) ;
                     return;
                 }
             }
@@ -2227,7 +2237,7 @@ namespace belfem
             // to Picard internally; see magnetic_stagnation_forces_reset ).
             if ( this->magnetic_stagnation_forces_reset() )
             {
-                this->reset_timestep() ;
+                this->reset_timestep( ResetReason::Stall ) ;
                 return;
             }
 
@@ -2236,7 +2246,7 @@ namespace belfem
             // cycles the flat-band guard cannot see, cf. ts15 )
             if ( this->watchdog_magnetic( tOmega ) )
             {
-                this->reset_timestep() ;
+                this->reset_timestep( ResetReason::Watchdog ) ;
                 return;
             }
 
@@ -2367,7 +2377,7 @@ namespace belfem
                 if ( mDeltaTime2 < mDeltaTime/20 )
                 {
                     mCouplingFactor = 20 ;
-                    this->reset_timestep() ;
+                    this->reset_timestep( ResetReason::NaN ) ;
                 }
                 else
                 {
@@ -2415,7 +2425,7 @@ namespace belfem
                 if ( mDeltaTime2 < mDeltaTime/20 )
                 {
                     mCouplingFactor = 20 ;
-                    this->reset_timestep() ;
+                    this->reset_timestep( ResetReason::SolverFailure ) ;
                 }
                 else
                 {
@@ -2443,7 +2453,7 @@ namespace belfem
                 if (mDeltaTime2 < mDeltaTime/20)
                 {
                     mCouplingFactor = 20 ;
-                    this->reset_timestep() ;
+                    this->reset_timestep( ResetReason::Budget ) ;
                 }
                 else
                 {
@@ -2457,7 +2467,7 @@ namespace belfem
                 if (mDeltaTime2 < mDeltaTime/20)
                 {
                     mCouplingFactor = 20 ;
-                    this->reset_timestep() ;
+                    this->reset_timestep( ResetReason::Watchdog ) ;
                 }
                 else
                 {
@@ -2569,7 +2579,7 @@ namespace belfem
             return true ;
         }
 
-        void Controller::reset_timestep()
+        void Controller::reset_timestep( const ResetReason aReason )
         {
             --mRunningTimeStep ;
             mReset = true ;
@@ -2716,6 +2726,18 @@ namespace belfem
                     mWatchdogWindow    = mWatchdogWindowDeck    * tFactor ;
                     mWatchdogWindow2   = mWatchdogWindow2Deck   * tFactor ;
 
+                    // a cut demanded by the stall guard cannot be answered with
+                    // iterations alone: the guard fires as soon as its window is
+                    // full and flat ( one iterate past the window on the
+                    // quench-front shape ), long before a raised ceiling is
+                    // consulted, and with omega restored by the next attempt's
+                    // initializer the retry would replay the one it is retrying.
+                    // Identical member math on every rank
+                    if ( aReason == ResetReason::Stall )
+                    {
+                        mStallSuspended = true ;
+                    }
+
                     if ( mCommRank == 0 && gLog.info_level() > 0 )
                     {
                         std::cout << "   ┌───────────────────────────────────────────────────────────────────────┐" << std::endl ;
@@ -2734,6 +2756,16 @@ namespace belfem
                                 ( unsigned int ) mFloorRetries,
                                 ( unsigned int ) mMaxFloorRetries );
                         std::cout << sprint( "   │%-71s│", tLine.c_str() ) << std::endl ;
+                        if ( aReason == ResetReason::Stall )
+                        {
+                            std::cout << sprint( "   │%-71s│",
+                                " stall guard suspended: it cut the attempt at the floor" ) << std::endl ;
+                        }
+                        else if ( mStallSuspended )
+                        {
+                            std::cout << sprint( "   │%-71s│",
+                                " stall guard stays suspended for the floor regime" ) << std::endl ;
+                        }
                         std::cout << sprint( "   │%-71s│",
                             " hint: an 'absolute tolerance' accepts a floored residual" ) << std::endl ;
                         std::cout << "   └───────────────────────────────────────────────────────────────────────┘" << std::endl ;
@@ -3062,6 +3094,7 @@ namespace belfem
                 if ( mFloorRetries > 0 )
                 {
                     mFloorRetries      = 0 ;
+                    mStallSuspended    = false ;
                     mMaxNumIterations  = mMaxNumIterationsDeck ;
                     mMaxNumIterations2 = mMaxNumIterations2Deck ;
                     mWatchdogWindow    = mWatchdogWindowDeck ;

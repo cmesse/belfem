@@ -393,6 +393,27 @@ namespace belfem
             //! Input key: timestep { floor retries : n ; }
             uint mMaxFloorRetries = 20 ;
 
+            //! why an attempt was cut; reset_timestep() takes it so that a
+            //! floor retry can answer the failure that occurred instead of
+            //! raising budgets a guard never lets the attempt reach
+            enum class ResetReason
+            {
+                Stall,          // magnetic stagnation guard
+                Watchdog,       // magnetic or thermal progress watchdog
+                Budget,         // iteration budget, divergence rule, or a NaN body residual
+                LineSearch,     // Newton line search cut
+                SolverFailure,  // linear solver reported a failure
+                NaN,            // a head residual is NaN
+                Circuit         // the circuit solve failed
+            };
+
+            //! the stall guard's Picard verdict is suspended while a floor
+            //! retry that it caused is in force: at the floor a cut cannot
+            //! change the timestep, so the attempt runs on the raised
+            //! iteration budget and watchdog window instead. Cleared with the
+            //! budgets by the next accepted step ( finalize )
+            bool mStallSuspended = false ;
+
             //! deck-configured iteration budgets, the restore targets after
             //! a floor escalation; snapshot taken at the end of set_params
             uint mMaxNumIterationsDeck  = 100 ;
@@ -674,7 +695,7 @@ namespace belfem
             try_escalate_thermal_to_newton();
 
             void
-            reset_timestep();
+            reset_timestep( const ResetReason aReason );
 
             void
             reset_thermal();
