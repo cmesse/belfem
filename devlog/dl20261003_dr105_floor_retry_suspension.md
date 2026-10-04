@@ -16,9 +16,10 @@ untouched); `todo/dr105_picard_stall_plan.md`, `todo/debt_register.md`
 **AIs involved:** Claude Fable 5.1 (implementation, gates, verification); Codex `gpt-6-astra`/xhigh +
 Grok `grok-4.7`/xhigh (blind code jury); Codex `gpt-5.6-luna`/medium (language sweep of the three
 doc passages)
-**Status:** code landed and committed; **reviewed, and gated by execution only in part** — the
-mechanism's own gate (an R1 Picard run meeting the floor and recovering) had not been observed when
-this was written; see §Gates for what ran and what is still running
+**Status:** code landed and committed; **verified by execution** at 19:55 — the np = 8 R1 Picard run
+met the floor at 26.45 ms with the HEAD abort's signature and the suspended retry converged on its
+eighth iterate (§The gate); `make check` 17/17 on the committed HEAD in the private tree; the
+full-length runs continue for R3a
 **Literature References:** Messe et al. 2023 §4, Eqs. 12–14 (the lagged Picard update the guard
 judges; the Eq. 13 hand-over the escalation keeps); the controller theory note's "always-accept
 Picard" reading
@@ -79,6 +80,20 @@ that meets the floor on its own trajectory: the warm start from the aborted run'
 `g3_np8_r1_full`), launched at close. Every pure-Picard run of this deck so far met the floor
 between 10.6 and 33 ms.
 
+## The gate
+
+`g3_np8_r1_full` (eight ranks, pure Picard, Anderson 3, the unmodified T5 deck, R1 binary), step
+1699 at t = 26.453 ms, Δt = 0.0010 ms, the floor: the first attempt is cut by the stall guard
+after six iterates on a flat −43.3 dB plateau from a −52.7 dB predictor — the signature of every
+HEAD abort. The retry prints `raising the iteration budget to 800 ( 2 x deck value )`,
+`floor retry 1 of 20 before the run stops`, `stall guard suspended: it cut the attempt at the
+floor`; the suspended attempt runs eight iterates, −52.73 → −62.08 dB, and is accepted at
+6.198e-07. Steps 1700–1702 at the floor are accepted in seven to eight iterates (3.5e-7 … 8.2e-7),
+step 1703 grows Δt to 0.0015 ms, and by step 1745 (26.97 ms) the run is back at the 0.02 ms cap
+with 152 rejections over 1744 accepted steps and no further floor retry. One `stays suspended`
+line never appeared: the regime ended on the first accept. On HEAD the same signature replayed
+twenty times and aborted (exit 134) in four of four pure-Picard runs.
+
 ## R0 diagnostics
 
 - **R0a, guard off, serial, 25 ms** (above): the plateau resolves given patience; the watchdog
@@ -93,8 +108,8 @@ between 10.6 and 33 ms.
 
 ## Open
 
-- The mechanism gate: a suspended floor retry observed to recover (or to end on the watchdog or
-  budget) on the R1 binary; R3a's Picard-vs-hybrid temperature comparison from the same runs.
+- R3a's Picard-vs-hybrid temperature comparison from the two full-length R1 runs (serial at
+  10 ms, np = 8 at 27 ms when this was written); whether the serial run meets the floor too.
 - R2 (the T5 deck on the hybrid) waits for the Picard gate runs, which need the Picard deck.
 - O4 (`target iterations : 100`), the table extension (O3's separate task).
 - The run-to-run sensitivity of this deck to any binary or deck change (observed, not explained).
