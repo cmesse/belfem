@@ -94,6 +94,26 @@ with 152 rejections over 1744 accepted steps and no further floor retry. One `st
 line never appeared: the regime ended on the first accept. On HEAD the same signature replayed
 twenty times and aborted (exit 134) in four of four pure-Picard runs.
 
+## The full run, and R3a
+
+`g3_np8_r1_full` then ran the unmodified pure-Picard T5 deck to the end of its 0.3 s: 16733
+accepted steps, 544 rejections, one floor retry (the one above), exit 0, 3.35 h at eight ranks —
+the first pure-Picard completion of this deck, where HEAD aborted four times out of four. The
+serial R1 run met its floor at 11.774 ms with the same signature: the attempt that first lands at
+the minimum is still cut by the guard, as the code jury said it would be (the clamp branch does
+not arm the suspension), the first floor retry prints the suspension, and that attempt converges
+in ten iterates (6.8e-7); it continued past 23 ms at close.
+
+R3a's question was whether the hybrid had left the pure-Picard trajectory. It had not: T_max of
+the pure-Picard np = 8 run equals the hybrid's to 0.1 K at every 25 ms from 10 to 300 ms (91.1,
+122.5, 212.6, 362.3, 613.0, 991.4, 1437.9, 1733.6, 1770.0, 1755.8, 1737.6 K against 91.1 … 1737.5),
+so the 1770 K hot spot is the model's answer under either algorithm, not a Newton overswing.
+At field level the two differ as two 1e-6-tolerance trajectories of this deck do: the temperature
+field differs by up to 55 K at 147 ms (4 % of its maximum, 2e-3 by 200 ms) and Jz by up to 78 %
+of its maximum during the dump — the same looseness the corc deck showed at 1e-7 (DR-192). The
+current traces could not be compared row by row: the two runs wrote 304 and 302 saves whose time
+stamps do not coincide.
+
 ## R0 diagnostics
 
 - **R0a, guard off, serial, 25 ms** (above): the plateau resolves given patience; the watchdog
@@ -108,9 +128,9 @@ twenty times and aborted (exit 134) in four of four pure-Picard runs.
 
 ## Open
 
-- R3a's Picard-vs-hybrid temperature comparison from the two full-length R1 runs (serial at
-  10 ms, np = 8 at 27 ms when this was written); whether the serial run meets the floor too.
-- R2 (the T5 deck on the hybrid) waits for the Picard gate runs, which need the Picard deck.
+- The serial R1 run to 0.3 s (detached, `g2_serial_r1_full`, past 23 ms with one floor event
+  recovered); its end lands in `tmp/dr105_weekend/STATUS.md` and needs no action unless it aborts.
+- R2 is moot for a shipped file: the T5 deck lives under `tmp/`, and the shipped quench decks already run the hybrid; closed on that note.
 - O4 (`target iterations : 100`), the table extension (O3's separate task).
 - The run-to-run sensitivity of this deck to any binary or deck change (observed, not explained).
 
