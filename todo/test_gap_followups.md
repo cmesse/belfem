@@ -76,8 +76,11 @@ consumer inventory before anything that changes a value or refuses an input.
   edge-weight checks) and the test runs under valgrind. Node fixtures cannot reach the window:
   `Mesh::finalize` flattens node source chains (`cl_Mesh.cpp:2012`), probed twice on 2026-10-04.
   The same path still leaks `tBefore` (`DynamicBitset`, allocated before the call, deleted after it)
-  and leaves the mesh pointing at freed dofs, because `reset` does not disconnect them (Codex,
-  Grok, code round of 2026-10-04; pre-existing). The fixture should pin both.
+  (Codex, Grok, code round of 2026-10-04; pre-existing). The dangling mesh dof containers on that
+  path were closed on 2026-10-04 by `todo/release093_ultra_followups.md` (`DofData::reset` releases
+  the containers that still hold its dofs, and the empty ones, before deleting; unit tests
+  `DofDataReset.*`), so the fixture pins the `tBefore` leak and the full refusal path itself. It must
+  stay serial: a rank-0 refusal leaves the workers in the barrier of `collect_hanging_dofs`.
 
 ## 2. Register links
 

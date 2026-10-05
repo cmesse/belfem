@@ -32,6 +32,11 @@ namespace belfem
 
         namespace dofmgr
         {
+            /**
+             * The mesh must outlive the dof manager: the destructor releases
+             * the mesh dof containers that still hold its dofs, the empty ones,
+             * and the bare counters of bases that were never allocated.
+             */
             class DofData
             {
                 //! the parent object

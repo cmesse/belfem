@@ -18,9 +18,11 @@
  * DofData::reset deletes every dof exactly once, also in the states a refusal
  * inside the setup leaves: collect_hanging_dofs shares pointers between the
  * dof and hanging-dof containers until its end, and create_dofs leaves null
- * slots. These tests build those states by hand; the refusal path itself
- * needs a hanging-edge fixture, because the mesh flattens node source chains
- * before the dof stage.
+ * slots. It also releases the mesh dof containers that still hold its dofs,
+ * the empty ones a sibling's connect left behind, and the counters of bases
+ * that were never allocated. These tests build those states by hand; the
+ * refusal path itself needs a hanging-edge fixture, because the mesh
+ * flattens node source chains before the dof stage.
  */
 
 #include <gtest/gtest.h>
@@ -278,7 +280,24 @@ namespace
         {
             return new CountingDof( aID, mStrip.mMesh->node( 1 ), mDestroyed );
         }
+
+        fem::Dof *
+        make_on( const id_t aID, mesh::Node * aNode )
+        {
+            return new CountingDof( aID, aNode, mDestroyed );
+        }
     };
+
+    //! replaces the node's dof container by one that holds only aDof, the
+    //! readable state a finished connect_dofs_to_mesh() leaves on a basis it
+    //! fills; the strip's field has already filled every node
+    void
+    connect_alone( mesh::Node * aNode, fem::Dof * aDof )
+    {
+        aNode->increment_dof_counter();
+        aNode->allocate_dof_container();
+        aNode->insert_dof( aDof );
+    }
 }
 
 TEST( DofDataReset, SharedDofIsDeletedOnce )
@@ -360,4 +379,172 @@ TEST( DofDataReset, StaleFlagsDoNotDecide )
     tCase.mData->reset();
 
     EXPECT_EQ( tCase.mDestroyed, 2u );
+}
+
+TEST( DofDataReset, MeshContainersAreReleased )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    // reset releases every container the setup filled, including a basis
+    // reached only through the hanging list
+    ResetCase tCase ;
+    mesh::Node * tNode1 = tCase.mStrip.mMesh->node( 1 );
+    mesh::Node * tNode2 = tCase.mStrip.mMesh->node( 2 );
+    mesh::Node * tNode3 = tCase.mStrip.mMesh->node( 3 );
+
+    fem::Dof * tShared  = tCase.make_on( 1, tNode1 );
+    fem::Dof * tOwned   = tCase.make_on( 2, tNode2 );
+    fem::Dof * tHanging = tCase.make_on( 3, tNode3 );
+
+    tCase.mData->dofs().push( tShared );
+    tCase.mData->dofs().push( tOwned );
+    tCase.mData->hanging_dofs().push( tShared );
+    tCase.mData->hanging_dofs().push( tHanging );
+
+    connect_alone( tNode1, tShared );
+    connect_alone( tNode2, tOwned );
+    connect_alone( tNode3, tHanging );
+
+    ASSERT_EQ( tNode1->number_of_dofs(), 1u );
+    ASSERT_EQ( tNode2->number_of_dofs(), 1u );
+    ASSERT_EQ( tNode3->number_of_dofs(), 1u );
+
+    tCase.mData->reset();
+
+    EXPECT_EQ( tCase.mDestroyed, 3u );
+    EXPECT_EQ( tNode1->number_of_dofs(), 0u );
+    EXPECT_EQ( tNode2->number_of_dofs(), 0u );
+    EXPECT_EQ( tNode3->number_of_dofs(), 0u );
+}
+
+TEST( DofDataReset, AnotherManagersContainerIsKept )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    // a manager's teardown releases only the containers that still hold its
+    // own dofs; a sibling that replaced them keeps its links
+    ResetCase tA ;
+    uint tDestroyedB = 0 ;
+    std::unique_ptr< fem::dofmgr::DofData > tB(
+            new fem::dofmgr::DofData( tA.mStrip.mField, nullptr ) );
+
+    mesh::Node * tNode1 = tA.mStrip.mMesh->node( 1 );
+
+    fem::Dof * tDofA = new CountingDof( 1, tNode1, tA.mDestroyed );
+    tA.mData->dofs().push( tDofA );
+    connect_alone( tNode1, tDofA );
+
+    fem::Dof * tDofB = new CountingDof( 2, tNode1, tDestroyedB );
+    tB->dofs().push( tDofB );
+    connect_alone( tNode1, tDofB );
+
+    tA.mData->reset();
+
+    EXPECT_EQ( tA.mDestroyed, 1u );
+    ASSERT_EQ( tNode1->number_of_dofs(), 1u );
+    EXPECT_EQ( tNode1->dof( 0 ), static_cast< graph::Vertex * >( tDofB ) );
+
+    tB->reset();
+
+    EXPECT_EQ( tDestroyedB, 1u );
+    EXPECT_EQ( tNode1->number_of_dofs(), 0u );
+}
+
+TEST( DofDataReset, ACountedBasisWithoutAnArrayIsCleared )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    // a basis that was counted but never allocated has nothing to free
+    // and its counter is cleared
+    ResetCase tCase ;
+    mesh::Node * tNode = tCase.mStrip.mMesh->node( 2 );
+
+    tNode->reset_dof_container();
+    tNode->increment_dof_counter();
+
+    tCase.mData->dofs().push( tCase.make_on( 1, tNode ) );
+
+    ASSERT_NO_THROW( tCase.mData->reset() );
+
+    EXPECT_EQ( tCase.mDestroyed, 1u );
+    EXPECT_FALSE( tNode->has_dof_container() );
+    EXPECT_EQ( tNode->number_of_dofs(), 0u );
+}
+
+TEST( DofDataReset, AnEmptyAllocationIsReleased )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    // an allocated container with no entries belongs to nobody and is
+    // released
+    ResetCase tCase ;
+    mesh::Node * tNode = tCase.mStrip.mMesh->node( 3 );
+
+    tNode->increment_dof_counter();
+    tNode->allocate_dof_container();
+
+    ASSERT_TRUE( tNode->has_dof_container() );
+    ASSERT_EQ( tNode->number_of_dofs(), 0u );
+
+    tCase.mData->dofs().push( tCase.make_on( 1, tNode ) );
+
+    tCase.mData->reset();
+
+    EXPECT_EQ( tCase.mDestroyed, 1u );
+    EXPECT_FALSE( tNode->has_dof_container() );
+    EXPECT_EQ( tNode->number_of_dofs(), 0u );
+}
+
+TEST( DofDataReset, AFullBasisIsReleasedBeforeItIsCountedAgain )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    // connect releases what a previous manager left on a basis before it
+    // counts, so a basis at the counter's ceiling can be connected again
+    ResetCase tFull ;
+    mesh::Node * tNode1 = tFull.mStrip.mMesh->node( 1 );
+
+    for ( uint k = 0; k < 255; ++k )
+    {
+        tFull.mData->dofs().push( tFull.make_on( k + 1, tNode1 ) );
+    }
+    tFull.mData->connect_dofs_to_mesh();
+
+    ASSERT_EQ( tNode1->number_of_dofs(), 255u );
+
+    uint tDestroyedOne = 0 ;
+    std::unique_ptr< fem::dofmgr::DofData > tOne(
+            new fem::dofmgr::DofData( tFull.mStrip.mField, nullptr ) );
+
+    fem::Dof * tDof = new CountingDof( 1000, tNode1, tDestroyedOne );
+    tOne->dofs().push( tDof );
+
+    ASSERT_NO_THROW( tOne->connect_dofs_to_mesh() );
+
+    EXPECT_EQ( tNode1->number_of_dofs(), 1u );
+    EXPECT_TRUE( tNode1->holds_dof( tDof ) );
+
+    tOne->reset();
+
+    EXPECT_EQ( tDestroyedOne, 1u );
+    EXPECT_EQ( tNode1->number_of_dofs(), 0u );
+
+    tFull.mData->reset();
+
+    EXPECT_EQ( tFull.mDestroyed, 255u );
 }

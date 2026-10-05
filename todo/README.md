@@ -144,6 +144,10 @@ one of the two must be retired before either is worked.
 
 ## Added 2026-10-04
 
+### [release093_ultra_followups.md](release093_ultra_followups.md) — the two findings of the `/code-review ultra` pass over the 0.9.3 branch that Christian ruled to fix: `DofData::reset` releases the mesh dof containers before deleting the dofs of a refused field (the normal path disconnects at the end of `set_equation`, the refusal path never did), and a `BELFEM_ASSERT` pins the pure-metal range of `BuiltinName`; the factories' try/catch idiom declined as style
+
+**Status:** ✅ COMPLETE 2026-10-05 — committed; three code rounds, `make check` 17/17 + 19/19 in private trees, valgrind clean; residue in `test_gap_followups.md` R13.
+
 ### [release093_precheck_fixes.md](release093_precheck_fixes.md) — the three code findings of the 0.9.3 release pre-check: a content revision on the cached rho tables so the corrected Kohler laws are not shadowed by a 0.9.2 cache, `DofData::reset` deleting each dof once after a refusal inside `collect_hanging_dofs`, and a relative 1e-6 band on the thin-shell μ = μ0 refusal
 
 **Status:** committed 2026-10-04; code jury closed; `make check` 17/17 + 19/19 in private trees, valgrind clean; `CITATION.cff` waits for the tag date.

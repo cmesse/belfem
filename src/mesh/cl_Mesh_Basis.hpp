@@ -42,7 +42,9 @@ namespace belfem
             //! dof container: mNumberOfDofs counts up while the dof manager
             //! connects, is zeroed by allocate_dof_container() and counts up
             //! again on insert; liveness of the array is the pointer, never the
-            //! count. Shared by every dof manager on this mesh.
+            //! count. The connecting manager resets the basis before it counts,
+            //! so the counter never exceeds the array while an array exists.
+            //! Shared by every dof manager on this mesh.
             uint8_t    mNumberOfDofs = 0 ;
             graph::Vertex ** mDofs = nullptr ;
 
@@ -243,6 +245,19 @@ namespace belfem
             dof( const uint aIndex );
 
 //------------------------------------------------------------------------------
+
+            //! true if the container holds aDof. Pointers are compared, never
+            //! dereferenced; false when no container is allocated
+            bool
+            holds_dof( const graph::Vertex * aDof ) const ;
+
+//------------------------------------------------------------------------------
+
+            //! true while a container is allocated, whatever its count
+            bool
+            has_dof_container() const ;
+
+//------------------------------------------------------------------------------
         };
 
 //----------------------------------------------------------------------------
@@ -339,6 +354,32 @@ namespace belfem
                            ( unsigned int ) mNumberOfDofs );
 
             return mDofs[ aIndex ];
+        }
+
+//----------------------------------------------------------------------------
+
+        inline bool
+        Basis::holds_dof( const graph::Vertex * aDof ) const
+        {
+            if ( mDofs != nullptr )
+            {
+                for ( uint k = 0; k < mNumberOfDofs; ++k )
+                {
+                    if ( mDofs[ k ] == aDof )
+                    {
+                        return true ;
+                    }
+                }
+            }
+            return false ;
+        }
+
+//----------------------------------------------------------------------------
+
+        inline bool
+        Basis::has_dof_container() const
+        {
+            return mDofs != nullptr ;
         }
 
 //----------------------------------------------------------------------------

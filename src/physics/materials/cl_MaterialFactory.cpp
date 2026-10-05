@@ -46,7 +46,7 @@ namespace belfem
     namespace
     {
         // the pure metals come first, in this order, so is_pure_metal() is a
-        // range test
+        // range test; its assert checks the length of that range
         enum class BuiltinName
         {
             Aluminum,
@@ -110,6 +110,9 @@ namespace belfem
         bool
         is_pure_metal( const BuiltinName aName )
         {
+            BELFEM_ASSERT( static_cast< uint >( BuiltinName::Lead ) + 1 == 9,
+                "the pure metals of BuiltinName must be the nine names Aluminum .. Lead; update is_pure_metal() with the enum" );
+
             return aName <= BuiltinName::Lead ;
         }
     }

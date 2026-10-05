@@ -79,7 +79,14 @@ namespace belfem
                 // separates the two only at its end, so a refusal in between leaves
                 // them sharing pointers. Flag what mDOFs owns and delete only the
                 // unflagged hanging dofs. The order is load-bearing; slots may be
-                // null after a refusal inside create_dofs()
+                // null after a refusal inside create_dofs(). The mesh bases are
+                // released first, because a field destroyed between
+                // connect_dofs_to_mesh() and the disconnect at the end of
+                // DofManager::initialize() -- a refusal, or a field that was never
+                // initialized -- would otherwise leave the mesh pointing at the
+                // dofs deleted below
+                this->disconnect_dofs_from_mesh() ;
+
                 for ( Dof * tDof : mHangingDOFs )
                 {
                     if ( tDof != nullptr )
@@ -646,6 +653,16 @@ namespace belfem
             void
             DofData::connect_dofs_to_mesh()
             {
+                // release what a previous manager left on these bases before
+                // counting: a counter above the array's length would send
+                // holds_dof() past the array if the counting below throws.
+                // A connect that throws leaves bare counters, which
+                // disconnect_dofs_from_mesh() clears
+                for( Dof * tDof : mDOFs )
+                {
+                    tDof->mesh_basis()->reset_dof_container() ;
+                }
+
                 for( Dof * tDof : mDOFs )
                 {
                     tDof->mesh_basis()->increment_dof_counter() ;
@@ -668,9 +685,29 @@ namespace belfem
             void
             DofData::disconnect_dofs_from_mesh()
             {
+                // a basis releases its container if it still holds this dof, if
+                // the container is empty, or if there is no array at all. A
+                // second manager on the same mesh replaces the container before
+                // it inserts, so a container with entries belongs to exactly one
+                // manager, a count of zero has no readable entry, and a basis
+                // that was counted but never allocated has no array to protect
+                // and only gets its counter cleared. The stored pointers are
+                // compared, never dereferenced; reset() calls this before it
+                // deletes. Slots may be null after a refusal inside
+                // create_dofs() or collect_hanging_dofs()
                 for( Dof * tDof : mDOFs )
                 {
-                    tDof->mesh_basis()->reset_dof_container();
+                    if ( tDof != nullptr )
+                    {
+                        mesh::Basis * tBasis = tDof->mesh_basis() ;
+
+                        if (    ! tBasis->has_dof_container()
+                             || tBasis->number_of_dofs() == 0
+                             || tBasis->holds_dof( tDof ) )
+                        {
+                            tBasis->reset_dof_container() ;
+                        }
+                    }
                 }
 
                 // connect_dofs_to_mesh() ran over the whole list on the master;
@@ -679,7 +716,17 @@ namespace belfem
                 // A basis is shared by every dof manager on the mesh.
                 for( Dof * tDof : mHangingDOFs )
                 {
-                    tDof->mesh_basis()->reset_dof_container();
+                    if ( tDof != nullptr )
+                    {
+                        mesh::Basis * tBasis = tDof->mesh_basis() ;
+
+                        if (    ! tBasis->has_dof_container()
+                             || tBasis->number_of_dofs() == 0
+                             || tBasis->holds_dof( tDof ) )
+                        {
+                            tBasis->reset_dof_container() ;
+                        }
+                    }
                 }
             }
 
