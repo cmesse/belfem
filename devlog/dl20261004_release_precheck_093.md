@@ -132,7 +132,10 @@ P3 fixes; valgrind 0 errors on `DofDataReset.*`, `Mu0Band.*`, `RhoDatabase.*` (d
 
 ## Owed
 
-- Christian: `CITATION.cff`
-  version and date with the tag; his own `make check` in the shared trees if he wants one. The commit was made at his request from the follow-on session.
-- `todo/test_gap_followups.md` R13 (hanging-edge refusal fixture); `/code-review ultra` as a
-  breadth pass from the workstation terminal (it does not launch over Remote Control).
+- Committed by Christian as `77b4567` (source, tests, CHANGELOG, plan, todo index, devlog).
+- `CITATION.cff` version and date with the tag.
+- `todo/test_gap_followups.md` R13 (hanging-edge refusal fixture).
+- A `/code-review ultra` pass ran on a peer session after `77b4567` (it does not launch over Remote
+  Control; the default branch limit is 8,000 changed lines, so it fits the post-`9c9428a` range,
+  not v0.9.2..HEAD). Its findings and any follow-up edits belong to that session
+  (`todo/release093_ultra_followups.md`), not to this record.
