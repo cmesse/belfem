@@ -1114,6 +1114,18 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        bool
+        MaxwellFactory::mu_is_mu0( const real aMu )
+        {
+            // a rounding allowance, not a physics budget: inside the band the
+            // shell recovery's mu = mu0 assumption errs by at most this much
+            constexpr real tMu0RelativeTolerance = 1e-6 ;
+
+            return std::abs( aMu / constant::mu0 - 1.0 ) < tMu0RelativeTolerance ;
+        }
+
+//------------------------------------------------------------------------------
+
         void
         MaxwellFactory::create_cuts()
         {
@@ -2874,8 +2886,8 @@ namespace belfem
             // tail stale, and it equates the trace with the shell's normal
             // field, which holds only where [ n . B ] = 0 reduces to n . H
             // continuity, i.e. for mu = mu0 ( MaxwellData's constant-mu0 branch
-            // asks the same with exact equality; this refusal allows a
-            // roundoff band ). Setup code, rank 0, once per shell and
+            // asks the same with exact equality; this refusal admits the
+            // relative rounding allowance of mu_is_mu0 ). Setup code, rank 0, once per shell and
             // conductor block, always active. The material comes from the
             // factory's own map: the dof manager's blocks on this rank are
             // only the ones it owns or borders, and its empty block carries
@@ -2922,7 +2934,7 @@ namespace belfem
                             const bool tHasConstantMu = tMat != nullptr && tMat->is_constant( MaterialProperty::mu ) ;
 
                             const bool tIsNonmagnetic = tHasConstantMu
-                                && std::abs( tMat->constant_property( MaterialProperty::mu ) - constant::mu0 ) < BELFEM_EPSILON ;
+                                && MaxwellFactory::mu_is_mu0( tMat->constant_property( MaterialProperty::mu ) ) ;
 
                             BELFEM_ERROR( tIsNonmagnetic,
                                 "conductor block %lu ( %s ) is a volume neighbor of thin shell %s but is not nonmagnetic ( %s ): the shell's normal-field recovery needs mu = mu0 on an h-conductor side",

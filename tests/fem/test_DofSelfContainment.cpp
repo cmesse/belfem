@@ -14,6 +14,13 @@
  * an assertions-active build; at that moment the dof being set does not
  * hang yet, so a self-source would pass the assert. The walk below runs in
  * every build.
+ *
+ * DofData::reset deletes every dof exactly once, also in the states a refusal
+ * inside the setup leaves: collect_hanging_dofs shares pointers between the
+ * dof and hanging-dof containers until its end, and create_dofs leaves null
+ * slots. These tests build those states by hand; the refusal path itself
+ * needs a hanging-edge fixture, because the mesh flattens node source chains
+ * before the dof stage.
  */
 
 #include <gtest/gtest.h>
@@ -31,6 +38,7 @@
 #include "cl_FEM_KernelParameters.hpp"
 #include "cl_FEM_DofManager.hpp"
 #include "cl_FEM_Dof.hpp"
+#include "cl_FEM_DofMgr_DofData.hpp"
 #include "en_IWGs.hpp"
 #include "en_SolverEnums.hpp"
 
@@ -227,4 +235,129 @@ TEST( DofSelfContainment, SolvedDofContainerHoldsNoHangingDof )
                                   << " is not an independent dof" ;
         }
     }
+}
+
+//------------------------------------------------------------------------------
+
+namespace
+{
+    //! a dof that counts its destructions, so the oracle sees a double
+    //! delete and a leak alike
+    class CountingDof : public fem::Dof
+    {
+        uint & mDestroyed ;
+
+    public:
+
+        CountingDof( const id_t aID, mesh::Node * aNode, uint & aDestroyed ) :
+            fem::Dof( aID, 0, aNode ),
+            mDestroyed( aDestroyed )
+        {
+        }
+
+        ~CountingDof() override
+        {
+            ++mDestroyed ;
+        }
+    };
+
+    //! a dof data on the strip's field whose containers the test fills
+    struct ResetCase
+    {
+        HangingStrip  mStrip ;
+        uint          mDestroyed = 0 ;
+        std::unique_ptr< fem::dofmgr::DofData > mData ;
+
+        ResetCase() :
+            mData( new fem::dofmgr::DofData( mStrip.mField, nullptr ) )
+        {
+        }
+
+        fem::Dof *
+        make( const id_t aID )
+        {
+            return new CountingDof( aID, mStrip.mMesh->node( 1 ), mDestroyed );
+        }
+    };
+}
+
+TEST( DofDataReset, SharedDofIsDeletedOnce )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    ResetCase tCase ;
+    fem::Dof * tShared = tCase.make( 1 );
+    tCase.mData->dofs().push( tShared );
+    tCase.mData->hanging_dofs().push( tShared );
+
+    tCase.mData->reset();
+
+    EXPECT_EQ( tCase.mDestroyed, 1u );
+    EXPECT_EQ( tCase.mData->dofs().size(), 0u );
+    EXPECT_EQ( tCase.mData->hanging_dofs().size(), 0u );
+}
+
+TEST( DofDataReset, DisjointDofsAreEachDeleted )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    ResetCase tCase ;
+    tCase.mData->dofs().push( tCase.make( 1 ) );
+    tCase.mData->dofs().push( tCase.make( 2 ) );
+    tCase.mData->hanging_dofs().push( tCase.make( 3 ) );
+
+    tCase.mData->reset();
+
+    EXPECT_EQ( tCase.mDestroyed, 3u );
+}
+
+TEST( DofDataReset, NullSlotsAreSkipped )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    ResetCase tCase ;
+    fem::Dof * tShared = tCase.make( 1 );
+
+    tCase.mData->dofs().push( tShared );
+    tCase.mData->dofs().push( nullptr );
+    tCase.mData->hanging_dofs().push( nullptr );
+    tCase.mData->hanging_dofs().push( tShared );
+    tCase.mData->hanging_dofs().push( tCase.make( 2 ) );
+
+    ASSERT_NO_THROW( tCase.mData->reset() );
+
+    EXPECT_EQ( tCase.mDestroyed, 2u );
+}
+
+TEST( DofDataReset, StaleFlagsDoNotDecide )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    // the worker branch of collect_hanging_dofs flags the dofs it is
+    // collecting, so a refusal there leaves flags behind
+    ResetCase tCase ;
+    fem::Dof * tShared  = tCase.make( 1 );
+    fem::Dof * tHanging = tCase.make( 2 );
+    tShared->flag();
+    tHanging->flag();
+
+    tCase.mData->dofs().push( tShared );
+    tCase.mData->hanging_dofs().push( tShared );
+    tCase.mData->hanging_dofs().push( tHanging );
+
+    tCase.mData->reset();
+
+    EXPECT_EQ( tCase.mDestroyed, 2u );
 }

@@ -142,6 +142,12 @@ one of the two must be retired before either is worked.
 
 ---
 
+## Added 2026-10-04
+
+### [release093_precheck_fixes.md](release093_precheck_fixes.md) — the three code findings of the 0.9.3 release pre-check: a content revision on the cached rho tables so the corrected Kohler laws are not shadowed by a 0.9.2 cache, `DofData::reset` deleting each dof once after a refusal inside `collect_hanging_dofs`, and a relative 1e-6 band on the thin-shell μ = μ0 refusal
+
+**Status:** committed 2026-10-04; code jury closed; `make check` 17/17 + 19/19 in private trees, valgrind clean; `CITATION.cff` waits for the tag date.
+
 ## Added 2026-09-29
 
 ### [dr105_picard_stall_plan.md](dr105_picard_stall_plan.md) — DR-105: the pure-Picard T5 quench deck aborts on the floor-retry limit because the stagnation guard ends every attempt at iterate 6 and the floor retry raises budgets the guard never consumes while resetting ω (a replay ×20); plan: a reason-aware floor retry (stall patience ×2^k), the deck on the hybrid, the Anderson-0 and guard-off diagnostics, and the 1770 K routed to the tables' validity range

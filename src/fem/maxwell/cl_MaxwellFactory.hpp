@@ -170,6 +170,18 @@ namespace belfem
             label() const ;
 
 //------------------------------------------------------------------------------
+
+            /**
+             * whether a constant permeability counts as mu0 for the thin-shell
+             * normal-field recovery beside an h-conductor: within a relative
+             * rounding allowance of 1e-6, so mu0 written to seven significant
+             * digits passes and a real conductor's susceptibility does not.
+             * False for NaN
+             */
+            static bool
+            mu_is_mu0( const real aMu );
+
+//------------------------------------------------------------------------------
         private:
 //------------------------------------------------------------------------------
 

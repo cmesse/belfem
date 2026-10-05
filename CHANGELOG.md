@@ -29,6 +29,86 @@ All notable changes to BELFEM are recorded here. The format follows
   macOS build — so the binary repositories are not read as the limit of where the stack runs,
   and it names Apple Silicon as a supported platform.
 
+### Changed
+
+These results intentionally differ from 0.9.2. Each is a correction, so a deck that exercises
+the affected path now produces a different, correct answer.
+
+- **Surface integrals on the quadrilateral side faces of a prism are twice their 0.9.2 value.**
+  `normal_penta` scaled the side-face increment by 0.25 for a quadrilateral rule whose weights
+  sum to four, so each side face integrated to half its area. The three side faces now integrate
+  to their face areas; the triangular caps were already correct. Any sideset term on a PENTA
+  side face, including Neumann and background-field terms, changes accordingly.
+- **The ghost-penalty consistency term between stacked thin-shell layers is the weighted average
+  used by the SWIP method.** The flux operator used the jump in the two layers' slopes with
+  twice the harmonic weight, which reproduced the interface flux only when one resistivity was
+  three times the other. It is now ρ_w (∂h_m + ∂h_s), with ρ_w = ρ_m ρ_s / (ρ_m + ρ_s) (Ern,
+  Stephansen & Zunino 2009, Eqs. 7, 8, 15). Results change for any deck that enables the ghost
+  term; the shipped decks leave it off.
+- **Thin-shell layers retain their through-thickness jump in nodal output on curved shells.**
+  Nodal recovery now fits in coordinates centered and scaled at the node, and in curvilinear
+  shell coordinates for linear thin-shell layers. On the bends of the `rutherford` example,
+  0.9.2 placed the YBCO current sheet in the silver and buffer layers of the Exodus output and
+  in the printed J/Jc_max. The solve itself never read these fields.
+- **REBCO jc and n below the tables' lowest field, 10 mT, now continue smoothly** instead of
+  being held at the table edge: n is a parabola with zero slope at B = 0, and jc is a cubic
+  Hermite interpolation to the measured self-field level. Both are C1 and non-increasing in |B|,
+  with exact derivatives. BSCCO jc retains the clamp. The HDF5 tables are unchanged.
+- **The specific heat of the pure metals is splined on a 1 K grid** instead of a 4 K grid, so
+  the T³ start below 4 K is no longer undershot; lead's c_p was negative there. c_p changes
+  between the old knots for every pure metal, most noticeably below 20 K.
+- **Magnetoresistance of silver, lead, and tin at low field.** Silver's low-field Kohler cubics
+  were placed in the wrong coefficient slots. The transverse switch point for lead and tin was
+  never written, so branch selection read uninitialized memory. All three now use the matched
+  cubics below the switch point.
+- **YBCO's thermal conductivity is finite below 1 K.** The Debye and Callaway integrands are now
+  evaluated in an overflow-free form. Values that were finite in 0.9.2 are unchanged.
+- **Newton tangents.** The modified Kim jc law now carries its exact field derivative; it was
+  previously zero. The piecewise power law's tangent below j1 is now the derivative of the value
+  it returns. Converged answers are unchanged, but iteration counts and timestep histories may
+  differ.
+- **Element facets.** Facet 1 of the cubic QUAD16 now lists node 7 instead of node 8, so
+  boundary integrals and Dirichlet nodes on that facet change.
+- **Floor retries.** When the magnetic stagnation guard cuts an attempt already at the timestep
+  floor, its Picard verdict is suspended until the next accepted step. The retry is bounded by
+  the raised iteration budget and the watchdog instead of replaying the attempt. A step rejected
+  by 0.9.2 at the floor can now be accepted.
+- **The iteration line** now prints the residual where the head is measured, so the column names
+  a state and, on the success path, ends with the accepted iterate. Scripts that parse the log
+  read different numbers.
+- **`examples/corc_periodic_bc` ships `tolerance : 1e-10` with Anderson mixing enabled.**
+- **Cached resistivity tables carry a content revision.** The `<label>_RRR<n>.hdf5` files that
+  metals and alloys write into the run directory now store a `revision`. A file without it, or
+  with another value, is rebuilt once with a warning. Every 0.9.2 cache is rebuilt on the first
+  run, so the corrected silver, lead, and tin laws reach alloys such as PbSn solder. A 0.9.2
+  binary reading a 0.9.3 cache does not check the revision.
+
+### Refusals
+
+Inputs that 0.9.2 accepted and handled silently or incorrectly now stop during setup with a
+message naming the problem. None of the shipped decks is affected.
+
+- A sideset with a domain type on a periodic plane; it used to lose its kernel.
+- A Dirichlet condition on a non-duplicate dof condensed onto more than one source;
+  reconstruction overwrote the value.
+- An `rrr<N>` token in an alloy name that disagrees with the `RRR` key, or a `builtin` value
+  naming a non-iron material beside a b-h `curve`.
+- A thin-shell side connector selected without its layer block.
+- An h-conductor beside a thin shell when the conductor is not linear, or when its constant
+  permeability is not μ0 within a relative 1e-6.
+- An incomplete node match on a periodic pair, or a non-unit cochain coefficient on a cut.
+- An HDF5 array, vector, or string dataset whose rank is not 1.
+
+A constant `jc` without an `ec` now gets the default 1e-4 V/m, as a jc function always did,
+instead of producing a NaN power law.
+
+### Fixed
+
+- **A refusal during field setup no longer frees hanging dofs twice** in debug builds and tests.
+  A release build aborts before unwinding and was not affected.
+- Every error path in the material, boundary-condition, periodicity, and HDF5 loaders now frees
+  what it built or opened before refusing the input.
+
 ## [0.9.2] — 2026-09-18
 
 A maintenance release: memory ownership on the setup and teardown paths, a configure-time

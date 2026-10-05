@@ -17,6 +17,9 @@
  * an accepted deck deletes them here. On a refused deck the factory frees
  * what it built before the throw: every condition, with the source function
  * it already owns, and the function of the condition being refused.
+ *
+ * Mu0Band: the thin-shell normal-field recovery admits an h-conductor whose
+ * constant permeability is mu0 within a relative rounding allowance of 1e-6.
  */
 
 #include <gtest/gtest.h>
@@ -31,6 +34,8 @@
 #include "cl_FEM_PhysicalBoundaryCondition.hpp"
 #include "cl_MaxwellBoundaryConditionFactory.hpp"
 #include "cl_ThermalBoundaryConditionFactory.hpp"
+#include "cl_MaxwellFactory.hpp"
+#include "constants.hpp"
 
 using namespace belfem;
 
@@ -257,4 +262,22 @@ TEST( AdmissionRefusals, ARefusedSecondThermalBcFreesTheFirst )
     const std::string tMessage = thermal_refusal( "expk_th_second.conf",
         dirichlet( gThermalConstant, false ) + "\n" + dirichlet( gThermalSigmoid, true ) );
     EXPECT_TRUE( contains( tMessage, gExpkRefusal ) ) << tMessage ;
+}
+
+//------------------------------------------------------------------------------
+
+TEST( Mu0Band, RoundedMu0IsAdmittedAndARealSusceptibilityIsNot )
+{
+    using belfem::fem::MaxwellFactory ;
+    const belfem::real tMu0 = belfem::constant::mu0 ;
+
+    EXPECT_TRUE( MaxwellFactory::mu_is_mu0( tMu0 ) );
+    EXPECT_TRUE( MaxwellFactory::mu_is_mu0( 4.0e-7 * belfem::constant::pi ) ) << "the pre-2019 exact value" ;
+    EXPECT_TRUE( MaxwellFactory::mu_is_mu0( 1.256637e-6 ) ) << "seven significant digits" ;
+
+    EXPECT_FALSE( MaxwellFactory::mu_is_mu0( 1.25664e-6 ) ) << "six significant digits" ;
+    EXPECT_FALSE( MaxwellFactory::mu_is_mu0( 1.2566e-6 ) ) << "five significant digits" ;
+    EXPECT_FALSE( MaxwellFactory::mu_is_mu0( tMu0 * ( 1.0 - 1.0e-5 ) ) ) << "copper's susceptibility" ;
+    EXPECT_FALSE( MaxwellFactory::mu_is_mu0( 1000.0 * tMu0 ) );
+    EXPECT_FALSE( MaxwellFactory::mu_is_mu0( BELFEM_QUIET_NAN ) );
 }

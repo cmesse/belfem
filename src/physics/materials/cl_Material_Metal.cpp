@@ -894,11 +894,10 @@ namespace belfem
                 this->label().c_str(),
                 ( uint ) this->constant_property( MaterialProperty::RRR ) );
 
-            // A cached database carries no format version, so an old file would be
-            // loaded and then fail deep inside load_rho_database with an opaque
-            // "Dataset RRR ... does not exist". Probe for the marker instead and
-            // rebuild. The decision must be identical on every rank ( all ranks run
-            // this branch ), so the master probes and broadcasts.
+            // A cached database is loaded only if it carries the current content
+            // revision ( fn_rho_database_is_current.hpp ); anything else is rebuilt.
+            // The decision must be identical on every rank ( all ranks run this
+            // branch ), so the master probes and broadcasts.
             bool tUsable = file_exists( tFile );
 
             if ( tUsable && comm_rank() == 0 )
@@ -908,9 +907,9 @@ namespace belfem
                 if ( ! tUsable )
                 {
                     message( InfoLevel::Default,
-                        "    Warning: %s predates the current rho-database format "
-                        "( no RRR entry ) and is being rebuilt",
-                        tFile.c_str() );
+                        "    Warning: %s was not written under rho-database revision %u "
+                        "and is being rebuilt",
+                        tFile.c_str(), ( unsigned int ) gRhoDatabaseRevision );
                 }
             }
             if ( comm_size() > 1 )
@@ -1039,6 +1038,7 @@ namespace belfem
             HDF5 tFile( aPath, FileMode::NEW );
             tFile.save_data( "label" , this->label() );
             tFile.save_data( "RRR",  this->constant_property( MaterialProperty::RRR ) );
+            tFile.save_data( "revision", gRhoDatabaseRevision );
             tFile.save_data( "Tmin", mDatabaseTmin );
             tFile.save_data( "Tmax", mDatabaseTmax );
             tFile.save_data( "Bmin", mDatabaseBmin );

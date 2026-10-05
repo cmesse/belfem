@@ -505,10 +505,10 @@ namespace belfem
                 ( uint ) this->constant_property( MaterialProperty::RRR ) );
 
 
-            // see Metal::populate_rho_database: a cached file carries no format
-            // version, so probe for the RRR marker and rebuild an older one rather
-            // than failing inside load_rho_database. The verdict must be the same
-            // on every rank, hence probe-on-master plus broadcast.
+            // see Metal::populate_rho_database: a cached file is loaded only if it
+            // carries the current content revision, otherwise it is rebuilt. The
+            // verdict must be the same on every rank, hence probe-on-master plus
+            // broadcast.
             bool tUsable = file_exists( tFile );
 
             if ( tUsable && comm_rank() == 0 )
@@ -518,9 +518,9 @@ namespace belfem
                 if ( ! tUsable )
                 {
                     message( InfoLevel::Default,
-                        "    Warning: %s predates the current rho-database format "
-                        "( no RRR entry ) and is being rebuilt",
-                        tFile.c_str() );
+                        "    Warning: %s was not written under rho-database revision %u "
+                        "and is being rebuilt",
+                        tFile.c_str(), ( unsigned int ) gRhoDatabaseRevision );
                 }
             }
             if ( comm_size() > 1 )
@@ -774,6 +774,7 @@ namespace belfem
             HDF5 tFile( aPath, FileMode::NEW );
             tFile.save_data( "label" , this->label() );
             tFile.save_data( "RRR",  this->constant_property( MaterialProperty::RRR ) );
+            tFile.save_data( "revision", gRhoDatabaseRevision );
             tFile.save_data( "Tmin", mDatabaseTmin );
             tFile.save_data( "Tmax", mDatabaseTmax );
             tFile.save_data( "Bmin", mDatabaseBmin );

@@ -135,8 +135,10 @@ magnetoresistance is weak — the expected behavior of a dirty conductor, though
 path has been checked against field data. Every component
 must provide a Kohler curve; all nine roster metals do. λ(T, B, β) follows by Wiedemann–Franz
 scaling, λ(T) ρ(T) / ρ(T, B, β), the same closure `Metal` uses. The table is cached as
-`<label>_RRR<n>.hdf5` in the run directory like a metal's, probed for the current format on
-load and rebuilt if it predates it.
+`<label>_RRR<n>.hdf5` in the run directory like a metal's. The file carries a content revision
+(`gRhoDatabaseRevision`, `fn_rho_database_is_current.hpp`); a cache written under any other
+revision, or before the revision existed, is rebuilt on load. The name holds only the label and the
+integer RRR, so the revision is what keeps a table sampled from an older law out of a new run.
 
 ### 2.7 Stored curves
 

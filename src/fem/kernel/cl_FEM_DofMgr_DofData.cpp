@@ -75,17 +75,39 @@ namespace belfem
 
                 mDofIndexTables.clear() ;
 
+                // collect_hanging_dofs() copies dofs of mDOFs into mHangingDOFs and
+                // separates the two only at its end, so a refusal in between leaves
+                // them sharing pointers. Flag what mDOFs owns and delete only the
+                // unflagged hanging dofs. The order is load-bearing; slots may be
+                // null after a refusal inside create_dofs()
+                for ( Dof * tDof : mHangingDOFs )
+                {
+                    if ( tDof != nullptr )
+                    {
+                        tDof->unflag() ;
+                    }
+                }
+                for ( Dof * tDof : mDOFs )
+                {
+                    if ( tDof != nullptr )
+                    {
+                        tDof->flag() ;
+                    }
+                }
+                for ( Dof * tDof : mHangingDOFs )
+                {
+                    if ( tDof != nullptr && ! tDof->is_flagged() )
+                    {
+                        delete tDof ;
+                    }
+                }
+                mHangingDOFs.clear() ;
+
                 for ( Dof * tDof : mDOFs )
                 {
                     delete tDof ;
                 }
                 mDOFs.clear() ;
-
-                for ( Dof * tDof : mHangingDOFs )
-                {
-                    delete tDof ;
-                }
-                mHangingDOFs.clear() ;
 
                 mAbstractDOFs.clear() ;
 

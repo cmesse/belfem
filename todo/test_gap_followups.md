@@ -7,7 +7,7 @@ them so the next session can land each through the standing loop (plan → jury 
 consumer inventory before anything that changes a value or refuses an input.
 **Module:** `src/mesh`, `src/fem/kernel`, `src/physics/materials`, `src/io`, `tests/`
 **AIs involved:** Claude (plan + orchestration), Codex and Grok (juries), Opus (implementation)
-**Status:** OPEN — 6 of 12 steps done (R1, R7, R8, R9, R10, R11); R7 landed 2026-09-29 via `todo/ghost_swip_average.md`; R1, R9, R10 landed 2026-09-29 via `todo/closed/ruled_refusals_cluster.md`; every step ruled by Christian on 2026-09-22 unless marked; R7 and R10 re-ruled 2026-09-24
+**Status:** OPEN — 6 of 13 steps done; R13 filed 2026-10-04 from the 0.9.3 pre-check (R1, R7, R8, R9, R10, R11); R7 landed 2026-09-29 via `todo/ghost_swip_average.md`; R1, R9, R10 landed 2026-09-29 via `todo/closed/ruled_refusals_cluster.md`; every step ruled by Christian on 2026-09-22 unless marked; R7 and R10 re-ruled 2026-09-24
 
 > **Scope guards:**
 > - Each item is its own row: own-files diff, jury, gate in both trees, one commit.
@@ -68,6 +68,16 @@ consumer inventory before anything that changes a value or refuses an input.
 - [ ] **R12 (D15, O3)** Optional: a setter for `mRhoMin` as an EXPERT setting (zero default; HTS
   values of order 1e-17, 1e-16 already too big) with a two-sided floor test. Low priority; if it
   becomes a deck key the input contract rule fires.
+
+- [ ] **R13 (release093 R4b, filed 2026-10-04)** Full-path refusal regression for the
+  `create_field` double free fixed in `DofData::reset` (`todo/release093_precheck_fixes.md`): an
+  h-curl fixture with a hanging **edge** whose weight is not ±1, so that
+  `create_dofwise_t_matrices_master` refuses inside the alias window (`cl_FEM_DofMgr_DofData.cpp`
+  edge-weight checks) and the test runs under valgrind. Node fixtures cannot reach the window:
+  `Mesh::finalize` flattens node source chains (`cl_Mesh.cpp:2012`), probed twice on 2026-10-04.
+  The same path still leaks `tBefore` (`DynamicBitset`, allocated before the call, deleted after it)
+  and leaves the mesh pointing at freed dofs, because `reset` does not disconnect them (Codex,
+  Grok, code round of 2026-10-04; pre-existing). The fixture should pin both.
 
 ## 2. Register links
 

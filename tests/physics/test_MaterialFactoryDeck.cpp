@@ -23,8 +23,8 @@
  *
  * Every factory here is built with tables off: no rho database is written
  * into the working directory; the temperature splines are still built. The
- * one exception, the stale rho database, builds its tables in a scratch
- * working directory of its own. On a refused deck the factory frees the
+ * exceptions, the stale rho database and its content revision, build their
+ * tables in scratch working directories of their own. On a refused deck the factory frees the
  * materials it built before the throw, and an alloy refused inside its own
  * constructor frees its components; that freeing can only turn red under
  * valgrind.
@@ -42,6 +42,7 @@
 #include <gtest/gtest.h>
 
 #include "typedefs.hpp"
+#include "cl_Cell.hpp"
 #include "cl_InputFile.hpp"
 #include "cl_Material.hpp"
 #include "cl_Material_Metal.hpp"
@@ -50,6 +51,7 @@
 #include "cl_Material_Aluminum.hpp"
 #include "cl_Material_Alloy.hpp"
 #include "cl_MaterialFactory.hpp"
+#include "fn_rho_database_is_current.hpp"
 
 using belfem::real ;
 using belfem::Material ;
@@ -256,6 +258,113 @@ TEST( AlloyRRR, ARhoDatabaseForAnotherRRRIsRefused )
     {
         EXPECT_TRUE( contains( aError.what(), "Found RRR" ) ) << aError.what();
     }
+}
+
+#ifdef BELFEM_HDF5
+namespace
+{
+    // replaces the cache's revision dataset by a one-dimensional dataset of
+    // aLength entries, each aValue, stored as aType; aLength 0 only deletes it
+    void
+    rewrite_revision( const std::string & aPath, const double aValue, const hsize_t aLength,
+                      const hid_t aType = H5T_NATIVE_UINT )
+    {
+        hid_t tFile = H5Fopen( aPath.c_str(), H5F_ACC_RDWR, H5P_DEFAULT );
+        ASSERT_GE( tFile, 0 );
+
+        if ( H5Lexists( tFile, "revision", H5P_DEFAULT ) > 0 )
+        {
+            ASSERT_GE( H5Ldelete( tFile, "revision", H5P_DEFAULT ), 0 );
+        }
+
+        if ( aLength > 0 )
+        {
+            const hsize_t tDims[ 1 ] = { aLength };
+            hid_t tSpace = H5Screate_simple( 1, tDims, nullptr );
+            hid_t tSet = H5Dcreate2( tFile, "revision", aType, tSpace,
+                                     H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT );
+            ASSERT_GE( tSet, 0 );
+
+            // written from double memory, HDF5 converts to the file type
+            const belfem::Cell< double > tValues( aLength, aValue );
+            EXPECT_GE( H5Dwrite( tSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                                 H5P_DEFAULT, tValues.data() ), 0 );
+            H5Dclose( tSet );
+            H5Sclose( tSpace );
+        }
+
+        H5Fclose( tFile );
+    }
+
+    // the one rho database the current directory holds
+    std::string
+    the_rho_database()
+    {
+        std::string tPath ;
+        for ( const auto & tEntry : std::filesystem::directory_iterator( "." ) )
+        {
+            if ( tEntry.path().filename().string().find( "_RRR" ) != std::string::npos )
+            {
+                EXPECT_TRUE( tPath.empty() ) << "more than one rho database in the directory" ;
+                tPath = tEntry.path().string() ;
+            }
+        }
+        return tPath ;
+    }
+}
+#endif
+
+// the cache name holds only the label and the integer RRR, so a table sampled
+// from an older law is told apart by its content revision alone: a missing,
+// different or malformed revision rebuilds the table, and the rebuilt file
+// carries the current one
+TEST( RhoDatabase, AnotherRevisionIsRebuilt )
+{
+#ifndef BELFEM_HDF5
+    GTEST_SKIP() << "the rho database is an HDF5 file" ;
+#else
+    WorkDir tDir( "rho_database_revision" );
+    MaterialFactory tFactory ;
+
+    delete tFactory.create_material( "Pb40Sn60", 5.0, true );
+
+    const std::string tPath = the_rho_database() ;
+    ASSERT_FALSE( tPath.empty() );
+    EXPECT_TRUE( belfem::rho_database_is_current( tPath ) );
+
+    rewrite_revision( tPath, belfem::gRhoDatabaseRevision + 1, 1 );
+    EXPECT_FALSE( belfem::rho_database_is_current( tPath ) ) << "a different revision" ;
+
+    rewrite_revision( tPath, belfem::gRhoDatabaseRevision, 2 );
+    EXPECT_FALSE( belfem::rho_database_is_current( tPath ) ) << "a revision of two entries" ;
+
+    rewrite_revision( tPath, belfem::gRhoDatabaseRevision + 0.5, 1, H5T_NATIVE_DOUBLE );
+    EXPECT_FALSE( belfem::rho_database_is_current( tPath ) ) << "a fractional revision, which a cast would truncate" ;
+
+    rewrite_revision( tPath, 0, 0 );
+    EXPECT_FALSE( belfem::rho_database_is_current( tPath ) ) << "no revision, as 0.9.2 wrote it" ;
+
+    delete tFactory.create_material( "Pb40Sn60", 5.0, true );
+    EXPECT_TRUE( belfem::rho_database_is_current( tPath ) ) << "the rebuild writes the current revision" ;
+#endif
+}
+
+// the metal saver is a separate function; an alloy builds its components
+// with tables off, so the alloy test above never reaches it
+TEST( RhoDatabase, AMetalTableCarriesTheRevision )
+{
+#ifndef BELFEM_HDF5
+    GTEST_SKIP() << "the rho database is an HDF5 file" ;
+#else
+    WorkDir tDir( "rho_database_metal_revision" );
+    MaterialFactory tFactory ;
+
+    delete tFactory.create_material( "lead", 100.0, true );
+
+    const std::string tPath = the_rho_database() ;
+    ASSERT_FALSE( tPath.empty() );
+    EXPECT_TRUE( belfem::rho_database_is_current( tPath ) );
+#endif
 }
 
 //------------------------------------------------------------------------------
