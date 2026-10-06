@@ -9,7 +9,7 @@ red before the fix. It is a list, not code: nothing here has been written yet.
 verification), Claude Fable via web API (two pre-sweeps over the raw devlogs, one with tree access
 at `ef6d47f2`), Christian (corpus preparation, rulings). Codex and Grok were not used on the sweep;
 they take the jury on each test as it is written.
-**Status:** OPEN — list compiled and citation-checked 2026-09-21; no test written; rulings O1–O9 pending
+**Status:** OPEN (refreshed 2026-10-05) — Tier 1 executed (`closed/test_gap_tier1_execution.md`, 21/22), Tier 2 in progress (`test_gap_tier2_execution.md`: B1, B2, B3, B5a, B5b, B6 landed; B4 and B7 held for the peer), Tier 3 not started; the Tier 1 rulings live in `test_gap_followups.md`. Earlier: list compiled and citation-checked 2026-09-21; rulings O1–O9 pending
 
 > **Scope guards:**
 > - This file ranks tests. It does not fix the defects the sweep found alive; those are listed

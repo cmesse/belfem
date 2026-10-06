@@ -14,7 +14,7 @@ decks) to Christian. No code is edited before the plan jury and his approval.
 floor block, `finalize`); `tmp/dr105_weekend/deck` (T5 deck, not shipped); `todo/debt_register.md`
 **AIs involved:** Claude Fable 5.1 (campaign, brief, plan); Codex `gpt-6-astra`/xhigh + Grok
 `grok-4.7`/xhigh (blind survey on the brief; plan jury to follow at the same depth)
-**Status:** ✅ R1 VERIFIED, R3a ANSWERED 2026-10-03 — the np = 8 pure-Picard run completes 0.3 s on R1 (one floor retry, recovered) and matches the hybrid's T_max to 0.1 K throughout; R2 moot; R3b (tolerance sensitivity), R3c/O3 (tables), O4 open; the serial R1 run continues detached — earlier: R1 VERIFIED BY EXECUTION 2026-10-03 19:55 — `g3_np8_r1_full` met the floor at 26.45 ms with the HEAD abort's six-iterate −43 dB signature, the suspended retry converged on its eighth iterate and was accepted, Δt grew back to the cap three steps later; R3a from the full-length runs pending — earlier: R1 LANDED 2026-10-03 (code jury astra/xhigh + grok-4.7/xhigh: no defect; two post-round fixes applied on Christian's approval; make check 17/17 in the private tree; R0a supports the suspension; the mechanism's own gate — a suspended floor retry on the R1 binary — not yet observed: a cross-binary replay of the HEAD abort is impossible, the deck's trajectory moves with any binary or deck change; `g4_restart_r1`, `g2_serial_r1_full`, `g3_np8_r1_full` running; `make check` on HEAD `b01911f` in Claude's private tree at Christian's request: 17/17) — earlier: PLAN v2 APPROVED 2026-10-03 (Christian: plan, O1 unconditional, O2 leave the five decks, O3 report against the 199 K envelope; R0 launched the same hour; O4 open); implementation is a later, separately approved round — v1's R1 (a patience factor) withdrawn on the plan jury's finding that it delays the cut by at most three iterates; R1 is now the suspension of the guard's Picard verdict at the floor with the reason passed to `reset_timestep`; R0c, R3a–c and two F-sentences corrected on the same round (astra/xhigh + grok-4.7/xhigh, all CONFIRMED). Awaiting Christian's approval and the rulings O1–O4; no source edited
+**Status:** ✅ CLOSED 2026-10-05 (Christian: dealt with) — R1 landed and verified by execution; R3b dropped, R3c re-filed as DR-193 (the 199 K table envelope), DR-105 struck. Earlier: ✅ R1 VERIFIED, R3a ANSWERED 2026-10-03 — the np = 8 pure-Picard run completes 0.3 s on R1 (one floor retry, recovered) and matches the hybrid's T_max to 0.1 K throughout; R2 moot; R3b (tolerance sensitivity), R3c/O3 (tables), O4 open; the serial R1 run continues detached — earlier: R1 VERIFIED BY EXECUTION 2026-10-03 19:55 — `g3_np8_r1_full` met the floor at 26.45 ms with the HEAD abort's six-iterate −43 dB signature, the suspended retry converged on its eighth iterate and was accepted, Δt grew back to the cap three steps later; R3a from the full-length runs pending — earlier: R1 LANDED 2026-10-03 (code jury astra/xhigh + grok-4.7/xhigh: no defect; two post-round fixes applied on Christian's approval; make check 17/17 in the private tree; R0a supports the suspension; the mechanism's own gate — a suspended floor retry on the R1 binary — not yet observed: a cross-binary replay of the HEAD abort is impossible, the deck's trajectory moves with any binary or deck change; `g4_restart_r1`, `g2_serial_r1_full`, `g3_np8_r1_full` running; `make check` on HEAD `b01911f` in Claude's private tree at Christian's request: 17/17) — earlier: PLAN v2 APPROVED 2026-10-03 (Christian: plan, O1 unconditional, O2 leave the five decks, O3 report against the 199 K envelope; R0 launched the same hour; O4 open); implementation is a later, separately approved round — v1's R1 (a patience factor) withdrawn on the plan jury's finding that it delays the cut by at most three iterates; R1 is now the suspension of the guard's Picard verdict at the floor with the reason passed to `reset_timestep`; R0c, R3a–c and two F-sentences corrected on the same round (astra/xhigh + grok-4.7/xhigh, all CONFIRMED). Awaiting Christian's approval and the rulings O1–O4; no source edited
 **Literature References:** Messe et al. 2023 §4, Eqs. 12–14 (lagged-conductivity Picard, the
 quasi-Newton hand-over, the Eq. 14 relaxation rule; the 10⁻¹¹ final tolerance against
 checkerboarding) — not §2.7, which is kernel layout; Walker & Ni 2011 (Anderson type II, as
@@ -159,24 +159,24 @@ budgets the retry raises. v2 makes the trade §2 names:
   differ in their Δt histories (adaptation reads the iteration count, `:2844-2868`), so a
   difference has two candidate causes; a disagreement therefore opens a measurement (same Δt
   sequence forced by `adapt timestep : false` at the cap) before any Newton row.
-- [ ] **R3b** Tolerance sensitivity on the hybrid: `tolerance : 1e-9` and `1e-11` (the paper's
+- [x] ~~**R3b** Tolerance sensitivity on the hybrid: `tolerance : 1e-9` and `1e-11` (the paper's
   terminal criterion, Messe et al. 2023 §4) to 50 ms against 1e-6; the 1e-11 run may sit on a
-  linear-solve floor as the corc deck did (DR-192) — that is itself a result.
-- [ ] **R3c** Ruling (O3): the plugin's active tables end at 199 K (`k_Hast`), 282 K (`cp_HTS`),
+  linear-solve floor as the corc deck did (DR-192) — that is itself a result.~~
+- [x] ~~**R3c** Ruling (O3): the plugin's active tables end at 199 K (`k_Hast`), 282 K (`cp_HTS`),
   300 K (`cp_Cu`, `k_HTS`), 303 K (`cp_Hast`), 390 K (`rho_Hast`), with the endpoint held above and
   copper ρ clamped at 1358 K. The validity envelope is the minimum over every active property of
   every active layer — 199 K as the tables stand, reached at ≈ 47 ms. Either every table is
   extended to the temperature the study is to cover (NIST cryogenic and high-temperature
   compilations for Cu and Hastelloy C-276, the DOI beside each number), or the deck's validity is
-  stated as that envelope and results beyond it are reported as the model outside its tables.
+  stated as that envelope and results beyond it are reported as the model outside its tables.~~
 
 ### R4 — register, rulings, close
 
-- [ ] **R4a** DR-105's row: residue 1 (the rerun) discharged twice; residue 2 restated as F1 (a
+- [x] ~~**R4a** DR-105's row: residue 1 (the rerun) discharged twice; residue 2 restated as F1 (a
   controller recovery-policy defect, not a parallel one; the August wall does not reproduce);
   residue 3 widened by F5 (tables). Decide with Christian whether the row stays or R1 gets its
-  own row (prefer extending, per the register's policy).
-- [ ] **R4b** Devlog of the campaign + this plan; `todo/README.md`; campaign page.
+  own row (prefer extending, per the register's policy).~~
+- [x] **R4b** Devlog of the campaign + this plan; `todo/README.md`; campaign page.
 
 ## 4. Gates
 

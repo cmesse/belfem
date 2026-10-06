@@ -69,7 +69,7 @@ Skip none of these that apply; they are owed in the session that did the work, n
 | If the session… | Also update |
 |---|---|
 | opened or closed a tracked item | `devlog/campaigns/<name>.md` **and** `todo/debt_register.md` — rows are exactly 6 cells, rebuilt cell by cell; quote the live/archive counts in the commit body |
-| worked from a `todo/` plan | tick that step's checkbox, strike obsolete steps (never delete), refresh the Status line |
+| worked from a `todo/` plan | **retire or settle it in this commit:** substance landed → `git mv` to `todo/closed/` (abandoned by ruling → `todo/cancelled/`), owed gate named in its Status line and the debt register, `todo/README.md` entry repointed; otherwise tick the finished steps, strike the obsolete ones (never delete), rewrite the Status line (protocol §6, "Todo-file retirement") |
 | touched any `input.conf` key | `doc/input_file_reference.md` **and** `doc/input_schema.yaml`, then a Codex prose pass over the touched `.md` sections |
 | edited `CLAUDE.md`, `doc/coding_philosophy.md`, `CMakeLists.txt` or the compiler config | `python3 scripts/check_doc_claims.py` |
 | added a citation | `python3 scripts/check_citations.py` |

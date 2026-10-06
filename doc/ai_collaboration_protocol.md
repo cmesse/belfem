@@ -191,6 +191,8 @@ At the end of every meaningful session, create a devlog summary in `./devlog/` a
 **Todo-file checkboxes (standing rule):** whenever a `./todo/` file lists steps, **always give each step a GitHub checkbox** (`- [ ]`). Keep the boxes live:
 - Tick a box (`- [x]`) the moment its step is completed — the file is the running progress record, not just the initial plan.
 - When a step becomes obsolete, **strike it through** (`~~step text~~`) rather than deleting it, so the history of what was abandoned and why stays visible.
+**Todo-file retirement at session close (standing rule, 2026-10-05):** every session close (devlog + commit) settles the `./todo/` plans the session worked from, in the same commit. If the plan's substance has landed — only a run gate, a build or a sign-off remains — `git mv` it to `todo/closed/` (or `todo/cancelled/` if abandoned by ruling), name the owed gate in its Status line and in the debt register, and repoint its `todo/README.md` entry. If it cannot close, tick the finished steps, strike the ones the session made obsolete, and rewrite the Status line to the current state. A finished plan never stays on the active list waiting for a later tidy-up.
+
 See `todo/closed/periodic_thin_cut_continuity_fix.md` for the reference style (checked, unchecked, and struck-through steps), and `todo/plan_template.md` for the current skeleton.
 
 ### Nonfree Module Exception

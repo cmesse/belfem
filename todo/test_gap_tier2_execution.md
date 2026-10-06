@@ -9,7 +9,7 @@ inventory before any src fix that changes a value or refuses an input; rulings b
 Christian at the end (the quiz).
 **Module:** every suite under `tests/`; src fixes only where a row's defect is live and the jury confirms
 **AIs involved:** Claude Fable then Opus 5 (orchestration, planning agents, juries, commits), Codex + Grok (juries; terra/high, astra/high on the critical list), Opus (implementation)
-**Status:** IN PROGRESS on Opus 5 (orchestration back on Fable) — seven of eight batches planned;
+**Status:** IN PROGRESS (refreshed 2026-10-05) — landed: slice 1 (DR-185, T-05/N-20a), B1 test rows, B2, B3, B5a, B5b, B6 (§3g); held: B4 (`src/mesh`) and B7 (`tests/comm`) for the peer's WIP, T-04 and T-43 (b) on their ruling. Earlier: IN PROGRESS on Opus 5 (orchestration back on Fable) — seven of eight batches planned;
 the quiz is complete (17 rulings, §3a-3d); implementation starts with slice 1 (DR-185 + T-05/N-20a,
 both src → both jury rounds) and the test-only rows of B1 (one jury round on the finished diff).
 B4 (mesh) waits on the peer's live `src/mesh` edits.
@@ -159,7 +159,7 @@ Christian is reloading the session on Opus 5.5. State at handoff:
 - **DR-185 row corrected** in the working copy of `todo/debt_register.md` (not staged; goes in at
   Christian's close): the compiler does not supply the move, copy assignment is already deleted by
   the const members, and `mParams` is the eighth owned resource.
-- [ ] **Next:** slice 1 implementation (Opus), both jury rounds because it touches `src/`; then B6.
+- [x] **Next:** slice 1 implementation (Opus), both jury rounds because it touches `src/`; then B6. (done overnight 2026-09-22/23, §3g)
 
 ## 3g. Overnight run 2026-09-22/23 (Opus 5.5, same approvals as Tier 1)
 
