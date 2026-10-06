@@ -4,6 +4,31 @@ All notable changes to BELFEM are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and version numbers follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **A 3D thin-shell sideset can no longer leave setup with a mixed master side.**
+  `MaxwellFactory::fix_facet_masters` orients facets that have the same domain type on both
+  sides by a walk over shared edges. That walk also passes through faces that meet a thin shell
+  at a T-junction, such as a block face split at the tape seam or the coil's top face. It could
+  therefore reach one shell sideset from two directions and give part of it the opposite
+  winding. No deck sign can repair that, and building the shell from it corrupted the heap
+  (crash in `ThinShellFactory::update_node_facet_tables`). The new pass
+  `MaxwellFactory::align_thin_shell_facets` runs at the end of the 3D walk. It gives each
+  connected patch of every thin-shell sideset one winding: the cross-type facets vote when the
+  patch has any (they carry the deterministic domain-type orientation), otherwise all facets
+  do. A sideset that was already uniform is unchanged, so existing decks keep their signs. A
+  sideset that cannot be oriented consistently now stops setup with a `BELFEM_ERROR` that names
+  it. 2D is unchanged.
+- **A 3D thin shell whose outer edge forms a closed loop no longer aborts setup.** When no part of
+  the shell reaches the domain boundary (for example a tape fed by conductor leads instead of tape
+  leads), its side curve is one closed loop. `CurveFactory::identify_subchains` gave an edge its
+  chain index only when it led to an unvisited node, so the edge that closes the loop kept no index
+  and `create_protocurves` aborted with `Mat::operator(): index out of bounds`. Every edge reached
+  from a chain now gets that chain's index. Open side curves are unaffected; the closed-loop
+  handling further down (`sort_end_nodes`, `sort_segments`) already existed.
+
 ## [0.9.2] — 2026-09-18
 
 A maintenance release: memory ownership on the setup and teardown paths, a configure-time

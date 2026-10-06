@@ -455,15 +455,17 @@ namespace belfem
                     {
                         Edge * tEdge = reinterpret_cast< Edge * >( tNode->vertex( e ) ) ;
 
+                        // assigned unconditionally: in a closed loop, the last edge joins two
+                        // nodes that are already in the chain and would otherwise keep no group
+                        tEdge->set_index( aGroup );
+
                         if ( tEdge->node( 0 )->index() == gNoIndex )
                         {
-                            tEdge->set_index( aGroup );
                             tEdge->node( 0 )->set_index( aGroup );
                             tQueue.push( tEdge->node( 0 ) );
                         }
                         if ( tEdge->node( 1 )->index() == gNoIndex )
                         {
-                            tEdge->set_index( aGroup );
                             tEdge->node( 1 )->set_index( aGroup );
                             tQueue.push( tEdge->node( 1 ) );
                         }

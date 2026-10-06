@@ -1525,6 +1525,15 @@ namespace belfem
             // both sides that were never reached by the queue are still flagged
             mMesh->unflag_all_facets();
 
+            // the walk orients a thin shell through any surface that shares
+            // an edge with it, including faces meeting it at a T-junction,
+            // so one sideset can be reached from two sides with opposite
+            // windings
+            if ( tPropagate )
+            {
+                this->align_thin_shell_facets();
+            }
+
             if ( tPropagate && ! tHaveFacetToFacet )
             {
                 for ( mesh::Facet * tFacet : tFacets )
@@ -1532,6 +1541,157 @@ namespace belfem
                     tFacet->reset_facet_container();
                 }
                 mMesh->reset_connectivity( Connectivity::FacetToFacet );
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        MaxwellFactory::align_thin_shell_facets()
+        {
+            BELFEM_ASSERT( mCommRank == 0, "This function should only be called on rank 0" );
+
+            // facet flag slots: 1 = member not yet visited, 2 = winding
+            // opposite to the patch seed, 3 = member of the current sideset
+            mMesh->unflag_all_facets( 1 );
+            mMesh->unflag_all_facets( 2 );
+            mMesh->unflag_all_facets( 3 );
+
+            Queue< mesh::Facet * > tQueue ;
+            Cell< mesh::Facet * > tPatch ;
+
+            for ( Protoshell * tShell : mProtoshells )
+            {
+                const Vector< id_t > & tSideSetIDs = tShell->sidesets() ;
+
+                for ( index_t s = 0; s < tSideSetIDs.length(); ++s )
+                {
+                    Cell< mesh::Facet * > & tFacets = mMesh->sideset( tSideSetIDs( s ) )->facets() ;
+
+                    for ( mesh::Facet * tFacet : tFacets )
+                    {
+                        tFacet->flag( 1 );
+                        tFacet->flag( 3 );
+                    }
+
+                    index_t tNumFlipped = 0 ;
+                    index_t tNumConflicts = 0 ;
+                    index_t tNumPatches = 0 ;
+                    bool tSplitVote = false ;
+
+                    for ( mesh::Facet * tSeed : tFacets )
+                    {
+                        if ( ! tSeed->is_flagged( 1 ) ) continue ;
+
+                        ++tNumPatches ;
+                        tPatch.clear() ;
+                        tSeed->unflag( 1 );
+                        tPatch.push( tSeed );
+                        tQueue.push( tSeed );
+
+                        while ( ! tQueue.empty() )
+                        {
+                            mesh::Facet * tFacet = tQueue.pop() ;
+
+                            for ( uint f=0; f<tFacet->number_of_facets(); ++f )
+                            {
+                                mesh::Facet * tOther = tFacet->facet( f );
+
+                                if ( ! tOther->is_flagged( 3 ) ) continue ;
+
+                                const bool tOpposite = tFacet->is_flagged( 2 )
+                                    != ! mesh::check_facet_orientation( tFacet, tOther );
+
+                                if ( tOther->is_flagged( 1 ) )
+                                {
+                                    tOther->unflag( 1 );
+                                    if ( tOpposite ) tOther->flag( 2 );
+                                    tPatch.push( tOther );
+                                    tQueue.push( tOther );
+                                }
+                                else if ( tOther->is_flagged( 2 ) != tOpposite )
+                                {
+                                    ++tNumConflicts ;
+                                }
+                            }
+                        }
+
+                        // cross-type facets carry the deterministic domain-type
+                        // orientation, so they decide the patch when present;
+                        // a tie keeps the seed's winding
+                        index_t tVotes[ 2 ][ 2 ] = { { 0, 0 }, { 0, 0 } };
+                        for ( mesh::Facet * tFacet : tPatch )
+                        {
+                            const bool tCrossType = tFacet->has_slave() &&
+                                mMesh->block( tFacet->master()->block_id() )->domain_type()
+                             != mMesh->block( tFacet->slave()->block_id() )->domain_type() ;
+
+                            ++tVotes[ tCrossType ? 1 : 0 ][ tFacet->is_flagged( 2 ) ? 1 : 0 ];
+                        }
+
+                        const uint tVoters = ( tVotes[ 1 ][ 0 ] + tVotes[ 1 ][ 1 ] > 0 ) ? 1 : 0 ;
+                        const bool tFlipOpposite = tVotes[ tVoters ][ 0 ] >= tVotes[ tVoters ][ 1 ] ;
+
+                        if ( tVotes[ 1 ][ 0 ] > 0 && tVotes[ 1 ][ 1 ] > 0 )
+                        {
+                            tSplitVote = true ;
+                        }
+
+                        for ( mesh::Facet * tFacet : tPatch )
+                        {
+                            if ( tFacet->is_flagged( 2 ) != tFlipOpposite ) continue ;
+
+                            BELFEM_ERROR( tFacet->has_slave(),
+                                "thin shell %s: cannot align facet %lu of sideset %lu, it has no slave element",
+                                tShell->label().c_str(),
+                                ( long unsigned int ) tFacet->id(),
+                                ( long unsigned int ) tSideSetIDs( s ) );
+
+                            tFacet->flip();
+                            ++tNumFlipped ;
+                        }
+                    }
+
+                    // each inconsistent edge is seen from both of its facets
+                    BELFEM_ERROR( tNumConflicts == 0,
+                        "thin shell %s: sideset %lu is not orientable ( %lu inconsistent facet pairs ); check the mesh for non-manifold or self-crossing patches",
+                        tShell->label().c_str(),
+                        ( long unsigned int ) tSideSetIDs( s ),
+                        ( long unsigned int ) tNumConflicts / 2 );
+
+                    if ( tNumFlipped > 0 )
+                    {
+                        message( InfoLevel::Default,
+                            "    thin shell %s: aligned %lu of %lu facets of sideset %lu to one orientation",
+                            tShell->label().c_str(),
+                            ( long unsigned int ) tNumFlipped,
+                            ( long unsigned int ) tFacets.size(),
+                            ( long unsigned int ) tSideSetIDs( s ) );
+                    }
+
+                    if ( tNumPatches > 1 )
+                    {
+                        message( InfoLevel::Default,
+                            "    thin shell %s: sideset %lu falls apart into %lu patches, each aligned on its own",
+                            tShell->label().c_str(),
+                            ( long unsigned int ) tSideSetIDs( s ),
+                            ( long unsigned int ) tNumPatches );
+                    }
+
+                    if ( tSplitVote )
+                    {
+                        message( InfoLevel::Default,
+                            "    thin shell %s: the cross-type facets of sideset %lu disagree on the side of the higher domain type; after alignment some have the lower one as master",
+                            tShell->label().c_str(),
+                            ( long unsigned int ) tSideSetIDs( s ) );
+                    }
+
+                    for ( mesh::Facet * tFacet : tFacets )
+                    {
+                        tFacet->unflag( 2 );
+                        tFacet->unflag( 3 );
+                    }
+                }
             }
         }
 

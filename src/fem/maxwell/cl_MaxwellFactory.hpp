@@ -220,6 +220,15 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            //! give every connected patch of each thin-shell sideset one
+            //! consistent winding; 3D only, needs facet-to-facet
+            //! connectivity, runs at the end of fix_facet_masters and
+            //! before flip_thin_shell_sidesets
+            void
+            align_thin_shell_facets();
+
+//------------------------------------------------------------------------------
+
             //! parse a thin-shell sideset list with gmsh-style signs
             //! ( sidesets : -5, -6, 7:20 ; ): absolute values go to
             //! sidesets(), signed ids additionally to flipped_sidesets()
