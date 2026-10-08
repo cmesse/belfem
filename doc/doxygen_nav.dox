@@ -347,6 +347,7 @@ Meshing, plugins and the shared launcher are covered in the
 @subpage doc_examples_racetrack_usermat
 @subpage doc_examples_rlc_circuit
 @subpage doc_examples_tape_quench_usermat
+@subpage doc_examples_tape_with_contact_and_defect
 @subpage doc_examples_tapestack2d_layered
 @subpage doc_examples_tapestack2d_racetrack
 @subpage doc_examples_tapestack3d

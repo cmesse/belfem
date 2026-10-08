@@ -30,6 +30,12 @@ rm -vf ./*.bfm memdump.hdf5 belfem.log out.txt err.txt
 # circuit outputs ( missed by the per-deck cleaners )
 rm -vf CircuitResults.txt
 
+# debug meshes
+rm -vf ./*.vtk
+
+# logfiles
+rm -vf ./*.log
+
 # slurm
 rm -vf slurm-*.out slurm-*.err
 

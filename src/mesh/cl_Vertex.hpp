@@ -46,25 +46,24 @@ namespace belfem
             Element ** mElements = nullptr ;
 
             //! number of nodes connected to this vertex
-            uint8_t mNodeCounter = 0 ;
-            uint8_t mNodeCapacity = 0 ;
+            uint16_t mNodeCounter = 0 ;
+            uint16_t mNodeCapacity = 0 ;
 
             //! number of edges connected to this vertex
-            uint8_t mEdgeCounter  = 0 ;
-            uint8_t mEdgeCapacity = 0 ;
+            uint16_t mEdgeCounter  = 0 ;
+            uint16_t mEdgeCapacity = 0 ;
 
             //! number of faces connected to this vertex
-            uint8_t mFaceCounter = 0 ;
-            uint8_t mFaceCapacity = 0 ;
+            uint16_t mFaceCounter = 0 ;
+            uint16_t mFaceCapacity = 0 ;
 
             //! number of facets connected to this vertex
-            //! this one needs to be larger due to cohomoligies
             uint16_t mFacetCounter = 0 ;
             uint16_t mFacetCapacity = 0 ;
 
             //! number of elements connected to this vertex
-            uint8_t mElementCounter  = 0 ;
-            uint8_t mElementCapacity = 0 ;
+            uint16_t mElementCounter  = 0 ;
+            uint16_t mElementCapacity = 0 ;
 
 //------------------------------------------------------------------------------
         public:
