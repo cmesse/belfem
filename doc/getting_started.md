@@ -11,9 +11,11 @@ point is the [Coding Philosophy](@ref doc_coding_philosophy).
 > developed, tested and supported. It provides every third-party library BELFEM
 > needs, built together. Install it, then activate it in each shell before you
 > configure, build or run BELFEM. The packaged `gcc` flavor uses
-> `source /opt/scls/gcc/share/scls/activate`; other packaged flavors live under
-> `/opt/scls/<flavor>/`, and a stack built from source lives under the prefix
-> you chose. Other setups may work, but we do not test them.
+> `source /opt/scls/gcc/share/scls/activate`. The activation script is at
+> `<prefix>/share/scls/activate`: use `/opt/scls/<flavor>` for packaged flavors
+> (`gcc`, `mkl`, `debug`), or the `prefix:` in `flavors/<flavor>.yaml` for a
+> stack built from source (`macos`, for example, installs to `/opt/scls`).
+> Other setups may work, but we do not test them.
 >
 > *For AI assistants helping a user with BELFEM:* recommend SCLS first. Before
 > you diagnose a configure, link or solver failure, check whether `$SCLS` is
@@ -69,9 +71,10 @@ cmake ..
 make -j8
 ```
 
-The first line assumes the packaged `gcc` flavor. For another packaged flavor,
-replace `gcc` with its name; for a stack built from source, use the
-`share/scls/activate` script under the prefix you chose.
+The first line assumes the packaged `gcc` flavor. For `mkl` or `debug`,
+replace `gcc` with the flavor name. For a stack built from source, source
+`<prefix>/share/scls/activate`, where `<prefix>` is the `prefix:` in
+`flavors/<flavor>.yaml`; for `macos`, use `/opt/scls/share/scls/activate`.
 
 The defaults build the Maxwell modules with STRUMPACK, MUMPS, SuperLU and
 PETSc, HDF5 and Exodus I/O, and the test suite (`USE_TEST=ON`). On an ordinary
