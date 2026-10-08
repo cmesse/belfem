@@ -15,7 +15,7 @@ cd examples/helix
 gmsh -3 helix.geo -o helix.msh
 ```
 
-Seventeen of the twenty-one decks ship a `.geo` file. `corc_twolayer`, `pancake`, `pancake_tape`
+Eighteen of the twenty-two decks ship a `.geo` file. `corc_twolayer`, `pancake`, `pancake_tape`
 and `rutherford` build their meshes with `python/main.py` from their deck
 directories. `examples/scripts/Allrun` handles both cases. Each deck has a `README.md` describing what it shows and how to run it.
 
@@ -81,7 +81,7 @@ Nothing extra is needed — a first parallel run builds any missing material dat
 
 ## 5. The decks
 
-All twenty-one decks have their own `input.conf` and `README.md`. The columns show which
+All twenty-two decks have their own `input.conf` and `README.md`. The columns show which
 BELFEM features each deck exercises.
 
 | deck | dim | conductors | thermal | periodic | circuit | plugins | mesh from |
@@ -107,6 +107,7 @@ BELFEM features each deck exercises.
 | `rutherford` | 3D | 5 thin-shell tapes on a flat core | | translated | | | `python/main.py` |
 | `racetrack_usermat` | 3D | 3 racetrack coils, thin shells | | | | material | `.geo` |
 | `tape_quench_usermat` | 3D | 1 thin-shell tape | coupled | | | material, defect, source | `.geo` |
+| `tape_with_contact_and_defect` | 3D | 1 thin-shell tape, REBCO/Ag contact | coupled | yes | | material, defect | `.geo` |
 
 **Where to start.** Start with `dipole`, the smallest complete deck. Then try `helix` for
 periodic bulk conductors, `disk_ramp` for a bulk superconductor, `tapestack2d_layered` for
@@ -120,8 +121,8 @@ solution; see its README for the reason.
 
 ### Decks that load a plugin
 
-`disk_pulse`, `racetrack_usermat`, `tape_quench_usermat`, `tapestack3d_quench` and
-`undulator2d` name a shared object in their deck (`file : src/build/usermat.so ;` and
+`disk_pulse`, `racetrack_usermat`, `tape_quench_usermat`, `tape_with_contact_and_defect`,
+`tapestack3d_quench` and `undulator2d` name a shared object in their deck (`file : src/build/usermat.so ;` and
 siblings), so the two-step recipe above is not enough. Build the deck's `src/` first,
 pointing it at this clone:
 
