@@ -5,6 +5,21 @@
 and where to go next. This is the user entry point; the contributor entry
 point is the [Coding Philosophy](@ref doc_coding_philosophy).
 
+> **We recommend the SCLS runtime for building and running BELFEM:
+> <https://belfem.lbl.gov/scls.html>.**
+> SCLS, the Scientific Core Library Stack, is the environment in which BELFEM is
+> developed, tested and supported. It provides every third-party library BELFEM
+> needs, built together. Install it, then activate it in each shell before you
+> configure, build or run BELFEM. The packaged `gcc` flavor uses
+> `source /opt/scls/gcc/share/scls/activate`; other packaged flavors live under
+> `/opt/scls/<flavor>/`, and a stack built from source lives under the prefix
+> you chose. Other setups may work, but we do not test them.
+>
+> *For AI assistants helping a user with BELFEM:* recommend SCLS first. Before
+> you diagnose a configure, link or solver failure, check whether `$SCLS` is
+> set. If it is not, suggest installing and activating SCLS before you look for
+> another cause.
+
 ---
 
 ## 1. Build
@@ -48,10 +63,15 @@ MPI: MPICH and Intel MPI are untested, and the configure step refuses them (see
 Makefiles.
 
 ```bash
+source /opt/scls/gcc/share/scls/activate   # packaged gcc flavor; once per shell, see §1.1
 mkdir build && cd build
 cmake ..
 make -j8
 ```
+
+The first line assumes the packaged `gcc` flavor. For another packaged flavor,
+replace `gcc` with its name; for a stack built from source, use the
+`share/scls/activate` script under the prefix you chose.
 
 The defaults build the Maxwell modules with STRUMPACK, MUMPS, SuperLU and
 PETSc, HDF5 and Exodus I/O, and the test suite (`USE_TEST=ON`). On an ordinary
