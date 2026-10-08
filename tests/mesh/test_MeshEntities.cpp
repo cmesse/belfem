@@ -892,28 +892,28 @@ TEST( MeshEntities, NodeContainerCapacityWidth )
     {
         belfem::mesh::Node tNode( 1 );
         const size_t tMemory = tNode.memory();
-        expect_refusal( [ & ]() { tNode.allocate_node_container( tMaxU8 + 1 ); },
+        expect_refusal( [ & ]() { tNode.allocate_node_container( tMaxU16 + 1 ); },
                         "node capacity of vertex" );
         EXPECT_EQ( tNode.memory(), tMemory );
         EXPECT_EQ( tNode.number_of_nodes(), 0u );
     }
     {
-        ScopeOwner< belfem::mesh::Node > tEntities( tMaxU8 );
-        for( belfem::uint k = 0; k < tMaxU8; ++k )
+        ScopeOwner< belfem::mesh::Node > tEntities( tMaxU16 );
+        for( belfem::uint k = 0; k < tMaxU16; ++k )
         {
             tEntities( k ) = new belfem::mesh::Node( k + 2 );
         }
 
         belfem::mesh::Node tNode( 1 );
         const size_t tMemory = tNode.memory();
-        ASSERT_NO_THROW( tNode.allocate_node_container( tMaxU8 ) );
-        EXPECT_EQ( tNode.memory() - tMemory, tMaxU8 * sizeof( belfem::mesh::Node * ) );
-        for( belfem::uint k = 0; k < tMaxU8; ++k )
+        ASSERT_NO_THROW( tNode.allocate_node_container( tMaxU16 ) );
+        EXPECT_EQ( tNode.memory() - tMemory, tMaxU16 * sizeof( belfem::mesh::Node * ) );
+        for( belfem::uint k = 0; k < tMaxU16; ++k )
         {
             tNode.add_node( tEntities( k ) );
         }
-        EXPECT_EQ( tNode.number_of_nodes(), tMaxU8 );
-        EXPECT_EQ( tNode.node( tMaxU8 - 1 ), tEntities( tMaxU8 - 1 ) );
+        EXPECT_EQ( tNode.number_of_nodes(), tMaxU16 );
+        EXPECT_EQ( tNode.node( tMaxU16 - 1 ), tEntities( tMaxU16 - 1 ) );
     }
 }
 
@@ -922,28 +922,28 @@ TEST( MeshEntities, EdgeContainerCapacityWidth )
     {
         belfem::mesh::Node tNode( 1 );
         const size_t tMemory = tNode.memory();
-        expect_refusal( [ & ]() { tNode.allocate_edge_container( tMaxU8 + 1 ); },
+        expect_refusal( [ & ]() { tNode.allocate_edge_container( tMaxU16 + 1 ); },
                         "edge capacity of vertex" );
         EXPECT_EQ( tNode.memory(), tMemory );
         EXPECT_EQ( tNode.number_of_edges(), 0u );
     }
     {
-        ScopeOwner< belfem::mesh::Edge > tEntities( tMaxU8 );
-        for( belfem::uint k = 0; k < tMaxU8; ++k )
+        ScopeOwner< belfem::mesh::Edge > tEntities( tMaxU16 );
+        for( belfem::uint k = 0; k < tMaxU16; ++k )
         {
             tEntities( k ) = new belfem::mesh::Edge ;
         }
 
         belfem::mesh::Node tNode( 1 );
         const size_t tMemory = tNode.memory();
-        ASSERT_NO_THROW( tNode.allocate_edge_container( tMaxU8 ) );
-        EXPECT_EQ( tNode.memory() - tMemory, tMaxU8 * sizeof( belfem::mesh::Edge * ) );
-        for( belfem::uint k = 0; k < tMaxU8; ++k )
+        ASSERT_NO_THROW( tNode.allocate_edge_container( tMaxU16 ) );
+        EXPECT_EQ( tNode.memory() - tMemory, tMaxU16 * sizeof( belfem::mesh::Edge * ) );
+        for( belfem::uint k = 0; k < tMaxU16; ++k )
         {
             tNode.add_edge( tEntities( k ) );
         }
-        EXPECT_EQ( tNode.number_of_edges(), tMaxU8 );
-        EXPECT_EQ( tNode.edge( tMaxU8 - 1 ), tEntities( tMaxU8 - 1 ) );
+        EXPECT_EQ( tNode.number_of_edges(), tMaxU16 );
+        EXPECT_EQ( tNode.edge( tMaxU16 - 1 ), tEntities( tMaxU16 - 1 ) );
     }
 }
 
@@ -952,7 +952,7 @@ TEST( MeshEntities, FaceContainerCapacityWidth )
     {
         belfem::mesh::Node tNode( 1 );
         const size_t tMemory = tNode.memory();
-        expect_refusal( [ & ]() { tNode.allocate_face_container( tMaxU8 + 1 ); },
+        expect_refusal( [ & ]() { tNode.allocate_face_container( tMaxU16 + 1 ); },
                         "face capacity of vertex" );
         EXPECT_EQ( tNode.memory(), tMemory );
         EXPECT_EQ( tNode.number_of_faces(), 0u );
@@ -970,29 +970,28 @@ TEST( MeshEntities, FaceContainerCapacityWidth )
         tParent->insert_node( &tN2, 2 );
 
         {
-            ScopeOwner< belfem::mesh::Face > tEntities( tMaxU8 );
-            for( belfem::uint k = 0; k < tMaxU8; ++k )
+            ScopeOwner< belfem::mesh::Face > tEntities( tMaxU16 );
+            for( belfem::uint k = 0; k < tMaxU16; ++k )
             {
                 tEntities( k ) = new belfem::mesh::Face( tParent );
             }
 
             belfem::mesh::Node tNode( 1 );
             const size_t tMemory = tNode.memory();
-            ASSERT_NO_THROW( tNode.allocate_face_container( tMaxU8 ) );
-            EXPECT_EQ( tNode.memory() - tMemory, tMaxU8 * sizeof( belfem::mesh::Face * ) );
-            for( belfem::uint k = 0; k < tMaxU8; ++k )
+            ASSERT_NO_THROW( tNode.allocate_face_container( tMaxU16 ) );
+            EXPECT_EQ( tNode.memory() - tMemory, tMaxU16 * sizeof( belfem::mesh::Face * ) );
+            for( belfem::uint k = 0; k < tMaxU16; ++k )
             {
                 tNode.add_face( tEntities( k ) );
             }
-            EXPECT_EQ( tNode.number_of_faces(), tMaxU8 );
-            EXPECT_EQ( tNode.face( tMaxU8 - 1 ), tEntities( tMaxU8 - 1 ) );
+            EXPECT_EQ( tNode.number_of_faces(), tMaxU16 );
+            EXPECT_EQ( tNode.face( tMaxU16 - 1 ), tEntities( tMaxU16 - 1 ) );
         }
     }
 }
 
 TEST( MeshEntities, FacetContainerCapacityWidth )
 {
-    // the facet capacity is the one 16-bit field among the five
     {
         belfem::mesh::Node tNode( 1 );
         const size_t tMemory = tNode.memory();
@@ -1027,27 +1026,27 @@ TEST( MeshEntities, ElementContainerCapacityWidth )
     {
         belfem::mesh::Node tNode( 1 );
         const size_t tMemory = tNode.memory();
-        expect_refusal( [ & ]() { tNode.allocate_element_container( tMaxU8 + 1 ); },
+        expect_refusal( [ & ]() { tNode.allocate_element_container( tMaxU16 + 1 ); },
                         "element capacity of vertex" );
         EXPECT_EQ( tNode.memory(), tMemory );
         EXPECT_EQ( tNode.number_of_elements(), 0u );
     }
     {
-        ScopeOwner< belfem::mesh::Element > tEntities( tMaxU8 );
-        for( belfem::uint k = 0; k < tMaxU8; ++k )
+        ScopeOwner< belfem::mesh::Element > tEntities( tMaxU16 );
+        for( belfem::uint k = 0; k < tMaxU16; ++k )
         {
             tEntities( k ) = new belfem::mesh::Element( k + 1 );
         }
 
         belfem::mesh::Node tNode( 1 );
         const size_t tMemory = tNode.memory();
-        ASSERT_NO_THROW( tNode.allocate_element_container( tMaxU8 ) );
-        EXPECT_EQ( tNode.memory() - tMemory, tMaxU8 * sizeof( belfem::mesh::Element * ) );
-        for( belfem::uint k = 0; k < tMaxU8; ++k )
+        ASSERT_NO_THROW( tNode.allocate_element_container( tMaxU16 ) );
+        EXPECT_EQ( tNode.memory() - tMemory, tMaxU16 * sizeof( belfem::mesh::Element * ) );
+        for( belfem::uint k = 0; k < tMaxU16; ++k )
         {
             tNode.add_element( tEntities( k ) );
         }
-        EXPECT_EQ( tNode.number_of_elements(), tMaxU8 );
-        EXPECT_EQ( tNode.element( tMaxU8 - 1 ), tEntities( tMaxU8 - 1 ) );
+        EXPECT_EQ( tNode.number_of_elements(), tMaxU16 );
+        EXPECT_EQ( tNode.element( tMaxU16 - 1 ), tEntities( tMaxU16 - 1 ) );
     }
 }
