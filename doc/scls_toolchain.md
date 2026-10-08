@@ -81,8 +81,13 @@ Each flavor has one activation script. To switch flavors, source the new one: th
 replaced rather than accumulated.
 
 ```bash
-source /opt/scls/<flavor>/share/scls/activate
+source <prefix>/share/scls/activate
 ```
+
+`<prefix>` is the `prefix:` value in the SCLS flavor file `flavors/<flavor>.yaml`. For the
+packaged flavors (`gcc`, `mkl`, `debug`), use `/opt/scls/<flavor>`. A source-built stack uses
+the prefix set for its flavor. For example, `macos` uses `/opt/scls`, so its activation script is
+`/opt/scls/share/scls/activate`.
 
 It sets `PATH`, `PKG_CONFIG_PATH`, `CMAKE_PREFIX_PATH`, `SCLS` and `SCLS_FLAVOR`, and, where
 those are installed, `PETSC_DIR` / `SLEPC_DIR` / `MPI_HOME`. It deliberately does **not** touch
