@@ -40,7 +40,7 @@ rationale — is in git: `git show 18e57fe:todo/README.md`.
 ## Active (6)
 
 - [mkl_num_threads_allrun](mkl_num_threads_allrun.md) — Allrun pins `MKL_NUM_THREADS` to `NTHREADS` beside `OMP_NUM_THREADS`, and `MKL_DYNAMIC` gets decided
-- [pancake_inner_leadout](pancake_inner_leadout.md) — Replace the inner lead of the single-tape pancake generator (`build/pancake/python/pancake/`), currently an L-shaped hard-way corner in the bore wall, by a lead that first separates from the inner turn on a smaller …
+- [pancake_inner_leadout](pancake_inner_leadout.md) — Replace the inner lead of the single-tape pancake generator (`examples/pancake_tape/python/pancake/`), currently an L-shaped hard-way corner in the bore wall, by a lead that first separates from the inner turn on a smaller …
 - [periodic_postprocessor_fields](periodic_postprocessor_fields.md) — make the recovered nodal fields periodic
 - [test_gap_backlog](test_gap_backlog.md) — the ranked list of tests the suite is missing, distilled from the incident record
 - [test_gap_followups](test_gap_followups.md) — the rulings of the Tier 1 test-gap run turned into twelve small rows
@@ -83,8 +83,9 @@ rationale — is in git: `git show 18e57fe:todo/README.md`.
 - [timestep_collapse_mitigation_design](cancelled/timestep_collapse_mitigation_design.md) — Concrete, code-level mitigation design for the Δt-collapse failure analysed in `todo/timestep_collapse_residual_floor_plan.md` (the `sidecoatings` t = 13.8762 ms abort and the `greg5` regression). Mechanism being fixed …
 - [timestep_collapse_residual_floor_plan](cancelled/timestep_collapse_residual_floor_plan.md) — Both `greg5` (2D tapestack, magnetic-only Picard) and `sidecoatings` (3D coated conductor, coupled Newton) ratchet Δt down to the deck minimum and abort. The mechanism, in one sentence: **the controller's promote/demote …
 
-## Closed (113) — [`closed/`](closed/)
+## Closed (114) — [`closed/`](closed/)
 
+- [yufan_ni_coil_fixes](closed/yufan_ni_coil_fixes.md) — DONE 2026-10-08: Yufan's 3-D thin-shell alignment landed with a block-consistent patch relation and a block-on-both-sides refusal; closed side curves accepted when isolated (DR-188 policy narrowed on Alves 2022a §II-B); `pancake_tape` ships with its solder/air sideset; make check 17/17 ×3; copper-lead gate owed on DR-196
 - [2d_thinshell_gap_analysis](closed/2d_thinshell_gap_analysis.md) — Procedure-by-procedure comparison of the 2D h-φ thin-shell pipeline against the 3D reference path; inventory of what is MISSING, STUBBED, or WRONG in 2D.
 - [ac_loss_postprocessing](closed/ac_loss_postprocessing.md) — energy, decomposition and honesty on top of the power global
 - [ai_wrapper_tier_selection](closed/ai_wrapper_tier_selection.md) — explicit model + effort selection for `ask_codex.sh` / `ask_grok.sh`

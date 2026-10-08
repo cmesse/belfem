@@ -48,6 +48,7 @@
 #include "cl_Mesh_BfmFile.hpp"
 #include "cl_Mesh_ConnectivityCalculator.hpp"
 #include "cl_Queue.hpp"
+#include "cl_DynamicBitset.hpp"
 #include "en_DomainType.hpp"
 #include "constants.hpp"
 #include "fn_Graph_find_connected_partitions.hpp"
@@ -1538,6 +1539,16 @@ namespace belfem
             // both sides that were never reached by the queue are still flagged
             mMesh->unflag_all_facets();
 
+            // the walk orients a thin shell through any surface that shares
+            // an edge with it, including faces meeting it at a T-junction,
+            // so one sideset can be reached from two sides with opposite
+            // windings
+            if ( tPropagate )
+            {
+                this->align_thin_shell_facets();
+                this->check_thin_shell_block_sides();
+            }
+
             if ( tPropagate && ! tHaveFacetToFacet )
             {
                 for ( mesh::Facet * tFacet : tFacets )
@@ -1545,6 +1556,372 @@ namespace belfem
                     tFacet->reset_facet_container();
                 }
                 mMesh->reset_connectivity( Connectivity::FacetToFacet );
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        MaxwellFactory::align_thin_shell_facets()
+        {
+            BELFEM_ASSERT( mCommRank == 0, "This function should only be called on rank 0" );
+
+            // facet flag slots: 1 = member not yet visited, 2 = winding
+            // opposite to the patch seed, 3 = member of the current sideset
+            mMesh->unflag_all_facets( 1 );
+            mMesh->unflag_all_facets( 2 );
+            mMesh->unflag_all_facets( 3 );
+
+            Queue< mesh::Facet * > tQueue ;
+            Cell< mesh::Facet * > tPatch ;
+
+            // per patch of the current sideset: its facets, whether its vote
+            // had cross-type voters, its smallest facet id, and the block
+            // indices on its two sides ( gNoIndex when the facets of the
+            // patch do not share one pair )
+            Cell< Cell< mesh::Facet * > > tPatches ;
+            Cell< uint > tAnchored ;
+            Cell< id_t > tSmallestID ;
+            Cell< index_t > tMasterBlock ;
+            Cell< index_t > tSlaveBlock ;
+
+            // per patch its group of patches with the same unordered block
+            // pair; per group its reference patch and its size; per pair
+            // ( min, max ), keyed min * number_of_blocks + max, its group
+            Cell< index_t > tGroup ;
+            Cell< index_t > tGroupReference ;
+            Cell< index_t > tGroupSize ;
+            Map< luint, index_t > tGroupOfPair ;
+
+            for ( Protoshell * tShell : mProtoshells )
+            {
+                const Vector< id_t > & tSideSetIDs = tShell->sidesets() ;
+
+                for ( index_t s = 0; s < tSideSetIDs.length(); ++s )
+                {
+                    Cell< mesh::Facet * > & tFacets = mMesh->sideset( tSideSetIDs( s ) )->facets() ;
+
+                    for ( mesh::Facet * tFacet : tFacets )
+                    {
+                        tFacet->flag( 1 );
+                        tFacet->flag( 3 );
+                    }
+
+                    // the refusals below leave the flag slots clear
+                    auto tUnflag = [ & ]()
+                    {
+                        for ( mesh::Facet * tFacet : tFacets )
+                        {
+                            tFacet->unflag( 1 );
+                            tFacet->unflag( 2 );
+                            tFacet->unflag( 3 );
+                        }
+                    };
+
+                    index_t tNumFlipped = 0 ;
+                    index_t tNumConflicts = 0 ;
+                    index_t tNumPatches = 0 ;
+                    bool tSplitVote = false ;
+
+                    tPatches.clear() ;
+                    tAnchored.clear() ;
+                    tSmallestID.clear() ;
+                    tMasterBlock.clear() ;
+                    tSlaveBlock.clear() ;
+
+                    for ( mesh::Facet * tSeed : tFacets )
+                    {
+                        if ( ! tSeed->is_flagged( 1 ) ) continue ;
+
+                        ++tNumPatches ;
+                        tPatch.clear() ;
+                        tSeed->unflag( 1 );
+                        tPatch.push( tSeed );
+                        tQueue.push( tSeed );
+
+                        while ( ! tQueue.empty() )
+                        {
+                            mesh::Facet * tFacet = tQueue.pop() ;
+
+                            for ( uint f=0; f<tFacet->number_of_facets(); ++f )
+                            {
+                                mesh::Facet * tOther = tFacet->facet( f );
+
+                                if ( ! tOther->is_flagged( 3 ) ) continue ;
+
+                                const bool tOpposite = tFacet->is_flagged( 2 )
+                                    != ! mesh::check_facet_orientation( tFacet, tOther );
+
+                                if ( tOther->is_flagged( 1 ) )
+                                {
+                                    tOther->unflag( 1 );
+                                    if ( tOpposite ) tOther->flag( 2 );
+                                    tPatch.push( tOther );
+                                    tQueue.push( tOther );
+                                }
+                                else if ( tOther->is_flagged( 2 ) != tOpposite )
+                                {
+                                    ++tNumConflicts ;
+                                }
+                            }
+                        }
+
+                        // cross-type facets carry the deterministic domain-type
+                        // orientation, so they decide the patch when present;
+                        // a tie keeps the seed's winding
+                        index_t tVotes[ 2 ][ 2 ] = { { 0, 0 }, { 0, 0 } };
+                        for ( mesh::Facet * tFacet : tPatch )
+                        {
+                            const bool tCrossType = tFacet->has_slave() &&
+                                mMesh->block( tFacet->master()->block_id() )->domain_type()
+                             != mMesh->block( tFacet->slave()->block_id() )->domain_type() ;
+
+                            ++tVotes[ tCrossType ? 1 : 0 ][ tFacet->is_flagged( 2 ) ? 1 : 0 ];
+                        }
+
+                        const uint tVoters = ( tVotes[ 1 ][ 0 ] + tVotes[ 1 ][ 1 ] > 0 ) ? 1 : 0 ;
+                        const bool tFlipOpposite = tVotes[ tVoters ][ 0 ] >= tVotes[ tVoters ][ 1 ] ;
+
+                        if ( tVotes[ 1 ][ 0 ] > 0 && tVotes[ 1 ][ 1 ] > 0 )
+                        {
+                            tSplitVote = true ;
+                        }
+
+                        for ( mesh::Facet * tFacet : tPatch )
+                        {
+                            if ( tFacet->is_flagged( 2 ) != tFlipOpposite ) continue ;
+
+                            if ( ! tFacet->has_slave() )
+                            {
+                                tUnflag();
+                                BELFEM_ERROR( false,
+                                    "thin shell %s: cannot align facet %lu of sideset %lu, it has no slave element",
+                                    tShell->label().c_str(),
+                                    ( long unsigned int ) tFacet->id(),
+                                    ( long unsigned int ) tSideSetIDs( s ) );
+                            }
+
+                            tFacet->flip();
+                            ++tNumFlipped ;
+                        }
+
+                        id_t tMinID = tSeed->id() ;
+                        index_t tMaster = mMesh->block( tSeed->master()->block_id() )->index() ;
+                        index_t tSlave  = tSeed->has_slave() ?
+                            mMesh->block( tSeed->slave()->block_id() )->index() : gNoIndex ;
+
+                        for ( mesh::Facet * tFacet : tPatch )
+                        {
+                            tMinID = tFacet->id() < tMinID ? tFacet->id() : tMinID ;
+                        }
+
+                        for ( mesh::Facet * tFacet : tPatch )
+                        {
+                            if ( ! tFacet->has_slave()
+                                || mMesh->block( tFacet->master()->block_id() )->index() != tMaster
+                                || mMesh->block( tFacet->slave()->block_id() )->index() != tSlave )
+                            {
+                                tMaster = gNoIndex ;
+                                tSlave  = gNoIndex ;
+                                break ;
+                            }
+                        }
+
+                        tPatches.push( tPatch );
+                        tAnchored.push( tVoters );
+                        tSmallestID.push( tMinID );
+                        tMasterBlock.push( tMaster );
+                        tSlaveBlock.push( tSlave );
+                    }
+
+                    // each inconsistent edge is seen from both of its facets
+                    if ( tNumConflicts > 0 )
+                    {
+                        tUnflag();
+                        BELFEM_ERROR( false,
+                            "thin shell %s: sideset %lu is not orientable ( %lu inconsistent facet pairs ); check the mesh for non-manifold or self-crossing patches",
+                            tShell->label().c_str(),
+                            ( long unsigned int ) tSideSetIDs( s ),
+                            ( long unsigned int ) tNumConflicts / 2 );
+                    }
+
+                    // patches with the same two blocks on their sides form a
+                    // group and are aligned to the master block of its
+                    // reference patch: the first one whose vote had
+                    // cross-type voters, else the one holding the smallest
+                    // facet id. A patch alone in its group keeps its voted
+                    // winding, whether no other patch shares its pair or its
+                    // facets do not share one pair
+                    index_t tNumAligned = 0 ;
+                    index_t tNumPatchesFlipped = 0 ;
+                    index_t tNumUniquePair = 0 ;
+                    index_t tNumMixedPair = 0 ;
+                    {
+                        const luint tNumBlocks = mMesh->number_of_blocks() ;
+
+                        tGroup.clear() ;
+                        tGroup.set_size( tPatches.size(), gNoIndex );
+                        tGroupReference.clear() ;
+                        tGroupSize.clear() ;
+                        tGroupOfPair.clear() ;
+
+                        for ( index_t p = 0; p < tPatches.size(); ++p )
+                        {
+                            // a patch without one pair is a group of its own
+                            luint tKey = 0 ;
+                            if ( tMasterBlock( p ) != gNoIndex )
+                            {
+                                const luint tMin = std::min( tMasterBlock( p ), tSlaveBlock( p ) );
+                                const luint tMax = std::max( tMasterBlock( p ), tSlaveBlock( p ) );
+                                BELFEM_ASSERT( tMax < tNumBlocks, "block index %lu out of range", ( long unsigned int ) tMax );
+                                tKey = tMin * tNumBlocks + tMax ;
+
+                                if ( tGroupOfPair.key_exists( tKey ) )
+                                {
+                                    tGroup( p ) = tGroupOfPair( tKey );
+                                }
+                            }
+
+                            if ( tGroup( p ) == gNoIndex )
+                            {
+                                tGroup( p ) = tGroupReference.size() ;
+                                if ( tMasterBlock( p ) != gNoIndex )
+                                {
+                                    tGroupOfPair[ tKey ] = tGroup( p );
+                                }
+                                tGroupReference.push( p );
+                                tGroupSize.push( 1 );
+                                continue ;
+                            }
+
+                            const index_t tG = tGroup( p );
+                            const index_t tReference = tGroupReference( tG );
+                            ++tGroupSize( tG );
+
+                            if ( ( tAnchored( p ) == 1 && tAnchored( tReference ) == 0 )
+                                || ( tAnchored( p ) == 0 && tAnchored( tReference ) == 0
+                                  && tSmallestID( p ) < tSmallestID( tReference ) ) )
+                            {
+                                tGroupReference( tG ) = p ;
+                            }
+                        }
+
+                        for ( index_t p = 0; p < tPatches.size(); ++p )
+                        {
+                            const index_t tG = tGroup( p );
+
+                            if ( tGroupSize( tG ) == 1 )
+                            {
+                                if ( tMasterBlock( p ) == gNoIndex )
+                                {
+                                    ++tNumMixedPair ;
+                                }
+                                else
+                                {
+                                    ++tNumUniquePair ;
+                                }
+                                continue ;
+                            }
+
+                            const index_t tReference = tGroupReference( tG );
+
+                            if ( tReference == p ) continue ;
+
+                            ++tNumAligned ;
+
+                            if ( tMasterBlock( p ) == tMasterBlock( tReference ) ) continue ;
+
+                            for ( mesh::Facet * tFacet : tPatches( p ) )
+                            {
+                                tFacet->flip();
+                            }
+                            std::swap( tMasterBlock( p ), tSlaveBlock( p ) );
+                            ++tNumPatchesFlipped ;
+                        }
+                    }
+
+                    if ( tNumFlipped > 0 )
+                    {
+                        message( InfoLevel::Default,
+                            "    thin shell %s: aligned %lu of %lu facets of sideset %lu to one orientation",
+                            tShell->label().c_str(),
+                            ( long unsigned int ) tNumFlipped,
+                            ( long unsigned int ) tFacets.size(),
+                            ( long unsigned int ) tSideSetIDs( s ) );
+                    }
+
+                    if ( tNumPatches > 1 )
+                    {
+                        message( InfoLevel::Default,
+                            "    thin shell %s: sideset %lu falls apart into %lu patches; each took the majority winding of its own facets ( the seed's on a tie ); %lu were then aligned to the master block of a patch with the same two blocks ( %lu flipped ), %lu kept their winding because no other patch has their block pair, %lu kept their winding because their facets do not share one block pair; a deck sign flips the whole sideset",
+                            tShell->label().c_str(),
+                            ( long unsigned int ) tSideSetIDs( s ),
+                            ( long unsigned int ) tNumPatches,
+                            ( long unsigned int ) tNumAligned,
+                            ( long unsigned int ) tNumPatchesFlipped,
+                            ( long unsigned int ) tNumUniquePair,
+                            ( long unsigned int ) tNumMixedPair );
+                    }
+
+                    if ( tSplitVote )
+                    {
+                        message( InfoLevel::Default,
+                            "    thin shell %s: the cross-type facets of sideset %lu disagreed on which side the higher domain type lies; the vote kept the majority winding, so some of them may now have the lower type as master",
+                            tShell->label().c_str(),
+                            ( long unsigned int ) tSideSetIDs( s ) );
+                    }
+
+                    for ( mesh::Facet * tFacet : tFacets )
+                    {
+                        tFacet->unflag( 2 );
+                        tFacet->unflag( 3 );
+                    }
+                }
+            }
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        MaxwellFactory::check_thin_shell_block_sides()
+        {
+            BELFEM_ASSERT( mCommRank == 0, "This function should only be called on rank 0" );
+
+            DynamicBitset tMasterBlocks( mMesh->number_of_blocks() );
+            DynamicBitset tSlaveBlocks( mMesh->number_of_blocks() );
+
+            for ( Protoshell * tShell : mProtoshells )
+            {
+                const Vector< id_t > & tSideSetIDs = tShell->sidesets() ;
+
+                for ( index_t s = 0; s < tSideSetIDs.length(); ++s )
+                {
+                    tMasterBlocks.reset();
+                    tSlaveBlocks.reset();
+
+                    for ( mesh::Facet * tFacet : mMesh->sideset( tSideSetIDs( s ) )->facets() )
+                    {
+                        // the cut opens the shell by relinking the elements
+                        // of its slave blocks, which needs both sides
+                        BELFEM_ERROR( tFacet->has_master() && tFacet->has_slave(),
+                            "thin shell %s: facet %lu of sideset %lu needs an element on both sides",
+                            tShell->label().c_str(),
+                            ( long unsigned int ) tFacet->id(),
+                            ( long unsigned int ) tSideSetIDs( s ) );
+
+                        tMasterBlocks.set( mMesh->block( tFacet->master()->block_id() )->index() );
+                        tSlaveBlocks.set( mMesh->block( tFacet->slave()->block_id() )->index() );
+                    }
+
+                    for ( mesh::Block * tBlock : mMesh->blocks() )
+                    {
+                        BELFEM_ERROR( ! ( tMasterBlocks.test( tBlock->index() ) && tSlaveBlocks.test( tBlock->index() ) ),
+                            "thin shell %s: block %lu lies on both sides of sideset %lu; a thin shell must separate two different volume blocks. Split the volume block, not the sideset, so that each facet of the sideset has one block on each side; if the sideset genuinely lies between two different pairs of blocks, split the sideset too and give each piece its own sign in the deck",
+                            tShell->label().c_str(),
+                            ( long unsigned int ) tBlock->id(),
+                            ( long unsigned int ) tSideSetIDs( s ) );
+                    }
+                }
             }
         }
 

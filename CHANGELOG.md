@@ -15,6 +15,16 @@ All notable changes to BELFEM are recorded here. The format follows
   the matching `topology` section. Tapes per layer, criss-crossed layers and the pitch count are
   parameters; the copper core itself is meshed as air. Twenty decks now ship.
 
+- **New example deck `examples/pancake_tape`.** One 4 mm REBCO tape wound 200 turns into a
+  pancake coil, with the solder between the turns as a single solid that touches itself and
+  the tape as the thin shell on that contact: a Python generator builds the structured winding,
+  both lead-outs on solder bars, the air mesh and the matching `topology` section, and checks the
+  thin-shell rules on the mesh it writes. A `SolderAir` sideset covers the solder/air contact so
+  the thin cuts survive pruning; `python3 python/main.py 20` builds a 20-turn smoke case. The
+  deck builds its mesh and passes cut creation but does not yet run to a solution: the dof setup
+  stops on an interface node that two co-terminating cut sheets leave without a φ dof.
+  Twenty-one decks now ship.
+
 - **The dependency stack is now documented.** `doc/scls_toolchain.md` names SCLS — the
   Scientific Core Library Stack BELFEM is built, tested and run against — and covers what it
   supplies, how to install and activate a flavor, and the four separate mechanisms that read
@@ -104,6 +114,46 @@ instead of producing a NaN power law.
 
 ### Fixed
 
+- **A 3D thin-shell sideset can no longer leave setup with a mixed master side.**
+  `MaxwellFactory::fix_facet_masters` orients facets that have the same domain type on both
+  sides by a walk over shared edges. That walk also passes through faces that meet a thin shell
+  at a T-junction, such as a block face split at the tape seam or the coil's top face. It could
+  therefore reach one shell sideset from two directions and give part of it the opposite
+  winding. No deck sign can repair that, and building the shell from it corrupted the heap
+  (crash in `ThinShellFactory::update_node_facet_tables`). The new pass
+  `MaxwellFactory::align_thin_shell_facets` runs at the end of the 3D walk and makes every
+  thin-shell sideset consistent in three steps:
+  - each connected patch of the sideset takes one winding by a vote: the cross-type facets vote
+    when the patch has any (they carry the deterministic domain-type orientation), otherwise all
+    facets do, and a tie keeps the winding of the patch's first facet;
+  - patches of one sideset that have the same two blocks on their sides are then given the same
+    master block, taken from the first patch whose vote had cross-type facets, or else from the
+    patch with the smallest facet id; patches whose block pair no other patch shares, or whose
+    facets do not share one pair, keep their own winding, and the log counts each kind;
+  - a sideset with a facet that lacks an element on one side, or with one block on both of its
+    sides, is refused with a `BELFEM_ERROR` that names the shell, the sideset and the block, since
+    the cut opens a shell block by block. This also refuses a uniformly wound sheet that has the
+    same block on both of its sides, which earlier versions accepted. A thin shell must separate
+    two different volume blocks: split the volume block so that each facet has one block on each
+    side, and split the sideset as well only where it genuinely lies between two block pairs.
+
+  A one-patch sideset that was already uniform and has different blocks on its two sides is
+  unchanged, so existing decks keep their signs. A sideset that cannot be oriented consistently
+  stops setup with a `BELFEM_ERROR` that names it. 2D is unchanged. A processed mesh (`.bfm`)
+  written by an earlier build is reloaded without these passes and keeps the windings it was
+  saved with; delete it to have them applied.
+- **A 3D thin shell whose outer edge is a closed loop is accepted when that loop is isolated.** When no part of the shell reaches the domain boundary (for example a tape
+  fed by conductor leads instead of tape leads), its side curve is one closed loop.
+  `CurveFactory::identify_subchains` gave an edge its chain index only when it led to an
+  unvisited node, so the edge that closes the loop kept no index; every edge reached from a chain
+  now gets that chain's index, and `CurveFactory::thin_shell_side_curves` builds the loop as one
+  closed curve instead of refusing it; a side curve that branches is refused there by name. The
+  nodes of a closed rim stay single-valued, while the nodes of a terminal curve are duplicated
+  and a rim that touches another shell's side curve is duplicated as an open one, so a closed
+  rim that shares a node, even at a single corner, with a terminal curve of any shell or with a
+  side curve of another shell is refused in `CutFactory` before any node is duplicated, with a
+  message that names the shell, the rim, the shared node and the other curve. Edge coating is
+  not supported on a closed rim and stops setup with a message that says so.
 - **A refusal during field setup no longer frees hanging dofs twice** in debug builds and tests.
   A release build aborts before unwinding and was not affected.
 - Every error path in the material, boundary-condition, periodicity, and HDF5 loaders now frees

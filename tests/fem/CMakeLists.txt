@@ -69,6 +69,7 @@ if( USE_MAXWELL )
     list( APPEND SOURCES test_Hex8TsVolume.cpp )
     list( APPEND SOURCES test_BackgroundField.cpp )
     list( APPEND SOURCES test_ThinShellTerminalCurves.cpp )
+    list( APPEND SOURCES test_ThinShellAlignment.cpp )
     list( APPEND LIBLIST maxwell )
 endif()
 

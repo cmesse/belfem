@@ -193,6 +193,30 @@ namespace belfem
 
 //-----------------------------------------------------------------------------
 
+            /**
+             * Refuses a geometrically closed side curve of any shell in
+             * aShells that shares a node with a terminal curve of any shell,
+             * or with a side curve of another shell. A closed rim is
+             * accepted only when it is isolated: its nodes stay
+             * single-valued, while the nodes of a terminal curve are
+             * duplicated, and a rim that touches another shell's side curve
+             * is treated as open and duplicated, which tears it. Called once
+             * the side curves of every shell exist and have been pushed, in
+             * shell order, onto aMesh->curves(), which held aNumMeshCurves
+             * curves before the first push. Before the throw, shrinks
+             * aMesh->curves() back to aNumMeshCurves, then deletes the side
+             * curves of every shell and empties each side_curves(). Uses node
+             * flag slot 0, which is clear on return and before the throw.
+             * Rank 0, before the shell nodes are duplicated.
+             */
+            static void
+            refuse_closed_side_curve_sharing_nodes(
+                    Mesh * aMesh,
+                    Cell< Protoshell * > & aShells,
+                    const index_t aNumMeshCurves );
+
+//-----------------------------------------------------------------------------
+
             void
             save_curve_debug_meshes();
 

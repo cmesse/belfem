@@ -225,10 +225,39 @@ namespace belfem
             set_block_types_in_magnetic_equation();
 
 //------------------------------------------------------------------------------
-            //! make sure that masters follow the DomainType enum order:
-            //! conductor > coil > ferro > buffer > air ( see en_DomainType.hpp )
+            //! orient the facets for the cut, rank 0 only. Between two
+            //! domain types, the master follows the DomainType enum order:
+            //! conductor > coil > ferro > buffer > air ( see
+            //! en_DomainType.hpp ). In 3D, facets with one domain type on
+            //! both sides inherit the orientation of their neighbors, and
+            //! then every thin-shell sideset is made consistent: each
+            //! connected patch takes one winding by a vote, which may give
+            //! some cross-type facets the lower domain type as master;
+            //! patches with the same two blocks on their sides get the same
+            //! master block; and a sideset with one block on both of its
+            //! sides is refused
             void
             fix_facet_masters();
+
+//------------------------------------------------------------------------------
+
+            //! give every connected patch of each thin-shell sideset one
+            //! consistent winding, and the patches of one sideset that have
+            //! the same two blocks on their sides one master block; 3D only,
+            //! needs facet-to-facet
+            //! connectivity, runs at the end of fix_facet_masters and
+            //! before flip_thin_shell_sidesets
+            void
+            align_thin_shell_facets();
+
+//------------------------------------------------------------------------------
+
+            //! refuse a thin-shell sideset with a facet that lacks an element
+            //! on one side, or with a block that is master on some facets and
+            //! slave on others: the cut opens a shell block by block. 3D,
+            //! after align_thin_shell_facets
+            void
+            check_thin_shell_block_sides();
 
 //------------------------------------------------------------------------------
 

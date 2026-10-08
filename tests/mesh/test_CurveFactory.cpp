@@ -16,8 +16,8 @@
  * intersect() pairs only the edges that a facet of each sideset shares and
  * refuses midpoints that disagree, a closed curve comes out as one head-to-
  * tail loop in 2-D and 3-D, thin-shell side curves take their midpoints from
- * their own facet and refuse a closed rim, and mixed-order, non-line and
- * empty 2-D sidesets are refused.
+ * their own facet and build a closed rim as one closed loop, and mixed-order,
+ * non-line and empty 2-D sidesets are refused.
  *
  * The mesh main forces the throwing reaction, so every BELFEM_ERROR on the
  * refusal paths is observable as a std::runtime_error in both builds. A
@@ -1200,9 +1200,10 @@ TEST( CurveFactory, ThinShellQuadraticSideCurveTakesItsFacetsMidpoints )
 
 //------------------------------------------------------------------------------
 
-// no domain boundary: the side curve is the whole closed rim, which is
-// refused, and the mesh nodes get their indices and vertex containers back
-TEST( CurveFactory, ThinShellClosedSideCurveIsRefused )
+// no domain boundary: the side curve is the whole closed rim, built as one
+// closed loop walked head to tail, and the mesh nodes get their indices back
+// and no vertex containers
+TEST( CurveFactory, ThinShellClosedSideCurveIsBuilt )
 {
     Fixture tFixture( 3, true );
     Cell< Node * > tP = unit_cube( tFixture );
@@ -1215,15 +1216,17 @@ TEST( CurveFactory, ThinShellClosedSideCurveIsRefused )
     Vector< id_t > tShells( 1, 1 );
     Vector< id_t > tBoundaries ;
 
-    expect_refusal( [ & ]()
-        {
-            Cell< Curve * > tCurves = tFactory.thin_shell_side_curves( tShells, tBoundaries );
-            for ( Curve * tCurve : tCurves )
-            {
-                delete tCurve ;
-            }
-        },
-        { "is closed", "not supported" } );
+    Cell< Curve * > tCurves = tFactory.thin_shell_side_curves( tShells, tBoundaries );
+
+    for ( Curve * tCurve : tCurves )
+    {
+        tFixture.mMesh->curves().push( tCurve );
+    }
+
+    ASSERT_EQ( tCurves.size(), ( index_t ) 1 );
+    ASSERT_EQ( tCurves( 0 )->element_type(), ElementType::LINE2 );
+
+    check_curve( tCurves( 0 ), { tP( 4 ), tP( 7 ), tP( 6 ), tP( 5 ), tP( 4 ) }, true );
 
     index_t tCount = 0 ;
     for ( Node * tNode : tFixture.mMesh->nodes() )
@@ -1234,5 +1237,44 @@ TEST( CurveFactory, ThinShellClosedSideCurveIsRefused )
     for ( index_t k = 4; k < 8; ++k )
     {
         EXPECT_EQ( tP( k )->number_of_vertices(), ( uint ) 0 ) << "node " << tP( k )->id() ;
+    }
+}
+
+//------------------------------------------------------------------------------
+
+// two cubes share the vertical edge 3-7; their top faces form one shell that
+// touches itself at node 7 only, so four rim edges meet there. The branch is
+// refused before any curve exists, and the mesh nodes get their indices back
+// and no vertex containers
+TEST( CurveFactory, ThinShellBranchedSideCurveIsRefused )
+{
+    Fixture tFixture( 3, true );
+    Cell< Node * > tP = unit_cube( tFixture );
+    Element * tHexA = tFixture.hex( tP, false );
+
+    Cell< Node * > tQ = {
+        tP( 2 ),                          tFixture.node( 2.0, 1.0, 0.0 ),
+        tFixture.node( 2.0, 2.0, 0.0 ),   tFixture.node( 1.0, 2.0, 0.0 ),
+        tP( 6 ),                          tFixture.node( 2.0, 1.0, 1.0 ),
+        tFixture.node( 2.0, 2.0, 1.0 ),   tFixture.node( 1.0, 2.0, 1.0 ) };
+    Element * tHexB = tFixture.hex( tQ, false );
+
+    tFixture.sideset( 1, ElementType::QUAD4, { { tHexA, 5 }, { tHexB, 5 } } );
+    tFixture.finalize();
+
+    CurveFactory tFactory( tFixture.mMesh );
+    Vector< id_t > tShells( 1, 1 );
+    Vector< id_t > tBoundaries ;
+
+    expect_refusal( [ & ]() { tFactory.thin_shell_side_curves( tShells, tBoundaries ) ; },
+        { "the thin-shell side curve branches at node 7", "a chain or one closed loop" } );
+
+    EXPECT_EQ( tFixture.mMesh->curves().size(), ( index_t ) 0 );
+
+    index_t tCount = 0 ;
+    for ( Node * tNode : tFixture.mMesh->nodes() )
+    {
+        EXPECT_EQ( tNode->index(), tCount++ );
+        EXPECT_EQ( tNode->number_of_vertices(), ( uint ) 0 ) << "node " << tNode->id() ;
     }
 }

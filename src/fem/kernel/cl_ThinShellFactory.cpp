@@ -2198,10 +2198,11 @@ namespace belfem
             }
             BELFEM_ERROR( tFound,
                 "Side curve %lu has no terminal curve anchor: its first "
-                "node is not contained in any terminal curve of the "
-                "protoshell. The side-connector sign computation needs "
-                "this anchor. Closed-loop tapes have no terminals and "
-                "are not supported yet.",
+                "node lies on no terminal curve of the protoshell, and "
+                "the side-connector sign computation needs this anchor. "
+                "This is the case for a closed rim, which edge coating "
+                "does not support, and for an open side curve whose "
+                "first node is not a terminal node.",
                 ( long unsigned int ) aCurve->id() );
 
             Q -= P ;

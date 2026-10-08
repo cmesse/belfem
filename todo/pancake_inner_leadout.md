@@ -2,12 +2,12 @@
 
 **Date:** 2026-09-24
 **Purpose:** Replace the inner lead of the single-tape pancake generator
-(`build/pancake/python/pancake/`), currently an L-shaped hard-way corner in the bore wall, by a
+(`examples/pancake_tape/python/pancake/`), currently an L-shaped hard-way corner in the bore wall, by a
 lead that first separates from the inner turn on a smaller circle arc whose center is off the
 axis and then bends gradually until the tape direction runs along z. The mechanism is a
 piecewise-analytic centerline with a moving (t, n, b) frame, meshed as a structured strip, with
 the solder bar offset along n.
-**Module:** `build/pancake/python/pancake` (mesh generator, Python); consumer `src/fem/maxwell`
+**Module:** `examples/pancake_tape/python/pancake` (mesh generator, Python); consumer `src/fem/maxwell`
 thin-shell pipeline and `src/homology` cut factory (read-only constraints)
 **AIs involved:** Claude (exploration + plan), Codex (audit), Grok (third voice); Christian
 (physics ruling on the lead-out shape)

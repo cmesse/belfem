@@ -1958,6 +1958,118 @@ namespace belfem
         }
 
         void
+        CutFactory::refuse_closed_side_curve_sharing_nodes(
+                Mesh * aMesh,
+                Cell< Protoshell * > & aShells,
+                const index_t aNumMeshCurves )
+        {
+            // the side curves are the tail of aMesh->curves(): they leave the
+            // mesh before they are deleted, or ~Mesh would free them twice
+            auto tRefuse = [ & ]()
+            {
+                aMesh->curves().set_size( aNumMeshCurves );
+
+                for ( Protoshell * tShell : aShells )
+                {
+                    for ( Curve * tSideCurve : tShell->side_curves() )
+                    {
+                        delete tSideCurve ;
+                    }
+                    tShell->side_curves().clear() ;
+                }
+                aMesh->unflag_all_nodes() ;
+            };
+
+            for ( Protoshell * tShell : aShells )
+            {
+                bool tHasClosedRim = false ;
+                for ( Curve * tCurve : tShell->side_curves() )
+                {
+                    tHasClosedRim = tHasClosedRim || tCurve->is_closed() ;
+                }
+                if ( ! tHasClosedRim ) continue ;
+
+                // pass 0: the terminal curves of every shell,
+                // pass 1: the side curves of every other shell
+                for ( uint tPass = 0; tPass < 2; ++tPass )
+                {
+                    aMesh->unflag_all_nodes() ;
+
+                    for ( Protoshell * tOther : aShells )
+                    {
+                        if ( tPass == 1 && tOther == tShell ) continue ;
+
+                        for ( Curve * tCurve : tPass == 0 ? tOther->terminal_curves() : tOther->side_curves() )
+                        {
+                            for ( Node * tNode : tCurve->nodes() )
+                            {
+                                tNode->flag() ;
+                            }
+                        }
+                    }
+
+                    for ( Curve * tCurve : tShell->side_curves() )
+                    {
+                        if ( ! tCurve->is_closed() ) continue ;
+
+                        for ( Node * tNode : tCurve->nodes() )
+                        {
+                            if ( ! tNode->is_flagged() ) continue ;
+
+                            const id_t tFirstNodeID = tCurve->nodes()( 0 )->id() ;
+                            const id_t tNodeID = tNode->id() ;
+                            const std::string tLabel = tShell->label() ;
+
+                            // the first curve of the pass that holds the node
+                            id_t tOtherCurveID = gNoID ;
+                            std::string tOtherLabel ;
+                            for ( Protoshell * tOther : aShells )
+                            {
+                                if ( tPass == 1 && tOther == tShell ) continue ;
+
+                                for ( Curve * tOtherCurve : tPass == 0 ? tOther->terminal_curves() : tOther->side_curves() )
+                                {
+                                    for ( Node * tOtherNode : tOtherCurve->nodes() )
+                                    {
+                                        if ( tOtherNode == tNode && tOtherCurveID == gNoID )
+                                        {
+                                            tOtherCurveID = tOtherCurve->id() ;
+                                            tOtherLabel = tOther->label() ;
+                                        }
+                                    }
+                                }
+                            }
+
+                            tRefuse() ;
+
+                            if ( tPass == 0 )
+                            {
+                                BELFEM_ERROR( false,
+                                    "the closed side curve through node %lu of thin shell %s shares node %lu with terminal curve %lu of thin shell %s; a closed rim is accepted only when it is isolated: end the tape on a domain boundary, or keep the terminal curves off the closed rim",
+                                    ( long unsigned int ) tFirstNodeID,
+                                    tLabel.c_str(),
+                                    ( long unsigned int ) tNodeID,
+                                    ( long unsigned int ) tOtherCurveID,
+                                    tOtherLabel.c_str() );
+                            }
+                            else
+                            {
+                                BELFEM_ERROR( false,
+                                    "the closed side curve through node %lu of thin shell %s shares node %lu with a side curve of thin shell %s; a closed rim is accepted only when it is isolated: keep the other thin shells off the closed rim",
+                                    ( long unsigned int ) tFirstNodeID,
+                                    tLabel.c_str(),
+                                    ( long unsigned int ) tNodeID,
+                                    tOtherLabel.c_str() );
+                            }
+                        }
+                    }
+                }
+            }
+
+            aMesh->unflag_all_nodes() ;
+        }
+
+        void
         CutFactory::create_side_curves_for_thinshells_3d()
         {
             CurveFactory tFactory( mMesh );
@@ -1967,27 +2079,27 @@ namespace belfem
 
             index_t tCount = 0 ;
 
+            const index_t tNumMeshCurves = mMesh->curves().size() ;
+
+            // the mesh takes each shell's side curves before the next shell
+            // is built, so a throw while building a later shell leaks none
             for ( Protoshell * tProtoshell : mProtoshells )
             {
-                 tProtoshell->side_curves() = tFactory.thin_shell_side_curves( tProtoshell->sidesets(), tBoundaries ) ;
+                tProtoshell->side_curves() = tFactory.thin_shell_side_curves( tProtoshell->sidesets(), tBoundaries ) ;
+
+                for ( Curve * tCurve : tProtoshell->side_curves() )
+                {
+                    mMesh->curves().push( tCurve ) ;
+                }
             }
 
-            tCount = 0 ;
+            refuse_closed_side_curve_sharing_nodes( mMesh, mProtoshells, tNumMeshCurves );
 
             for ( Protoshell * tProtoshell : mProtoshells )
             {
                 for ( Curve * tCurve : tProtoshell->side_curves() )
                 {
                     tCurve->label() = sprint( "side_%u", ( unsigned int ) ++tCount );
-                }
-            }
-
-            Cell< Curve * > & tCurves = mMesh->curves() ;
-            for ( Protoshell * tProtoshell : mProtoshells )
-            {
-                for ( Curve * tCurve : tProtoshell->side_curves() )
-                {
-                    tCurves.push(tCurve) ;
                 }
             }
         }

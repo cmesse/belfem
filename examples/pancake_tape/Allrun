@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Thin wrapper: run the shared script with this deck as the working
+# directory. Per-deck settings belong in run.conf, not here.
+cd "$( dirname "${BASH_SOURCE[0]}" )" || exit 1
+exec ../scripts/Allrun "$@"

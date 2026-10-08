@@ -93,7 +93,6 @@ namespace belfem
             this->select_edges( aThinShellSideSets, aDomainBoundaries, tAllEdges, tEdges );
             this->select_node_subset( tEdges,  tNodes );
             this->connect_edges_to_nodes( tEdges, tNodes );
-            const index_t tNumChains = this->identify_subchains( tNodes );
 
             // undoes the scratch state of this function on the mesh nodes
             auto tReleaseScratch = [ & ]()
@@ -109,34 +108,24 @@ namespace belfem
                 mMesh->update_node_indices() ;
             };
 
-            // a component with at least as many edges as nodes contains a
-            // loop. create_protocurves() cannot place the edge that closes
-            // it, so a closed side curve is refused here. identify_subchains()
-            // numbers the components from 1
+            // a side curve is a chain or one closed loop, never a branch;
+            // refused before any curve object exists
+            for ( Node * tNode : tNodes )
             {
-                Cell< index_t > tNodeCount( tNumChains, 0 );
-                Cell< index_t > tDegreeSum( tNumChains, 0 );
-
-                for ( Node * tNode : tNodes )
+                if ( tNode->number_of_vertices() > 2 )
                 {
-                    ++tNodeCount( tNode->index() - 1 );
-                    tDegreeSum( tNode->index() - 1 ) += tNode->number_of_vertices() ;
-                }
-
-                for ( Node * tNode : tNodes )
-                {
-                    const index_t tChain = tNode->index() - 1 ;
-                    if ( tDegreeSum( tChain ) >= 2 * tNodeCount( tChain ) )
-                    {
-                        const id_t tNodeID = tNode->id() ;
-                        tReleaseScratch() ;
-                        BELFEM_ERROR( false,
-                            "The thin-shell side curve through node %lu is closed; closed side curves are not supported",
-                            ( long unsigned int ) tNodeID );
-                    }
+                    const id_t tID = tNode->id() ;
+                    tReleaseScratch() ;
+                    BELFEM_ERROR( false,
+                        "the thin-shell side curve branches at node %lu; a side curve must be a chain or one closed loop",
+                        ( long unsigned int ) tID );
                 }
             }
 
+            // a component with at least as many edges as nodes is a closed
+            // rim, and create_protocurves() builds it as one closed curve.
+            // Whether a closed rim may meet a terminal curve is decided by
+            // CutFactory, which knows the terminals
             Cell< ProtoCurve * > tProtoCurves ;
             this->create_protocurves( tNodes, tEdges, tProtoCurves );
 
@@ -525,15 +514,17 @@ namespace belfem
                     {
                         Edge * tEdge = reinterpret_cast< Edge * >( tNode->vertex( e ) ) ;
 
+                        // assigned unconditionally: in a closed loop, the last edge joins two
+                        // nodes that are already in the chain and would otherwise keep no group
+                        tEdge->set_index( aGroup );
+
                         if ( tEdge->node( 0 )->index() == gNoIndex )
                         {
-                            tEdge->set_index( aGroup );
                             tEdge->node( 0 )->set_index( aGroup );
                             tQueue.push( tEdge->node( 0 ) );
                         }
                         if ( tEdge->node( 1 )->index() == gNoIndex )
                         {
-                            tEdge->set_index( aGroup );
                             tEdge->node( 1 )->set_index( aGroup );
                             tQueue.push( tEdge->node( 1 ) );
                         }

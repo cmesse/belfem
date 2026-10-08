@@ -10,6 +10,7 @@ set( SOURCES
         test_Cohomology.cpp
         test_CohomologyPeriodic.cpp
         test_CutData.cpp
+        test_CutFactory_closed_rim.cpp
         )
 
 # Add_Test reverses this list, and dependents must precede their
