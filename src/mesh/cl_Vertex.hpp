@@ -249,7 +249,7 @@ namespace belfem
         inline void
         Vertex::increment_node_counter()
         {
-            BELFEM_ASSERT(  mNodeCounter < 255, "Node counter overflow." );
+            BELFEM_ASSERT(  mNodeCounter < 65535, "Node counter overflow." );
             ++mNodeCounter ;
         }
 
@@ -258,7 +258,7 @@ namespace belfem
         inline void
         Vertex::increment_edge_counter()
         {
-            BELFEM_ASSERT(  mEdgeCounter < 255, "Edge counter overflow." );
+            BELFEM_ASSERT(  mEdgeCounter < 65535, "Edge counter overflow." );
             ++mEdgeCounter ;
         }
 
@@ -267,7 +267,7 @@ namespace belfem
         inline void
         Vertex::increment_face_counter()
         {
-            BELFEM_ASSERT(  mFaceCounter < 255, "Face counter overflow." );
+            BELFEM_ASSERT(  mFaceCounter < 65535, "Face counter overflow." );
             ++mFaceCounter ;
         }
 
@@ -285,7 +285,7 @@ namespace belfem
         inline void
         Vertex::increment_element_counter()
         {
-            BELFEM_ASSERT(  mElementCounter < 255, "Element counter overflow." );
+            BELFEM_ASSERT(  mElementCounter < 65535, "Element counter overflow." );
             ++mElementCounter ;
         }
 
