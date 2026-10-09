@@ -278,6 +278,39 @@ No code emits those names; `manifold` does not appear anywhere in the module's s
 - **Algorithm selection**: `PellikkaGeneralized` is the production default (`cl_MaxwellFactory.hpp:48`). No timing comparison against the other three is recorded here, so treat "fastest" claims as unmeasured.
 - **Terminal orientation**: Ensure terminals are oriented consistently to avoid current sign errors.
 
+### Element Order
+
+The h-φ pipeline accepts only first-order meshes. `MaxwellFactory::create_hanging_edges_and_facets`
+rejects higher-order meshes with `BELFEM_ERROR( max_element_order() == 1 )`
+(`cl_MaxwellFactory.cpp:1966`).
+
+The cut pipeline runs before that guard (`MaxwellFactory::create_cuts`, `cl_MaxwellFactory.cpp:675`).
+On a TRI6 or TET10 mesh, it therefore executes before the guard stops the run, unless one of the
+gaps below stops it earlier. Four parts remain incomplete at order 2, and no test reaches these
+paths:
+
+- `CutSet::create_duplicates` sources every duplicate from its original without checking whether
+  the original is itself hanging (`cl_CutSet.cpp:80`). `InterfaceProcessor` cascades the
+  original's sources in that case (`cl_InterfaceProcessor.cpp:612-630`), but the cut set does
+  not. A cut duplicate of a hanging original would therefore carry a hanging source. The dof data
+  rejects this in a debug build (`cl_FEM_DofMgr_DofData.cpp:3040`) and writes an incorrect
+  T-matrix row in release.
+- The diagonal thick-cut cases ±5/6/7 rely on their face-case neighbors to cover the element's
+  share of the cut surface. The code does not verify this face by face
+  (`thick_thin_cuts_and_conjugate_edges.md`, "Cut cases and conjugated facets").
+- `CutProcessor::check_midside` (`cl_CutProcessor.hpp:329-345`) sets a midside's cut bit whenever
+  both corners carry the cut, without checking whether the midside node was collected. A thick
+  cut through a diagonal case (±5/6/7) can therefore pass a node whose index is `gNoIndex` to
+  `flip_node_bitsets_tet10` and its TRI6 twin (`cl_CutProcessor.cpp:1022`): an out-of-range
+  bitset write in release and an assertion in a debug build. The intended repair, skipping
+  midsides that are not flagged, was never applied.
+- No TRI6 or TET10 fixture exists in `tests/homology/`.
+
+The terminal-loop closure, `CutFactory::close_terminal_loop`, handles LINE2 and LINE3 curves. It
+keeps a LINE3 midside at node 2 of the reversed segment, as `Curve::reverse` does. A test covers
+both element types. Anyone lifting the order-1 guard should start with the three implementation
+gaps above.
+
 ---
 
 ## See Also

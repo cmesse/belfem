@@ -221,6 +221,31 @@ namespace belfem
 
 //-----------------------------------------------------------------------------
 
+            /**
+             * Closes one terminal curve into a loop. Every segment is
+             * duplicated in reverse, its nodes replaced by
+             * aDuplicates( index ) where the node carries an index ( a node
+             * at gNoIndex is kept ), the arclength vector is extended by the
+             * return pass, the node list is rebuilt and the closed flag set.
+             * aMaxID is advanced by one per new segment element. LINE2 and
+             * LINE3 only: corners swap and a LINE3 midside stays node 2 of
+             * the reversed segment, as in Curve::reverse. The arclength of
+             * the return pass follows the reversed segment order.
+             * Preconditions, checked with BELFEM_ERROR before anything is
+             * allocated: every indexed node has a non-null entry in
+             * aDuplicates, and aCurve->arclength() holds one sample per node
+             * of the open curve ( n+1 for LINE2, 2n+1 for LINE3 ), as
+             * CurveFactory::compute_coordinates writes it. A curve without
+             * segments is left untouched.
+             */
+            static void
+            close_terminal_loop(
+                    Curve * aCurve,
+                    const Cell< Node * > & aDuplicates,
+                    id_t & aMaxID );
+
+//-----------------------------------------------------------------------------
+
             void
             save_curve_debug_meshes();
 

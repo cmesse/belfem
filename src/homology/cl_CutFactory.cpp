@@ -1574,130 +1574,183 @@ namespace belfem
         void
         CutFactory::close_terminal_loops()
         {
-            ElementFactory tFactory ;
-
             for ( Protoshell * tProtoshell : mProtoshells )
             {
                 for ( Curve * tCurve : tProtoshell->terminal_curves() )
                 {
-                    Cell< Segment * > & tSegments = tCurve->segments() ;
-
-                    if ( tSegments.size() == 0 ) continue ;
-
-                    Cell< Segment * > tDuplicates( tSegments.size(), nullptr );
-
-                    ElementType tType = tSegments( 0 )->element()->type() ;
-
-                    index_t tCount = tSegments.size() ;
-
-                    for ( Segment * tOrg : tSegments )
-                    {
-                        Segment * tDup = new Segment( tFactory.create_element( tType, ++mMaxID ) );
-
-                        uint n = tOrg->number_of_nodes();
-                        for ( uint k=0; k<n; ++k )
-                        {
-                            Node * tNode = tOrg->node( k )->index() == gNoIndex ? tOrg->node( k ) : mThinShellDuplicates( tOrg->node( k )->index() );
-                            tDup->element()->insert_node( tNode, n-1-k );
-                        }
-
-                        tDuplicates( --tCount ) = tDup ;
-                    }
-
-                    switch ( tType )
-                    {
-                        case( ElementType::LINE2 ) :
-                        {
-                            index_t n = tCurve->segments().size();
-                            Vector<real >& tS = tCurve->arclength();
-                            Vector<real> tS0( tS ); // Copy initial arclengths
-
-                            tS.set_size(2 * n + 1);
-
-                            index_t c = 0;
-                            for (real s : tS0)
-                            {
-                                tS(c++) = s;
-                            }
-
-                            real s = tS(c - 1);
-                            for (index_t k = 0; k < n; ++k)
-                            {
-                                s += tS0(k + 1) - tS0(k);
-                                tS(c++) = s;
-                            }
-
-                            break;
-                        }
-                        case( ElementType::LINE3 ) :
-                        {
-                            index_t n = tCurve->segments().size();
-                            Vector<real>& tS = tCurve->arclength();
-                            Vector<real> tS0( tS ); // Copy initial arclengths
-
-                            tS.set_size(4 * n + 1);
-
-                            index_t c = 0;
-                            for (real s : tS0) {
-                                tS(c++) = s;
-                            }
-
-                            real s = tS(c - 1);
-                            for (index_t k = 0; k < n; ++k)
-                            {
-                                real l = tS0(2 * k + 2) - tS0(2 * k); // Segment length
-                                tS(c++) = s + 0.5 * l; // Midpoint
-                                s += l;
-                                tS(c++) = s; // Endpoint
-                            }
-                            break;
-                        }
-                        default:
-                        {
-                            BELFEM_ERROR( false, "Invalid element type at terminal loop %lu",
-                                          ( long unsigned int ) tCurve->id() );
-                        }
-                    }
-
-                    append_move( tSegments, tDuplicates );
-
-                    Cell< Node * > & tNodes = tCurve->nodes() ;
-
-                    switch ( tType )
-                    {
-                        case ElementType::LINE2 :
-                        {
-                            // we only copy the first node because this is a closed loop
-                            tNodes.set_size( tSegments.size(), nullptr );
-                            tCount = 0 ;
-                            for ( Segment * tSegment : tSegments )
-                            {
-                                tNodes( tCount++ ) = tSegment->node( 0 );
-                            }
-                            break;
-                        }
-                        case ElementType::LINE3 :
-                        {
-                            // we only copy the first node because this is a closed loop
-                            tNodes.set_size( 2 * tSegments.size(), nullptr );
-                            tCount = 0 ;
-                            for ( Segment * tSegment : tSegments )
-                            {
-                                tNodes( tCount++ ) = tSegment->node( 0 );
-                                tNodes( tCount++ ) = tSegment->node( 2 ); // node 2 is the center node
-                            }
-                            break;
-                        }
-                        default:
-                        {
-                            BELFEM_ERROR( false, "Invalid element type at terminal loop %lu",
-                                          ( long unsigned int ) tCurve->id() );
-                        }
-                    }
-
-                    tCurve->set_closed_flag( true );
+                    CutFactory::close_terminal_loop( tCurve, mThinShellDuplicates, mMaxID );
                 }
             }
+        }
+
+//-----------------------------------------------------------------------------
+
+        void
+        CutFactory::close_terminal_loop(
+                Curve * aCurve,
+                const Cell< Node * > & aDuplicates,
+                id_t & aMaxID )
+        {
+            Cell< Segment * > & tSegments = aCurve->segments() ;
+
+            if ( tSegments.size() == 0 ) return ;
+
+            ElementType tType = tSegments( 0 )->element()->type() ;
+
+            BELFEM_ERROR( tType == ElementType::LINE2 || tType == ElementType::LINE3,
+                "Invalid element type at terminal loop %lu",
+                ( long unsigned int ) aCurve->id() );
+
+            // every check runs before the first allocation, so a failing one
+            // leaves neither a half-built loop nor an advanced id counter
+            for ( const Segment * tOrg : tSegments )
+            {
+                for ( uint k = 0; k < tOrg->number_of_nodes(); ++k )
+                {
+                    const Node * tNode = tOrg->node( k );
+
+                    if ( tNode->index() == gNoIndex ) continue ;
+
+                    BELFEM_ERROR( tNode->index() < aDuplicates.size()
+                                  && aDuplicates( tNode->index() ) != nullptr,
+                        "Node %lu of terminal curve %lu has no thin-shell duplicate",
+                        ( long unsigned int ) tNode->id(),
+                        ( long unsigned int ) aCurve->id() );
+                }
+            }
+
+            // one arclength sample per node of the open curve, as
+            // CurveFactory::compute_coordinates writes it
+            const index_t tNumSamples =
+                ( tType == ElementType::LINE3 ? 2 : 1 ) * tSegments.size() + 1 ;
+
+            BELFEM_ERROR( aCurve->arclength().length() == tNumSamples,
+                "Terminal curve %lu carries %lu arclength samples, expected %lu",
+                ( long unsigned int ) aCurve->id(),
+                ( long unsigned int ) aCurve->arclength().length(),
+                ( long unsigned int ) tNumSamples );
+
+            ElementFactory tFactory ;
+
+            Cell< Segment * > tDuplicates( tSegments.size(), nullptr );
+
+            index_t tCount = tSegments.size() ;
+
+            for ( Segment * tOrg : tSegments )
+            {
+                Segment * tDup = new Segment( tFactory.create_element( tType, ++aMaxID ) );
+
+                uint n = tOrg->number_of_nodes();
+                for ( uint k=0; k<n; ++k )
+                {
+                    Node * tNode = tOrg->node( k );
+
+                    if ( tNode->index() != gNoIndex )
+                    {
+                        tNode = aDuplicates( tNode->index() );
+                    }
+
+                    // corners swap, a LINE3 midside stays node 2 ( Curve::reverse )
+                    tDup->element()->insert_node( tNode, k < 2 ? 1 - k : k );
+                }
+
+                tDuplicates( --tCount ) = tDup ;
+            }
+
+            switch ( tType )
+            {
+                case( ElementType::LINE2 ) :
+                {
+                    index_t n = aCurve->segments().size();
+                    Vector<real >& tS = aCurve->arclength();
+                    Vector<real> tS0( tS ); // Copy initial arclengths
+
+                    tS.set_size(2 * n + 1);
+
+                    index_t c = 0;
+                    for (real s : tS0)
+                    {
+                        tS(c++) = s;
+                    }
+
+                    // the return pass walks the segments in reverse order
+                    real s = tS(c - 1);
+                    for ( index_t k = n; k-- > 0; )
+                    {
+                        s += tS0(k + 1) - tS0(k);
+                        tS(c++) = s;
+                    }
+
+                    break;
+                }
+                case( ElementType::LINE3 ) :
+                {
+                    index_t n = aCurve->segments().size();
+                    Vector<real>& tS = aCurve->arclength();
+                    Vector<real> tS0( tS ); // Copy initial arclengths
+
+                    tS.set_size(4 * n + 1);
+
+                    index_t c = 0;
+                    for (real s : tS0) {
+                        tS(c++) = s;
+                    }
+
+                    // the return pass walks the segments in reverse order
+                    real s = tS(c - 1);
+                    for ( index_t k = n; k-- > 0; )
+                    {
+                        real l = tS0(2 * k + 2) - tS0(2 * k); // Segment length
+                        tS(c++) = s + 0.5 * l; // Midpoint
+                        s += l;
+                        tS(c++) = s; // Endpoint
+                    }
+                    break;
+                }
+                default:
+                {
+                    BELFEM_ERROR( false, "Invalid element type at terminal loop %lu",
+                                  ( long unsigned int ) aCurve->id() );
+                }
+            }
+
+            append_move( tSegments, tDuplicates );
+
+            Cell< Node * > & tNodes = aCurve->nodes() ;
+
+            switch ( tType )
+            {
+                case ElementType::LINE2 :
+                {
+                    // we only copy the first node because this is a closed loop
+                    tNodes.set_size( tSegments.size(), nullptr );
+                    tCount = 0 ;
+                    for ( Segment * tSegment : tSegments )
+                    {
+                        tNodes( tCount++ ) = tSegment->node( 0 );
+                    }
+                    break;
+                }
+                case ElementType::LINE3 :
+                {
+                    // we only copy the first node because this is a closed loop
+                    tNodes.set_size( 2 * tSegments.size(), nullptr );
+                    tCount = 0 ;
+                    for ( Segment * tSegment : tSegments )
+                    {
+                        tNodes( tCount++ ) = tSegment->node( 0 );
+                        tNodes( tCount++ ) = tSegment->node( 2 ); // node 2 is the center node
+                    }
+                    break;
+                }
+                default:
+                {
+                    BELFEM_ERROR( false, "Invalid element type at terminal loop %lu",
+                                  ( long unsigned int ) aCurve->id() );
+                }
+            }
+
+            aCurve->set_closed_flag( true );
         }
 
         void

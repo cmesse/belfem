@@ -37,9 +37,8 @@ rationale — is in git: `git show 18e57fe:todo/README.md`.
 
 ---
 
-## Active (8)
+## Active (7)
 
-- [dr122_line3_terminal_loop.md](dr122_line3_terminal_loop.md) — DR-122: the LINE3 terminal-loop closure puts the midside in a corner slot; static helper + test; order-2 residue to the module doc.
 - [dr193_usermat_table_extension](dr193_usermat_table_extension.md) — extend and source the quench deck's six short property tables (they end at 199–390 K, the hot spot reaches 1770 K, no table has a provenance line): a web-literature session with a DOI beside every number; plan only
 - [mkl_num_threads_allrun](mkl_num_threads_allrun.md) — Allrun pins `MKL_NUM_THREADS` to `NTHREADS` beside `OMP_NUM_THREADS`, and `MKL_DYNAMIC` gets decided
 - [pancake_inner_leadout](pancake_inner_leadout.md) — Replace the inner lead of the single-tape pancake generator (`examples/pancake_tape/python/pancake/`), currently an L-shaped hard-way corner in the bore wall, by a lead that first separates from the inner turn on a smaller …
@@ -85,8 +84,9 @@ rationale — is in git: `git show 18e57fe:todo/README.md`.
 - [timestep_collapse_mitigation_design](cancelled/timestep_collapse_mitigation_design.md) — Concrete, code-level mitigation design for the Δt-collapse failure analysed in `todo/timestep_collapse_residual_floor_plan.md` (the `sidecoatings` t = 13.8762 ms abort and the `greg5` regression). Mechanism being fixed …
 - [timestep_collapse_residual_floor_plan](cancelled/timestep_collapse_residual_floor_plan.md) — Both `greg5` (2D tapestack, magnetic-only Picard) and `sidecoatings` (3D coated conductor, coupled Newton) ratchet Δt down to the deck minimum and abort. The mechanism, in one sentence: **the controller's promote/demote …
 
-## Closed (116) — [`closed/`](closed/)
+## Closed (117) — [`closed/`](closed/)
 
+- [dr122_line3_terminal_loop](closed/dr122_line3_terminal_loop.md) — DONE 2026-10-08: the terminal-loop closure extracted into the static `CutFactory::close_terminal_loop` with the LINE3 midside kept at node 2 and the return-pass arclength in reversed segment order (the plan jury's find on the live LINE2 path), preconditions checked before allocation; eight-case test, two mutation checks, `make check` 17/17 in a private tree; DR-122 struck, the DR-103 guard found never landed and recorded.
 - [dr194_dr197_small_fixes](closed/dr194_dr197_small_fixes.md) — DONE 2026-10-08: the duplicate-list alias in `update_node_facet_tables` and the `~CutFactory` double delete fixed with two red-on-HEAD tests; valgrind 0 errors; DR-194 and DR-197 struck
 - [interface_duplicates_shared](closed/interface_duplicates_shared.md) — DONE 2026-10-08: one conductor-side interface copy per node shared across conductor blocks plus a conductor sweep closed Yufan's NI seam short (doubled, untied copper edges along every copper|copper face reaching the air); eight tests; `make check` 17/17; F deck seam jumps 50 A → 1 A, H deck unchanged; DR-198 struck
 - [yufan_ni_coil_fixes](closed/yufan_ni_coil_fixes.md) — DONE 2026-10-08: Yufan's 3-D thin-shell alignment landed with a block-consistent patch relation and a block-on-both-sides refusal; closed side curves accepted when isolated (DR-188 policy narrowed on Alves 2022a §II-B); `pancake_tape` ships with its solder/air sideset; make check 17/17 ×3; copper-lead gate owed on DR-196

@@ -12,6 +12,7 @@ set( SOURCES
         test_CutData.cpp
         test_CutFactory_closed_rim.cpp
         test_CutFactory_unwind.cpp
+        test_CutFactory_terminal_loop.cpp
         test_InterfaceProcessor.cpp
         )
 
