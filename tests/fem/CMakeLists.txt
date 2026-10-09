@@ -40,6 +40,7 @@ set( SOURCES
         test_DeckIntegers.cpp
         test_PenaltyUnits.cpp
         test_Hex8FlipEdges.cpp
+        test_ThinShellNodeFacetTables.cpp
         )
 
 set( LIBLIST

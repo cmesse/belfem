@@ -140,3 +140,32 @@ memory for commits after 2026-10-05 is stale; the bundle maps them. Every other 
 Gregory's, the CI runner's, the two sibling worktrees — must hard-reset or re-clone; GitLab keeps
 the old objects until its housekeeping runs. The uncommitted fix of this session was backed up
 file by file before the rewrite and restored byte-identical afterwards.
+
+## Addendum, late evening: DR-194, DR-197, DR-195 and DR-113 closed; the release gate started
+
+On Christian's autopilot ruling the two latent rows of the NI-coil campaign were fixed through the
+standing loop (plan `todo/closed/dr194_dr197_small_fixes.md`, exchange
+`tmp/ai_exchange/review_dr194_dr197.md`, juries astra/high + grok-4.7/high on plan and code, no
+P0; three text-level points of the code round applied: guard message, header contract sentence,
+license block). DR-194: `ThinShellFactory::update_node_facet_tables` walks the duplicates of the
+original in all five loops and refuses, in setup code, to add a facet to a full container
+(`Vertex::facet_capacity()` new); the function is `public static` so the production body is
+tested on hand-built nodes — the duplicate-valued case throws on HEAD (the release fault is a store
+through a null container, Grok's correction of the row's "overflow"). DR-197: `~CutFactory`
+deletes only the owning temporary sidesets and the restore nulls each slot after its delete; the
+unwind test (`duplicate_and_relink_facets()` then destruction without `run()`) is a SEGV and four
+valgrind contexts on HEAD, 0 errors with the fix in the `/opt/scls/debug` tree, whole suite and
+baseline 0. Gates: `test_fem` 321/321, `test_homology` 41/41, `make check` 17/17 zero warnings,
+NI F deck smoke unchanged. DR-195 struck by documentation (usage guide §8.1). DR-113 struck on
+the DrClean session's run evidence (its text, folded into this commit's register edit on its
+request). DR-193 planned (`todo/dr193_usermat_table_extension.md`), DR-196 waits for Gregory.
+
+Coordination: `main` is pinned at v0.9.2 by the Server session (it mirrors to public GitHub at
+02:00), devel only; the Server session's blind xhigh audit of c1d2bf7 raised three points
+(cross-class periodic refusal message and test, first-facet master type, append order from an
+unordered map) that await Christian's ruling — no code change. The Server session also asked, on
+Christian's word, for the shipped decks whose connectivity c1d2bf7 changes to be run against a
+f9b9421 reference (rlc_circuit, tapestack2d_racetrack, tapestack3d, tapestack3d_quench, pancake,
+helix, racetrack_usermat, pancake_tape); that gate is running in Claude's scratchpad as this is
+written and is reported in the next entry. Christian's new close-out rule applies from this
+session: say which register rows filed in the session are still open.

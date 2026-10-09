@@ -64,12 +64,10 @@ namespace belfem
         {
             for (  SideSet * tSideSet: mTemporaryThinShellSidesets  )
             {
-                Cell< Facet * > & tFacets = tSideSet->facets() ;
-                for ( Facet * tFacet : tFacets )
+                if ( tSideSet != nullptr )
                 {
-                    delete tFacet ;
+                    delete tSideSet ;
                 }
-                delete tSideSet ;
             }
             for ( auto tPair : mIndicesOfOriginalTerminalNodes )
             {
@@ -460,7 +458,7 @@ namespace belfem
         {
             id_t tID = mMesh->max_block_and_sideset_id() ;
 
-            for ( SideSet * tTemp : mTemporaryThinShellSidesets )
+            for ( SideSet * & tTemp : mTemporaryThinShellSidesets )
             {
                 SideSet * tSideSet = mMesh->sideset( tTemp->id() );
 
@@ -487,6 +485,7 @@ namespace belfem
 
                 tTemp->reset_facet_container();
                 delete tTemp;
+                tTemp = nullptr ;
             }
             mTemporaryThinShellSidesets.clear();
         }

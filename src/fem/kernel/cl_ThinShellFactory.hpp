@@ -391,6 +391,17 @@ namespace belfem
             void
             unflag_periodic_nodes();
 
+            /**
+             * rebuilds the facet containers of every node of aNodes, of its
+             * original and of all duplicates of that original, from aFacets.
+             * aNodes must cover the originals of all nodes of aFacets. On
+             * return the node indices are restored and flag slot 2 is clear
+             * on all of these nodes; a refused call leaves slot 2 set. Uses
+             * no factory state
+             */
+            static void
+            update_node_facet_tables( Cell< Node * > & aNodes, Cell< Facet * > & aFacets );
+
 //------------------------------------------------------------------------------
             private :
 //------------------------------------------------------------------------------
@@ -673,9 +684,6 @@ namespace belfem
 
             void
             update_node_edge_tables( Cell< Node * > & aNodes, Cell< Edge * > & aEdges );
-
-            void
-            update_node_facet_tables( Cell< Node * > & aNodes, Cell< Facet * > & aFacets );
 
             void
             flag_layer_nodes( Cell< Node * > & aNodes, Cell< Layer * > & aLayers );

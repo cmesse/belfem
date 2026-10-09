@@ -181,6 +181,9 @@ namespace belfem
             virtual uint
             number_of_facets() const ;
 
+            uint16_t
+            facet_capacity() const ;
+
             virtual Facet *
             facet( const uint aIndex );
 
@@ -332,6 +335,14 @@ namespace belfem
         Vertex::number_of_facets() const
         {
             return mFacetCounter ;
+        }
+
+//------------------------------------------------------------------------------
+
+        inline uint16_t
+        Vertex::facet_capacity() const
+        {
+            return mFacetCapacity ;
         }
 
 //------------------------------------------------------------------------------

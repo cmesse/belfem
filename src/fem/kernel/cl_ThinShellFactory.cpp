@@ -2768,9 +2768,9 @@ namespace belfem
                     tOrg->allocate_facet_container();
                     tOrg->flag( 2 );
                 }
-                for ( uint d=0; d<tNode->number_of_duplicates(); ++d )
+                for ( uint d=0; d<tOrg->number_of_duplicates(); ++d )
                 {
-                    Node * tDup = tNode->duplicate( d ) ;
+                    Node * tDup = tOrg->duplicate( d ) ;
                     if ( ! tDup->is_flagged( 2 ) )
                     {
                         tDup->allocate_facet_container();
@@ -2784,11 +2784,18 @@ namespace belfem
                 for ( uint k=0; k<tFacet->number_of_nodes(); ++k )
                 {
                     Node * tOrg = tFacet->node( k )->original();
+                    BELFEM_ERROR( tOrg->number_of_facets() < tOrg->facet_capacity(),
+                        "facet container of node %lu is full before all facets are added",
+                        ( long unsigned int ) tOrg->id() );
                     tOrg->add_facet( tFacet );
 
                     for ( uint d=0; d<tOrg->number_of_duplicates(); ++d )
                     {
-                        tOrg->duplicate( d )->add_facet( tFacet );
+                        Node * tDup = tOrg->duplicate( d ) ;
+                        BELFEM_ERROR( tDup->number_of_facets() < tDup->facet_capacity(),
+                            "facet container of node %lu is full before all facets are added",
+                            ( long unsigned int ) tDup->id() );
+                        tDup->add_facet( tFacet );
                     }
                 }
             }
@@ -2800,9 +2807,9 @@ namespace belfem
                 tNode->set_index( tIndices( tCount++ ) );
                 Node * tOrg = tNode->original() ;
                 tOrg->unflag( 2 );
-                for ( uint d=0; d<tNode->number_of_duplicates(); ++d )
+                for ( uint d=0; d<tOrg->number_of_duplicates(); ++d )
                 {
-                    tNode->duplicate( d )->unflag( 2 );
+                    tOrg->duplicate( d )->unflag( 2 );
                 }
             }
         }

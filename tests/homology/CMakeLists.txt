@@ -11,6 +11,7 @@ set( SOURCES
         test_CohomologyPeriodic.cpp
         test_CutData.cpp
         test_CutFactory_closed_rim.cpp
+        test_CutFactory_unwind.cpp
         test_InterfaceProcessor.cpp
         )
 

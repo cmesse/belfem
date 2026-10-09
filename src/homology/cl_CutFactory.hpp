@@ -56,6 +56,10 @@ namespace belfem
 
             Cell< SideSet * > mThinShellBoundaries ;
             Cell< SideSet * > mCuts ;
+
+            // owned: each holds the original facets of a thin-shell sideset
+            // between duplicate_and_relink_facets() and the restore, and
+            // deletes them with itself. A restored slot is nullptr
             Cell< SideSet * > mTemporaryThinShellSidesets ;
 
             //Cell<Cell< id_t >> mCurrentTerminals ;
