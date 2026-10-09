@@ -486,9 +486,28 @@ namespace belfem
                 && mMesh->block( aFacet->slave()->block_id() )->domain_type() == DomainType::Coil ;
         }
 
+        const char *
+        InterfaceProcessor::not_interface_reason( Facet * aFacet ) const
+        {
+            BELFEM_ASSERT( ! this->duplicates_at( aFacet ), "facet %lu is an interface facet",
+                ( long unsigned int ) aFacet->id() );
+
+            if ( ! aFacet->has_slave() ) return "a boundary facet without a neighbor" ;
+
+            if ( mIsAirBlock.test( mBlockIndices( aFacet->master()->block_id() ) )
+              && mIsAirBlock.test( mBlockIndices( aFacet->slave()->block_id() ) ) )
+            {
+                return "both sides are air" ;
+            }
+            return "neither side is air or ferro" ;
+        }
+
         void
         InterfaceProcessor::refuse_mixed_sidesets() const
         {
+            // four passes in a fixed order, each over the whole sideset
+            // before the next, so that the class of a refusal is a function
+            // of the facet set; which facets are named may follow the order
             for ( index_t s = 0; s < mNumOriginalSidesets; ++s )
             {
                 SideSet * tSideSet = mMesh->sidesets()( s );
@@ -506,15 +525,11 @@ namespace belfem
                 }
                 if ( ! tInterface ) continue;
 
-                // one master domain type, and one coil treatment, over the
-                // facets that have a slave
+                // pass 1: one master domain type over the facets with a slave
                 Facet * tFirst = nullptr ;
                 DomainType tType = DomainType::UNDEFINED ;
-                bool tCoil = false ;
-
                 for ( Facet * tFacet : tSideSet->facets() )
                 {
-                    // boundary facets take no part
                     if ( ! tFacet->has_slave() ) continue;
 
                     DomainType tMaster = mMesh->block( tFacet->master()->block_id() )->domain_type() ;
@@ -523,7 +538,6 @@ namespace belfem
                     {
                         tFirst = tFacet ;
                         tType  = tMaster ;
-                        tCoil  = this->touches_coil( tFacet );
                         continue;
                     }
 
@@ -536,6 +550,21 @@ namespace belfem
                         ( long unsigned int ) tFacet->id(),
                         ( long unsigned int ) tFacet->master()->id(),
                         domain_type_label( tMaster ).c_str() );
+                }
+
+                // pass 2: one coil treatment over the facets with a slave
+                tFirst = nullptr ;
+                bool tCoil = false ;
+                for ( Facet * tFacet : tSideSet->facets() )
+                {
+                    if ( ! tFacet->has_slave() ) continue;
+
+                    if ( tFirst == nullptr )
+                    {
+                        tFirst = tFacet ;
+                        tCoil  = this->touches_coil( tFacet );
+                        continue;
+                    }
 
                     BELFEM_ERROR( this->touches_coil( tFacet ) == tCoil,
                         "interface sideset %lu mixes facets that touch a coil block with facets that do not: facet %lu ( element %lu ) %s, facet %lu ( element %lu ) %s; split the sideset so that the facets touching a coil form a sideset of their own",
@@ -548,9 +577,9 @@ namespace belfem
                         tCoil ? "touches no coil" : "touches a coil" );
                 }
 
-                // an interface sideset consists of interface facets only:
-                // the topology classifies it and the coupling walks it as a
-                // whole, and the processor duplicates every facet's nodes
+                // pass 3: an interface sideset consists of interface facets
+                // only: the topology classifies it and the coupling walks it
+                // as a whole, and the processor duplicates every facet's nodes
                 Facet * tDup = nullptr ;
                 Facet * tOther = nullptr ;
                 for ( Facet * tFacet : tSideSet->facets() )
@@ -572,9 +601,9 @@ namespace belfem
                     ( long unsigned int ) tDup->master()->id(),
                     ( long unsigned int ) tOther->id(),
                     ( long unsigned int ) tOther->master()->id(),
-                    tOther->has_slave() ? "neither side is air or ferro" : "a boundary facet without a neighbor" );
+                    this->not_interface_reason( tOther ) );
 
-                // private copies ( non-conductor masters ) are relinked
+                // pass 4: private copies ( non-conductor masters ) are relinked
                 // into the set's master block only, so one block per sideset
                 if ( tType == DomainType::Conductor ) continue;
 

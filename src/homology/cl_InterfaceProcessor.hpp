@@ -146,13 +146,14 @@ namespace belfem
             // duplicates; the mesh owns the copies
             //
             // Copy numbering: copies are allocated set by set, in the sets'
-            // order ( the sorted hex strings of the block-index bitsets, a
-            // fixed function of the mesh's block order ), and within a set
-            // in ascending id of the original; a shared copy is allocated by
-            // the first set that reaches the original. They are appended to
-            // the mesh in ascending copy id, which is the allocation order.
-            // Both follow from the block order, the set order and the
-            // original ids alone, never from the iteration order of a Map
+            // order ( the sorted keys hex( master blocks )|hex( slave
+            // blocks ) of the block-index bitsets, a fixed function of the
+            // mesh's block order ), and within a set in ascending id of the
+            // original; a shared copy is allocated by the first set that
+            // reaches the original. They are appended to the mesh in
+            // ascending copy id, which is the allocation order. Both follow
+            // from the block order, the set order and the original ids
+            // alone, never from the iteration order of a Map
             Map< id_t, Node * > mSharedDuplicates ;
 
 //-----------------------------------------------------------------------------
@@ -185,13 +186,20 @@ namespace belfem
             bool
             touches_coil( Facet * aFacet ) const ;
 
+            // why aFacet is no interface facet: no slave, both sides air,
+            // or neither side air or ferro
+            const char *
+            not_interface_reason( Facet * aFacet ) const ;
+
             // every sideset with a facet this processor duplicates at must
             // have masters of one domain type on all its facets that have a
             // slave, its facets must agree on touching a coil, every one of
             // its facets must be duplicated at, and if its copies are private
             // ( non-conductor masters ) they must lie on one master block;
-            // runs before any sideset is admitted and before any copy is
-            // allocated
+            // checked in that order, each check over the whole sideset, so
+            // the class of a refusal does not depend on the facet order;
+            // runs before any sideset is admitted and before any interface
+            // copy is allocated
             void
             refuse_mixed_sidesets() const ;
 

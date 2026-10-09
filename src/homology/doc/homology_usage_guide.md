@@ -1598,48 +1598,65 @@ Constructor performs full interface processing pipeline:
    the interface has one domain type and the same treatment on both sides. The plain
    "not duplicated in any interface set" refusal remains for a partner that lies on no interface
    set at all.
-   Two rules come first. First, every interface sideset, that is, every sideset with a facet
-   this processor duplicates at (one side air or ferro, but not both air), must have one master
-   domain type on all facets that have a slave. A sideset without such a facet is left alone.
+   Two rules govern this process. First, every interface sideset, that is, every sideset with a
+   facet this processor duplicates at (one side air or ferro, but not both air), must have one
+   master domain type on all facets that have a slave. A sideset without such a facet is left
+   alone.
+
    A sideset used to be admitted to an interface set, and the set classified as shared or
-   private and paired across a periodic plane, by its first facet alone, so a sideset that
-   grouped a conductor|air facet with a ferro|air or air|air facet was handled according to
-   whichever facet came first. `refuse_mixed_sidesets` now checks every sideset present
-   before cut processing (generated cut sidesets are not examined, and thin-shell sidesets
-   have no slave by then), before any sideset is admitted and before any copy exists. If it
-   finds a mismatch, it reports the sideset id, the two domain types (name and enumerator
-   value, since several types print under one name), the two facets with their master
-   elements, and the remedy: split the sideset so that each piece has one master domain type.
-   This also refuses a surface that is an interface over only part of its area, such as a
-   gmsh surface with conductor|air facets and air|air facets, in either facet order. The
-   remedy is the same: split the surface. A conductor sideset spanning several conductor
-   blocks remains accepted: its copies are shared, and the conductor sweep installs them in
-   every block. A ferro, buffer, or coil sideset must lie on one master block because its
-   copies are private to the set and only that block is relinked. A sideset spanning several
-   such blocks is refused with a facet from each block and the remedy: use one sideset per
-   block. The same check refuses a sideset whose facets do not all agree on whether they
-   touch a coil block, because a set is either decoupled or tied as a whole. The facets
-   touching the coil must form a sideset of their own. An interface sideset must consist of
-   interface facets only: one that also holds a boundary facet, or a face between two
-   conductor blocks, is refused with a facet of each kind, because the topology classifies the
-   sideset and the coupling walks it as a whole. A sideset is admitted when any of its facets
-   is one that the processor duplicates at, and it is keyed by the master blocks and the slave
-   blocks of all its facets, so neither admission nor the set a sideset joins depends on the
-   order of its facets, and two sidesets with different master blocks never share a set.
+   private and paired across a periodic plane, based only on its first facet. Thus, a sideset
+   that grouped a conductor|air facet with a ferro|air or air|air facet was handled according
+   to whichever facet came first. `refuse_mixed_sidesets` now checks every sideset that existed
+   before `CutProcessor` ran. Generated cut sidesets are not examined, and thin-shell sidesets
+   have no slave by then. The check runs before any sideset is admitted and before any
+   interface copy exists (the cut copies already do).
+
+   If the check finds a mismatch, it reports the sideset id, the two domain types (name and
+   enumerator value, since several types print under one name), the two facets with their
+   master elements, and the remedy: split the sideset so that each piece has one master
+   domain type. The same check refuses a surface that is an interface over only part of its
+   area, such as a gmsh surface with conductor|air facets and air|air facets, regardless of
+   facet order. The remedy is the same: split the surface.
+
+   A conductor sideset spanning several conductor blocks remains accepted. Its copies are
+   shared, and the conductor sweep installs them in every block. A ferro, buffer, or coil
+   sideset must lie on one master block because its copies are private to the set and only
+   that block is relinked. A sideset spanning several such blocks is refused with a facet
+   from each block and the remedy: use one sideset per block.
+
+   The same check refuses a sideset whose facets do not all agree on whether they touch a coil
+   block, because a set is either decoupled or tied as a whole. The facets touching the coil
+   must form a sideset of their own. An interface sideset must contain interface facets only.
+   A sideset that also contains a boundary facet, or a face between two conductor blocks, is
+   refused with a facet of each kind, because the topology classifies the sideset and the
+   coupling walks it as a whole.
+
+   The four checks run in that order, each over the whole sideset before the next begins. As a
+   result, the class of a refusal is the same whichever facet comes first. A sideset is
+   admitted when any of its facets is one that the processor duplicates at (after these
+   checks, all of them are). It is keyed by the set of its master blocks and the set of its
+   slave blocks. Therefore, neither admission nor the set a sideset joins depends on facet
+   order, and two sidesets with different keys never share a set. An existing `.bfm` next to
+   the deck skips all of this: it replays the enrichment it was written with.
+
    Second, interface-copy numbering is a function of the mesh alone. Copies are allocated one
-   set at a time, in set order (the sorted block-index bitsets, a fixed function of the mesh's
-   block order), and within each set in ascending order of the original id. A shared conductor
-   copy is allocated by the first set that reaches the original. Copies are appended to the
-   mesh in ascending copy-id order, which is the allocation order. Periodic pairs are backed
-   up set by set: first, all pairs tied within one set, in ascending order of the original id;
-   then the next set; finally, pairs tied across sets, again set by set and in ascending
-   order. The maps that hold originals and copies are hash maps, but their iteration order
-   never reaches the mesh. Therefore, interface-copy ids and positions are the same on every
-   platform for the same mesh file. The cut copies are not deterministic yet:
-   `CutProcessor::collect_duplicates` still appends each cut set's copies in hash order, and
-   those nodes precede the interface copies. Consequently, edge ids and dof numbering for a
-   model with cuts still depend on the platform's hash table. This remains work for after
-   0.9.3.
+   set at a time, in set order: the sorted keys hex(master blocks)|hex(slave blocks) of the
+   block indices, which are a fixed function of the mesh's block order. Within each set, copies
+   are allocated in ascending order of the original id. A shared conductor copy is allocated
+   by the first set that reaches the original.
+
+   Copies are appended to the mesh in ascending copy-id order, which is the allocation order.
+   Periodic pairs are backed up set by set: first, all pairs tied within one set, in ascending
+   order of the original id; then the next set; finally, pairs tied across sets, again set by
+   set and in ascending order. The maps that hold originals and copies are hash maps, but
+   their iteration order never reaches the mesh. Therefore, interface-copy ids and positions
+   are the same on every platform for the same incoming node order.
+
+   The cut copies are not there yet: `CutProcessor` hands out their ids in a sorted walk, but
+   `collect_duplicates` still appends them in the hash order of each cut set's duplicate map.
+   They precede the interface copies, so their positions, along with the edge ids and dof
+   numbering built from those positions, still depend on the platform. This remains work for
+   after 0.9.3.
 5. Ties each duplicate to its original (`InterfaceTreatment::TieWeight1`) or decouples it when a coil touches the interface (`InterfaceTreatment::Decouple`)
 
 **Helper class: InterfaceSet**

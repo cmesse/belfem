@@ -718,25 +718,32 @@ the domain name.
 | `thinshell`, `tape`, `shell` | sidesets | `sideset`/`sidesets` | from `layers` |
 | `curve`/`curves`, `periodic` | special (below) | | |
 
-**One master domain type per interface sideset.** An interface sideset has a facet between
-two domain types that receive interface copies, for example a conductor, ferro, buffer, or
-coil block against an air or ferro block. It is typed by the master side of its facets, and
-every facet in one such sideset must have a master of the same domain type. A sideset that
-groups, for example, a conductor|air facet with a ferro|air or air|air facet is refused during
-setup, before any interface copy exists. The error reports the sideset id, both domain types,
-and the two facets with their master elements
+**One master domain type per interface sideset.** An interface sideset has a facet between two
+domain types that receive interface copies, for example, a conductor, ferro, buffer, or coil
+block against an air or ferro block. It is typed by the master side of its facets, and every
+facet in one such sideset must have a master of the same domain type.
+
+A sideset that groups, for example, a conductor|air facet with a ferro|air or air|air facet is
+refused during setup, before any interface copy exists. The error reports the sideset id, both
+domain types, and the two facets with their master elements
 (`InterfaceProcessor::refuse_mixed_sidesets`). A surface that is an interface over only part
 of its area, with air|air facets elsewhere, is refused in the same way, regardless of which
-facet comes first. An interface sideset must consist of interface facets only: one that also
-holds a boundary facet, or a face between two conductor blocks, is refused. The same check
-refuses a sideset whose facets do not all agree on whether they touch a coil block. It also refuses a
+facet comes first.
+
+An interface sideset must consist of interface facets only. A sideset that also holds a
+boundary facet, or a face between two conductor blocks, is refused. The same check refuses a
+sideset whose facets do not all agree on whether they touch a coil block. It also refuses a
 ferro, buffer, or coil sideset whose facets lie on more than one block of that type, because
-its interface copies are private to one block. Split such a sideset so that each piece has
-one master domain type, lies on one block unless it is a conductor sideset, and either
-touches a coil or does not. A conductor sideset spanning several conductor blocks, such as
-one solder/air contact over many solder blocks, is accepted. The order of facets in a sideset
-does not matter. An existing `.bfm` next to the deck skips these checks and replays the
-numbering stored in that file; delete it to apply the checks.
+its interface copies are private to one block.
+
+Split such a sideset so that each piece has one master domain type, lies on one block unless it
+is a conductor sideset, and either touches a coil or does not. A conductor sideset spanning
+several conductor blocks, such as one solder/air contact over many solder blocks, is accepted.
+The order of facets in a sideset does not matter, nor does which refusal is reported when
+several apply.
+
+An existing `.bfm` next to the deck skips these checks and replays the numbering stored in that
+file; delete it to apply the checks.
 
 **`coil` and `air` blocks are magnetically inert, and that is deliberate.** They
 take no `material` key, and if one is supplied it is silently ignored:

@@ -51,11 +51,12 @@ the affected path now produces a different, correct answer.
   interface processor makes of the nodes on a conductor|air, ferro|air, conductor|ferro or
   coil interface are now allocated set by set and in ascending id of the original, and appended
   to the mesh in that order; 0.9.2 handed out their ids and positions in the iteration order
-  of a hash map, which differs between platforms. The ids and positions of the interface copies
-  differ from 0.9.2 and are now the same on every platform for the same mesh file; results
-  agree to round-off. The copies that the cut processor makes are still appended in hash
-  order and precede the interface copies, so the edge ids and the dof numbering of a model
-  with cuts still depend on the platform. A `.bfm` written by an earlier build is
+  of a hash map, which differs between platforms. The ids and positions of the interface
+  copies differ from 0.9.2 and are now the same on every platform for the same incoming node
+  order; sets are ordered by the key hex(master blocks)|hex(slave blocks) of their block
+  indices. The copies that the cut processor makes get deterministic ids but are still
+  appended in hash order and precede the interface copies, so their positions, and the edge
+  ids and the dof numbering of a model with cuts, still depend on the platform. A `.bfm` written by an earlier build is
   still reused, because its key (the base-mesh checksum and the topology tag) does not change,
   and then replays the old numbering and skips the setup refusals; delete it before rerunning
   a deck.
@@ -131,8 +132,10 @@ message naming the problem. None of the shipped decks is affected.
   interface copies are private to one block, and 0.9.2 relinked the first facet's block only,
   leaving the others unsplit from the air. An interface sideset that also holds a boundary
   facet or a face between two conductor blocks is refused too; 0.9.2 dropped or admitted it by
-  its first facet. A sideset is admitted when any of its facets is an interface, where 0.9.2
-  looked at the first facet only.
+  its first facet. A sideset is admitted when any of its facets is an interface and refused
+  unless all of them are, where 0.9.2 looked at the first facet only — a new restriction
+  against 0.9.2, since a surface that is an interface over part of its area was accepted by
+  facet order before.
 - A periodic node pair whose interface copies lie on tie-weight interface sets of different
   master domain type (a conductor|air set against a buffer|air, ferro|air or air-master set) or
   on sets of different treatment (a coil touching the interface on one side of the plane only),
