@@ -966,7 +966,17 @@ system. **As of 2026-08-28 the bearing is OPTIONAL:** when no bearing section
 is present, gauge pinning is automatic — one pin per connected φ component
 (the air region and each enclosed buffer patch), chosen as the node farthest
 from any sideset, computed once on the fresh mesh and persisted in the `.bfm`
-(dataset `pinned`), so reloaded meshes keep their pins. A deck-written
+(dataset `pinned`), so reloaded meshes keep their pins. **A component whose φ
+is already fixed gets no pin:** an `air`, `buffer` or `ferro symmetry` plane
+and a `dirichlet` sideset each fix φ on their nodes, and a
+second condition at an interior node of the same component would not select
+the gauge but constrain the field (it forces the magnetomotive force between
+the plane and the pin to zero, and the solver answers with a spurious point
+source at the pin). The decision is taken when the pins are imposed, on the
+full mesh, so it also covers the pins stored in an existing `.bfm` and a
+`dirichlet` condition added or removed under a cached mesh; the setup log
+names each pin it fixes and each component it leaves to its plane.
+Antisymmetry planes fix nothing and keep their pin. A deck-written
 bearing takes precedence and **disables all automatic pins** — including the
 buffer-patch anchors, which then float. **Writing a bearing by hand is an
 expert function and is not recommended.** The automatic pinning covers every

@@ -1601,7 +1601,12 @@ sections:
         with no bearing section, gauge pinning is automatic — one pin per
         connected phi component, node farthest from any sideset
         (MaxwellFactory::find_autopins, DR-126), persisted in the .bfm
-        (anchor: '"pinned"', cl_Mesh_BfmFile.cpp). A deck bearing takes
+        (anchor: '"pinned"', cl_Mesh_BfmFile.cpp). A component whose phi is
+        already fixed by an air/buffer/ferro symmetry plane or a dirichlet
+        sideset gets NO pin: the rule runs at imposition on
+        the full master mesh (anchor: 'impose_autopins', cl_MaxwellFactory.cpp),
+        so it covers pins stored in an existing .bfm; antisymmetry planes fix
+        nothing and keep their pin. A deck bearing takes
         precedence and disables ALL automatic pins (anchor: '"tHaveBearing"',
         cl_MaxwellFactory.cpp) — buffer patches then float. Writing a bearing
         by hand is an EXPERT function and is NOT recommended: it names one

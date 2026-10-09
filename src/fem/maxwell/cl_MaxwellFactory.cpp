@@ -943,37 +943,7 @@ namespace belfem
 
         if ( ! tHaveBearing )
         {
-            for ( mesh::Node * tNode : mMesh->autopins() )
-            {
-                Dof * tDof = reinterpret_cast< Dof * >( tNode->dof( 0 ) ) ;
-
-                if ( tDof->is_hanging() )
-                {
-                    bool tFoundNodeSource = false ;
-                    for ( uint k=0; k<tDof->number_of_sources() ; ++k )
-                    {
-                        Dof * tOther = tDof->source( k ) ;
-                        if ( tOther->entity_type() == EntityType::NODE )
-                        {
-                            if ( ! tOther->is_fixed() )
-                            {
-                                tOther->fix( 0.0 ) ;
-                            }
-                            tFoundNodeSource = true ;
-                            break ;
-                        }
-                    }
-                    BELFEM_ERROR( tFoundNodeSource, "Node %lu seems to be hanging, but no source seems to be a node." ,
-                        ( long unsigned int ) tNode->id() );
-                }
-                else if ( ! tDof->is_fixed() )
-                {
-                    // the regular case: an interior, free phi dof.
-                    // ( an already-fixed dof keeps its value — e.g. a
-                    // Dirichlet sideset got there first )
-                    tDof->fix( 0.0 ) ;
-                }
-            }
+            this->impose_autopins();
 
             // backwards compatibility: a .bfm written before the autopin
             // feature carries no "pinned" data, and without a bearing in
@@ -3941,6 +3911,252 @@ namespace belfem
 
             mMesh->update_node_indices() ;
 
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        MaxwellFactory::impose_autopins()
+        {
+            Cell< mesh::Node * > & tPins = mMesh->autopins() ;
+
+            // the pins live on the master mesh only ( the distributor ships
+            // none ); the dirichlet synchronization of the dof manager carries
+            // the fix to the workers
+            if ( tPins.size() == 0 )
+            {
+                return ;
+            }
+
+            BELFEM_ERROR( mCommRank == 0,
+                "automatic gauge pins exist only on the master mesh" );
+
+            // scratch: element flag 0 marks the phi blocks, node flag 1 the
+            // nodes whose phi is already fixed, node flag 0 the visited nodes
+            // of one search. All three are cleared before and after
+            mMesh->unflag_all_elements();
+            mMesh->unflag_all_nodes( 0 );
+            mMesh->unflag_all_nodes( 1 );
+
+            for ( mesh::Block * tBlock : mMesh->blocks() )
+            {
+                if (    tBlock->domain_type() == DomainType::Buffer
+                     || tBlock->domain_type() == DomainType::Air
+                     || tBlock->domain_type() == DomainType::Ferro )
+                {
+                    for ( mesh::Element * tElement : tBlock->elements() )
+                    {
+                        tElement->flag();
+                    }
+                }
+            }
+
+            // every contact that fixes phi before the pins are imposed: the
+            // symmetry planes, read from the master mesh by domain type ( the
+            // dof-manager groups hold only the facets this rank owns ), and
+            // the dirichlet sidesets of the deck. Either fixes the dof of
+            // each of its non-duplicate nodes ( the alias fix of a duplicate
+            // is inert, see SideSet::impose_dirichlet ). A gauge condition is
+            // not a contact: it fixes its nodes only when the timestep is
+            // initialized, after the free/fixed split
+            Cell< mesh::SideSet * > tContacts ;
+
+            for ( mesh::SideSet * tSideSet : mMesh->sidesets() )
+            {
+                switch ( tSideSet->domain_type() )
+                {
+                    case DomainType::AirSymmetry :
+                    case DomainType::BufferSymmetry :
+                    case DomainType::FerroSymmetry :
+                    {
+                        tContacts.push( tSideSet );
+                        break ;
+                    }
+                    default :
+                    {
+                        break ;
+                    }
+                }
+            }
+
+            for ( PhysicalBoundaryCondition * tBC : mBoundaryConditionFactory->boundary_conditions() )
+            {
+                if ( tBC->type() == BoundaryConditionType::Dirichlet )
+                {
+                    for ( id_t tID : tBC->domains() )
+                    {
+                        BELFEM_ERROR( mMesh->sideset_exists( tID ),
+                            "dirichlet target invalid: sideset %lu does not exist on the mesh",
+                            ( long unsigned int ) tID );
+
+                        tContacts.push( mMesh->sideset( tID ) );
+                    }
+                }
+            }
+
+            for ( mesh::SideSet * tSideSet : tContacts )
+            {
+                for ( mesh::Node * tNode : tSideSet->nodes() )
+                {
+                    if ( ! tNode->is_duplicate() )
+                    {
+                        tNode->flag( 1 );
+                    }
+                }
+            }
+
+            // the queue of one search, reused across the pins
+            Cell< mesh::Node * > tVisited ;
+
+            for ( mesh::Node * tNode : tPins )
+            {
+                mesh::Node * tContact = this->find_fixed_phi_contact( tNode, tVisited );
+
+                for ( mesh::Node * tOther : tVisited )
+                {
+                    tOther->unflag( 0 );
+                }
+
+                if ( tContact != nullptr )
+                {
+                    id_t tSideSetID = gNoID ;
+                    for ( mesh::SideSet * tSideSet : tContacts )
+                    {
+                        for ( mesh::Node * tOther : tSideSet->nodes() )
+                        {
+                            if ( tOther == tContact )
+                            {
+                                tSideSetID = tSideSet->id();
+                                break ;
+                            }
+                        }
+                        if ( tSideSetID != gNoID )
+                        {
+                            break ;
+                        }
+                    }
+
+                    message( InfoLevel::Default,
+                        "    no automatic gauge pin for the phi component of node %lu: phi is already fixed at node %lu ( sideset %lu )",
+                        ( long unsigned int ) tNode->id(),
+                        ( long unsigned int ) tContact->id(),
+                        ( long unsigned int ) tSideSetID );
+                    continue ;
+                }
+
+                message( InfoLevel::Default,
+                    "    automatic gauge pin: node %lu",
+                    ( long unsigned int ) tNode->id() );
+
+                Dof * tDof = reinterpret_cast< Dof * >( tNode->dof( 0 ) ) ;
+
+                if ( tDof->is_hanging() )
+                {
+                    bool tFoundNodeSource = false ;
+                    for ( uint k=0; k<tDof->number_of_sources() ; ++k )
+                    {
+                        Dof * tOther = tDof->source( k ) ;
+                        if ( tOther->entity_type() == EntityType::NODE )
+                        {
+                            if ( ! tOther->is_fixed() )
+                            {
+                                tOther->fix( 0.0 ) ;
+                            }
+                            tFoundNodeSource = true ;
+                            break ;
+                        }
+                    }
+                    BELFEM_ERROR( tFoundNodeSource, "Node %lu seems to be hanging, but no source seems to be a node." ,
+                        ( long unsigned int ) tNode->id() );
+                }
+                else if ( ! tDof->is_fixed() )
+                {
+                    // the regular case: an interior, free phi dof.
+                    // ( an already-fixed dof keeps its value — e.g. a
+                    // Dirichlet sideset got there first )
+                    tDof->fix( 0.0 ) ;
+                }
+            }
+
+            mMesh->unflag_all_elements();
+            mMesh->unflag_all_nodes( 0 );
+            mMesh->unflag_all_nodes( 1 );
+        }
+
+//------------------------------------------------------------------------------
+
+        mesh::Node *
+        MaxwellFactory::find_fixed_phi_contact(
+                mesh::Node           * aPin,
+                Cell< mesh::Node * > & aVisited )
+        {
+            aVisited.clear();
+
+            mesh::Node * tStart = aPin->original() ;
+            tStart->flag( 0 );
+            aVisited.push( tStart );
+
+            // breadth first over the phi component, with the adjacency of
+            // find_autopins: the flagged elements of the node, of its
+            // duplicates, of its periodic partner and of the partner's
+            // duplicates. The queue is the visited list
+            index_t k = 0 ;
+            while ( k < aVisited.size() )
+            {
+                mesh::Node * tNode = aVisited( k++ );
+
+                if ( tNode->is_flagged( 1 ) )
+                {
+                    return tNode ;
+                }
+
+                this->push_phi_neighbors( tNode, aVisited );
+
+                for ( uint d=0; d<tNode->number_of_duplicates(); ++d )
+                {
+                    this->push_phi_neighbors( tNode->duplicate( d ), aVisited );
+                }
+
+                if ( tNode->is_periodic() )
+                {
+                    mesh::Node * tPeriodic = tNode->periodic()->original();
+
+                    this->push_phi_neighbors( tPeriodic, aVisited );
+
+                    for ( uint d=0; d<tPeriodic->number_of_duplicates(); ++d )
+                    {
+                        this->push_phi_neighbors( tPeriodic->duplicate( d ), aVisited );
+                    }
+                }
+            }
+
+            return nullptr ;
+        }
+
+//------------------------------------------------------------------------------
+
+        void
+        MaxwellFactory::push_phi_neighbors(
+                mesh::Node           * aNode,
+                Cell< mesh::Node * > & aVisited )
+        {
+            for ( uint e=0; e<aNode->number_of_elements(); ++e )
+            {
+                mesh::Element * tElement = aNode->element( e );
+
+                if ( ! tElement->is_flagged() ) continue;
+
+                for ( uint k=0; k<tElement->number_of_nodes(); ++k )
+                {
+                    mesh::Node * tOther = tElement->node( k )->original() ;
+
+                    if ( ! tOther->is_flagged( 0 ) )
+                    {
+                        tOther->flag( 0 );
+                        aVisited.push( tOther );
+                    }
+                }
+            }
         }
 
     }

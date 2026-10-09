@@ -147,8 +147,9 @@ how the mesh was written, not of the format version.
 
 ### Do not write a `bearing`
 
-Gauge pinning is automatic: BELFEM sets one pin per connected φ component and persists it in
-the `.bfm`, so no deck here writes a `bearing` any more. The key still works, but a
+Gauge pinning is automatic: BELFEM sets one pin per connected φ component, except in a
+component whose φ a symmetry plane or a `dirichlet` sideset already fixes, and persists the
+candidates in the `.bfm`, so no deck here writes a `bearing` any more. The key still works, but a
 hand-written `bearing { nodes : … ; }` **replaces** the automatic pins rather than adding to
 them — every φ component the deck does not name is then left floating. It is an expert
 function and is not recommended; `doc/input_file_reference.md` has the details.

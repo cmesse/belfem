@@ -377,6 +377,40 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+            /**
+             * fixes the automatic gauge pins on the master mesh, one per
+             * connected phi component, except in a component whose phi is
+             * already fixed by a symmetry plane or a dirichlet sideset.
+             * Called when the deck has no bearing
+             */
+            void
+            impose_autopins();
+
+//------------------------------------------------------------------------------
+
+            /**
+             * walks the phi component of aPin and returns the first node
+             * flagged on plane 1 ( a fixed phi ), or nullptr. Element flag 0
+             * must mark the phi blocks. aVisited is the queue and, on return,
+             * the list of nodes flagged on plane 0 by this search
+             */
+            mesh::Node *
+            find_fixed_phi_contact(
+                    mesh::Node           * aPin,
+                    Cell< mesh::Node * > & aVisited );
+
+//------------------------------------------------------------------------------
+
+            /**
+             * pushes the unvisited originals of the flagged elements of aNode
+             */
+            void
+            push_phi_neighbors(
+                    mesh::Node           * aNode,
+                    Cell< mesh::Node * > & aVisited );
+
+//------------------------------------------------------------------------------
+
             void
             hang_thinshell_edges_on_nodes_bottom(
                 EdgeWorkData  & aWork,

@@ -110,6 +110,21 @@ instead of producing a NaN power law.
 
 ### Fixed
 
+- **A φ component that a symmetry plane already fixes gets no automatic gauge pin.** Since
+  the automatic pinning of 0.9.0, the one pin per connected φ component was imposed even where
+  an `air`, `buffer` or `ferro symmetry` plane, or a `dirichlet` sideset, already held φ = 0 on
+  every node of the plane. The pin sits at the interior node farthest from any sideset, so it
+  added a second condition to a component whose gauge was already set: it forced the
+  magnetomotive force between the plane and the pin to zero, and the solver answered with a
+  spurious point source at the pin. The factory now decides per pin, when it imposes them, on the
+  full mesh of the master rank, whether the pin's component holds a node whose φ is fixed, and
+  leaves such a component to its plane; a component with no fixed φ (antisymmetry planes fix
+  nothing, enclosed buffer patches) keeps exactly one pin, and a deck `bearing` still disables
+  every automatic pin. Because the rule runs at imposition, an existing `.bfm` needs no
+  rebuilding, and a `dirichlet` condition added or removed under a cached mesh is honored. The
+  setup log names each pin it fixes and each component it leaves alone. Results change for every
+  deck with a symmetry plane and no bearing: of the shipped decks `gantry`, `costheta` and
+  `racetrack_usermat`; decks without one (`undulator2d` and the rest) are unchanged.
 - **A 3D thin-shell sideset can no longer leave setup with a mixed master side.**
   `MaxwellFactory::fix_facet_masters` orients facets that have the same domain type on both
   sides by a walk over shared edges. That walk also passes through faces that meet a thin shell
