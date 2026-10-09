@@ -1362,8 +1362,8 @@ The cut processing pipeline (called internally by CutFactory):
 ### Chain
 
 **Purpose:** A chain is a formal sum of k-simplices with integer coefficients, keyed by
-the mesh entity's *index* (`Node::index()`, `Edge::index()`, `Facet::index()`,
-`Element::index()`), never by its id. It can also carry its own boundary and coboundary
+the mesh entity's *index* (`Node::index()`, `Edge::index()`, `Face::index()` for the
+triangles of a 3D mesh, `Element::index()` for the top-dimensional cells), never by its id. It can also carry its own boundary and coboundary
 chains, which the simplicial-complex builder fills alongside it.
 
 **File:** `cl_Chain.{hpp,cpp}`
@@ -1382,10 +1382,15 @@ class Chain
 
 The constructor `Chain( aDim, aMesh, aIsBound, aIsCobound )` allocates `mBoundary` unless
 `aDim == 0` or `aIsBound` is set, and allocates `mCoboundary` unless `aDim == 3` or
-`aIsCobound` is set. The two flags identify a chain that *is* someone's boundary or
-coboundary, stopping the recursion one level down. The destructor deletes both.
+`aIsCobound` is set. The two flags mark a chain that *is* someone's boundary or
+coboundary. A chain built with both flags false therefore owns a boundary (unless `aDim == 0`)
+and a coboundary (unless `aDim == 3`). Each of those owns at most one chain in the opposite
+direction (the boundary's coboundary and the coboundary's boundary), and those own nothing.
+The destructor deletes both members.
 
-**Key operations:** Every operator works in place on `this`; none returns a new chain.
+**Key operations:** `operator+`, `operator-`, and `operator*` modify `this` in place.
+`operator()` changes neither chain and returns the pairing. None of the operators returns a
+new chain.
 ```cpp
 void operator+( Chain * aChain ) ;        // this += aChain
 void operator-( Chain * aChain ) ;        // this -= aChain
@@ -1411,8 +1416,11 @@ void print() ;
 
 `add_chain_to_chain` refuses a dimension mismatch (it prints and returns). Otherwise, it also
 propagates into `mBoundary` and `mCoboundary` wherever this chain owns them, so a generator
-assembled from other chains keeps its boundary consistent. `remove_chain_from_chain` does not
-propagate.
+assembled from other chains keeps its boundary consistent. It adds the stored boundary and
+coboundary of `aChain`; it does not recompute them from the coefficients. Therefore, `aChain`
+must own every member that this chain owns: a chain built with a flag set has a null member in
+that direction.
+`remove_chain_from_chain` does not propagate.
 
 **Usage:**
 ```cpp
@@ -1445,7 +1453,9 @@ same simplex indices. The generators that `Cohomology` hands out are `Cochain *`
 coboundary members. The constructor and destructor follow the same rules.
 
 **Key operations:** The in-place API corresponds to `Chain`, with `cochain` in the method
-names.
+names, with one difference: `add_simplex_to_cochain` and `add_cochain_to_cochain` return
+immediately for a zero coefficient. A zero-coefficient `add_cochain_to_cochain` therefore
+neither checks the dimension nor propagates. The `Chain` versions do not return early.
 ```cpp
 void operator+( Cochain * aCochain ) ;
 void operator-( Cochain * aCochain ) ;
@@ -1470,9 +1480,10 @@ bool isCobound() ;
 void print() ;
 ```
 
-There is no scalar `operator*` on `Cochain`. To scale one, use
-`add_cochain_to_cochain` with a coefficient, as `Cohomology` does when it recombines
-generators.
+There is no scalar `operator*` on `Cochain`. `add_cochain_to_cochain` accumulates
+(`this += aCoeff * aCochain`), so to scale a cochain, add it with the factor to a new, empty
+cochain of the same dimension. `Cohomology` recombines generators this way into fresh
+cochains.
 
 **Usage:**
 ```cpp
@@ -1874,8 +1885,8 @@ Returns computed cohomology generators.
 
 **Visualization:**
 ```cpp
-void create_tree_field(Mesh* tEdgeMesh, string tFieldName);
-void create_cohomology_field(Mesh* tMeshEdge);
+void create_tree_field( Mesh * aEdgeMesh, const string aFieldName );
+void create_cohomology_field( Mesh * aEdgeMesh );
 ```
 
 Creates mesh fields to visualize spanning tree and cohomology generators.

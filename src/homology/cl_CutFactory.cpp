@@ -523,7 +523,7 @@ namespace belfem
         void
         CutFactory::save_edges( const uint aIndex )
         {
-            OrderedMap< id_t, int > & tMap = mCohomology->get_Generators()( 1 )( aIndex )->get_simplices_map();
+            OrderedMap< index_t, int > & tMap = mCohomology->get_Generators()( 1 )( aIndex )->get_simplices_map();
 
             mMesh->unflag_all_nodes();
             mMesh->unflag_all_edges();
@@ -741,8 +741,8 @@ namespace belfem
 
             Cell< Element * > tMasters( tNumEdges, nullptr );
             Cell< Element * > tSlaves( tNumEdges, nullptr );
-            Vector< uint > tMasterIndices( tNumEdges, gNoIndex );
-            Vector< uint > tSlaveIndices( tNumEdges, gNoIndex );
+            Vector< uint > tMasterIndices( tNumEdges, BELFEM_UINT_MAX );
+            Vector< uint > tSlaveIndices( tNumEdges, BELFEM_UINT_MAX );
 
             for( index_t e=0; e<tNumElements; ++e )
             {

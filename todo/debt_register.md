@@ -18,7 +18,7 @@ Every open row now carries a second tag beside its `[CODE]`/`[RULING]`/`[RUN]` k
 
 **The `[F]` list is EMPTY.**
 
-Everything else open is `[P]` (2 rows) or `[W]` (2 rows), with no untagged rows remaining.
+Everything else open is `[P]` (2 rows) or `[W]` (1 rows), with no untagged rows remaining.
 Nothing in those two groups needs a decision this week; they need time, which is the one thing
 the freeze does not take away. The per-recount history is in git.
 
