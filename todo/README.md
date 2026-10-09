@@ -41,7 +41,7 @@ rationale — is in git: `git show 18e57fe:todo/README.md`.
 
 - [dr193_usermat_table_extension](dr193_usermat_table_extension.md) — extend and source the quench deck's six short property tables (they end at 199–390 K, the hot spot reaches 1770 K, no table has a provenance line): a web-literature session with a DOI beside every number; plan only
 - [mkl_num_threads_allrun](mkl_num_threads_allrun.md) — Allrun pins `MKL_NUM_THREADS` to `NTHREADS` beside `OMP_NUM_THREADS`, and `MKL_DYNAMIC` gets decided
-- [pancake_inner_leadout](pancake_inner_leadout.md) — Replace the inner lead of the single-tape pancake generator (`examples/pancake_tape/python/pancake/`), currently an L-shaped hard-way corner in the bore wall, by a lead that first separates from the inner turn on a smaller …
+- [pancake_inner_leadout](pancake_inner_leadout.md) — PARKED 2026-10-09: the `pancake_tape` deck left devel (never ran to a solution); the brief to replace its generator's hard-way inner lead by a bent lead stands for when the deck returns, generator recoverable from git at 00b7972
 - [periodic_postprocessor_fields](periodic_postprocessor_fields.md) — make the recovered nodal fields periodic
 - [test_gap_backlog](test_gap_backlog.md) — the ranked list of tests the suite is missing, distilled from the incident record
 - [test_gap_followups](test_gap_followups.md) — the rulings of the Tier 1 test-gap run turned into twelve small rows

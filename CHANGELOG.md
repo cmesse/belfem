@@ -13,17 +13,7 @@ All notable changes to BELFEM are recorded here. The format follows
   a Python generator builds the tapes as thin shells on a stadium-shaped mandrel at a given
   lay angle, closes a fraction of a pitch with a translated periodic condition, and writes
   the matching `topology` section. Tapes per layer, criss-crossed layers and the pitch count are
-  parameters; the copper core itself is meshed as air. Twenty decks now ship.
-
-- **New example deck `examples/pancake_tape`.** One 4 mm REBCO tape wound 200 turns into a
-  pancake coil, with the solder between the turns as a single solid that touches itself and
-  the tape as the thin shell on that contact: a Python generator builds the structured winding,
-  both lead-outs on solder bars, the air mesh and the matching `topology` section, and checks the
-  thin-shell rules on the mesh it writes. A `SolderAir` sideset covers the solder/air contact so
-  the thin cuts survive pruning; `python3 python/main.py 20` builds a 20-turn smoke case. The
-  deck builds its mesh and passes cut creation but does not yet run to a solution: the dof setup
-  stops on an interface node that two co-terminating cut sheets leave without a φ dof.
-  Twenty-one decks now ship.
+  parameters; the copper core itself is meshed as air. Twenty-one decks now ship.
 
 - **The dependency stack is now documented.** `doc/scls_toolchain.md` names SCLS — the
   Scientific Core Library Stack BELFEM is built, tested and run against — and covers what it
@@ -107,11 +97,12 @@ message naming the problem. None of the shipped decks is affected.
 - An h-conductor beside a thin shell when the conductor is not linear, or when its constant
   permeability is not μ0 within a relative 1e-6.
 - An incomplete node match on a periodic pair, or a non-unit cochain coefficient on a cut.
-- A periodic node pair whose interface copies lie on interface sets of different master domain
-  type (a conductor|air set against a buffer|air, ferro|air or air-master set) or of different
-  treatment (a coil touching the interface on one side of the plane only). 0.9.2 tied such copies and so identified an h unknown
-  with a φ unknown across the plane. The message names both nodes and both domain types or
-  treatments; the remedy is to move the periodic plane into a section of one domain type.
+- A periodic node pair whose interface copies lie on tie-weight interface sets of different
+  master domain type (a conductor|air set against a buffer|air, ferro|air or air-master set) or
+  on sets of different treatment (a coil touching the interface on one side of the plane only),
+  when no compatible set holds the partner's copy. 0.9.2 tied such copies regardless. The
+  message names both nodes and both domain types or treatments; the remedy is to move the
+  periodic plane into a section of one domain type.
 - An HDF5 array, vector, or string dataset whose rank is not 1.
 
 A constant `jc` without an `ec` now gets the default 1e-4 V/m, as a jc function always did,

@@ -11,7 +11,10 @@ the solder bar offset along n.
 thin-shell pipeline and `src/homology` cut factory (read-only constraints)
 **AIs involved:** Claude (exploration + plan), Codex (audit), Grok (third voice); Christian
 (physics ruling on the lead-out shape)
-**Status:** OPEN — design brief for a jury round; no code changed yet
+**Status:** PARKED 2026-10-09 — the `pancake_tape` deck was removed from devel on Christian's
+decision (it never produced a solution and does not ship in 0.9.3); the generator this plan
+rewrites is recoverable from git (`git show 00b7972:examples/pancake_tape/python/pancake/`).
+The brief stands as written for whenever the deck returns; no code changed
 
 > **Scope guards:**
 > - The outer lead (easy-way bend in the plane, solder bar inside) is OUT of scope.
