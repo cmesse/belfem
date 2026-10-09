@@ -11,6 +11,7 @@ set( SOURCES
         test_CohomologyPeriodic.cpp
         test_CutData.cpp
         test_CutFactory_closed_rim.cpp
+        test_InterfaceProcessor.cpp
         )
 
 # Add_Test reverses this list, and dependents must precede their

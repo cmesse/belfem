@@ -104,6 +104,8 @@ namespace belfem
                 tBlockIDs( tCount++ ) = tFacet->master()->block_id() ;
             }
 
+            mMasterType = mMesh->block( tBlockIDs( 0 ) )->domain_type() ;
+
             unique( tBlockIDs );
 
             // count the elements that need to be relinked
@@ -152,13 +154,19 @@ namespace belfem
         }
 
         void
-        InterfaceSet::duplicate_nodes( id_t & aMaxNodeID )
+        InterfaceSet::duplicate_nodes( id_t & aMaxNodeID, Map< id_t, Node * > & aSharedDuplicates )
         {
             Cell< Basis * > tSources ;
             Vector< real >  tWeights ;
 
             for ( auto tPair : mOriginals )
             {
+                if ( aSharedDuplicates.key_exists( tPair.first ) )
+                {
+                    mDuplicates[ tPair.first ] = aSharedDuplicates( tPair.first );
+                    continue ;
+                }
+
                 Node * tOriginal = tPair.second ;
                 Node * tDuplicate = new Node( ++aMaxNodeID, tOriginal->x(), tOriginal->y(), tOriginal->z() ) ;
                 if ( tOriginal->is_hanging() )
@@ -175,7 +183,8 @@ namespace belfem
 
                     tDuplicate->set_sources( tSources, tWeights );
                 }
-                mDuplicates[ tOriginal->id() ] = tDuplicate ;
+                mDuplicates[ tPair.first ] = tDuplicate ;
+                aSharedDuplicates[ tPair.first ] = tDuplicate ;
             }
 
             if ( mMesh->has_periodicity() )
@@ -185,20 +194,7 @@ namespace belfem
                 for ( auto tPair : mOriginals )
                 {
                     Node * A = tPair.second ;
-
-                    if ( ! A->is_periodic() )
-                    {
-                        A->flag( 6 );
-                    }
-                    else
-                    {
-                        A->unflag( 6 );
-                    }
-                }
-                for ( auto tPair : mOriginals )
-                {
-                    Node * A = tPair.second ;
-                    if ( A->is_flagged( 6 ) ) continue;
+                    if ( ! A->is_periodic() ) continue;
                     Node * B = A->periodic();
 
                     // the periodic map may cross block pairs ( e.g. twisted helix:
@@ -210,17 +206,21 @@ namespace belfem
                     Node * C = mDuplicates( A->id() );
                     Node * D = mDuplicates( B->id() );
 
-                    A->flag( 6 );
-                    B->flag( 6 );
+                    // shared copies may have been tied by an earlier set, and
+                    // the partner ties the pair again from its side
+                    if ( C->is_periodic() || D->is_periodic() )
+                    {
+                        BELFEM_ERROR( C->periodic() == D && D->periodic() == C,
+                            "duplicates of periodic interface nodes %lu and %lu are already tied to other nodes",
+                            ( long unsigned int ) A->id(),
+                            ( long unsigned int ) B->id() );
+                        continue;
+                    }
 
                     C->set_periodic( D );
                     D->set_periodic( C );
 
                     tPeriodicity->add_node_pair_to_backup( C, D );
-                }
-                for ( auto tPair : mOriginals )
-                {
-                    tPair.second->unflag( 6 );
                 }
             }
         }
@@ -263,7 +263,10 @@ namespace belfem
         {
             for ( auto tPair : mDuplicates )
             {
-                aDuplicates( aCount++ ) = tPair.second;
+                if ( ! this->shares_duplicates() )
+                {
+                    aDuplicates( aCount++ ) = tPair.second;
+                }
 
                 // decoupled duplicates stay unsourced and unregistered
                 if ( mTreatment != InterfaceTreatment::Decouple )
@@ -439,7 +442,16 @@ namespace belfem
         {
             for ( InterfaceSet * tSet : mSets )
             {
-                tSet->duplicate_nodes( mMaxNodeID );
+                if ( tSet->shares_duplicates() )
+                {
+                    tSet->duplicate_nodes( mMaxNodeID, mSharedDuplicates );
+                }
+                else
+                {
+                    // every other set keeps private copies
+                    Map< id_t, Node * > tPrivate ;
+                    tSet->duplicate_nodes( mMaxNodeID, tPrivate );
+                }
             }
 
             if ( mMesh->has_periodicity() )
@@ -463,26 +475,31 @@ namespace belfem
                     if ( ! A->is_periodic() ) continue;
 
                     Node * C = tDuplicates( A->id() );
-
-                    // already tied, either within its own set or by this pass
-                    // ( from the partner's side )
-                    if ( C->is_periodic() ) continue;
-
                     Node * B = A->periodic();
 
-                    // find the partner's duplicate in the sibling sets
+                    // the partner's duplicate, in this set or in a sibling set
+                    // of the same treatment and class
                     Node * D = nullptr ;
-                    for ( InterfaceSet * tOther : mSets )
+                    if ( tDuplicates.key_exists( B->id() ) )
                     {
-                        if ( tOther == tSet ) continue;
-                        if ( tOther->duplicate_map().key_exists( B->id() ) )
+                        D = tDuplicates( B->id() );
+                    }
+                    else
+                    {
+                        for ( InterfaceSet * tOther : mSets )
                         {
-                            BELFEM_ERROR( D == nullptr,
-                                "periodic partner %lu of interface node %lu was duplicated in more than one interface set, pairing is ambiguous",
-                                ( long unsigned int ) B->id(),
-                                ( long unsigned int ) A->id() );
+                            if ( tOther == tSet || ! this->pair_within( tSet, tOther ) ) continue;
+                            if ( tOther->duplicate_map().key_exists( B->id() ) )
+                            {
+                                Node * tCandidate = tOther->duplicate_map()( B->id() );
 
-                            D = tOther->duplicate_map()( B->id() );
+                                BELFEM_ERROR( D == nullptr || D == tCandidate,
+                                    "periodic partner %lu of interface node %lu was duplicated in more than one interface set, pairing is ambiguous",
+                                    ( long unsigned int ) B->id(),
+                                    ( long unsigned int ) A->id() );
+
+                                D = tCandidate ;
+                            }
                         }
                     }
 
@@ -490,6 +507,17 @@ namespace belfem
                         "periodic partner %lu of interface node %lu was not duplicated in any interface set",
                         ( long unsigned int ) B->id(),
                         ( long unsigned int ) A->id() );
+
+                    // already tied, within a set or by this pass from the
+                    // partner's side
+                    if ( C->is_periodic() )
+                    {
+                        BELFEM_ERROR( C->periodic() == D,
+                            "duplicate of interface node %lu is tied to another node than the duplicate of its periodic partner %lu",
+                            ( long unsigned int ) A->id(),
+                            ( long unsigned int ) B->id() );
+                        continue;
+                    }
 
                     BELFEM_ERROR( ! D->is_periodic(),
                         "duplicate of periodic partner %lu of interface node %lu is already tied to another node",
@@ -510,27 +538,63 @@ namespace belfem
             {
                 tSet->relink_elements();
             }
+
+            // every element of a conductor block takes the shared copy, also in
+            // blocks that touch an interface node without owning an interface
+            // facet
+            if ( mSharedDuplicates.empty() ) return;
+
+            for ( Block * tBlock : mMesh->blocks() )
+            {
+                if ( tBlock->domain_type() != DomainType::Conductor ) continue;
+
+                for ( Element * tElement : tBlock->elements() )
+                {
+                    for ( uint k=0; k<tElement->number_of_nodes(); ++k )
+                    {
+                        auto tIt = mSharedDuplicates.find( tElement->node( k )->id() );
+                        if ( tIt != mSharedDuplicates.end() )
+                        {
+                            tElement->insert_node( tIt->second, k );
+                        }
+                    }
+                }
+            }
         }
 
         void
         InterfaceProcessor::add_duplicate_nodes_to_mesh()
         {
-            // count duplicates
-            index_t tCount = 0 ;
+            // count duplicates: the shared copies once, plus the private
+            // copies of every other set
+            index_t tCount = mSharedDuplicates.size() ;
             for ( InterfaceSet * tSet : mSets )
             {
-                tCount+= tSet->number_of_nodes() ;
+                if ( ! tSet->shares_duplicates() )
+                {
+                    tCount += tSet->number_of_nodes() ;
+                }
             }
             Cell< Node * > tDuplicates( tCount, nullptr );
 
-            // temporaty map with originals
-            Map< id_t, Node * > tOriginalMap ;
             // collect duplicates
             tCount = 0 ;
+            for ( auto tPair : mSharedDuplicates )
+            {
+                tDuplicates( tCount++ ) = tPair.second ;
+            }
+
+            // temporaty map with originals
+            Map< id_t, Node * > tOriginalMap ;
             for ( InterfaceSet * tSet : mSets )
             {
                tSet->add_duplicates( tCount, tDuplicates, tOriginalMap );
             }
+
+            BELFEM_ASSERT( tCount == tDuplicates.size(),
+                "collected %lu interface duplicates, expected %lu",
+                ( long unsigned int ) tCount,
+                ( long unsigned int ) tDuplicates.size() );
 
             for ( Node * tDup : tDuplicates )
             {
@@ -677,6 +741,16 @@ namespace belfem
                 }
             }
 
+        }
+
+        bool
+        InterfaceProcessor::pair_within( InterfaceSet * aSet, InterfaceSet * aOther ) const
+        {
+            // a decoupled copy pairs with a decoupled copy only, a tie-weight
+            // copy with a copy of a set with the same master type
+            return aSet->treatment() == aOther->treatment()
+                && ( aSet->treatment() == InterfaceTreatment::Decouple
+                     || aSet->master_type() == aOther->master_type() );
         }
 
     }

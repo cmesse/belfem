@@ -83,8 +83,9 @@ rationale — is in git: `git show 18e57fe:todo/README.md`.
 - [timestep_collapse_mitigation_design](cancelled/timestep_collapse_mitigation_design.md) — Concrete, code-level mitigation design for the Δt-collapse failure analysed in `todo/timestep_collapse_residual_floor_plan.md` (the `sidecoatings` t = 13.8762 ms abort and the `greg5` regression). Mechanism being fixed …
 - [timestep_collapse_residual_floor_plan](cancelled/timestep_collapse_residual_floor_plan.md) — Both `greg5` (2D tapestack, magnetic-only Picard) and `sidecoatings` (3D coated conductor, coupled Newton) ratchet Δt down to the deck minimum and abort. The mechanism, in one sentence: **the controller's promote/demote …
 
-## Closed (114) — [`closed/`](closed/)
+## Closed (115) — [`closed/`](closed/)
 
+- [interface_duplicates_shared](closed/interface_duplicates_shared.md) — DONE 2026-10-08: one conductor-side interface copy per node shared across conductor blocks plus a conductor sweep closed Yufan's NI seam short (doubled, untied copper edges along every copper|copper face reaching the air); eight tests; `make check` 17/17; F deck seam jumps 50 A → 1 A, H deck unchanged; DR-198 struck
 - [yufan_ni_coil_fixes](closed/yufan_ni_coil_fixes.md) — DONE 2026-10-08: Yufan's 3-D thin-shell alignment landed with a block-consistent patch relation and a block-on-both-sides refusal; closed side curves accepted when isolated (DR-188 policy narrowed on Alves 2022a §II-B); `pancake_tape` ships with its solder/air sideset; make check 17/17 ×3; copper-lead gate owed on DR-196
 - [2d_thinshell_gap_analysis](closed/2d_thinshell_gap_analysis.md) — Procedure-by-procedure comparison of the 2D h-φ thin-shell pipeline against the 3D reference path; inventory of what is MISSING, STUBBED, or WRONG in 2D.
 - [ac_loss_postprocessing](closed/ac_loss_postprocessing.md) — energy, decomposition and honesty on top of the power global

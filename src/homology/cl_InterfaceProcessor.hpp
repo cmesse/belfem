@@ -45,6 +45,9 @@ namespace belfem
 
              InterfaceTreatment mTreatment = InterfaceTreatment::TieWeight1 ;
 
+             // domain type of the master block of the first sideset's first facet
+             DomainType mMasterType = DomainType::UNDEFINED ;
+
 //-----------------------------------------------------------------------------
              Cell< SideSet * > mSideSets ;
 //-----------------------------------------------------------------------------
@@ -67,11 +70,23 @@ namespace belfem
             InterfaceTreatment
             treatment() const ;
 
+            DomainType
+            master_type() const ;
+
+            // a tie-weight set with conductor masters shares its copies
+            bool
+            shares_duplicates() const ;
+
             void
             collect_nodes_and_elements();
 
+            /**
+             * takes the copy of each collected node from aSharedDuplicates,
+             * keyed by the node's own id, and allocates and registers it there
+             * on a miss. The map does not own the copies
+             */
             void
-            duplicate_nodes( id_t & aMaxNodeID );
+            duplicate_nodes( id_t & aMaxNodeID, Map< id_t, Node * > & aSharedDuplicates );
 
             void
             relink_elements();
@@ -79,6 +94,11 @@ namespace belfem
             index_t
             number_of_nodes() const ;
 
+            /**
+             * a set with private copies appends them to aDuplicates; a
+             * tie-weight set registers the original of each copy in
+             * aOriginalMap
+             */
             void
             add_duplicates( index_t & aCount, Cell< Node * > & aDuplicates, Map< id_t, Node * > & aOriginalMap );
 
@@ -108,6 +128,11 @@ namespace belfem
 
             // link sidesetr IDs to set
             Map< id_t, InterfaceSet * > mSetsMap ;
+
+            // one conductor-side copy per node, shared by every tie-weight
+            // set with conductor masters and keyed by the id of the node it
+            // duplicates; the mesh owns the copies
+            Map< id_t, Node * > mSharedDuplicates ;
 
 //-----------------------------------------------------------------------------
         public:
@@ -150,12 +175,27 @@ namespace belfem
             void
             unify_duplicates( Cell< Node * > & aDuplicates );
 
+            bool
+            pair_within( InterfaceSet * aSet, InterfaceSet * aOther ) const ;
+
         };
 
         inline InterfaceTreatment
         InterfaceSet::treatment() const
         {
             return mTreatment ;
+        }
+
+        inline DomainType
+        InterfaceSet::master_type() const
+        {
+            return mMasterType ;
+        }
+
+        inline bool
+        InterfaceSet::shares_duplicates() const
+        {
+            return mTreatment == InterfaceTreatment::TieWeight1 && mMasterType == DomainType::Conductor ;
         }
 
         inline Map< id_t, Node * > &

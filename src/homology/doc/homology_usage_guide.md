@@ -1574,7 +1574,15 @@ Constructor performs full interface processing pipeline:
 1. Creates interface sets (groups of related interfaces)
 2. Connects sidesets to sets
 3. Duplicates nodes at interfaces
-4. Relinks elements to duplicated nodes
+4. Relinks elements to duplicated nodes. A node is copied once per interface set, except on the
+   conductor side. Each tie-weight set whose master block is a conductor takes its copy from one
+   shared map keyed by the node's own id. A final sweep installs that copy in every element of
+   every conductor block that still holds the original. Two conductor blocks that meet the air
+   along a common line therefore reference the same copy, and the conductor edges leaving that
+   line along their common face are created once. Without this sharing, each block had its own
+   copy, so the edges were doubled and untied, and tangential h could jump across the air-adjacent
+   row of the conductor|conductor face: a lossless sheet. Ferro, buffer and air-master sets keep
+   private per-set copies; a ferro|ferro sideset stays split, as its material jump requires.
 5. Ties each duplicate to its original (`InterfaceTreatment::TieWeight1`) or decouples it when a coil touches the interface (`InterfaceTreatment::Decouple`)
 
 **Helper class: InterfaceSet**

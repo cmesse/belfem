@@ -87,3 +87,6 @@ perf.data.old
 # python tooling
 __pycache__/
 *.pyc
+
+# resistivity caches the solver writes beside a deck ( Copper_RRR50.hdf5 and kin ); regenerated on demand, never shipped
+*_RRR*.hdf5
