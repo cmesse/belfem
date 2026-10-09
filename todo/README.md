@@ -37,8 +37,9 @@ rationale — is in git: `git show 18e57fe:todo/README.md`.
 
 ---
 
-## Active (6)
+## Active (7)
 
+- [dr194_dr197_small_fixes](dr194_dr197_small_fixes.md) — two one-hunk fixes in the thin-shell setup path: the duplicate-list alias in `update_node_facet_tables` (DR-194) and the `~CutFactory` double delete (DR-197); plan jury running
 - [mkl_num_threads_allrun](mkl_num_threads_allrun.md) — Allrun pins `MKL_NUM_THREADS` to `NTHREADS` beside `OMP_NUM_THREADS`, and `MKL_DYNAMIC` gets decided
 - [pancake_inner_leadout](pancake_inner_leadout.md) — Replace the inner lead of the single-tape pancake generator (`examples/pancake_tape/python/pancake/`), currently an L-shaped hard-way corner in the bore wall, by a lead that first separates from the inner turn on a smaller …
 - [periodic_postprocessor_fields](periodic_postprocessor_fields.md) — make the recovered nodal fields periodic

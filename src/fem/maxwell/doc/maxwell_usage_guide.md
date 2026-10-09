@@ -846,6 +846,27 @@ order as the tape's own field. The routine is evaluated once per element, at
 
 **Critical insight:** The normal field is **imposed** from the surrounding air/ferro region; the tangential field is **solved** from edge DOFs.
 
+### 8.1 Closed rims and terminals: what is accepted
+
+A 3-D thin shell with a closed outer rim (a closed side curve, in the code) and no terminal on the
+rim is accepted as of 2026-10-08. For example, a tape can be fed through copper leads, with the
+terminals on bulk-conductor faces. The rim nodes remain single-valued, as required by the free-edge
+condition. Three limits apply:
+
+- **The closed rim must be isolated.** A closed rim that shares a node with a terminal curve of any
+  shell, or with a side curve of another shell, is refused before any node is duplicated. The error
+  message names the node and the curve. Keep terminals and other shells off a closed rim.
+- **A closed rim that meets a bulk terminal face only along an edge is not detected.** The terminal
+  generator flags the edges of that face, so a closed side curve lying on those edges is picked up
+  as part of the terminal. There is no check for this case. Keep the rim off terminal faces.
+- **Edge coating is not available on a closed rim.** The coating's anchor search needs the rim's
+  first node to lie on a terminal curve. On a closed rim, setup stops in
+  `ThinShellFactory::compute_binomial_vectors`. Use a bulk-coated rim or an open tape.
+
+The facet alignment, patch relation, and block-side guard in `MaxwellFactory::fix_facet_masters`
+run only in 3-D. In 2-D, the per-block element numbering of the mesh provides a uniform master side
+along the tape.
+
 ---
 
 ## 9. Field Postprocessing
