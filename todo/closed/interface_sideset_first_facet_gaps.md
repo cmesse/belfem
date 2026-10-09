@@ -14,6 +14,9 @@
 
 ---
 
+> **REVERTED 2026-10-09 (Christian's ruling):** e30bd98 left devel the same day; the processor is back at cfaf7e8. The work is on `archive/first-facet-sidesets`. See `devlog/dl20261009_first_facet_campaign_reverted.md`.
+
+
 ## 1. Current Behaviour and How It Fails
 
 | Gap | Mechanism | Evidence |
