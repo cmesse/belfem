@@ -83,6 +83,19 @@ scripts. The deck itself is recoverable from git at 00b7972
   that 0.9.2 tied such copies regardless, and that the plane "can be avoided", not "is always
   avoidable" — the Server's reconciled list from the blind audit of 00b7972, no `src/` change.
 
+## DR-196 struck (same day, Christian's ruling)
+
+The jury split: Codex voted keep-as-unverified pending exactly the inventory above (every
+required source carries a φ dof on the tip), Grok voted strike. Christian ruled "Strike
+DR-196". The row moved to `todo/debt_register_closed.md` with the facts of this run in its
+status cell: the assertion was real on the build of 2026-10-06 and reproduces on `f9b9421`;
+it is gone since `c1d2bf7`, whose conductor sweep and orphan adoption give every such
+original a φ dof; the stale line ranges and the two unsupported sentences ("a single sheet
+always leaves a minus side"; the later MUMPS −10 read as this mechanism) are retracted in
+the row; the three-null-pivot observation is recorded there and not re-filed; Codex's
+residual hazard (the sweep visits conductor blocks only, so an original retained by an
+edge-only coil block is not covered) stands in the closing note. Live rows 4, archive 189.
+
 ## Open Questions
 
 - For Christian's list, from the Server's audit, not fixed here: `to_string( DomainType )`
