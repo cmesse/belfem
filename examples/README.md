@@ -102,7 +102,7 @@ BELFEM features each deck exercises.
 | `pancake` | 3D | 8-tape pancake coil | | yes | | | `python/main.py` |
 | `corc_periodic_bc` | 3D | 1-layer CORC, 3 tapes | | translated | | | `.geo` |
 | `corc_garber_effect` | 3D | 1-layer CORC, 3 tapes | | twisted | | | `.geo` |
-| `corc_twolayer` | 3D | 2-layer CORC, 6 tapes | | twisted | | | `python/main.py` |
+| `corc_twolayer` | 3D | 2-layer CORC, 6 tapes | | translated | | | `python/main.py` |
 | `rutherford` | 3D | 5 thin-shell tapes on a flat core | | translated | | | `python/main.py` |
 | `racetrack_usermat` | 3D | 3 racetrack coils, thin shells | | | | material | `.geo` |
 | `tape_quench_usermat` | 3D | 1 thin-shell tape | coupled | | | material, defect, source | `.geo` |

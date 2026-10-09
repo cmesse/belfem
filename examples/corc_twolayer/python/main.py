@@ -23,14 +23,16 @@ C.tapeWidth = 4
 # the counter-wound layers then cross at 90 deg instead of 71 deg).
 # Steepening the lay needs its own meshing campaign.
 C.pitch = 3
-# 4/3 turns: numTurns * numTapesPerLayer = 4 is whole, so the caps close
-# with zero rotation and every tape's far end is the NEXT tape's near end
-# -- the periodic twist (sideset 4 -> 5 -> 6 -> 4, inner layer likewise).
-# The model is then one period of an infinite cable whose three tapes per
-# layer are one tape of three times the length; a defect's periodic images
-# sit 3 L = 75 mm apart along the tape. 1/3 would also close but puts the
-# images 19 mm apart
-C.numTurns = 4.0 / 3.0
+# 2 turns: a whole number, so the caps close with zero rotation and
+# every tape ends where it starts. The periodic condition maps each tape
+# onto itself, the six tapes are six conductors, and they match the six
+# current conditions of ../input.conf, one bracket per tape. Keep numTurns
+# whole for that deck. A fraction with numTurns * numTapesPerLayer
+# whole (1/3, 4/3) also closes, but it carries tape k into tape k + 1
+# across the periodic planes, which makes each layer one conductor that
+# needs one bracket. With 4/3, BELFEM stops in setup because the cohomology
+# finds no thin cut.
+C.numTurns = 2
 
 C.gap = 0.5
 

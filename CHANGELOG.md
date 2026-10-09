@@ -13,7 +13,20 @@ All notable changes to BELFEM are recorded here. The format follows
   a Python generator builds the tapes as thin shells on a stadium-shaped mandrel at a given
   lay angle, closes a fraction of a pitch with a translated periodic condition, and writes
   the matching `topology` section. Tapes per layer, criss-crossed layers and the pitch count are
-  parameters; the copper core itself is meshed as air. Twenty-one decks now ship.
+  parameters; the copper core itself is meshed as air. Twenty decks now ship.
+
+- **New example deck `examples/tape_with_contact_and_defect`.** One REBCO tape from the
+  `tapestack3d` build, without solder or neighboring tapes, sits in a 10 mm periodic air
+  cylinder and is driven by a 150 A sigmoid from 77 K as a coupled h-φ/thermal problem. The
+  REBCO film uses the `sp-ap` table with `resistivity type : riva`. A 0.1 µm `rint` layer
+  between the silver cap and the film carries the specific contact resistance of the
+  REBCO/Ag interface (1e-11 Ω·m²) as the resistivity R_ct/h. A permanent full-width Jc defect,
+  2 mm long at mid-length with Jc × 0.35, forces current above its Ic of about 100 A out
+  through that contact, along the stabilizer, and back. The contact layer and defect both
+  come from one user plugin, built by hand with CMake 4 or newer; the mesh comes from
+  `tape.geo` with gmsh and is refined around the defect. The deck has not yet run to the end:
+  it sets up and follows the ramp, but once the current passes the defect's Ic, near 110 A at
+  t = 0.28 s, the timestep shrinks below 0.1 ms. Twenty-one decks now ship.
 
 - **The dependency stack is now documented.** `doc/scls_toolchain.md` names SCLS — the
   Scientific Core Library Stack BELFEM is built, tested and run against — and covers what it
@@ -132,6 +145,17 @@ A constant `jc` without an `ec` now gets the default 1e-4 V/m, as a jc function 
 instead of producing a NaN power law.
 
 ### Fixed
+
+- **`examples/corc_twolayer` sets up again.** As shipped in 0.9.0 through 0.9.2, the deck
+  stopped during setup with a thick-cut error from the cohomology. Its mesh generator wound
+  4/3 turns per period, and that periodic twist carried each tape into the next. Each layer
+  therefore became one conductor running three times through the periodic seam, and no thin
+  cut was found for it. The deck's six current conditions, one per tape, did not match that
+  topology either. The generator now winds 2 turns per period, so every tape closes on itself
+  and the six tapes are the six conductors addressed by the deck. The deck itself is
+  unchanged. The mesh is longer (37.7 mm instead of 25.1 mm) and has about 88,000 nodes.
+  Rerun `python/main.py`: a `corc.msh` written by the earlier generator still stops during
+  setup.
 
 - **The `gauge` boundary condition works, and a condition without `type` is refused.** A
   `gauge` is a bearing with a time-dependent value, but no factory fixed its points at setup,
