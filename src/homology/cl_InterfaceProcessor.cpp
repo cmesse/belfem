@@ -10,6 +10,7 @@
  */
 
 #include "cl_InterfaceProcessor.hpp"
+#include <string>
 #include "fn_unique.hpp"
 
 namespace belfem
@@ -35,6 +36,28 @@ namespace belfem
                 }
                 BELFEM_ERROR( false, "unknown interface treatment %d", static_cast< int >( aTreatment ) );
                 return "" ;
+            }
+
+            // the name with the enumerator value, since to_string maps
+            // several types to one name ( both coatings print as Coating )
+            string
+            domain_type_label( const DomainType aType )
+            {
+                return to_string( aType ) + " ( " + std::to_string( static_cast< int >( aType ) ) + " )" ;
+            }
+
+            // the keys of a node map in ascending order: Map is a hash map
+            // and its iteration order must not reach the mesh
+            void
+            sorted_keys( const Map< id_t, Node * > & aMap, Cell< id_t > & aKeys )
+            {
+                aKeys.set_size( aMap.size(), 0 );
+                index_t tCount = 0 ;
+                for ( const auto & tPair : aMap )
+                {
+                    aKeys( tCount++ ) = tPair.first ;
+                }
+                sort( aKeys );
             }
         }
 
@@ -180,15 +203,19 @@ namespace belfem
             Cell< Basis * > tSources ;
             Vector< real >  tWeights ;
 
-            for ( auto tPair : mOriginals )
+            // copies are numbered in ascending id of their originals
+            Cell< id_t > tIDs ;
+            sorted_keys( mOriginals, tIDs );
+
+            for ( id_t tID : tIDs )
             {
-                if ( aSharedDuplicates.key_exists( tPair.first ) )
+                if ( aSharedDuplicates.key_exists( tID ) )
                 {
-                    mDuplicates[ tPair.first ] = aSharedDuplicates( tPair.first );
+                    mDuplicates[ tID ] = aSharedDuplicates( tID );
                     continue ;
                 }
 
-                Node * tOriginal = tPair.second ;
+                Node * tOriginal = mOriginals( tID );
                 Node * tDuplicate = new Node( ++aMaxNodeID, tOriginal->x(), tOriginal->y(), tOriginal->z() ) ;
                 if ( tOriginal->is_hanging() )
                 {
@@ -204,17 +231,17 @@ namespace belfem
 
                     tDuplicate->set_sources( tSources, tWeights );
                 }
-                mDuplicates[ tPair.first ] = tDuplicate ;
-                aSharedDuplicates[ tPair.first ] = tDuplicate ;
+                mDuplicates[ tID ] = tDuplicate ;
+                aSharedDuplicates[ tID ] = tDuplicate ;
             }
 
             if ( mMesh->has_periodicity() )
             {
                 Periodicity * tPeriodicity = mMesh->periodicity();
 
-                for ( auto tPair : mOriginals )
+                for ( id_t tID : tIDs )
                 {
-                    Node * A = tPair.second ;
+                    Node * A = mOriginals( tID );
                     if ( ! A->is_periodic() ) continue;
                     Node * B = A->periodic();
 
@@ -307,7 +334,9 @@ namespace belfem
             mTopology( aTopology ),
             mAbstractNodes( aAbstractNodes ),
             mNumOriginalSidesets( aNumOriginalSideSets ),
-            mMaxNodeID( aMaxNodeID )
+            mMaxNodeID( aMaxNodeID ),
+            mIsAirBlock( aMesh->number_of_blocks() ),
+            mIsFerroBlock( aMesh->number_of_blocks() )
         {
             // create the block indices
             index_t tCount = 0 ;
@@ -316,18 +345,14 @@ namespace belfem
                 mBlockIndices[ tBlock->id() ] = tCount++ ;
             }
 
-            // create the bitset
-            mIsAirBlock = new DynamicBitset( aMesh->number_of_blocks() );
-            mIsFerroBlock = new DynamicBitset( aMesh->number_of_blocks() );
-
-            // populate the bitset
+            // populate the bitsets
             for ( id_t tID : mTopology->groups( DomainType::Air ) )
             {
-                mIsAirBlock->set( mBlockIndices( tID ) );
+                mIsAirBlock.set( mBlockIndices( tID ) );
             }
             for ( id_t tID : mTopology->groups( DomainType::Ferro ) )
             {
-                mIsFerroBlock->set( mBlockIndices( tID ) );
+                mIsFerroBlock.set( mBlockIndices( tID ) );
             }
 
             this->create_interface_sets();
@@ -340,13 +365,13 @@ namespace belfem
 
         InterfaceProcessor::~InterfaceProcessor()
         {
-            delete mIsAirBlock ;
-            delete mIsFerroBlock ;
         }
 
         void
         InterfaceProcessor::create_interface_sets()
         {
+            this->refuse_mixed_master_types();
+
             // count interface classes
             DynamicBitset tBitset( mMesh->number_of_blocks() );
 
@@ -372,11 +397,7 @@ namespace belfem
                 index_t tSlaveIndex = mBlockIndices( tFacet->slave()->block_id() ) ;
 
                 // check if we want to duplicate at  this interface
-                if ( mIsAirBlock->test( tMasterIndex ) and mIsAirBlock->test( tSlaveIndex ) ) continue ;
-
-                // no duplication if neither side is ferro or air
-                if ( ! ( ( mIsAirBlock->test( tMasterIndex ) or mIsFerroBlock->test( tMasterIndex ) )
-                       or ( mIsAirBlock->test( tSlaveIndex ) or mIsFerroBlock->test( tSlaveIndex ) ) ) ) continue ;
+                if ( ! this->duplicates_at( tFacet ) ) continue;
 
                 // now we create the bit string
                 tBitset.reset();
@@ -415,6 +436,72 @@ namespace belfem
                 if ( tMapA.key_exists( tSideSet->id() ) )
                 {
                     mSetsMap[ tSideSet->id() ] = tMapB( tMapA( tSideSet->id() ) );
+                }
+            }
+        }
+
+        bool
+        InterfaceProcessor::duplicates_at( Facet * aFacet ) const
+        {
+            if ( ! aFacet->has_slave() ) return false ;
+
+            index_t tMasterIndex = mBlockIndices( aFacet->master()->block_id() );
+            index_t tSlaveIndex  = mBlockIndices( aFacet->slave()->block_id() );
+
+            // nothing to duplicate inside the air
+            if ( mIsAirBlock.test( tMasterIndex ) and mIsAirBlock.test( tSlaveIndex ) ) return false ;
+
+            // nor where neither side is ferro or air
+            return ( mIsAirBlock.test( tMasterIndex ) or mIsFerroBlock.test( tMasterIndex ) )
+                or ( mIsAirBlock.test( tSlaveIndex )  or mIsFerroBlock.test( tSlaveIndex ) ) ;
+        }
+
+        void
+        InterfaceProcessor::refuse_mixed_master_types() const
+        {
+            for ( index_t s = 0; s < mNumOriginalSidesets; ++s )
+            {
+                SideSet * tSideSet = mMesh->sidesets()( s );
+
+                // a sideset is an interface sideset when one of its facets
+                // is duplicated at; every other sideset is left alone
+                bool tInterface = false ;
+                for ( Facet * tFacet : tSideSet->facets() )
+                {
+                    if ( this->duplicates_at( tFacet ) )
+                    {
+                        tInterface = true ;
+                        break;
+                    }
+                }
+                if ( ! tInterface ) continue;
+
+                Facet * tFirst = nullptr ;
+                DomainType tType = DomainType::UNDEFINED ;
+
+                for ( Facet * tFacet : tSideSet->facets() )
+                {
+                    // boundary facets take no part
+                    if ( ! tFacet->has_slave() ) continue;
+
+                    DomainType tMaster = mMesh->block( tFacet->master()->block_id() )->domain_type() ;
+
+                    if ( tFirst == nullptr )
+                    {
+                        tFirst = tFacet ;
+                        tType  = tMaster ;
+                        continue;
+                    }
+
+                    BELFEM_ERROR( tMaster == tType,
+                        "interface sideset %lu mixes master domain types: facet %lu ( element %lu ) has a %s master, facet %lu ( element %lu ) a %s master; split the sideset so that each sideset has one master domain type",
+                        ( long unsigned int ) tSideSet->id(),
+                        ( long unsigned int ) tFirst->id(),
+                        ( long unsigned int ) tFirst->master()->id(),
+                        domain_type_label( tType ).c_str(),
+                        ( long unsigned int ) tFacet->id(),
+                        ( long unsigned int ) tFacet->master()->id(),
+                        domain_type_label( tMaster ).c_str() );
                 }
             }
         }
@@ -486,13 +573,18 @@ namespace belfem
         {
             Periodicity * tPeriodicity = mMesh->periodicity();
 
+            Cell< id_t > tIDs ;
+
             for ( InterfaceSet * tSet : mSets )
             {
                 Map< id_t, Node * > & tDuplicates = tSet->duplicate_map() ;
+                Map< id_t, Node * > & tOriginals  = tSet->original_map() ;
 
-                for ( auto tPair : tSet->original_map() )
+                sorted_keys( tOriginals, tIDs );
+
+                for ( id_t tID : tIDs )
                 {
-                    Node * A = tPair.second ;
+                    Node * A = tOriginals( tID );
                     if ( ! A->is_periodic() ) continue;
 
                     Node * C = tDuplicates( A->id() );
@@ -630,6 +722,11 @@ namespace belfem
                 "collected %lu interface duplicates, expected %lu",
                 ( long unsigned int ) tCount,
                 ( long unsigned int ) tDuplicates.size() );
+
+            // the maps were walked in hash order; the mesh takes the copies
+            // in ascending id, which is their allocation order
+            auto tByID = []( const Node * aA, const Node * aB ) { return aA->id() < aB->id(); };
+            sort( tDuplicates, tByID );
 
             for ( Node * tDup : tDuplicates )
             {

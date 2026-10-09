@@ -1598,6 +1598,27 @@ Constructor performs full interface processing pipeline:
    the interface has one domain type and the same treatment on both sides. The plain
    "not duplicated in any interface set" refusal remains for a partner that lies on no interface
    set at all.
+   Two rules come first. First, every interface sideset, that is, every sideset with a facet
+   this processor duplicates at (one side air or ferro, not both air), must have one master
+   domain type on all of its facets that have a slave; a sideset without such a facet is left
+   alone. A sideset is admitted to an interface set, and the set
+   is classed as shared or private and paired across a periodic plane, based on its first
+   facet. Therefore, a sideset that groups a conductor|air facet with a ferro|air or air|air
+   facet would be handled according to whichever facet comes first.
+   `refuse_mixed_master_types` checks every sideset before any sideset is admitted and before
+   any copy exists. If it finds a mismatch, it reports the sideset id, the two domain types
+   (name and enumerator value, since several types print under one name), one offending facet
+   and element, and the remedy: split the sideset so that each has one master domain type. A
+   sideset over several blocks of one domain type stays accepted.
+   Second, copy numbering is a function of the mesh alone. Copies are allocated one set at a
+   time, in set order (the sorted block-index bitsets, a fixed function of the mesh's block
+   order), and
+   within each set in ascending id order of the original. A shared conductor copy is allocated
+   by the first set that reaches the original. Copies are appended to the mesh in ascending
+   copy id, which is the allocation order, and the periodic pairs are backed up in that order
+   as well. The maps that hold originals and copies are hash maps, but their iteration order
+   never reaches the mesh. Therefore, the copy ids and positions, and with them the edge ids
+   and dof numbering, are the same on every platform for the same mesh file.
 5. Ties each duplicate to its original (`InterfaceTreatment::TieWeight1`) or decouples it when a coil touches the interface (`InterfaceTreatment::Decouple`)
 
 **Helper class: InterfaceSet**

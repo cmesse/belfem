@@ -718,6 +718,16 @@ the domain name.
 | `thinshell`, `tape`, `shell` | sidesets | `sideset`/`sidesets` | from `layers` |
 | `curve`/`curves`, `periodic` | special (below) | | |
 
+**One master domain type per interface sideset.** An interface sideset is one with a facet
+between two domain types that get interface copies, for example a conductor, ferro, buffer or
+coil block against the air or a ferro block; it is typed by the master side of its facets,
+and every facet in one such sideset must have a master of the same domain type. A sideset that groups, for example, a conductor|air facet with a
+ferro|air or an air|air facet is refused during setup, before any interface copy exists, with
+the sideset id, both domain types and one offending facet
+(`InterfaceProcessor::refuse_mixed_master_types`). Split such a sideset so that each piece has
+one master domain type. A sideset spanning several blocks of one domain type, such as one
+solder/air contact over many solder blocks, is accepted.
+
 **`coil` and `air` blocks are magnetically inert, and that is deliberate.** They
 take no `material` key, and if one is supplied it is silently ignored:
 `MaxwellFactory::collect_material_labels_from_domains` gives `air` the label

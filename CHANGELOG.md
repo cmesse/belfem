@@ -34,6 +34,16 @@ All notable changes to BELFEM are recorded here. The format follows
 These results intentionally differ from 0.9.2. Each is a correction, so a deck that exercises
 the affected path now produces a different, correct answer.
 
+- **Interface copies are numbered by the mesh, not by the hash table.** The copies that the
+  interface processor makes of the nodes on a conductor|air, ferro|air, conductor|ferro or
+  coil interface are now allocated set by set and in ascending id of the original, and appended
+  to the mesh in that order; 0.9.2 handed out their ids and positions in the iteration order
+  of a hash map, which differs between platforms. The copy ids, their positions, and with them
+  the edge ids and the dof numbering differ from 0.9.2 and are now the same on every platform
+  for the same mesh file; results agree to round-off. A `.bfm` written by an earlier build is
+  still reused, because its key (the base-mesh checksum and the topology tag) does not change,
+  and then replays the old numbering and skips the setup refusals; delete it before rerunning
+  a deck.
 - **Surface integrals on the quadrilateral side faces of a prism are twice their 0.9.2 value.**
   `normal_penta` scaled the side-face increment by 0.25 for a quadrilateral rule whose weights
   sum to four, so each side face integrated to half its area. The three side faces now integrate
@@ -97,6 +107,10 @@ message naming the problem. None of the shipped decks is affected.
 - An h-conductor beside a thin shell when the conductor is not linear, or when its constant
   permeability is not μ0 within a relative 1e-6.
 - An incomplete node match on a periodic pair, or a non-unit cochain coefficient on a cut.
+- An interface sideset whose facets do not all have masters of one domain type (a conductor|air
+  facet grouped with a ferro|air or an air|air facet); 0.9.2 typed the whole sideset by its
+  first facet. The message names the sideset, both domain types and one offending facet; split
+  the sideset so that each piece has one master domain type.
 - A periodic node pair whose interface copies lie on tie-weight interface sets of different
   master domain type (a conductor|air set against a buffer|air, ferro|air or air-master set) or
   on sets of different treatment (a coil touching the interface on one side of the plane only),

@@ -23,10 +23,16 @@
  * copy must differ from the conductor copy; a periodic variant whose node
  * pairs n-m and a1-a2 lie in one set and across two sets; two ferro blocks,
  * whose shared face keeps its split; a buffer block in place of C1, which
- * keeps private copies; and a coil block in place of C2, whose air set is
- * decoupled. The periodic variant on the buffer and the coil layout puts the
- * pair a1-a2 across sets of different master domain type or treatment, which
- * the processor refuses by name.
+ * keeps private copies; a coil block in place of C2, whose air set is
+ * decoupled; a ferro block in place of C2 under ONE sideset, which mixes
+ * master domain types and is refused; and that sideset with an air|air
+ * facet first or last, refused in either order; and a sideset of an air|air
+ * and a conductor|conductor facet, which this processor never duplicates at
+ * and therefore leaves alone. The periodic variant on the
+ * buffer and the coil layout puts the pair a1-a2 across sets of different
+ * master domain type or treatment, which the processor refuses by name. The
+ * nodes can be pushed into the mesh in reverse order, which must not move a
+ * copy's id or position.
  *
  * The facets carry the conductor ( or, against the air, the ferro ) element
  * as master and the other side as slave, as fix_facet_masters would leave
@@ -67,7 +73,11 @@ namespace
         Ferro,
         FerroFerro,
         Buffer,
-        Coil
+        Coil,
+        MixedSideSet,
+        MixedAirFirst,
+        MixedAirLast,
+        InactiveSideSet
     };
 
     // node slots: n = 0, m = 1, a1 = 2, a2 = 3, q = 4, t = 5, b1 = 6, b2 = 7.
@@ -90,7 +100,7 @@ namespace
         Cell< Node * > mAbstractNodes ;
         index_t mNumOriginalNodes = 0 ;
 
-        Junction( const Layout aLayout, const bool aPeriodic = false ) :
+        Junction( const Layout aLayout, const bool aPeriodic = false, const bool aReverseNodes = false ) :
             mMesh( new Mesh( 3, 0, false ) )
         {
             const real tA1y = aPeriodic ? 0.0 : 0.5 ;
@@ -102,11 +112,18 @@ namespace
 
             for ( index_t k = 0; k < 8; ++k )
             {
-                Node * tNode = new Node( k + 1, tX[ k ], tY[ k ], tZ[ k ] );
-                mMesh->nodes().push( tNode );
-                mP.push( tNode );
+                mP.push( new Node( k + 1, tX[ k ], tY[ k ], tZ[ k ] ) );
+            }
+            // the mesh may hold the nodes in reverse order; ids stay
+            for ( index_t k = 0; k < 8; ++k )
+            {
+                mMesh->nodes().push( mP( aReverseNodes ? 7 - k : k ) );
             }
             mNumOriginalNodes = mP.size() ;
+
+            const bool tMixed = aLayout == Layout::MixedSideSet
+                             || aLayout == Layout::MixedAirFirst
+                             || aLayout == Layout::MixedAirLast ;
 
             const bool tEdgeOnly = aLayout == Layout::EdgeOnlyBlock ;
 
@@ -115,7 +132,7 @@ namespace
             Block * tB3 = new Block( 3, 2 );
             tB1->set_domain_type( aLayout == Layout::FerroFerro ? DomainType::Ferro
                                 : aLayout == Layout::Buffer ? DomainType::Buffer : DomainType::Conductor );
-            tB2->set_domain_type( aLayout == Layout::Ferro || aLayout == Layout::FerroFerro ? DomainType::Ferro
+            tB2->set_domain_type( aLayout == Layout::Ferro || aLayout == Layout::FerroFerro || tMixed ? DomainType::Ferro
                                 : aLayout == Layout::Coil ? DomainType::Coil : DomainType::Conductor );
             tB3->set_domain_type( DomainType::Air );
 
@@ -139,9 +156,31 @@ namespace
             Facet * tTop1 = this->facet( 101, mC1, mA1, { 0, 1, 2 } );
             Facet * tTop2 = this->facet( 102, mC2, mA2, { 0, 1, 3 } );
 
-            if ( aLayout == Layout::OneSideSet )
+            if ( aLayout == Layout::OneSideSet || aLayout == Layout::MixedSideSet )
             {
                 this->sideset( 11, { tTop1, tTop2 } );
+            }
+            else if ( aLayout == Layout::MixedAirFirst || aLayout == Layout::MixedAirLast )
+            {
+                // A1 and A2 share the face ( n, m, t ): an air|air facet
+                Facet * tAirAir = this->facet( 103, mA1, mA2, { 0, 1, 5 } );
+                if ( aLayout == Layout::MixedAirFirst )
+                {
+                    this->sideset( 11, { tAirAir, tTop1 } );
+                }
+                else
+                {
+                    this->sideset( 11, { tTop1, tAirAir } );
+                }
+                this->sideset( 12, { tTop2 } );
+            }
+            else if ( aLayout == Layout::InactiveSideSet )
+            {
+                // neither facet is duplicated at: air|air and conductor|conductor
+                this->sideset( 11, { this->facet( 103, mA1, mA2, { 0, 1, 5 } ),
+                                     this->facet( 104, mC1, mC2, { 0, 1, 4 } ) } );
+                this->sideset( 12, { tTop1 } );
+                this->sideset( 13, { tTop2 } );
             }
             else
             {
@@ -254,6 +293,19 @@ namespace
             }
             ADD_FAILURE() << "element " << aElement->id() << " holds neither node " << mP( aSlot )->id() << " nor a copy" ;
             return nullptr ;
+        }
+
+        // position of a node in the mesh's node container
+        index_t
+        index_in_mesh( Node * aNode )
+        {
+            Cell< Node * > & tNodes = mMesh->nodes() ;
+            for ( index_t k = 0; k < tNodes.size(); ++k )
+            {
+                if ( tNodes( k ) == aNode ) return k ;
+            }
+            ADD_FAILURE() << "node " << aNode->id() << " is not in the mesh" ;
+            return 0 ;
         }
 
         // the copies appended by the processor, each exactly once
@@ -648,4 +700,149 @@ TEST( InterfaceProcessor, BufferMasterKeepsPrivateCopies )
 
     // buffer: n, m, a1 ; conductor: n, m, a2
     EXPECT_EQ( tJunction.number_of_new_nodes(), ( index_t ) 6 );
+}
+
+//------------------------------------------------------------------------------
+
+// one sideset over a conductor|air and a ferro|air facet: refused by name,
+// before any copy is appended. The accepted multi-block case is
+// OneSideSetRelinksEveryMasterBlock above, one sideset over two conductor
+// blocks
+TEST( InterfaceProcessor, MixedMasterSideSetIsRefused )
+{
+    Junction tJunction( Layout::MixedSideSet );
+
+    const std::string tMessage = refusal( tJunction );
+    EXPECT_TRUE( contains( tMessage, "interface sideset 11 mixes master domain types" ) ) << tMessage ;
+    EXPECT_TRUE( contains( tMessage, "facet 101 ( element 1 ) has a Conductor ( 5 ) master" ) ) << tMessage ;
+    EXPECT_TRUE( contains( tMessage, "facet 102 ( element 2 ) a Ferro ( 3 ) master" ) ) << tMessage ;
+    EXPECT_TRUE( contains( tMessage, "one master domain type" ) ) << tMessage ;
+    EXPECT_EQ( tJunction.number_of_new_nodes(), ( index_t ) 0 );
+}
+
+//------------------------------------------------------------------------------
+
+// an air|air facet beside the conductor|air facet in one sideset: refused
+// whether the air facet comes first ( the sideset would otherwise be dropped
+// by its first facet ) or last
+TEST( InterfaceProcessor, MixedSideSetWithAirFacetIsRefusedInEitherOrder )
+{
+    for ( Layout tLayout : { Layout::MixedAirFirst, Layout::MixedAirLast } )
+    {
+        Junction tJunction( tLayout );
+
+        const std::string tMessage = refusal( tJunction );
+        EXPECT_TRUE( contains( tMessage, "interface sideset 11 mixes master domain types" ) ) << tMessage ;
+        EXPECT_TRUE( contains( tMessage, "Air ( 1 )" ) ) << tMessage ;
+        EXPECT_TRUE( contains( tMessage, "Conductor ( 5 )" ) ) << tMessage ;
+        EXPECT_EQ( tJunction.number_of_new_nodes(), ( index_t ) 0 );
+    }
+}
+
+//------------------------------------------------------------------------------
+
+// copies are numbered set by set and in ascending id of the original, and
+// appended in that order: the ids and the mesh positions must not move when
+// the mesh holds the nodes in another order, and on the forward build they
+// are the ones the rule predicts. SideSetPerBlock: sets "5" ( sideset 11:
+// n, m, a1 ) then "6" ( sideset 12: a2 ). Ferro: sets "3" ( sideset 13:
+// n, m, q, shared conductor copies ), "5" ( sideset 11: a1 ), "6" ( sideset
+// 12: private ferro copies of n, m, a2 ). The periodic layout also backs up
+// its pairs in that order
+TEST( InterfaceProcessor, CopyNumberingIsIndependentOfNodeOrder )
+{
+    // SideSetPerBlock
+    for ( bool tReverse : { false, true } )
+    {
+        Junction tJunction( Layout::SideSetPerBlock, false, tReverse );
+        tJunction.run();
+
+        EXPECT_EQ( tJunction.held( tJunction.mC1, 0 )->id(), ( id_t ) 9 ) << "reverse " << tReverse ;
+        EXPECT_EQ( tJunction.held( tJunction.mC1, 1 )->id(), ( id_t ) 10 ) << "reverse " << tReverse ;
+        EXPECT_EQ( tJunction.held( tJunction.mC1, 2 )->id(), ( id_t ) 11 ) << "reverse " << tReverse ;
+        EXPECT_EQ( tJunction.held( tJunction.mC2, 3 )->id(), ( id_t ) 12 ) << "reverse " << tReverse ;
+        for ( id_t tID : { ( id_t ) 9, ( id_t ) 10, ( id_t ) 11, ( id_t ) 12 } )
+        {
+            EXPECT_EQ( tJunction.mMesh->nodes()( tID - 1 )->id(), tID ) << "reverse " << tReverse ;
+        }
+    }
+
+    // Ferro: conductor copies first, in set order, then the private ferro copies
+    for ( bool tReverse : { false, true } )
+    {
+        Junction tJunction( Layout::Ferro, false, tReverse );
+        tJunction.run();
+
+        EXPECT_EQ( tJunction.held( tJunction.mC1, 0 )->id(), ( id_t ) 9 ) << "reverse " << tReverse ;
+        EXPECT_EQ( tJunction.held( tJunction.mC1, 1 )->id(), ( id_t ) 10 ) << "reverse " << tReverse ;
+        EXPECT_EQ( tJunction.held( tJunction.mC1, 4 )->id(), ( id_t ) 11 ) << "reverse " << tReverse ;
+        EXPECT_EQ( tJunction.held( tJunction.mC1, 2 )->id(), ( id_t ) 12 ) << "reverse " << tReverse ;
+        EXPECT_EQ( tJunction.held( tJunction.mC2, 0 )->id(), ( id_t ) 13 ) << "reverse " << tReverse ;
+        EXPECT_EQ( tJunction.held( tJunction.mC2, 1 )->id(), ( id_t ) 14 ) << "reverse " << tReverse ;
+        EXPECT_EQ( tJunction.held( tJunction.mC2, 3 )->id(), ( id_t ) 15 ) << "reverse " << tReverse ;
+        for ( id_t tID = 9; tID <= 15; ++tID )
+        {
+            EXPECT_EQ( tJunction.mMesh->nodes()( tID - 1 )->id(), tID ) << "reverse " << tReverse ;
+        }
+        // every held copy sits at the position its id says
+        for ( index_t tSlot : { ( index_t ) 0, ( index_t ) 1, ( index_t ) 2, ( index_t ) 4 } )
+        {
+            Node * tCopy = tJunction.held( tJunction.mC1, tSlot );
+            EXPECT_EQ( tJunction.index_in_mesh( tCopy ), ( index_t ) tCopy->id() - 1 ) << "reverse " << tReverse ;
+        }
+        for ( index_t tSlot : { ( index_t ) 0, ( index_t ) 1, ( index_t ) 3 } )
+        {
+            Node * tCopy = tJunction.held( tJunction.mC2, tSlot );
+            EXPECT_EQ( tJunction.index_in_mesh( tCopy ), ( index_t ) tCopy->id() - 1 ) << "reverse " << tReverse ;
+        }
+    }
+
+    // periodic: the backup lists the pairs in the same order on both builds,
+    // and on the forward build it is the rule's order — the n-m copies tied
+    // inside set "5" ( n on the master plane y = 0 ), then the a1-a2 copies
+    // across sets "5" and "6"
+    Cell< id_t > tForward ;
+    for ( bool tReverse : { false, true } )
+    {
+        Junction tJunction( Layout::SideSetPerBlock, true, tReverse );
+        Periodicity * tPeriodicity = wire_periodicity( tJunction, { { 0, 1 }, { 1, 0 }, { 2, 3 }, { 3, 2 } } );
+        tJunction.run();
+
+        ASSERT_TRUE( tPeriodicity->has_node_pair_backup() );
+        tPeriodicity->restore_node_pairs();
+
+        Cell< id_t > tPairs ;
+        for ( index_t k = 0; k < tPeriodicity->master_nodes().size(); ++k )
+        {
+            tPairs.push( tPeriodicity->master_nodes()( k )->id() );
+            tPairs.push( tPeriodicity->slave_nodes()( k )->id() );
+        }
+        if ( ! tReverse )
+        {
+            tForward = tPairs ;
+            const Cell< id_t > tExpected = { 9, 10, 11, 12 };
+            EXPECT_EQ( tPairs.vector_data(), tExpected.vector_data() ) << "the periodic backup is not in the rule's order" ;
+        }
+        else
+        {
+            EXPECT_EQ( tPairs.vector_data(), tForward.vector_data() ) << "the periodic backup order depends on the node order" ;
+        }
+    }
+}
+
+//------------------------------------------------------------------------------
+
+// a sideset of an air|air and a conductor|conductor facet mixes master types
+// but is no interface sideset: this processor duplicates at neither facet,
+// so the sideset is left alone and the junction is processed as usual
+TEST( InterfaceProcessor, SideSetWithoutInterfaceFacetIsLeftAlone )
+{
+    Junction tJunction( Layout::InactiveSideSet );
+    EXPECT_NO_THROW( tJunction.run() );
+
+    const Cell< Element * > tConductors = { tJunction.mC1, tJunction.mC2 };
+    tJunction.expect_one_conductor_copy( 0, tConductors );
+    tJunction.expect_one_conductor_copy( 1, tConductors );
+    tJunction.expect_conforming_shared_face();
+    EXPECT_EQ( tJunction.number_of_new_nodes(), ( index_t ) 4 );
 }

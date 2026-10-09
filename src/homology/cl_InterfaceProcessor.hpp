@@ -120,8 +120,8 @@ namespace belfem
             const uint mNumOriginalSidesets ;
             id_t mMaxNodeID ;
 
-            DynamicBitset * mIsAirBlock = nullptr ;
-            DynamicBitset * mIsFerroBlock = nullptr ;
+            DynamicBitset mIsAirBlock ;
+            DynamicBitset mIsFerroBlock ;
 
             Map< id_t, index_t > mBlockIndices ;
             Cell< InterfaceSet * > mSets ;
@@ -132,6 +132,15 @@ namespace belfem
             // one conductor-side copy per node, shared by every tie-weight
             // set with conductor masters and keyed by the id of the node it
             // duplicates; the mesh owns the copies
+            //
+            // Copy numbering: copies are allocated set by set, in the sets'
+            // order ( the sorted hex strings of the block-index bitsets, a
+            // fixed function of the mesh's block order ), and within a set
+            // in ascending id of the original; a shared copy is allocated by
+            // the first set that reaches the original. They are appended to
+            // the mesh in ascending copy id, which is the allocation order.
+            // Both follow from the block order, the set order and the
+            // original ids alone, never from the iteration order of a Map
             Map< id_t, Node * > mSharedDuplicates ;
 
 //-----------------------------------------------------------------------------
@@ -153,6 +162,19 @@ namespace belfem
 
             void
             create_interface_sets();
+
+            // whether the interface at aFacet is one this processor
+            // duplicates: a slave exists, the two sides are not both air,
+            // and one side is air or ferro
+            bool
+            duplicates_at( Facet * aFacet ) const ;
+
+            // every sideset with a facet this processor duplicates at must
+            // have masters of one domain type on all its facets that have a
+            // slave; runs before any sideset is admitted and before any copy
+            // is allocated
+            void
+            refuse_mixed_master_types() const ;
 
             void
             connect_sidesets_to_interface_sets();
