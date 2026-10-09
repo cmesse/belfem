@@ -45,7 +45,12 @@ namespace belfem
 
              InterfaceTreatment mTreatment = InterfaceTreatment::TieWeight1 ;
 
-             // domain type of the master block of the first sideset's first facet
+             // one master block per sideset, handed over by the processor
+             // from a duplicated facet of that sideset ( never read from
+             // the first facet here ); their elements are relinked
+             Cell< id_t > mMasterBlocks ;
+
+             // domain type of the master blocks; one type per sideset
              DomainType mMasterType = DomainType::UNDEFINED ;
 
 //-----------------------------------------------------------------------------
@@ -66,6 +71,9 @@ namespace belfem
 
             void
             add_sideset( SideSet * aSideSet );
+
+            void
+            add_master_block( const id_t aBlockID );
 
             InterfaceTreatment
             treatment() const ;
@@ -126,8 +134,12 @@ namespace belfem
             Map< id_t, index_t > mBlockIndices ;
             Cell< InterfaceSet * > mSets ;
 
-            // link sidesetr IDs to set
+            // link sideset IDs to set
             Map< id_t, InterfaceSet * > mSetsMap ;
+
+            // the master block of each admitted sideset, from its first
+            // duplicated facet
+            Map< id_t, id_t > mMasterBlockOfSideSet ;
 
             // one conductor-side copy per node, shared by every tie-weight
             // set with conductor masters and keyed by the id of the node it
@@ -169,12 +181,19 @@ namespace belfem
             bool
             duplicates_at( Facet * aFacet ) const ;
 
+            // whether a coil block lies on either side of aFacet
+            bool
+            touches_coil( Facet * aFacet ) const ;
+
             // every sideset with a facet this processor duplicates at must
             // have masters of one domain type on all its facets that have a
-            // slave; runs before any sideset is admitted and before any copy
-            // is allocated
+            // slave, its facets must agree on touching a coil, every one of
+            // its facets must be duplicated at, and if its copies are private
+            // ( non-conductor masters ) they must lie on one master block;
+            // runs before any sideset is admitted and before any copy is
+            // allocated
             void
-            refuse_mixed_master_types() const ;
+            refuse_mixed_sidesets() const ;
 
             void
             connect_sidesets_to_interface_sets();

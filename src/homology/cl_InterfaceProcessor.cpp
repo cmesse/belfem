@@ -103,6 +103,12 @@ namespace belfem
         }
 
         void
+        InterfaceSet::add_master_block( const id_t aBlockID )
+        {
+            mMasterBlocks.push( aBlockID );
+        }
+
+        void
         InterfaceSet::collect_nodes_and_elements()
 
         {
@@ -136,24 +142,22 @@ namespace belfem
                 }
             }
 
-            // collect the blocks
-            Vector< id_t > tBlockIDs( mSideSets.size(), 0 );
-            index_t tCount = 0 ;
-            for ( SideSet * tSideSet : mSideSets )
-            {
-                Facet * tFacet = tSideSet->facets()( 0 );
+            // the master blocks are duplicated too; otherwise nodes on the
+            // air side would be left hanging, except at the cuts
+            BELFEM_ERROR( mMasterBlocks.size() == mSideSets.size(),
+                "interface set has %lu master blocks for %lu sidesets",
 
-                // the master blocks are duplicated too; otherwise nodes on the
-                // air side would be left hanging, except at the cuts
-                tBlockIDs( tCount++ ) = tFacet->master()->block_id() ;
-            }
+                ( long unsigned int ) mMasterBlocks.size(),
+                ( long unsigned int ) mSideSets.size() );
+
+            Cell< id_t > tBlockIDs = mMasterBlocks ;
 
             mMasterType = mMesh->block( tBlockIDs( 0 ) )->domain_type() ;
 
             unique( tBlockIDs );
 
             // count the elements that need to be relinked
-            tCount = 0 ;
+            index_t tCount = 0 ;
             for ( id_t tBlockID : tBlockIDs )
             {
                 Cell< Element * > & tElements = mMesh->block( tBlockID )->elements() ;
@@ -370,9 +374,11 @@ namespace belfem
         void
         InterfaceProcessor::create_interface_sets()
         {
-            this->refuse_mixed_master_types();
+            this->refuse_mixed_sidesets();
 
-            // count interface classes
+            // the master blocks and the slave blocks of a sideset's facets
+            DynamicBitset tMasters( mMesh->number_of_blocks() );
+            DynamicBitset tSlaves( mMesh->number_of_blocks() );
             DynamicBitset tBitset( mMesh->number_of_blocks() );
 
             // collect strings
@@ -381,33 +387,49 @@ namespace belfem
             // temporary map to link sideset ids with strings
             Map< id_t, string > tMapA ;
 
-            // first we need to identify how many interface sets we have
+            // the union of both sides per key, for the set's coil test
+            Map< string, string > tUnionOf ;
+
+            // a sideset is admitted when any of its facets is duplicated at
+            // ( after refuse_mixed_sidesets, all of them are ), and keyed by
+            // the master blocks and the slave blocks of all those facets, so
+            // that nothing depends on the order of its facets and two
+            // sidesets with different masters never share a set
             for ( index_t s=0 ; s < mNumOriginalSidesets ; ++s )
             {
-                // get first facet
-                Facet * tFacet = mMesh->sidesets()( s )->facets()(0);
+                SideSet * tSideSet = mMesh->sidesets()( s );
 
-                // skip if this is a boundary
-                if ( ! tFacet->has_slave() ) continue;
+                tMasters.reset();
+                tSlaves.reset();
+                Facet * tFirst = nullptr ;
 
-                // get block index of master
-                index_t tMasterIndex = mBlockIndices( tFacet->master()->block_id() );
+                for ( Facet * tFacet : tSideSet->facets() )
+                {
+                    if ( ! this->duplicates_at( tFacet ) ) continue;
 
-                // get block index of slave
-                index_t tSlaveIndex = mBlockIndices( tFacet->slave()->block_id() ) ;
+                    tMasters.set( mBlockIndices( tFacet->master()->block_id() ) );
+                    tSlaves.set( mBlockIndices( tFacet->slave()->block_id() ) );
 
-                // check if we want to duplicate at  this interface
-                if ( ! this->duplicates_at( tFacet ) ) continue;
+                    if ( tFirst == nullptr )
+                    {
+                        tFirst = tFacet ;
+                    }
+                }
 
-                // now we create the bit string
+                if ( tFirst == nullptr ) continue;
+
+                const string tKey = tMasters.to_hex() + "|" + tSlaves.to_hex() ;
+
                 tBitset.reset();
+                for ( uint b = 0; b < mMesh->number_of_blocks(); ++b )
+                {
+                    if ( tMasters.test( b ) || tSlaves.test( b ) ) tBitset.set( b );
+                }
 
-                tBitset.set( tMasterIndex );
-                tBitset.set( tSlaveIndex );
-
-                // add bitset string to cell
-                tStrings.push( tBitset.to_hex() );
-                tMapA[  mMesh->sidesets()( s )->id() ] = tBitset.to_hex()  ;
+                tStrings.push( tKey );
+                tMapA[ tSideSet->id() ] = tKey ;
+                tUnionOf[ tKey ] = tBitset.to_hex() ;
+                mMasterBlockOfSideSet[ tSideSet->id() ] = tFirst->master()->block_id() ;
             }
 
             unique( tStrings );
@@ -421,7 +443,7 @@ namespace belfem
             for ( string tString : tStrings )
             {
 
-                InterfaceSet * tSet = new InterfaceSet( mMesh, tString );
+                InterfaceSet * tSet = new InterfaceSet( mMesh, tUnionOf( tString ) );
 
                 // link set to temporary map
                 tMapB[ tString ] = tSet ;
@@ -456,8 +478,16 @@ namespace belfem
                 or ( mIsAirBlock.test( tSlaveIndex )  or mIsFerroBlock.test( tSlaveIndex ) ) ;
         }
 
+        bool
+        InterfaceProcessor::touches_coil( Facet * aFacet ) const
+        {
+            if ( mMesh->block( aFacet->master()->block_id() )->domain_type() == DomainType::Coil ) return true ;
+            return aFacet->has_slave()
+                && mMesh->block( aFacet->slave()->block_id() )->domain_type() == DomainType::Coil ;
+        }
+
         void
-        InterfaceProcessor::refuse_mixed_master_types() const
+        InterfaceProcessor::refuse_mixed_sidesets() const
         {
             for ( index_t s = 0; s < mNumOriginalSidesets; ++s )
             {
@@ -476,8 +506,11 @@ namespace belfem
                 }
                 if ( ! tInterface ) continue;
 
+                // one master domain type, and one coil treatment, over the
+                // facets that have a slave
                 Facet * tFirst = nullptr ;
                 DomainType tType = DomainType::UNDEFINED ;
+                bool tCoil = false ;
 
                 for ( Facet * tFacet : tSideSet->facets() )
                 {
@@ -490,6 +523,7 @@ namespace belfem
                     {
                         tFirst = tFacet ;
                         tType  = tMaster ;
+                        tCoil  = this->touches_coil( tFacet );
                         continue;
                     }
 
@@ -502,6 +536,69 @@ namespace belfem
                         ( long unsigned int ) tFacet->id(),
                         ( long unsigned int ) tFacet->master()->id(),
                         domain_type_label( tMaster ).c_str() );
+
+                    BELFEM_ERROR( this->touches_coil( tFacet ) == tCoil,
+                        "interface sideset %lu mixes facets that touch a coil block with facets that do not: facet %lu ( element %lu ) %s, facet %lu ( element %lu ) %s; split the sideset so that the facets touching a coil form a sideset of their own",
+                        ( long unsigned int ) tSideSet->id(),
+                        ( long unsigned int ) tFirst->id(),
+                        ( long unsigned int ) tFirst->master()->id(),
+                        tCoil ? "touches a coil" : "touches no coil",
+                        ( long unsigned int ) tFacet->id(),
+                        ( long unsigned int ) tFacet->master()->id(),
+                        tCoil ? "touches no coil" : "touches a coil" );
+                }
+
+                // an interface sideset consists of interface facets only:
+                // the topology classifies it and the coupling walks it as a
+                // whole, and the processor duplicates every facet's nodes
+                Facet * tDup = nullptr ;
+                Facet * tOther = nullptr ;
+                for ( Facet * tFacet : tSideSet->facets() )
+                {
+                    if ( this->duplicates_at( tFacet ) )
+                    {
+                        if ( tDup == nullptr ) tDup = tFacet ;
+                    }
+                    else if ( tOther == nullptr )
+                    {
+                        tOther = tFacet ;
+                    }
+                }
+
+                BELFEM_ERROR( tOther == nullptr,
+                    "interface sideset %lu mixes interface facets with facets that are no interface: facet %lu ( element %lu ) is duplicated at, facet %lu ( element %lu ) is not ( %s ); an interface sideset must consist of interface facets only, so split the sideset",
+                    ( long unsigned int ) tSideSet->id(),
+                    ( long unsigned int ) tDup->id(),
+                    ( long unsigned int ) tDup->master()->id(),
+                    ( long unsigned int ) tOther->id(),
+                    ( long unsigned int ) tOther->master()->id(),
+                    tOther->has_slave() ? "neither side is air or ferro" : "a boundary facet without a neighbor" );
+
+                // private copies ( non-conductor masters ) are relinked
+                // into the set's master block only, so one block per sideset
+                if ( tType == DomainType::Conductor ) continue;
+
+                Facet * tFirstDup = nullptr ;
+                for ( Facet * tFacet : tSideSet->facets() )
+                {
+                    if ( ! this->duplicates_at( tFacet ) ) continue;
+
+                    if ( tFirstDup == nullptr )
+                    {
+                        tFirstDup = tFacet ;
+                        continue;
+                    }
+
+                    BELFEM_ERROR( tFacet->master()->block_id() == tFirstDup->master()->block_id(),
+                        "interface sideset %lu has %s masters on more than one block: facet %lu ( element %lu ) on block %lu, facet %lu ( element %lu ) on block %lu; the copies of such a sideset are private to its block, so give each block a sideset of its own",
+                        ( long unsigned int ) tSideSet->id(),
+                        domain_type_label( tType ).c_str(),
+                        ( long unsigned int ) tFirstDup->id(),
+                        ( long unsigned int ) tFirstDup->master()->id(),
+                        ( long unsigned int ) tFirstDup->master()->block_id(),
+                        ( long unsigned int ) tFacet->id(),
+                        ( long unsigned int ) tFacet->master()->id(),
+                        ( long unsigned int ) tFacet->master()->block_id() );
                 }
             }
         }
@@ -530,6 +627,7 @@ namespace belfem
                 if ( mSetsMap.key_exists( tSideSet->id() ) )
                 {
                     mSetsMap[ tSideSet->id() ]->add_sideset( tSideSet );
+                    mSetsMap[ tSideSet->id() ]->add_master_block( mMasterBlockOfSideSet( tSideSet->id() ) );
                 }
             }
         }
