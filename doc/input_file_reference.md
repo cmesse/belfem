@@ -977,16 +977,20 @@ is present, gauge pinning is automatic — one pin per connected φ component
 (the air region and each enclosed buffer patch), chosen as the node farthest
 from any sideset, computed once on the fresh mesh and persisted in the `.bfm`
 (dataset `pinned`), so reloaded meshes keep their pins. **A component whose φ
-is already fixed gets no pin:** an `air`, `buffer` or `ferro symmetry` plane
-and a `dirichlet` sideset each fix φ on their nodes, and a
+is already fixed gets no pin:** an `air`, `buffer` or `ferro symmetry` plane,
+a `dirichlet` sideset and a `gauge` point each fix φ on their nodes, and a
 second condition at an interior node of the same component would not select
 the gauge but constrain the field (it forces the magnetomotive force between
 the plane and the pin to zero, and the solver answers with a spurious point
 source at the pin). The decision is taken when the pins are imposed, on the
 full mesh, so it also covers the pins stored in an existing `.bfm` and a
 `dirichlet` condition added or removed under a cached mesh; the setup log
-names each pin it fixes and each component it leaves to its plane.
-Antisymmetry planes fix nothing and keep their pin. A deck-written
+names each pin it fixes and each component it leaves to its plane or point.
+Antisymmetry planes fix nothing and keep their pin. A `gauge` is a bearing
+with a time-dependent value: its points are fixed at setup, before the
+free/fixed split, and the value of its source function is written to them
+every timestep; unlike a bearing it does not disable the automatic pins, it
+only takes the pin of its own component. A deck-written
 bearing takes precedence and **disables all automatic pins** — including the
 buffer-patch anchors, which then float. **Writing a bearing by hand is an
 expert function and is not recommended.** The automatic pinning covers every
@@ -1065,7 +1069,7 @@ A/m dimension. Four things to know:
 
 | Key | Applies to | Notes |
 |---|---|---|
-| `type` | all but `bearing` | **case-sensitive**: `ramp`, `sigmoid`, `sine`, `square`, `triangle`, `sawtooth`, `constant`, `userdefined`; unknown = fatal. Absent leaves the `SourceFunction` in its UNDEFINED state — no usable source is selected, so treat `type` as required in practice |
+| `type` | all but `bearing` | **case-sensitive**: `ramp`, `sigmoid`, `sine`, `square`, `triangle`, `sawtooth`, `constant`, `userdefined`; unknown = fatal. **Absent = fatal:** both factories refuse a value-carrying condition without `type` at deck read (before 2026-10-09 an absent `type` left the source function uninitialized and the first timestep crashed). |
 | `amplitude` | all but `bearing`, and except userdefined | required, dimension as above |
 | `period` / `frequency` | ramp, sigmoid (period required); periodic family (one of the two required) | `period = 1/frequency`. **If both are given, `period` wins** — `frequency` is only consulted when `period` is absent |
 | `offset` | ramp, sigmoid | required, s |
@@ -1078,7 +1082,9 @@ A/m dimension. Four things to know:
 `dirichlet` (`sideset(s)`) with the same source-function keys; `neumann` is
 recognized but hard-errors (not implemented). **Both `dirichlet` and `gauge`
 take their amplitude in K** — a thermal gauge imposes a Dirichlet temperature
-on its nodes, so it carries the same dimension as a thermal Dirichlet. (Before
+on its nodes, so it carries the same dimension as a thermal Dirichlet. Like
+the Maxwell gauge, its points are fixed by the factory before the field is
+initialized and take the source function's value every timestep. (Before
 2026-08-11 the units switch skipped `gauge`, leaving its amplitude checked
 against an empty required unit.) This is why the "others dimensionless" rule
 above is a *Maxwell* rule: amplitude dimension depends on the consuming factory,

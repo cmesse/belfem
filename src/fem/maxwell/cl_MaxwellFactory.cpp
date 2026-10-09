@@ -907,6 +907,17 @@ namespace belfem
                 }
                 tHaveBearing = true ;
             }
+            else if ( tBC->type() == BoundaryConditionType::Gauge )
+            {
+                // a gauge is a bearing with a time-dependent value: fixed
+                // here, before the free/fixed split, and updated by impose_bc
+                // every timestep. It does not disable the automatic pins;
+                // impose_autopins() takes its point as a contact
+                for ( id_t tID : tBC->domains() )
+                {
+                    mMagneticKernel->dofmgr()->bearing( tID )->impose_dirichlet( 0.0 );
+                }
+            }
             else if ( tBC->type() == BoundaryConditionType::BackgroundDirichlet ||
                       tBC->type() == BoundaryConditionType::Dirichlet)
             {
@@ -3953,13 +3964,14 @@ namespace belfem
 
             // every contact that fixes phi before the pins are imposed: the
             // symmetry planes, read from the master mesh by domain type ( the
-            // dof-manager groups hold only the facets this rank owns ), and
-            // the dirichlet sidesets of the deck. Either fixes the dof of
-            // each of its non-duplicate nodes ( the alias fix of a duplicate
-            // is inert, see SideSet::impose_dirichlet ). A gauge condition is
-            // not a contact: it fixes its nodes only when the timestep is
-            // initialized, after the free/fixed split
+            // dof-manager groups hold only the facets this rank owns ), the
+            // dirichlet sidesets of the deck, and the gauge points, fixed by
+            // the loop in create_magnetic_kernel(). A sideset fixes the dof
+            // of each of its non-duplicate nodes ( the alias fix of a
+            // duplicate is inert, see SideSet::impose_dirichlet )
             Cell< mesh::SideSet * > tContacts ;
+            Cell< mesh::Node * >    tGaugeNodes ;
+            Cell< id_t >            tGaugePoints ;
 
             for ( mesh::SideSet * tSideSet : mMesh->sidesets() )
             {
@@ -3990,6 +4002,23 @@ namespace belfem
                             ( long unsigned int ) tID );
 
                         tContacts.push( mMesh->sideset( tID ) );
+                    }
+                }
+                else if ( tBC->type() == BoundaryConditionType::Gauge )
+                {
+                    for ( id_t tID : tBC->domains() )
+                    {
+                        // the pre-fix loop of create_magnetic_kernel() has
+                        // already refused a point that is not on the mesh
+                        mesh::Node * tNode = mMagneticKernel->dofmgr()->bearing( tID )->node();
+
+                        BELFEM_ASSERT( tNode != nullptr,
+                            "gauge point %lu has no node although its bearing was imposed",
+                            ( long unsigned int ) tID );
+
+                        tNode->original()->flag( 1 );
+                        tGaugeNodes.push( tNode->original() );
+                        tGaugePoints.push( tID );
                     }
                 }
             }
@@ -4036,11 +4065,36 @@ namespace belfem
                         }
                     }
 
-                    message( InfoLevel::Default,
-                        "    no automatic gauge pin for the phi component of node %lu: phi is already fixed at node %lu ( sideset %lu )",
-                        ( long unsigned int ) tNode->id(),
-                        ( long unsigned int ) tContact->id(),
-                        ( long unsigned int ) tSideSetID );
+                    if ( tSideSetID != gNoID )
+                    {
+                        message( InfoLevel::Default,
+                            "    no automatic gauge pin for the phi component of node %lu: phi is already fixed at node %lu ( sideset %lu )",
+                            ( long unsigned int ) tNode->id(),
+                            ( long unsigned int ) tContact->id(),
+                            ( long unsigned int ) tSideSetID );
+                    }
+                    else
+                    {
+                        id_t tPointID = gNoID ;
+                        for ( index_t k = 0; k < tGaugeNodes.size(); ++k )
+                        {
+                            if ( tGaugeNodes( k ) == tContact )
+                            {
+                                tPointID = tGaugePoints( k );
+                                break ;
+                            }
+                        }
+
+                        BELFEM_ERROR( tPointID != gNoID,
+                            "autopin: contact node %lu is flagged but belongs to no contact sideset and no gauge point",
+                            ( long unsigned int ) tContact->id() );
+
+                        message( InfoLevel::Default,
+                            "    no automatic gauge pin for the phi component of node %lu: phi is already fixed at node %lu ( gauge point %lu )",
+                            ( long unsigned int ) tNode->id(),
+                            ( long unsigned int ) tContact->id(),
+                            ( long unsigned int ) tPointID );
+                    }
                     continue ;
                 }
 

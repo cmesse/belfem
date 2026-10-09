@@ -208,6 +208,17 @@ namespace
                     mMesh->sidesets().push( tSideSet );
                 }
 
+                // two points a bearing or a gauge can name: 20 on node 7
+                // ( a plain dof ) and 21 on node 5 ( the alias of node 2 )
+                {
+                    mesh::Element * tPoint = tFactory.create_element( ElementType::VERTEX, 20 );
+                    tPoint->insert_node( tNodes( 6 ), 0 );
+                    mMesh->vertices().push( tPoint );
+                    tPoint = tFactory.create_element( ElementType::VERTEX, 21 );
+                    tPoint->insert_node( tNodes( 4 ), 0 );
+                    mMesh->vertices().push( tPoint );
+                }
+
                 mMesh->finalize();
 
                 mParams.reset( new fem::KernelParameters( mMesh.get() ) );
@@ -455,3 +466,62 @@ TEST( DirichletPin, DuplicateWithTwoSourcesKeepsTheAliasFix )
     EXPECT_FALSE( tStrip.node_dof( 3 )->is_fixed() );
     EXPECT_FALSE( tStrip.node_dof( 2 )->is_fixed() );
 }
+
+//------------------------------------------------------------------------------
+
+TEST( DirichletPin, BearingFirstFlipAfterInitializationIsRefused )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    // the gauge path re-imposes every timestep; a point that no factory
+    // fixed before the split would be a first fix after it
+    GluedStrip tStrip ;
+    ::testing::internal::CaptureStdout();
+    tStrip.mField->initialize();
+    ::testing::internal::GetCapturedStdout();
+
+    expect_refusal( [ & ]() { tStrip.mField->bearing( 20 )->impose_dirichlet( 1.0 ); },
+                    "is free although the system is already initialized" );
+    EXPECT_FALSE( tStrip.node_dof( 7 )->is_fixed() );
+
+    // the alias of node 2: the reroute lands on the source, which is free
+    expect_refusal( [ & ]() { tStrip.mField->bearing( 21 )->impose_dirichlet( 1.0 ); },
+                    "source dof is free although the system is already initialized" );
+    EXPECT_FALSE( tStrip.node_dof( 2 )->is_fixed() );
+}
+
+//------------------------------------------------------------------------------
+
+TEST( DirichletPin, BearingValueUpdateAfterInitializationIsAccepted )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    GluedStrip tStrip ;
+    ::testing::internal::CaptureStdout();
+    tStrip.mField->bearing( 20 )->impose_dirichlet( 1.0 );
+    tStrip.mField->bearing( 21 )->impose_dirichlet( 1.0 );
+    ::testing::internal::GetCapturedStdout();
+
+    ASSERT_TRUE( tStrip.node_dof( 7 )->is_fixed() );
+    ASSERT_TRUE( tStrip.node_dof( 2 )->is_fixed() ) << "the alias's bearing pins the source" ;
+    EXPECT_EQ( tStrip.node_dof( 2 )->value(), 1.0 );
+
+    ::testing::internal::CaptureStdout();
+    tStrip.mField->initialize();
+    ASSERT_NO_THROW( tStrip.mField->bearing( 20 )->impose_dirichlet( 2.0 ) );
+    ASSERT_NO_THROW( tStrip.mField->bearing( 21 )->impose_dirichlet( 2.0 ) );
+    ::testing::internal::GetCapturedStdout();
+
+    EXPECT_TRUE( tStrip.node_dof( 7 )->is_fixed() );
+    EXPECT_EQ( tStrip.node_dof( 7 )->value(), 2.0 );
+    EXPECT_TRUE( tStrip.node_dof( 2 )->is_fixed() );
+    EXPECT_EQ( tStrip.node_dof( 2 )->value(), 2.0 );
+}
+
+//------------------------------------------------------------------------------

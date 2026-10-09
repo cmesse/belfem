@@ -1602,8 +1602,8 @@ sections:
         connected phi component, node farthest from any sideset
         (MaxwellFactory::find_autopins, DR-126), persisted in the .bfm
         (anchor: '"pinned"', cl_Mesh_BfmFile.cpp). A component whose phi is
-        already fixed by an air/buffer/ferro symmetry plane or a dirichlet
-        sideset gets NO pin: the rule runs at imposition on
+        already fixed by an air/buffer/ferro symmetry plane, a dirichlet
+        sideset or a gauge point gets NO pin: the rule runs at imposition on
         the full master mesh (anchor: 'impose_autopins', cl_MaxwellFactory.cpp),
         so it covers pins stored in an existing .bfm; antisymmetry planes fix
         nothing and keep their pin. A deck bearing takes
@@ -1617,7 +1617,15 @@ sections:
         a periodically condensed node (single source, unit weight) onto the
         SOURCE dof; any other condensed shape, a nonexistent point, or a
         node without dofs is a fatal error on the master rank — never a
-        silent no-op.
+        silent no-op. A `gauge` is a bearing with a time-dependent value:
+        both factories fix its points at setup, before the free/fixed split
+        (anchor: 'BoundaryConditionType::Gauge', cl_MaxwellFactory.cpp and
+        cl_ThermalFactory.cpp), impose_bc writes the source value every
+        timestep, and a first fix of a point after the split is refused
+        (anchor: 'was free when the system was initialized',
+        cl_FEM_Bearing.cpp). A Maxwell gauge point is a contact of the
+        automatic-pin rule (its own phi component gets no pin) and does
+        NOT disable the other pins.
       amplitude_dimension_by_type:
         note: >
           Context-dependent: the SAME BC type carries a different amplitude
@@ -1691,11 +1699,15 @@ sections:
           values: [ramp, sigmoid, sine, square, triangle, sawtooth, constant, userdefined]
           case_sensitive: true
           unknown: fatal
-          effectively_required: true
+          required: true
+          absent: fatal
           anchor: '"type"'
           note: >
-            Absent leaves the SourceFunction UNDEFINED — no usable source is
-            selected. Treat as required in practice.
+            Refused at deck read by both BC factories (anchor: 'type'' is
+            required', cl_MaxwellBoundaryConditionFactory.cpp and
+            cl_ThermalBoundaryConditionFactory.cpp). Before 2026-10-09 an
+            absent type left the SourceFunction's member pointer
+            uninitialized and the first timestep crashed.
         amplitude:
           type: value
           required_except: [userdefined]

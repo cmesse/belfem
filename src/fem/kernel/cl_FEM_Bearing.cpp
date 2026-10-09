@@ -138,16 +138,16 @@ namespace belfem
             // single-source unit-weight shape ( the periodic pair ) is safely
             // pinnable this way — any other condensation shape would be
             // over-constrained, and a hanging source violates the flattening
-            // invariant of the T-matrix construction. BEARING LINKING is
-            // master-only ( worker dofs may carry sources, but worker
-            // bearings never hold dofs ), so this branch runs on rank 0 and
-            // synchronize_dirichlet_bcs() distributes the flag. LIMITATION:
-            // a per-timestep gauge whose FIRST imposition lands on a
-            // condensed node arrives after the free/fixed graphs are frozen —
-            // the reroute then flips a graph-frozen free dof to fixed, which
-            // the fixed-value gather is not sized for. A gauge on a condensed
-            // node therefore still requires a factory-time bearing on the
-            // same point to pre-fix the source.
+            // invariant of the T-matrix construction. Bearings hold dofs on
+            // the master only ( node dofs are attached to the mesh there, so
+            // a worker's bearing is empty and returned above ). The FIRST fix
+            // of a point must precede initialize(): the factories fix
+            // bearings and gauges at setup, and synchronize_dirichlet_bcs()
+            // carries the flag to every rank before the free/fixed split. A
+            // later call is a value update ( the gauge path re-imposes every
+            // timestep ); a first fix after the split would be invisible to
+            // the counts, the indices and the Dirichlet block the split
+            // froze, and is refused
             if ( tDof->is_hanging() )
             {
                 BELFEM_ERROR( tDof->number_of_sources() == 1,
@@ -177,6 +177,11 @@ namespace belfem
                 // finds the source still free
                 const bool tFirstImposition = ! tSource->is_fixed() ;
 
+                BELFEM_ERROR( ! tFirstImposition || ! mParent->is_initialized(),
+                    "Bearing %lu ( node %lu ): its source dof is free although the system is already initialized - fix the point at setup",
+                    ( long unsigned int ) mID,
+                    ( long unsigned int ) mNode->id() );
+
                 // the ONE independent dof of the pair. The alias reconstructs
                 // as weight * source, so divide the requested value by the
                 // ( unit-tolerance ) weight to land exactly on aValue
@@ -193,6 +198,11 @@ namespace belfem
             }
             else
             {
+                BELFEM_ERROR( tDof->is_fixed() || ! mParent->is_initialized(),
+                    "Bearing %lu ( node %lu ): the dof is free although the system is already initialized - fix the point at setup",
+                    ( long unsigned int ) mID,
+                    ( long unsigned int ) mNode->id() );
+
                 tDof->fix( aValue );
             }
         }

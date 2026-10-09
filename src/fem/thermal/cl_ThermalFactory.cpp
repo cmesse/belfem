@@ -224,6 +224,16 @@ namespace belfem
                         mThermalKernel->dofmgr()->bearing( tID )->impose_dirichlet( 0.0 );
                     }
                 }
+                else if ( tBC->type() == BoundaryConditionType::Gauge )
+                {
+                    // a gauge is a bearing with a time-dependent value: fixed
+                    // before initialize() freezes the split, updated by
+                    // impose_bc every timestep
+                    for ( id_t tID : tBC->domains() )
+                    {
+                        mThermalKernel->dofmgr()->bearing( tID )->impose_dirichlet( 0.0 );
+                    }
+                }
                 else if ( tBC->type() == BoundaryConditionType::Dirichlet )
                 {
                     for (id_t tID: tBC->domains())

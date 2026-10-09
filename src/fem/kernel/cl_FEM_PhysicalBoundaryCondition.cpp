@@ -253,9 +253,11 @@ namespace belfem
                 }
                 case ( BoundaryConditionType::Gauge ) :
                 {
+                    // mValue carries the scale ( a userdefined gauge is read
+                    // in its declared unit ) and is what the global publishes
                     for(id_t tID : mDomains)
                     {
-                        mDofMngr->bearing( tID )->impose_dirichlet( mFunction->compute(aTime) ) ;
+                        mDofMngr->bearing( tID )->impose_dirichlet( mValue ) ;
                     }
                     return ;
                 }

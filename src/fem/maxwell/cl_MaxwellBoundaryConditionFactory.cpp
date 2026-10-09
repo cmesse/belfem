@@ -426,6 +426,12 @@ namespace belfem
                                 "-- if you meant it to set the slope, the equivalent is "
                                 "fuzzyness = 1/(1+expk) for expk > 0, which CHANGES the waveform." ) ;
 
+                            // a condition without a type has no source function
+                            // and would be evaluated at the first timestep
+                            BELFEM_ERROR( tSection->key_exists( "type" ),
+                                "boundary condition '%s': 'type' is required ( ramp, sigmoid, sine, square, triangle, sawtooth, constant, userdefined )",
+                                ( tSection->label().size() > 0 ? tSection->label() : tSection->type() ).c_str() );
+
                             if ( tSection->key_exists( "type" ) )
                             {
                                 const string tFType =  tSection->get_string( "type" ) ;

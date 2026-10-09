@@ -124,6 +124,21 @@ instead of producing a NaN power law.
 
 ### Fixed
 
+- **The `gauge` boundary condition works, and a condition without `type` is refused.** A
+  `gauge` is a bearing with a time-dependent value, but no factory fixed its points at setup,
+  so its first imposition at the first timestep fixed a dof after the free/fixed split: the
+  assembly then addressed the Dirichlet block with a free index and the fixed-value gather ran
+  one entry long, an abort in debug and a memory error in release (DR-199). Both the Maxwell and
+  the thermal factory now fix gauge points before the split, like bearings; the per-timestep
+  imposition is a value update and writes the scaled, published value (a `userdefined` gauge in
+  a declared unit was imposed unscaled). A Maxwell gauge point is a contact of the automatic-pin
+  rule: its own φ component gets no pin, the other pins stay, and the deck bearing's "disables
+  all pins" rule is unchanged. `Bearing::impose_dirichlet` refuses a first fix of a point after
+  the system was initialized, in every build, so no future caller can reach the frozen split
+  again. A value-carrying condition (`current`, `voltage`, `background`, `dirichlet`,
+  `neumann`, `gauge`) without a `type` key is refused when the deck is read; before, its source
+  function was left uninitialized and the first timestep crashed. No shipped deck uses `gauge`
+  and every shipped condition carries a `type`, so no example changes.
 - **A φ component that a symmetry plane already fixes gets no automatic gauge pin.** Since
   the automatic pinning of 0.9.0, the one pin per connected φ component was imposed even where
   an `air`, `buffer` or `ferro symmetry` plane, or a `dirichlet` sideset, already held φ = 0 on
