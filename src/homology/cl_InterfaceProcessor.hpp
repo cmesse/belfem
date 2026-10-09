@@ -178,6 +178,16 @@ namespace belfem
             bool
             pair_within( InterfaceSet * aSet, InterfaceSet * aOther ) const ;
 
+            // aSet holds a copy of aNode but no admitted set holds a copy of
+            // its periodic partner aPartner; aOtherType and aOtherTreatment
+            // are the excluded sets that hold one, or nullptr. Always refuses
+            void
+            refuse_unpaired_periodic_copy( InterfaceSet * aSet,
+                                           Node * aNode,
+                                           Node * aPartner,
+                                           InterfaceSet * aOtherType,
+                                           InterfaceSet * aOtherTreatment ) const ;
+
         };
 
         inline InterfaceTreatment

@@ -22,8 +22,11 @@
  * the shared face and owns no air facet; a ferro block in place of C2, whose
  * copy must differ from the conductor copy; a periodic variant whose node
  * pairs n-m and a1-a2 lie in one set and across two sets; two ferro blocks,
- * whose shared face keeps its split; and a buffer block in place of C1, which
- * keeps private copies.
+ * whose shared face keeps its split; a buffer block in place of C1, which
+ * keeps private copies; and a coil block in place of C2, whose air set is
+ * decoupled. The periodic variant on the buffer and the coil layout puts the
+ * pair a1-a2 across sets of different master domain type or treatment, which
+ * the processor refuses by name.
  *
  * The facets carry the conductor ( or, against the air, the ferro ) element
  * as master and the other side as slave, as fix_facet_masters would leave
@@ -63,13 +66,14 @@ namespace
         EdgeOnlyBlock,
         Ferro,
         FerroFerro,
-        Buffer
+        Buffer,
+        Coil
     };
 
     // node slots: n = 0, m = 1, a1 = 2, a2 = 3, q = 4, t = 5, b1 = 6, b2 = 7.
     // C1 = ( n, m, a1, q ), C2 = ( n, m, a2, q ), A1 = ( n, m, a1, t ),
     // A2 = ( n, m, a2, t ), C3 = ( n, q, b1, b2 ). Blocks: C1 -> 1
-    // ( conductor, or ferro, or buffer ), C2 -> 2 ( conductor, or ferro ),
+    // ( conductor, or ferro, or buffer ), C2 -> 2 ( conductor, ferro or coil ),
     // A1 and A2 -> 3 ( air ), C3 -> 4 ( conductor ).
     // The periodic variant moves a1 into y = 0 and a2 into y = 1, the planes
     // of n and m
@@ -111,8 +115,8 @@ namespace
             Block * tB3 = new Block( 3, 2 );
             tB1->set_domain_type( aLayout == Layout::FerroFerro ? DomainType::Ferro
                                 : aLayout == Layout::Buffer ? DomainType::Buffer : DomainType::Conductor );
-            tB2->set_domain_type( aLayout == Layout::Ferro || aLayout == Layout::FerroFerro
-                                ? DomainType::Ferro : DomainType::Conductor );
+            tB2->set_domain_type( aLayout == Layout::Ferro || aLayout == Layout::FerroFerro ? DomainType::Ferro
+                                : aLayout == Layout::Coil ? DomainType::Coil : DomainType::Conductor );
             tB3->set_domain_type( DomainType::Air );
 
             mC1 = this->tet( 1, tB1, { 0, 1, 2, 4 } );
@@ -360,6 +364,21 @@ namespace
     {
         return aText.find( aPart ) != std::string::npos ;
     }
+
+    // the message of the refusal aJunction.run() raises, empty if none
+    std::string
+    refusal( Junction & aJunction )
+    {
+        try
+        {
+            aJunction.run();
+        }
+        catch ( const std::runtime_error & aError )
+        {
+            return aError.what();
+        }
+        return "" ;
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -499,17 +518,83 @@ TEST( InterfaceProcessor, PeriodicPartnerTiedElsewhereIsRefused )
     Junction tJunction( Layout::SideSetPerBlock, true );
     wire_periodicity( tJunction, { { 0, 3 }, { 3, 0 }, { 2, 3 } } );
 
-    std::string tMessage ;
-    try
-    {
-        tJunction.run();
-    }
-    catch ( const std::runtime_error & aError )
-    {
-        tMessage = aError.what();
-    }
-
+    const std::string tMessage = refusal( tJunction );
     EXPECT_TRUE( contains( tMessage, "already tied to another node" ) ) << tMessage ;
+}
+
+//------------------------------------------------------------------------------
+
+// a1 lies on the buffer|air set only and a2 on the conductor|air set only:
+// the pair crosses a change of master domain type and is refused by name,
+// with both node ids and both types
+TEST( InterfaceProcessor, PeriodicPairAcrossDomainTypesIsRefused )
+{
+    Junction tJunction( Layout::Buffer, true );
+    wire_periodicity( tJunction, { { 0, 1 }, { 1, 0 }, { 2, 3 }, { 3, 2 } } );
+
+    const std::string tMessage = refusal( tJunction );
+    EXPECT_TRUE( contains( tMessage, "change of domain type" ) ) << tMessage ;
+    EXPECT_TRUE( contains( tMessage, "node 3: Buffer" ) ) << tMessage ;
+    EXPECT_TRUE( contains( tMessage, "node 4: Conductor" ) ) << tMessage ;
+    EXPECT_FALSE( contains( tMessage, "not duplicated in any interface set" ) ) << tMessage ;
+}
+
+//------------------------------------------------------------------------------
+
+// a1 lies on the tie-weight conductor|air set only and a2 on the decoupled
+// coil|air set only: the pair crosses a change of treatment and is refused
+// by name, with the label of each side
+TEST( InterfaceProcessor, PeriodicPairAcrossTreatmentsIsRefused )
+{
+    Junction tJunction( Layout::Coil, true );
+    wire_periodicity( tJunction, { { 0, 1 }, { 1, 0 }, { 2, 3 }, { 3, 2 } } );
+
+    const std::string tMessage = refusal( tJunction );
+    EXPECT_TRUE( contains( tMessage, "interfaces of different treatment" ) ) << tMessage ;
+    EXPECT_TRUE( contains( tMessage, "move the periodic plane away from the coil" ) ) << tMessage ;
+    EXPECT_TRUE( contains( tMessage, "node 3: tie-weight" ) ) << tMessage ;
+    EXPECT_TRUE( contains( tMessage, "node 4: decoupled" ) ) << tMessage ;
+    EXPECT_FALSE( contains( tMessage, "not duplicated in any interface set" ) ) << tMessage ;
+}
+
+//------------------------------------------------------------------------------
+
+// a1 names q as its partner, and q lies on no interface set at all: this is
+// the one case that keeps the plain "not duplicated" refusal
+TEST( InterfaceProcessor, PeriodicPartnerOutsideEveryInterfaceSetIsRefused )
+{
+    Junction tJunction( Layout::SideSetPerBlock, true );
+    wire_periodicity( tJunction, { { 2, 4 } } );
+
+    const std::string tMessage = refusal( tJunction );
+    EXPECT_TRUE( contains( tMessage, "periodic partner 5 of interface node 3 was not duplicated in any interface set" ) ) << tMessage ;
+}
+
+//------------------------------------------------------------------------------
+
+// two ferro blocks under the air: both ferro|air sets have the same master
+// type and private copies, so a1-a2 is tied across the sets; n-m is tied
+// inside each of the three sets, the ferro|ferro one included
+TEST( InterfaceProcessor, PeriodicPairsAcrossFerroSetsAreTied )
+{
+    Junction tJunction( Layout::FerroFerro, true );
+    Periodicity * tPeriodicity = wire_periodicity( tJunction, { { 0, 1 }, { 1, 0 }, { 2, 3 }, { 3, 2 } } );
+
+    EXPECT_NO_THROW( tJunction.run() );
+
+    Node * tA1 = tJunction.held( tJunction.mC1, 2 );
+    Node * tA2 = tJunction.held( tJunction.mC2, 3 );
+    ASSERT_NE( tA1, nullptr );
+    ASSERT_NE( tA2, nullptr );
+    EXPECT_NE( tA1, tJunction.mP( 2 ) );
+    EXPECT_NE( tA2, tJunction.mP( 3 ) );
+    EXPECT_EQ( tA1->periodic(), tA2 );
+    EXPECT_EQ( tA2->periodic(), tA1 );
+
+    ASSERT_TRUE( tPeriodicity->has_node_pair_backup() );
+    tPeriodicity->restore_node_pairs();
+    EXPECT_EQ( tPeriodicity->master_nodes().size(), ( index_t ) 4 )
+        << "expected one backup entry per pair of copies: n-m in three sets and a1-a2 across two" ;
 }
 
 //------------------------------------------------------------------------------

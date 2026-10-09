@@ -17,6 +17,27 @@ namespace belfem
     namespace mesh
     {
 
+        namespace
+        {
+            const char *
+            treatment_label( const InterfaceTreatment aTreatment )
+            {
+                switch ( aTreatment )
+                {
+                    case InterfaceTreatment::TieWeight1 :
+                    {
+                        return "tie-weight" ;
+                    }
+                    case InterfaceTreatment::Decouple :
+                    {
+                        return "decoupled" ;
+                    }
+                }
+                BELFEM_ERROR( false, "unknown interface treatment %d", static_cast< int >( aTreatment ) );
+                return "" ;
+            }
+        }
+
         InterfaceSet::InterfaceSet( Mesh * aMesh, const string aBitsetHex ) :
             mMesh( aMesh ),
             mBitset( new DynamicBitset( aMesh->number_of_blocks() ) )
@@ -478,8 +499,11 @@ namespace belfem
                     Node * B = A->periodic();
 
                     // the partner's duplicate, in this set or in a sibling set
-                    // of the same treatment and class
+                    // of the same treatment and class; a sibling that holds
+                    // one but is excluded is remembered for the refusal
                     Node * D = nullptr ;
+                    InterfaceSet * tOtherType = nullptr ;
+                    InterfaceSet * tOtherTreatment = nullptr ;
                     if ( tDuplicates.key_exists( B->id() ) )
                     {
                         D = tDuplicates( B->id() );
@@ -488,25 +512,36 @@ namespace belfem
                     {
                         for ( InterfaceSet * tOther : mSets )
                         {
-                            if ( tOther == tSet || ! this->pair_within( tSet, tOther ) ) continue;
-                            if ( tOther->duplicate_map().key_exists( B->id() ) )
+                            if ( tOther == tSet || ! tOther->duplicate_map().key_exists( B->id() ) ) continue;
+
+                            if ( ! this->pair_within( tSet, tOther ) )
                             {
-                                Node * tCandidate = tOther->duplicate_map()( B->id() );
-
-                                BELFEM_ERROR( D == nullptr || D == tCandidate,
-                                    "periodic partner %lu of interface node %lu was duplicated in more than one interface set, pairing is ambiguous",
-                                    ( long unsigned int ) B->id(),
-                                    ( long unsigned int ) A->id() );
-
-                                D = tCandidate ;
+                                if ( tSet->treatment() == tOther->treatment() )
+                                {
+                                    tOtherType = tOther ;
+                                }
+                                else
+                                {
+                                    tOtherTreatment = tOther ;
+                                }
+                                continue;
                             }
+
+                            Node * tCandidate = tOther->duplicate_map()( B->id() );
+
+                            BELFEM_ERROR( D == nullptr || D == tCandidate,
+                                "periodic partner %lu of interface node %lu was duplicated in more than one interface set, pairing is ambiguous",
+                                ( long unsigned int ) B->id(),
+                                ( long unsigned int ) A->id() );
+
+                            D = tCandidate ;
                         }
                     }
 
-                    BELFEM_ERROR( D != nullptr,
-                        "periodic partner %lu of interface node %lu was not duplicated in any interface set",
-                        ( long unsigned int ) B->id(),
-                        ( long unsigned int ) A->id() );
+                    if ( D == nullptr )
+                    {
+                        this->refuse_unpaired_periodic_copy( tSet, A, B, tOtherType, tOtherTreatment );
+                    }
 
                     // already tied, within a set or by this pass from the
                     // partner's side
@@ -751,6 +786,37 @@ namespace belfem
             return aSet->treatment() == aOther->treatment()
                 && ( aSet->treatment() == InterfaceTreatment::Decouple
                      || aSet->master_type() == aOther->master_type() );
+        }
+
+        void
+        InterfaceProcessor::refuse_unpaired_periodic_copy( InterfaceSet * aSet,
+                                                            Node * aNode,
+                                                            Node * aPartner,
+                                                            InterfaceSet * aOtherType,
+                                                            InterfaceSet * aOtherTreatment ) const
+        {
+            BELFEM_ERROR( aOtherType == nullptr,
+                "periodic partner %lu of interface node %lu is duplicated on an interface of another domain type ( node %lu: %s, node %lu: %s ): the periodic plane coincides with a change of domain type, which the periodic tie cannot represent; move the periodic plane into a section of one domain type",
+                ( long unsigned int ) aPartner->id(),
+                ( long unsigned int ) aNode->id(),
+                ( long unsigned int ) aNode->id(),
+                to_string( aSet->master_type() ).c_str(),
+                ( long unsigned int ) aPartner->id(),
+                to_string( aOtherType->master_type() ).c_str() );
+
+            BELFEM_ERROR( aOtherTreatment == nullptr,
+                "interface node %lu and its periodic partner %lu are duplicated on interfaces of different treatment ( node %lu: %s, node %lu: %s ): the decoupled copy touches a coil and carries no unknown, so the tie-weight copy has nothing to tie to; move the periodic plane away from the coil",
+                ( long unsigned int ) aNode->id(),
+                ( long unsigned int ) aPartner->id(),
+                ( long unsigned int ) aNode->id(),
+                treatment_label( aSet->treatment() ),
+                ( long unsigned int ) aPartner->id(),
+                treatment_label( aOtherTreatment->treatment() ) );
+
+            BELFEM_ERROR( false,
+                "periodic partner %lu of interface node %lu was not duplicated in any interface set",
+                ( long unsigned int ) aPartner->id(),
+                ( long unsigned int ) aNode->id() );
         }
 
     }

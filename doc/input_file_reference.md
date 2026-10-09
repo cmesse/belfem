@@ -850,6 +850,16 @@ tagged periodic when all of its nodes lie in one of the two planes, so the two
 periodic faces must be sidesets of their own. Without this section no periodic
 path is exercised — "it ran" does not mean periodicity was active.
 
+On any periodic model, regardless of how its planes were declared, a
+periodic plane must not coincide with a change of domain type along a
+duplicated interface (a conductor surface on one side and a ferro, buffer, or
+air-master surface on the other), and a coil must not touch the interface on
+one side of the plane only. The interface copies of such a node pair are
+refused during setup with a message naming both nodes and both domain types
+or treatments
+(`InterfaceProcessor::refuse_unpaired_periodic_copy`). Shift the plane into a
+section with one domain type.
+
 ---
 
 ## 9. `boundary conditions`

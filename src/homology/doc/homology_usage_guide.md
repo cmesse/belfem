@@ -1583,6 +1583,20 @@ Constructor performs full interface processing pipeline:
    copy, so the edges were doubled and untied, and tangential h could jump across the air-adjacent
    row of the conductor|conductor face: a lossless sheet. Ferro, buffer and air-master sets keep
    private per-set copies; a ferro|ferro sideset stays split, as its material jump requires.
+   On a periodic mesh, the copies of a periodic node pair are also tied to each other, either
+   within one interface set or across two. Across sets, a pair is tied only when both sets have
+   the same treatment and, for tie-weight sets, the same master domain type (`pair_within`). If
+   the copies lie on a conductor|air set and on a buffer|air, ferro|air, or air-master set, or on
+   a tie-weight set and a decoupled coil set, setup refuses the pair with a message naming both
+   nodes and both domain types or treatments. The reason is the tie itself: it identifies like
+   unknowns, h on conductor edges and φ elsewhere (Messe et al. 2023, §1), and cannot represent
+   a change of formulation across the plane. The rule is applied to the set's master domain
+   type, so it also refuses ferro against buffer, although both are φ blocks. A periodic plane
+   that coincides with a change of domain type, or that a coil touches on one side only, is
+   always avoidable: shift the plane to a section where the interface has one domain type and
+   the same treatment on both sides. The plain
+   "not duplicated in any interface set" refusal remains for a partner that lies on no interface
+   set at all.
 5. Ties each duplicate to its original (`InterfaceTreatment::TieWeight1`) or decouples it when a coil touches the interface (`InterfaceTreatment::Decouple`)
 
 **Helper class: InterfaceSet**

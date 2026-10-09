@@ -107,6 +107,11 @@ message naming the problem. None of the shipped decks is affected.
 - An h-conductor beside a thin shell when the conductor is not linear, or when its constant
   permeability is not μ0 within a relative 1e-6.
 - An incomplete node match on a periodic pair, or a non-unit cochain coefficient on a cut.
+- A periodic node pair whose interface copies lie on interface sets of different master domain
+  type (a conductor|air set against a buffer|air, ferro|air or air-master set) or of different
+  treatment (a coil touching the interface on one side of the plane only). 0.9.2 tied such copies and so identified an h unknown
+  with a φ unknown across the plane. The message names both nodes and both domain types or
+  treatments; the remedy is to move the periodic plane into a section of one domain type.
 - An HDF5 array, vector, or string dataset whose rank is not 1.
 
 A constant `jc` without an `ec` now gets the default 1e-4 V/m, as a jc function always did,
