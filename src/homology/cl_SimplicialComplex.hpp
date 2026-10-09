@@ -92,12 +92,12 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
             void
-            reduce_pair( const uint k, const uint a, Map<index_t, Chain*>::const_iterator & bit, const int aCoeff );
+            reduce_pair( const uint k, const index_t a, Map<index_t, Chain*>::const_iterator & bit, const int aCoeff );
 
 //-----------------------------------------------------------------------------
 
             void
-            coreduce_pair( const uint k, const uint a, Map<index_t, Cochain*>::const_iterator & bit, const int aCoeff );
+            coreduce_pair( const uint k, const index_t a, Map<index_t, Cochain*>::const_iterator & bit, const int aCoeff );
 
 //-----------------------------------------------------------------------------
 
