@@ -137,10 +137,10 @@ namespace belfem {
                 if ( tNode->is_flagged() )
                 {
                     Chain *tChain = new Chain(0, aMesh, false, false);
-                    tChain->addSimplexToChain(tNode->index(), 1);
+                    tChain->add_simplex_to_chain(tNode->index(), 1);
 
                     Cochain *tCochain = new Cochain(0, aMesh, false, false);
-                    tCochain->addSimplexToCochain(tNode->index(), 1);
+                    tCochain->add_simplex_to_cochain(tNode->index(), 1);
 
                     for (uint i = 0; i < tNode->number_of_edges(); i++)
                     {
@@ -204,10 +204,10 @@ namespace belfem {
                 if (tEdge->is_flagged())
                 {
                     Chain *tChain = new Chain(1, aMesh, false, false);
-                    tChain->addSimplexToChain(tEdge->index(), 1);
+                    tChain->add_simplex_to_chain(tEdge->index(), 1);
 
                     Cochain *tCochain = new Cochain(1, aMesh, false, false);
-                    tCochain->addSimplexToCochain(tEdge->index(), 1);
+                    tCochain->add_simplex_to_cochain(tEdge->index(), 1);
 
                     if (tEdge->node(0)->is_flagged())
                     {
@@ -316,7 +316,7 @@ namespace belfem {
                     if (tFace->is_flagged())
                     {
                         Chain *tChain = new Chain(2, aMesh, false, false);
-                        tChain->addSimplexToChain(tFace->index(), 1);
+                        tChain->add_simplex_to_chain(tFace->index(), 1);
                         for (uint i = 0; i < tFace->number_of_edges(); ++i)
                         {
                             if (tFace->edge(i)->is_flagged())
@@ -332,7 +332,7 @@ namespace belfem {
                         }
 
                         Cochain *tCochain = new Cochain(2, aMesh, false, false);
-                        tCochain->addSimplexToCochain(tFace->index(), 1);
+                        tCochain->add_simplex_to_cochain(tFace->index(), 1);
                         for (uint i = 0; i < tFace->number_of_edges(); ++i)
                         {
                             if (tFace->edge(i)->is_flagged())
@@ -399,7 +399,7 @@ namespace belfem {
                 if (tElement->is_flagged() && tElement->dimension() == tDim)
                 {
                     Chain *tChain = new Chain(tDim, aMesh, false, false);
-                    tChain->addSimplexToChain(tElement->index(), 1);
+                    tChain->add_simplex_to_chain(tElement->index(), 1);
                     if (tDim == 3)
                     {
                         for (uint i = 0; i < tElement->number_of_faces(); ++i)
@@ -430,7 +430,7 @@ namespace belfem {
                     }
 
                     Cochain *tCochain = new Cochain(tDim, aMesh, false, false);
-                    tCochain->addSimplexToCochain(tElement->index(), 1);
+                    tCochain->add_simplex_to_cochain(tElement->index(), 1);
                     if (tDim == 3)
                     {
                         for (uint i = 0; i < tElement->number_of_faces(); ++i)
@@ -551,7 +551,7 @@ namespace belfem {
                     {
                         for (const auto &[a, tChain2]: mChainsMap(k - 1))
                         {
-                            int tCoeff = it->second->getBoundary()->getCoefficient(a);
+                            int tCoeff = it->second->get_boundary()->get_coefficient(a);
                             // Reduce if a is a boundary of b
                             if (std::abs(tCoeff) == 1)
                             {
@@ -604,7 +604,7 @@ namespace belfem {
                     {
                         for (auto it = mCochainsMap(k).begin(); it != mCochainsMap(k).end(); ++it)
                         {
-                            int tCoeff = it->second->getCoboundary()->getCoefficient(a);
+                            int tCoeff = it->second->get_coboundary()->get_coefficient(a);
                             // Reduce if a is a coboundary of b
                             if (std::abs(tCoeff) == 1)
                             {
@@ -647,11 +647,11 @@ namespace belfem {
             //loop over all the k-chains of the complex
             for ( auto it = bit; it!=mChainsMap( k  ).end(); ++it)
             {
-                val2 = it->second->getBoundary()->getCoefficient( a );
+                val2 = it->second->get_boundary()->get_coefficient( a );
                 // Add the b to the k-chain if a is a boundary
                 if ( std::abs( val2 ) == 1 and it->first != b)
                 {
-                    it->second->addChainToChain( bChain, -aCoeff*val2);
+                    it->second->add_chain_to_chain( bChain, -aCoeff*val2);
                 }
 
             }
@@ -674,11 +674,11 @@ namespace belfem {
 
             //loop over all the k-cochains of the complex
             for (auto it = bit; it != mCochainsMap(k).end(); ++it) {
-                val2 = it->second->getCoboundary()->getCoefficient(a);
+                val2 = it->second->get_coboundary()->get_coefficient(a);
 
                 // Add the b to the k-cochain if a is a coboundary
                 if (std::abs(val2) == 1 and it->first != b) {
-                    it->second->addCochainToCochain(bCochain, -aCoeff * val2);
+                    it->second->add_cochain_to_cochain(bCochain, -aCoeff * val2);
                 }
 
             }
@@ -717,26 +717,26 @@ namespace belfem {
                     ++next_it; //Work with 2 iterators because we remove entities from maps
 
                     //Check if the p-1 chain is a boundary of exactly one p chain
-                    if (it->second->getCoboundary()->getSimplicesMap().size() == 1)
+                    if (it->second->get_coboundary()->get_simplices_map().size() == 1)
                     {
                         index_t a = it->first;
-                        index_t b = it->second->getCoboundary()->getSimplicesMap().begin()->first;
+                        index_t b = it->second->get_coboundary()->get_simplices_map().begin()->first;
 
                         //Update the coboundaries of the neighbors
-                        Chain* tNeighbors = mChainsMap(p)(b)->getBoundary();
-                        for(const auto [tID2, tCoeff2]: tNeighbors->getSimplicesMap())
+                        Chain* tNeighbors = mChainsMap(p)(b)->get_boundary();
+                        for(const auto [tID2, tCoeff2]: tNeighbors->get_simplices_map())
                         {
                             if (tID2 != it->first )
                             {
-                                mChainsMap(p-1)(tID2)->getCoboundary()->setCoefficient(b,0);
+                                mChainsMap(p-1)(tID2)->get_coboundary()->set_coefficient(b,0);
                             }
                         }
                         if (p > 1)
                         {
                             for(const auto [tID2, tCoeff2]:
-                            mChainsMap(p-1)(a)->getBoundary()->getSimplicesMap())
+                            mChainsMap(p-1)(a)->get_boundary()->get_simplices_map())
                             {
-                                mChainsMap(p-2)(tID2)->getCoboundary()->setCoefficient(a,0);
+                                mChainsMap(p-2)(tID2)->get_coboundary()->set_coefficient(a,0);
                             }
                         }
 
@@ -776,7 +776,7 @@ namespace belfem {
                 }
 
                 //Store the boundaries
-                for (const auto & [tId, tCoeff]: it->second->getBoundary()->getSimplicesMap())
+                for (const auto & [tId, tCoeff]: it->second->get_boundary()->get_simplices_map())
                 {
                     Q.push(tId);
                 }
@@ -785,7 +785,7 @@ namespace belfem {
                 {
                     a = Q.pop();
                     Chain *tBoundary = mChainsMap( p-1 )(a);
-                    OrderedMap <index_t, int> & tSimplicesMap = tBoundary->getCoboundary()->getSimplicesMap();
+                    OrderedMap <index_t, int> & tSimplicesMap = tBoundary->get_coboundary()->get_simplices_map();
 
                     // If the boundary is shared exactly by two neighbors
                     if (tSimplicesMap.size()== 2)
@@ -805,22 +805,22 @@ namespace belfem {
 
                         Chain* tChainAdd = mChainsMap(p)(e);
                         Chain* tChainReduce = mChainsMap(p)(b);
-                        Chain* tNeighbors = tChainReduce->getBoundary();
+                        Chain* tNeighbors = tChainReduce->get_boundary();
 
-                        int val1 = tChainAdd->getBoundary()->getCoefficient(a);
-                        int val2 = tChainReduce->getBoundary()->getCoefficient(a);
+                        int val1 = tChainAdd->get_boundary()->get_coefficient(a);
+                        int val2 = tChainReduce->get_boundary()->get_coefficient(a);
 
                         //Add the chain
-                        tChainAdd->addChainToChain(tChainReduce,-val1*val2);
+                        tChainAdd->add_chain_to_chain(tChainReduce,-val1*val2);
 
                         //Update the coboundaries
-                        for(const auto [tID2, tCoeff2]: tNeighbors->getSimplicesMap())
+                        for(const auto [tID2, tCoeff2]: tNeighbors->get_simplices_map())
                         {
                             auto it4 = mChainsMap( p-1).find( tID2 );
 
                             if ( it4 != mChainsMap( p-1 ).end() )
                             {
-                                it4->second->getCoboundary()->setCoefficient(b,0);
+                                it4->second->get_coboundary()->set_coefficient(b,0);
                                 if (tID2 != a)
                                 {
                                     it4->second->add_simplex_to_coboundary(e,-tCoeff2*val2*val1);
@@ -830,9 +830,9 @@ namespace belfem {
 
                         if (p > 1)
                         {
-                            for(const auto [tID2, tCoeff2]: tBoundary->getBoundary()->getSimplicesMap())
+                            for(const auto [tID2, tCoeff2]: tBoundary->get_boundary()->get_simplices_map())
                             {
-                                mChainsMap(p-2)(tID2)->getCoboundary()->setCoefficient(a,0);
+                                mChainsMap(p-2)(tID2)->get_coboundary()->set_coefficient(a,0);
                             }
                         }
 
@@ -841,7 +841,7 @@ namespace belfem {
                         this->remove_kchainFromMap(p, b);
 
                         //Add the new boundaries
-                        for (const auto & [tId, tCoeff]: tChainAdd->getBoundary()->getSimplicesMap())
+                        for (const auto & [tId, tCoeff]: tChainAdd->get_boundary()->get_simplices_map())
                         {
                             Q.push(tId);
                         }
@@ -863,8 +863,8 @@ namespace belfem {
             {
                 ++next_it ;
                 //Get the boundary and check if it has at least one simplex
-                Chain * tBoundary = it->second->getBoundary();
-                OrderedMap< index_t, int > & tSimplicesMap = tBoundary->getSimplicesMap();
+                Chain * tBoundary = it->second->get_boundary();
+                OrderedMap< index_t, int > & tSimplicesMap = tBoundary->get_simplices_map();
                 index_t b = it->first;
                 Chain* tChainReduce = it->second;
 
@@ -873,7 +873,7 @@ namespace belfem {
                     // Find the first simplex ID that correspond to a (k-1)-chain of the complex
                     auto it2 = tSimplicesMap.begin();
                     while ( !mChainsMap( p - 1 ).key_exists( it2->first ) or
-                            std::abs( tChainReduce->getBoundary()->getCoefficient( it2->first )) != 1 )
+                            std::abs( tChainReduce->get_boundary()->get_coefficient( it2->first )) != 1 )
                     {
                         ++it2;
                     }
@@ -884,21 +884,21 @@ namespace belfem {
                     index_t a = it2->first;
 
                     // Find the neighbors of b through a
-                    Chain * tNeighbors = mChainsMap( p - 1 )( a )->getCoboundary();
-                    int val1 = tChainReduce->getBoundary()->getCoefficient( a );
+                    Chain * tNeighbors = mChainsMap( p - 1 )( a )->get_coboundary();
+                    int val1 = tChainReduce->get_boundary()->get_coefficient( a );
 
                     //Loop over the Neighbors to update their chains
-                    for ( const auto [tID, tCoeff]: tNeighbors->getSimplicesMap())
+                    for ( const auto [tID, tCoeff]: tNeighbors->get_simplices_map())
                     {
                         auto it3 = mChainsMap( p ).find( tID );
 
                         if ( it3 != mChainsMap( p ).end() and tID != b )
                         {
                             Chain * tChainAdd = mChainsMap( p )( tID );
-                            int val2 = tChainAdd->getBoundary()->getCoefficient( a );
+                            int val2 = tChainAdd->get_boundary()->get_coefficient( a );
 
                             //Add the chain b to the neighbor
-                            tChainAdd->addChainToChain( tChainReduce, -val1 * val2 );
+                            tChainAdd->add_chain_to_chain( tChainReduce, -val1 * val2 );
 
                             //Update the coboundaries
                             for ( const auto [tID2, tCoeff2]: tSimplicesMap )
@@ -907,7 +907,7 @@ namespace belfem {
 
                                 if ( it4 != mChainsMap( p - 1 ).end() )
                                 {
-                                    it4->second->getCoboundary()->setCoefficient( b,0 );
+                                    it4->second->get_coboundary()->set_coefficient( b,0 );
                                     if ( tID2 != a )
                                     {
                                         it4->second->add_simplex_to_coboundary( tID, -tCoeff2*val2*val1 );
@@ -917,10 +917,10 @@ namespace belfem {
                             if ( p > 1 )
                             {
                                 for ( const auto [tID2, tCoeff2]:
-                                        mChainsMap( p - 1 )(a )->getBoundary()->getSimplicesMap())
+                                        mChainsMap( p - 1 )(a )->get_boundary()->get_simplices_map())
                                 {
                                     mChainsMap( p - 2 )( tID2 )
-                                            ->getCoboundary()->setCoefficient( a,0 );
+                                            ->get_coboundary()->set_coefficient( a,0 );
                                 }
                             }
                         }
@@ -949,9 +949,9 @@ namespace belfem {
             while (this->number_of_ksimplices(tDim) > 0)
             {
                 tKey = mChainsMap(tDim).begin()->first;
-                for(const auto [tID2, tCoeff2]: mChainsMap(tDim).begin()->second->getBoundary()->getSimplicesMap())
+                for(const auto [tID2, tCoeff2]: mChainsMap(tDim).begin()->second->get_boundary()->get_simplices_map())
                 {
-                    mChainsMap(tDim-1)(tID2)->getCoboundary()->setCoefficient(tKey,0);
+                    mChainsMap(tDim-1)(tID2)->get_coboundary()->set_coefficient(tKey,0);
                 }
 
                 this->remove_kchainFromMap(tDim,tKey);
@@ -1038,7 +1038,7 @@ namespace belfem {
                 }
 
                 //Store the boundaries
-                for (const auto & [tId, tCoeff]: it->second->getCoboundary()->getSimplicesMap())
+                for (const auto & [tId, tCoeff]: it->second->get_coboundary()->get_simplices_map())
                 {
                     Q.push(tId);
                 }
@@ -1047,7 +1047,7 @@ namespace belfem {
                 {
                     a = Q.pop();
                     Cochain *tCoboundary = mCochainsMap( p+1 )(a);
-                    OrderedMap <index_t, int> & tSimplicesMap = tCoboundary->getBoundary()->getSimplicesMap();
+                    OrderedMap <index_t, int> & tSimplicesMap = tCoboundary->get_boundary()->get_simplices_map();
 
                     // If the coboundary is shared exactly by two neighbors
                     if (tSimplicesMap.size()== 2)
@@ -1067,22 +1067,22 @@ namespace belfem {
 
                         Cochain* tCochainAdd = mCochainsMap(p)(e);
                         Cochain* tCochainReduce = mCochainsMap(p)(b);
-                        Cochain* tNeighbors = tCochainReduce->getCoboundary();
+                        Cochain* tNeighbors = tCochainReduce->get_coboundary();
 
-                        int val1 = tCochainAdd->getCoboundary()->getCoefficient(a);
-                        int val2 = tCochainReduce->getCoboundary()->getCoefficient(a);
+                        int val1 = tCochainAdd->get_coboundary()->get_coefficient(a);
+                        int val2 = tCochainReduce->get_coboundary()->get_coefficient(a);
 
                         //Add the cochains
-                        tCochainAdd->addCochainToCochain(tCochainReduce,-val1*val2);
+                        tCochainAdd->add_cochain_to_cochain(tCochainReduce,-val1*val2);
 
                         //Update the boundaries
-                        for(const auto [tID2, tCoeff2]: tNeighbors->getSimplicesMap())
+                        for(const auto [tID2, tCoeff2]: tNeighbors->get_simplices_map())
                         {
                             auto it4 = mCochainsMap( p+1).find( tID2 );
 
                             if ( it4 != mCochainsMap( p+1 ).end() )
                             {
-                                it4->second->getBoundary()->setCoefficient(b,0);
+                                it4->second->get_boundary()->set_coefficient(b,0);
                                 if (tID2 != a)
                                 {
                                     it4->second->add_simplex_to_boundary(e,-tCoeff2*val2*val1);
@@ -1092,9 +1092,9 @@ namespace belfem {
 
                         if (p < 2)
                         {
-                            for(const auto [tID2, tCoeff2]: tCoboundary->getCoboundary()->getSimplicesMap())
+                            for(const auto [tID2, tCoeff2]: tCoboundary->get_coboundary()->get_simplices_map())
                             {
-                                mCochainsMap(p+2)(tID2)->getBoundary()->setCoefficient(a,0);
+                                mCochainsMap(p+2)(tID2)->get_boundary()->set_coefficient(a,0);
                             }
                         }
 
@@ -1103,7 +1103,7 @@ namespace belfem {
                         this->remove_kcochainFromMap(p, b);
 
                         //Add the new coboundaries
-                        for (const auto & [tId, tCoeff]: tCochainAdd->getCoboundary()->getSimplicesMap())
+                        for (const auto & [tId, tCoeff]: tCochainAdd->get_coboundary()->get_simplices_map())
                         {
                             Q.push(tId);
                         }
@@ -1127,8 +1127,8 @@ namespace belfem {
             for ( auto it = mCochainsMap( p ).begin(), next_it = it; it != mCochainsMap( p ).end(); it = next_it )
             {
                 ++next_it;
-                Cochain * tCoboundary = it->second->getCoboundary();
-                OrderedMap< index_t, int > & tSimplicesMap = tCoboundary->getSimplicesMap();
+                Cochain * tCoboundary = it->second->get_coboundary();
+                OrderedMap< index_t, int > & tSimplicesMap = tCoboundary->get_simplices_map();
                 index_t b = it->first;
                 Cochain* tCochainReduce = it->second;
 
@@ -1156,12 +1156,12 @@ namespace belfem {
 
                     // Find the neighbors of b through a
                     Cochain * tCochainA = mCochainsMap( p + 1 )( a );
-                    Cochain * tNeighbors = tCochainA->getBoundary();
+                    Cochain * tNeighbors = tCochainA->get_boundary();
 
                     //Collect the valid neighbors of b through a
                     tNeighborIDs.clear();
                     tNeighborCochains.clear();
-                    for ( const auto [tID, tCoeff]: tNeighbors->getSimplicesMap())
+                    for ( const auto [tID, tCoeff]: tNeighbors->get_simplices_map())
                     {
                         auto it3 = mCochainsMap( p ).find( tID );
                         if ( it3 != mCochainsMap( p ).end() and tID != b )
@@ -1181,7 +1181,7 @@ namespace belfem {
                             auto it4 = mCochainsMap( p + 1 ).find( tID2 );
                             if ( it4 != mCochainsMap( p + 1 ).end()  )
                             {
-                                it4->second->getBoundary()->setCoefficient( b,0 );
+                                it4->second->get_boundary()->set_coefficient( b,0 );
                             }
                         }
 
@@ -1189,10 +1189,10 @@ namespace belfem {
                         if ( p < 2 )
                         {
                             for ( const auto [tID2, tCoeff2]:
-                                    tCochainA->getCoboundary()->getSimplicesMap())
+                                    tCochainA->get_coboundary()->get_simplices_map())
                             {
                                 mCochainsMap( p + 2 )( tID2 )
-                                        ->getBoundary()->setCoefficient( a,0 );
+                                        ->get_boundary()->set_coefficient( a,0 );
                             }
                         }
 
@@ -1201,10 +1201,10 @@ namespace belfem {
                         {
                             index_t tID = tNeighborIDs( k );
                             Cochain * tCochainAdd = tNeighborCochains( k );
-                            int val2 = tCochainAdd->getCoboundary()->getCoefficient( a );
+                            int val2 = tCochainAdd->get_coboundary()->get_coefficient( a );
 
                             //Add the chain b to the neighbor
-                            tCochainAdd->addCochainToCochain( tCochainReduce, -val1 * val2 );
+                            tCochainAdd->add_cochain_to_cochain( tCochainReduce, -val1 * val2 );
 
                             //Update the boundaries
                             for ( const auto [tID2, tCoeff2]: tSimplicesMap )
@@ -1245,9 +1245,9 @@ namespace belfem {
             while (this->number_of_kcosimplices(0) > 0)
             {
                 tKey = mCochainsMap(0).begin()->first;
-                for(const auto [tID2, tCoeff2]: mCochainsMap(0).begin()->second->getCoboundary()->getSimplicesMap())
+                for(const auto [tID2, tCoeff2]: mCochainsMap(0).begin()->second->get_coboundary()->get_simplices_map())
                 {
-                    mCochainsMap(1)(tID2)->getBoundary()->setCoefficient(tKey,0);
+                    mCochainsMap(1)(tID2)->get_boundary()->set_coefficient(tKey,0);
                 }
 
                 this->remove_kcochainFromMap(0,tKey);
@@ -1367,7 +1367,7 @@ namespace belfem {
         {
             if ( k <= 3 )
             {
-                return mChainsMap( k )[ aID ]->getBoundary();
+                return mChainsMap( k )[ aID ]->get_boundary();
             }
             else
             {
@@ -1394,7 +1394,7 @@ namespace belfem {
                 for (const auto &[tKey, tChain]: mChainsMap(k)) {
                     uint tCount2 = 0;
                     for (const auto &[tKey2, tChain2]: mChainsMap(k - 1)) {
-                        tBoundaryMat(k)(tCount2, tCount) = tChain->getBoundary()->getCoefficient(tKey2);
+                        tBoundaryMat(k)(tCount2, tCount) = tChain->get_boundary()->get_coefficient(tKey2);
                         tCount2++;
                     }
                     tCount++;
@@ -1427,7 +1427,7 @@ namespace belfem {
                 for (const auto &[tKey, tChain]: mCochainsMap(k)) {
                     uint tCount2 = 0;
                     for (const auto &[tKey2, tChain2]: mCochainsMap(k + 1)) {
-                        tCoboundaryMat(k)(tCount2, tCount) = tChain->getCoboundary()->getCoefficient(tKey2);
+                        tCoboundaryMat(k)(tCount2, tCount) = tChain->get_coboundary()->get_coefficient(tKey2);
                         tCount2++;
                     }
                     tCount++;
@@ -1455,7 +1455,7 @@ namespace belfem {
             Cell < Element* > tElements = aMesh->elements();
             for (const auto &[tKey, tChain]: this->get_kchainMap(k))
             {
-                OrderedMap<index_t, int> & tSimplicesMap = tChain->getSimplicesMap();
+                OrderedMap<index_t, int> & tSimplicesMap = tChain->get_simplices_map();
                 for( const auto& [tID, tCoeff] :  tSimplicesMap)
                 {
                     aMesh->field_data(aFieldName)(tElements(tID)->index()) = tCoeff;
@@ -1472,7 +1472,7 @@ namespace belfem {
             Cell < Element* > tElements = aMesh->elements();
             for (const auto &[tKey, tCochain]: this->get_kcochainMap(k))
             {
-                OrderedMap<index_t, int> & tSimplicesMap = tCochain->getSimplicesMap();
+                OrderedMap<index_t, int> & tSimplicesMap = tCochain->get_simplices_map();
                 for( const auto& [tID, tCoeff] :  tSimplicesMap)
                 {
                     aMesh->field_data(aFieldName)(tElements(tID)->index()) = tCoeff;

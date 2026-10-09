@@ -361,26 +361,26 @@ namespace belfem
                     ++next_it;
 
                     //Check if the p+1 cochain is a coboundary of exactly one p cochain
-                    if (it->second->getBoundary()->getSimplicesMap().size() == 1)
+                    if (it->second->get_boundary()->get_simplices_map().size() == 1)
                     {
                         index_t a = it->first;
-                        index_t b = it->second->getBoundary()->getSimplicesMap().begin()->first;
+                        index_t b = it->second->get_boundary()->get_simplices_map().begin()->first;
 
-                        OrderedMap< index_t, int > & tSimpMap0 = mCochainsMap(p)(b)->getCoboundary()->getSimplicesMap() ;
+                        OrderedMap< index_t, int > & tSimpMap0 = mCochainsMap(p)(b)->get_coboundary()->get_simplices_map() ;
                         //Update the boundaries
                         for(const auto [tID2, tCoeff2]: tSimpMap0 )
                         {
                             if (tID2 != it->first )
                             {
-                                tMap1(tID2)->getBoundary()->setCoefficient(b,0);
+                                tMap1(tID2)->get_boundary()->set_coefficient(b,0);
                             }
                         }
                         if (p < 2)
                         {
-                            OrderedMap< index_t, int > & tSimpMap1 = tMap1(a)->getCoboundary()->getSimplicesMap() ;
+                            OrderedMap< index_t, int > & tSimpMap1 = tMap1(a)->get_coboundary()->get_simplices_map() ;
                             for(const auto [tID2, tCoeff2]: tSimpMap1 )
                             {
-                                mCochainsMap(p+2)(tID2)->getBoundary()->setCoefficient(a,0);
+                                mCochainsMap(p+2)(tID2)->get_boundary()->set_coefficient(a,0);
                             }
                         }
 

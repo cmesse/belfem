@@ -54,7 +54,7 @@ namespace belfem
             for (Cochain * tCochain : aBTree->get_cohomology())
             {
                 Cochain * tGenerator = new Cochain(1,mMesh, false, false);
-                tGenerator->addCochainToCochain(tCochain,1);
+                tGenerator->add_cochain_to_cochain(tCochain,1);
                 mGenerators(1).push(tGenerator);
             }
             this->clean();
@@ -176,7 +176,7 @@ namespace belfem
                     tCount2 = 0;
                     for(const auto& [tKey, tCochain2] : mSimplicialComplex->get_kcochainMap(k))
                     {
-                        mGenerators(k)(tCount)->addCochainToCochain(tCochain2,mU[k](tCount2,j-1));
+                        mGenerators(k)(tCount)->add_cochain_to_cochain(tCochain2,mU[k](tCount2,j-1));
                         tCount2++;
                     }
                     tCount++;
@@ -214,7 +214,7 @@ namespace belfem
                     Edge * tEdge = aNode->edge( j );
                     if ( ! aComplexEdges.test( tEdge->index() ) ) continue ;
 
-                    aGenerator->addSimplexToCochain( tEdge->index(),
+                    aGenerator->add_simplex_to_cochain( tEdge->index(),
                             tEdge->node( 0 )->index() == aNode->index() ? -aWeight : aWeight );
 
                     Node * tN0 = tEdge->node( 0 );
@@ -238,7 +238,7 @@ namespace belfem
                         if ( ! aComplexEdges.test( tEdge->index() ) ) continue ;
                         if ( tEdge->is_flagged() ) continue ;
 
-                        aGenerator->addSimplexToCochain( tEdge->index(),
+                        aGenerator->add_simplex_to_cochain( tEdge->index(),
                                 tEdge->node( 0 )->index() == tPartner->index() ? -aWeight : aWeight );
 
                         Node * tN0 = tEdge->node( 0 );
@@ -276,9 +276,9 @@ namespace belfem
                 // inflate the live map, so live sizes are not a baseline
                 // ( Grok P2: plateau detection alone is incomplete — a
                 // non-constant fire-count cycle never trips it )
-                const index_t tSupport0 = aGenerator->getSimplicesMap().size() ;
+                const index_t tSupport0 = aGenerator->get_simplices_map().size() ;
                 index_t tNumNonUnit0 = 0 ;
-                for ( const auto & [ tIndex, tCoeff ] : aGenerator->getSimplicesMap() )
+                for ( const auto & [ tIndex, tCoeff ] : aGenerator->get_simplices_map() )
                 {
                     if ( tCoeff > 1 || tCoeff < -1 )
                     {
@@ -305,7 +305,7 @@ namespace belfem
                     tNumNonUnitOld = tNumNonUnit ;
                     tNumNonUnit = 0 ;
 
-                    for ( auto & [ tIndex, tCoeff ] : aGenerator->getSimplicesMap() )
+                    for ( auto & [ tIndex, tCoeff ] : aGenerator->get_simplices_map() )
                     {
                         if ( tCoeff > 1 || tCoeff < -1 )
                         {
@@ -327,7 +327,7 @@ namespace belfem
                     // support-growth fuse ( catches cascade floods early )
                     if ( tNumNonUnit == tNumNonUnitOld
                          || ++tSweep > tSweepCap
-                         || aGenerator->getSimplicesMap().size() > tSupportFuse )
+                         || aGenerator->get_simplices_map().size() > tSupportFuse )
                     {
                         return false ;
                     }
@@ -431,7 +431,7 @@ namespace belfem
                     {
                         Edge * tEdge = tEdges( tDomainEdges( k ) );
 
-                        const int64_t tC = tGenerator->getCoefficient( tEdge->index() );
+                        const int64_t tC = tGenerator->get_coefficient( tEdge->index() );
                         if ( tC > 1 || tC < -1 )
                         {
                             ++tNumNonUnit ;
@@ -603,7 +603,7 @@ namespace belfem
                 // safety gate ( release-active ): the rectified generator must
                 // be unit everywhere; closedness is preserved by construction,
                 // since only node coboundaries were added ( dd = 0 )
-                for ( const auto & [ tIndex, tCoeff ] : tGenerator->getSimplicesMap() )
+                for ( const auto & [ tIndex, tCoeff ] : tGenerator->get_simplices_map() )
                 {
                     BELFEM_ERROR( tCoeff <= 1 && tCoeff >= -1,
                             "clean_spfa: generator %u keeps non-unit coefficient %d on edge index %lu after rectification",
@@ -617,7 +617,7 @@ namespace belfem
                         tGeneratorCount,
                         ( long unsigned int ) tNumNonUnit,
                         tSparse ? "sparse greedy" : "dense fallback",
-                        ( long unsigned int ) tGenerator->getSimplicesMap().size() );
+                        ( long unsigned int ) tGenerator->get_simplices_map().size() );
 
                 if ( mProgress != nullptr )
                 {
@@ -771,7 +771,7 @@ namespace belfem
                                     if ( ! tComplexEdges.test( tEdge->index() ) ) continue ;
                                     if ( tPass == 1 && tEdge->is_flagged() ) continue ;
 
-                                    const int tC = tGenerator->getCoefficient( tEdge->index() );
+                                    const int tC = tGenerator->get_coefficient( tEdge->index() );
 
                                     if ( tC == 0 )
                                     {
@@ -816,7 +816,7 @@ namespace belfem
                             }
 
                             ++tNumBoundary ;
-                            const int tC = tGenerator->getCoefficient( tEdgeIndex );
+                            const int tC = tGenerator->get_coefficient( tEdgeIndex );
 
                             // flip with sign s changes this edge by -s if the
                             // K side is node( 0 ), by +s if it is node( 1 );
@@ -835,7 +835,7 @@ namespace belfem
                             for ( Cochain * tOther : mGenerators( 1 ) )
                             {
                                 if ( tOther != tGenerator &&
-                                     tOther->getCoefficient( tEdgeIndex ) != 0 )
+                                     tOther->get_coefficient( tEdgeIndex ) != 0 )
                                 {
                                     tOverlap = true ;
                                     break ;
@@ -880,7 +880,7 @@ namespace belfem
                 }
 
                 // unit gate re-run ( rules, Rule 6 )
-                for ( const auto & [ tIndex, tCoeff ] : tGenerator->getSimplicesMap() )
+                for ( const auto & [ tIndex, tCoeff ] : tGenerator->get_simplices_map() )
                 {
                     BELFEM_ERROR( tCoeff <= 1 && tCoeff >= -1,
                             "remove_cut_pockets: generator %u has non-unit coefficient %d on edge index %lu after pocket removal",
@@ -912,7 +912,7 @@ namespace belfem
             {
                 for (uint i = 0 ; i < this->get_Generators()(1).size(); ++i)
                 {
-                    auto tMap = this->get_Generators()(1)(i)->getSimplicesMap() ;
+                    auto tMap = this->get_Generators()(1)(i)->get_simplices_map() ;
                     for (Face * tFace : mMesh->faces())
                     {
                         int tCirc = 0;
@@ -932,7 +932,7 @@ namespace belfem
             {
                 for (uint i = 0 ; i < this->get_Generators()(1).size(); ++i)
                 {
-                    auto tMap = this->get_Generators()(1)(i)->getSimplicesMap() ;
+                    auto tMap = this->get_Generators()(1)(i)->get_simplices_map() ;
                     for (Element * tFace : mMesh->elements())
                     {
                         real tCirc = 0.0;
@@ -960,7 +960,7 @@ namespace belfem
             {
                 tCount++;
                 aMesh->create_field( aFieldName+std::to_string(tCount), EntityType::ELEMENT);
-                OrderedMap< index_t, int > & tSimplicesMap = tCochain->getSimplicesMap();
+                OrderedMap< index_t, int > & tSimplicesMap = tCochain->get_simplices_map();
                 for( const auto& [tID, tCoeff] :  tSimplicesMap)
                 {
                     aMesh->field_data(aFieldName+std::to_string(tCount))(tElements(tID)->index()) = tCoeff;
@@ -1196,7 +1196,7 @@ namespace belfem
                 Cochain * tGen = new Cochain(k, mMesh, false, false);
                 for(uint j = 0; j < n; j++)
                 {
-                    tGen->addCochainToCochain(mGenerators(k)(j),tTransInv(i,j));
+                    tGen->add_cochain_to_cochain(mGenerators(k)(j),tTransInv(i,j));
                 }
                 tNewGenerators.push(tGen);
             }

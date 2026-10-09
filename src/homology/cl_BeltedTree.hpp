@@ -67,12 +67,12 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
             void
-            create_TreeField(Mesh* tEdgeMesh , string tFieldName) ;
+            create_tree_field( Mesh * aEdgeMesh , const string aFieldName ) ;
 
 //-----------------------------------------------------------------------------
 
             void
-            create_cohomologyField( Mesh* tMeshEdge ) ;
+            create_cohomology_field( Mesh* aEdgeMesh ) ;
 
 //-----------------------------------------------------------------------------
 

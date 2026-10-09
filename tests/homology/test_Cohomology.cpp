@@ -181,7 +181,7 @@ namespace
     inner_ring_pairing( Mesh * aMesh, Cochain * aGenerator, const uint aN )
     {
         std::map< index_t, int > tCoeffs ;
-        for ( const auto & [ tIndex, tCoeff ] : aGenerator->getSimplicesMap() )
+        for ( const auto & [ tIndex, tCoeff ] : aGenerator->get_simplices_map() )
         {
             tCoeffs[ tIndex ] = tCoeff ;
         }
@@ -323,7 +323,7 @@ namespace
         ASSERT_EQ( tGenerators.size(), 1u );
 
         // the rectification contract: every surviving coefficient is a unit
-        for ( const auto & [ tIndex, tCoeff ] : tGenerators( 0 )->getSimplicesMap() )
+        for ( const auto & [ tIndex, tCoeff ] : tGenerators( 0 )->get_simplices_map() )
         {
             EXPECT_TRUE( tCoeff == 1 || tCoeff == -1 )
                 << "edge index " << tIndex << " carries coefficient " << tCoeff ;
@@ -375,9 +375,9 @@ TEST( Cohomology, AnnulusForcedRepair )
 
     // first support edge by smallest edge index ( OrderedMap = std::map,
     // deterministic ); its coefficient is a unit after the clean above
-    ASSERT_GT( tGen->getSimplicesMap().size(), 0u );
-    const index_t tEdgeIndex = tGen->getSimplicesMap().begin()->first ;
-    const int     tG0        = tGen->getSimplicesMap().begin()->second ;
+    ASSERT_GT( tGen->get_simplices_map().size(), 0u );
+    const index_t tEdgeIndex = tGen->get_simplices_map().begin()->first ;
+    const int     tG0        = tGen->get_simplices_map().begin()->second ;
     ASSERT_TRUE( tG0 == 1 || tG0 == -1 );
 
     Edge * tSupportEdge = nullptr ;
@@ -407,13 +407,13 @@ TEST( Cohomology, AnnulusForcedRepair )
         else if ( tEdge->node( 1 )->index() == tNodeIndex ) tDelta =  1 ;
         if ( tDelta == 0 ) continue ;
 
-        tGen->setCoefficient( tEdge->index(),
-            tGen->getCoefficient( tEdge->index() ) + tS * tDelta );
+        tGen->set_coefficient( tEdge->index(),
+            tGen->get_coefficient( tEdge->index() ) + tS * tDelta );
     }
 
     // the forcing is real: a non-unit coefficient exists before the repair
     bool tHaveNonUnit = false ;
-    for ( const auto & [ tIndex, tCoeff ] : tGen->getSimplicesMap() )
+    for ( const auto & [ tIndex, tCoeff ] : tGen->get_simplices_map() )
     {
         if ( tCoeff >= 2 || tCoeff <= -2 ) tHaveNonUnit = true ;
     }
@@ -424,7 +424,7 @@ TEST( Cohomology, AnnulusForcedRepair )
 
     // rectification contract: unit representative of the SAME class
     ASSERT_EQ( tGenerators.size(), 1u );
-    for ( const auto & [ tIndex, tCoeff ] : tGenerators( 0 )->getSimplicesMap() )
+    for ( const auto & [ tIndex, tCoeff ] : tGenerators( 0 )->get_simplices_map() )
     {
         EXPECT_TRUE( tCoeff == 1 || tCoeff == -1 )
             << "edge index " << tIndex << " carries coefficient " << tCoeff ;
@@ -479,7 +479,7 @@ TEST( Cohomology, SuggestedGeneratorIsTheCcwInnerRing )
     Chain * tGamma = tSuggested->get_Generators()( 1 )( 0 );
 
     // support is exactly the inner ring: one entry per ring edge
-    ASSERT_EQ( tGamma->getSimplicesMap().size(), tN );
+    ASSERT_EQ( tGamma->get_simplices_map().size(), tN );
 
     uint tRingEdges = 0 ;
     for ( Edge * tEdge : tMesh->edges() )
@@ -489,7 +489,7 @@ TEST( Cohomology, SuggestedGeneratorIsTheCcwInnerRing )
         if ( tA > tN || tB > tN ) continue ;
         ++tRingEdges ;
 
-        EXPECT_EQ( tGamma->getCoefficient( tEdge->index() ),
+        EXPECT_EQ( tGamma->get_coefficient( tEdge->index() ),
             gInnerRingSense * inner_ring_sign( tA, tB, tN ) )
             << "inner-ring edge " << tA << " -> " << tB ;
     }

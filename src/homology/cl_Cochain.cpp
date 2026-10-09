@@ -56,7 +56,7 @@ namespace belfem
         void
         Cochain::operator+( Cochain * aCochain )
         {
-            this->addCochainToCochain( aCochain, 1);
+            this->add_cochain_to_cochain( aCochain, 1);
         }
 
 //-----------------------------------------------------------------------------
@@ -64,7 +64,7 @@ namespace belfem
         void
         Cochain::operator-( Cochain * aCochain )
         {
-            this->removeCochainFromCochain( aCochain );
+            this->remove_cochain_from_cochain( aCochain );
         }
 
 //-----------------------------------------------------------------------------
@@ -73,7 +73,7 @@ namespace belfem
         Cochain::operator()( Chain * aChain )
         {
             int tVal = 0;
-            OrderedMap< index_t, int > & tChainMap = aChain->getSimplicesMap();
+            OrderedMap< index_t, int > & tChainMap = aChain->get_simplices_map();
             for( const auto& [tID, tCoeff] : mSimplicesMap )
             {
                 auto it = tChainMap.find(tID);
@@ -88,22 +88,22 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         void
-        Cochain::removeSimplexToCochain(const index_t aID)
+        Cochain::remove_simplex_from_cochain(const index_t aID)
         {
             //Removing is simply adding a -1 coefficient
-            this->addSimplexToCochain(aID, -1);
+            this->add_simplex_to_cochain(aID, -1);
         }
 
 //-----------------------------------------------------------------------------
 
         void
-        Cochain::removeCochainFromCochain(Cochain * aCochain)
+        Cochain::remove_cochain_from_cochain(Cochain * aCochain)
         {
-            if (mDim == aCochain->getDim())
+            if (mDim == aCochain->get_dim())
             {
-                for( const auto& [tID, tCoeff] : aCochain->getSimplicesMap() )
+                for( const auto& [tID, tCoeff] : aCochain->get_simplices_map() )
                 {
-                    this->addSimplexToCochain(tID,-1*tCoeff);
+                    this->add_simplex_to_cochain(tID,-1*tCoeff);
                 }
             }
             else
