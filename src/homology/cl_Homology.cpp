@@ -164,7 +164,7 @@ namespace belfem
                     tCount2 = 0;
                     for(const auto& [tKey, tChain2] : mSimplicialComplex->get_kchainMap(k))
                     {
-                        mGenerators(k)(tCount)->addChainToChain(tChain2,mU[k](tCount2,j-1));
+                        mGenerators(k)(tCount)->add_chain_to_chain(tChain2,mU[k](tCount2,j-1));
                         tCount2++;
                     }
                     tCount++;
@@ -185,7 +185,7 @@ namespace belfem
             {
                 tCount++;
                 aMesh->create_field( tFieldName+std::to_string(tCount), EntityType::ELEMENT);
-                OrderedMap< index_t, int > & tSimplicesMap = tChain->getSimplicesMap();
+                OrderedMap< index_t, int > & tSimplicesMap = tChain->get_simplices_map();
                 for( const auto& [tID, tCoeff] :  tSimplicesMap)
                 {
                     aMesh->field_data(tFieldName+std::to_string(tCount))(tElements(tID)->index()) = tCoeff;
@@ -280,7 +280,7 @@ namespace belfem
                             for ( Segment * tSegment : tCurve->segments() )
                             {
                                 Edge * tEdge = tSegment->edge() ;
-                                mGenerators(1)(mGenerators(1).size()-1)->addSimplexToChain(tEdge->index(),-1*tSegment->edge_direction()) ;
+                                mGenerators(1)(mGenerators(1).size()-1)->add_simplex_to_chain(tEdge->index(),-1*tSegment->edge_direction()) ;
                             }
                         }
                     }
@@ -288,11 +288,11 @@ namespace belfem
                     mSimplicialComplex = new SimplicialComplex(mMesh);
                     for (auto [tID, tChain] : mSimplicialComplex->get_kchainMap(2))
                     {
-                        tTotalChain->addChainToChain(tChain,1) ;
+                        tTotalChain->add_chain_to_chain(tChain,1) ;
                     }
 
                     //The suggested homology is simply the boundary of the input terminal
-                    mGenerators(1)(mGenerators(1).size()-1)->addChainToChain(tTotalChain->getBoundary(),-1) ;
+                    mGenerators(1)(mGenerators(1).size()-1)->add_chain_to_chain(tTotalChain->get_boundary(),-1) ;
 
                     mMesh->unflag_everything() ;
                     delete mSimplicialComplex ;
@@ -344,7 +344,7 @@ namespace belfem
                                 for ( Segment * tSegment : tCurve->segments() )
                                 {
                                     Edge * tEdge = tSegment->edge() ;
-                                    mGenerators(1)(mGenerators(1).size()-1)->addSimplexToChain(tEdge->index(),-1*tSegment->edge_direction()) ;
+                                    mGenerators(1)(mGenerators(1).size()-1)->add_simplex_to_chain(tEdge->index(),-1*tSegment->edge_direction()) ;
                                 }
                             }
                         }
@@ -352,16 +352,16 @@ namespace belfem
                         mSimplicialComplex = new SimplicialComplex(mMesh);
                         for (auto [tID, tChain] : mSimplicialComplex->get_kchainMap(2))
                         {
-                            tTotalChain2->addChainToChain(tChain,1) ;
+                            tTotalChain2->add_chain_to_chain(tChain,1) ;
                         }
 
                         //If the output terminal is the same as the input terminal, the geometry loops on itself and the inbound/outbound logic is reverted for the output terminal
-                        tTotalChain->removeChainFromChain(tTotalChain2);
+                        tTotalChain->remove_chain_from_chain(tTotalChain2);
                         int tCoeff = -1 ;
-                        if (tTotalChain->getSimplicesMap().size()==0) tCoeff = 1 ;
+                        if (tTotalChain->get_simplices_map().size()==0) tCoeff = 1 ;
 
                         //The suggested homology is simply the boundary of the input terminal
-                        mGenerators(1)(mGenerators(1).size()-1)->addChainToChain(tTotalChain2->getBoundary(),tCoeff) ;
+                        mGenerators(1)(mGenerators(1).size()-1)->add_chain_to_chain(tTotalChain2->get_boundary(),tCoeff) ;
 
                         mMesh->unflag_everything() ;
                         delete tTotalChain2 ;
@@ -381,7 +381,7 @@ namespace belfem
                         for ( Segment * tSegment : mMesh->curve(aTerminals(aThinShellIndices(tCountThinshells))(j))->segments() )
                         {
                             Edge * tEdge = tSegment->edge() ;
-                            tChainInput->addSimplexToChain(tEdge->index(),-1*tSegment->edge_direction()) ;
+                            tChainInput->add_simplex_to_chain(tEdge->index(),-1*tSegment->edge_direction()) ;
                         }
                     }
 
@@ -396,7 +396,7 @@ namespace belfem
                             for ( Segment * tSegment : mMesh->curve(aTerminals(aThinShellIndices(tCountThinshells))(j))->segments() )
                             {
                                 Edge * tEdge = tSegment->edge() ;
-                                tChainOutput->addSimplexToChain(tEdge->index(),-1*tSegment->edge_direction()) ;
+                                tChainOutput->add_simplex_to_chain(tEdge->index(),-1*tSegment->edge_direction()) ;
                             }
                         }
                     }
@@ -430,7 +430,7 @@ namespace belfem
         Homology::create_self_intersecting(const uint tGeneratorIndex)
         {
             Cell < Edge* > & tEdges = mMesh->edges();
-            for (auto & [ tInd, tCoeff2 ]: mGenerators(1)(tGeneratorIndex)->getSimplicesMap())
+            for (auto & [ tInd, tCoeff2 ]: mGenerators(1)(tGeneratorIndex)->get_simplices_map())
             {
                 tEdges( tInd )->node( 0 )->flag();
                 tEdges( tInd )->node( 1 )->flag();
@@ -460,7 +460,7 @@ namespace belfem
                     {
                         for(uint j = 0 ; j < 3 ; ++j)
                         {
-                            mGenerators(1)(tGeneratorIndex)->addSimplexToChain(tElement->edge(j)->index(),tElement->edge_direction(j)?-1:1);
+                            mGenerators(1)(tGeneratorIndex)->add_simplex_to_chain(tElement->edge(j)->index(),tElement->edge_direction(j)?-1:1);
                         }
                         break;
                     }
@@ -489,7 +489,7 @@ namespace belfem
                     {
                         for(uint j = 0 ; j < 3 ; ++j)
                         {
-                            mGenerators(1)(tGeneratorIndex)->addSimplexToChain(tFace->edge(j)->index(),tFace->edge_direction(j)?-1:1);
+                            mGenerators(1)(tGeneratorIndex)->add_simplex_to_chain(tFace->edge(j)->index(),tFace->edge_direction(j)?-1:1);
                         }
                         break;
                     }
@@ -513,16 +513,16 @@ namespace belfem
                 Cell< Edge * > & tMeshEdges = mMesh->edges();
 
                 //Ordering the edges from the loop
-                Cell <Edge*> tEdges( mGenerators(1)(i)->getSimplicesMap().size(), nullptr);
-                Cell <int> tCoeffs( mGenerators(1)(i)->getSimplicesMap().size(), 0);
-                tEdges(0) = tMeshEdges(mGenerators(1)(i)->getSimplicesMap().begin()->first);
-                tCoeffs(0) = mGenerators(1)(i)->getSimplicesMap().begin()->second ;
+                Cell <Edge*> tEdges( mGenerators(1)(i)->get_simplices_map().size(), nullptr);
+                Cell <int> tCoeffs( mGenerators(1)(i)->get_simplices_map().size(), 0);
+                tEdges(0) = tMeshEdges(mGenerators(1)(i)->get_simplices_map().begin()->first);
+                tCoeffs(0) = mGenerators(1)(i)->get_simplices_map().begin()->second ;
                 uint tCount = 1;
 
 
                 while (tCount < tEdges.size())
                 {
-                    for(const auto & [tID, tCoeff]: mGenerators(1)(i)->getSimplicesMap())
+                    for(const auto & [tID, tCoeff]: mGenerators(1)(i)->get_simplices_map())
                     {
                         if (tCoeff > 0 and tCoeffs(tCount-1) > 0)
                         {

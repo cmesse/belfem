@@ -186,7 +186,7 @@ namespace belfem
         CutData::collect_edges()
         {
             // grab the edge map
-            OrderedMap< index_t, int > & tMap   = mCochain->getSimplicesMap() ;
+            OrderedMap< index_t, int > & tMap   = mCochain->get_simplices_map() ;
             Cell< Edge * >   & tEdges = mMesh->edges() ;
 
             // count edges
@@ -235,7 +235,7 @@ namespace belfem
 
             Cell< Edge * >   & tEdges = mMesh->edges() ;
 
-            OrderedMap< index_t, int > & tMap   = mCochain->getSimplicesMap() ;
+            OrderedMap< index_t, int > & tMap   = mCochain->get_simplices_map() ;
             for ( auto & tPair : tMap )
             {
                 if ( tPair.second == 1 )

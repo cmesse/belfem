@@ -892,7 +892,7 @@ tCohomology.create_kGeneratorsField(1, aFullMesh, "H1_gen");
 
 // Access individual generator
 Cochain* gen = generators(0);
-for (auto& [edge_id, coeff] : gen->getSimplicesMap()) {
+for (auto& [edge_id, coeff] : gen->get_simplices_map()) {
     message(InfoLevel::Verbose, "Edge %lu: coefficient %d", edge_id, coeff);
 }
 ```
@@ -1361,7 +1361,10 @@ The cut processing pipeline (called internally by CutFactory):
 
 ### Chain
 
-**Purpose:** Represents formal sums of k-simplices with integer coefficients.
+**Purpose:** A chain is a formal sum of k-simplices with integer coefficients, keyed by
+the mesh entity's *index* (`Node::index()`, `Edge::index()`, `Facet::index()`,
+`Element::index()`), never by its id. It can also carry its own boundary and coboundary
+chains, which the simplicial-complex builder fills alongside it.
 
 **File:** `cl_Chain.{hpp,cpp}`
 
@@ -1369,70 +1372,116 @@ The cut processing pipeline (called internally by CutFactory):
 ```cpp
 class Chain
 {
-    OrderedMap<id_t, int> mData;  // Simplex ID → coefficient
-    uint mDimension;               // 0 (nodes), 1 (edges), 2 (faces), 3 (elements)
+    int                        mDim ;           // 0 nodes, 1 edges, 2 faces, 3 elements
+    Mesh *                     mMesh ;
+    OrderedMap< index_t, int > mSimplicesMap ;  // simplex index -> coefficient
+    Chain *                    mBoundary ;      // (k-1)-chain, owned, or nullptr
+    Chain *                    mCoboundary ;    // (k+1)-chain, owned, or nullptr
 };
 ```
 
-**Key operations:**
+The constructor `Chain( aDim, aMesh, aIsBound, aIsCobound )` allocates `mBoundary` unless
+`aDim == 0` or `aIsBound` is set, and allocates `mCoboundary` unless `aDim == 3` or
+`aIsCobound` is set. The two flags identify a chain that *is* someone's boundary or
+coboundary, stopping the recursion one level down. The destructor deletes both.
+
+**Key operations:** Every operator works in place on `this`; none returns a new chain.
 ```cpp
-Chain operator+(const Chain& aOther) const;  // Addition
-Chain operator-(const Chain& aOther) const;  // Subtraction
-Chain operator*(const int aValue) const;     // Scalar multiplication
+void operator+( Chain * aChain ) ;        // this += aChain
+void operator-( Chain * aChain ) ;        // this -= aChain
+void operator*( const int aMult ) ;       // every coefficient *= aMult
+int  operator()( Chain * aChain ) ;       // sum over shared indices of coeff * coeff
 
-int inner_product(const Chain& aOther) const;  // <c1, c2>
+void add_simplex_to_chain( const index_t aIndex, const int aCoeff ) ;  // adds, erases a zero
+void remove_simplex_from_chain( const index_t aIndex ) ;
+void add_chain_to_chain( Chain * aChain, int aCoeff ) ;                // this += aCoeff * aChain
+void remove_chain_from_chain( Chain * aChain ) ;
 
-const OrderedMap<id_t, int>& data() const;  // Access coefficients
+OrderedMap< index_t, int > & get_simplices_map() ;
+int  get_coefficient( const index_t aIndex ) ;    // 0 when the index is absent
+void set_coefficient( const index_t aIndex, const int aCoeff ) ;  // 0 erases the entry
+int  get_dim() ;
+
+Chain * get_boundary() ;
+Chain * get_coboundary() ;
+void add_simplex_to_boundary( index_t aIndex, const int aCoeff ) ;    // forwards to mBoundary
+void add_simplex_to_coboundary( index_t aIndex, const int aCoeff ) ;  // forwards to mCoboundary
+void print() ;
 ```
+
+`add_chain_to_chain` refuses a dimension mismatch (it prints and returns). Otherwise, it also
+propagates into `mBoundary` and `mCoboundary` wherever this chain owns them, so a generator
+assembled from other chains keeps its boundary consistent. `remove_chain_from_chain` does not
+propagate.
 
 **Usage:**
 ```cpp
-Chain c1;
-c1.add(101, 1);   // Add edge 101 with coefficient +1
-c1.add(102, -1);  // Add edge 102 with coefficient -1
+Chain tC1( 1, tMesh, false, false ) ;
+tC1.add_simplex_to_chain( tEdgeA->index(),  1 ) ;
+tC1.add_simplex_to_chain( tEdgeB->index(), -1 ) ;
 
-Chain c2;
-c2.add(101, 2);
+Chain tC2( 1, tMesh, false, false ) ;
+tC2.add_simplex_to_chain( tEdgeA->index(), 2 ) ;
 
-Chain c3 = c1 + c2;  // {101: 3, 102: -1}
+tC1 + &tC2 ;                       // tC1 is now { A: 3, B: -1 }
+int tPairing = tC1( &tC2 ) ;       // 3 * 2 = 6
+
+for ( const auto & [ tIndex, tCoeff ] : tC1.get_simplices_map() )
+{
+    // tIndex is Edge::index(); look the edge up through the mesh, not by id
+}
 ```
 
 ---
 
 ### Cochain
 
-**Purpose:** Dual to Chain; represents cochains in the cochain complex.
+**Purpose:** A `Cochain` is dual to `Chain`: a formal sum of k-cosimplices keyed by the
+same simplex indices. The generators that `Cohomology` hands out are `Cochain *`.
 
 **File:** `cl_Cochain.{hpp,cpp}`
 
-**Structure:**
+**Structure:** The structure is identical to `Chain`, but uses `Cochain *` boundary and
+coboundary members. The constructor and destructor follow the same rules.
+
+**Key operations:** The in-place API corresponds to `Chain`, with `cochain` in the method
+names.
 ```cpp
-class Cochain
-{
-    OrderedMap<index_t, int> mData;  // Simplex index → coefficient
-    uint mDimension;
-};
+void operator+( Cochain * aCochain ) ;
+void operator-( Cochain * aCochain ) ;
+int  operator()( Chain * aChain ) ;       // evaluation <phi, c>: sum over shared indices
+
+void add_simplex_to_cochain( const index_t aIndex, const int aCoeff ) ;
+void remove_simplex_from_cochain( const index_t aIndex ) ;
+void add_cochain_to_cochain( Cochain * aCochain, const int aCoeff ) ;
+void remove_cochain_from_cochain( Cochain * aCochain ) ;
+
+OrderedMap< index_t, int > & get_simplices_map() ;
+int  get_coefficient( const index_t aIndex ) ;
+void set_coefficient( const index_t aIndex, const int aCoeff ) ;
+int  get_dim() ;
+
+Cochain * get_coboundary() ;
+Cochain * get_boundary() ;
+void add_simplex_to_coboundary( index_t aIndex, const int aCoeff ) ;
+void add_simplex_to_boundary( index_t aIndex, const int aCoeff ) ;
+bool isBound() ;      // no callers in the tree
+bool isCobound() ;
+void print() ;
 ```
 
-**Key operations:**
-```cpp
-Cochain operator+(const Cochain& aOther) const;
-Cochain operator-(const Cochain& aOther) const;
-Cochain operator*(const int aValue) const;
-
-int evaluate(const Chain& aChain) const;  // <φ, c>
-
-const OrderedMap<index_t, int>& data() const;
-```
+There is no scalar `operator*` on `Cochain`. To scale one, use
+`add_cochain_to_cochain` with a coefficient, as `Cohomology` does when it recombines
+generators.
 
 **Usage:**
 ```cpp
-Cochain phi;
-phi.add(0, 1);   // Add edge at index 0 with coefficient +1
-phi.add(1, -1);  // Add edge at index 1 with coefficient -1
+Cochain tPhi( 1, tMesh, false, false ) ;
+tPhi.add_simplex_to_cochain( tEdgeA->index(),  1 ) ;
+tPhi.add_simplex_to_cochain( tEdgeB->index(), -1 ) ;
 
-Chain c = ...;
-int value = phi.evaluate(c);  // Cochain evaluation on chain
+Chain * tC = ... ;
+int tValue = tPhi( tC ) ;          // cochain evaluated on the chain
 ```
 
 ---
@@ -1837,8 +1886,8 @@ Returns computed cohomology generators.
 
 **Visualization:**
 ```cpp
-void create_TreeField(Mesh* tEdgeMesh, string tFieldName);
-void create_cohomologyField(Mesh* tMeshEdge);
+void create_tree_field(Mesh* tEdgeMesh, string tFieldName);
+void create_cohomology_field(Mesh* tMeshEdge);
 ```
 
 Creates mesh fields to visualize spanning tree and cohomology generators.
@@ -2166,7 +2215,7 @@ void compute_cohomology_groups(Mesh* aMesh)
     for (uint i = 0; i < generators.size(); ++i) {
         Cochain* gen = generators(i);
         message(InfoLevel::Default, "Generator %u: %lu edges",
-                i, gen->getSimplicesMap().size());
+                i, gen->get_simplices_map().size());
     }
 }
 ```

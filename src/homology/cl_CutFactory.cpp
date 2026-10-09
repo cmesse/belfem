@@ -523,7 +523,7 @@ namespace belfem
         void
         CutFactory::save_edges( const uint aIndex )
         {
-            OrderedMap< id_t, int > & tMap = mCohomology->get_Generators()( 1 )( aIndex )->getSimplicesMap();
+            OrderedMap< id_t, int > & tMap = mCohomology->get_Generators()( 1 )( aIndex )->get_simplices_map();
 
             mMesh->unflag_all_nodes();
             mMesh->unflag_all_edges();

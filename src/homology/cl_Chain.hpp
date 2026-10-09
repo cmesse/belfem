@@ -85,62 +85,62 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
             void
-            addSimplexToChain(const id_t aID, const int aCoeff ) ;
+            add_simplex_to_chain( const index_t aIndex, const int aCoeff ) ;
 
 //-----------------------------------------------------------------------------
 
             void
-            removeSimplexToChain(const id_t aID) ;
+            remove_simplex_from_chain( const index_t aIndex ) ;
 
 //-----------------------------------------------------------------------------
 
             void
-            addChainToChain(Chain * aChain, int aCoeff) ;
+            add_chain_to_chain(Chain * aChain, int aCoeff) ;
 
 //-----------------------------------------------------------------------------
 
             void
-            removeChainFromChain(Chain * aChain) ;
+            remove_chain_from_chain(Chain * aChain) ;
 
 //-----------------------------------------------------------------------------
 
-            OrderedMap< id_t, int > &
-            getSimplicesMap() ;
+            OrderedMap< index_t, int > &
+            get_simplices_map() ;
 
 //-----------------------------------------------------------------------------
 
             int
-            getCoefficient(const id_t aID) ;
+            get_coefficient( const index_t aIndex ) ;
 
 //-----------------------------------------------------------------------------
 
             Chain *
-            getBoundary() ;
+            get_boundary() ;
 
 //-----------------------------------------------------------------------------
 
             Chain *
-            getCoboundary() ;
+            get_coboundary() ;
 
 //-----------------------------------------------------------------------------
 
             void
-            add_simplex_to_boundary(id_t aID, const int aCoeff) ;
+            add_simplex_to_boundary( index_t aIndex, const int aCoeff ) ;
 
 //-----------------------------------------------------------------------------
 
             void
-            add_simplex_to_coboundary(id_t aID, const int aCoeff) ;
+            add_simplex_to_coboundary( index_t aIndex, const int aCoeff ) ;
 
 //-----------------------------------------------------------------------------
 
             int
-            getDim() ;
+            get_dim() ;
 
 //-----------------------------------------------------------------------------
 
             void
-            setCoefficient(const id_t aID, const int tCoeff) ;
+            set_coefficient( const index_t aIndex, const int aCoeff ) ;
 
 //-----------------------------------------------------------------------------
 
@@ -154,8 +154,8 @@ namespace belfem
 
 //-----------------------------------------------------------------------------
 
-        inline OrderedMap< id_t, int > &
-        Chain::getSimplicesMap()
+        inline OrderedMap< index_t, int > &
+        Chain::get_simplices_map()
         {
             return mSimplicesMap;
         }
@@ -163,9 +163,9 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline int
-        Chain::getCoefficient( const id_t aID )
+        Chain::get_coefficient( const index_t aIndex )
         {
-            auto it = mSimplicesMap.find(aID);
+            auto it = mSimplicesMap.find( aIndex );
             if (it != mSimplicesMap.end()) {
                 return it->second;
             }
@@ -177,7 +177,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline Chain *
-        Chain::getBoundary()
+        Chain::get_boundary()
         {
             return mBoundary;
         }
@@ -185,7 +185,7 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
         inline Chain *
-        Chain::getCoboundary()
+        Chain::get_coboundary()
         {
             return mCoboundary;
         }
@@ -193,23 +193,23 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
         inline void
-        Chain::add_simplex_to_boundary( id_t aID, const int aCoeff )
+        Chain::add_simplex_to_boundary( index_t aIndex, const int aCoeff )
         {
-            mBoundary->addSimplexToChain(aID,aCoeff);
+            mBoundary->add_simplex_to_chain( aIndex, aCoeff );
         }
 
 //-----------------------------------------------------------------------------
 
         inline void
-        Chain::add_simplex_to_coboundary(id_t aID, const int aCoeff)
+        Chain::add_simplex_to_coboundary( index_t aIndex, const int aCoeff)
         {
-            mCoboundary->addSimplexToChain(aID,aCoeff);
+            mCoboundary->add_simplex_to_chain( aIndex, aCoeff );
         }
 
 //-----------------------------------------------------------------------------
 
         inline int
-        Chain::getDim()
+        Chain::get_dim()
         {
             return mDim;
         }

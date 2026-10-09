@@ -331,7 +331,7 @@ namespace
         const std::vector< id_t > & aCycle )
     {
         std::map< index_t, int > tCoeffs ;
-        for ( const auto & [ tIndex, tCoeff ] : aGenerator->getSimplicesMap() )
+        for ( const auto & [ tIndex, tCoeff ] : aGenerator->get_simplices_map() )
         {
             tCoeffs[ tIndex ] = tCoeff ;
         }
@@ -371,7 +371,7 @@ namespace
     void
     check_unit_coefficients( Cochain * aGenerator )
     {
-        for ( const auto & [ tIndex, tCoeff ] : aGenerator->getSimplicesMap() )
+        for ( const auto & [ tIndex, tCoeff ] : aGenerator->get_simplices_map() )
         {
             EXPECT_TRUE( tCoeff == 1 || tCoeff == -1 )
                 << "edge index " << tIndex << " carries coefficient " << tCoeff ;

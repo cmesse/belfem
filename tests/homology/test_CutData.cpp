@@ -312,7 +312,7 @@ namespace
     inner_ring_pairing( Mesh * aMesh, Cochain * aGenerator, const uint aN )
     {
         std::map< index_t, int > tCoeffs ;
-        for ( const auto & [ tIndex, tCoeff ] : aGenerator->getSimplicesMap() )
+        for ( const auto & [ tIndex, tCoeff ] : aGenerator->get_simplices_map() )
         {
             tCoeffs[ tIndex ] = tCoeff ;
         }
@@ -344,7 +344,7 @@ namespace
         const std::vector< id_t > & aCycle )
     {
         std::map< index_t, int > tCoeffs ;
-        for ( const auto & [ tIndex, tCoeff ] : aGenerator->getSimplicesMap() )
+        for ( const auto & [ tIndex, tCoeff ] : aGenerator->get_simplices_map() )
         {
             tCoeffs[ tIndex ] = tCoeff ;
         }
@@ -451,7 +451,7 @@ namespace
     support_size( Cochain * aGenerator )
     {
         index_t tCount = 0 ;
-        for ( const auto & [ tIndex, tCoeff ] : aGenerator->getSimplicesMap() )
+        for ( const auto & [ tIndex, tCoeff ] : aGenerator->get_simplices_map() )
         {
             if ( tCoeff != 0 ) ++tCount ;
         }
@@ -542,18 +542,18 @@ namespace
         ASSERT_EQ( tFixture.mCohomology->get_Generators()( 1 ).size(), 1u );
 
         Cochain * tGenerator = tFixture.generator();
-        ASSERT_GT( tGenerator->getSimplicesMap().size(), 0u );
+        ASSERT_GT( tGenerator->get_simplices_map().size(), 0u );
 
         // first support edge by smallest edge index ( OrderedMap = std::map,
         // deterministic )
-        const index_t tEdgeIndex = tGenerator->getSimplicesMap().begin()->first ;
-        const int     tG0        = tGenerator->getSimplicesMap().begin()->second ;
+        const index_t tEdgeIndex = tGenerator->get_simplices_map().begin()->first ;
+        const int     tG0        = tGenerator->get_simplices_map().begin()->second ;
         ASSERT_TRUE( tG0 == 1 || tG0 == -1 );
 
         Edge * tEdge = find_edge_by_index( tFixture.mMesh.get(), tEdgeIndex );
         ASSERT_NE( tEdge, nullptr );
 
-        tGenerator->setCoefficient( tEdgeIndex, aCoefficient );
+        tGenerator->set_coefficient( tEdgeIndex, aCoefficient );
 
         CutData tData( tFixture.mMesh.get(), tFixture.mCohomology.get(), 0 );
         tData.collect_edges();
@@ -607,7 +607,7 @@ namespace
         for ( uint i = 0; i < aK; ++i )
         {
             for ( const auto & [ tIndex, tCoeff ] :
-                tGenerators( i )->getSimplicesMap() )
+                tGenerators( i )->get_simplices_map() )
             {
                 EXPECT_TRUE( tCoeff == 1 || tCoeff == -1 )
                     << "generator " << i << ", edge index " << tIndex
@@ -664,7 +664,7 @@ TEST( CutData, CutDataBitsetsReproduceTheSignedPairing )
     for ( index_t tSlot = 0; tSlot < tEdges.size(); ++tSlot )
     {
         EXPECT_EQ( tData.weight( tEdges( tSlot ) ),
-            tGenerator->getCoefficient( tSlot ) )
+            tGenerator->get_coefficient( tSlot ) )
             << "edge " << tEdges( tSlot )->id() ;
     }
 
@@ -700,9 +700,9 @@ TEST( CutData, CleanedSupportIsNotLarger )
     ASSERT_EQ( tGenerators.size(), 1u );
     Cochain * tGenerator = tGenerators( 0 );
 
-    ASSERT_GT( tGenerator->getSimplicesMap().size(), 0u );
-    const index_t tEdgeIndex = tGenerator->getSimplicesMap().begin()->first ;
-    const int     tG0        = tGenerator->getSimplicesMap().begin()->second ;
+    ASSERT_GT( tGenerator->get_simplices_map().size(), 0u );
+    const index_t tEdgeIndex = tGenerator->get_simplices_map().begin()->first ;
+    const int     tG0        = tGenerator->get_simplices_map().begin()->second ;
     ASSERT_TRUE( tG0 == 1 || tG0 == -1 );
 
     Edge * tSupportEdge = find_edge_by_index( tFixture.mMesh.get(), tEdgeIndex );
@@ -727,13 +727,13 @@ TEST( CutData, CleanedSupportIsNotLarger )
         else if ( tEdge->node( 1 )->index() == tNodeIndex ) tDelta =  1 ;
         if ( tDelta == 0 ) continue ;
 
-        tGenerator->setCoefficient( tEdge->index(),
-            tGenerator->getCoefficient( tEdge->index() ) + tS * tDelta );
+        tGenerator->set_coefficient( tEdge->index(),
+            tGenerator->get_coefficient( tEdge->index() ) + tS * tDelta );
     }
 
     // the forcing is real: a non-unit coefficient exists before the repair
     bool tHaveNonUnit = false ;
-    for ( const auto & [ tIndex, tCoeff ] : tGenerator->getSimplicesMap() )
+    for ( const auto & [ tIndex, tCoeff ] : tGenerator->get_simplices_map() )
     {
         if ( tCoeff >= 2 || tCoeff <= -2 ) tHaveNonUnit = true ;
     }
@@ -749,7 +749,7 @@ TEST( CutData, CleanedSupportIsNotLarger )
     // repair: the result is a unit cochain still pairing to a unit with the
     // inner ring
     for ( const auto & [ tIndex, tCoeff ] :
-        tGenerators( 0 )->getSimplicesMap() )
+        tGenerators( 0 )->get_simplices_map() )
     {
         EXPECT_TRUE( tCoeff == 1 || tCoeff == -1 )
             << "edge index " << tIndex << " carries coefficient " << tCoeff ;
@@ -906,16 +906,16 @@ namespace
 
         Cochain * tGenerator = aFixture.generator();
 
-        // copied first: setCoefficient writes into the map being walked
+        // copied first: set_coefficient writes into the map being walked
         Cell< std::pair< index_t, int > > tEntries ;
-        for ( const auto & tEntry : tGenerator->getSimplicesMap() )
+        for ( const auto & tEntry : tGenerator->get_simplices_map() )
         {
             tEntries.push( tEntry );
         }
 
         for ( const auto & [ tIndex, tCoeff ] : tEntries )
         {
-            tGenerator->setCoefficient( tIndex, aScale * tCoeff );
+            tGenerator->set_coefficient( tIndex, aScale * tCoeff );
         }
 
         return inner_ring_pairing( aFixture.mMesh.get(), tGenerator, aN );
@@ -992,7 +992,7 @@ TEST( Cohomology, DoubledGeneratorIsStillRectified )
     ASSERT_NO_THROW( tFixture.mCohomology->clean() );
 
     Cochain * tGenerator = tFixture.generator();
-    for ( const auto & [ tIndex, tCoeff ] : tGenerator->getSimplicesMap() )
+    for ( const auto & [ tIndex, tCoeff ] : tGenerator->get_simplices_map() )
     {
         EXPECT_TRUE( tCoeff == 1 || tCoeff == -1 )
             << "edge index " << tIndex << " carries coefficient " << tCoeff ;

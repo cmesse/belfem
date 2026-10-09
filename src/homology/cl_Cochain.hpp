@@ -82,42 +82,42 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
             void
-            addSimplexToCochain(const index_t aID, const int aCoeff ) ;
+            add_simplex_to_cochain(const index_t aID, const int aCoeff ) ;
 
 //-----------------------------------------------------------------------------
 
             void
-            removeSimplexToCochain(const index_t aID) ;
+            remove_simplex_from_cochain(const index_t aID) ;
 
 //-----------------------------------------------------------------------------
 
             void
-            addCochainToCochain(Cochain * aCochain, const int aCoeff) ;
+            add_cochain_to_cochain(Cochain * aCochain, const int aCoeff) ;
 
 //-----------------------------------------------------------------------------
 
             void
-            removeCochainFromCochain(Cochain * aChain) ;
+            remove_cochain_from_cochain(Cochain * aChain) ;
 
 //-----------------------------------------------------------------------------
 
             OrderedMap< index_t, int > &
-            getSimplicesMap() ;
+            get_simplices_map() ;
 
 //-----------------------------------------------------------------------------
 
             int
-            getCoefficient(const index_t aID) ;
+            get_coefficient(const index_t aID) ;
 
 //-----------------------------------------------------------------------------
 
             Cochain*
-            getCoboundary() ;
+            get_coboundary() ;
 
 //-----------------------------------------------------------------------------
 
             Cochain*
-            getBoundary() ;
+            get_boundary() ;
 
 //-----------------------------------------------------------------------------
 
@@ -132,7 +132,7 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
             int
-            getDim() ;
+            get_dim() ;
 
 //-----------------------------------------------------------------------------
 
@@ -147,7 +147,7 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
             void
-            setCoefficient(const index_t aID, const int tCoeff) ;
+            set_coefficient(const index_t aID, const int tCoeff) ;
 
 //-----------------------------------------------------------------------------
 
@@ -161,7 +161,7 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
         inline OrderedMap< index_t, int > &
-        Cochain::getSimplicesMap()
+        Cochain::get_simplices_map()
         {
             return mSimplicesMap;
         }
@@ -169,7 +169,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline int
-        Cochain::getCoefficient( const index_t aID )
+        Cochain::get_coefficient( const index_t aID )
         {
             auto it = mSimplicesMap.find(aID);
             if (it != mSimplicesMap.end()) {
@@ -183,7 +183,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline Cochain *
-        Cochain::getCoboundary()
+        Cochain::get_coboundary()
         {
             return mCoboundary;
         }
@@ -191,7 +191,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline Cochain *
-        Cochain::getBoundary()
+        Cochain::get_boundary()
         {
             return mBoundary;
         }
@@ -201,7 +201,7 @@ namespace belfem
         inline void
         Cochain::add_simplex_to_coboundary(index_t aID, const int aCoeff)
         {
-            mCoboundary->addSimplexToCochain(aID,aCoeff);
+            mCoboundary->add_simplex_to_cochain(aID,aCoeff);
         }
 
 //------------------------------------------------------------------------------
@@ -209,13 +209,13 @@ namespace belfem
         inline void
         Cochain::add_simplex_to_boundary(index_t aID, const int aCoeff)
         {
-            mBoundary->addSimplexToCochain(aID,aCoeff);
+            mBoundary->add_simplex_to_cochain(aID,aCoeff);
         }
 
 //------------------------------------------------------------------------------
 
         inline int
-        Cochain::getDim()
+        Cochain::get_dim()
         {
             return mDim;
         }
@@ -239,7 +239,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
         inline void
-        Cochain::setCoefficient(const index_t aID, const int tCoeff)
+        Cochain::set_coefficient(const index_t aID, const int tCoeff)
         {
             if (tCoeff == 0)
             {
@@ -254,7 +254,7 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
         inline void
-        Cochain::addSimplexToCochain( const index_t aID, const int aCoeff )
+        Cochain::add_simplex_to_cochain( const index_t aID, const int aCoeff )
         {
             if ( aCoeff == 0 ) return;
 
@@ -284,25 +284,25 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
         inline void
-        Cochain::addCochainToCochain(Cochain * aCochain, int aCoeff)
+        Cochain::add_cochain_to_cochain(Cochain * aCochain, int aCoeff)
         {
             if ( aCoeff == 0 ) return;  // Early exit - nothing to add
 
-            if (mDim == aCochain->getDim())
+            if (mDim == aCochain->get_dim())
             {
                 // Add all the simplices from the input chain
-                for( const auto& [tID, tCoeff] : aCochain->getSimplicesMap() )
+                for( const auto& [tID, tCoeff] : aCochain->get_simplices_map() )
                 {
-                    this->addSimplexToCochain(tID,tCoeff*aCoeff);
+                    this->add_simplex_to_cochain(tID,tCoeff*aCoeff);
                 }
                 if(mDim != 0 and !mIsBound)
                 {
-                    mBoundary->addCochainToCochain(aCochain->getBoundary(),aCoeff);
+                    mBoundary->add_cochain_to_cochain(aCochain->get_boundary(),aCoeff);
                 }
 
                 if (mDim != 3 and !mIsCobound)
                 {
-                    mCoboundary->addCochainToCochain(aCochain->getCoboundary(),aCoeff);
+                    mCoboundary->add_cochain_to_cochain(aCochain->get_coboundary(),aCoeff);
                 }
 
             }

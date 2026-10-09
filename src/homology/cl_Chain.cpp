@@ -56,7 +56,7 @@ namespace belfem
         void
         Chain::operator+( Chain * aChain )
         {
-            this->addChainToChain( aChain, 1 );
+            this->add_chain_to_chain( aChain, 1 );
         }
 
 //-----------------------------------------------------------------------------
@@ -64,7 +64,7 @@ namespace belfem
         void
         Chain::operator-( Chain * aChain )
         {
-            this->removeChainFromChain( aChain );
+            this->remove_chain_from_chain( aChain );
         }
 
 //-----------------------------------------------------------------------------
@@ -84,7 +84,7 @@ namespace belfem
         Chain::operator()( Chain * aChain )
         {
             int tVal = 0;
-            OrderedMap< id_t, int > & tChainMap = aChain->getSimplicesMap();
+            OrderedMap< index_t, int > & tChainMap = aChain->get_simplices_map();
             for( const auto& [tID, tCoeff] : mSimplicesMap )
             {
                 if (tChainMap.key_exists(tID))
@@ -98,56 +98,56 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
         void
-        Chain::addSimplexToChain( const id_t aID, const int aCoeff )
+        Chain::add_simplex_to_chain( const index_t aIndex, const int aCoeff )
         {
 
             // Add to the existing simplex, or create a new one
-            if (mSimplicesMap.key_exists(aID))
+            if (mSimplicesMap.key_exists( aIndex ))
             {
-                mSimplicesMap(aID) += aCoeff;
+                mSimplicesMap( aIndex ) += aCoeff;
             }
             else
             {
-                mSimplicesMap[aID] = aCoeff;
+                mSimplicesMap[ aIndex ] = aCoeff;
             }
 
 
             //remove the simplex from the map if the coefficient becomes 0
-            if (mSimplicesMap(aID) == 0)
+            if (mSimplicesMap( aIndex ) == 0)
             {
-                mSimplicesMap.erase_key(aID);
+                mSimplicesMap.erase_key( aIndex );
             }
         }
 
 //------------------------------------------------------------------------------
 
         void
-        Chain::removeSimplexToChain(const id_t aID)
+        Chain::remove_simplex_from_chain( const index_t aIndex )
         {
             //Removing is simply adding a -1 coefficient
-            this->addSimplexToChain(aID, -1);
+            this->add_simplex_to_chain( aIndex, -1);
         }
 
 //-----------------------------------------------------------------------------
 
         void
-        Chain::addChainToChain(Chain * aChain, int aCoeff)
+        Chain::add_chain_to_chain(Chain * aChain, int aCoeff)
         {
-            if (mDim == aChain->getDim())
+            if (mDim == aChain->get_dim())
             {
                 // Add all the simplices from the input chain
-                for( const auto& [tID, tCoeff] : aChain->getSimplicesMap() )
+                for( const auto& [tID, tCoeff] : aChain->get_simplices_map() )
                 {
-                    this->addSimplexToChain(tID,tCoeff*aCoeff);
+                    this->add_simplex_to_chain(tID,tCoeff*aCoeff);
                 }
                 if(mDim != 0 and !mIsBound)
                 {
-                    mBoundary->addChainToChain(aChain->getBoundary(),aCoeff);
+                    mBoundary->add_chain_to_chain(aChain->get_boundary(),aCoeff);
                 }
 
                 if (mDim != 3 and !mIsCobound)
                 {
-                    mCoboundary->addChainToChain(aChain->getCoboundary(),aCoeff);
+                    mCoboundary->add_chain_to_chain(aChain->get_coboundary(),aCoeff);
                 }
 
             }
@@ -160,13 +160,13 @@ namespace belfem
 //-----------------------------------------------------------------------------
 
         void
-        Chain::removeChainFromChain(Chain * aChain)
+        Chain::remove_chain_from_chain( Chain * aChain )
         {
-            if (mDim == aChain->getDim())
+            if (mDim == aChain->get_dim())
             {
-                for( const auto& [tID, tCoeff] : aChain->getSimplicesMap() )
+                for( const auto& [tID, tCoeff] : aChain->get_simplices_map() )
                 {
-                    this->addSimplexToChain(tID,-1*tCoeff);
+                    this->add_simplex_to_chain(tID,-1*tCoeff);
                 }
             }
             else
@@ -179,15 +179,15 @@ namespace belfem
 
 
         void
-        Chain::setCoefficient(const id_t aID, const int tCoeff)
+        Chain::set_coefficient( const index_t aIndex, const int aCoeff )
         {
-            if (tCoeff == 0)
+            if ( aCoeff == 0 )
             {
-                mSimplicesMap.erase_key(aID);
+                mSimplicesMap.erase_key( aIndex );
             }
             else
             {
-                mSimplicesMap[aID] = tCoeff;
+                mSimplicesMap[ aIndex ] = aCoeff;
             }
         }
 
