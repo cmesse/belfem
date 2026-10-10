@@ -43,7 +43,7 @@ Multiple tapes per layer sit at equal perimeter spacing. Stacked layers are coun
 (criss-cross) at the same pitch, which makes their lay angles differ slightly because the
 outer stadium has the longer perimeter; `layAngle` is the layer-0 value. The end planes are
 pure translations of each other, so `numPitches * numTapes` must be a whole number (a third
-of a pitch with three tapes closes with the tapes permuted, as in `corc_twolayer`). The
+of a pitch with three tapes closes with the tapes permuted). The
 half-pitch closure by a 180 degree rotation about the axis, which the stadium's symmetry
 would allow, is not implemented.
 

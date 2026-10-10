@@ -1316,7 +1316,12 @@ The cut processing pipeline (called internally by CutFactory):
 1. **Thick cut extraction**: Extract edges from cohomology generators
 2. **Face identification**: Find faces incident to thick cut edges
 3. **Manifold filtering**: Remove non-manifold artifacts (double pockets, etc.) — design of record; the step that actually runs is `Cohomology::remove_cut_pockets()`, see "Manifold Cleanup" below
-4. **Node duplication**: Duplicate nodes on positive side of cut
+4. **Node duplication**: Duplicate nodes on the positive side of the cut. Each cut set assigns
+   copy ids while walking its originals in ascending id order, with the non-periodic originals
+   first and the periodic pairs in the order encountered by that walk. The sets are processed
+   in sorted order of their pattern hex strings. `collect_duplicates` then appends the abstract
+   nodes and the copies in ascending copy-id order, so a copy's position never depends on the
+   hash order of a duplicate map
 5. **Element relinking**: Update element connectivity to duplicated nodes
 6. **Abstract node creation**: Create DOFs for [φ] = φ⁺ - φ⁻
 7. **SideSet creation**: Package cut as SideSet for FEM assembly
@@ -1362,8 +1367,8 @@ The cut processing pipeline (called internally by CutFactory):
 ### Chain
 
 **Purpose:** A chain is a formal sum of k-simplices with integer coefficients, keyed by
-the mesh entity's *index* (`Node::index()`, `Edge::index()`, `Facet::index()`,
-`Element::index()`), never by its id. It can also carry its own boundary and coboundary
+the mesh entity's *index* (`Node::index()`, `Edge::index()`, `Face::index()` for the
+triangles of a 3D mesh, `Element::index()` for the top-dimensional cells), never by its id. It can also carry its own boundary and coboundary
 chains, which the simplicial-complex builder fills alongside it.
 
 **File:** `cl_Chain.{hpp,cpp}`
@@ -1382,10 +1387,15 @@ class Chain
 
 The constructor `Chain( aDim, aMesh, aIsBound, aIsCobound )` allocates `mBoundary` unless
 `aDim == 0` or `aIsBound` is set, and allocates `mCoboundary` unless `aDim == 3` or
-`aIsCobound` is set. The two flags identify a chain that *is* someone's boundary or
-coboundary, stopping the recursion one level down. The destructor deletes both.
+`aIsCobound` is set. The two flags mark a chain that *is* someone's boundary or
+coboundary. A chain built with both flags false therefore owns a boundary (unless `aDim == 0`)
+and a coboundary (unless `aDim == 3`). Each of those owns at most one chain in the opposite
+direction (the boundary's coboundary and the coboundary's boundary), and those own nothing.
+The destructor deletes both members.
 
-**Key operations:** Every operator works in place on `this`; none returns a new chain.
+**Key operations:** `operator+`, `operator-`, and `operator*` modify `this` in place.
+`operator()` changes neither chain and returns the pairing. None of the operators returns a
+new chain.
 ```cpp
 void operator+( Chain * aChain ) ;        // this += aChain
 void operator-( Chain * aChain ) ;        // this -= aChain
@@ -1411,8 +1421,11 @@ void print() ;
 
 `add_chain_to_chain` refuses a dimension mismatch (it prints and returns). Otherwise, it also
 propagates into `mBoundary` and `mCoboundary` wherever this chain owns them, so a generator
-assembled from other chains keeps its boundary consistent. `remove_chain_from_chain` does not
-propagate.
+assembled from other chains keeps its boundary consistent. It adds the stored boundary and
+coboundary of `aChain`; it does not recompute them from the coefficients. Therefore, `aChain`
+must own every member that this chain owns: a chain built with a flag set has a null member in
+that direction.
+`remove_chain_from_chain` does not propagate.
 
 **Usage:**
 ```cpp
@@ -1445,7 +1458,9 @@ same simplex indices. The generators that `Cohomology` hands out are `Cochain *`
 coboundary members. The constructor and destructor follow the same rules.
 
 **Key operations:** The in-place API corresponds to `Chain`, with `cochain` in the method
-names.
+names, with one difference: `add_simplex_to_cochain` and `add_cochain_to_cochain` return
+immediately for a zero coefficient. A zero-coefficient `add_cochain_to_cochain` therefore
+neither checks the dimension nor propagates. The `Chain` versions do not return early.
 ```cpp
 void operator+( Cochain * aCochain ) ;
 void operator-( Cochain * aCochain ) ;
@@ -1470,9 +1485,10 @@ bool isCobound() ;
 void print() ;
 ```
 
-There is no scalar `operator*` on `Cochain`. To scale one, use
-`add_cochain_to_cochain` with a coefficient, as `Cohomology` does when it recombines
-generators.
+There is no scalar `operator*` on `Cochain`. `add_cochain_to_cochain` accumulates
+(`this += aCoeff * aCochain`), so to scale a cochain, add it with the factor to a new, empty
+cochain of the same dimension. `Cohomology` recombines generators this way into fresh
+cochains.
 
 **Usage:**
 ```cpp
@@ -1648,47 +1664,45 @@ Constructor performs full interface processing pipeline:
    "not duplicated in any interface set" refusal remains for a partner that lies on no interface
    set at all.
    Two rules come first. First, every interface sideset, that is, every sideset with a facet
-   this processor duplicates at (one side air or ferro, but not both air), must have one master
-   domain type on all facets that have a slave. A sideset without such a facet is left alone.
-   A sideset used to be admitted to an interface set, and the set classified as shared or
-   private and paired across a periodic plane, by its first facet alone, so a sideset that
-   grouped a conductor|air facet with a ferro|air or air|air facet was handled according to
-   whichever facet came first. `refuse_mixed_sidesets` now checks every sideset present
-   before cut processing (generated cut sidesets are not examined, and thin-shell sidesets
-   have no slave by then), before any sideset is admitted and before any copy exists. If it
-   finds a mismatch, it reports the sideset id, the two domain types (name and enumerator
+   this processor duplicates at (one side air or ferro, not both air), must have one master
+   domain type on all of its facets that have a slave; a sideset without such a facet is left
+   alone. A sideset is admitted to an interface set, and the set is classed as shared or
+   private and paired across a periodic plane, by its first facet, as in 0.9.2: a native Gmsh
+   mesh builds one sideset per geometric entity, so its facets cannot differ in kind.
+   `refuse_mixed_master_types` checks, after `CutProcessor` has run, every sideset that
+   existed before it (generated cut sidesets are not examined, and thin-shell sidesets have
+   no slave by then), before any sideset is admitted and before any interface copy exists. If
+   it finds a mismatch, it reports the sideset id, the two domain types (name and enumerator
    value, since several types print under one name), the two facets with their master
    elements, and the remedy: split the sideset so that each piece has one master domain type.
-   This also refuses a surface that is an interface over only part of its area, such as a
-   gmsh surface with conductor|air facets and air|air facets, in either facet order. The
-   remedy is the same: split the surface. A conductor sideset spanning several conductor
-   blocks remains accepted: its copies are shared, and the conductor sweep installs them in
-   every block. A ferro, buffer, or coil sideset must lie on one master block because its
-   copies are private to the set and only that block is relinked. A sideset spanning several
-   such blocks is refused with a facet from each block and the remedy: use one sideset per
-   block. The same check refuses a sideset whose facets do not all agree on whether they
-   touch a coil block, because a set is either decoupled or tied as a whole. The facets
-   touching the coil must form a sideset of their own. An interface sideset must consist of
-   interface facets only: one that also holds a boundary facet, or a face between two
-   conductor blocks, is refused with a facet of each kind, because the topology classifies the
-   sideset and the coupling walks it as a whole. A sideset is admitted when any of its facets
-   is one that the processor duplicates at, and it is keyed by the master blocks and the slave
-   blocks of all its facets, so neither admission nor the set a sideset joins depends on the
-   order of its facets, and two sidesets with different master blocks never share a set.
+   A conductor|air facet beside an air|air facet is refused the same way, since the air|air
+   facet's master is air. A sideset over several blocks of one domain type stays accepted. A
+   reused `.bfm` (one whose checksum and configuration tag match the deck) skips all of this:
+   it replays the enrichment it was written with.
    Second, interface-copy numbering is a function of the mesh alone. Copies are allocated one
-   set at a time, in set order (the sorted block-index bitsets, a fixed function of the mesh's
-   block order), and within each set in ascending order of the original id. A shared conductor
-   copy is allocated by the first set that reaches the original. Copies are appended to the
-   mesh in ascending copy-id order, which is the allocation order. Periodic pairs are backed
-   up set by set: first, all pairs tied within one set, in ascending order of the original id;
-   then the next set; finally, pairs tied across sets, again set by set and in ascending
-   order. The maps that hold originals and copies are hash maps, but their iteration order
-   never reaches the mesh. Therefore, interface-copy ids and positions are the same on every
-   platform for the same mesh file. The cut copies are not deterministic yet:
-   `CutProcessor::collect_duplicates` still appends each cut set's copies in hash order, and
-   those nodes precede the interface copies. Consequently, edge ids and dof numbering for a
-   model with cuts still depend on the platform's hash table. This remains work for after
-   0.9.3.
+   set at a time, in set order (the sorted hex strings of the block-index bitsets of each
+   set's block pair, a fixed function of the mesh's block order), and within each set in
+   ascending order of the original id. A shared conductor copy is allocated by the first set
+   that reaches the original. Copies are appended to the mesh in ascending copy-id order,
+   which is the allocation order. Periodic pairs are backed up set by set: first, all pairs
+   tied within one set, in ascending order of the original id; then the next set; finally,
+   pairs tied across sets, again set by set and in ascending order. The maps that hold
+   originals and copies are hash maps, but their iteration order never reaches the mesh.
+   Therefore, interface-copy ids and positions are the same on every platform for the same
+   incoming node order. The cut copies, which precede the interface copies in the mesh, are
+   appended the same way: their ids come from a sorted walk of each cut set's originals (see
+   "CutSet"), and `CutProcessor::collect_duplicates` sorts the kept copies by id after the
+   abstract nodes before appending them. Therefore, no hash-map iteration order reaches a
+   copy's position. Cut copies and interface copies occupy positions determined by the node
+   order entering the cut processor. That is not yet a platform-independent node numbering.
+   `CutFactory` renumbers the mesh with reverse Cuthill-McKee before the cohomology, and
+   `MaxwellFactory` renumbers it again after enrichment, in the order that reaches the `.bfm`
+   and the dof manager. `symrcm` sorts a node's neighbors by degree with `std::sort`, so equal
+   degrees follow whatever order the C++ standard library's sort happens to leave them in. That
+   behavior is reproducible on one toolchain but is not guaranteed across toolchains until the
+   graph sort has a tie-break. The thin-shell copies were already appended in ascending index
+   order of their originals. This does not cover a reused `.bfm`, which replays the numbering
+   with which it was written, the dof manager's own ordering, or partitioned runs.
 5. Ties each duplicate to its original (`InterfaceTreatment::TieWeight1`) or decouples it when a coil touches the interface (`InterfaceTreatment::Decouple`)
 
 **Helper class: InterfaceSet**
@@ -1767,9 +1781,13 @@ void create_duplicates(id_t& aMaxNodeID, Cell<Node*>& aAbstractNodes);
 Creates duplicate nodes for positive side of cut.
 
 **Algorithm:**
-1. Iterate through nodes on cut
-2. Create new Node with unique ID
-3. Store in `mNodeDuplicates` map
+1. Iterate through nodes on the cut in ascending id (`CutProcessor::collect_nodes` sorts the
+   originals): the non-periodic originals first, then the periodic pairs in the order
+   encountered by the walk
+2. Create a new Node with a unique ID in that order
+3. Store it in the `mNodeDuplicates` map (a hash map; its iteration order never reaches the
+   mesh, because `CutProcessor::collect_duplicates` sorts the copies by id before appending
+   them)
 4. Tie each duplicate to its original plus the abstract nodes of the cuts in this set's pattern (weight 1 each; the abstract nodes are created by `CutProcessor::create_abstract_nodes()`)
 
 ```cpp
@@ -1886,8 +1904,8 @@ Returns computed cohomology generators.
 
 **Visualization:**
 ```cpp
-void create_tree_field(Mesh* tEdgeMesh, string tFieldName);
-void create_cohomology_field(Mesh* tMeshEdge);
+void create_tree_field( Mesh * aEdgeMesh, const string aFieldName );
+void create_cohomology_field( Mesh * aEdgeMesh );
 ```
 
 Creates mesh fields to visualize spanning tree and cohomology generators.

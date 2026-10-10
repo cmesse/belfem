@@ -13,7 +13,20 @@ All notable changes to BELFEM are recorded here. The format follows
   a Python generator builds the tapes as thin shells on a stadium-shaped mandrel at a given
   lay angle, closes a fraction of a pitch with a translated periodic condition, and writes
   the matching `topology` section. Tapes per layer, criss-crossed layers and the pitch count are
-  parameters; the copper core itself is meshed as air. Twenty-one decks now ship.
+  parameters; the copper core itself is meshed as air. Twenty decks now ship.
+
+- **New example deck `examples/tape_with_contact_and_defect`.** One REBCO tape from the
+  `tapestack3d` build, without solder or neighboring tapes, sits in a 10 mm periodic air
+  cylinder and is driven by a 150 A sigmoid from 77 K as a coupled h-φ/thermal problem. The
+  REBCO film uses the `sp-ap` table with `resistivity type : riva`. A 0.1 µm `rint` layer
+  between the silver cap and the film carries the specific contact resistance of the
+  REBCO/Ag interface (1e-11 Ω·m²) as the resistivity R_ct/h. A permanent full-width Jc defect,
+  2 mm long at mid-length with Jc × 0.35, forces current above its Ic of about 100 A out
+  through that contact, along the stabilizer, and back. The contact layer and defect both
+  come from one user plugin, built by hand with CMake 4 or newer; the mesh comes from
+  `tape.geo` with gmsh and is refined around the defect. The deck has not yet run to the end:
+  it sets up and follows the ramp, but once the current passes the defect's Ic, near 110 A at
+  t = 0.28 s, the timestep shrinks below 0.1 ms. Twenty-one decks now ship.
 
 - **The dependency stack is now documented.** `doc/scls_toolchain.md` names SCLS — the
   Scientific Core Library Stack BELFEM is built, tested and run against — and covers what it
@@ -35,17 +48,23 @@ These results intentionally differ from 0.9.2. Each is a correction, so a deck t
 the affected path now produces a different, correct answer.
 
 - **Interface copies are numbered by the mesh, not by the hash table.** The copies that the
-  interface processor makes of the nodes on a conductor|air, ferro|air, conductor|ferro or
-  coil interface are now allocated set by set and in ascending id of the original, and appended
-  to the mesh in that order; 0.9.2 handed out their ids and positions in the iteration order
-  of a hash map, which differs between platforms. The ids and positions of the interface copies
-  differ from 0.9.2 and are now the same on every platform for the same mesh file; results
-  agree to round-off. The copies that the cut processor makes are still appended in hash
-  order and precede the interface copies, so the edge ids and the dof numbering of a model
-  with cuts still depend on the platform. A `.bfm` written by an earlier build is
-  still reused, because its key (the base-mesh checksum and the topology tag) does not change,
-  and then replays the old numbering and skips the setup refusals; delete it before rerunning
-  a deck.
+  interface processor makes of nodes on a conductor|air, ferro|air, conductor|ferro or coil
+  interface are now allocated set by set and in ascending id order of the original, then appended
+  to the mesh in that order. In 0.9.2, their ids and positions were assigned in hash-map
+  iteration order, which differs between platforms. The ids and positions of the interface copies
+  differ from 0.9.2 and are now the same on every platform for the same incoming node order. Sets
+  are ordered by the sorted hex string of the block-index bitset for each set's block pair. The
+  copies made by the cut processor, which precede the interface copies, are appended in ascending
+  copy-id order after the abstract nodes (`CutProcessor::collect_duplicates`); their ids already
+  came from a sorted walk. Thus, no hash-map iteration order reaches the position of any node.
+  The numbering is still not platform-independent: the mesh is renumbered with reverse
+  Cuthill-McKee after enrichment, and that sort orders equal degrees as the C++ standard
+  library's `std::sort` leaves them, which is reproducible on one toolchain but not guaranteed
+  across toolchains. The node order of every shipped deck with cuts differs from 0.9.2 and from
+  the release before this change (19 of the 21 example decks; the two disk decks have no cuts and
+  keep their order). A `.bfm` written by an earlier build is still reused because its key (the
+  base-mesh checksum and the topology tag) does not change. It then replays the old numbering and
+  skips the setup refusals. Delete it before rerunning a deck.
 - **Surface integrals on the quadrilateral side faces of a prism are twice their 0.9.2 value.**
   `normal_penta` scaled the side-face increment by 0.25 for a quadrilateral rule whose weights
   sum to four, so each side face integrated to half its area. The three side faces now integrate
@@ -110,16 +129,10 @@ message naming the problem. None of the shipped decks is affected.
   permeability is not μ0 within a relative 1e-6.
 - An incomplete node match on a periodic pair, or a non-unit cochain coefficient on a cut.
 - An interface sideset whose facets do not all have masters of one domain type (a conductor|air
-  facet grouped with a ferro|air or an air|air facet, in either order), or whose facets do not
-  all agree on touching a coil block; 0.9.2 typed the whole sideset by its first facet. The
-  message names the sideset, both facets with their master elements and both domain types, or
-  the coil; split the sideset so that each piece has one master domain type and one
-  treatment. A ferro, buffer or coil sideset over several blocks is refused as well: its
-  interface copies are private to one block, and 0.9.2 relinked the first facet's block only,
-  leaving the others unsplit from the air. An interface sideset that also holds a boundary
-  facet or a face between two conductor blocks is refused too; 0.9.2 dropped or admitted it by
-  its first facet. A sideset is admitted when any of its facets is an interface, where 0.9.2
-  looked at the first facet only.
+  facet grouped with a ferro|air or an air|air facet), checked after the cut processor on the
+  sidesets that existed before it; 0.9.2 typed the whole sideset by its first facet. The
+  message names the sideset, both facets with their master elements and both domain types;
+  split the sideset so that each piece has one master domain type.
 - A periodic node pair whose interface copies lie on tie-weight interface sets of different
   master domain type (a conductor|air set against a buffer|air, ferro|air or air-master set) or
   on sets of different treatment (a coil touching the interface on one side of the plane only),
@@ -132,6 +145,17 @@ A constant `jc` without an `ec` now gets the default 1e-4 V/m, as a jc function 
 instead of producing a NaN power law.
 
 ### Fixed
+
+- **`examples/corc_twolayer` sets up again.** As shipped in 0.9.0 through 0.9.2, the deck
+  stopped during setup with a thick-cut error from the cohomology. Its mesh generator wound
+  4/3 turns per period, and that periodic twist carried each tape into the next. Each layer
+  therefore became one conductor running three times through the periodic seam, and no thin
+  cut was found for it. The deck's six current conditions, one per tape, did not match that
+  topology either. The generator now winds 2 turns per period, so every tape closes on itself
+  and the six tapes are the six conductors addressed by the deck. The deck itself is
+  unchanged. The mesh is longer (37.7 mm instead of 25.1 mm) and has about 88,000 nodes.
+  Rerun `python/main.py`: a `corc.msh` written by the earlier generator still stops during
+  setup.
 
 - **The `gauge` boundary condition works, and a condition without `type` is refused.** A
   `gauge` is a bearing with a time-dependent value, but no factory fixed its points at setup,

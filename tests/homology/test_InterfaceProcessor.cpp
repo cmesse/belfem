@@ -26,15 +26,9 @@
  * keeps private copies; a coil block in place of C2, whose air set is
  * decoupled; a ferro block in place of C2 under ONE sideset, which mixes
  * master domain types and is refused; and that sideset with an air|air
- * facet first or last, refused in either order; a sideset of an air|air
+ * facet first or last, refused in either order; and a sideset of an air|air
  * and a conductor|conductor facet, which this processor never duplicates at
- * and therefore leaves alone; two ferro blocks under ONE air sideset,
- * refused because private copies serve one block; a coil that is only the
- * slave of a later facet, refused; a conductor|conductor or a boundary facet
- * beside the conductor|air facet in one sideset, refused in either order
- * because an interface sideset holds interface facets only; and two ferro
- * sidesets with swapped masters on their common face, kept apart. The
- * periodic variant on the
+ * and therefore leaves alone. The periodic variant on the
  * buffer and the coil layout puts the pair a1-a2 across sets of different
  * master domain type or treatment, which the processor refuses by name. The
  * nodes can be pushed into the mesh in reverse order, which must not move a
@@ -83,12 +77,7 @@ namespace
         MixedSideSet,
         MixedAirFirst,
         MixedAirLast,
-        InactiveSideSet,
-        MultiBlockFerro,
-        CoilSlaveLater,
-        ConductorFacet,
-        BoundaryFacet,
-        OverlappingFerro
+        InactiveSideSet
     };
 
     // node slots: n = 0, m = 1, a1 = 2, a2 = 3, q = 4, t = 5, b1 = 6, b2 = 7.
@@ -111,8 +100,7 @@ namespace
         Cell< Node * > mAbstractNodes ;
         index_t mNumOriginalNodes = 0 ;
 
-        Junction( const Layout aLayout, const bool aPeriodic = false, const bool aReverseNodes = false,
-                  const bool aSwapFacets = false ) :
+        Junction( const Layout aLayout, const bool aPeriodic = false, const bool aReverseNodes = false ) :
             mMesh( new Mesh( 3, 0, false ) )
         {
             const real tA1y = aPeriodic ? 0.0 : 0.5 ;
@@ -142,10 +130,10 @@ namespace
             Block * tB1 = new Block( 1, 1 );
             Block * tB2 = new Block( 2, 1 );
             Block * tB3 = new Block( 3, 2 );
-            tB1->set_domain_type( aLayout == Layout::FerroFerro || aLayout == Layout::MultiBlockFerro || aLayout == Layout::OverlappingFerro ? DomainType::Ferro
+            tB1->set_domain_type( aLayout == Layout::FerroFerro ? DomainType::Ferro
                                 : aLayout == Layout::Buffer ? DomainType::Buffer : DomainType::Conductor );
-            tB2->set_domain_type( aLayout == Layout::Ferro || aLayout == Layout::FerroFerro || aLayout == Layout::MultiBlockFerro || aLayout == Layout::OverlappingFerro || tMixed ? DomainType::Ferro
-                                : aLayout == Layout::Coil || aLayout == Layout::CoilSlaveLater ? DomainType::Coil : DomainType::Conductor );
+            tB2->set_domain_type( aLayout == Layout::Ferro || aLayout == Layout::FerroFerro || tMixed ? DomainType::Ferro
+                                : aLayout == Layout::Coil ? DomainType::Coil : DomainType::Conductor );
             tB3->set_domain_type( DomainType::Air );
 
             mC1 = this->tet( 1, tB1, { 0, 1, 2, 4 } );
@@ -168,30 +156,9 @@ namespace
             Facet * tTop1 = this->facet( 101, mC1, mA1, { 0, 1, 2 } );
             Facet * tTop2 = this->facet( 102, mC2, mA2, { 0, 1, 3 } );
 
-            if ( aLayout == Layout::OneSideSet || aLayout == Layout::MixedSideSet || aLayout == Layout::MultiBlockFerro )
+            if ( aLayout == Layout::OneSideSet || aLayout == Layout::MixedSideSet )
             {
                 this->sideset( 11, { tTop1, tTop2 } );
-            }
-            else if ( aLayout == Layout::CoilSlaveLater || aLayout == Layout::ConductorFacet )
-            {
-                // the face C1|C2 beside the conductor|air facet, in either order
-                Facet * tShared = this->facet( 104, mC1, mC2, { 0, 1, 4 } );
-                this->sideset( 11, aSwapFacets ? Cell< Facet * >( { tShared, tTop1 } ) : Cell< Facet * >( { tTop1, tShared } ) );
-                this->sideset( 12, { tTop2 } );
-            }
-            else if ( aLayout == Layout::OverlappingFerro )
-            {
-                // each ferro sideset holds its air facet and the common face
-                // with itself as master: same key blocks, different masters
-                this->sideset( 11, { tTop1, this->facet( 103, mC1, mC2, { 0, 1, 4 } ) } );
-                this->sideset( 12, { tTop2, this->facet( 106, mC2, mC1, { 0, 1, 4 } ) } );
-            }
-            else if ( aLayout == Layout::BoundaryFacet )
-            {
-                // the face ( m, a1, q ) of C1 has no neighbor: a boundary facet
-                Facet * tBoundary = this->boundary_facet( 105, mC1, { 1, 2, 4 } );
-                this->sideset( 11, aSwapFacets ? Cell< Facet * >( { tBoundary, tTop1 } ) : Cell< Facet * >( { tTop1, tBoundary } ) );
-                this->sideset( 12, { tTop2 } );
             }
             else if ( aLayout == Layout::MixedAirFirst || aLayout == Layout::MixedAirLast )
             {
@@ -281,16 +248,6 @@ namespace
             Facet * tFacet = new Facet( tFactory.create_element( ElementType::TRI3, aID ) );
             tFacet->set_master( aMaster, this->facet_index( aMaster, aSlots ) );
             tFacet->set_slave( aSlave, this->facet_index( aSlave, aSlots ) );
-            return tFacet ;
-        }
-
-        // a facet with a master only
-        Facet *
-        boundary_facet( const id_t aID, Element * aMaster, const Cell< index_t > & aSlots )
-        {
-            ElementFactory tFactory ;
-            Facet * tFacet = new Facet( tFactory.create_element( ElementType::TRI3, aID ) );
-            tFacet->set_master( aMaster, this->facet_index( aMaster, aSlots ) );
             return tFacet ;
         }
 
@@ -787,10 +744,7 @@ TEST( InterfaceProcessor, MixedSideSetWithAirFacetIsRefusedInEitherOrder )
 // copies are numbered set by set and in ascending id of the original, and
 // appended in that order: the ids and the mesh positions must not move when
 // the mesh holds the nodes in another order, and on the forward build they
-// are the ones the rule predicts. Reversing the node order changes only the
-// insertion order of the hash maps; it cannot force a particular hash order,
-// so for the copies the absolute ids are the check, not the agreement of the
-// two builds. SideSetPerBlock: sets "5" ( sideset 11:
+// are the ones the rule predicts. SideSetPerBlock: sets "5" ( sideset 11:
 // n, m, a1 ) then "6" ( sideset 12: a2 ). Ferro: sets "3" ( sideset 13:
 // n, m, q, shared conductor copies ), "5" ( sideset 11: a1 ), "6" ( sideset
 // 12: private ferro copies of n, m, a2 ). The periodic layout also backs up
@@ -891,94 +845,4 @@ TEST( InterfaceProcessor, SideSetWithoutInterfaceFacetIsLeftAlone )
     tJunction.expect_one_conductor_copy( 1, tConductors );
     tJunction.expect_conforming_shared_face();
     EXPECT_EQ( tJunction.number_of_new_nodes(), ( index_t ) 4 );
-}
-
-//------------------------------------------------------------------------------
-
-// two ferro blocks under one air sideset: the copies of a ferro set are
-// private to one block, so the sideset is refused by name, nothing appended
-TEST( InterfaceProcessor, MultiBlockFerroSideSetIsRefused )
-{
-    Junction tJunction( Layout::MultiBlockFerro );
-
-    const std::string tMessage = refusal( tJunction );
-    EXPECT_TRUE( contains( tMessage, "interface sideset 11 has Ferro ( 3 ) masters on more than one block" ) ) << tMessage ;
-    EXPECT_TRUE( contains( tMessage, "facet 101 ( element 1 ) on block 1, facet 102 ( element 2 ) on block 2" ) ) << tMessage ;
-    EXPECT_TRUE( contains( tMessage, "a sideset of its own" ) ) << tMessage ;
-    EXPECT_EQ( tJunction.number_of_new_nodes(), ( index_t ) 0 );
-}
-
-//------------------------------------------------------------------------------
-
-// C2 is a coil and the face C1|C2 sits beside the conductor|air facet in one
-// sideset: with the air facet first the processor refuses the mixed
-// treatment; with the coil facet first the topology refuses the contact
-// before the processor runs. Either way the run stops
-TEST( InterfaceProcessor, CoilSlaveOnLaterFacetIsRefused )
-{
-    {
-        Junction tJunction( Layout::CoilSlaveLater, false, false, false );
-        const std::string tMessage = refusal( tJunction );
-        EXPECT_TRUE( contains( tMessage, "interface sideset 11 mixes facets that touch a coil block with facets that do not" ) ) << tMessage ;
-        EXPECT_TRUE( contains( tMessage, "facet 101 ( element 1 ) touches no coil, facet 104 ( element 1 ) touches a coil" ) ) << tMessage ;
-        EXPECT_EQ( tJunction.number_of_new_nodes(), ( index_t ) 0 );
-    }
-    {
-        Junction tJunction( Layout::CoilSlaveLater, false, false, true );
-        const std::string tMessage = refusal( tJunction );
-        EXPECT_TRUE( contains( tMessage, "a conductor and a coil must not touch" ) ) << tMessage ;
-        EXPECT_EQ( tJunction.number_of_new_nodes(), ( index_t ) 0 );
-    }
-}
-
-//------------------------------------------------------------------------------
-
-// the face C1|C2 ( both conductor ) beside the conductor|air facet in one
-// sideset, in either order: refused, an interface sideset holds interface
-// facets only
-TEST( InterfaceProcessor, ConductorFacetInInterfaceSideSetIsRefused )
-{
-    for ( bool tSwap : { false, true } )
-    {
-        Junction tJunction( Layout::ConductorFacet, false, false, tSwap );
-        const std::string tMessage = refusal( tJunction );
-        EXPECT_TRUE( contains( tMessage, "interface sideset 11 mixes interface facets with facets that are no interface" ) ) << "swap " << tSwap << ": " << tMessage ;
-        EXPECT_TRUE( contains( tMessage, "facet 101 ( element 1 ) is duplicated at, facet 104 ( element 1 ) is not ( neither side is air or ferro )" ) ) << tMessage ;
-        EXPECT_EQ( tJunction.number_of_new_nodes(), ( index_t ) 0 ) << "swap " << tSwap ;
-    }
-}
-
-//------------------------------------------------------------------------------
-
-// a boundary facet of C1 beside the conductor|air facet in one sideset, in
-// either order: refused the same way
-TEST( InterfaceProcessor, BoundaryFacetInInterfaceSideSetIsRefused )
-{
-    for ( bool tSwap : { false, true } )
-    {
-        Junction tJunction( Layout::BoundaryFacet, false, false, tSwap );
-        const std::string tMessage = refusal( tJunction );
-        EXPECT_TRUE( contains( tMessage, "interface sideset 11 mixes interface facets with facets that are no interface" ) ) << "swap " << tSwap << ": " << tMessage ;
-        EXPECT_TRUE( contains( tMessage, "facet 105 ( element 1 ) is not ( a boundary facet without a neighbor )" ) ) << tMessage ;
-        EXPECT_EQ( tJunction.number_of_new_nodes(), ( index_t ) 0 ) << "swap " << tSwap ;
-    }
-}
-
-//------------------------------------------------------------------------------
-
-// two ferro sidesets over the same blocks with swapped masters on their
-// common face: keyed apart by their master blocks, each keeps its private
-// copies and the face stays split
-TEST( InterfaceProcessor, OverlappingFerroSideSetsStayApart )
-{
-    Junction tJunction( Layout::OverlappingFerro );
-    EXPECT_NO_THROW( tJunction.run() );
-
-    for ( index_t tSlot : { ( index_t ) 0, ( index_t ) 1, ( index_t ) 4 } )
-    {
-        EXPECT_NE( tJunction.held( tJunction.mC1, tSlot ), tJunction.mP( tSlot ) );
-        EXPECT_NE( tJunction.held( tJunction.mC2, tSlot ), tJunction.mP( tSlot ) );
-        EXPECT_NE( tJunction.held( tJunction.mC1, tSlot )->id(), tJunction.held( tJunction.mC2, tSlot )->id() )
-            << "the ferro|ferro face is no longer split at node " << tJunction.mP( tSlot )->id() ;
-    }
 }

@@ -7,10 +7,12 @@
 
 ## What it shows
 
-This deck models two counter-wound layers of three tapes on a straight core, with solder
-between the layers. A twisted periodic condition represents one period of an infinite
-cable. A 200 A ramp over 10 s drives the model for 15 s with Newton, Anderson
-stabilization, MUMPS, and GMRES. The thermal sections are commented out.
+This deck models two counter-wound layers of three tapes on a straight core. The generator
+meshes the bed between the layers as its own block, and the deck declares it as air. A
+periodic condition represents one period of an infinite cable: each tape makes two full
+turns, so it ends where it starts and the condition maps every tape onto itself. A 200 A
+ramp over 10 s drives the model for 15 s with Newton and Anderson stabilization, using MUMPS
+and GMRES. The thermal sections are commented out.
 
 `python/main.py` generates the mesh, writes `corc.msh`, and prints the matching `topology`
 section in `corc_topology.conf`. The comments at the top of `main.py` explain the pitch, the

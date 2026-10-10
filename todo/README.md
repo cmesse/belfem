@@ -37,17 +37,16 @@ rationale — is in git: `git show 18e57fe:todo/README.md`.
 
 ---
 
-## Active (7)
+## Active (6)
 
 - [dr193_usermat_table_extension](dr193_usermat_table_extension.md) — extend and source the quench deck's six short property tables (they end at 199–390 K, the hot spot reaches 1770 K, no table has a provenance line): a web-literature session with a DOI beside every number; plan only
 - [mkl_num_threads_allrun](mkl_num_threads_allrun.md) — Allrun pins `MKL_NUM_THREADS` to `NTHREADS` beside `OMP_NUM_THREADS`, and `MKL_DYNAMIC` gets decided
-- [pancake_inner_leadout](pancake_inner_leadout.md) — PARKED 2026-10-09: the `pancake_tape` deck left devel (never ran to a solution); the brief to replace its generator's hard-way inner lead by a bent lead stands for when the deck returns, generator recoverable from git at 00b7972
 - [periodic_postprocessor_fields](periodic_postprocessor_fields.md) — make the recovered nodal fields periodic
 - [test_gap_backlog](test_gap_backlog.md) — the ranked list of tests the suite is missing, distilled from the incident record
 - [test_gap_followups](test_gap_followups.md) — the rulings of the Tier 1 test-gap run turned into twelve small rows
 - [test_gap_tier2_execution](test_gap_tier2_execution.md) — Run Tier 2 of `tmp/devlog_sweep/triage.md` (§2, 48 rows) plus N-49 … N-53 reopened by the exclusion re-read (`todo/test_gap_backlog.md` §3b; N-54 stays Tier 3) through the standing loop, batched by suite: one plan per …
 
-## Deferred (20) — [`deferred/`](deferred/)
+## Deferred (21) — [`deferred/`](deferred/)
 
 - [2d_thinshell_todo](deferred/2d_thinshell_todo.md) — Dependency-ordered work items to bring the 2D thin-shell path up to the 3D reference. Derived from `todo/2d_thinshell_gap_analysis.md` (file:line evidence and confidence labels live there; v2 line references …
 - [buffer_cut_implementation_plan_v2](deferred/buffer_cut_implementation_plan_v2.md) — Replace `todo/buffer_cut_implementation_plan.md` with a version that matches the current BELFEM thin-shell, cut, kernel, and thermal pipelines.
@@ -60,6 +59,7 @@ rationale — is in git: `git show 18e57fe:todo/README.md`.
 - [jacobian_init_remaining_bottlenecks](deferred/jacobian_init_remaining_bottlenecks.md) — Track the findings from the 2026-08-18 Jacobian-init investigation that are still open after the `DynamicBitset` and `SpMatrix` work landed
 - [maxwell_postprocessor_gpu_acceleration](deferred/maxwell_postprocessor_gpu_acceleration.md) — Discussion of potential GPU acceleration for extreme-scale problems
 - [mumps_symmetric_triangle_extraction](deferred/mumps_symmetric_triangle_extraction.md) — Design — ALGORITHM ONLY — for supplying MUMPS one triangle instead of the full matrix when `SYM != 0`, so that `SymmetryMode::GeneralSymmetric` / `PositiveDefiniteSymmetric` become supported rather than refused. Halves …
+- [pancake_inner_leadout](deferred/pancake_inner_leadout.md) — PARKED 2026-10-09, moved here 2026-10-10: the `pancake_tape` deck left devel (never ran to a solution); the brief to replace its generator's hard-way inner lead by a bent lead stands for when the deck returns, generator recoverable from git at 00b7972
 - [powerlaw_jc_n_field_derivatives](deferred/powerlaw_jc_n_field_derivatives.md) — Extend the Newton tangent of the collapsed h-kernels when critical current density `jc` and power-law exponent `n` come from lookup tables or other field-dependent `JcFunction`s: `jc = jc(|B|, β[, T])` and `n = n(|B| …
 - [practice_drift_mutation_suite](deferred/practice_drift_mutation_suite.md) — follow-ups for the practice-drift checker's mutation suite
 - [side_edge_fusing_cut_aware_plan](deferred/side_edge_fusing_cut_aware_plan.md) — Make the thin-shell rim fuse ("fuse-to-g") cut-consistent: today, different interface levels of the SAME rim station are constrained to different branches of the multivalued air trace g (with/without the free-cut λ) …
@@ -84,13 +84,15 @@ rationale — is in git: `git show 18e57fe:todo/README.md`.
 - [timestep_collapse_mitigation_design](cancelled/timestep_collapse_mitigation_design.md) — Concrete, code-level mitigation design for the Δt-collapse failure analysed in `todo/timestep_collapse_residual_floor_plan.md` (the `sidecoatings` t = 13.8762 ms abort and the `greg5` regression). Mechanism being fixed …
 - [timestep_collapse_residual_floor_plan](cancelled/timestep_collapse_residual_floor_plan.md) — Both `greg5` (2D tapestack, magnetic-only Picard) and `sidecoatings` (3D coated conductor, coupled Newton) ratchet Δt down to the deck minimum and abort. The mechanism, in one sentence: **the controller's promote/demote …
 
-## Closed (122) — [`closed/`](closed/)
+## Closed (124) — [`closed/`](closed/)
 
 - [dr122_line3_terminal_loop](closed/dr122_line3_terminal_loop.md) — DONE 2026-10-08: the terminal-loop closure extracted into the static `CutFactory::close_terminal_loop` with the LINE3 midside kept at node 2 and the return-pass arclength in reversed segment order (the plan jury's find on the live LINE2 path), preconditions checked before allocation; eight-case test, two mutation checks, `make check` 17/17 in a private tree; DR-122 struck, the DR-103 guard found never landed and recorded.
 - [dr194_dr197_small_fixes](closed/dr194_dr197_small_fixes.md) — DONE 2026-10-08: the duplicate-list alias in `update_node_facet_tables` and the `~CutFactory` double delete fixed with two red-on-HEAD tests; valgrind 0 errors; DR-194 and DR-197 struck
 - [interface_duplicates_shared](closed/interface_duplicates_shared.md) — DONE 2026-10-08: one conductor-side interface copy per node shared across conductor blocks plus a conductor sweep closed Yufan's NI seam short (doubled, untied copper edges along every copper|copper face reaching the air); eight tests; `make check` 17/17; F deck seam jumps 50 A → 1 A, H deck unchanged; DR-198 struck
 - [dr199_gauge_fix](closed/dr199_gauge_fix.md) — DONE 2026-10-09: `gauge` points pre-fixed before the free/fixed split in both factories, the point a contact of the automatic-pin rule, a late first fix refused in `Bearing::impose_dirichlet`, a value-carrying condition without `type` refused at deck read; 19 tests, `check-fast` 8/8, strip and costheta (two ranks) gates; DR-199 row carries the gates
 - [autopin_symmetry_gauge](closed/autopin_symmetry_gauge.md) — DONE 2026-10-09: no automatic gauge pin in a φ component that an air/buffer/ferro symmetry plane or a `dirichlet` sideset already fixes; imposition-time contact walk on the rank-0 mesh (`impose_autopins`), five-case test with three red on HEAD, `check-fast` 8/8, deck gate (costheta −0.9 % U, gantry +10 % U_001, undulator unchanged) and a two-rank run
+- [cut_copy_append_order](closed/cut_copy_append_order.md) — DONE 2026-10-09: cut copies appended in ascending copy id after the abstract nodes (`CutProcessor::collect_duplicates`), the cut pipeline swept (26 sites, nothing else hash-ordered reaches mesh state), `test_CutProcessor.cpp`; the post-enrichment `symrcm` still decides the final order per toolchain, tie-break reported for `src/math/graph`
+- [interface_sideset_order_independence_2](closed/interface_sideset_order_independence_2.md) — CLOSED BY RULING 2026-10-09: the first-facet sideset campaign leaves devel (e30bd98 and 411e69a reverted, the Topology commit archived on `archive/first-facet-sidesets`) — a Gmsh mesh builds one sideset per geometric entity, so nothing shipped was broken, and the all-facet typing was not inert
 - [interface_sideset_first_facet_gaps](closed/interface_sideset_first_facet_gaps.md) — DONE 2026-10-09: Christian's rulings A–C on the cfaf7e8 audit — no outcome of the interface processor depends on facet order within a sideset: admission and set key from all duplicated facets, a multi-block private-copy sideset, a sideset mixing coil-touching facets with others, and one mixing interface facets with boundary or conductor|conductor facets are refused; the numbering claim narrowed to the interface copies; five tests, 21-deck gate 20/21 (corc_twolayer pre-existing), `make check` 17/17
 - [interface_copy_refusal_and_ordering](closed/interface_copy_refusal_and_ordering.md) — DONE 2026-10-09: Christian's two rulings on the DR-198 audit findings — an interface sideset with masters of more than one domain type is refused before any copy exists, and interface copies are numbered and appended by set order and original id, never by hash-map order; four tests red on c31ea43, 21-deck setup gate 20/21 (corc_twolayer pre-existing), `make check` 17/17
 - [periodic_refusal_message](closed/periodic_refusal_message.md) — DONE 2026-10-09: the cross-set periodic refusal in `InterfaceProcessor` names its cause (change of master domain type, or a tie-weight copy against a decoupled coil copy) with both node ids; four tests, the two message tests red on 53b67ec; guide, CHANGELOG and input reference; `make check` 17/17

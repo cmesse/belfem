@@ -14,6 +14,9 @@
 
 ---
 
+> **NOTE 2026-10-09:** cfaf7e8 stays on devel; the follow-up commits e30bd98 and 411e69a were reverted on Christian's ruling (see `devlog/dl20261009_first_facet_campaign_reverted.md`). The §5 cases are not defects on any Gmsh-produced mesh.
+
+
 ## 1. Current Behaviour and How It Fails
 
 | Failure | Mechanism | Evidence |

@@ -14,13 +14,14 @@ thin-shell pipeline and `src/homology` cut factory (read-only constraints)
 **Status:** PARKED 2026-10-09 — the `pancake_tape` deck was removed from devel on Christian's
 decision (it never produced a solution and does not ship in 0.9.3); the generator this plan
 rewrites is recoverable from git (`git show 00b7972:examples/pancake_tape/python/pancake/`).
-The brief stands as written for whenever the deck returns; no code changed
+The brief stands as written for whenever the deck returns; no code changed. Moved to
+`deferred/` 2026-10-10: parked behind the production path, nothing scheduled
 
 > **Scope guards:**
 > - The outer lead (easy-way bend in the plane, solder bar inside) is OUT of scope.
 > - The block/sideset rules of the cut factory stay as they are: every tape facet separates two
 >   different blocks, air is only ever on the outer side, half-turn pieces
->   (`doc`: see `todo/pancake_inner_leadout.md` §1 and the generator's `validate()`).
+>   (`doc`: see `todo/deferred/pancake_inner_leadout.md` §1 and the generator's `validate()`).
 > - The tape stays a zero-thickness thin shell; bending limits of real REBCO are physics
 >   context, not a model constraint.
 

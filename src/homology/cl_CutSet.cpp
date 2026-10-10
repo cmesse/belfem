@@ -43,7 +43,7 @@ namespace belfem
         CutSet::create_duplicates( id_t & aMaxNodeID, Cell< Node * > & aAbstractNodes )
         {
             // create containers
-            uint tNumAbstractDofs = mBitset->count();
+            index_t tNumAbstractDofs = mBitset->count();
 
             Cell< Node * > tSources( tNumAbstractDofs + 1, nullptr );
 
@@ -53,7 +53,7 @@ namespace belfem
             Vector< real > tWeights( tNumAbstractDofs + 1, 1.0 );
 
             index_t tCount = 0 ;
-            for ( uint c=0; c<aAbstractNodes.size(); ++c )
+            for ( index_t c=0; c<aAbstractNodes.size(); ++c )
             {
                 if ( mBitset->test( c ) )
                 {
