@@ -48,18 +48,23 @@ These results intentionally differ from 0.9.2. Each is a correction, so a deck t
 the affected path now produces a different, correct answer.
 
 - **Interface copies are numbered by the mesh, not by the hash table.** The copies that the
-  interface processor makes of the nodes on a conductor|air, ferro|air, conductor|ferro or
-  coil interface are now allocated set by set and in ascending id of the original, and appended
-  to the mesh in that order; 0.9.2 handed out their ids and positions in the iteration order
-  of a hash map, which differs between platforms. The ids and positions of the interface
-  copies differ from 0.9.2 and are now the same on every platform for the same incoming node
-  order; sets are ordered by the sorted hex of the block-index bitset of each set's block
-  pair. The copies that the cut processor makes get deterministic ids but are still appended
-  in hash order and precede the interface copies, so their positions, and the edge ids and the
-  dof numbering of a model with cuts, still depend on the platform. A `.bfm` written by an earlier build is
-  still reused, because its key (the base-mesh checksum and the topology tag) does not change,
-  and then replays the old numbering and skips the setup refusals; delete it before rerunning
-  a deck.
+  interface processor makes of nodes on a conductor|air, ferro|air, conductor|ferro or coil
+  interface are now allocated set by set and in ascending id order of the original, then appended
+  to the mesh in that order. In 0.9.2, their ids and positions were assigned in hash-map
+  iteration order, which differs between platforms. The ids and positions of the interface copies
+  differ from 0.9.2 and are now the same on every platform for the same incoming node order. Sets
+  are ordered by the sorted hex string of the block-index bitset for each set's block pair. The
+  copies made by the cut processor, which precede the interface copies, are appended in ascending
+  copy-id order after the abstract nodes (`CutProcessor::collect_duplicates`); their ids already
+  came from a sorted walk. Thus, no hash-map iteration order reaches the position of any node.
+  The numbering is still not platform-independent: the mesh is renumbered with reverse
+  Cuthill-McKee after enrichment, and that sort orders equal degrees as the C++ standard
+  library's `std::sort` leaves them, which is reproducible on one toolchain but not guaranteed
+  across toolchains. The node order of every shipped deck with cuts differs from 0.9.2 and from
+  the release before this change (19 of the 21 example decks; the two disk decks have no cuts and
+  keep their order). A `.bfm` written by an earlier build is still reused because its key (the
+  base-mesh checksum and the topology tag) does not change. It then replays the old numbering and
+  skips the setup refusals. Delete it before rerunning a deck.
 - **Surface integrals on the quadrilateral side faces of a prism are twice their 0.9.2 value.**
   `normal_penta` scaled the side-face increment by 0.25 for a quadrilateral rule whose weights
   sum to four, so each side face integrated to half its area. The three side faces now integrate

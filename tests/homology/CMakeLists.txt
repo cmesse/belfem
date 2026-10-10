@@ -10,6 +10,7 @@ set( SOURCES
         test_Cohomology.cpp
         test_CohomologyPeriodic.cpp
         test_CutData.cpp
+        test_CutProcessor.cpp
         test_CutFactory_closed_rim.cpp
         test_CutFactory_unwind.cpp
         test_CutFactory_terminal_loop.cpp

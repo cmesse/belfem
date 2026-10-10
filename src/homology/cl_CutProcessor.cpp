@@ -696,7 +696,8 @@ namespace belfem
                 }
             }
 
-            // the sorting is not neccessary, but it's fast and easier to debug
+            // the cut sets allocate their copy ids walking this list;
+            // collect_duplicates sorts the copies by that id
             sort( mNodes.begin(), mNodes.end(), []( Node * a, Node * b ) { return a->id() < b->id(); } ) ;
 
             tCount = 0 ;
@@ -1226,6 +1227,24 @@ namespace belfem
                 }
                 tPair.second->duplicate_map().clear() ;
             }
+
+            // each set's duplicate map was walked in hash order; the mesh
+            // takes the copies in ascending id, which is their allocation
+            // order, after the abstract nodes
+            auto tByID = []( const Node * aA, const Node * aB ) { return aA->id() < aB->id(); };
+            std::sort( tNodes.begin() + mAbstractNodes.size(), tNodes.end(), tByID );
+
+#if BELFEM_ASSERTIONS_ACTIVE
+            for ( index_t k = mAbstractNodes.size() + 1; k < tNodes.size(); ++k )
+            {
+                BELFEM_ASSERT( tNodes( k - 1 )->id() < tNodes( k )->id(),
+                    "cut copies out of order: id %lu at position %lu, id %lu at position %lu",
+                    ( long unsigned int ) tNodes( k - 1 )->id(),
+                    ( long unsigned int ) k - 1,
+                    ( long unsigned int ) tNodes( k )->id(),
+                    ( long unsigned int ) k );
+            }
+#endif
 
             append( mMesh->nodes(), tNodes );
         }

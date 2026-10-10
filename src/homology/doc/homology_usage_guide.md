@@ -1316,7 +1316,12 @@ The cut processing pipeline (called internally by CutFactory):
 1. **Thick cut extraction**: Extract edges from cohomology generators
 2. **Face identification**: Find faces incident to thick cut edges
 3. **Manifold filtering**: Remove non-manifold artifacts (double pockets, etc.) — design of record; the step that actually runs is `Cohomology::remove_cut_pockets()`, see "Manifold Cleanup" below
-4. **Node duplication**: Duplicate nodes on positive side of cut
+4. **Node duplication**: Duplicate nodes on the positive side of the cut. Each cut set assigns
+   copy ids while walking its originals in ascending id order, with the non-periodic originals
+   first and the periodic pairs in the order encountered by that walk. The sets are processed
+   in sorted order of their pattern hex strings. `collect_duplicates` then appends the abstract
+   nodes and the copies in ascending copy-id order, so a copy's position never depends on the
+   hash order of a duplicate map
 5. **Element relinking**: Update element connectivity to duplicated nodes
 6. **Abstract node creation**: Create DOFs for [φ] = φ⁺ - φ⁻
 7. **SideSet creation**: Package cut as SideSet for FEM assembly
@@ -1684,10 +1689,20 @@ Constructor performs full interface processing pipeline:
    pairs tied across sets, again set by set and in ascending order. The maps that hold
    originals and copies are hash maps, but their iteration order never reaches the mesh.
    Therefore, interface-copy ids and positions are the same on every platform for the same
-   incoming node order. The cut copies are not there yet: `CutProcessor` hands out their ids
-   in a sorted walk, but `collect_duplicates` still appends them in the hash order of each cut
-   set's duplicate map, and they precede the interface copies, so their positions, and the
-   edge ids and dof numbering built from positions, still depend on the platform.
+   incoming node order. The cut copies, which precede the interface copies in the mesh, are
+   appended the same way: their ids come from a sorted walk of each cut set's originals (see
+   "CutSet"), and `CutProcessor::collect_duplicates` sorts the kept copies by id after the
+   abstract nodes before appending them. Therefore, no hash-map iteration order reaches a
+   copy's position. Cut copies and interface copies occupy positions determined by the node
+   order entering the cut processor. That is not yet a platform-independent node numbering.
+   `CutFactory` renumbers the mesh with reverse Cuthill-McKee before the cohomology, and
+   `MaxwellFactory` renumbers it again after enrichment, in the order that reaches the `.bfm`
+   and the dof manager. `symrcm` sorts a node's neighbors by degree with `std::sort`, so equal
+   degrees follow whatever order the C++ standard library's sort happens to leave them in. That
+   behavior is reproducible on one toolchain but is not guaranteed across toolchains until the
+   graph sort has a tie-break. The thin-shell copies were already appended in ascending index
+   order of their originals. This does not cover a reused `.bfm`, which replays the numbering
+   with which it was written, the dof manager's own ordering, or partitioned runs.
 5. Ties each duplicate to its original (`InterfaceTreatment::TieWeight1`) or decouples it when a coil touches the interface (`InterfaceTreatment::Decouple`)
 
 **Helper class: InterfaceSet**
@@ -1766,9 +1781,13 @@ void create_duplicates(id_t& aMaxNodeID, Cell<Node*>& aAbstractNodes);
 Creates duplicate nodes for positive side of cut.
 
 **Algorithm:**
-1. Iterate through nodes on cut
-2. Create new Node with unique ID
-3. Store in `mNodeDuplicates` map
+1. Iterate through nodes on the cut in ascending id (`CutProcessor::collect_nodes` sorts the
+   originals): the non-periodic originals first, then the periodic pairs in the order
+   encountered by the walk
+2. Create a new Node with a unique ID in that order
+3. Store it in the `mNodeDuplicates` map (a hash map; its iteration order never reaches the
+   mesh, because `CutProcessor::collect_duplicates` sorts the copies by id before appending
+   them)
 4. Tie each duplicate to its original plus the abstract nodes of the cuts in this set's pattern (weight 1 each; the abstract nodes are created by `CutProcessor::create_abstract_nodes()`)
 
 ```cpp
