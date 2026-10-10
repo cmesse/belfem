@@ -637,7 +637,7 @@ namespace belfem {
 
         // Function to reduce a pair of chains (a,b), where a is a boundary of b
         void
-        SimplicialComplex::reduce_pair( const uint k, const uint a, Map< index_t, Chain*>::const_iterator & bit, const int aCoeff )
+        SimplicialComplex::reduce_pair( const uint k, const index_t a, Map< index_t, Chain*>::const_iterator & bit, const int aCoeff )
         {
             Chain* bChain = bit->second;
             index_t b = bit->first;
@@ -665,7 +665,7 @@ namespace belfem {
 
         // Function to reduce a pair of cochains (a,b), where a is a coboundary of b
         void
-        SimplicialComplex::coreduce_pair(const uint k, const uint a,
+        SimplicialComplex::coreduce_pair(const uint k, const index_t a,
                                                Map< index_t, Cochain * >::const_iterator &bit, const int aCoeff) {
             Cochain *bCochain = bit->second;
             index_t b = bit->first;
@@ -856,7 +856,7 @@ namespace belfem {
 
         // CCR algorithm as described in Computational Homology from T. Kaczynski et al. for a given dimension p
         void
-        SimplicialComplex::pGeneralizedCombine(const uint p)
+        SimplicialComplex::pGeneralizedCombine( const uint p )
         {
             // Loop over all k-chains
             for ( auto it = mChainsMap( p ).begin(), next_it = it; it != mChainsMap( p ).end(); it = next_it )
@@ -945,7 +945,7 @@ namespace belfem {
                 this->pReduce(p);
             }
 
-            uint tKey;
+            index_t tKey;
             while (this->number_of_ksimplices(tDim) > 0)
             {
                 tKey = mChainsMap(tDim).begin()->first;
@@ -1241,7 +1241,7 @@ namespace belfem {
                 this->pCoreduce(p);
             }
 
-            uint tKey;
+            index_t tKey;
             while (this->number_of_kcosimplices(0) > 0)
             {
                 tKey = mCochainsMap(0).begin()->first;
