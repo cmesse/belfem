@@ -365,11 +365,11 @@ namespace belfem
             Mesh * tMeshEdge = new Mesh( mMesh->number_of_dimensions() , 0, false );
             Cell< Node * > & tNodes = tMeshEdge->nodes();
             Map< id_t, Node * > tNodeMap ;
-            id_t tNumNodes = mMesh->number_of_nodes();
-            id_t tNumEdges = mMesh->number_of_edges();
+            index_t tNumNodes = mMesh->number_of_nodes();
+            index_t tNumEdges = mMesh->number_of_edges();
 
             tNodes.set_size( tNumNodes, nullptr );
-            for ( uint k=0; k<tNumNodes; ++k)
+            for ( index_t k=0; k<tNumNodes; ++k)
             {
                 id_t id = mMesh->nodes()(k)->id();
                 real x = mMesh->nodes()(k)->x();
@@ -391,7 +391,7 @@ namespace belfem
             Cell< mesh::Element * > & tEdges = tBlock->elements();
 
             tEdges.set_size( tNumEdges, nullptr );
-            for ( uint e=0; e<tNumEdges; ++e)
+            for ( index_t e=0; e<tNumEdges; ++e)
             {
                 id_t edge_id = mMesh->edges()(e)->id();
                 id_t node_id_1 = mMesh->edges()(e)->node(0)->id();

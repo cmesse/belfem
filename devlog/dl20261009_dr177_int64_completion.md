@@ -11,7 +11,7 @@ asked for.
 **AIs:** Claude Opus 5.5 ("tests" session): sweep, non-core fixes, guide. Audit of f3841bc:
 Codex `gpt-6-astra`/xhigh and Grok `grok-4.7`/xhigh, blind (`tmp/ai_exchange/f3841bc_audit_*.md`).
 Codex `gpt-5.6-luna`/medium language sweep of the guide corrections.
-**Status:** fixes landed; delta audit, `make check` and the deck comparison on the pushed state follow
+**Status:** COMPLETE within the scope Christian ruled on 2026-10-10: simplex keys and mesh-scale counts are 64-bit-safe; generator, cut, sideset and Smith-matrix cardinalities stay 32-bit (Open). Landed in 7011f44, fc41443 and 021dbc8
 **Artifacts:** scratchpad only: INT64 compile tree, `-Wconversion` logs of both builds
 
 ## Gate: compile under BELFEM_INT64
@@ -56,19 +56,21 @@ rest listed below. Maps keyed by `id_t` are keyed by node, block and sideset ids
 | `cl_CutData.cpp:139` | local side number 0..2 passed to `set_master` | `index_t` | small count, fine |
 | `cl_CutData.cpp:32` | cut id = generator index + 1 | `id_t` | id, fine |
 | `cl_CutFactory.cpp:1507` | facet ids | `id_t` | id, fine |
-| `cl_CutFactory.cpp:443` | max node id into `InterfaceProcessor` | `id_t` parameter | id, fine |
-| `cl_CutFactory.cpp:368-369` | node and edge counts in the debug writer | `id_t` | count, fine |
+| `cl_CutFactory.cpp:443` | the original-sideset count passed to the `uint` parameter of `InterfaceProcessor` (`max_node_id()` is already `id_t`) | `uint` parameter | count, fine (corrected after the delta audit; first described as the node id) |
+| `cl_CutFactory.cpp:368-369`, `:372`, `:394` | global node and edge counts and the loops over them, in the caller-less debug writer | `id_t`, `uint` | count and global index: **widened to `index_t`** after the delta audit |
 | `cl_CutFactory.cpp:2615` | neighbor count into `allocate_element_container` | `uint` | count, fine |
-| `cl_CutSet.cpp:46` | bitset count | `uint` | count, fine |
-| `cl_CutProcessor.cpp:1039` | hash key | `size_t` | not a simplex key, fine |
-| `cl_InterfaceProcessor.cpp:216` | node id | `id_t` | id, fine |
+| `cl_CutSet.cpp:46`, `:56` | number of cuts a set touches, and the loop over the abstract nodes | `uint` | count: **widened to `index_t`** after the delta audit (unbounded in principle) |
+| `cl_CutProcessor.cpp:1039` | hash key, `size_t` into a `Map< size_t, … >` | `size_t` | not a narrowing at all; listed by the census, not by the compiler |
+| `cl_InterfaceProcessor.cpp` (`duplicate_nodes`, line moved by the revert in 99f8a8f) | node id | `id_t` | id, fine |
 
-After the fixes, the INT64-only warning list holds exactly the nine id/count rows above and
-`cl_BeltedTree.cpp:332`.
+After 7011f44 the INT64-only warning list held the id and count rows above and
+`cl_BeltedTree.cpp:332`. The delta audit found what a warning comparison cannot see: values
+that are `size_t` in both builds and narrow into `uint` in both (the core count accessors), and
+global index loops that never narrow because they start as `uint`.
 
 ## Changes
 
-- `0579d3a`-equivalent (Christian, core): `reduce_pair`/`coreduce_pair` take `const index_t a`;
+- 0579d3a (Christian, core): `reduce_pair`/`coreduce_pair` take `const index_t a`;
   both `tKey` are `index_t`; the two declarations follow. Applied from his working tree verbatim.
 - `cl_CutFactory.cpp`: the key map at `save_edges` is `OrderedMap< index_t, int > &`; the
   master/slave local-edge vectors are filled with `BELFEM_UINT_MAX`.
@@ -88,3 +90,53 @@ After the fixes, the INT64-only warning list holds exactly the nine id/count row
   word (0.9.3 without new scope).
 - INT64 is compile-only for `src/homology`; nothing was linked or run under INT64, and 63
   errors remain in other libraries.
+
+## Delta audit of 202e62a..7011f44 and the follow-up
+
+Blind, same brief, separate worktrees: Codex `gpt-6-astra`/xhigh and Grok `grok-4.7`/xhigh
+(`tmp/ai_exchange/delta_7011f44_*.md` in the shared checkout's exchange). Both verify the edited hunks (core retype,
+`CutFactory:526`, the sentinel), the guide, and default-build identity. Grok: CLEARS (~85 %),
+every stored key is `index_t`, the only 32-bit pass-through is `BeltedTree:332`. Codex: does
+not clear the completeness claim, citing cardinalities rather than keys: the caller-less debug
+writer's global counts and loops (`CutFactory:368-394`), the cut count in `CutSet:46`, and the
+core's five count accessors returning `uint` from a map size (`cl_SimplicialComplex.hpp:174-195,
+262-312`), which would make the omit sweeps at `.cpp:949` and `:1245` see zero simplices at
+2³² or more. Both found three table rows misdescribed (corrected above). Every citation was
+checked against the code.
+
+Follow-up: outside the core, the debug writer and `CutSet` counters are `index_t` (021dbc8).
+Inside the core, the five count accessors return `index_t` (fc41443): proposed as a patch,
+reviewed and applied by Christian.
+The log casts to `unsigned int` and the `int` sizes of the dense Smith matrices stay; they are
+display and dense-matrix bounds far below 2³².
+
+Gates: `make check` on 7011f44 (default release, mkl flavor, Armadillo) 17/17. The five decks
+(tapestack2d_layered, tapestack3d, helix, gantry, corc_periodic_bc) set up on 7011f44 with logs
+and `.bfm` identical to 337a318 apart from `/meta/git`.
+
+## Second delta audit (f6dca70..021dbc8) and the scope of the INT64 claim
+
+Blind, same seats (`tmp/ai_exchange/delta_021dbc8_*.md`). Both verify the change: the accessor
+declarations and definitions agree, every caller behaves as before on the default build, the
+widened debug-writer and `CutSet` values reach only `index_t`/`size_t` sinks, and the default
+build is type-identical. Both refute a module-wide completeness claim with a census of
+pre-existing 32-bit counters: the `uint` ordinals in `createMatrixFromBoundaryMap` and
+`createMatrixFromCoboundaryMap` and the `int` captures in the latter, `generatorsOfHomology` /
+`generatorsOfCohomology` counters and the `Map< int, uint >` Smith ranks, the `uint` dimensions
+throughout `fn_Smith`, the cut counts (`CutProcessor::mNumberOfCuts`, `CutData::mNumberOfCuts`),
+the sideset counts into `InterfaceProcessor` (capped by `Mesh::number_of_sidesets()` returning
+`uint`), per-node duplicate multiplicities into `Node`'s `int` counter, BeltedTree traversal
+counters, a vector length serialized in `Topology`'s `Vector< id_t >` buffer, and the Exodus
+writer's `int` connectivity and `uint` counts. Grok rates all of them P2 (no blocker, they need a
+reduced complex or a generator, cut or sideset count of 2³¹ to 2³², which no dense
+`Matrix< int >` Smith factorization reaches); Codex rates many P1 "unless explicitly bounded".
+
+Christian ruled 2026-10-10: push fc41443 and 021dbc8, and scope the claim instead of another
+code round. **The INT64 claim for `src/homology` is: it compiles, and simplex keys and
+mesh-scale entity counts are carried in `index_t`. Generator, cut, sideset and
+reduced-complex/Smith cardinalities stay 32-bit and are not supported above 2³¹.** The census
+above is the Open list for that work; a size guard before the dense Smith matrices are sized
+would be its first step.
+
+Gates on 021dbc8: INT64 `belfem_homology` and the eight `tests/homology` objects 0 errors;
+default release `belfem` 0 warnings; `make check` 17/17 (release, mkl flavor, Armadillo).
