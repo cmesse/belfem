@@ -4,16 +4,25 @@ All notable changes to BELFEM are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and version numbers follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.9.3] — 2026-10-10
+
+This release corrects thin-shell and interface results of 0.9.2: one shared conductor-side
+copy per interface node, the prism side-face integrals, the ghost flux weight between stacked
+layers, nodal recovery on curved shells, and the automatic gauge pin beside a symmetry plane.
+Material laws change where they were wrong at low temperature or below 10 mT, and several
+inputs that 0.9.2 accepted now stop during setup with a message. Two example decks are new and
+`examples/corc_twolayer` sets up again. The homology `Chain` and `Cochain` headers key
+simplices by `index_t` and use snake_case accessors.
 
 ### Added
 
-- **New example deck `examples/rutherford`.** REBCO tapes wound around a flat
-  Rutherford-type copper core with rounded edges, the flat flexible cable of Romancew (2026):
+- **New example deck `examples/rutherford`.** Superconducting tapes wound around a flat
+  Rutherford-type core with rounded edges, after the flat flexible cable of Romancew (2026):
   a Python generator builds the tapes as thin shells on a stadium-shaped mandrel at a given
   lay angle, closes a fraction of a pitch with a translated periodic condition, and writes
   the matching `topology` section. Tapes per layer, criss-crossed layers and the pitch count are
-  parameters; the copper core itself is meshed as air. Twenty decks now ship.
+  parameters; the core itself is meshed as air. The deck as shipped winds five BSCCO-2223 tapes
+  in one layer.
 
 - **New example deck `examples/tape_with_contact_and_defect`.** One REBCO tape from the
   `tapestack3d` build, without solder or neighboring tapes, sits in a 10 mm periodic air
@@ -44,9 +53,24 @@ All notable changes to BELFEM are recorded here. The format follows
 
 ### Changed
 
-These results intentionally differ from 0.9.2. Each is a correction, so a deck that exercises
-the affected path now produces a different, correct answer.
+Most of these change results against 0.9.2, and each of those is a correction: a deck that
+exercises the affected path now produces a different, correct answer. The iteration line, the
+`corc_periodic_bc` tolerance, the resistivity-cache revision and the interface changes at the
+end of the list change the log, one shipped deck, cache handling or the programming interface.
 
+- **One conductor-side interface copy per node, shared across conductor blocks.** The interface
+  processor made the conductor-side copy of a conductor|air interface node once per interface
+  set, so a node on the line where two conductor blocks meet the air got one copy per block.
+  The conductor edges leaving that node along the conductor|conductor face were then created
+  twice and never tied, and tangential h could jump across the air-adjacent row of that face.
+  Every tie-weight set with conductor masters now takes its copy from one shared map, and a
+  sweep installs that copy in every conductor element that still holds the original. Models in
+  which conductor blocks meet the air along a common line have fewer edges and unknowns, and
+  their results move. Of the shipped decks, the terminal quantities of `rlc_circuit` changed in
+  the fifth digit and those of `tapestack3d`, `tapestack3d_quench` and `pancake` in the sixth
+  to seventh over the compared intervals; `racetrack_usermat` has fewer conductor edges as well
+  and was not run far enough to compare. Ferro, buffer, air-master and coil sets keep their
+  per-set copies.
 - **Interface copies are numbered by the mesh, not by the hash table.** The copies that the
   interface processor makes of nodes on a conductor|air, ferro|air, conductor|ferro or coil
   interface are now allocated set by set and in ascending id order of the original, then appended
@@ -56,19 +80,21 @@ the affected path now produces a different, correct answer.
   are ordered by the sorted hex string of the block-index bitset for each set's block pair. The
   copies made by the cut processor, which precede the interface copies, are appended in ascending
   copy-id order after the abstract nodes (`CutProcessor::collect_duplicates`); their ids already
-  came from a sorted walk. Thus, no hash-map iteration order reaches the position of any node.
+  came from a sorted walk. Thus, no hash-map iteration order in the cut and interface processors
+  reaches the position of a node.
   The numbering is still not platform-independent: the mesh is renumbered with reverse
   Cuthill-McKee after enrichment, and that sort orders equal degrees as the C++ standard
   library's `std::sort` leaves them, which is reproducible on one toolchain but not guaranteed
   across toolchains. The node order of every shipped deck with cuts differs from 0.9.2 and from
   the release before this change (19 of the 21 example decks; the two disk decks have no cuts and
   keep their order). A `.bfm` written by an earlier build is still reused because its key (the
-  base-mesh checksum and the topology tag) does not change. It then replays the old numbering and
-  skips the setup refusals. Delete it before rerunning a deck.
+  base-mesh checksum and the settings fingerprint) does not change. It then replays the old
+  numbering and skips the refusals of the mesh-enrichment stage. Delete it before rerunning a
+  deck.
 - **Surface integrals on the quadrilateral side faces of a prism are twice their 0.9.2 value.**
-  `normal_penta` scaled the side-face increment by 0.25 for a quadrilateral rule whose weights
-  sum to four, so each side face integrated to half its area. The three side faces now integrate
-  to their face areas; the triangular caps were already correct. Any sideset term on a PENTA
+  `normal_penta` returned half the surface increment on the quadrilateral side faces, so each
+  side face integrated to half its area. The three side faces now integrate to their face
+  areas; the triangular caps were already correct. Any sideset term on a PENTA
   side face, including Neumann and background-field terms, changes accordingly.
 - **The ghost-penalty consistency term between stacked thin-shell layers is the weighted average
   used by the SWIP method.** The flux operator used the jump in the two layers' slopes with
@@ -78,22 +104,23 @@ the affected path now produces a different, correct answer.
   term; the shipped decks leave it off.
 - **Thin-shell layers retain their through-thickness jump in nodal output on curved shells.**
   Nodal recovery now fits in coordinates centered and scaled at the node, and in curvilinear
-  shell coordinates for linear thin-shell layers. On the bends of the `rutherford` example,
-  0.9.2 placed the YBCO current sheet in the silver and buffer layers of the Exodus output and
-  in the printed J/Jc_max. The solve itself never read these fields.
+  shell coordinates for linear thin-shell layers. On the bends of a multi-layer tape, 0.9.2
+  could place the superconducting layer's current sheet in the neighbouring layers of the
+  Exodus output and in the printed J/Jc_max. The solve itself never read these fields.
 - **REBCO jc and n below the tables' lowest field, 10 mT, now continue smoothly** instead of
   being held at the table edge: n is a parabola with zero slope at B = 0, and jc is a cubic
   Hermite interpolation to the measured self-field level. Both are C1 and non-increasing in |B|,
   with exact derivatives. BSCCO jc retains the clamp. The HDF5 tables are unchanged.
 - **The specific heat of the pure metals is splined on a 1 K grid** instead of a 4 K grid, so
   the T³ start below 4 K is no longer undershot; lead's c_p was negative there. c_p changes
-  between the old knots for every pure metal, most noticeably below 20 K.
+  between the old knots for every pure metal; the difference matters below about 4 K.
 - **Magnetoresistance of silver, lead, and tin at low field.** Silver's low-field Kohler cubics
   were placed in the wrong coefficient slots. The transverse switch point for lead and tin was
   never written, so branch selection read uninitialized memory. All three now use the matched
   cubics below the switch point.
-- **YBCO's thermal conductivity is finite below 1 K.** The Debye and Callaway integrands are now
-  evaluated in an overflow-free form. Values that were finite in 0.9.2 are unchanged.
+- **YBCO's thermal conductivity is finite below about 1 K.** The Debye and Callaway integrands
+  and the optical prefactor are now evaluated in an overflow-free form. Values that were finite
+  in 0.9.2 are unchanged to round-off.
 - **Newton tangents.** The modified Kim jc law now carries its exact field derivative; it was
   previously zero. The piecewise power law's tangent below j1 is now the derivative of the value
   it returns. Converged answers are unchanged, but iteration counts and timestep histories may
@@ -113,11 +140,31 @@ the affected path now produces a different, correct answer.
   with another value, is rebuilt once with a warning. Every 0.9.2 cache is rebuilt on the first
   run, so the corrected silver, lead, and tin laws reach alloys such as PbSn solder. A 0.9.2
   binary reading a 0.9.3 cache does not check the revision.
+- **A constant `jc` without an `ec` gets the default 1e-4 V/m,** as a jc function always did,
+  instead of producing a NaN power law. A material without an n function returns its constant n.
+- **Closed terminal loops.** `CutFactory::close_terminal_loop` accumulates the arclength of the
+  return pass over the segments in reversed order, which is the order in which the return pass
+  walks them; 0.9.2 added them in forward order, so the intermediate samples were wrong on a
+  non-uniformly meshed terminal curve. Nothing in the solve reads these samples, but they are
+  stored in the `.bfm` (`curves/lengths`), so a newly written mesh file differs there. A
+  quadratic (LINE3) segment keeps its midside node in the middle slot when it is reversed.
+- **A `.bfm` written by another commit loads with a warning** that names both git stamps.
+  The checksum and the settings fingerprint still decide whether it is reused.
+- **Relative paths of ASCII files resolve against the process working directory,** not `$PWD`.
+- **Homology programming interface.** `Chain` keys and every `Chain` signature are `index_t`,
+  matching `Cochain`, and the chain and cochain accessors are snake_case
+  (`get_simplices_map`, `get_coefficient`, `add_simplex_to_chain`, …); code that calls the old
+  camelCase names must be updated. `src/homology` and its tests now compile with
+  `USE_MKL_64BIT_API=ON` (`BELFEM_INT64`): simplex keys and mesh-scale counts are 64-bit there,
+  while generator, cut, sideset and Smith-matrix cardinalities remain 32-bit. This was checked
+  by compilation only, there being no 64-bit stack to run it, and the rest of BELFEM does not
+  yet compile in that mode. `fem::Kernel` can no longer be copied or moved,
+  and `Map::operator()` names a missing key in release builds too.
 
 ### Refusals
 
 Inputs that 0.9.2 accepted and handled silently or incorrectly now stop during setup with a
-message naming the problem. None of the shipped decks is affected.
+message naming the problem. All 21 shipped decks pass setup without meeting any of them.
 
 - A sideset with a domain type on a periodic plane; it used to lose its kernel.
 - A Dirichlet condition on a non-duplicate dof condensed onto more than one source;
@@ -138,11 +185,17 @@ message naming the problem. None of the shipped decks is affected.
   on sets of different treatment (a coil touching the interface on one side of the plane only),
   when no compatible set holds the partner's copy. 0.9.2 tied such copies regardless. The
   message names both nodes and both domain types or treatments; the remedy is to move the
-  periodic plane into a section of one domain type.
+  periodic plane into a section of one domain type, or away from the coil.
 - An HDF5 array, vector, or string dataset whose rank is not 1.
-
-A constant `jc` without an `ec` now gets the default 1e-4 V/m, as a jc function always did,
-instead of producing a NaN power law.
+- A curve whose corner nodes do not form one connected chain; 0.9.2 indexed with a sentinel.
+- A terminal curve whose segments are neither LINE2 nor LINE3, that has a node without a
+  thin-shell duplicate, or whose arclength vector does not hold one sample per node; all three
+  are checked before the loop is closed.
+- A thin-shell node whose facet container is full before all its facets are added; a release
+  build of 0.9.2 wrote past the end.
+- A linear-solver relative or absolute tolerance that is not positive and finite.
+- A user-defined two-argument `jc` or `n` function whose declared arguments are not the
+  magnetic field followed by the angle.
 
 ### Fixed
 
@@ -184,9 +237,12 @@ instead of producing a NaN power law.
   nothing, enclosed buffer patches) keeps exactly one pin, and a deck `bearing` still disables
   every automatic pin. Because the rule runs at imposition, an existing `.bfm` needs no
   rebuilding, and a `dirichlet` condition added or removed under a cached mesh is honored. The
-  setup log names each pin it fixes and each component it leaves alone. Results change for every
-  deck with a symmetry plane and no bearing: of the shipped decks `gantry`, `costheta` and
-  `racetrack_usermat`; decks without one (`undulator2d` and the rest) are unchanged.
+  setup log names each pin it fixes and each component it leaves alone. Results change for
+  decks with a symmetry plane and no bearing. Of the shipped decks, `costheta` (first terminal
+  voltage about 1 % lower at 1 s) and `gantry` (terminal voltages shifted by a median of about
+  2 %, one by 10 %) were compared, and the field spike at the former pin is gone in both;
+  `racetrack_usermat` releases one pinned unknown and was not run far enough to compare.
+  Decks without a symmetry plane (`undulator2d` and the rest) are unchanged.
 - **A 3D thin-shell sideset can no longer leave setup with a mixed master side.**
   `MaxwellFactory::fix_facet_masters` orients facets that have the same domain type on both
   sides by a walk over shared edges. That walk also passes through faces that meet a thin shell
@@ -225,7 +281,7 @@ instead of producing a NaN power law.
   and a rim that touches another shell's side curve is duplicated as an open one, so a closed
   rim that shares a node, even at a single corner, with a terminal curve of any shell or with a
   side curve of another shell is refused in `CutFactory` before any node is duplicated, with a
-  message that names the shell, the rim, the shared node and the other curve. Edge coating is
+  message that names the shell, the rim and the shared node. Edge coating is
   not supported on a closed rim and stops setup with a message that says so.
 - **A refusal during field setup no longer frees hanging dofs twice** in debug builds and tests.
   A release build aborts before unwinding and was not affected.
