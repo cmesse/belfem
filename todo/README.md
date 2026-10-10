@@ -37,17 +37,16 @@ rationale — is in git: `git show 18e57fe:todo/README.md`.
 
 ---
 
-## Active (7)
+## Active (6)
 
 - [dr193_usermat_table_extension](dr193_usermat_table_extension.md) — extend and source the quench deck's six short property tables (they end at 199–390 K, the hot spot reaches 1770 K, no table has a provenance line): a web-literature session with a DOI beside every number; plan only
 - [mkl_num_threads_allrun](mkl_num_threads_allrun.md) — Allrun pins `MKL_NUM_THREADS` to `NTHREADS` beside `OMP_NUM_THREADS`, and `MKL_DYNAMIC` gets decided
-- [pancake_inner_leadout](pancake_inner_leadout.md) — PARKED 2026-10-09: the `pancake_tape` deck left devel (never ran to a solution); the brief to replace its generator's hard-way inner lead by a bent lead stands for when the deck returns, generator recoverable from git at 00b7972
 - [periodic_postprocessor_fields](periodic_postprocessor_fields.md) — make the recovered nodal fields periodic
 - [test_gap_backlog](test_gap_backlog.md) — the ranked list of tests the suite is missing, distilled from the incident record
 - [test_gap_followups](test_gap_followups.md) — the rulings of the Tier 1 test-gap run turned into twelve small rows
 - [test_gap_tier2_execution](test_gap_tier2_execution.md) — Run Tier 2 of `tmp/devlog_sweep/triage.md` (§2, 48 rows) plus N-49 … N-53 reopened by the exclusion re-read (`todo/test_gap_backlog.md` §3b; N-54 stays Tier 3) through the standing loop, batched by suite: one plan per …
 
-## Deferred (20) — [`deferred/`](deferred/)
+## Deferred (21) — [`deferred/`](deferred/)
 
 - [2d_thinshell_todo](deferred/2d_thinshell_todo.md) — Dependency-ordered work items to bring the 2D thin-shell path up to the 3D reference. Derived from `todo/2d_thinshell_gap_analysis.md` (file:line evidence and confidence labels live there; v2 line references …
 - [buffer_cut_implementation_plan_v2](deferred/buffer_cut_implementation_plan_v2.md) — Replace `todo/buffer_cut_implementation_plan.md` with a version that matches the current BELFEM thin-shell, cut, kernel, and thermal pipelines.
@@ -60,6 +59,7 @@ rationale — is in git: `git show 18e57fe:todo/README.md`.
 - [jacobian_init_remaining_bottlenecks](deferred/jacobian_init_remaining_bottlenecks.md) — Track the findings from the 2026-08-18 Jacobian-init investigation that are still open after the `DynamicBitset` and `SpMatrix` work landed
 - [maxwell_postprocessor_gpu_acceleration](deferred/maxwell_postprocessor_gpu_acceleration.md) — Discussion of potential GPU acceleration for extreme-scale problems
 - [mumps_symmetric_triangle_extraction](deferred/mumps_symmetric_triangle_extraction.md) — Design — ALGORITHM ONLY — for supplying MUMPS one triangle instead of the full matrix when `SYM != 0`, so that `SymmetryMode::GeneralSymmetric` / `PositiveDefiniteSymmetric` become supported rather than refused. Halves …
+- [pancake_inner_leadout](deferred/pancake_inner_leadout.md) — PARKED 2026-10-09, moved here 2026-10-10: the `pancake_tape` deck left devel (never ran to a solution); the brief to replace its generator's hard-way inner lead by a bent lead stands for when the deck returns, generator recoverable from git at 00b7972
 - [powerlaw_jc_n_field_derivatives](deferred/powerlaw_jc_n_field_derivatives.md) — Extend the Newton tangent of the collapsed h-kernels when critical current density `jc` and power-law exponent `n` come from lookup tables or other field-dependent `JcFunction`s: `jc = jc(|B|, β[, T])` and `n = n(|B| …
 - [practice_drift_mutation_suite](deferred/practice_drift_mutation_suite.md) — follow-ups for the practice-drift checker's mutation suite
 - [side_edge_fusing_cut_aware_plan](deferred/side_edge_fusing_cut_aware_plan.md) — Make the thin-shell rim fuse ("fuse-to-g") cut-consistent: today, different interface levels of the SAME rim station are constrained to different branches of the multivalued air trace g (with/without the free-cut λ) …
