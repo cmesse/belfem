@@ -171,27 +171,27 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-            uint
+            index_t
             number_of_0simplices() const;
 
 //------------------------------------------------------------------------------
 
-            uint
+            index_t
             number_of_1simplices() const;
 
 //------------------------------------------------------------------------------
 
-            uint
+            index_t
             number_of_2simplices() const;
 
 //------------------------------------------------------------------------------
 
-            uint
+            index_t
             number_of_ksimplices( const uint k ) const;
 
 //------------------------------------------------------------------------------
 
-            uint
+            index_t
             number_of_kcosimplices( const uint k ) const;
 
 //------------------------------------------------------------------------------
@@ -261,7 +261,7 @@ namespace belfem
             return * mOriginalEdges ;
         }
 
-        inline uint
+        inline index_t
         SimplicialComplex::number_of_0simplices() const
         {
             return mChainsMap( 0 ).size();
@@ -269,7 +269,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        inline uint
+        inline index_t
         SimplicialComplex::number_of_1simplices() const
         {
             return mChainsMap( 1 ).size();
@@ -277,7 +277,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        inline uint
+        inline index_t
         SimplicialComplex::number_of_2simplices() const
         {
             return mChainsMap( 2 ).size();
@@ -285,7 +285,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        inline uint
+        inline index_t
         SimplicialComplex::number_of_ksimplices( const uint k ) const
         {
             if ( k < 0 )
@@ -300,7 +300,7 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
-        inline uint
+        inline index_t
         SimplicialComplex::number_of_kcosimplices( const uint k ) const
         {
             if ( k < 0 )
