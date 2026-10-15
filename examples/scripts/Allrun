@@ -393,7 +393,18 @@ fi
 
 ensure_mesh
 
+# OMP_NUM_THREADS alone sizes the threaded BLAS of every SCLS flavor only in a
+# clean environment: an inherited MKL_NUM_THREADS or OPENBLAS_NUM_THREADS
+# (Intel setvars.sh, module files, site profiles) wins over it for that
+# library, and ranks x BLAS threads then bypasses the oversubscription guard.
 export OMP_NUM_THREADS="$NTHREADS"
+for blas_var in MKL_NUM_THREADS OPENBLAS_NUM_THREADS; do
+    inherited="${!blas_var:-}"
+    if [ -n "$inherited" ] && [ "$inherited" != "$NTHREADS" ]; then
+        echo "NOTE: overriding inherited $blas_var=$inherited with $NTHREADS"
+    fi
+    export "$blas_var=$NTHREADS"
+done
 : "${MALLOC_ARENA_MAX:=2}"          # see doc/parallel_execution.md
 export MALLOC_ARENA_MAX
 
