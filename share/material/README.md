@@ -112,6 +112,130 @@ Licences are recorded in `meta/license` in each file. The five
 figshare-derived tables are CC BY 4.0. `bscco-2223` lists its sources in
 `meta/reference` instead.
 
+### Why the tables are monotone and smooth
+
+The shape contracts listed above are modelling choices made for the solver, not
+laws of physics: `jc` is non-increasing in T and `|B|`, `n` is non-increasing
+in `|B|` and bounded, and the interpolant has continuous first derivatives
+across element faces.
+
+**Monotonicity suppresses noise-driven features.** The two tables are treated
+differently:
+
+- `jc` gets an isotonic fit in T and `log10 B`. Inside the measured range,
+  where the raw scans are close to monotone, the fit moves the values by less
+  than the measurement scatter. It therefore removes noise without changing
+  the measured trend.
+- `n` gets a running minimum along `log10 B`, from low to high field. This
+  removes one-sided upward excursions, such as a bad fit in one angle scan or
+  the log-log tail fitted to rows where `Ic` is at the measurement floor.
+  These excursions can be much larger than the scatter: in `sp-ap`, one bad
+  fit sent `n` from 13 to 58. `n` has no T contract for the REBCO tables
+  because the measured in-plane `n(T)` rises again between about 55 and 70 K.
+
+The shape of `jc(|B|)` depends on the pinning landscape. With columnar
+BaZrO3 defects along the c-axis, `jc` falls much more slowly when the field is
+parallel to c. The defect density that works best in a given field range
+follows the matching field, where the vortex density equals the defect density
+(Wee et al. 2013, DOI 10.1038/srep02310).
+
+Do not assume that `jc` falls steeply with field. The tables also cannot
+represent a conductor whose `jc` rises over part of the field range. None of
+the five REBCO tapes behind the shipped tables shows such a rise. If the source
+data contained one, two stages of the build would flatten it: a monotone
+Bernstein projection before the B-spline stage, and the constraint on the
+B-spline control net. More sophisticated regularizations exist, including
+machine-learning approaches. BELFEM uses the simplest one that gives the
+solver what it needs.
+
+**Smoothness helps Newton converge.** The tangent of the power-law
+resistivity contains `d jc/dB` and `d jc/dT` (`powerlaws.hpp`). If the table
+values are continuous but their derivatives jump between elements, the
+tangent jumps too. The table resolution is 1 K, so during a quench the
+temperature crosses many table elements within a few time steps. In our
+experience, derivative jumps of this kind are what stall the Newton iteration
+in that phase. This has not been isolated in a reproducer.
+
+The B-spline projection removes the jumps. Well-behaved material functions
+and the projection together are a significant part of the solver's
+robustness on HTS problems. Keep both when you change a table.
+
+The C1 property belongs to the table interpolant. The functions BELFEM serves
+are not C1 everywhere: below `Bmin`, the `jc` continuation can have
+discontinuous T and angle tangents, and the `n` floor is C0 only
+(`resistivity_laws.md`).
+
+### Using an older or modified table
+
+When BELFEM opens a `jc` or `n` table, `JcFunctionDatabase::open_checked`
+(`cl_JcFunction_Database.hpp`) checks the number of axes, the angle coverage,
+and one property of the data.
+
+On the lowest-field face, `d log10 value / d log10 B` must be certified
+non-positive by a Bernstein bound over the whole face. A table that fails is
+refused with
+
+    database jc in sst-1.hdf5 cannot be certified not to rise with |B| at its
+    lowest field ( bound on d log10 value / d log10 B: 0.0198602 ), so it
+    cannot be continued monotonically below Bmin
+
+For `n`, the reader also requires `n >= 1.01` on the same face. The bound is
+conservative: a face that falls everywhere but is strongly concave can still
+fail it.
+
+The check protects the continuation below `Bmin`, which cannot be
+non-increasing if the table already rises at `Bmin`. It applies to every
+table, including a `jc` table without a measured self-field curve, such as
+`bscco-2223`, which is clamped below `Bmin` rather than continued.
+
+One cause of the refusal is a table built before the current versions. This
+can be an older copy of a shipped file left in the run directory, which takes
+precedence over the installed copy (see the top of this page), or a
+hand-edited file. Replace it with the current file before doing anything else.
+
+The check covers only the lowest-field face. A rise elsewhere in the table,
+or derivative jumps from values edited without re-projection, load without
+complaint and may show up later as a Newton iteration that does not converge.
+
+If you edit a table, re-run the B-spline projection and verify the result. The
+tools are in the file's `python` group:
+
+```python
+import h5py, pathlib
+with h5py.File('my-table.hdf5', 'r') as f:
+    for k, v in f['python'].items():
+        pathlib.Path(k).write_bytes(v[()])
+```
+
+```sh
+python3 project_table.py my-table.hdf5 -o my-table-c1.hdf5            # REBCO
+python3 project_table.py my-table.hdf5 -o my-table-c1.hdf5 --mirror   # bscco-2223
+python3 verify_tables.py my-table-c1.hdf5     # C1, monotonicity, n bounds, theta seam
+```
+
+`--mirror` keeps the Bi-2223 table symmetric about 90 degrees. Without it,
+the projection treats the angle as periodic and breaks that symmetry. Note
+that `howtoread.py` in the same group clamps values below `Bmin`, so it does
+not show the continuation the solver uses.
+
+The projection re-imposes `jc` non-increasing in T and `|B|`, and `n`
+non-increasing in `|B|`, so it flattens any such rise you intended to keep.
+It does not touch `n(T)`. `project_table.py` has no option to switch these
+constraints off.
+
+Keeping a genuine `jc` rise therefore means editing the script, and also the
+monotone pass in `build.py` if you rebuild from `source`. What else is needed
+depends on where the rise is:
+
+- **A rise inside the field range** passes the load check. Only the scripts
+  need to change.
+- **A rise at the lowest field** is refused at load. Keeping it also requires
+  disabling the check in `open_checked`. Below `Bmin`, the continuation is
+  then no longer guaranteed to be non-increasing.
+
+Neither configuration is tested. Treat both as a last resort, and prefer the
+current shipped table unless the rise is the physics you are studying.
+
 ## Other files
 
 | File | Contents |

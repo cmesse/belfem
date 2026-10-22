@@ -227,7 +227,11 @@ the dependencies it declares through `JcParameter`; both base versions raise an 
 range, the angle is wrapped with π periodicity, and below the table's lowest field, `n` and a `jc`
 table with a measured self-field curve are continued to B = 0 with a C1 join in B and no increase
 with |B|; see `share/material/README.md`), `JcFunctionUserDefined`
-(plugin).
+(plugin). In the shipped tables, `jc` is non-increasing in T and |B|, `n` is non-increasing in
+|B| and bounded, and the table interpolant is C1 across element faces. These are regularizations
+for the solver, not physical laws. A table that rises with |B| at its lowest field is refused at
+load time, and an edited table must be re-projected. The README explains why and how ("Why the
+tables are monotone and smooth", "Using an older or modified table").
 
 ### 3.5 `Abundance`
 

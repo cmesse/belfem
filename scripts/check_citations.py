@@ -74,7 +74,7 @@ NOT_A_SURNAME = set("""
     Comput Compute Phys Appl Supercond Numer Math Sci Technol Trans Proc Acta Conf Cryogenics
     Physica JETP Pramana Mater Chem Ref Geom Magn Suppl Lett Eng
     CLAUDE CODEX Claude Codex Grok GPT CLion CppCon Gmsh COMSOL GetDP MFEM PETSc MUMPS STRUMPACK
-    SuperLU PARDISO METIS HDF5 Exodus ParaView Valgrind GitLab GitHub
+    SuperLU PARDISO METIS HDF5 Exodus ParaView Valgrind GitLab GitHub Linux
     EPFL LBNL LBL MIT KIT NIST NBS ORNL FNAL TPRC HTS LTS REBCO YBCO BSCCO CORC
     Boulder Berkeley Montreal Torino Karlsruhe Watertown Zurich Zürich
     SODA SoCG SUST TASC BIT TOMS FVCA ICCS NBSIR CBMS
