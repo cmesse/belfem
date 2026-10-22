@@ -8,6 +8,8 @@ for a production run, and why those are the right choices
 
 ```bash
 export OMP_NUM_THREADS=$(( REAL_CORES / MPI_RANKS ))
+export MKL_NUM_THREADS=$OMP_NUM_THREADS        # see "Launching" below
+export OPENBLAS_NUM_THREADS=$OMP_NUM_THREADS
 export MALLOC_ARENA_MAX=2
 mpirun --stream-buffering 0 -np $MPI_RANKS stdbuf -oL belfem >> out.txt
 ```
@@ -51,6 +53,29 @@ which counts every hyperthread. Neither runtime inspects SMT, and the OpenMP
 standard leaves the initial value of `nthreads-var` implementation-defined. So an
 unset variable is not a recommendation; it is whatever the mask happened to
 contain.
+
+**A BLAS-specific variable overrides `OMP_NUM_THREADS`.** MKL reads
+`MKL_NUM_THREADS` first and falls back to `OMP_NUM_THREADS` only when it is
+unset. Intel's `setvars.sh`, module files and site profiles often export
+`MKL_NUM_THREADS`. When one of them does, MKL ignores the thread count you
+chose, and ranks × MKL threads can exceed the core count without warning.
+
+A pthreads OpenBLAS, such as a distribution's `libopenblas-pthread`, behaves
+similarly with `OPENBLAS_NUM_THREADS`. The OpenMP OpenBLAS shipped by SCLS
+ignores that variable when selecting its thread count and follows
+`OMP_NUM_THREADS` alone. On SCLS, therefore, `OPENBLAS_NUM_THREADS=1` does not
+limit anything.
+
+`examples/scripts/Allrun` sets both variables to its thread count and prints a
+NOTE when it overrides an inherited value. If you launch `mpirun` by hand,
+export them yourself, as shown in the recommendation above. Across several
+nodes, also pass them with `-x` (for example,
+`-x OMP_NUM_THREADS -x MKL_NUM_THREADS -x OPENBLAS_NUM_THREADS`): Open MPI
+forwards only the variables it is told about to remote nodes.
+
+MKL has one additional override above `MKL_NUM_THREADS`: a per-domain setting
+such as `MKL_DOMAIN_NUM_THREADS="MKL_DOMAIN_BLAS=8"` still takes precedence for
+that domain. Neither `Allrun` nor BELFEM touches it, so check that it is unset.
 
 **Open MPI binds, but not the way a hybrid run needs.** Its documented defaults
 are bind-to-core for two processes or fewer, **bind-to-package** above that, and

@@ -393,10 +393,11 @@ fi
 
 ensure_mesh
 
-# OMP_NUM_THREADS alone sizes the threaded BLAS of every SCLS flavor only in a
-# clean environment: an inherited MKL_NUM_THREADS or OPENBLAS_NUM_THREADS
-# (Intel setvars.sh, module files, site profiles) wins over it for that
-# library, and ranks x BLAS threads then bypasses the oversubscription guard.
+# An inherited MKL_NUM_THREADS (Intel setvars.sh, module files, site profiles)
+# wins over OMP_NUM_THREADS for MKL, and ranks x MKL threads then bypasses the
+# oversubscription guard. OPENBLAS_NUM_THREADS plays the same role for a
+# pthreads OpenBLAS, such as a distribution's; an OpenMP build, which is how
+# SCLS builds it, ignores it for the thread count and follows OMP_NUM_THREADS.
 export OMP_NUM_THREADS="$NTHREADS"
 for blas_var in MKL_NUM_THREADS OPENBLAS_NUM_THREADS; do
     inherited="${!blas_var:-}"
