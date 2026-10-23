@@ -98,6 +98,28 @@ namespace belfem
         {
             mesh::Element * tElement = tBlocks( b )->element( 0 );
 
+            // the linear types upgrade_type() maps; refused here, before any
+            // facet work, so the error can name the type
+            switch( tElement->type() )
+            {
+                case( ElementType::LINE2 ) :
+                case( ElementType::TRI3 ) :
+                case( ElementType::QUAD4 ) :
+                case( ElementType::TET4 ) :
+                case( ElementType::PENTA6 ) :
+                case( ElementType::HEX8 ) :
+                {
+                    break ;
+                }
+                default :
+                {
+                    BELFEM_ERROR( false,
+                        "block %lu has element type %s, which the order converter cannot upgrade",
+                        ( long unsigned int ) tBlocks( b )->id(),
+                        to_string( tElement->type() ).c_str() );
+                }
+            }
+
             if( mesh::interpolation_order( tElement->type() )
                 == InterpolationOrder::LINEAR )
             {
