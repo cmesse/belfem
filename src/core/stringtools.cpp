@@ -103,88 +103,81 @@ namespace belfem
         // length of string
         size_t tLength = aString.size();
 
-        if( tLength > 1 )
+        // special characters
+        const char tSpace = 32;
+        const char tTab   =  9;
+        const char tCr    = 13;
+        const char tLf    = 10;
+        const char tQuote = 34;
+        const char tHash  = 35;
+
+        // grab array of instring
+        const char * tChars = aString.c_str();
+
+        // create new string
+        string aOutString;
+        aOutString.reserve( tLength );
+
+        bool tIsSpace    = true;
+        bool tIsSpaceOld;
+
+        bool tInQuote    = false;
+
+        // loop over all chars
+        for( size_t c=0; c < tLength; ++c )
         {
-            // special characters
-            const char tSpace = 32;
-            const char tTab   =  9;
-            const char tCr    = 13;
-            const char tLf    = 10;
-            const char tQuote = 34;
-            const char tHash  = 35;
+            // shift space flag
+            tIsSpaceOld = tIsSpace;
 
-            // grab array of instring
-            const char * tChars = aString.c_str();
+            // generate new space flag
+            tIsSpace = (    tChars[ c ] == tSpace
+                         || tChars[ c ] == tTab
+                         || tChars[ c ] == tCr
+                         || tChars[ c ] == tLf );
 
-            // create new string
-            string aOutString;
-            aOutString.reserve( tLength );
 
-            bool tIsSpace    = true;
-            bool tIsSpaceOld;
-
-            bool tInQuote    = false;
-
-            // loop over all chars
-            for( size_t c=0; c < tLength; ++c )
+            // test if flag is space
+            if ( tIsSpace )
             {
-                // shift space flag
-                tIsSpaceOld = tIsSpace;
-
-                // generate new space flag
-                tIsSpace = (    tChars[ c ] == tSpace
-                             || tChars[ c ] == tTab
-                             || tChars[ c ] == tCr
-                             || tChars[ c ] == tLf );
-
-
-                // test if flag is space
-                if ( tIsSpace )
+                // test if is in quote
+                if( tInQuote )
                 {
-                    // test if is in quote
-                    if( tInQuote )
-                    {
-                        aOutString.append( aString.substr( c, 1 ) );
-                    }
-                    else if( ! tIsSpaceOld )
-                    {
-                        // add space to string
-                        aOutString.append( " " );
-                    }
-                }
-                else if ( tChars[ c ] == tQuote )
-                {
-                    // flip quote switch
-                    tInQuote = ! tInQuote;
-
-                    // add character to outstring
                     aOutString.append( aString.substr( c, 1 ) );
                 }
-                else if ( tChars[ c ] == tHash )
+                else if( ! tIsSpaceOld )
                 {
-                    break;
-                }
-                else
-                {
-                    // add character to outstring
-                    aOutString.append( aString.substr( c, 1 ) );
+                    // add space to string
+                    aOutString.append( " " );
                 }
             }
-
-            // treat last string
-            if ( tIsSpace && aOutString.size() > 0 )
+            else if ( tChars[ c ] == tQuote )
             {
-                // erase last character
-                aOutString.erase( aOutString.end() - 1 );
-            }
+                // flip quote switch
+                tInQuote = ! tInQuote;
 
-            // output result
-            return aOutString;
+                // add character to outstring
+                aOutString.append( aString.substr( c, 1 ) );
+            }
+            else if ( tChars[ c ] == tHash )
+            {
+                break;
+            }
+            else
+            {
+                // add character to outstring
+                aOutString.append( aString.substr( c, 1 ) );
+            }
         }
-        else
+
+        // treat last string
+        if ( tIsSpace && aOutString.size() > 0 )
         {
-            return aString;
+            // erase last character
+            aOutString.erase( aOutString.end() - 1 );
         }
+
+        // output result
+        return aOutString;
     }
 
 //------------------------------------------------------------------------------
