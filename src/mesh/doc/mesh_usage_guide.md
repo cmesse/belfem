@@ -1514,7 +1514,7 @@ its parent's distribution.
    its full mesh and takes over the communication tables. Each worker takes
    `Distributor::partial_mesh()` as its submesh and computes the same connectivity on it.
 
-**Recipe** (the pattern of `src/fem/kernel/staticheat.cpp`):
+**Recipe** (the pattern of `src/fem/kernel/poisson.cpp`):
 ```cpp
 #include "cl_Mesh.hpp"
 #include "cl_FEM_Kernel.hpp"
