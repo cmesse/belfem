@@ -888,8 +888,9 @@ Whitespace inside double quotes is preserved, and the quotes remain in the
 result. Everything from the first `#` onward is dropped as a comment, including
 a `#` inside quotes; a blank immediately before that `#` is preserved.
 
-An empty string, a one-character string, and a string with no character at or
-below ASCII 32, no `"` and no `#` are returned unchanged.
+An empty string and a string containing no character at or below ASCII 32
+and neither `"` nor `#` are returned unchanged. A single blank or `#` becomes
+an empty string, as does any longer run of blanks or a comment.
 
 #### Type Conversion
 
@@ -1357,7 +1358,9 @@ for (int i = 0; i < 1000; ++i)
 }
 ```
 
-**Range:** Serial builds return `std::rand() / (RAND_MAX + 1.0)`, which is at most `RAND_MAX / (RAND_MAX + 1.0)` and therefore never `1.0`. MPI builds draw from `std::uniform_real_distribution<real>(0.0, 1.0)`, whose range is `[0, 1)` by the standard; some standard-library versions can round to `1.0` in rare cases (LWG issue 2524). Either build can return `0.0`; guard against it before taking a logarithm.
+**Range:** Serial builds return `std::rand() / (RAND_MAX + 1.0)`, which is at most `RAND_MAX / (RAND_MAX + 1.0)` and therefore never `1.0`. MPI builds draw from `std::uniform_real_distribution<real>(0.0, 1.0)`, whose range is `[0, 1)`. Either build can return `0.0`; guard against it before taking a logarithm.
+
+Scaling by an integer does not preserve the bound: for a draw just below 1, `rand() * N` can round up to exactly `N` in floating point. Clamp an index computed that way to `N - 1`.
 
 **MPI considerations:** In MPI builds, each rank uses its own `std::mt19937` engine, `gComm.random()`. `gComm.init()` seeds it with a `std::random_device` value plus the rank, and `random_seed()` reseeds it with a fresh `std::random_device` value. The ranks therefore use different sequences, but the streams are not guaranteed to be statistically independent.
 

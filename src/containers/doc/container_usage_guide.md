@@ -748,7 +748,7 @@ Template class for genetic algorithm optimization:
 - **Bit width.** Encoding and decoding compute `( 1u << B ) - 1` on a 32-bit `unsigned int`, so B must be below 32.
 - **Log scale.** A log-scaled parameter takes `std::log` of its bounds and of the value, so both bounds must be strictly positive.
 - **Degenerate range.** A parameter whose bounds are equal (within `BELFEM_EPSILON`) is not encoded; it decodes to the lower bound.
-- **Random numbers.** `randomize()` and `inherit()` draw from `belfem::rand()`. Call `random_seed()` once before using either function. `belfem::rand()` returns a value in [0, 1), so the crossover and mutation indices in `inherit()` stay below N·B. The one exception is an MPI build on a standard library that can round `std::uniform_real_distribution` to `1.0` (LWG issue 2524, see the core usage guide): there the mutation index can rarely equal N·B, and `std::bitset::flip` throws `std::out_of_range`.
+- **Random numbers.** `randomize()` and `inherit()` draw from `belfem::rand()`. Call `random_seed()` once before using either function. `inherit()` clamps the mutation index to N·B − 1 because `rand() * N·B` can round up to N·B for a draw just below 1. A crossover split of N·B is harmless: the child then takes every bit from the first parent.
 
 #### Key Features
 

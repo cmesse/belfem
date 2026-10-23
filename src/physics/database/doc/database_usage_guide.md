@@ -183,10 +183,12 @@ shape-function contraction over the element's nodes.
 
 **Clamping to `min`/`max` is the caller's responsibility, and skipping it fails silently.**
 `TensorMeshConfig::element_ijk` (`cl_TensorMeshConfig.hpp`) floors the scaled coordinate,
-clamps it to the grid as a real, and only then converts it to `index_t`. No error is raised:
+clamps the result to the grid as a real, and only then converts it to `index_t`. No error is raised in a
+release build:
 
 - **Above `max`**, the index clamps to the last element.
 - **Below `min`**, regardless of distance, the index clamps to element 0.
+- **NaN** also maps to element 0 in a release build; a debug build stops at a `BELFEM_ASSERT`.
 
 In every case, the selected element is evaluated at a parametric coordinate outside `[-1, 1]`;
 that is, the table **extrapolates**. A polynomial extrapolated even slightly beyond its element
