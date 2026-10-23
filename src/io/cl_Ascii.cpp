@@ -85,7 +85,7 @@ namespace belfem
     bool
     Ascii::save()
     {
-        BELFEM_ERROR( mMode != FileMode::OPEN_RDONLY,
+        BELFEM_ERROR( mMode != FileMode::OPEN_RDONLY && mMode != FileMode::OPEN_RDONLY_PARALLEL,
                 "File %s can't be saved since it is opened in write protected mode.",
                 mPath.c_str() );
 
