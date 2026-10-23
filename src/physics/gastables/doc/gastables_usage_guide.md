@@ -15,6 +15,7 @@
 5. [Advanced Topics](#advanced-topics)
 6. [Integration with Gas Models](#integration-with-gas-models)
 7. [Data File Format](#data-file-format)
+8. [The `gastable` Command-Line Tool](#the-gastable-command-line-tool)
 
 ---
 
@@ -34,6 +35,11 @@ Following BELFEM's HPC-first approach (see `doc/coding_philosophy.md`):
 - **Performance-critical paths**: Spline mode for repeated evaluations
 - **Zero overhead**: Polynomial evaluation compiles to tight loops
 - **Cache-friendly**: Polynomial coefficients stored contiguously
+
+**Build switch:** the module is compiled only when the tree is configured with
+`-DUSE_GASMODELS=ON` (`option( USE_GASMODELS … OFF )` in the top-level `CMakeLists.txt`;
+`src/physics/CMakeLists.txt` adds `gastables` and `gasmodels` only under this option). In a
+default tree, none of the classes below exist.
 
 ---
 
@@ -108,8 +114,8 @@ real T = 500.0;  // Kelvin
 
 // Molar properties
 real Cp_molar = gas->Cp(T);         // J/(mol·K)
-real H_molar = gas->H(T);           // J/mol
-real S_molar = gas->S(T);           // J/(mol·K)
+real H_molar = gas->H(T);           // J/mol, on the factory's enthalpy scale (below)
+real S_molar = gas->S(T);           // J/(mol·K), standard state p = 1 bar
 
 // Derivatives (for sensitivity analysis, Newton solvers)
 real dCp_dT = gas->dCpdT(T);        // J/(mol·K²)
@@ -133,13 +139,25 @@ real d2cp_dT2 = gas->d2cpdT2(T);     // J/(kg·K³)
 BELFEM_ASSERT(std::abs(cp_specific - Cp_molar/gas->M()) < 1e-10, "Inconsistent!");
 ```
 
+`S( T )` and `s( T )` are the ideal gas's absolute entropy at the standard pressure
+`gastables::gPref` = 1 bar (`GT_globals.hpp`, `BELFEM_PREF`). `RefGas` has no pressure argument;
+the `gasmodels` layer (`Gas`) adds the pressure term `ln( gPref / p )`.
+
+**Enthalpy scale.** `RefGasFactory` discards the record's integration constant and shifts each
+species so that `H( 298.15 K ) = ΔHf( 298.15 K ) + [ H( 298.15 K ) − H( 0 K ) ]`. Both terms
+come from `thermo.inp` (the `RefGas` class documentation in `cl_GT_RefGas.hpp` states this
+contract). Each species therefore has its own shifted scale. Differences within one species,
+such as `H( T2 ) − H( T1 )`, are unaffected.
+
 **Reference state properties:**
 
 ```cpp
 // Properties at 298.15 K
-real H_ref = gas->H_ref();                         // Molar enthalpy at 298.15 K (J/mol)
-real h_ref = gas->h_ref();                         // Specific enthalpy at 298.15 K (J/kg)
-real H_formation = gas->reference_formation_enthalpy();  // Formation enthalpy (J/mol)
+real H_ref = gas->H_ref();                         // Molar enthalpy at 298.15 K (J/mol), shifted scale
+real h_ref = gas->h_ref();                         // Specific enthalpy at 298.15 K (J/kg), shifted scale
+real H_formation = gas->reference_formation_enthalpy();  // Formation enthalpy at 298.15 K (J/mol)
+
+delete gas;
 ```
 
 ### Transport Properties
@@ -158,7 +176,12 @@ real d2mu_dT2 = gas->d2mudT2(T);     // ∂²μ/∂T² (Pa·s/K²)
 real lambda = gas->lambda(T);        // W/(m·K)
 real dlambda_dT = gas->dlambdadT(T); // ∂λ/∂T (W/(m·K²))
 real d2lambda_dT2 = gas->d2lambdadT2(T);  // ∂²λ/∂T² (W/(m·K³))
+
+delete gas;
 ```
+
+A species with no transport record returns zero from these accessors rather than raising. Check
+`has_viscosity()` and `has_conductivity()` separately; the two flags are independent.
 
 **Common error:**
 ```cpp
@@ -207,7 +230,13 @@ const Cell<string> & elements = data->elements();
 // Query specific element
 real oxygen_count = data->component_multiplicity("O");  // Returns 2.0 for CO2
 real nitrogen_count = data->component_multiplicity("N"); // Returns 0.0 (not present)
+
+delete gas;
 ```
+
+`RefGas` also reports `has_components()` (whether an elemental composition was read) and
+`is_liquid()` (whether the CEA record describes a condensed phase), in addition to
+`has_thermo()`, `has_viscosity()`, `has_conductivity()` and `is_noble()` (`cl_GT_RefGas.hpp`).
 
 ---
 
@@ -215,39 +244,50 @@ real nitrogen_count = data->component_multiplicity("N"); // Returns 0.0 (not pre
 
 ### Polynomial vs Spline Mode
 
-**Spline mode (default: the factory leaves every gas in it)**
-- Cubic splines sampled off the NASA CEA polynomials, built once by `RefGasFactory::create_refgas()`
-- ~2-3× faster evaluation than polynomial (no interval search)
+**Spline mode (default: the factory leaves every gas in this mode)**
+- Cubic splines are sampled from the NASA CEA polynomials. `RefGasFactory::create_refgas()`
+  builds them once on a fixed grid from 0 K to `gTmax` = 13000 K in 5 K steps (`GT_globals.hpp`)
+- There is no interval search, so this mode is expected to be faster than polynomial mode. No
+  measured speedup is documented
 - Interpolation accuracy
+- `d2CpdT2()` / `d2cpdT2()` still evaluate the polynomials in this mode (`RefGas::set_mode`)
 
 **Polynomial mode**
-- Evaluates NASA CEA 9-coefficient polynomial directly; exact, with a linear interval search per call
-- `set_mode()` is a pointer rebind in either direction; nothing is rebuilt
+- Evaluates the polynomials directly, with a linear interval search on every call. Inside the
+  tabulated intervals these are the NASA CEA 9-coefficient polynomials; outside them they are the
+  glue and extrapolation polynomials the factory synthesized
+- `set_mode()` only rebinds pointers in either direction; nothing is rebuilt
+- **Synthesized transport is spline-only.** If the factory synthesized a species' viscosity or
+  conductivity from critical-point data because `trans.inp` has no record for it, those values
+  exist only in the splines; the polynomial list contains an empty placeholder. In POLY mode the matching accessor
+  (`mu()` or `lambda()`) and its derivatives therefore return 0, while `has_viscosity()` or
+  `has_conductivity()` still returns `true` (`RefGas::create_splines`, `TransportPolyEmpty`).
+
+To compare the two modes on your machine (`Timer::stop()` returns milliseconds):
 
 ```cpp
 RefGas * gas = factory.create_refgas("N2");   // arrives in SPLINE mode
+real tSum = 0.0;                              // keeps the loops from being optimized away
 
-// Benchmark polynomial mode
+// Time polynomial mode
 gas->set_mode(RefGasMode::POLY);
-Timer t_poly;
+Timer tTimerPoly;
 for (int i = 0; i < 100000; ++i) {
-    real T = 300.0 + i * 0.01;
-    real cp = gas->cp(T);
+    tSum += gas->cp(300.0 + i * 0.01);
 }
-real time_poly = t_poly.stop();
+uint64_t tMillisecondsPoly = tTimerPoly.stop();
 
 // Switch back to spline mode (pointer rebind, nothing is rebuilt)
 gas->set_mode(RefGasMode::SPLINE);
 
-// Benchmark spline mode
-Timer t_spline;
+// Time spline mode
+Timer tTimerSpline;
 for (int i = 0; i < 100000; ++i) {
-    real T = 300.0 + i * 0.01;
-    real cp = gas->cp(T);
+    tSum += gas->cp(300.0 + i * 0.01);
 }
-real time_spline = t_spline.stop();
+uint64_t tMillisecondsSpline = tTimerSpline.stop();
 
-// Typical result: time_spline ≈ 0.4 × time_poly (2.5× faster)
+delete gas;
 ```
 
 **When to use splines:**
@@ -256,8 +296,8 @@ real time_spline = t_spline.stop();
 - During iterative solvers
 
 **When to use polynomials:**
-- One-off property evaluations
-- Small number of temperature points (<10)
+- When the polynomial values themselves are wanted instead of their spline interpolation. The
+  splines exist either way, so a small number of evaluations is no reason to switch
 
 ### Memory Management Best Practices
 
@@ -308,19 +348,20 @@ void better_example()
 For evaluating multiple gases at same temperature:
 
 ```cpp
-// GOOD - sequential access, cache-friendly
-Cell<RefGas*> gases(n_species);
-Vector<real> cp_values(n_species);
+// tGases holds RefGas pointers created by the factory (see Pattern 3)
+index_t tNumSpecies = tGases.size();
+Cell<real> tCp(tNumSpecies, 0.0);    // two-argument constructor creates the elements
 
+// GOOD - same temperature for every species
 real T = 500.0;
-for (index_t i = 0; i < n_species; ++i) {
-    cp_values(i) = gases(i)->cp(T);
+for (index_t i = 0; i < tNumSpecies; ++i) {
+    tCp(i) = tGases(i)->cp(T);
 }
 
 // LESS GOOD - random access if T varies unpredictably
-for (index_t i = 0; i < n_species; ++i) {
-    real T_random = get_random_temperature();
-    cp_values(i) = gases(i)->cp(T_random);
+for (index_t i = 0; i < tNumSpecies; ++i) {
+    real tTrandom = get_random_temperature();
+    tCp(i) = tGases(i)->cp(tTrandom);
 }
 ```
 
@@ -332,51 +373,55 @@ for (index_t i = 0; i < n_species; ++i) {
 
 For debugging or custom property evaluations:
 
+The polynomial lookup `find_heat_poly( T )` is `protected` (it returns `const HeatPoly *`) and
+cannot be called from user code. The splines are public:
+
 ```cpp
 RefGas * gas = factory.create_refgas("H2");
-
-// Get thermodynamic polynomial for a specific temperature
 real T = 1500.0;
-HeatPoly * poly = gas->find_heat_poly(T);  // Protected - friend access only
 
-// Alternative: work with exposed splines
-gas->set_mode(RefGasMode::SPLINE);
-Spline * heat_spline = gas->heat_spline();
-Spline * visc_spline = gas->viscosity_spline();
-Spline * cond_spline = gas->conductivity_spline();
+const Spline * heat_spline = gas->heat_spline();
+const Spline * visc_spline = gas->viscosity_spline();
+const Spline * cond_spline = gas->conductivity_spline();
 
-// Evaluate the spline directly. The heat spline samples ENTHALPY, so the
-// derivative ladder is shifted by one: eval is H, deval is cp, ddeval is dcp/dT.
-real h       = heat_spline->eval(T);    // enthalpy
-real cp      = heat_spline->deval(T);   // specific heat
-real dcp_dT  = heat_spline->ddeval(T);  // its temperature derivative
+// The heat spline samples MOLAR ENTHALPY, so the derivative ladder is shifted
+// by one and every value is per mole: eval is H, deval is Cp, ddeval is dCp/dT.
+real H      = heat_spline->eval(T);    // J/mol
+real Cp     = heat_spline->deval(T);   // J/(mol·K)
+real dCp_dT = heat_spline->ddeval(T);  // J/(mol·K²)
+
+delete gas;
 ```
 
-Prefer the public accessors `H( T )`, `Cp( T )` and `dCpdT( T )`: in SPLINE mode they
-dispatch to the spline with the derivative ladder already accounted for.
+Prefer the public accessors `H( T )`, `Cp( T )` and `dCpdT( T )`, or their per-kg forms `h`, `cp`
+and `dcpdT`. In SPLINE mode, they dispatch to the spline and already account for the derivative
+ladder.
 
 ### Handling Missing Data
 
-Some gases lack complete data:
+A label that is not in `thermo.inp` never produces a `RefGas`: `create_refgas()` stops the run
+with an always-active `BELFEM_ERROR` ("Species … not found in thermo.inp ( labels are case
+sensitive )", `RefGasFactory::create_refgas`). There is no thermo fallback to write.
+
+Transport data may be missing. A species without a `trans.inp` record gets viscosity and
+conductivity synthesized from the Lucas and Chung correlations if its critical data are complete
+(`data()->has_crit()`); otherwise `mu()` and `lambda()` return 0. Check each property separately:
 
 ```cpp
-RefGas * rare_gas = factory.create_refgas("SomeRareGas");
+RefGas * gas = factory.create_refgas("O2");
 
-// Check before using
-if (rare_gas->has_thermo()) {
-    real cp = rare_gas->cp(300.0);
-} else {
-    // Fallback: estimate or use default
-    real cp_estimated = estimate_cp_from_structure(rare_gas);
+if (gas->has_viscosity()) {
+    real mu = gas->mu(300.0);
 }
 
-if (rare_gas->has_viscosity()) {
-    real mu = rare_gas->mu(300.0);
-} else {
-    // Use correlation (e.g., Chapman-Enskog)
-    real mu_estimated = chapman_enskog_viscosity(rare_gas, 300.0);
+if (gas->has_conductivity()) {
+    real lambda = gas->lambda(300.0);
 }
+
+delete gas;
 ```
+
+Synthesized transport is available only in SPLINE mode (see Polynomial vs Spline Mode).
 
 ### Cryogenic Temperature Handling
 
@@ -402,6 +447,8 @@ if (helium->has_thermo()) {
 if (helium->has_viscosity()) {
     real mu_cryo = helium->mu(10.0);
 }
+
+delete helium;
 ```
 
 Treat values far below the lowest tabulated interval as an extrapolation and sanity-check them
@@ -430,27 +477,15 @@ if (has_interaction) {
 // Note: This is typically handled internally by Gas class
 ```
 
-### Creating Splines with Custom Temperature Steps
+### Spline Discretization
 
-For advanced users who want to control spline discretization:
-
-```cpp
-RefGasFactory factory;
-RefGas * gas = factory.create_refgas("Ar");
-
-// Create custom temperature steps
-Vector<real> T_steps(100);
-for (index_t i = 0; i < T_steps.length(); ++i) {
-    T_steps(i) = 200.0 + i * 50.0;  // 200 K to 5150 K in 50 K steps
-}
-
-// Create help matrix for spline construction
-SpMatrix help_matrix;
-factory.create_helpmatrix(help_matrix);
-
-// Build splines (protected method - requires friend access or subclassing)
-// Normally done once by RefGasFactory::create_refgas(); set_mode() is a pointer rebind
-```
+The spline grid is fixed and cannot be changed through the public API. `RefGasFactory` builds
+the grid once in its constructor: `create_temperature_steps()` fills
+`linspace( 0.0, gTmax, gNumberOfSplinePoints )`, and `create_helpmatrix()` builds the matching
+help matrix for a 5 K step (`gDeltaT`, `GT_globals.hpp`). Both functions are public, but neither
+accepts a custom grid. `RefGas::create_splines()`, which consumes them, is `protected` and called
+only by `create_refgas()`. The resolution is set at compile time by the constants `gTmax` and `gDeltaT`
+in `GT_globals.hpp`.
 
 ---
 
@@ -544,6 +579,8 @@ viscosity, `C` for thermal conductivity — followed by the interval bounds:
 N2                                V4C5  BOUSHEHRI ET AL (1987)  SVEHLA (1994) @1
  V     63.7    250.0 6.18933491E-01-5.43168794E 01 9.78471406E 02 1.82870322E 00
  V    250.0 1000.0   0.62526577E 00-0.31779652E 02-0.16407983E 04 0.17454992E 01
+ V 1000.0   5000.0   0.87395209E 00 0.56152222E 03-0.17394809E 06-0.39335958E 00
+ V 5000.0  15000.0   0.88503551E+00 0.90902171E+03-0.73129061E+06-0.53503838E+00
 ```
 
 Note `E 01` with a space where a sign would normally sit — the readers parse fixed columns
@@ -553,7 +590,7 @@ Note `E 01` with a space where a sign would normally sit — the readers parse f
 
 Fixed-column table of per-species constants. **The file's units are not the stored units:** the
 reader converts the molar-mass column from g/mol to kg/mol and the critical-pressure column from
-**bar** to Pa (`cl_GT_InputData.cpp:110,115`).
+**bar** to Pa (`InputData::read_data` in `cl_GT_InputData.cpp`).
 
 ```
 <symbol>  <name>  <CAS>  <M, g/mol>  <T_crit, K>  <p_crit, bar>  <Z_crit>  <omega>  <dipole>  <sources...>  <symmetry flag>
@@ -568,12 +605,18 @@ He          helium            7440-59-7   4.003   5.195   2.2832  0.3040 -0.3835
 
 ### Cubic-EOS Alpha Coefficients (`cubicalpha.inp`)
 
-The fourth shipped file. It carries the per-species alpha-function coefficients used by the cubic
-equations of state, keyed by symbol and CAS with the critical temperature and pressure repeated:
+The fourth shipped file contains the per-species alpha-function coefficients used by the cubic
+equations of state. Entries are keyed by symbol and CAS and include a critical temperature and
+pressure:
 
 ```
 <symbol>  <CAS>  <T_crit, K>  <p_crit, bar>  <alpha coefficients ...>
 ```
+
+For a species listed here, the reader **overwrites** the `T_crit` and `p_crit` read from
+`gasdata.inp` with these values (`InputAlpha::read_data` in `cl_GT_InputAlpha.cpp`), so the
+critical point matches the alpha coefficients. `cubicalpha.inp` is read after `gasdata.inp`
+(`RefGasFactory::create_refgas`).
 
 There is **no** `crthermo.inp` or `crtrans.inp`. The factory opens exactly four files —
 `thermo.inp`, `trans.inp`, `gasdata.inp` and `cubicalpha.inp`
@@ -598,20 +641,21 @@ real lambda = gas->lambda(T);
 
 // For efficiency, properties are computed independently
 // (no caching between calls - each call recomputes)
+
+delete gas;
 ```
 
 ### Pattern 2: Temperature Sweep
 
 ```cpp
-RefGas * gas = factory.create_refgas("Ar");
-gas->set_mode(RefGasMode::SPLINE);  // Faster for sweep
+RefGas * gas = factory.create_refgas("Ar");   // already in SPLINE mode
 
-Vector<real> T_range(100);
-Vector<real> cp_range(100);
+Cell<real> tTemperatures(100, 0.0);
+Cell<real> tCp(100, 0.0);
 
-for (index_t i = 0; i < T_range.length(); ++i) {
-    T_range(i) = 300.0 + i * 10.0;  // 300 K to 1290 K
-    cp_range(i) = gas->cp(T_range(i));
+for (index_t i = 0; i < tTemperatures.size(); ++i) {
+    tTemperatures(i) = 300.0 + i * 10.0;  // 300 K to 1290 K
+    tCp(i) = gas->cp(tTemperatures(i));
 }
 
 delete gas;
@@ -622,27 +666,30 @@ delete gas;
 ```cpp
 RefGasFactory factory;
 
-Cell<string> species = {"H2", "O2", "N2", "H2O", "CO2"};
-Cell<RefGas*> gases(species.length());
+Cell<string> tSpecies = {"H2", "O2", "N2", "H2O", "CO2"};
+
+// Cell(n) only reserves capacity; push() appends
+Cell<RefGas*> tGases;
+tGases.reserve(tSpecies.size());
 
 // Create all reference gases
-for (index_t i = 0; i < species.length(); ++i) {
-    gases(i) = factory.create_refgas(species(i));
+for (const string & tLabel : tSpecies) {
+    tGases.push(factory.create_refgas(tLabel));
 }
 
 // Evaluate properties
 real T = 500.0;
-for (index_t i = 0; i < gases.length(); ++i) {
+for (index_t i = 0; i < tGases.size(); ++i) {
     message(InfoLevel::Default,
             "%s: cp = %.3f J/(kg·K), mu = %.3e Pa·s",
-            species(i).c_str(),
-            gases(i)->cp(T),
-            gases(i)->mu(T));
+            tSpecies(i).c_str(),
+            tGases(i)->cp(T),
+            tGases(i)->mu(T));
 }
 
-// Clean up
-for (RefGas * gas : gases) {
-    delete gas;
+// Clean up: Cell<RefGas*> does not own its pointees
+for (RefGas * tGas : tGases) {
+    delete tGas;
 }
 ```
 
@@ -658,26 +705,19 @@ if (gas->is_noble()) {
 }
 ```
 
-### Pattern 5: Formation Enthalpy for Equilibrium
+### Pattern 5: Enthalpy Scale and Reaction Enthalpies
 
-```cpp
-Cell<RefGas*> reactants, products;
-// ... populate with species ...
+`H( T )` does **not** return a CEA absolute enthalpy. Each species has its own shifted scale:
+`H( 298.15 K ) = ΔHf( 298.15 K ) + [ H( 298.15 K ) − H( 0 K ) ]` (see Thermodynamic Properties).
+The sensible term `H( 298.15 K ) − H( 0 K )` differs by species (8670.104 J/mol for N2,
+`share/fluid/thermo.inp:46`). A stoichiometric sum of `H( T )` over products minus reactants
+therefore includes the stoichiometric sum of those terms. They do not cancel, so the result is
+not a reaction enthalpy.
 
-real T = 1500.0;  // Combustion temperature
-
-// Compute reaction enthalpy
-real delta_H = 0.0;
-for (RefGas * product : products) {
-    delta_H += product->H(T);  // Molar enthalpy
-}
-for (RefGas * reactant : reactants) {
-    delta_H -= reactant->H(T);
-}
-
-// delta_H includes formation enthalpies automatically
-// (NASA CEA polynomials are absolute, not relative to elements)
-```
+The `RefGas` class documentation (`cl_GT_RefGas.hpp`, Caloric properties) explains how the
+in-tree combustion code returns to the CEA convention: it subtracts each species' enthalpy at
+298.15 K and adds the formation enthalpy back. `H_ref()` and `reference_formation_enthalpy()`
+provide these two values.
 
 ---
 
@@ -686,8 +726,10 @@ for (RefGas * reactant : reactants) {
 ### Issue: Gas Not Found
 
 ```
-BELFEM_ERROR: Gas species "XYZ" not found in database
+Species XYZ not found in thermo.inp ( labels are case sensitive )
 ```
+
+Raised by `create_refgas()` before any data is read; the run stops.
 
 **Solution:**
 1. Check spelling (case-sensitive: "N2", not "n2")
@@ -697,13 +739,24 @@ BELFEM_ERROR: Gas species "XYZ" not found in database
 ### Issue: Property Evaluation Fails
 
 ```
-BELFEM_ERROR: Temperature T=20000.0 out of bounds for gas N2.
+Temperature T=<T> out of bounds for gas <label>.
 ```
 
-Raised in POLY mode only when `T` leaves `[0, gTmax]`; SPLINE mode clamps to the edge interval.
+Raised when a property is evaluated from the polynomials at a `T` outside the species' polynomial
+coverage. After the factory's extrapolations, that coverage runs from 0 K to the larger of
+`gTmax` = 13000 K and the upper bound of the last tabulated interval. This applies separately to
+the heat, viscosity and conductivity polynomials (`find_heat_poly`, `find_viscosity_poly`,
+`find_conductivity_poly` in `cl_GT_RefGas.cpp`). For N2 the heat polynomials reach 20000 K
+(`share/fluid/thermo.inp`) and the viscosity polynomials reach 15000 K (`share/fluid/trans.inp`).
+Negative temperatures always raise.
+
+This applies to every polynomial-backed accessor in POLY mode and also to `d2CpdT2()` /
+`d2cpdT2()` in SPLINE mode, because those methods always evaluate the polynomials. The other
+SPLINE-mode accessors do not raise: beyond the spline grid (0 K to 13000 K), they extrapolate
+the edge cubic.
 
 **Solution:**
-1. Check that the species has a record at all: `gas->has_thermo()`
+1. Keep `T` within the coverage above, or use SPLINE mode for the first-order accessors
 2. Note where the tabulated range ends (~200–6000 K for most gases); outside it the value comes
    from the extrapolations the factory synthesized, not from the table
 3. Sanity-check extrapolated values against measurement — nothing warns you that you have left
@@ -712,13 +765,19 @@ Raised in POLY mode only when `T` leaves `[0, gTmax]`; SPLINE mode clamps to the
 ### Issue: Missing Transport Data
 
 ```
-mu(T) returned 0 - the species has no transport record and no critical point to synthesize one from
+mu(T) or lambda(T) returned 0
 ```
 
+The species has no record for that property in `trans.inp` and no complete critical point to
+synthesize one from — or the gas is in POLY mode and its transport was synthesized (see
+Polynomial vs Spline Mode).
+
 **Solution:**
-1. Check with `gas->has_viscosity()` before calling `mu(T)`
-2. Use estimation methods (Chapman-Enskog, etc.) for missing data
-3. Add transport data to `trans.inp` if available from literature
+1. Check with `gas->has_viscosity()` before calling `mu(T)` and with `gas->has_conductivity()`
+   before calling `lambda(T)`
+2. Keep the gas in SPLINE mode if its transport was synthesized
+3. Use estimation methods (Chapman-Enskog, etc.) for missing data
+4. Add transport data to `trans.inp` if available from literature
 
 ### Issue: Slow Performance
 
@@ -732,19 +791,47 @@ mu(T) returned 0 - the species has no transport record and no critical point to 
 
 ---
 
-## Performance Benchmarks
+## Performance Notes
 
-Typical timings on Intel Xeon (single core, 2.5 GHz):
+No measured timings are documented for this module; time your own case with the snippet in
+Polynomial vs Spline Mode. The structural costs are:
 
-| Operation | Polynomial Mode | Spline Mode | Notes |
-|-----------|----------------|-------------|-------|
-| Create RefGas | ~100 μs | ~100 μs | Data already loaded |
-| `set_mode()` | ~0 | ~0 | Pointer rebind; splines are built once by the factory |
-| Evaluate cp(T) | ~50 ns | ~20 ns | 2.5× faster |
-| Evaluate h(T) | ~60 ns | ~20 ns | 3× faster |
-| Evaluate mu(T) | ~40 ns | ~20 ns | 2× faster |
+| Operation | Cost |
+|-----------|------|
+| `RefGasFactory` construction | parses the four data files once |
+| `create_refgas()` | reads one record, synthesizes the extra intervals, and samples the heat, viscosity and conductivity splines on the 2601-point grid |
+| `set_mode()` | pointer rebind; nothing is rebuilt |
+| POLY-mode evaluation | linear search over the species' intervals, then the polynomial |
+| SPLINE-mode evaluation | direct index into the uniform grid, then one cubic |
 
-There is no break-even point to consider: the splines are built once by the factory, and `set_mode()` costs nothing.
+Choosing a mode has no build cost to amortize: `create_refgas()` builds the splines in either
+case, and `set_mode()` only rebinds pointers.
+
+---
+
+## The `gastable` Command-Line Tool
+
+`main.cpp` in this module builds an executable `gastable` that prints a property table for one
+species. It is built only when the tree is configured with both `-DUSE_GASMODELS=ON` and
+`-DUSE_EXAMPLES=ON` (`USE_EXAMPLES` defaults to OFF; `src/physics/gastables/CMakeLists.txt`).
+
+```
+gastable --gas N2 --Tmin 200 --Tmax 2000 --deltaT 50
+```
+
+| Option | Short | Meaning | Default |
+|--------|-------|---------|---------|
+| `--gas` | `-g` | species label (case-sensitive) | — |
+| `--Tmin` | `-a` | lowest temperature in K | 200 |
+| `--Tmax` | `-b` | highest temperature in K | 2000 |
+| `--deltaT` | `-d` | temperature step in K | 50 |
+| `--molar` | `-m` | print molar heats (J/mol) instead of per-kg | off |
+| `--version` | `-V` | print the version banner | — |
+| `--help` | `-h` | list the options | — |
+
+The table columns are `T`, `cp`, `h`, `s`, `mu`, `lambda` (or `Cp`, `H`, `S` with `--molar`).
+`h` is in kJ/kg (kJ/mol), `mu` in µPa·s, and `lambda` in mW/(m·K). `--Tmin` is raised to at
+least `gDeltaT` = 5 K, and `--Tmax` is capped at `gTmax` = 13000 K.
 
 ---
 
@@ -761,5 +848,5 @@ There is no break-even point to consider: the splines are built once by the fact
 
 ---
 
-**Last Updated:** 2026-01-30
+**Last Updated:** 2026-10-22
 **Maintainer:** BELFEM development team
