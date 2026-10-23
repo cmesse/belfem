@@ -17,6 +17,7 @@
 | 2026-01-16 | 1.2 | Added Critical Contracts and Invariants section (finalize() MPI semantics, unfinalize() cache invalidation, ownership vs derived containers, connectivity invalidation rules, ID vs index stability) |
 | 2026-01-16 | 1.3 | Added complete enum reference tables: ElementType (all enumerators), Connectivity (36 types), InterpolationOrder (8 types), InterpolationType (11 types) with detailed descriptions and use cases |
 | 2026-01-16 | 1.4 | Added ThinShell class documentation with layered structure details, usage examples, and physical context for electromagnetic simulations |
+| 2026-10-22 | 1.5 | InterpolationOrder table, numeric order, initial curved flag: pyramids and the quartic types LINE5, TRI15, TET35 |
 
 ---
 
@@ -1055,13 +1056,13 @@ tMesh->finalize();    // Re-finalize
 | `LINE2` | 2 | Line | 1 | Linear line segment |
 | `LINE3` | 3 | Line | 2 | Quadratic line |
 | `LINE4` | 4 | Line | 3 | Cubic line |
-| `LINE5` | 5 | Line | 4 | Quartic line — built by `ElementFactory`, but `finalize()` aborts on a mesh with a `LINE5` block (see the note below) |
+| `LINE5` | 5 | Line | 4 | Quartic line |
 | `LINE6` | 6 | Line | 5 | Quintic line — **enum only, not built by `ElementFactory`** |
 | **2D Triangles** | | | | |
 | `TRI3` | 3 | Triangle | 1 | Linear triangle |
 | `TRI6` | 6 | Triangle | 2 | Quadratic triangle |
 | `TRI10` | 10 | Triangle | 3 | Cubic triangle |
-| `TRI15` | 15 | Triangle | 4 | Quartic triangle — built by `ElementFactory`, but `finalize()` aborts on a mesh with a `TRI15` block (see the note below) |
+| `TRI15` | 15 | Triangle | 4 | Quartic triangle |
 | `TRI21` | 21 | Triangle | 5 | Quintic triangle — **enum only, not built by `ElementFactory`** |
 | **2D Quadrilaterals** | | | | |
 | `QUAD4` | 4 | Quad | 1 | Bilinear quadrilateral |
@@ -1100,7 +1101,7 @@ tMesh->finalize();    // Re-finalize
 2. **Serendipity vs Full:** Serendipity elements (QUAD8, HEX20, PENTA15, PYRA13) omit interior nodes for same polynomial order.
 3. **Gmsh Compatibility:** Most element types follow Gmsh numbering (enum values 1-30, 92); QUAD16 = 32 deviates from Gmsh's 36. The thin-shell and thin-beam types (`QUAD4TS` = 103, `HEX8TS` = 105, `PENTA6TS` = 106, `QUAD9TS` = 110, `PENTA18TS` = 118, `HEX8TB` = 125) are BELFEM extensions.
 4. **Node Ordering:** All elements follow Gmsh node ordering conventions (see Gmsh documentation for detailed node numbering).
-5. **`LINE5` and `TRI15` in a mesh:** `ElementFactory` builds both types, and the Gmsh reader maps Gmsh types 27 and 23 to them. However, `mesh::interpolation_order_numeric()` (`meshtools.cpp`) has no entry for either. Its default branch is `BELFEM_ERROR( false, "Unknown element type")`. Every `finalize()` calls it once per block through `compute_max_element_order()`, so finalizing a mesh that has a `LINE5` or `TRI15` block aborts. That includes the finalize the file reader does. `LINE6` and `TRI21` are not built at all.
+5. **`LINE6` and `TRI21`:** the Gmsh type map in `meshtools.cpp` maps Gmsh types 28 and 25 to them, but `ElementFactory::create_element` has no case for either, so neither can be built. `mesh::interpolation_order()` returns `UNDEFINED` for both, and `mesh::interpolation_order_numeric()` raises `BELFEM_ERROR( false, "Unknown element type")`.
 
 ### InterpolationOrder Enum
 
@@ -1112,21 +1113,22 @@ The table lists, for each enumerator, the element types for which `mesh::interpo
 | Enum Value | Description | Returned for |
 |------------|-------------|--------------|
 | `CONSTANT` | Order 0 (piecewise constant) | VERTEX |
-| `LINEAR` | Order 1 (piecewise linear) | LINE2, TRI3, QUAD4, QUAD4TS, TET4, PENTA6, PENTA6TS, HEX8, HEX8TS, HEX8TB |
-| `QUADRATIC` | Order 2 (quadratic, includes face/volume centers) | LINE3, TRI6, QUAD9, QUAD9TS, TET10, PENTA18, PENTA18TS, HEX27 |
-| `SERENDIPITY` | Order 2 (quadratic, edge nodes only) | QUAD8, PENTA15, HEX20 |
+| `LINEAR` | Order 1 (piecewise linear) | LINE2, TRI3, QUAD4, QUAD4TS, TET4, PENTA6, PENTA6TS, PYRA5, HEX8, HEX8TS, HEX8TB |
+| `QUADRATIC` | Order 2 (quadratic, includes face/volume centers) | LINE3, TRI6, QUAD9, QUAD9TS, TET10, PENTA18, PENTA18TS, PYRA14, HEX27 |
+| `SERENDIPITY` | Order 2 (quadratic, edge nodes only) | QUAD8, PENTA15, PYRA13, HEX20 |
 | `CUBIC` | Order 3 (cubic) | LINE4, TRI10, QUAD16, TET20, HEX64 |
-| `QUARTIC` | Order 4 (quartic) | — (never returned) |
+| `QUARTIC` | Order 4 (quartic) | LINE5, TRI15, TET35 |
 | `QUINTIC` | Order 5 (quintic) | — (never returned) |
-| `UNDEFINED` | Unknown/invalid order | every other type: PYRA5, PYRA13, PYRA14, LINE5, TRI15, TET35, LINE6, TRI21, EMPTY, UNDEFINED |
+| `UNDEFINED` | Unknown/invalid order | every other type: LINE6, TRI21, EMPTY, UNDEFINED |
 
-The numeric helper `mesh::interpolation_order_numeric()` covers a different set. It returns 1 for
-PYRA5, 2 for PYRA13 and PYRA14, and 4 for TET35. It raises `BELFEM_ERROR` for LINE5, TRI15,
-LINE6, TRI21, and UNDEFINED.
+The numeric helper `mesh::interpolation_order_numeric()` returns the polynomial degree: 0 for
+EMPTY and VERTEX, 2 for `SERENDIPITY` and `QUADRATIC` types, and 1, 3, or 4 for the
+`LINEAR`, `CUBIC`, and `QUARTIC` rows. It raises `BELFEM_ERROR` for LINE6, TRI21, and UNDEFINED.
+`Mesh::finalize()` calls it once per block through `compute_max_element_order()`.
 
 The element constructor (`ElementTemplate`) sets the initial curved flag to
-`interpolation_order( type ) != InterpolationOrder::LINEAR`. Every type in the `UNDEFINED` row
-therefore starts with `is_curved() == true`, including the linear PYRA5.
+`interpolation_order( type ) != InterpolationOrder::LINEAR`. Every type outside the `LINEAR` row
+therefore starts with `is_curved() == true`.
 
 **Key distinction:** `SERENDIPITY` elements have the same polynomial order as `QUADRATIC` but omit interior nodes (face/volume centers), reducing DOF count while maintaining boundary accuracy.
 
@@ -1851,8 +1853,8 @@ for (mesh::Element* elem : tMesh->elements()) {
 
 **How the flag is set** (`cl_Mesh_CurvedElementChecker.cpp`, `cl_ElementTemplate.hpp`):
 - The element constructor sets the initial flag to `interpolation_order( type ) != LINEAR`. Every
-  element whose type is not in the `LINEAR` row of the InterpolationOrder table starts with
-  `is_curved() == true`. That includes every quadratic and higher element, and the PYRA5.
+  element whose type is outside the `LINEAR` row of the InterpolationOrder table starts with
+  `is_curved() == true`, including every serendipity, quadratic, and higher-order element.
 - `flag_curved_elements()` runs a geometric check on every element of every block. It calls
   `set_curved_flag()` where the check reports curvature, and it never calls `unset_curved_flag()`
   on a block element. A straight-sided QUAD9 or HEX27 therefore keeps `is_curved() == true`

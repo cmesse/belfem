@@ -100,7 +100,7 @@ The `mesh` module provides data structures and I/O capabilities for finite eleme
 |-------|------|---------|
 | `Partitioner` | cl_Mesh_Partitioner.{hpp,cpp} | Graph-based mesh partitioning (METIS) |
 | `Distributor` | cl_Mesh_Distributor.{hpp,cpp} | MPI mesh distribution with ghost layers |
-| `OrderConverter` | cl_Mesh_OrderConverter.{hpp,cpp} | Upgrades an all-linear mesh to second order (LINE3, TRI6, QUAD9, TET10, PENTA18, HEX27) |
+| `OrderConverter` | cl_Mesh_OrderConverter.{hpp,cpp} | Upgrades a mesh whose blocks are all LINE2, TRI3, QUAD4, TET4, PENTA6 or HEX8 to second order (LINE3, TRI6, QUAD9, TET10, PENTA18, HEX27). Any other block type is refused before facet work, with an error naming the block and type |
 | `ConnectivityCalculator` | cl_Mesh_ConnectivityCalculator.{hpp,cpp} | Compute entity-to-entity connectivities |
 | `ThinShell` | cl_ThinShell.{hpp,cpp} | Thin-shell configuration for layered structures |
 | `Periodicity` | cl_Mesh_Periodicity.{hpp,cpp} | Matched periodic entity pairs (nodes, edges, faces) |
