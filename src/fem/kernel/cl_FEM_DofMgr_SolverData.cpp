@@ -1477,9 +1477,7 @@ namespace belfem
                     const Matrix< real > & aJacobian )
             {
                 SpMatrix & A       =  *mSystemMatrix;
-                SpMatrix & E       =  *mEnforcementMatrix;
                 SpMatrix & D       =  *mDirichletMatrix;
-                SpMatrix & I       =  *mImpositionMatrix;
                 SpMatrix & J       =  *mJacobianMatrix;
 
                 uint tN = aElement->number_of_dofs() ;
@@ -1537,6 +1535,12 @@ namespace belfem
                     }
                     else if ( mUseJediForce )
                     {
+                        BELFEM_ASSERT( mEnforcementMatrix != nullptr && mImpositionMatrix != nullptr,
+                            "E and I are allocated only when use_jedi_force( true ) precedes initialize()" );
+
+                        SpMatrix & E = *mEnforcementMatrix;
+                        SpMatrix & I = *mImpositionMatrix;
+
                         for ( uint j = 0; j < tN; ++j )
                         {
                             Dof * tCol = aElement->dof( j );
