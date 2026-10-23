@@ -311,11 +311,13 @@ tFactory.run();
 The cut sidesets are stored in the mesh and labelled `cut_<n>` in `Mesh::sidesets()`. The
 abstract nodes in `Mesh::abstract_nodes()` carry the jump DOFs (see "Result Retrieval").
 
-**Leave the cut sidesets at `DomainType::Default`.** These are thick cuts: the jump is carried by
-the abstract nodes, not by dofs on the cut surface. The Maxwell field list builds a thin-cut dof
-table for every sideset typed `DomainType::Cut` (`cl_Maxwell_FieldList.cpp`), so retyping a
-`cut_<n>` sideset would add dofs the thick-cut formulation does not use. `MaxwellFactory` does not
-retype them, so the Maxwell solver does not select them.
+**Leave the cut sidesets at `DomainType::Default`.** The `cut_<n>` sidesets are thin cuts: they
+contain the element faces that `CutProcessor` derives from each cohomology generator's thick cut.
+The FEM uses them through node duplication and the abstract nodes, which carry the jump; there are no
+dofs on the cut surface. The Maxwell field list builds a separate `Cut` dof table for every
+sideset typed `DomainType::Cut` (`cl_Maxwell_FieldList.cpp`), so retyping a `cut_<n>` sideset
+would add dofs that the abstract-node formulation does not use. `MaxwellFactory` does not retype
+them, so the Maxwell solver does not select them.
 
 ---
 
@@ -1241,8 +1243,9 @@ for one domain type; an absent type stops with `BELFEM_ERROR`.
 - `DomainType::Air`, `DomainType::Buffer`, `DomainType::Ferro`: phi blocks (φ is solved)
 - `DomainType::Conductor`, `DomainType::Coil`: non-phi blocks
 - `DomainType::ThinShell`: thin-shell sidesets
-- `DomainType::Cut`: thin-cut sidesets; the field list builds a thin-cut dof table on them. The
-  thick `cut_<n>` sidesets from `CutFactory` stay `Default` (see Quick-Start)
+- `DomainType::Cut`: the field list builds a `Cut` dof table for sidesets of this type. The
+  thin-cut `cut_<n>` sidesets created by `CutFactory` remain `Default`, because their jump is carried by
+  the abstract nodes (see Quick-Start)
 
 The sideset interface types include `InterfaceCondAir`, `InterfaceCondFerro`,
 `InterfaceFerroAir`, `InterfaceAirCoil` and `InterfaceFerroCoil`.
