@@ -225,12 +225,14 @@ namespace belfem
                 case ElementType::HEX8 :
                 case ElementType::HEX8TS :
                 case ElementType::HEX8TB :
+                case ElementType::PYRA5 :
                 {
                     return InterpolationOrder::LINEAR;
                 }
                 case ElementType::QUAD8 :
                 case ElementType::PENTA15 :
                 case ElementType::HEX20 :
+                case ElementType::PYRA13 :
                 {
                     return InterpolationOrder::SERENDIPITY;
                 }
@@ -242,6 +244,7 @@ namespace belfem
                 case ElementType::PENTA18 :
                 case ElementType::PENTA18TS :
                 case ElementType::HEX27 :
+                case ElementType::PYRA14 :
                 {
                     return  belfem::InterpolationOrder::QUADRATIC;
                 }
@@ -252,6 +255,12 @@ namespace belfem
                 case ElementType::HEX64 :
                 {
                     return belfem::InterpolationOrder::CUBIC;
+                }
+                case ElementType::LINE5 :
+                case ElementType::TRI15 :
+                case ElementType::TET35 :
+                {
+                    return belfem::InterpolationOrder::QUARTIC;
                 }
                 default:
                 {
@@ -313,6 +322,8 @@ namespace belfem
                 {
                     return 3;
                 }
+                case ElementType::LINE5 :
+                case ElementType::TRI15 :
                 case ElementType::TET35 :
                 {
                     return 4;
@@ -339,6 +350,7 @@ namespace belfem
                 case ElementType::LINE2 :
                 case ElementType::LINE3 :
                 case ElementType::LINE4 :
+                case ElementType::LINE5 :
                 {
                     return belfem::GeometryType::LINE;
                 }

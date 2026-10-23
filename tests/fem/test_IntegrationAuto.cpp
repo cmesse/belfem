@@ -210,25 +210,39 @@ TEST( IntegrationAuto, PopulateOrderZeroIsExactToTwiceTheInterpolationDegree )
 
 //------------------------------------------------------------------------------
 
-// Contract, red on the tree today: every element type the fem suite builds
-// must have an automatic integration order. mesh::interpolation_order()
-// has no branch for the pyramids and no QUARTIC branch at all ( TET35 ),
-// so auto_integration_order() refuses them with BELFEM_ERROR. The fix is on
-// the mesh side; this case turns green, and starts covering the QUARTIC
-// arm of the table, the day it lands.
-TEST( IntegrationAuto, DISABLED_AutoOrderCoversPyramidsAndQuarticTets )
+// Every element type the element factory builds must have an automatic
+// integration order: the pyramids and the quartic types used to fall through
+// mesh::interpolation_order() to UNDEFINED, where auto_integration_order()
+// refuses them with BELFEM_ERROR.
+TEST( IntegrationAuto, AutoOrderCoversPyramidsAndQuarticTypes )
 {
-    const ElementType tRed[] = {
+    const ElementType tTypes[] = {
             ElementType::PYRA5, ElementType::PYRA13, ElementType::PYRA14,
-            ElementType::TET35 };
+            ElementType::TET35, ElementType::LINE5,  ElementType::TRI15 };
 
-    const uint tExpected[] = { 4, 7, 7, 13 };
+    const uint tExpected[] = { 4, 7, 7, 13, 13, 13 };
 
-    for ( uint k = 0; k < 4; ++k )
+    for ( uint k = 0; k < 6; ++k )
     {
         uint tDegree = 0 ;
-        EXPECT_NO_THROW( tDegree = auto_integration_order( tRed[ k ] ) )
-            << "type " << ( int ) tRed[ k ] ;
-        EXPECT_EQ( tDegree, tExpected[ k ] ) << "type " << ( int ) tRed[ k ] ;
+        EXPECT_NO_THROW( tDegree = auto_integration_order( tTypes[ k ] ) )
+            << "type " << ( int ) tTypes[ k ] ;
+        EXPECT_EQ( tDegree, tExpected[ k ] ) << "type " << ( int ) tTypes[ k ] ;
     }
+}
+
+//------------------------------------------------------------------------------
+
+// The numeric order, which Mesh::compute_max_element_order() reads for every
+// block during finalize(), and the geometry of the quartic line and triangle.
+TEST( IntegrationAuto, NumericOrderAndGeometryOfQuarticLineAndTri )
+{
+    EXPECT_EQ( mesh::interpolation_order_numeric( ElementType::LINE5 ), 4u );
+    EXPECT_EQ( mesh::interpolation_order_numeric( ElementType::TRI15 ), 4u );
+    EXPECT_EQ( mesh::interpolation_order_numeric( ElementType::TET35 ), 4u );
+
+    EXPECT_EQ( mesh::geometry_type( ElementType::LINE5 ), GeometryType::LINE );
+    EXPECT_EQ( mesh::geometry_type( ElementType::TRI15 ), GeometryType::TRI );
+
+    EXPECT_EQ( mesh::interpolation_order( ElementType::PYRA5 ), InterpolationOrder::LINEAR );
 }
