@@ -74,7 +74,7 @@ T* tData = (T*) malloc(tLength * sizeof(T));     // 1. Allocate
 std::memcpy(tData, aVector.data(), ...);         // 2. Use (C function, never throws)
 aStatus = H5Dwrite(..., tData);                  // 3. C API (returns error code, never throws)
 free(tData);                                      // 4. FREE ALWAYS EXECUTES
-BELFEM_ASSERT(aStatus == 0, "...");              // 5. Debug builds only: fails after cleanup
+BELFEM_ERROR(aStatus >= 0, "...");              // 5. Every build: fails after cleanup
 ```
 
 **Why this matters:**
@@ -87,12 +87,14 @@ BELFEM_ASSERT(aStatus == 0, "...");              // 5. Debug builds only: fails 
     `DEBUG` is defined). When active, a failed check throws like `BELFEM_ERROR`. In a release
     build (`-DNDEBUG`) the macro expands to **nothing**: the condition is not evaluated, and
     nothing is reported.
-- The write-status checks in `save_vector_to_file` and `save_matrix_to_file` are `BELFEM_ASSERT`.
-  **In a release build a failed `H5Dwrite` is not detected by this check.** BELFEM does not
-  silence HDF5's default error handler, which prints the library's error stack to stderr; that
-  output is then the only sign. The refusal of a duplicate dataset is a
-  `BELFEM_ERROR` and is detected in every build. To test a write yourself, read `file.status()`
-  (the `herr_t` of the last operation) after `save_data()`.
+- After every `H5Dread` and `H5Dwrite` in `hdf5_tools.cpp` and `hdf5_tools.hpp`, the status is
+  checked with a `BELFEM_ERROR` (`aStatus >= 0`; the string-list paths `save_strings_to_file` and
+  `load_strings_from_file` test for `0`), so a failed read or write ends the run in every build,
+  debug and release. The array, vector and matrix save paths skip `H5Dwrite` for an empty object,
+  so they also reject a failed `H5Dcreate` ("Could not create dataset") after closing the open
+  dataspace and datatype. Duplicate datasets are rejected with a `BELFEM_ERROR` as well. BELFEM
+  does not silence HDF5's default error handler, so the library's error stack is printed to
+  stderr before the BELFEM message.
 - In a debug build the throw unwinds the stack, so a raw `malloc` that has not yet been freed when
   a check fails is leaked. In a release build a failed `BELFEM_ERROR` aborts without unwinding.
 
@@ -135,16 +137,15 @@ check.
 // Static analyzer warning: "Memory leak if H5Dwrite throws"
 T* tData = (T*) malloc(tLength * sizeof(T));
 aStatus = H5Dwrite(..., tData);  // C API - NEVER throws
-free(tData);  // ALWAYS executes (before BELFEM_ASSERT)
-BELFEM_ASSERT(aStatus == 0, "...");  // Debug builds only; checked AFTER cleanup
+free(tData);  // ALWAYS executes (before BELFEM_ERROR)
+BELFEM_ERROR(aStatus >= 0, "...");  // Every build; checked AFTER cleanup
 ```
 
 This does **not leak** because:
-- `H5Dwrite()` is a C function (returns error code, never throws)
-- `free()` executes before the assertion
-- In a debug build a failed assertion throws after the buffer is freed. In a release build the
-  assertion is compiled out, so a failed write is not reported by this check (see Error Handling
-  Philosophy)
+- `H5Dwrite()` is a C function that returns an error code and never throws
+- `free()` executes before the status check
+- A failed check throws in a debug build and aborts in a release build; in both cases the buffer
+  has already been freed (see Error Handling Philosophy)
 
 **When to ignore modern C++ warnings:**
 - ✅ `malloc`/`free` with C library calls (HDF5, BLAS, etc.)
@@ -443,10 +444,10 @@ bool save();
 ```
 
 `save()` always returns `false`: it clears the unsaved-changes flag and then returns that flag. A
-failure to open the file is a `BELFEM_ERROR`, not a return value. `save()` refuses only
-`OPEN_RDONLY`; it does not refuse a buffer opened with `OPEN_RDONLY_PARALLEL`. Every rank holds the
-same path in that mode, so calling `save()` on every rank makes each rank truncate and write the
-same file.
+failure to open the file is reported through `BELFEM_ERROR`, not as a return value. Before opening
+the file, `save()` refuses both read-only modes, `OPEN_RDONLY` and `OPEN_RDONLY_PARALLEL`, with a
+`BELFEM_ERROR` ("opened in write protected mode"), so a buffer read in either mode cannot overwrite
+its source.
 
 Only `print()` marks the buffer as changed. Editing a line through the mutable `line(i)` does not
 update that flag, so the destructor's unsaved-changes check does not catch such edits; call
@@ -1385,7 +1386,7 @@ enum class FileMode
 |------|----------|----------------|--------------|-------------------|
 | `NEW` | Creating output files | No | Yes | **TRUNCATES** (data loss!) |
 | `OPEN_RDONLY` | Reading input files | Yes | No | Opens existing |
-| `OPEN_RDONLY_PARALLEL` | `Ascii` only — rank 0 reads the file and broadcasts the buffer to the others (`cl_Ascii.cpp`, `load_buffer(true)`). `Ascii::save()` does not refuse this mode; see the Ascii Interface notes. **`HDF5` has no case for this mode** and reaches its "unknown filemode passed" error (`cl_HDF5.cpp`, `HDF5::HDF5`) | Yes | Not intended; `Ascii::save()` does not block it | Opens existing |
+| `OPEN_RDONLY_PARALLEL` | `Ascii` only: rank 0 reads the file and broadcasts the buffer to the others (`cl_Ascii.cpp`, `load_buffer(true)`). `Ascii::save()` refuses this mode with a `BELFEM_ERROR`. **`HDF5` has no case for this mode** and reaches its "unknown filemode passed" error (`cl_HDF5.cpp`, `HDF5::HDF5`) | Yes | No | Opens existing |
 | `OPEN_RDWR` | Appending/modifying | Yes | Yes | Opens existing |
 
 > **Critical:** `FileMode::NEW` uses `H5F_ACC_TRUNC` — existing files are **silently overwritten**.
