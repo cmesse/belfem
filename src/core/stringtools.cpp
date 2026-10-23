@@ -95,7 +95,8 @@ namespace belfem
                 break;
             }
         }
-        if (!needs_cleaning && aString.front() != ' ' && aString.back() != ' ') {
+        // a space is <= 32, so a string with an edge space is already flagged
+        if (!needs_cleaning) {
             return aString;
         }
 
