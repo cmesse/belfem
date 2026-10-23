@@ -882,11 +882,14 @@ std::string string_to_lower(const std::string & aString);
 std::string string_to_upper(const std::string & aString);
 ```
 
-`clean_string()` does more than trim: it removes leading whitespace, collapses
+`clean_string()` does more than trim. It removes leading whitespace, collapses
 runs of spaces, tabs, CR and LF into one space, and removes a trailing space.
-Whitespace inside double quotes is kept as is, and the quotes stay in the
-result. Everything from the first `#` on is dropped as a comment — also a `#`
-inside quotes — and a blank just before that `#` is kept.
+Whitespace inside double quotes is preserved, and the quotes remain in the
+result. Everything from the first `#` onward is dropped as a comment, including
+a `#` inside quotes; a blank immediately before that `#` is preserved.
+
+An empty string, a one-character string, and a string with no character at or
+below ASCII 32, no `"` and no `#` are returned unchanged.
 
 #### Type Conversion
 
@@ -1334,7 +1337,7 @@ inline real rand()
     std::uniform_real_distribution<real> distribution(0.0, 1.0);
     return distribution(gComm.random());  // Uses MPI communicator's RNG
 #else
-    return ((real) std::rand()) / RAND_MAX;
+    return ((real) std::rand()) / ((real) RAND_MAX + 1.0);
 #endif
 }
 ```
@@ -1350,11 +1353,11 @@ random_seed();
 // Generate random numbers
 for (int i = 0; i < 1000; ++i)
 {
-    real value = rand();  // in [0, 1], see below
+    real value = rand();  // in [0, 1)
 }
 ```
 
-**Range:** In MPI builds, `rand()` draws from `std::uniform_real_distribution<real>(0.0, 1.0)`, nominally `[0, 1)`. In serial builds it returns `std::rand() / RAND_MAX`, a value in `[0, 1]`: it is exactly `1.0` when `std::rand()` returns `RAND_MAX`. Code that must exclude 1 has to handle that case itself.
+**Range:** Serial builds return `std::rand() / (RAND_MAX + 1.0)`, which is at most `RAND_MAX / (RAND_MAX + 1.0)` and therefore never `1.0`. MPI builds draw from `std::uniform_real_distribution<real>(0.0, 1.0)`, whose range is `[0, 1)` by the standard; some standard-library versions can round to `1.0` in rare cases (LWG issue 2524). Either build can return `0.0`; guard against it before taking a logarithm.
 
 **MPI considerations:** In MPI builds, each rank uses its own `std::mt19937` engine, `gComm.random()`. `gComm.init()` seeds it with a `std::random_device` value plus the rank, and `random_seed()` reseeds it with a fresh `std::random_device` value. The ranks therefore use different sequences, but the streams are not guaranteed to be statistically independent.
 
