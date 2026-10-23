@@ -1,7 +1,7 @@
 # Maxwell Module Usage Guide {#fem_maxwell_maxwell_usage_guide}
 
 **Module:** src/fem/maxwell
-**Version:** 1.1
+**Version:** 1.2
 **Date:** 2026-08-14
 **Purpose:** Core usage patterns for BELFEM's electromagnetic Maxwell module
 
@@ -12,6 +12,9 @@
   read), factory/controller/postprocessor snippets now match the real API
   (`hphirun.cpp` is the reference driver), postprocessor types and mesh field
   names verified against `cl_MaxwellPostprocessor.hpp`
+- **v1.2** (2026-10-22) - Corrected against the tree: the reference driver is
+  `src/executables/belfem.cpp` (`hphirun` is retired and not built); API,
+  ordering and distribution examples match the current code
 
 ---
 
@@ -39,117 +42,105 @@
 
 ### 1.1 Missing Edges in Mesh
 
-**The Mistake:**
-```cpp
-// ❌ WRONG
-mesh->create_elements();
-IWG_Maxwell* iwg = new IWG_Maxwell(...);
-iwg->initialize();  // CRASH! No edge DOFs available
-```
+**The Mistake:** building the magnetic kernel on a mesh with no edges.
 
-**Why it fails:** H-φ formulation requires **edge DOFs** for conductor regions. Without edges created, the DOF manager cannot allocate edge_h DOFs.
+**Why it fails:** the H-φ formulation places **edge DOFs** (`edge_h`) on conductor regions. A mesh read from file contains nodes and elements, but no edges. Edges must be created before the DOF manager can attach `edge_h` to them.
 
-**Correct approach:**
+**Correct approach:** create the mesh edges before building the kernel and its field. Faces are needed only for higher-order `face_h` DOFs:
+
 ```cpp
 // ✅ CORRECT
-mesh->create_elements();
-mesh->create_edges();      // Required for Nédélec edge functions
-mesh->create_facets();     // Required for thin-shells (if used)
-IWG_Maxwell* iwg = new IWG_Maxwell(...);
-iwg->initialize();
+aMesh->create_edges();     // Nédélec edge functions ( edge_h )
+aMesh->create_faces();     // only for higher-order face_h DOFs
 ```
 
-**Impact:** Segfault or assertion failure during initialization.
-
----
+`Mesh` has no `create_elements()` or `create_facets()`; those belong to `ProtoMesh`. The factory performs this step through `MaxwellFactory::create_edges_and_faces_on_mesh()`. It restricts edge creation to conductor groups and creates faces only when `max_element_order() > 1`.
 
 ### 1.2 Using L2 Formulations for Solving
 
 **The Mistake:**
 ```cpp
 // ❌ WRONG - L2 formulations are for postprocessing ONLY
-IWG_Maxwell* iwg = new IWG_Maxwell(
+IWG_Maxwell * tIWG = new IWG_Maxwell(
     maxwell::Formulation::L2PhiH,  // WRONG!
-    ModelDimensionality::ThreeD
-);
-kernel->solve();  // Will not work correctly
+    ModelDimensionality::ThreeD );
 ```
 
 **Why it's wrong:**
-- `L2PhiH`, `L2PhiB`, `L2EdgeH` are **postprocessing formulations** for field recovery (L2 projection)
-- They do NOT implement the full magnetodynamic equations
-- Only `HPhi` implements the solving formulation
+
+- `L2PhiH`, `L2PhiB`, and `L2EdgeH` are **postprocessing formulations** for field recovery through L2 projection.
+- They do not implement the full magnetodynamic equations.
+- `IWG_Maxwell` sets up DOFs only for `HPhi` (`IWG_Maxwell` constructor). The L2 formulations are handled by `IWG_MaxwellPostproc`.
 
 **Correct approach:**
 ```cpp
 // ✅ CORRECT - Use HPhi for solving
-IWG_Maxwell* iwg = new IWG_Maxwell(
-    maxwell::Formulation::HPhi,  // CORRECT
-    ModelDimensionality::ThreeD
-);
-kernel->solve();
+IWG_Maxwell * tIWG = new IWG_Maxwell(
+    maxwell::Formulation::HPhi,
+    ModelDimensionality::ThreeD );
 
-// THEN use L2 formulations for postprocessing
-IWG_MaxwellPostproc* postIWG = new IWG_MaxwellPostproc(
-    maxwell::Formulation::L2PhiH  // OK for postprocessing
-);
+// L2 formulations belong to the postprocessing IWG; the dimensionality is
+// required, only the higher-order flag has a default
+IWG_MaxwellPostproc * tPostIWG = new IWG_MaxwellPostproc(
+    maxwell::Formulation::L2PhiH,
+    ModelDimensionality::ThreeD );
 ```
 
-**Impact:** Incomplete physics, wrong results.
+There is no `Kernel::solve()`. The `Controller` drives the solve (§4.2).
 
----
+**Impact:** Incomplete physics, wrong results.
 
 ### 1.3 Thin-Shell Without Thickness
 
 **The Mistake:**
 ```cpp
 // ❌ WRONG
-block->set_type( DomainType::ThinShell );
+aBlock->set_domain_type( DomainType::ThinShell );
 // Missing thickness specification!
 ```
 
-**Why it fails:** Thin-shell formulation scales matrices by thickness δ (see Alves et al. 2022b). Without it, scaling is undefined.
+**Why it fails:** the thin-shell formulation scales matrices by thickness δ (see Alves et al. 2022b). A block's thickness defaults to `BELFEM_QUIET_NAN` (`cl_Block.hpp`), so a block without an explicit thickness has no usable value.
 
-**Correct approach:**
+**Correct approach:** in the factory path, the deck's `layers` section supplies the thicknesses. `ThinShellFactory` then sets the domain type and thickness for each layer block. A hand-built mesh must set both:
+
 ```cpp
 // ✅ CORRECT
-block->set_type( DomainType::ThinShell );
-block->set_thickness( 1e-6 );  // 1 μm thick tape
+aBlock->set_domain_type( DomainType::ThinShell );
+aBlock->set_thickness( 1e-6 );  // 1 μm thick tape
 ```
 
 **Typical values:**
+
 - **HTS tapes:** 1-10 μm (1e-6 to 1e-5 m)
 - **Metal films:** 0.1-1 μm (1e-7 to 1e-6 m)
 
----
-
 ### 1.4 Loose Convergence Tolerance for HTS
 
-**The Mistake:**
-```cpp
-// ❌ WRONG for HTS
-solver->set_tolerance( 1e-6 );  // Too loose!
-```
+**The Mistake:** running an HTS deck with the class-default nonlinear tolerance, `1e-6` (`mRelativeEpsilonTarget` in `cl_FEM_Controller.hpp`).
 
 **Why it's wrong (from Messe et al. 2023, Section 2.7):**
+
 - HTS has extreme nonlinearity (power-law E-J with n=20-40)
 - Loose tolerance → checkerboarding in current density
 - Oscillations do not damp out
 
-**Correct approach (from Messe et al. 2023):**
-```cpp
-// ✅ CORRECT for HTS
-solver->set_tolerance( 1e-11 );  // Tight tolerance prevents checkerboarding
+**Correct approach (from Messe et al. 2023):** the tolerance is a deck key read by `Controller::set_params()`. The solver and controller have no C++ setter for it:
 
-// Hybrid solver strategy (Messe et al. 2023, Section 2.7):
-// 1. Picard iterations (5-10 steps) - robust startup
-// 2. Quasi-Newton (optional) - transition
-// 3. Full Newton - final convergence with ε < 1e-11
+```
+solver
+{
+    nonlinear
+    {
+        tolerance : 1e-11 ;     // tight tolerance prevents checkerboarding
+    }
+}
 ```
 
-**Impact:** Spurious current oscillations, non-physical hot spots, non-convergence.
+**What the iteration does.** `SolverAlgorithm` has three values: `Direct`, `NewtonRaphson`, and `Picard`. There is no separate quasi-Newton stage between them.
 
----
+The deck key `algorithm` defaults to `Picard`, and the run stays on Picard. With `algorithm : Newton`, each timestep starts with Picard and switches to Newton-Raphson when the residual drops below `tolerance switch` (default `1e-4`, `mEpsilonSwitch`). The code cites Messe et al. 2023, Eq. 13 for this handoff. The keys and their guidance are in the input file reference, §4.2 and §4.5.
+
+**Impact:** Spurious current oscillations, non-physical hot spots, non-convergence.
 
 ### 1.5 Postprocessor Type Mismatch
 
@@ -180,6 +171,7 @@ Map< id_t, string >, MaxwellPostprocessorType, bool )`
 | Conductor (HTS) | SuperConductor | Yes |
 | ThinShell (metal) | ThinShellConductor | No |
 | ThinShell (HTS) | ThinShellSuperConductor | Yes |
+| Edge-coating wall (metal) | SideConnector | No |
 
 ---
 
@@ -343,6 +335,8 @@ Where:
 - ρ = electrical resistivity [Ω·m] - material property
 - μ₀ = permeability of free space = 4π × 10⁻⁷ H/m
 
+The equation above assumes a conductor with constant permeability μ₀. The code also supports a variable-μ branch. Under Newton-Raphson, `IWG_Maxwell::link_to_group` binds `h_newton_mu0` when the conductor material's `mu` is constant and `h_newton_mu` when it is not. Picard uses `h_picard` in both cases.
+
 **Air/Ferro (φ-formulation):**
 
 ```
@@ -374,8 +368,9 @@ Where w = nodal test functions (Lagrange C⁰ basis)
 
 | Domain | Primary Variable | DOF Type | Mesh Entity |
 |--------|------------------|----------|-------------|
-| **Conductor** | **H** (magnetic field) | edge_h, face_h | Edges, faces |
+| **Conductor** | **H** (magnetic field) | edge_h (+ face_h when higher order) | Edges (+ faces) |
 | **Air** | **φ** (scalar potential) | phi | Nodes |
+| **Buffer** | **φ** (scalar potential) | phi (uses the Air DOF table) | Nodes |
 | **Ferro** | **φ** (scalar potential) | phi | Nodes |
 | **ThinShell** | **H** + **φ** (coupled) | edge_h + phi (from neighbors) | Facets |
 
@@ -414,159 +409,158 @@ MaxwellFactory
     ├─ Create thin-shell structures
     ├─ Assign materials to blocks
     ├─ Create IWG_Maxwell
-    ├─ Create DofManager
     ├─ Create Kernel
+    ├─ Create DofManager (Kernel::create_field)
     ├─ Configure solver
     └─ Initialize boundary conditions
 ```
 
 ### 4.2 Standard Factory Usage
 
-The reference consumer is `src/executables/hphirun.cpp` — a custom driver
-follows the same shape:
+The built driver is `src/executables/belfem.cpp`. A custom driver follows the same
+shape. The excerpt below is its magnetic-only and fully coupled path:
 
 ```cpp
+#include "cl_InputFile.hpp"
 #include "cl_MaxwellFactory.hpp"
+#include "cl_ThermalFactory.hpp"
+#include "cl_ElectricalCircuitFactory.hpp"
+#include "cl_FEM_Controller.hpp"
 
-// ========================================
-// 1. CREATE FACTORY (reads input.conf from the working directory)
-// ========================================
-MaxwellFactory factory( "input.conf" );
+const string tFile = "input.conf" ;
 
-// ========================================
-// 2. CREATE MAGNETIC KERNEL
-// ========================================
-// This single call:
-// - Creates mesh
-// - Creates cuts (if transport current specified)
-// - Creates thin-shells (if HTS tapes specified)
-// - Creates IWG_Maxwell
-// - Creates DofManager with correct DOF types
-// - Allocates DOFs (node phi, edge_h, face_h, lambda)
-// - Initializes solver (STRUMPACK/MUMPS/etc.)
-
-auto kernel = factory.create_magnetic_kernel();   // std::shared_ptr< Kernel >
-
-// ========================================
-// 3. CREATE CONTROLLER (time stepping, nonlinear loop, saving)
-// ========================================
-auto control = factory.create_controller();       // std::shared_ptr< Controller >
-// Timestep sizes, tolerances etc. come from input.conf — there are no
-// setter shortcuts on the controller for them.
-
-// ========================================
-// 4. CURRENT BOUNDARY CONDITIONS
-// ========================================
-// One PhysicalBoundaryCondition per current condition in the deck; the
-// driver samples each and hands the vector to the IWG every timestep.
-Cell< PhysicalBoundaryCondition * > currentBCs = factory.current_BCs();
-
-// ========================================
-// 5. TIME LOOP (the pattern hphirun.cpp uses)
-// ========================================
-// seed with BELFEM_EPS, not zero — avoids a singular first matrix
-Vector< real > tI( currentBCs.size(), BELFEM_EPS );
-reinterpret_cast< IWG_Maxwell * >( kernel->dofmgr()->iwg() )->set_currents( tI );
-
-while ( control->time() < control->simulation_time() )
+// the deck selects the coupled h-ɸ/T problem with a `linear thermal` or
+// `nonlinear thermal` section in its solver block ( deck_requests_thermal()
+// in belfem.cpp ). Every rank parses the file and takes the same branch:
+// the factories are collective
+bool tHaveThermal ;
 {
-    control->initialize_timestep();      // also updates BC values
+    InputFile tInput( tFile );
+    tHaveThermal = tInput.section_exists( "solver" )
+        && ( tInput.section( "solver" )->section_exists( "linear thermal" )
+          || tInput.section( "solver" )->section_exists( "nonlinear thermal" ) );
+}
+
+// ========================================
+// 1. CREATE FACTORY ( reads input.conf, loads the mesh )
+// ========================================
+MaxwellFactory tMFactory( tFile );
+
+// the material laws need a reference temperature even without a thermal solve
+if ( std::isnan( gTbulk ) )
+{
+    gTbulk = 77.0 ;
+}
+
+// ========================================
+// 2. CIRCUIT — before the kernel: the circuit factory adds its terminal
+//    boundary conditions to the Maxwell factory's list
+// ========================================
+electronics::ElectricalCircuitFactory tElFactory( tFile, tMFactory.boundary_conditions() );
+
+// ========================================
+// 3. CREATE MAGNETIC KERNEL
+// ========================================
+// This single call creates the cuts, the thin shells, the IWG_Maxwell,
+// the kernel and its DofManager ( phi and edge_h; face_h only for
+// higher-order elements ), configures the solver, assigns the materials,
+// and wires the postprocessors
+auto tKernel = tMFactory.create_magnetic_kernel();   // std::shared_ptr< Kernel >
+tKernel->mesh()->field_data( "phi" ).fill( 0.0 );
+
+// one PhysicalBoundaryCondition per current condition in the deck
+Cell< PhysicalBoundaryCondition * > tCurrentBCs = tMFactory.current_BCs();
+
+// seed with BELFEM_EPS, not zero — avoids a singular first matrix
+Vector< real > tI( tCurrentBCs.size(), BELFEM_EPS );
+reinterpret_cast< IWG_Maxwell * >( tKernel->dofmgr()->iwg() )->set_currents( tI );
+
+// ========================================
+// 4. CREATE CONTROLLER ( time stepping, nonlinear loop, saving )
+// ========================================
+// timestep sizes, tolerances etc. come from input.conf — there are no
+// setter shortcuts on the controller for them
+auto tControl = tMFactory.create_controller();       // std::shared_ptr< Controller >
+
+// ========================================
+// 5. THERMAL KERNEL — only when the deck asks for it; the controller is
+//    never handed a null kernel
+// ========================================
+std::unique_ptr< ThermalFactory > tTFactory ;
+std::shared_ptr< Kernel >         tKernel2 ;
+
+if ( tHaveThermal )
+{
+    tTFactory.reset( new ThermalFactory( tFile, tKernel.get() ) );
+    tKernel2 = tTFactory->create_thermal_kernel();
+    tKernel2->mesh()->field_data( "T" ).fill( gTbulk );
+    reinterpret_cast< IWG_Timestep * >( tKernel2->dofmgr()->iwg() )
+        ->set_timestepping_method( tControl->euler_method() );
+    tControl->set_thermal_kernel( tKernel2.get() );
+}
+
+tControl->set_circuit( tElFactory.circuit() );
+
+// resumes from a backup if one exists
+tControl->load_memdump( "memdump.hdf5" );
+
+string tExodusFile = sprint( "%s.e-s", tMFactory.label().c_str() );
+
+// ========================================
+// 6. TIME LOOP ( magnetic-only, or thermal and fully coupled )
+// ========================================
+while ( tControl->time() < tControl->simulation_time() )
+{
+    tControl->initialize_timestep();      // also updates BC values
 
     // sample each current BC and hand the vector to the IWG — WITHOUT
     // this the whole run solves at zero transport current
     uint tCount = 0;
-    for ( PhysicalBoundaryCondition * tBC : currentBCs )
+    for ( PhysicalBoundaryCondition * tBC : tCurrentBCs )
     {
         tI( tCount++ ) = tBC->value();
     }
-    reinterpret_cast< IWG_Maxwell * >( kernel->dofmgr()->iwg() )->set_currents( tI );
+    reinterpret_cast< IWG_Maxwell * >( tKernel->dofmgr()->iwg() )->set_currents( tI );
 
-    control->solve_coupled();               // nonlinear iteration ( certified exit )
-    if ( control->reset() ) { continue; }   // timestep was cut — retry
+    tControl->solve_coupled();               // skips the thermal phase without a thermal kernel
+    if ( tControl->reset() ) { continue; }   // timestep was cut — retry
 
-    // ========================================
-    // 6. SAVE — postprocessing runs inside the controller; the
-    //    postprocessors were wired by the factory from the topology
-    //    domain types, and the fields land on the mesh
-    // ========================================
-    if ( control->save() || control->time() >= control->simulation_time() )
+    // postprocessing runs inside the controller; the fields land on the mesh
+    if ( tControl->save() || tControl->time() >= tControl->simulation_time() )
     {
-        control->finalize( true );
-        control->save( "hphi_results.e-s" );
-        control->save_memdump( "memdump.hdf5" );
+        tControl->finalize( true );
+
+        // save_IV must come before the Exodus write: it refreshes the
+        // terminal I/U globals that the Exodus file records
+        tControl->save_IV( "iv_results.csv" );
+        tControl->save( tExodusFile );
+        tControl->save_memdump( "memdump.hdf5" );
     }
     else
     {
-        control->finalize( false );
+        tControl->finalize( false );
     }
 }
-// kernel and controller are shared_ptr-owned; no manual cleanup
+// kernels and controller are smart-pointer-owned; no manual cleanup
 ```
 
-### 4.3 Manual Setup (Without Factory)
+`belfem` runs this loop when there is no thermal kernel or when `tControl->is_fullycoupled()` is true. A thermal run that is not fully coupled uses a segregated loop instead.
 
-For custom workflows:
+That loop calls `initialize_magnetic()` / `solve_magnetic()`. It then iterates `initialize_thermal()` / `solve_thermal()` until the thermal time catches up, and writes `hphi_results.e-s`. See `belfem.cpp` for the full branch.
 
-```cpp
-#include "cl_IWG_Maxwell.hpp"
-#include "cl_FEM_Kernel.hpp"
+### 4.3 Setup Without the Factory
 
-// ========================================
-// 1. LOAD MESH
-// ========================================
-Mesh* mesh = new Mesh( "mesh.msh" );
-mesh->create_edges();    // Required!
-mesh->create_facets();   // For thin-shells
+There is no short manual equivalent of `create_magnetic_kernel()`. In addition to the kernel and field, it creates the cuts, thin shells, gauge pins, materials, and postprocessors.
 
-// ========================================
-// 2. CREATE IWG
-// ========================================
-IWG_Maxwell* iwg = new IWG_Maxwell(
-    maxwell::Formulation::HPhi,
-    ModelDimensionality::ThreeD,
-    false,  // higher_order
-    true    // use_enrichment
-);
+`MaxwellFactory::create_magnetic_kernel()` (`cl_MaxwellFactory.cpp`) is the reference for the required order of operations. A custom setup must preserve the same constraints:
 
-// ========================================
-// 3. CREATE KERNEL & DOF MANAGER
-// ========================================
-KernelParameters* params = new KernelParameters( mesh );
-Kernel* kernel = new Kernel( params );   // Kernel takes KernelParameters*, not Mesh*
-DofManager* dofMgr = kernel->create_field( iwg );
-
-// ========================================
-// 4. SELECT BLOCKS/SIDESETS
-// ========================================
-// Conductor blocks
-iwg->select_blocks( { 1, 2, 3 } );
-
-// Interface sidesets
-iwg->select_sidesets( { 10, 11 } );
-
-// ========================================
-// 5. INITIALIZE
-// ========================================
-dofMgr->initialize();
-
-// ========================================
-// 6. SOLVE
-// ========================================
-// The solver lives on the DofManager, configured from SolverParameters —
-// the factory path fills these from the deck's solver { linear { } } section
-SolverParameters tParams( SolverType::STRUMPACK );  // cl_SolverParameters.hpp
-dofMgr->set_solver( tParams );                      // cl_FEM_DofManager.hpp
-
-// Time stepping and the nonlinear loop belong to the Controller in the
-// factory path (§4.2); a fully manual loop drives the DofManager directly:
-dofMgr->compute_jacobian_and_rhs();
-dofMgr->solve();
-
-// Cleanup
-delete kernel;
-delete iwg;
-delete mesh;
-```
+| Constraint | Reason in the code |
+|---|---|
+| Create edges (and faces for `face_h`) on the mesh before the kernel | §1.1; the factory does it in `create_edges_and_faces_on_mesh()` |
+| Select the kernel's blocks in `KernelParameters` before constructing the `Kernel` | the constructor partitions the mesh over the selected blocks; the factory selects air, buffer, conductor, ferro and thin-shell blocks, and excludes coils |
+| Pass block and sideset types with `IWG::set_blocks( ids, types )` / `IWG::set_sidesets( ids, types )` **before** `Kernel::create_field()` | `create_field()` calls `IWG::initialize()` immediately, and `IWG_Maxwell::initialize()` builds the per-block DOF tables from those types. `select_blocks()` stores IDs only and assigns no types. Factory: `set_block_types_in_magnetic_equation()` |
+| Call `DofManager::set_solver( SolverParameters )` before `DofManager::initialize()` | `initialize()` asserts `"set solver first"`. The factory calls `configure_solver()` right after `create_field()` |
+| Decide ownership explicitly | `Kernel` borrows its `KernelParameters` and its mesh unless `claim_parameter_ownership()` / `claim_mesh_ownership()` is called; the factory claims both. `create_field()` does not take ownership of the IWG |
 
 ---
 
@@ -583,12 +577,14 @@ class FieldList
 {
 public:
     // ===== MAIN DOFS (set by IWG) =====
-    Cell<string> Conductor;   // edge_h, face_h (Nédélec)
-    Cell<string> Air;         // phi (Lagrange node)
+    Cell<string> Conductor;   // edge_h (+ face_h when higher order, Nédélec)
+    Cell<string> Air;         // phi (Lagrange node); Buffer blocks use this table
     Cell<string> Ferro;       // phi (Lagrange node)
-    Cell<string> Coil;        // (user-defined)
+    Cell<string> Coil;        // empty: coil blocks carry no DOFs
     Cell<string> ThinShell;   // edge_h + phi (from master/slave)
-    Cell<string> Cut;         // Interface DOFs for cohomology
+    Cell<string> Cut;         // not filled by IWG_Maxwell
+    Cell<string> Ghost;       // copy of the Conductor list (ghost elements)
+    Cell<string> Lambda;      // DOF names starting with "lambda"; IWG_Maxwell creates none
 
     // ===== INTERFACE DOFS =====
     Cell<string> InterfaceCondAir;   // Conductor-Air
@@ -648,25 +644,22 @@ ThinShell = { "edge_h", "phi" }              // If thin-shell used
 ### 5.3 Higher-Order Edge Elements
 
 ```cpp
-IWG_Maxwell* iwg = new IWG_Maxwell(
+IWG_Maxwell * tIWG = new IWG_Maxwell(
     maxwell::Formulation::HPhi,
     ModelDimensionality::ThreeD,
-    true,   // higher_order = TRUE
-    false
-);
+    true,     // aHigherOrder
+    false );  // aUseEnrichment
 
-// Now conductor has:
-Conductor = { "edge_h", "face_h" }  // + face DOFs
-
-// DOF counts increase:
-// - Edge DOFs: ~15000 (same)
-// - Face DOFs: ~30000 (2 per face in 3D)
-// Total: ~47000 DOFs (3× more)
+// Now the conductor DOF list is { "edge_h", "face_h" }, and the
+// multiplicity is 2 per edge and 2 per face ( IWG_Maxwell constructor ).
+// For the example above:
+// - Edge DOFs: ~30000 ( 2 per edge, twice the low-order count )
+// - Face DOFs: ~2 per conductor face
 ```
 
 **Use higher-order when:**
 - Need better accuracy for complex geometries
-- Willing to pay 3-5× computational cost
+- Willing to pay a higher cost per solve
 
 **Avoid when:**
 - Thin-shells (low-order sufficient, Alves et al. 2022b)
@@ -702,8 +695,7 @@ materials
 
 Temperature coupling follows from giving the deck a thermal solver section,
 which makes `belfem` select the coupled h-ɸ/T problem. See `doc/input_file_reference.md` §5 for every material key.
-- `_defect`: Includes defect model
-- `_piecewise`: Piecewise linearization for Newton solver
+Defects and the piecewise law are also deck keys: `defect { file ; label ; }` and `resistivity type : piecewise`. They are not kernel variants.
 
 ---
 
@@ -741,26 +733,11 @@ boundary conditions
 }
 ```
 
-**Manual cut creation:**
+**There is no public manual cut API.** Cut generation runs inside `create_magnetic_kernel()` through the private `MaxwellFactory::create_cuts()`.
 
-```cpp
-#include "cl_Topology.hpp"
+On the master rank, it calls `mesh::Topology::run()`, then `synchronize_maps()`. It reads `homology { algorithm }` and passes the mesh, topology, and thin-shell data to a `mesh::CutFactory`. Its `run()` method produces the cut sidesets.
 
-// Create topology analyzer
-Topology* topo = new Topology( mesh );
-
-// Find cohomology generators
-topo->compute_cohomology();
-
-// Create cuts
-Cell<mesh::Facet*> cuts = topo->create_cuts();
-
-// Apply to DOF manager
-for ( mesh::Facet* cut : cuts )
-{
-    dofMgr->create_cut_interface( cut );
-}
-```
+Worker ranks receive the maps through `synchronize_maps()`. `Topology` itself exposes `run()`, the group and map accessors, and `synchronize_maps()`. It has no cohomology or cut methods.
 
 **See:** `src/homology/doc/` for cohomology theory.
 
@@ -796,23 +773,16 @@ topology {
 ```
 
 **Implementation notes:**
-- `air/ferro/buffer symmetry` is currently realized as a hard `impose_dirichlet(φ=0)`
-  (`cl_MaxwellFactory.cpp:626`) — a special case of `B×n=0` that also pins the
-  potential. The general `symmetry_phi` weak form (`B×n=0` with φ free to float)
-  exists in the IWG (`cl_IWG_Maxwell.cpp:419`) but is presently shadowed by that
-  Dirichlet.
-- Untagged one-sided air/ferro/conductor boundaries are auto-classified as
-  `*AntiSymmetry` by `Topology` (`cl_Topology.cpp:221`), i.e. they default to the
-  magnetic wall.
-- The "natural = B·n = 0" argument is exact only in the scalar-φ region. A plane
-  that cuts a **conductor / H(curl) region**, the **h-φ interface**, or a **cut**
-  is not automatically a magnetic wall and may need explicit treatment.
+
+- `air/ferro/buffer symmetry` is implemented as a hard `impose_dirichlet(φ=0)` (`MaxwellFactory::create_magnetic_kernel()`, the `AirSymmetry` / `BufferSymmetry` / `FerroSymmetry` case of the sideset loop). This is a special case of `B×n=0` that also pins the potential. The general `symmetry_phi` weak form (`B×n=0` with φ free to float) exists in the IWG (`IWG_Maxwell::link_to_group`, which binds `symmetry_phi_2d` / `symmetry_phi_3d`). However, `SideSet::impose_dirichlet()` retypes the sideset to `DomainType::Dirichlet` with geometry-only activation, so that binding does not run.
+- Untagged one-sided air/ferro/conductor boundaries are automatically classified as `*AntiSymmetry` by `Topology::detect_sideset_types()` (`cl_Topology.cpp`). They therefore default to the magnetic wall.
+- The “natural = B·n = 0” argument is exact only in the scalar-φ region. A plane that cuts a **conductor / H(curl) region**, the **h-φ interface**, or a **cut** is not automatically a magnetic wall and may need explicit treatment.
 
 ---
 
 ## 8. Thin-Shell Formulation
 
-See Section 20 of `/src/fem/kernel/doc/dof_manager_usage_guide.md` for full theory.
+See Section 20 of `../../kernel/doc/dof_manager_usage_guide.md` for full theory.
 
 **There is no thin-shell kernel.** A shell block is assembled by the same
 `h_picard` / `h_newton_mu0` / `h_newton_mu` kernels as a bulk conductor
@@ -1011,19 +981,13 @@ that domain is non-conducting.
 
 ### 10.1 Computational Cost Breakdown
 
-**For typical HTS simulation (100k DOFs, 100 timesteps):**
+No measured cost breakdown for the Maxwell module is published here. The shares of factorization, assembly, and postprocessing depend on the deck, so measure them on the deck in question.
 
-| Operation | Time % | Scaling | Bottleneck |
-|-----------|--------|---------|------------|
-| **Sparse factorization** | 60% | O(N^1.5-2.3) | Fill-in, pivoting |
-| **Element assembly** | 25% | O(N_elem × n_dof²) | Material evaluation (HTS E-J) |
-| **Postprocessing** | 10% | O(N_elem) | L2 projection |
-| **MPI communication** | 5% | O(log P) | Sparse matrix assembly |
+The controller's timestep footer reports iteration time and, where measured, postprocessing and eigenvalue-analysis times.
 
 ### 10.2 Optimization Strategies
 
-**1. Solver selection (from Messe et al. 2023):** the deck picks the solver;
-there is no runtime fallback switch:
+**1. Solver selection (from Messe et al. 2023):** the deck selects the solver. There is no runtime fallback switch:
 
 ```
 solver
@@ -1037,63 +1001,27 @@ solver
 }
 ```
 
-Avoid iterative solvers (GMRES, BiCGSTAB) for HTS work — the E-J nonlinearity
-ill-conditions the system; the direct solvers are the validated path.
+Avoid iterative solvers (GMRES, BiCGSTAB) for HTS work. The E-J nonlinearity ill-conditions the system, so direct solvers are the validated path.
 
-**2. Material property caching:**
+**2. Material evaluation happens inside the calculator.** The kernels never call a material directly. They obtain `rho` through `MaxwellData::compute_rho()`, which is bound per group to one of these paths (`cl_FEM_Calculator.hpp`):
 
-The signature is `rho( T, B, beta )` — **temperature first**. Every parameter is `real`, so a
-call written in any other order compiles cleanly and returns a wrong resistivity.
+- **Metal conductors:** `compute_rho_metal()` calls `Material::rho( T, |b|, beta )`, the normal-state resistivity with magnetoresistance (Kohler's rule in `Metal`, or its precomputed table when the material was built with tables). The signature is **temperature first**. Every parameter is `real`, so a call written in another order compiles cleanly but returns an incorrect resistivity.
+- **HTS:** the `compute_rho_powerlaw_*`, `compute_rho_piecewise_*` and `compute_rho_riva_*` families are selected by the deck's `resistivity type`. They evaluate the E-J law (`rho_powerlaw()` and its siblings), which puts the power-law channel in parallel with the normal-state resistivity; see `src/physics/materials/doc/resistivity_laws.md`.
 
-```cpp
-// ❌ SLOW - Evaluate material every integration point
-for ( uint k = 0; k < num_intpoints; ++k )
-{
-    real rho = material->rho( T, norm(b), angle );  // Expensive!
-    ...
-}
+`Material::rho( T, B, beta )` is **not** the E-J law. On a superconductor such as `YBCO` (a `Metal` subclass), it returns the Kohler normal-state value, not the resistivity assembled by the kernels. `MaxwellData` evaluates these quantities at each integration point and caches intermediate values (`b`, `|j|`, `beta`) through its `is_current()` flags.
 
-// ✅ FAST - Cache if field doesn't vary much within element
-real b_avg = average_field_in_element();
-real rho = material->rho( T, norm(b_avg), angle );  // Once per element
-
-for ( uint k = 0; k < num_intpoints; ++k )
-{
-    // Use cached rho
-    ...
-}
-```
-
-**3. Reuse calculators:**
+**3. Reuse calculators:** a `Calculator` is created once per group (its constructors take a `Group *`), and the element loop relinks it. This is what `IWG_Maxwell::compute_mkf()` does:
 
 ```cpp
-// ❌ SLOW - Create calculator per element
-for ( Element* elem : block->elements() )
-{
-    Calculator* calc = new Calculator( elem );  // Allocation overhead!
-    maxwell::h_picard( calc, matrices );
-    delete calc;
-}
-
-// ✅ FAST - Reuse calculator
-Calculator* calc = block->calculator();  // Allocated once
-for ( Element* elem : block->elements() )
-{
-    calc->link( elem );  // Just relink
-    maxwell::h_picard( calc, matrices );
-}
+// per element: relink the group's calculator, then call the bound kernel
+mGroup->calculator()->link( aElement );
+mTimeStepMatrices->reset() ;
+( *mFunMKF )( mGroup->calculator(), mTimeStepMatrices );
 ```
 
-**4. MPI partitioning:**
+**4. MPI partitioning:** partitioning is automatic. Nothing in `src/` calls `Mesh::partition()`.
 
-```cpp
-// Use METIS for load-balanced partitioning
-mesh->partition( comm_size(), PartitionMethod::METIS );
-
-// Minimizes:
-// - Edge cuts (MPI communication)
-// - Load imbalance
-```
+In the factory path, rank 0 reads the mesh (`new Mesh( path, 0, false, false )`), broadcasts the mesh dimension, and each worker creates an empty `new Mesh( dim, 0 )`. The `Kernel` constructor then partitions on the master (`Kernel::partition_mesh()`, which calls `graph::metis_partition`) and runs the `mesh::Distributor` on every rank. See "Mesh Distribution (MPI)" in the mesh usage guide (`src/mesh/doc/mesh_usage_guide.md`).
 
 ---
 
@@ -1108,7 +1036,7 @@ mesh->partition( comm_size(), PartitionMethod::METIS );
 ```cpp
 #include "cl_Communicator.hpp"
 
-// Initialize MPI (hphirun.cpp does exactly this)
+// Initialize MPI (belfem.cpp does exactly this)
 gComm.init( argc, argv );
 
 // Factory is MPI-aware: the mesh is partitioned during kernel creation,
@@ -1135,8 +1063,9 @@ Run with `mpirun -np <ranks> belfem` — Open MPI only (see
 New material behavior goes into the material classes
 (`src/physics/materials/`) and the Calculator's material interface — not into
 new kernels; the iteration-scheme kernels in `mt_maxwell_h.hpp` are
-material-agnostic. See Section 17 in
-`/src/fem/kernel/doc/dof_manager_usage_guide.md`.
+material-agnostic. The material side is documented in
+`src/physics/materials/doc/materials_usage_guide.md`, and the HTS resistivity laws in
+`src/physics/materials/doc/resistivity_laws.md`.
 
 ### 12.2 Testing New Implementations
 
@@ -1204,4 +1133,4 @@ material-agnostic. See Section 17 in
 - **Kernel Guide**: `../../kernel/doc/dof_manager_usage_guide.md` (Section 19-21 for Maxwell specifics)
 - **Project Documentation**: `../../../../doc/README.md`
 
-**Last updated:** 2026-01-20
+**Last updated:** 2026-10-22
