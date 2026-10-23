@@ -121,7 +121,7 @@ The `homology` module provides computational topology algorithms for computing h
 ## Typical Usage Pattern
 
 Cut generation is driven by `MaxwellFactory` (`create_cuts`); the full, compiling workflow is the
-Quick-Start and "MPI workflow" sections of [homology_usage_guide.md](homology_usage_guide.md).
+"Quick-Start" and "MPI Serial Limitation" sections of [homology_usage_guide.md](homology_usage_guide.md).
 The points that are easy to get wrong:
 
 - Every rank constructs the `Mesh`; `Topology::run()` works on rank 0, and the collective
