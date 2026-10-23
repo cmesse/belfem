@@ -22,7 +22,7 @@ Before diving into usage details, understand these fundamental design contracts:
 2. **Integer Arithmetic**: Homology computations use exact integer arithmetic (no floating-point errors)
 3. **Algorithm Independence**: Results are topologically equivalent across algorithms; no performance comparison is recorded
 4. **Manifold Requirement**: Thin cuts must form valid 2-manifolds for FEM assembly
-5. **MPI Awareness**: Cohomology computation is currently serial (mesh must be on a single process)
+5. **MPI Awareness**: Cohomology computation is serial: it runs on the master rank, which holds the whole, undistributed mesh. `CutFactory::run()` is nevertheless collective
 
 ---
 
@@ -40,6 +40,12 @@ The homology module **directly modifies mesh topology** in invasive, irreversibl
 - **Creates new SideSets** for cut surfaces (adds to mesh's sideset collection)
 - **Creates abstract nodes** not belonging to any element (new DOF carriers)
 - **Calls mesh->unfinalize() and mesh->finalize()** multiple times during processing
+- **Renumbers the nodes** with reverse Cuthill-McKee (`symrcm`), which reorders `Mesh::nodes()`
+  and rewrites every node index, then updates the node, edge and face indices
+- **Writes the node field `"phi"`**: an existing field of that name is overwritten with the new
+  node indices; otherwise the field is created
+- **Removes the edges and faces** at the end of `run()` (`reset_edges()`, `reset_faces()`), so
+  code that needs them must create them again
 
 **Consequences:**
 - **NOT REVERSIBLE**: Cannot undo node duplication or element relinking
@@ -47,18 +53,11 @@ The homology module **directly modifies mesh topology** in invasive, irreversibl
 - **Invalidates fields**: Custom mesh fields indexed by original nodes become inconsistent
 - **Changes mesh size**: Node count, element connectivity, and sideset count all increase
 
-**Execution order requirement:**
-```cpp
-// CORRECT order
-Mesh* tMesh = new Mesh("problem.exo");
-mesh::CutFactory tFactory(tMesh, ...);
-tFactory.run();                          // Mutates mesh
-fem::DofManager* tDofManager = new fem::DofManager(tMesh);  // AFTER cuts
-
-// WRONG order
-fem::DofManager* tDofManager = new fem::DofManager(tMesh);  // BEFORE cuts
-tFactory.run();  // ❌ DOF manager now has invalid node references
-```
+**Execution order requirement:** run the cut factory before anything that holds node
+references or node indices — in particular before the FEM kernel and its `DofManager` are
+built. `MaxwellFactory::create_magnetic_kernel()` follows this order: it calls `create_cuts()`
+first, hands `Mesh::abstract_nodes()` to the equation (`IWG::set_abstract_nodes`), and builds
+the kernel afterwards.
 
 **Cannot run twice:**
 ```cpp
@@ -78,33 +77,50 @@ tFactory.run();  // ❌ UNDEFINED BEHAVIOR - mesh already mutated
 - Running on distributed mesh → **incomplete generators** (topological holes span process boundaries)
 - Running on multiple ranks → **rank-dependent results** (nondeterministic cut generation)
 
-**Correct MPI workflow:**
+**Correct MPI workflow.** This follows `MaxwellFactory` (`create_cuts()`,
+`create_cuts_sub_master()`, `create_cuts_sub_slave()`). Every call below runs on **every**
+rank. Several calls are collective; calling them only on rank 0 deadlocks:
+
+- the file-reading `Mesh( aPath )` constructor is collective: the master reads the file, and
+  every other rank gets an empty mesh that knows the dimension count;
+- `Topology::run()` works on rank 0 only and does nothing elsewhere;
+- `Topology::synchronize_maps()` is collective. It broadcasts the domain-type map, which every
+  rank needs before it constructs a `CutFactory`, because the constructor reads
+  `groups( DomainType::ThinShell )`;
+- `CutFactory::run()` does its work on the master rank but calls `comm_barrier()`, so every
+  rank must call it.
+
 ```cpp
-// 1. Load mesh on master rank ONLY
-Mesh* tMesh = nullptr;
-if (comm_rank() == 0) {
-    tMesh = new Mesh("problem.h5");
+// every rank: the master reads the file, the others get an empty mesh
+Mesh * tMesh = new Mesh( "problem.exo" );
 
-    // 2. Run homology on master (serial)
-    mesh::CutFactory tFactory(tMesh, ...);
-    tFactory.run();
+// master only: block domain types decide what is phi and non-phi
+if ( comm_rank() == 0 )
+{
+    tMesh->block( 1 )->set_domain_type( DomainType::Air );
+    tMesh->block( 2 )->set_domain_type( DomainType::Conductor );
 }
 
-// 3. Partition AFTER homology
-if (comm_rank() == 0) {
-    tMesh->partition(comm_size());
-}
+mesh::Topology tTopology( tMesh );
+tTopology.run();                // works on rank 0, no-op elsewhere
+tTopology.synchronize_maps();   // collective
 
-// 4. Distribute to all ranks
-if (comm_rank() == 0) {
-    tMesh->distribute();
-} else {
-    tMesh = new Mesh();
-    tMesh->receive(0);
-}
+Cell< Protoshell * > tProtoshells ;   // empty: no thin shells
+
+mesh::CutFactory tFactory( tMesh, &tTopology, tProtoshells,
+                           mesh::CutAlgorithm::PellikkaGeneralized,
+                           false );
+tFactory.set_periodicity( nullptr );  // required, see "CutFactory - Main Entry Point"
+tFactory.run();                       // collective; the work happens on the master
 ```
 
-**Future work:** Parallel cohomology is planned but not yet implemented.
+After `run()` the cut mesh is still whole on the master. Do not call `Mesh::partition()` for
+distribution: it does nothing off the master, and nothing in `src/` calls it. The FEM
+`Kernel` constructor partitions the mesh on the master (`Kernel::partition_mesh()` →
+`graph::metis_partition`) and then distributes it on every rank. See
+[Mesh Distribution (MPI)](../../mesh/doc/mesh_usage_guide.md) in the mesh guide.
+
+The cohomology computation itself is not parallelized.
 
 ---
 
@@ -117,24 +133,25 @@ if (comm_rank() == 0) {
 | `SideSet*` (cuts) | CutFactory | **Mesh** | **Do NOT delete** |
 | `Node*` (abstract) | CutFactory | **Mesh** | **Do NOT delete** |
 | `Node*` (duplicates) | CutFactory | **Mesh** | **Do NOT delete** |
+| `Node*` (orphaned) | — (existing mesh nodes) | **Mesh** | **Do NOT delete** |
 | `Cochain*` (generators) | Cohomology | **Cohomology** | **Do NOT delete** |
 | `Chain*` (generators) | Homology | **Homology** | **Do NOT delete** |
 | `Protoshell*` | **User** | **User** | **Caller must delete** |
 
 **Key rule:** CutFactory transfers all created mesh entities (nodes, sidesets) to the mesh. The mesh takes ownership and will delete them in its destructor.
 
+The cut sidesets are reached through `Mesh::sidesets()` (see "Result Retrieval"). The
+abstract and orphaned nodes are in `Mesh::abstract_nodes()` and `Mesh::orphaned_nodes()`,
+which are non-owning views onto nodes that `Mesh::nodes()` owns.
+
 ```cpp
 // CORRECT
-CutFactory tFactory(tMesh, ...);
 tFactory.run();
-Cell<SideSet*>& cuts = tFactory.cuts();  // Reference only
-// cuts are owned by tMesh - do NOT delete
-
-delete tMesh;  // Mesh destructor deletes cuts and nodes
+mesh::SideSet * tCut = tMesh->sideset( tCutID );   // reference only
+delete tMesh;                                     // ~Mesh deletes cuts and nodes
 
 // WRONG
-Cell<SideSet*>& cuts = tFactory.cuts();
-delete cuts(0);  // ❌ DOUBLE DELETE when mesh destructor runs
+delete tMesh->sideset( tCutID );   // ❌ DOUBLE DELETE when ~Mesh runs
 ```
 
 ---
@@ -149,7 +166,7 @@ The homology module is **NOT thread-safe**:
 
 **OpenMP:** Do not call homology functions from parallel regions
 
-**MPI:** Must run on single rank (see MPI Serial Limitation above)
+**MPI:** The computation runs on the master rank only, but `run()` must be called on every rank (see MPI Serial Limitation above)
 
 ---
 
@@ -190,14 +207,17 @@ The homology module is **NOT thread-safe**:
 ⚠️ **Topology requirements:**
 - Phi/non-phi domains must be **correctly tagged** (see `Topology::run()`)
 - Thin-shell interfaces must be **properly labeled** as sidesets
-- Terminals (if used) must **exist as nodes** in the mesh
+- Terminals (if used) must **exist as mesh entities**: block ids (2D bulk conductor), sideset
+  ids (3D bulk conductor) or curve ids (thin shell); see `set_terminals()`
+- Block domain types must be set before `Topology::run()`: `Air`, `Buffer` and `Ferro` blocks
+  are phi blocks, `Conductor` and `Coil` blocks are non-phi blocks, and a block of any other
+  type (including `Default`) is in neither list
 
 ❌ **Unsupported configurations:**
 - Non-orientable manifolds (Möbius strip, Klein bottle)
 - Meshes with dangling tetrahedra (elements connected only at nodes/edges)
-- Multiply-connected phi-domains where cuts span >10^7 faces (memory limit)
 
-**Validation pattern:**
+**Validation pattern** (master rank, where the mesh and the topology lists are populated):
 ```cpp
 // Check basic mesh properties
 BELFEM_ERROR(tMesh->number_of_elements() > 0, "Empty mesh");
@@ -206,7 +226,7 @@ BELFEM_ERROR(tMesh->number_of_blocks() > 0, "No blocks defined");
 // Check topology analysis succeeded
 mesh::Topology tTopology(tMesh);
 tTopology.run();
-BELFEM_ERROR(tTopology.phi_block_ids().size() > 0,
+BELFEM_ERROR(tTopology.phi_block_ids().length() > 0,
              "No phi-domain blocks identified");
 ```
 
@@ -216,22 +236,18 @@ BELFEM_ERROR(tTopology.phi_block_ids().size() > 0,
 
 **Warning:** the module uses the mesh entities' flag bits (`flag_*()` / `unflag_*()`) as
 scratch and, in the SPFA infeasibility path, writes `Element::level`
-(`cl_Cohomology.cpp:510-528`). It does not write `owner` or `index`.
+(`cl_Cohomology.cpp`, `set_level`). It does not write `owner`. It does write `index`: the RCM
+renumbering in `CutFactory::compute_rcm_problem()` sets every node index, and
+`compute_cohomologies()` calls `update_node_indices()`, `update_edge_indices()` and
+`update_face_indices()`. The same RCM step overwrites, or creates, the node field `"phi"`
+with the new node indices.
 
 **Consequences:**
-- Do not rely on entity flags or `Element::level` after `CutFactory::run()`
-- Run homology **before** partitioning because cohomology needs the undistributed mesh
-  (see "MPI Serial Limitation"), not because of `owner`
-
-```cpp
-// WRONG order
-tMesh->partition();  // Distributes the mesh
-tFactory.run();      // ❌ Cohomology needs the undistributed mesh
-
-// CORRECT order
-tFactory.run();      // Serial mesh
-tMesh->partition();  // Now distribute
-```
+- Do not rely on entity flags, `Element::level`, entity indices or a field named `"phi"` from
+  before `CutFactory::run()`
+- Run homology **before** the mesh is distributed, because cohomology needs the undistributed
+  mesh (see "MPI Serial Limitation"), not because of `owner`. Distribution happens in the FEM
+  `Kernel` constructor, so build the cuts before the kernel
 
 ---
 
@@ -265,27 +281,45 @@ tMesh->partition();  // Now distribute
 #include "cl_CutFactory.hpp"
 #include "cl_Topology.hpp"
 
-// Load mesh
-Mesh* tMesh = new Mesh("toroid.exo");
+// Every rank: the master reads the file, the others get an empty mesh
+Mesh * tMesh = new Mesh( "toroid.exo" );
+
+// Master: set the block domain types (here block 1 is air, block 2 the conductor)
+if ( comm_rank() == 0 )
+{
+    tMesh->block( 1 )->set_domain_type( DomainType::Air );
+    tMesh->block( 2 )->set_domain_type( DomainType::Conductor );
+}
 
 // Analyze topology
-mesh::Topology tTopology(tMesh);
+mesh::Topology tTopology( tMesh );
 tTopology.run();
+tTopology.synchronize_maps();
 
 // Generate cuts
-mesh::CutFactory tFactory(
-    tMesh, &tTopology, {},  // Empty protoshells
-    mesh::CutAlgorithm::PellikkaGeneralized
-);
+Cell< Protoshell * > tProtoshells ;   // no thin shells; must be an lvalue
+mesh::CutFactory tFactory( tMesh, &tTopology, tProtoshells,
+                           mesh::CutAlgorithm::PellikkaGeneralized,
+                           false );   // aUseEnrichment
+tFactory.set_periodicity( nullptr );
 tFactory.run();
 
-// Use results
-for (mesh::SideSet* cut : tFactory.cuts()) {
-    cut->set_domain_type(mesh::DomainType::Cut);
+// Use results (master)
+if ( comm_rank() == 0 )
+{
+    // one abstract node, and one cut sideset labelled cut_<n>, per H^1 generator
+    for ( mesh::SideSet * tSideSet : tMesh->sidesets() )
+    {
+        if ( tSideSet->label().rfind( "cut_", 0 ) == 0 )
+        {
+            tSideSet->set_domain_type( DomainType::Cut );
+        }
+    }
 }
 ```
 
-**That's it!** The `tFactory.cuts()` are now ready for FEM assembly with jump conditions.
+The cut sidesets are now in the mesh. The abstract nodes in `Mesh::abstract_nodes()` carry the
+jump DOFs. `CutFactory::cuts()` is not the way to find the cuts (see "Result Retrieval").
 
 ---
 
@@ -305,11 +339,11 @@ for (mesh::SideSet* cut : tFactory.cuts()) {
 | **Simplicial Complex** | Collection of simplices (nodes, edges, faces, elements) with incidence relations |
 | **Boundary Operator** | Map ∂_k : C_k → C_{k-1} (takes k-chain to its (k-1)-boundary) |
 | **Coboundary Operator** | Map δ^k : C^k → C^{k+1} (dual to boundary operator) |
-| **Smith Normal Form** | Diagonal matrix decomposition QAR = D revealing Betti numbers and torsion |
+| **Smith Normal Form** | Diagonal matrix decomposition Q⁻¹AR = D revealing Betti numbers and torsion (`smithForm` returns Q and Q⁻¹ as `Q`, `Q_`) |
 | **Betti Number** | Rank of k-th homology/cohomology group; counts k-dimensional "holes" |
 | **Homology Group** | H_k = Ker(∂_k) / Im(∂_{k+1}) (k-cycles modulo k-boundaries) |
 | **Cohomology Group** | H^k = Ker(δ^k) / Im(δ^{k-1}) (k-cocycles modulo k-coboundaries) |
-| **Terminal** | Electrical connection point (set of nodes) for current injection/extraction |
+| **Terminal** | Electrical connection for current injection/extraction, given by mesh entity ids: block ids (2D bulk), sideset ids (3D bulk) or curve ids (thin shell) |
 | **Protoshell** | Configuration object for thin shell structures (sidesets, terminals, material, thickness) |
 | **Phi-domain** | Region where magnetic scalar potential φ is solved (non-conducting) |
 | **Non-phi-domain** | Conducting region or external boundary (not part of φ solution domain) |
@@ -329,7 +363,7 @@ for (mesh::SideSet* cut : tFactory.cuts()) {
 | **CCR** | Chain Complex Reduction (Kaczynski); classical acyclic matching |
 | **BeltedTree** | Spanning tree approach with belt fasteners for cohomology |
 | **Manifold Filtering** | Post-processing to remove non-manifold artifacts (double pockets, etc.). Design of record — **not implemented**; see the design note under "Manifold Cleanup" |
-| **Tarjan's Algorithm** | DFS-based articulation point detection for manifold cleanup. Exists only as an archived prototype, `archive/graph/fn_Graph_tarjan.{hpp,cpp}`, which is outside the build |
+| **Tarjan's Algorithm** | DFS-based articulation point detection, part of the manifold-cleanup design. No implementation exists in the tree |
 
 **FEM Integration:**
 
@@ -352,35 +386,38 @@ for (mesh::SideSet* cut : tFactory.cuts()) {
 **Problem:** Topology not analyzed before creating CutFactory.
 
 ```cpp
+Cell< Protoshell * > tProtoshells ;
+
 // ❌ WRONG
-mesh::Topology tTopology(aMesh);
-mesh::CutFactory tFactory(aMesh, &tTopology, {});
-tFactory.run();  // ❌ Topology::run() was never called!
+mesh::Topology tTopology( aMesh );
+mesh::CutFactory tFactory( aMesh, &tTopology, tProtoshells,
+                           mesh::CutAlgorithm::PellikkaGeneralized, false );
+// ❌ Topology::run() and synchronize_maps() were never called
 
 // ✅ CORRECT
-mesh::Topology tTopology(aMesh);
-tTopology.run();  // Analyze FIRST
-mesh::CutFactory tFactory(aMesh, &tTopology, {});
+mesh::Topology tTopology( aMesh );
+tTopology.run();                // Analyze FIRST
+tTopology.synchronize_maps();
+mesh::CutFactory tFactory( aMesh, &tTopology, tProtoshells,
+                           mesh::CutAlgorithm::PellikkaGeneralized, false );
+tFactory.set_periodicity( nullptr );
 tFactory.run();
 ```
 
-**Consequence:** `phi_block_ids()` is empty → no cohomology generators → no cuts.
+**Consequence:** the `CutFactory` constructor reads `groups( DomainType::ThinShell )`. Without
+the domain-type map, the lookup stops with `BELFEM_ERROR` ("Key ... not found in map"). On a
+rank other than 0, the map exists only after `synchronize_maps()`.
 
 ---
 
 ### 2. Running Homology After Mesh Partitioning
 
-**Problem:** Partitioning before homology breaks simplicial complex.
+**Problem:** Distributing the mesh before homology breaks the simplicial complex.
 
-```cpp
-// ❌ WRONG
-tMesh->partition(comm_size());  // Distributes across ranks
-tFactory.run();  // ❌ Mesh is partitioned - cohomology sees incomplete topology
-
-// ✅ CORRECT
-tFactory.run();  // Run on full mesh FIRST
-tMesh->partition(comm_size());  // Partition AFTER
-```
+The FEM `Kernel` constructor distributes the mesh: it calls `Kernel::partition_mesh()` on the
+master and then distributes the mesh on every rank. Therefore, call `CutFactory::run()` before
+building the kernel, as `MaxwellFactory::create_magnetic_kernel()` does. `Mesh::partition()` does
+not distribute anything; it only assigns ownerships on the master.
 
 **Consequence:** Incomplete generators, missing cuts, or crashes due to missing connectivity.
 
@@ -392,12 +429,12 @@ tMesh->partition(comm_size());  // Partition AFTER
 
 ```cpp
 // ❌ WRONG
-Cell<SideSet*>& cuts = tFactory.cuts();
-delete cuts(0);  // ❌ DOUBLE DELETE - mesh owns this!
+delete tMesh->sideset( tCutID );        // ❌ DOUBLE DELETE - mesh owns this!
+delete tMesh->abstract_nodes()( 0 );    // ❌ same for abstract nodes
 
 // ✅ CORRECT
-Cell<SideSet*>& cuts = tFactory.cuts();
-// Just use them - mesh will delete when tMesh destructor runs
+mesh::SideSet * tCut = tMesh->sideset( tCutID );
+// Just use it - ~Mesh deletes it
 ```
 
 **Consequence:** Double delete → crash or memory corruption.
@@ -451,9 +488,11 @@ Cochain* tCochain = tCohomology.get_Generators()( 1 )(0);  // cohomology
 tFactory.run();
 // Assume all cuts are manifold
 
-// ✅ SAFER (pseudo-code: SideSet has no edges() accessor; walk the facets' edges yourself)
+// ✅ SAFER (pseudo-code: SideSet has no edges() accessor, and run() removes the mesh
+// edges, so walk the facets' edges yourself; tCutSideSets holds the cut_<n> sidesets
+// collected from tMesh->sidesets())
 tFactory.run();
-for (SideSet* cut : tFactory.cuts()) {
+for (SideSet* cut : tCutSideSets) {
     // Check manifold status
     uint nonManifoldEdges = 0;
     for (Edge* edge : cut->edges()) {
@@ -477,11 +516,11 @@ for (SideSet* cut : tFactory.cuts()) {
 
 ```cpp
 // ❌ Theory/debugging path
-mesh::CutFactory tFactory(..., mesh::CutAlgorithm::CCR);
+mesh::CutFactory tFactory( aMesh, &tTopology, tProtoshells, mesh::CutAlgorithm::CCR, false );
 tFactory.run();
 
 // ✅ Production default
-mesh::CutFactory tFactory(..., mesh::CutAlgorithm::PellikkaGeneralized);
+mesh::CutFactory tFactory( aMesh, &tTopology, tProtoshells, mesh::CutAlgorithm::PellikkaGeneralized, false );
 tFactory.run();
 ```
 
@@ -509,37 +548,47 @@ tFactory.run();  // Run exactly once
 
 ### 9. Ignoring Orphaned Nodes
 
-**Problem:** Orphaned nodes increase memory usage and may leak.
+**Problem:** Orphaned nodes are nodes of `Mesh::nodes()` that no block element uses and that
+are not abstract nodes (`CutFactory::collect_orphan_nodes()`). They stay in the mesh, which
+owns them.
 
 ```cpp
-// ⚠️ CHECK
+// ⚠️ CHECK (master)
 tFactory.run();
 if (tFactory.orphaned_nodes().size() > 0) {
     message(InfoLevel::Default, "Warning: %lu orphaned nodes",
-            tFactory.orphaned_nodes().size());
-    // Optionally: delete orphaned nodes if not needed
+            (long unsigned int) tFactory.orphaned_nodes().size());
+    // Do NOT delete them: ~Mesh deletes every node in Mesh::nodes()
 }
 ```
 
-**Consequence:** Memory leak or unexpected behavior if orphaned nodes are referenced elsewhere.
+**Consequence:** Deleting an orphaned node is a double free when `~Mesh` runs. Downstream,
+`MaxwellFactory` hands the list to the equation (`set_orphaned_nodes`).
 
 ---
 
 ### 10. Incorrect Terminal-to-Shell Mapping
 
-**Problem:** Terminal indices don't match protoshell indices.
+**Problem:** The second argument of `set_terminals()` is mistaken for a list of shell numbers.
+
+`aThinShellIndices` lists, in ascending order, the **positions in `aTerminals`** whose entries
+belong to a thin shell. It does not map terminals to protoshells.
+`Homology::suggest_Homology()` walks `aTerminals` and compares each position `i` with the next
+unused entry of `aThinShellIndices`, so the list must be ascending.
 
 ```cpp
-// ❌ WRONG
-Cell<Cell<id_t>> tTerminals = {{101}, {201}};
-Cell<id_t> tShellIndices = {1, 0};  // Terminal 0 on shell 1? Mismatch!
+// ❌ WRONG: one entry per terminal, read as "shell number"
+Cell<Cell<id_t>> tTerminals = {{101, 102}, {7, 8}};
+Cell<id_t> tShellIndices = {0, 0};   // marks position 0 as a thin shell, twice
 
-// ✅ CORRECT
-Cell<Cell<id_t>> tTerminals = {{101}, {201}};
-Cell<id_t> tShellIndices = {0, 0};  // Both terminals on shell 0
+// ✅ CORRECT: entry 0 is a bulk conductor (sideset ids in 3D),
+// entry 1 is a thin shell (curve ids); only position 1 is listed
+Cell<Cell<id_t>> tTerminals = {{101, 102}, {7, 8}};
+Cell<id_t> tShellIndices = {1};
 ```
 
-**Consequence:** Terminals assigned to wrong thin shell → incorrect current distribution.
+**Consequence:** A bulk entry is read as curve ids (or the reverse), so the suggested homology
+is built from the wrong entities.
 
 ---
 
@@ -638,9 +687,18 @@ CutFactory::CutFactory(
 - `aTopology`: Pre-analyzed mesh topology (identifies domains, interfaces)
 - `aProtoshells`: Configuration for thin shell structures
 - `aAlgorithm`: Cut generation algorithm (see [Cut Algorithm Selection](#cut-algorithm-selection))
-- `aUseEnrichment`: Use XFEM enrichment (experimental)
+- `aUseEnrichment`: controls one step of `run()`. When it is true,
+  `restore_thin_shell_sidesets()` moves the temporary facets of each thin-shell sideset into a
+  new hidden sideset of domain type `EnrichedInterface`, instead of deleting them
 
-Neither argument has a default; both are passed explicitly.
+Neither of the last two arguments has a default; both are passed explicitly. `aProtoshells`
+is a non-const reference, so it must be an lvalue (`{}` does not compile); pass an empty
+`Cell< Protoshell * >` when there are no thin shells.
+
+**⚠️ Call `set_periodicity()` before `run()`.** The member `mPeriodicFactory` has no
+initialiser, and the constructor does not set it. `run()` tests it against `nullptr` on the
+master. `MaxwellFactory` always calls `set_periodicity()` on the master; pass `nullptr` for a
+mesh without periodicity.
 
 **⚠️ Ownership:** CutFactory does **not** take ownership of aMesh or aTopology. Caller must ensure they outlive the factory.
 
@@ -655,21 +713,56 @@ void set_terminals(
 );
 ```
 
-Sets up electrical terminal definitions for current injection/extraction points.
+Sets up electrical terminal definitions for current injection/extraction points. The lists
+are copied; they are consumed by `Homology::suggest_Homology()` during `run()`.
 
-- `aTerminals`: Cell of node ID lists, one per terminal
-- `aThinShellIndices`: Maps terminals to thin shell indices
+- `aTerminals`: one entry per terminal condition. `MaxwellFactory::create_terminal_list()`
+  builds one entry per current, circuit-current and voltage boundary condition, from its
+  `domains()`. Each entry holds mesh entity **ids**, not node ids: block ids for a 2D bulk
+  conductor, sideset ids for a 3D bulk conductor, curve ids for a thin shell. The first half of
+  an entry is the input terminal; in 3D, the second half is the output terminal. In 2D, the
+  second half of a bulk entry is not read.
+- `aThinShellIndices`: the **positions** in `aTerminals` whose entries belong to a thin shell,
+  in ascending order. It is not a list of protoshell numbers.
+
+```cpp
+void set_periodicity( PeriodicityFactory * aPeriodicFactory );
+```
+
+Stores the periodicity factory, or `nullptr` for none. Required before `run()` (see above).
+On the master, `run()` calls `create_periodicity()` on a non-null factory and installs the
+result on the mesh.
+
+```cpp
+bool create_thin_shell_cuts();
+```
+
+Thin-shell preprocessing. `run()` does **not** call it. `MaxwellFactory` calls it on the master
+after `set_periodicity()` and before `set_terminals()`/`run()`. It returns `false` and does
+nothing when the topology has no `ThinShell` sidesets. Otherwise it creates the thin-shell
+curves, duplicates and relinks the nodes and facets on the shell sidesets, closes the terminal
+loops, and returns `true`. Afterwards `thin_shell_master_nodes()` and `thin_shell_slave_nodes()`
+hold the shell node pairs.
 
 ```cpp
 void run();
 ```
 
-**Main execution pipeline.** Performs:
-1. Thin shell preprocessing
-2. Cohomology computation
-3. Thick-to-thin cut conversion
-4. Node duplication
-5. Manifold cleanup
+**Main execution pipeline.** On the master rank it:
+1. Rebuilds the mesh connectivity, creates edges (and faces in 3D) and installs the
+   periodicity, if any
+2. Renumbers the nodes with reverse Cuthill-McKee and writes the `"phi"` node field
+3. Computes the cohomology: the suggested homology from the terminals, the complex reduction
+   for the selected algorithm, `Cohomology`, then recombination with the suggested homology and
+   a second `clean()`
+4. Converts thick cuts to thin cuts (`CutProcessor`): node duplication, abstract nodes, cut
+   sidesets; then duplicates interface nodes (`InterfaceProcessor`) and collects orphaned nodes
+5. Restores the thin-shell sidesets and computes the element adjacencies
+6. Removes the edges and faces and finalizes the mesh
+
+All of this work runs on the master. `compute_rcm_problem()` and the end of `run()` each call
+`comm_barrier()`, so every rank must call `run()`. Generator cleaning, the step that runs
+instead of a manifold filter, is part of step 3 (see "Manifold Cleanup").
 
 **⚠️ Call exactly once.** Calling `run()` multiple times is undefined behavior.
 
@@ -679,25 +772,34 @@ void run();
 Cell<Node*>& abstract_nodes();
 ```
 
-Returns abstract nodes (new degrees of freedom) created for cut discontinuities.
+Returns the abstract nodes (new degrees of freedom), one per H^1 generator, which carry the
+cut jumps. This is a reference to the mesh's own list, `Mesh::abstract_nodes()`; the nodes
+themselves are owned by `Mesh::nodes()`.
 
-**Usage:** Assign these to FEM DOF manager for φ⁺ and φ⁻ values.
+**Usage:** `MaxwellFactory` passes `Mesh::abstract_nodes()` to the equation
+(`IWG::set_abstract_nodes`) before the kernel is built; later
+`DofManager::extract_abstract_dofs_from_mesh()` reads the abstract DOF data. There is no
+per-node "add abstract DOF" call.
 
 ```cpp
 Cell<SideSet*>& cuts();
 ```
 
-Returns generated cut surfaces as SideSet objects.
-
-**Usage:** Mark as `DomainType::Cut` and apply discontinuity constraints in FEM assembly.
+Returns the member list `mCuts`. `run()` does not fill it, so the list is **empty** after
+`run()`. The generated cut sidesets are added to the mesh by
+`CutData::add_thin_cut_sidesets_to_mesh()`, one per H^1 generator, with the label `cut_`
+followed by a zero-padded number and domain type `Default`. Find them through
+`Mesh::sidesets()` by label.
 
 ```cpp
 Cell<Node*>& orphaned_nodes();
 ```
 
-Returns nodes not belonging to any element after node duplication.
+Returns the nodes of `Mesh::nodes()` that no block element uses and that are not abstract
+nodes, collected after node duplication. This is a reference to `Mesh::orphaned_nodes()`, a
+non-owning view.
 
-**Usage:** Typically freed after FEM setup, but may be used for debugging.
+**Usage:** Read only. Do **not** delete these nodes: `~Mesh` deletes them.
 
 ```cpp
 Vector<id_t>& thin_shell_boundaries();
@@ -709,17 +811,24 @@ Returns IDs of boundaries created for thin shell sidesets.
 Cell<Facet*>& thin_shell_facets(const id_t aID);
 ```
 
-Returns facets for a specific thin shell ID.
+Returns the facets of the temporary sideset at **position** `aID` in
+`mTemporaryThinShellSidesets`. This is a positional index, not a sideset id. The list is filled
+by `create_thin_shell_cuts()`. `run()` restores the thin-shell sidesets, deletes the temporary
+sidesets and clears the list. This accessor is valid only between `create_thin_shell_cuts()`
+and `run()`; do not call it after `run()`.
 
 #### Debugging
 
 ```cpp
-void save_debug_meshes();
+void save_curve_debug_meshes();
 ```
 
-Saves one debug mesh per cut, named `cut_<index>.vtk` (`cl_CutProcessor.cpp:132-140`).
-It does **not** write separate thick-cut, thin-cut or manifold files — those filenames
-appear in older documentation but no code emits them.
+The only public debug writer on `CutFactory`: it writes one `curve_<id>.vtk` per mesh curve.
+There is no `CutFactory::save_debug_meshes()`. The per-cut meshes `cut_<index>.vtk` come from
+`CutProcessor::save_debug_meshes()`. `CutFactory` calls it inside
+`compute_thin_cuts_and_duplicate_interface_nodes()` only in debug builds
+(`#if !defined( NDEBUG ) || defined( DEBUG )`). No code writes separate thick-cut, thin-cut or
+manifold files.
 
 ### Usage Pattern
 
@@ -727,35 +836,35 @@ appear in older documentation but no code emits them.
 #include "cl_CutFactory.hpp"
 #include "cl_Topology.hpp"
 
+// Every rank (see "MPI Serial Limitation"); aMesh holds the whole mesh on the master
+
 // 1. Analyze mesh topology
-mesh::Topology tTopology(aMesh);
+mesh::Topology tTopology( aMesh );
 tTopology.run();
+tTopology.synchronize_maps();
 
 // 2. Create CutFactory
-mesh::CutFactory tFactory(
-    aMesh,
-    &tTopology,
-    mProtoshells,
-    mesh::CutAlgorithm::PellikkaGeneralized,
-    false   // No enrichment
-);
+mesh::CutFactory tFactory( aMesh, &tTopology, mProtoshells,
+                           mesh::CutAlgorithm::PellikkaGeneralized,
+                           false );   // no enrichment
+tFactory.set_periodicity( nullptr );
 
-// 3. Set terminals (if needed)
-Cell<Cell<id_t>> tTerminals = {{101, 102, 103}, {201, 202, 203}};
-Cell<id_t> tShellIndices = {0, 0};
-tFactory.set_terminals(tTerminals, tShellIndices);
+// 3. Thin shells and terminals (master; MaxwellFactory order)
+if ( comm_rank() == 0 )
+{
+    tFactory.create_thin_shell_cuts();
+
+    // 3D: entry 0 = input sideset 101, output sideset 102 (a bulk conductor)
+    Cell< Cell< id_t > > tTerminals = { { 101, 102 } };
+    Cell< id_t > tThinShellIndices ;   // no thin-shell entries
+    tFactory.set_terminals( tTerminals, tThinShellIndices );
+}
 
 // 4. Run pipeline
 tFactory.run();
 
-// 5. Extract results
-for (mesh::SideSet* cut : tFactory.cuts()) {
-    cut->set_domain_type(mesh::DomainType::Cut);
-}
-
-for (mesh::Node* node : tFactory.abstract_nodes()) {
-    aDofManager->add_abstract_dof(node);
-}
+// 5. Results (master): cut sidesets cut_<n> in aMesh->sidesets(),
+//    jump DOFs in aMesh->abstract_nodes()
 ```
 
 ---
@@ -764,7 +873,7 @@ for (mesh::Node* node : tFactory.abstract_nodes()) {
 
 ### Purpose
 
-`Cohomology` computes cohomology groups H^k = Ker(δ^k) / Im(δ^{k+1}) from a simplicial complex.
+`Cohomology` computes cohomology groups H^k = Ker(δ^k) / Im(δ^{k-1}) from a simplicial complex.
 
 **File:** `cl_Cohomology.{hpp,cpp}`
 
@@ -810,7 +919,7 @@ call it yourself.
 void quotientGroup();
 ```
 
-Computes quotient space H^k = Ker(δ^k) / Im(δ^{k+1}) via Smith Normal Form.
+Computes quotient space H^k = Ker(δ^k) / Im(δ^{k-1}) via Smith Normal Form.
 
 **Note:** Typically called internally by `cohomologyGroupOfChainComplex()`.
 
@@ -926,16 +1035,27 @@ Homology::Homology(
 Homology::Homology(SimplicialComplex* aComplex, Mesh* aFullMesh);
 ```
 
+The two constructors do different things:
+
+- The **terminal constructor** only calls `suggest_Homology( aTerminals, aThinShells )`. It
+  fills `get_Generators()( 1 )` with suggested 1-chains: the boundary of each input terminal,
+  and in 3D also of each output terminal. It builds no simplicial complex and no boundary
+  matrices, so `homologyGroupOfChainComplex()` and `get_BoundaryMatrix()` have nothing to work
+  on. `aTerminals` and `aThinShells` follow the `CutFactory::set_terminals()` convention:
+  entity ids per entry, and ascending positions of the thin-shell entries. `CutFactory` uses
+  this constructor, then `reorient_generators()`.
+- The **complex constructor** builds the boundary matrices from `aComplex`, computes the
+  groups (`homologyGroupOfChainComplex()`) and extracts the generators.
+
 ### Key Methods
 
 ```cpp
 void homologyGroupOfChainComplex();
 ```
 
-Main computation method. Performs:
-1. Simplicial complex reduction
-2. Quotient group computation (Ker/Im decomposition)
-3. Generator extraction
+Main computation method: kernel/image decomposition of the boundary matrices, then the
+quotient groups. It needs the boundary matrices that only the complex constructor builds, and
+that constructor already calls it. Generator extraction is `generatorsOfHomology()`.
 
 ```cpp
 void suggest_Homology(
@@ -981,23 +1101,17 @@ Returns boundary operator matrices ∂_k.
 ```cpp
 #include "cl_Homology.hpp"
 
-// Create with terminal hints
-Cell<Cell<id_t>> tTerminals = {{101, 102}, {201, 202}};
-Cell<id_t> tShellIndices = {0, 0};
+// Terminal hints (3D): one bulk conductor, input sideset 101, output sideset 102
+Cell< Cell< id_t > > tTerminals = { { 101, 102 } };
+Cell< id_t > tThinShellIndices ;   // no thin-shell entries
 
-mesh::Homology tHomology(aMesh, tTerminals, tShellIndices);
+// The constructor builds the suggested generators; it computes no groups
+mesh::Homology tHomology( aMesh, tTerminals, tThinShellIndices );
 
-// Compute homology
-tHomology.homologyGroupOfChainComplex();
+// Suggested 1-chains, one per terminal
+Cell< mesh::Chain * > & tGenerators = tHomology.get_Generators()( 1 );
 
-// Get H_1 generators (1-cycles)
-Cell<Chain*>& generators = tHomology.get_Generators()( 1 );
-
-// Compute orientations
-Cell<Vector<real>> tDirections = {{1, 0, 0}, {0, 1, 0}};
-Cell<int> orientations = tHomology.generators_orientation(tDirections);
-
-// Reorient if needed
+// Fix the sense of each loop, as CutFactory does
 tHomology.reorient_generators();
 ```
 
@@ -1012,7 +1126,7 @@ Four algorithms are available via the `CutAlgorithm` enum:
 **File:** `en_CutAlgorithm.hpp`
 
 ```cpp
-enum class CutAlgorithm : uint
+enum class CutAlgorithm
 {
     Pellikka            = 0,  // Original Pellikka (2013)
     CCR                 = 1,  // Chain Complex Reduction (Kaczynski 2004)
@@ -1039,9 +1153,8 @@ enum class CutAlgorithm : uint
   - Downward pass: `pReduce(k)` for k from d to 1 (elementary collapses)
   - Second pass (again from d down to 1): interleaves `pGeneralizedCombine(k)` with `pReduce(k-1)`; the cochain variant runs both passes upward, k = 0 … d−1
   - For cohomology: Reversed dimensions (k from 0 to d-1)
-- **Advantages:**
-  - Near-linear complexity for large meshes
-  - Minimal Smith Normal Form computation
+- **Intended advantages** (no complexity or timing measurement is recorded):
+  - Smaller Smith Normal Form computation
   - Compact generator representations
 
 **Pellikka** (Pellikka et al., 2013):
@@ -1063,7 +1176,6 @@ enum class CutAlgorithm : uint
   - Good for theoretical understanding
   - Reliable for small meshes
 - **Disadvantages:**
-  - Slowest for large meshes
   - May produce non-manifold cuts requiring extensive cleanup
 
 **BeltedTree**:
@@ -1075,23 +1187,16 @@ enum class CutAlgorithm : uint
 
 ```cpp
 // Production code - use generalized Pellikka
-tFactory = new CutFactory(
-    aMesh, aTopology, aProtoshells,
-    CutAlgorithm::PellikkaGeneralized
-);
+mesh::CutFactory tFactory( aMesh, aTopology, aProtoshells,
+                           mesh::CutAlgorithm::PellikkaGeneralized, false );
 
-// Legacy compatibility - original Pellikka
-tFactory = new CutFactory(
-    aMesh, aTopology, aProtoshells,
-    CutAlgorithm::Pellikka
-);
-
-// Debugging/theory - CCR
-tFactory = new CutFactory(
-    aMesh, aTopology, aProtoshells,
-    CutAlgorithm::CCR
-);
+// Legacy compatibility:  mesh::CutAlgorithm::Pellikka
+// Debugging/theory:      mesh::CutAlgorithm::CCR
+// Requires the suggested homology (on by default): mesh::CutAlgorithm::BeltedTree
 ```
+
+In a deck, `MaxwellFactory` reads the algorithm from the `algorithm` key of the `homology`
+section (`to_cut_algorithm`).
 
 **Benchmark results:** none recorded — see README, "Cut Algorithms".
 
@@ -1117,60 +1222,78 @@ Topology::Topology(Mesh* aMesh);
 void run();                      // and run_on_enriched_mesh() for a reloaded .bfm mesh
 ```
 
-Performs mesh topology analysis:
-1. Categorizes blocks by domain type (phi/non-phi)
-2. Identifies interfaces between domains
-3. Classifies sidesets by type
-4. Builds connectivity maps
+Performs mesh topology analysis **on rank 0 only** (it does nothing on other ranks):
+1. Collects the block and sideset domain types into a map of `DomainType` to id lists
+2. Detects the sideset types from the neighboring blocks (`sideset_type()`)
+3. Selects the phi and non-phi blocks
+4. Selects the phi interface, phi boundary and phi periodic sidesets
+
+The block domain types must already be set: `run()` reads them, it does not infer them.
 
 ```cpp
-DomainType block_domain_type(const id_t aBlockID) const;
+void synchronize_maps();
 ```
 
-Returns domain type for a given block ID.
-
-**Domain types:**
-- `DomainType::Phi`: Region where scalar potential φ is solved
-- `DomainType::Conductor`: Conducting region (source of magnetic field)
-- `DomainType::Air`: Air/vacuum region
-- `DomainType::Boundary`: Domain boundary
-- `DomainType::Interface`: Interface between domains
-- `DomainType::Cut`: Cohomology cut surface
+Collective. Broadcasts the domain-type map from rank 0 to every rank, so that `groups()`
+works everywhere. It must be called before a `CutFactory` is constructed on a rank other than 0.
 
 ```cpp
-const Cell<id_t>& phi_block_ids() const;
-const Cell<id_t>& nonphi_block_ids() const;
+const Map< id_t, DomainType > & block_map() const;
+const Vector< id_t > & groups( const DomainType aType ) const;
+```
+
+`block_map()` maps a block id to its domain type. `groups( aType )` returns the ids recorded
+for one domain type; an absent type stops with `BELFEM_ERROR`.
+
+**Domain types** (`en_DomainType.hpp`, namespace `belfem`). The block types that matter here:
+- `DomainType::Air`, `DomainType::Buffer`, `DomainType::Ferro`: phi blocks (φ is solved)
+- `DomainType::Conductor`, `DomainType::Coil`: non-phi blocks
+- `DomainType::ThinShell`: thin-shell sidesets
+- `DomainType::Cut`: cut sidesets (set by the caller; see "Result Retrieval")
+
+The sideset interface types include `InterfaceCondAir`, `InterfaceCondFerro`,
+`InterfaceFerroAir`, `InterfaceAirCoil` and `InterfaceFerroCoil`.
+
+```cpp
+const Vector< id_t > & phi_block_ids() const;
+const Vector< id_t > & non_phi_block_ids() const;
 ```
 
 Returns lists of block IDs categorized by domain type.
 
 ```cpp
-const Cell<id_t>& interface_ids() const;
+const Vector< id_t > & phi_interface_ids() const;
+const Vector< id_t > & phi_boundary_ids() const;
+const Vector< id_t > & phi_periodic_ids() const;
 ```
 
-Returns IDs of interface sidesets.
+Returns sideset IDs. The interface list holds the `InterfaceCondAir`, `InterfaceCondFerro`,
+`InterfaceAirCoil`, `InterfaceFerroCoil` and `ThinShell` sidesets. The boundary list holds the
+air, buffer and ferro symmetry and antisymmetry sidesets and `BackgroundField`. The periodic
+list holds the periodic sidesets.
 
 ### Usage Pattern
 
 ```cpp
 #include "cl_Topology.hpp"
 
-mesh::Topology tTopology(aMesh);
+mesh::Topology tTopology( aMesh );
 tTopology.run();
 
-// Check domain types
-for (id_t blockID : tTopology.phi_block_ids()) {
-    message(InfoLevel::Default, "Block %lu: Phi domain", blockID);
+// on rank 0
+for ( id_t tID : tTopology.phi_block_ids() )
+{
+    message( InfoLevel::Default, "Block %lu: phi domain\n", ( long unsigned int ) tID );
 }
 
-// Identify interfaces
-for (id_t ssID : tTopology.interface_ids()) {
-    SideSet* interface = aMesh->sideset(ssID);
+for ( id_t tID : tTopology.phi_interface_ids() )
+{
+    mesh::SideSet * tInterface = aMesh->sideset( tID );
     // Apply interface conditions
 }
 
-// Query specific block
-if (tTopology.block_domain_type(5) == DomainType::Conductor) {
+if ( tTopology.block_map()( 5 ) == DomainType::Conductor )
+{
     // Apply source current density
 }
 ```
@@ -1190,62 +1313,62 @@ if (tTopology.block_domain_type(5) == DomainType::Conductor) {
 ```cpp
 class Protoshell
 {
-    Cell<id_t>   mSideSetIDs;       // Sidesets defining shell surfaces
-    Cell<id_t>   mTerminalIDs;      // Terminal connection points
-    Vector<real> mThicknesses;      // Shell thicknesses per layer
-    Cell<string> mMaterials;        // Material names
-    Cell<id_t>   mCurveIDs;         // Geometric curves
-
-    // ... methods ...
+    const id_t            mID ;
+    string                mLabel ;
+    Vector< id_t >        mSideSetIDs ;      // sidesets forming the shell surface
+    Vector< id_t >        mTerminals ;       // terminal ids
+    Vector< real >        mThicknesses ;     // layer thicknesses in m
+    Cell< string >        mMaterials ;       // material name per layer
+    Cell< mesh::Curve * > mSideCurves ;      // deleted by the mesh
+    Cell< mesh::Curve * > mTerminalCurves ;  // deleted by the mesh
+    bool                  mEdgeCoating ;     // 3D: create side connector walls
+    real                  mEdgeCoatingWidth ;
+    Vector< id_t >        mFlippedSideSets ; // sidesets whose facets are flipped
 };
 ```
 
 ### Key Methods
 
 ```cpp
-void add_sideset(const id_t aID);
-void add_terminal(const id_t aID);
-void add_thickness(const real aValue);
-void add_material(const string& aName);
-void add_curve(const id_t aID);
+Protoshell( const id_t aID );   // the only constructor
+
+Vector< id_t > & sidesets();
+Vector< id_t > & terminals();
+Vector< real > & thicknesses();
+Cell< string > & materials();
+Cell< mesh::Curve * > & side_curves();
+Cell< mesh::Curve * > & terminal_curves();
+string & label();
+bool & edge_coating();
+real & edge_coating_width();
+Vector< id_t > & flipped_sidesets();
+id_t id() const;
 ```
 
-Adds components to protoshell configuration.
-
-```cpp
-const Cell<id_t>& sideset_ids() const;
-const Cell<id_t>& terminal_ids() const;
-const Vector<real>& thicknesses() const;
-```
-
-Accessors for configuration data.
+There are no `add_*` methods. Each accessor returns a mutable reference to the container,
+which the caller fills directly. `MaxwellFactory::read_thin_shell_data()` builds the
+protoshells from the input deck. `CutFactory` creates the side and terminal curves.
 
 ### Usage Pattern
 
 ```cpp
 #include "cl_Protoshell.hpp"
 
-// Create protoshell configuration
-mesh::Protoshell* tShell = new mesh::Protoshell();
+Protoshell * tShell = new Protoshell( 1 );
 
-// Add sidesets defining shell surfaces
-tShell->add_sideset(101);  // Top surface
-tShell->add_sideset(102);  // Bottom surface
+tShell->sidesets()    = { 101, 102 };   // shell surface
+tShell->terminals()   = { 201, 202 };
+tShell->materials().push( "ybco" );
+tShell->thicknesses() = { 1e-6 };        // 1 micron
 
-// Add terminal connection points
-tShell->add_terminal(201);
-tShell->add_terminal(202);
-
-// Add material and thickness
-tShell->add_material("YBCO");
-tShell->add_thickness(1e-6);  // 1 micron
-
-// Pass to CutFactory
-Cell<Protoshell*> tProtoshells = {tShell};
-CutFactory tFactory(aMesh, &tTopology, tProtoshells, ...);
+// Pass to CutFactory (a non-const reference: the Cell must outlive the factory)
+Cell< Protoshell * > tProtoshells = { tShell };
+mesh::CutFactory tFactory( aMesh, &tTopology, tProtoshells,
+                           mesh::CutAlgorithm::PellikkaGeneralized, false );
 ```
 
-**⚠️ Memory Management:** CutFactory does **not** take ownership of Protoshell objects. Caller must delete them after use.
+**⚠️ Memory Management:** CutFactory does **not** take ownership of Protoshell objects. Caller
+must delete them after use (`MaxwellFactory` deletes its protoshells in its destructor).
 
 ---
 
@@ -1273,7 +1396,8 @@ CutProcessor::CutProcessor(
     const Vector<id_t>& aPhiBlocks,
     const Vector<id_t>& aNonPhiBlocks,
     const Vector<id_t>& aPhiInterfaces,
-    const Vector<id_t>& aShellBlocks
+    const Vector<id_t>& aPhiBoundaries,
+    const Vector<id_t>& aPhiPeriodic
 );
 ```
 
@@ -1283,7 +1407,12 @@ CutProcessor::CutProcessor(
 - `aPhiBlocks`: Block IDs for phi domains
 - `aNonPhiBlocks`: Block IDs for non-phi domains
 - `aPhiInterfaces`: Interface sideset IDs
-- `aShellBlocks`: Thin shell block IDs
+- `aPhiBoundaries`: phi boundary sideset IDs
+- `aPhiPeriodic`: phi periodic sideset IDs
+
+`CutFactory::compute_thin_cuts_and_duplicate_interface_nodes()` passes the five
+`Topology` lists in this order (`phi_block_ids()`, `non_phi_block_ids()`,
+`phi_interface_ids()`, `phi_boundary_ids()`, `phi_periodic_ids()`).
 
 ### Key Methods
 
@@ -1294,8 +1423,8 @@ Cell<Node*>& abstract_nodes();
 Returns abstract nodes created for cut DOFs.
 
 ```cpp
-id_t max_node_id() const;
-id_t max_sideset_id() const;
+id_t max_node_id();
+id_t max_sideset_id();
 ```
 
 Returns maximum IDs after node duplication and cut creation.
@@ -1307,7 +1436,7 @@ void save_debug_meshes();
 ```
 
 Exports one debug mesh per cut for visualization, as `cut_<index>.vtk`
-(`cl_CutProcessor.cpp:139-147`).
+(`CutProcessor::save_debug_meshes` in `cl_CutProcessor.cpp`).
 
 ### Internal Workflow
 
@@ -1330,9 +1459,7 @@ The cut processing pipeline (called internally by CutFactory):
 
 > **Design note — design of record, not wired in.** `manifold_filter_3d()` and `check_surface()`
 > do **not** exist anywhere in the tree, and no shipped code applies the three-phase scheme or the
-> metric thresholds below. Tarjan articulation detection exists only as an archived prototype,
-> `archive/graph/fn_Graph_tarjan.{hpp,cpp}`, which is outside the build — nothing in
-> `CMakeLists.txt` references `archive/`.
+> metric thresholds below. No Tarjan articulation-point implementation exists in the tree.
 >
 > **What runs today is `Cohomology::clean_spfa()` → `remove_cut_pockets()`**
 > (`cl_Cohomology.hpp:135,145`), applied after SPFA rectification. Both are **private** — they run
@@ -1504,7 +1631,8 @@ int tValue = tPhi( tC ) ;          // cochain evaluated on the chain
 
 ### CutData
 
-**Purpose:** Stores topology and metadata for a single cut.
+**Purpose:** Stores topology and metadata for a single cut (one H^1 generator). `CutData` is
+internal to `CutProcessor`, which creates one per generator.
 
 **File:** `cl_CutData.{hpp,cpp}`
 
@@ -1512,30 +1640,46 @@ int tValue = tPhi( tC ) ;          // cochain evaluated on the chain
 ```cpp
 class CutData
 {
-    Cell<id_t>           mEdgeIDs;        // Edges in thick cut
-    Cell<id_t>           mElementIDs;     // Elements adjacent to cut
-    Cell<Facet*>         mFacets;         // Facets forming thin cut
-    DynamicBitset        mEdgeBitset;     // Fast edge membership test
-    DynamicBitset        mNodeBitset;     // Fast node membership test
-    DomainType           mType;           // Cut classification
+    Mesh *            mMesh ;
+    Cochain *         mCochain ;            // the generator
+    const index_t     mIndex ;
+    const id_t        mID ;
+    const uint        mNumberOfCuts ;
+    Cell< Edge * >    mCohomologyEdges ;
+    DynamicBitset *   mCohomologyPlus ;     // edge index -> coefficient +1
+    DynamicBitset *   mCohomologyMinus ;    // edge index -> coefficient -1
+    Cell< Element * > mCutElements ;        // elements that contribute to this cut
+    Vector< int >     mCutCases ;
+    Map< id_t, int >  mCutCaseMap ;
+    Cell< Edge * >    mThinCutEdges ;       // thin cut, 2D
+    Cell< Face * >    mThinCutFaces ;       // thin cut, 3D
 };
 ```
 
 **Key methods:**
 ```cpp
-void determine_cut_case(Element* aElement);
+CutData( Mesh * aMesh, Cohomology * aCohomology, const index_t aCohomologyIndex );
+
+int  weight( const Edge * aEdge );                      // +1, -1 or 0, by edge index
+int  cut_case( const index_t aLocalElementIndex );      // case of the i-th cut element
+void collect_coefficients( const index_t aNumEdges );
+void collect_elements( const Vector< id_t > & aNonPhiDomains );
+void collect_edges();
+void add_thin_cut_sidesets_to_mesh( id_t & aMaxSideSetID, id_t & aMaxElementID );
+
+Cell< Element * > & elements();
+Cell< Edge * > &    cohomology_edges();
+Cell< Edge * > &    thin_cut_edges();
+Cell< Face * > &    thin_cut_faces();
+index_t             index() const;
+Mesh *              create_debug_mesh();
+void flag_nodes();
+void flag_all_elements();
+void unflag_all_elements();
 ```
 
-Determines how cut intersects an element (which faces are on cut).
-
-**Use case:** Guides node duplication and element relinking.
-
-```cpp
-bool node_is_on_cut(const id_t aNodeID) const;
-bool edge_is_on_cut(const id_t aEdgeID) const;
-```
-
-Fast membership tests using bitsets.
+The per-element cut case is computed by the private `determine_cut_case_2d()` and
+`determine_cut_case_3d()`. There is no public node or edge membership test.
 
 ---
 
@@ -1598,10 +1742,9 @@ Exports boundary/coboundary operators as integer matrices.
 `CutData::add_thin_cut_sidesets_to_mesh()`. Users do not call any of this
 directly; it runs inside `CutFactory::run()`.
 
-**Note:** The earlier `SideSetFactory` class and the
-`CutFactory::create_sidesets_2d/3d` methods that built sidesets directly from
-generator support were retired in 2026. `CutProcessor`/`CutData` is now the
-only sideset path.
+Each cut becomes one new sideset, added to the mesh with `Mesh::add_sideset()`. It is labelled
+`cut_` followed by a zero-padded number, and it keeps domain type `Default`.
+`CutProcessor`/`CutData` is the only sideset path.
 
 ---
 
@@ -1770,9 +1913,9 @@ Constructor parses hex-encoded bitset describing cut topology.
 bool test(const Node* aNode) const;
 ```
 
-Tests if node is on the cut surface.
-
-**Returns:** `true` if node index is set in cut bitset.
+Returns `mBitset->test( aNode->index() )`. `mBitset` is the set's cut-pattern bitset, one bit
+per cut (`aNumberOfCuts` bits), so the call reads bit number *node index* of the pattern. It
+is not a node-on-cut membership test. No code in `src/` calls it.
 
 ```cpp
 void create_duplicates(id_t& aMaxNodeID, Cell<Node*>& aAbstractNodes);
@@ -1811,11 +1954,6 @@ Accessors for internal data structures.
 mesh::CutSet tCutSet(
     aMesh, nodeOriginals, hexBitset, numCuts
 );
-
-// Test membership
-if (tCutSet.test(someNode)) {
-    // Node is on cut
-}
 
 // Create duplicates
 tCutSet.create_duplicates(maxNodeID, abstractNodes);
@@ -1941,11 +2079,13 @@ Cell<Cochain*>& cohom_gens = tTree.get_cohomology();
 
 **Selection in CutFactory:**
 ```cpp
-mesh::CutFactory tFactory(
-    aMesh, &tTopology, tProtoshells,
-    mesh::CutAlgorithm::BeltedTree  // Use belted tree algorithm
-);
+mesh::CutFactory tFactory( aMesh, &tTopology, tProtoshells,
+                           mesh::CutAlgorithm::BeltedTree, false );
 ```
+
+On the factory path, the belted tree takes the suggested H_1 generators from the terminal
+`Homology` (`set_terminals()`), not a homology computed from a complex. Without the suggested
+homology, `compute_cohomologies()` stops with `BELFEM_ERROR`.
 
 ---
 
@@ -1959,9 +2099,9 @@ mesh::CutFactory tFactory(
 
 The Smith Normal Form decomposes an integer matrix A into:
 ```
-Q * A * R = D
+Q⁻¹ * A * R = D        equivalently  A = Q * D * R⁻¹
 ```
-Where:
+Where (Kaczynski et al. 2004; `smithForm` returns Q, Q⁻¹, R, R⁻¹ as `Q`, `Q_`, `R`, `R_`):
 - Q, R are unimodular matrices (det = ±1)
 - D is diagonal matrix with d_1 | d_2 | ... | d_r (divisibility chain)
 - Diagonal entries d_i are **invariant factors**
@@ -1969,11 +2109,11 @@ Where:
 
 **Homology application:**
 
-Given boundary operator ∂_k : C_k → C_{k-1} with matrix representation A:
-- Ker(∂_k) dimension = n - r (n = number of k-chains)
-- Im(∂_{k+1}) dimension = r
-- H_k rank (Betti number) = dim(Ker) - dim(Im)
-- Torsion subgroup = {coefficients d_i where d_i > 1}
+Given boundary operators ∂_k : C_k → C_{k-1} (rank r_k) and ∂_{k+1} (rank r_{k+1}):
+- dim Ker(∂_k) = n_k - r_k (n_k = number of k-simplices = columns of ∂_k)
+- dim Im(∂_{k+1}) = r_{k+1}
+- H_k rank (Betti number) β_k = n_k - r_k - r_{k+1}
+- Torsion of H_k = the invariant factors d_i > 1 of ∂_{k+1}
 
 **Core functions:**
 
@@ -2011,13 +2151,18 @@ smithForm(Matrix<int>& aMat);
 
 **Main Smith Normal Form decomposition.**
 
-**Returns:**
+`aMat` is overwritten with the diagonal matrix D.
+
+**Returns** `( Q, Q_, R, R_, s, t )`, with Q⁻¹ · A · R = D:
 - Q: Left transformation matrix
 - Q_: Inverse of Q
 - R: Right transformation matrix
 - R_: Inverse of R
-- rank: Number of nonzero diagonal entries
-- Number of rows/columns
+- s: number of diagonal entries equal to 1 (unit invariant factors)
+- t: number of nonzero diagonal entries, i.e. the rank of A
+
+The torsion coefficients are the diagonal entries `D(i,i)` for `s <= i < t`. `Homology` and
+`Cohomology` read the generators from columns `s` onward of their basis matrix.
 
 **Algorithm:**
 1. Row reduction to echelon form
@@ -2045,9 +2190,11 @@ std::tuple<bool, uint, uint, int>
 checkForDivisibility(Matrix<int>& aMat, const uint k);
 ```
 
-Checks whether the pivot `B[k,k]` divides every entry of the trailing submatrix `B[k+1:end, k+1:end]` (Kaczynski et al., Smith-form step); returns the first offending `(row, col, quotient)`.
+Checks whether the pivot `B[k,k]` divides every entry of the trailing submatrix `B[k+1:end, k+1:end]` (1-based; Kaczynski et al. 2004, Smith-form step); returns the first offending `(row, col, quotient)`.
 
-**Returns:** (divisible, row_index, col_index, violating_entry)
+**Returns:** (divisible, row_index, col_index, quotient): the 1-based position of the first
+entry the pivot does not divide, and the truncated integer quotient of that entry by the
+pivot. A divisible matrix returns `(true, 0, 0, 0)`.
 
 ```cpp
 void partSmithForm(Matrix<int>& aMat, Matrix<int>& aQ, Matrix<int>& aQ_,
@@ -2072,12 +2219,11 @@ Solves integer linear system A*x = b using Smith decomposition.
 // Compute boundary matrix
 Cell<Matrix<int>> boundary = tComplex->createMatrixFromBoundaryMap();
 
-// Smith decomposition of ∂_k
-auto [Q, Q_, R, R_, rank, size] = smithForm(boundary[k]);
+// Smith decomposition of ∂_k (overwrites boundary( k ) with D)
+auto [ tQ, tQ_, tR, tR_, tUnitPivots, tRank ] = smithForm( boundary( k ) );
 
-// Extract homology generators
-// Ker(∂_k) = columns of R corresponding to zero diagonal entries
-// Betti_k = number of zero diagonal entries - rank(∂_{k+1})
+// Ker(∂_k) = span of the columns tRank ... n_k-1 of tR
+// Betti_k  = ( n_k - tRank ) - rank(∂_{k+1})
 ```
 
 **Performance notes:**
@@ -2089,7 +2235,8 @@ auto [Q, Q_, R, R_, rank, size] = smithForm(boundary[k]);
 
 **Elementary operations:**
 
-The following operations preserve equivalence and update transformation matrices:
+The following operations preserve equivalence and update transformation matrices. Each takes
+the matrix as its first argument, and the row and column indices are **1-based**:
 - `rowExchange(i, j)`: Swap rows i and j
 - `columnExchange(i, j)`: Swap columns i and j
 - `rowMultiply(i)`: Multiply row i by -1
@@ -2108,26 +2255,30 @@ The following operations preserve equivalence and update transformation matrices
 ```cpp
 #include "fn_Smith.hpp"
 
-// Boundary matrix for 2-dimensional complex
-Matrix<int> boundary2(4, 6);
-// ... populate with boundary coefficients ...
+// aDk  = ∂_k     : rows = (k-1)-simplices, columns = k-simplices
+// aDk1 = ∂_{k+1} : rows = k-simplices,     columns = (k+1)-simplices
+void betti_number( Matrix< int > & aDk, Matrix< int > & aDk1 )
+{
+    const uint tNk = aDk.n_cols();   // number of k-simplices
 
-// Compute Smith Normal Form
-auto [Q, Q_, R, R_, rank, dim] = smithForm(boundary2);
+    // both calls overwrite their input with D
+    auto [ tQ,  tQ_,  tR,  tR_,  tUnitPivots,  tRankK  ] = smithForm( aDk );
+    auto [ tQ1, tQ1_, tR1, tR1_, tUnitPivots1, tRankK1 ] = smithForm( aDk1 );
 
-// Betti number: number of zero diagonal entries
-uint betti = dim - rank;
+    const uint tBetti   = tNk - tRankK - tRankK1;    // free rank of H_k
+    const uint tTorsion = tRankK1 - tUnitPivots1;    // invariant factors > 1
 
-message(InfoLevel::Default, "H_2 Betti number: %u", betti);
+    message( InfoLevel::Default, "beta_k = %u, torsion factors: %u\n", tBetti, tTorsion );
 
-// Extract generators
-Matrix<int> generators(R.n_rows(), betti);
-uint col = 0;
-for (uint i = rank; i < dim; ++i) {
-    for (uint row = 0; row < R.n_rows(); ++row) {
-        generators(row, col) = R(row, i);
+    // Ker(∂_k): the last tNk - tRankK columns of tR
+    Matrix< int > tKernel( tR.n_rows(), tNk - tRankK );
+    for ( uint j = tRankK; j < tNk; ++j )
+    {
+        for ( uint i = 0; i < tR.n_rows(); ++i )
+        {
+            tKernel( i, j - tRankK ) = tR( i, j );
+        }
     }
-    col++;
 }
 ```
 
@@ -2149,25 +2300,33 @@ void generate_cuts(Mesh* aMesh)
     mesh::Topology tTopology(aMesh);
     tTopology.run();
 
+    tTopology.synchronize_maps();   // collective
+
     // 2. Create empty protoshell list (no thin shells)
-    Cell<mesh::Protoshell*> tProtoshells;
+    Cell< Protoshell * > tProtoshells;
 
     // 3. Create factory
-    mesh::CutFactory tFactory(
-        aMesh,
-        &tTopology,
-        tProtoshells,
-        mesh::CutAlgorithm::PellikkaGeneralized
-    );
+    mesh::CutFactory tFactory( aMesh, &tTopology, tProtoshells,
+                               mesh::CutAlgorithm::PellikkaGeneralized,
+                               false );
+    tFactory.set_periodicity( nullptr );
 
-    // 4. Run pipeline
+    // 4. Run pipeline (every rank)
     tFactory.run();
 
-    // 5. Process results
-    for (mesh::SideSet* cut : tFactory.cuts()) {
-        cut->set_domain_type(mesh::DomainType::Cut);
-        message(InfoLevel::Default, "Cut %lu: %u facets",
-                cut->id(), cut->number_of_facets());
+    // 5. Process results (master): the cut sidesets are labelled cut_<n>
+    if ( comm_rank() == 0 )
+    {
+        for ( mesh::SideSet * tSideSet : aMesh->sidesets() )
+        {
+            if ( tSideSet->label().rfind( "cut_", 0 ) == 0 )
+            {
+                tSideSet->set_domain_type( DomainType::Cut );
+                message( InfoLevel::Default, "Cut %lu: %lu facets\n",
+                         ( long unsigned int ) tSideSet->id(),
+                         ( long unsigned int ) tSideSet->number_of_facets() );
+            }
+        }
     }
 }
 ```
@@ -2177,35 +2336,37 @@ void generate_cuts(Mesh* aMesh)
 ### Pattern 2: Terminal-Driven Cuts
 
 ```cpp
-void generate_terminal_cuts(Mesh* aMesh)
+void generate_terminal_cuts( Mesh * aMesh )
 {
     // Topology analysis
-    mesh::Topology tTopology(aMesh);
+    mesh::Topology tTopology( aMesh );
     tTopology.run();
+    tTopology.synchronize_maps();
 
-    // Define terminals (node IDs)
-    Cell<Cell<id_t>> tTerminals;
-    tTerminals(0) = {101, 102, 103};  // Terminal 1
-    tTerminals(1) = {201, 202, 203};  // Terminal 2
+    Cell< Protoshell * > tProtoshells ;
+    mesh::CutFactory tFactory( aMesh, &tTopology, tProtoshells,
+                               mesh::CutAlgorithm::PellikkaGeneralized,
+                               false );
+    tFactory.set_periodicity( nullptr );
 
-    // Map to thin shell indices (0 = not on thin shell)
-    Cell<id_t> tShellIndices = {0, 0};
+    if ( comm_rank() == 0 )
+    {
+        // 3D, two bulk conductors: entry = { input sideset, output sideset }
+        Cell< Cell< id_t > > tTerminals = { { 101, 102 }, { 201, 202 } };
 
-    // Create factory
-    mesh::CutFactory tFactory(
-        aMesh, &tTopology, {},
-        mesh::CutAlgorithm::PellikkaGeneralized
-    );
+        // positions of thin-shell entries in tTerminals: none
+        Cell< id_t > tThinShellIndices ;
 
-    // Set terminals
-    tFactory.set_terminals(tTerminals, tShellIndices);
+        tFactory.set_terminals( tTerminals, tThinShellIndices );
+    }
 
-    // Run
     tFactory.run();
 
-    // Results
-    message(InfoLevel::Default, "Generated %lu cuts",
-            tFactory.cuts().size());
+    if ( comm_rank() == 0 )
+    {
+        message( InfoLevel::Default, "Generated %lu cuts\n",
+                 ( long unsigned int ) aMesh->abstract_nodes().size() );
+    }
 }
 ```
 
@@ -2242,76 +2403,58 @@ void compute_cohomology_groups(Mesh* aMesh)
 
 ### Pattern 4: Algorithm Performance Comparison
 
-```cpp
-void benchmark_algorithms(Mesh* aMesh)
-{
-    mesh::Topology tTopology(aMesh);
-    tTopology.run();
-
-    Cell<mesh::Protoshell*> tProtoshells;
-
-    CutAlgorithm algorithms[] = {
-        CutAlgorithm::PellikkaGeneralized,
-        CutAlgorithm::Pellikka,
-        CutAlgorithm::CCR,
-        CutAlgorithm::BeltedTree
-    };
-
-    for (auto alg : algorithms) {
-        Timer timer;
-
-        mesh::CutFactory tFactory(aMesh, &tTopology, tProtoshells, alg);
-        tFactory.run();
-
-        uint64_t elapsed = timer.stop();
-        message(InfoLevel::Default, "Algorithm %d: %lu ms, %lu cuts",
-                static_cast<uint>(alg), elapsed, tFactory.cuts().size());
-    }
-}
-```
+`run()` mutates the mesh (see "Mesh Mutation Contract"). The algorithms therefore cannot be
+compared by running several factories in a loop over one mesh: every algorithm after the first
+would see an already cut mesh. For a fair comparison, load a fresh mesh and build a fresh
+`Topology` for each algorithm, then time `run()` with a `Timer`. `run()` itself logs the time of its
+Smith normal form and thin-cut steps at `InfoLevel::Detailed`. No comparison of this kind is
+recorded (see README, "Cut Algorithms").
 
 ---
 
 ### Pattern 5: Thin Shell with Terminals
 
+The sidesets 101 and 102 must be `ThinShell` sidesets in the topology (their domain type
+decides that, not the protoshell). The ids in the terminal list must match the curves
+that `create_thin_shell_cuts()` builds; `MaxwellFactory` takes both from the deck. The
+example shows the call order and the container types.
+
 ```cpp
-void process_thin_shell_coil(Mesh* aMesh)
+void process_thin_shell_coil( Mesh * aMesh )
 {
-    // Topology
-    mesh::Topology tTopology(aMesh);
+    mesh::Topology tTopology( aMesh );
     tTopology.run();
+    tTopology.synchronize_maps();
 
-    // Protoshell configuration
-    mesh::Protoshell* tShell = new mesh::Protoshell();
-    tShell->add_sideset(101);  // Top surface
-    tShell->add_sideset(102);  // Bottom surface
-    tShell->add_terminal(201);  // Input terminal
-    tShell->add_terminal(202);  // Output terminal
-    tShell->add_material("YBCO");
-    tShell->add_thickness(1e-6);
+    // Protoshell configuration (filled through its accessors)
+    Protoshell * tShell = new Protoshell( 1 );
+    tShell->sidesets()    = { 101, 102 };
+    tShell->terminals()   = { 201, 202 };
+    tShell->materials().push( "ybco" );
+    tShell->thicknesses() = { 1e-6 };
 
-    Cell<mesh::Protoshell*> tProtoshells = {tShell};
+    Cell< Protoshell * > tProtoshells = { tShell };
 
-    // Terminals
-    Cell<Cell<id_t>> tTerminals = {{301, 302}, {401, 402}};
-    Cell<id_t> tShellIndices = {0, 0};  // Both on shell 0
+    mesh::CutFactory tFactory( aMesh, &tTopology, tProtoshells,
+                               mesh::CutAlgorithm::PellikkaGeneralized,
+                               false );
+    tFactory.set_periodicity( nullptr );
 
-    // Factory
-    mesh::CutFactory tFactory(
-        aMesh, &tTopology, tProtoshells,
-        mesh::CutAlgorithm::PellikkaGeneralized
-    );
+    if ( comm_rank() == 0 )
+    {
+        // thin-shell preprocessing: run() does not do it
+        tFactory.create_thin_shell_cuts();
 
-    tFactory.set_terminals(tTerminals, tShellIndices);
+        // entry 0: a bulk conductor (sideset ids); entry 1: the thin shell (curve ids)
+        Cell< Cell< id_t > > tTerminals = { { 301, 302 }, { 7, 8 } };
+        Cell< id_t > tThinShellIndices = { 1 };   // position of the thin-shell entry
+        tFactory.set_terminals( tTerminals, tThinShellIndices );
+    }
+
     tFactory.run();
 
-    // Cleanup
+    // the factory holds a reference to tProtoshells: delete after the factory is done
     delete tShell;
-
-    // Use results
-    for (mesh::SideSet* cut : tFactory.cuts()) {
-        // Apply jump conditions in FEM
-    }
 }
 ```
 
@@ -2330,19 +2473,20 @@ void process_thin_shell_coil(Mesh* aMesh)
    ```cpp
    // PellikkaGeneralized may create complex cuts
    // Try original Pellikka for cleaner results
-   CutFactory tFactory(..., CutAlgorithm::Pellikka);
+   mesh::CutFactory tFactory( aMesh, &tTopology, tProtoshells,
+                              mesh::CutAlgorithm::Pellikka, false );
    ```
 
 2. **Enable debug output:**
    ```cpp
    tFactory.run();
-   // save_debug_meshes() is a member of CutProcessor (public,
-   // cl_CutProcessor.hpp:116), not of CutFactory. CutFactory calls it
-   // automatically in debug builds (cl_CutFactory.cpp:477-479, compiled out
-   // under NDEBUG); it writes one file per cut: cut_<index>.vtk
+   // save_debug_meshes() is a public member of CutProcessor, not of CutFactory.
+   // CutFactory calls it in debug builds only, inside
+   // compute_thin_cuts_and_duplicate_interface_nodes() (compiled out under NDEBUG);
+   // it writes one file per cut: cut_<index>.vtk
    ```
-   For curve meshes, `CutFactory::save_curve_debug_meshes()` is public
-   (`cl_CutFactory.hpp:184`) and writes `curve_<id>.vtk`. Inspect either family in ParaView.
+   For curve meshes, `CutFactory::save_curve_debug_meshes()` is public and writes
+   `curve_<id>.vtk`. Inspect either family in ParaView.
 
 3. **Inspect the cleanup that actually runs:**
    - The shipped path is `Cohomology::clean_spfa()` → `remove_cut_pockets()`
@@ -2364,10 +2508,11 @@ void process_thin_shell_coil(Mesh* aMesh)
 mesh::Topology tTopology(aMesh);
 tTopology.run();
 
-message(InfoLevel::Default, "Phi blocks: %lu",
-        tTopology.phi_block_ids().size());
-message(InfoLevel::Default, "Interfaces: %lu",
-        tTopology.interface_ids().size());
+// on rank 0
+message( InfoLevel::Default, "Phi blocks: %lu\n",
+         ( long unsigned int ) tTopology.phi_block_ids().length() );
+message( InfoLevel::Default, "Interfaces: %lu\n",
+         ( long unsigned int ) tTopology.phi_interface_ids().length() );
 ```
 
 **Solution:**
@@ -2386,13 +2531,14 @@ message(InfoLevel::Default, "Interfaces: %lu",
 **Solution:**
 ```cpp
 // Switch to generalized Pellikka
-CutFactory tFactory(..., CutAlgorithm::PellikkaGeneralized);
+mesh::CutFactory tFactory( aMesh, &tTopology, tProtoshells,
+                           mesh::CutAlgorithm::PellikkaGeneralized, false );
 ```
 
 If still slow:
 - **Profile:** Use `Profiler` to identify hotspot
 - **Mesh quality:** Simplify mesh if possible (remove small features)
-- **MPI:** Current implementation is serial (future parallelization planned)
+- **MPI:** The cohomology runs on the master rank only; more ranks do not speed it up
 
 ---
 
@@ -2402,10 +2548,8 @@ If still slow:
 
 **Cause:** No cuts were generated (topology is simply-connected).
 
-**Diagnosis:**
-```cpp
-message(InfoLevel::Default, "Num cuts: %lu", tFactory.cuts().size());
-```
+**Diagnosis:** count the `cut_<n>` sidesets in `Mesh::sidesets()` on the master.
+`tFactory.cuts()` is always empty and tells you nothing (see "Result Retrieval").
 
 **Solution:**
 - **Check mesh:** Verify domain is multiply-connected (e.g., toroid, solenoid)
@@ -2427,12 +2571,10 @@ message(InfoLevel::Default, "Num cuts: %lu", tFactory.cuts().size());
    // Check edge orientations in ParaView
    ```
 
-2. **Check abstract node count:**
-   ```cpp
-   // Should match number of cuts
-   BELFEM_ERROR(tFactory.abstract_nodes().size() == tFactory.cuts().size(),
-                "Abstract node count mismatch");
-   ```
+2. **Check abstract node count:** `CutProcessor` creates one abstract node and one `cut_<n>`
+   sideset per H^1 generator. Compare `tFactory.abstract_nodes().size()` with the number of
+   `cut_<n>` sidesets in `Mesh::sidesets()`, not with `tFactory.cuts().size()`, which is
+   always zero.
 
 **Solution:**
 - **Orientation:** Use `Homology::generators_orientation()` to ensure consistent direction
@@ -2449,48 +2591,54 @@ message(InfoLevel::Default, "Num cuts: %lu", tFactory.cuts().size());
 #include "cl_CutFactory.hpp"
 #include "cl_Topology.hpp"
 
-int main()
+// called on every rank, after MPI initialization
+void toroidal_magnet()
 {
-    // Load toroidal mesh
-    Mesh* tMesh = new Mesh("toroid.exo");
+    // every rank: the master reads the file, the others get an empty mesh
+    Mesh * tMesh = new Mesh( "toroid.exo" );
 
-    // Analyze topology
-    mesh::Topology tTopology(tMesh);
+    if ( comm_rank() == 0 )
+    {
+        tMesh->block( 1 )->set_domain_type( DomainType::Air );
+        tMesh->block( 2 )->set_domain_type( DomainType::Conductor );
+    }
+
+    mesh::Topology tTopology( tMesh );
     tTopology.run();
+    tTopology.synchronize_maps();
 
     // Create factory (no thin shells)
-    mesh::CutFactory tFactory(
-        tMesh,
-        &tTopology,
-        {},  // Empty protoshells
-        mesh::CutAlgorithm::PellikkaGeneralized
-    );
+    Cell< Protoshell * > tProtoshells ;
+    mesh::CutFactory tFactory( tMesh, &tTopology, tProtoshells,
+                               mesh::CutAlgorithm::PellikkaGeneralized,
+                               false );
+    tFactory.set_periodicity( nullptr );
 
     // Generate cuts
-    Timer timer;
+    Timer tTimer;
     tFactory.run();
-    uint64_t elapsed = timer.stop();
+    const uint64_t tElapsed = tTimer.stop();
 
-    message(InfoLevel::Default,
-            "Generated %lu cuts in %lu ms",
-            tFactory.cuts().size(), elapsed);
+    if ( comm_rank() == 0 )
+    {
+        message( InfoLevel::Default, "Generated %lu cuts in %lu ms\n",
+                 ( long unsigned int ) tMesh->abstract_nodes().size(),
+                 ( long unsigned int ) tElapsed );
 
-    // Apply to FEM
-    for (mesh::SideSet* cut : tFactory.cuts()) {
-        cut->set_domain_type(mesh::DomainType::Cut);
+        for ( mesh::SideSet * tSideSet : tMesh->sidesets() )
+        {
+            if ( tSideSet->label().rfind( "cut_", 0 ) == 0 )
+            {
+                tSideSet->set_domain_type( DomainType::Cut );
+            }
+        }
     }
 
-    // Create DOF manager
-    fem::DofManager* tDofManager = new fem::DofManager(tMesh);
-    for (mesh::Node* node : tFactory.abstract_nodes()) {
-        tDofManager->add_abstract_dof(node, "phi");
-    }
+    // FEM: hand tMesh->abstract_nodes() to the equation (IWG::set_abstract_nodes),
+    // then build the Kernel, which partitions and distributes the mesh.
+    // MaxwellFactory::create_magnetic_kernel() is the reference for this sequence.
 
-    // ... FEM assembly and solve ...
-
-    delete tDofManager;
     delete tMesh;
-    return 0;
 }
 ```
 
@@ -2503,47 +2651,47 @@ int main()
 #include "cl_Protoshell.hpp"
 #include "cl_Topology.hpp"
 
-int main()
+// called on every rank; block domain types are assumed set on the master,
+// and sideset 101 is a ThinShell sideset
+void superconducting_cable( Mesh * aMesh )
 {
-    Mesh* tMesh = new Mesh("cable.h5");
-
-    // Topology
-    mesh::Topology tTopology(tMesh);
+    mesh::Topology tTopology( aMesh );
     tTopology.run();
+    tTopology.synchronize_maps();
 
     // Protoshell for thin shell approximation
-    mesh::Protoshell* tShell = new mesh::Protoshell();
-    tShell->add_sideset(101);  // Cable surface
-    tShell->add_terminal(201);  // Input
-    tShell->add_terminal(202);  // Output
-    tShell->add_material("BSCCO");
-    tShell->add_thickness(0.2e-3);  // 0.2 mm
+    Protoshell * tShell = new Protoshell( 1 );
+    tShell->sidesets()    = { 101 };      // cable surface
+    tShell->terminals()   = { 201, 202 };
+    tShell->materials().push( "bscco" );
+    tShell->thicknesses() = { 0.2e-3 };   // 0.2 mm
 
-    Cell<mesh::Protoshell*> tProtoshells = {tShell};
+    Cell< Protoshell * > tProtoshells = { tShell };
 
-    // Terminals
-    Cell<Cell<id_t>> tTerminals;
-    tTerminals(0) = {1001, 1002, 1003};  // Input terminal nodes
-    tTerminals(1) = {2001, 2002, 2003};  // Output terminal nodes
-    Cell<id_t> tShellIndices = {0, 0};
+    mesh::CutFactory tFactory( aMesh, &tTopology, tProtoshells,
+                               mesh::CutAlgorithm::PellikkaGeneralized,
+                               false );
+    tFactory.set_periodicity( nullptr );
 
-    // Factory
-    mesh::CutFactory tFactory(
-        tMesh, &tTopology, tProtoshells,
-        mesh::CutAlgorithm::PellikkaGeneralized
-    );
-    tFactory.set_terminals(tTerminals, tShellIndices);
+    if ( comm_rank() == 0 )
+    {
+        tFactory.create_thin_shell_cuts();
+
+        // one thin-shell entry: input curve 7, output curve 8
+        Cell< Cell< id_t > > tTerminals = { { 7, 8 } };
+        Cell< id_t > tThinShellIndices = { 0 };
+        tFactory.set_terminals( tTerminals, tThinShellIndices );
+    }
+
     tFactory.run();
 
-    // Results
-    message(InfoLevel::Default, "Cuts: %lu", tFactory.cuts().size());
-    message(InfoLevel::Default, "Abstract DOFs: %lu",
-            tFactory.abstract_nodes().size());
+    if ( comm_rank() == 0 )
+    {
+        message( InfoLevel::Default, "Abstract DOFs (= cuts): %lu\n",
+                 ( long unsigned int ) aMesh->abstract_nodes().size() );
+    }
 
-    // Cleanup
     delete tShell;
-    delete tMesh;
-    return 0;
 }
 ```
 
@@ -2591,7 +2739,6 @@ void analyze_cohomology_performance(Mesh* aMesh)
     message(InfoLevel::Default, "  H^2: %lu", tCohomology.get_Generators()( 2 ).size());
 
     delete tComplex;
-    delete tFlagged;
 }
 ```
 
@@ -2623,9 +2770,8 @@ The `homology` module provides a complete computational topology toolkit for fin
 ### Performance Best Practices
 
 - Use `PellikkaGeneralized` (the production default; no timing comparison is recorded)
-- Enable debug output only when troubleshooting (overhead ~10%)
+- Debug builds write one `cut_<index>.vtk` per cut; release builds do not
 - Pre-filter mesh to remove unnecessary entities before cohomology computation
-- For very large meshes (>10^7 elements), consider domain decomposition (future feature)
 
 ### Further Reading
 
@@ -2637,5 +2783,5 @@ The `homology` module provides a complete computational topology toolkit for fin
 ---
 
 **Document version:** 1.0
-**Last updated:** 2026-08-31
+**Last updated:** 2026-10-22
 **Author:** Claude Code (claude.ai/code)
