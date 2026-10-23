@@ -149,6 +149,13 @@ namespace belfem
             const input::Section * tMatSection = aSection->section( d ) ;
             string tMatLabel = tMatSection->type();
 
+            // "buffer" is one of Magnesia's builtin type names ( builtin_name ),
+            // so a section labelled "buffer" is reserved for Magnesia. Whether
+            // a thin-shell layer becomes DomainType::Buffer is decided by its
+            // material lacking the rho property ( create_buffers ), not by this
+            // label
+            const bool tIsBuffer = string_to_lower( tMatLabel ) == "buffer" ;
+
             std::unique_ptr< Material > tMat ;
 
             // Ferromagnetic material: pull a named B-H curve from an HDF5
@@ -158,6 +165,10 @@ namespace belfem
             // optional 'bhfile' key overrides the default database path.
             if ( tMatSection->key_exists( "curve" ) )
             {
+                BELFEM_ERROR( ! tIsBuffer,
+                    "Material name 'buffer' is reserved for the builtin Magnesia; "
+                    "it cannot carry a b-h curve." );
+
                 // the curve always builds an iron. A 'builtin' value is
                 // tolerated when it cannot contradict that: the valueless
                 // marker ( stored as "true" ), an iron alias, or a name the
@@ -229,6 +240,11 @@ namespace belfem
             }
             if ( tIsBuiltin )
             {
+                BELFEM_ERROR( ! tIsBuffer
+                              || builtin_name( string_to_lower( tMatType ) ) == BuiltinName::Magnesia,
+                    "Material name 'buffer' is reserved for the builtin Magnesia; "
+                    "it cannot build the builtin '%s'.", tMatType.c_str() );
+
                 // RRR must be known at construction: an Alloy derives rho_0
                 // from it in its constructor and does not override set_RRR()
                 // ( the base version aborts ). The pure
@@ -328,17 +344,10 @@ namespace belfem
             }
             else if (tMatSection->section_exists( "usermat" ))
             {
-                // The label "buffer" is reserved: when it appears as a layer
-                // material name in a thin-shell stack, ThinShellFactory tags
-                // the corresponding block as DomainType::Buffer and routes
-                // the magnetic kernel through the scalar-phi formulation
-                // (no diffusion). Allowing a user-defined or builtin material
-                // to also register under this name would silently override
-                // that special handling, so we reject it at the source.
-                BELFEM_ERROR( string_to_lower( tMatLabel ) != "buffer",
-                    "Material name 'buffer' is reserved for the thin-shell "
-                    "phi-formulation buffer layer and cannot be used as a "
-                    "user-defined or builtin material label." );
+                // reserved for Magnesia, see tIsBuffer above
+                BELFEM_ERROR( ! tIsBuffer,
+                    "Material name 'buffer' is reserved for the builtin Magnesia "
+                    "and cannot be used as a user-defined material label." );
 
                 const input::Section * tUserMatSection = tMatSection->section("usermat") ;
                 if ( tUserMatSection->key_exists( "file" ) )

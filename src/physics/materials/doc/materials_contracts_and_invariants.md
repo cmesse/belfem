@@ -185,11 +185,13 @@ mid-simulation `set_RRR` would also try to rebuild the lookup table collectively
 mat->set_user_defined_polynomial( MaterialProperty::lambda, std::vector< real >{ 0.01, 50.0 } );
 ```
 
-### 15. The label `buffer` is reserved
+### 15. The material name `buffer` is reserved
 
-> The factory rejects a user-defined (`usermat`) material registered under `buffer`; the
-> label names the thin-shell φ-formulation buffer layer and resolves to `Magnesia`. A built-in
-> section with that label is not checked and also resolves to `Magnesia`.
+> The material name `buffer` is reserved for builtin `Magnesia`, because `buffer` is one of
+> Magnesia's builtin type names. A material section of that name must build Magnesia: the factory rejects a
+> `usermat`, a b-h `curve`, or any builtin other than Magnesia. The name does not determine
+> which thin-shell layers become buffer layers; `ThinShellFactory::create_buffers` tags layers
+> whose materials do not have the `rho` property.
 
 ### 16. Thread safety is a design intent, not a verified contract
 

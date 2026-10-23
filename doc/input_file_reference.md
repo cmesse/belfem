@@ -510,11 +510,18 @@ an unknown name and passes. `builtin` is the only extra key tolerated.
    `hastelloy`/`hastelloyc276`, `ybco`, `magnesia`/`mgo`/`buffer`,
    `iron`/`ferro`/`fe`, or an alloy formula (`Sn40Pb60`). Unknown → fatal.
 3. **User material** — `usermat { file : lib.so ; label : name ; }` loads a
-   user-material plugin. The name `buffer` is reserved (fatal).
+   user-material plugin.
 4. None of the three → fatal, naming the material and the three shapes it
    could have selected. A `custom { }` subsection — the name `usermat` carried
    until 2026-08-29 — is refused by name with a message pointing at the rename;
    it is a diagnostic, not an alias, and does not load a material.
+
+The material name `buffer` is reserved for builtin `magnesia`, because
+`buffer` is one of Magnesia's builtin type names. A material section of that
+name must build Magnesia, whichever builtin form selects it. Under that name, a
+`curve`, a `usermat`, or a builtin other than `magnesia`/`mgo`/`buffer` is
+fatal. The name does not make a thin-shell layer a buffer layer: `ThinShellFactory::create_buffers` tags a layer
+whose material does not have the `rho` property, whatever its name.
 
 **Where a material file is looked for.** Every path-valued key in this section
 — `bhfile`, the HTS `file`, `defect { file }`, `heating { file }`, and `usermat { file }` — is
