@@ -197,11 +197,12 @@ The `nonfree/` directory is a separate, non-open-source repository (boundary lay
 debug/release × Armadillo/Blaze matrix, so `make check` on a workstation is no longer the only thing
 that ever executes the suite. `make check` includes the Tier 2 MPI suites (`commmpi`, `sparsempi`),
 each registered at 2 and 4 ranks; the runner has two cores, so the 4-rank cases run oversubscribed,
-which is a correctness run and not a timing one. Four limits still hold. The pipeline definition,
+which is a correctness run and not a timing one. Since 2026-09-18 the job configures with
+`-DUSE_GASMODELS=ON`, so the gas-table and gas-model tests, most of the physics test code by line
+count, are built and in the `check` fan-out; whether they fit the job's 1 h timeout at `-j2` is for
+the scheduled runs to show (DR-157). Three limits still hold. The pipeline definition,
 `.gitlab-ci.yml` at the repository root, runs only on a scheduled or manually started pipeline and on
-a runner tagged `belfem-local`, so a clone carries the definition but cannot reproduce the run. The
-job configures without `-DUSE_GASMODELS=ON`, so the gas-table and gas-model tests, most of the
-physics test code by line count, have never run there (DR-157). There is still no sanitizer
+a runner tagged `belfem-local`, so a clone carries the definition but cannot reproduce the run. There is still no sanitizer
 configuration (`-fsanitize` appears in no CMake file), and Valgrind is run by hand. And a nightly
 that passes says only that the suite passed: of 539 cataloged incidents (the locked catalog; addenda run to INC-564), 38 were closed by adding a test, so the
 suite is not yet what finds our defects. `USE_TEST` defaults ON, so a fresh tree builds it.
