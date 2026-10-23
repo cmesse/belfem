@@ -107,7 +107,7 @@ The `graph` module provides graph algorithms and partitioning tools for finite e
 
 The graph module follows most of BELFEM's coding philosophy (see `doc/coding_philosophy.md`):
 
-- **Manual memory management**: Vertex adjacency lists use raw pointers (`malloc`/`free`) for contiguous storage. `Vertex` does not declare or delete its copy and move members, so it does not meet the philosophy's rule for classes that own raw memory; see [Memory Management](#memory-management)
+- **Manual memory management**: Vertex adjacency lists use raw pointers (`malloc`/`free`) for contiguous storage. `Vertex` deletes its copy and move constructors and assignments, so the adjacency block has exactly one owner; see [Memory Management](#memory-management)
 - **Zero-overhead abstraction**: Graph algorithms operate directly on `Cell<Vertex*>` with minimal indirection
 - **External library isolation**: Conditional compilation (`#ifdef BELFEM_METIS`) allows building without external dependencies
 - **Prefix naming**: Temporary variables `t`, arguments `a`, members `m` (Vertex class)
@@ -277,9 +277,10 @@ Vertex::~Vertex() {
 - **Exact sizing**: No over-allocation like `std::vector` growth strategy
 - **Zero overhead**: No smart pointer bookkeeping or atomic reference counting
 
-**Do not copy a `Vertex`.** The class declares a destructor but no copy or move constructor or
-assignment, and it does not delete them. An implicit copy duplicates the `mVertices` pointer, so
-both destructors then free the same block. Hold vertices by pointer, as `Graph` does.
+**A `Vertex` cannot be copied or moved.** The destructor frees `mVertices`, so the class deletes
+its copy and move constructors and assignments (`cl_Graph_Vertex.hpp`). Derived classes likewise
+cannot be copied or moved: copying a `Dof`, `Component`, `ElectricNode` or mesh entity is a
+compile error. Hold vertices by pointer, as `Graph` does.
 
 ### Typical Construction Pattern
 
