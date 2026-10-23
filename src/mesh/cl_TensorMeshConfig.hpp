@@ -12,6 +12,9 @@
 #ifndef BELFEM_CL_TENSORMESHCONFIG_HPP
 #define BELFEM_CL_TENSORMESHCONFIG_HPP
 
+#include <algorithm>
+#include <cmath>
+
 #include "typedefs.hpp"
 #include "cl_Vector.hpp"
 #include "Mesh_Enums.hpp"
@@ -209,8 +212,10 @@ namespace belfem
         {
             BELFEM_ASSERT( i < mDimension, "Invalid dimension : %u", ( unsigned int ) i );
 
-            return std::clamp( ( index_t ) ( ( x - mOrigin( i ) ) * mInvElementSteps( i ) ),
-                ( index_t ) 0, mNumElementsPerDim( i ) -1);
+            // clamped as a real: converting a value that does not fit in
+            // index_t, such as one element or more below the origin, is undefined
+            const real tS = std::floor( ( x - mOrigin( i ) ) * mInvElementSteps( i ) );
+            return ( index_t ) std::clamp( tS, 0.0, ( real ) ( mNumElementsPerDim( i ) - 1 ) );
         }
     private:
 
