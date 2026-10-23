@@ -42,7 +42,7 @@ namespace belfem
             id_t mMaxID = 0 ;
 
             Topology * mTopology ;
-            PeriodicityFactory * mPeriodicFactory ;
+            PeriodicityFactory * mPeriodicFactory = nullptr ;
             const Vector< id_t > & mThinShellSidesets ;
 
             Cell< Node * > & mAbstractNodes ;
