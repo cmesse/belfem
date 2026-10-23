@@ -20,13 +20,13 @@ The abstraction allows switching backends at **compile time** without changing u
 
 1. **Backend Independence**: Write once, compile with either Armadillo or Blaze
 2. **Expression Templates**: Lazy evaluation for complex expressions (e.g., `A*B + C*D`)
-3. **Bounds Checking**: Debug-mode assertions (zero overhead in release)
+3. **Bounds Checking**: Debug-mode assertions (`BELFEM_ASSERT`, compiled out in release; Armadillo keeps its own bounds check, see pitfall 5)
 4. **Operator Overloading**: Natural mathematical syntax (`+`, `-`, `*`, `/`)
 5. **Direct Backend Access**: Escape hatch via `vector_data()` / `matrix_data()`
 
 > **Critical: Backend Selection**
 > Backend is chosen at **compile time**. The CMake cache options are
-> `USE_MATRIX_ARMADILLO` and `USE_MATRIX_BLAZE` (`CMakeLists.txt:81-87`); the
+> `USE_MATRIX_ARMADILLO` and `USE_MATRIX_BLAZE` (see `option( USE_MATRIX_ARMADILLO` in `CMakeLists.txt`); the
 > `BELFEM_ARMADILLO` / `BELFEM_BLAZE` names are the **generated compile defines**
 > (`config/linalg/config_matrix.cmake`), so `-DBELFEM_ARMADILLO=ON` on the command line does
 > nothing. The default is **Armadillo everywhere except Apple, where it is Blaze**.
@@ -43,28 +43,35 @@ Vector<real> v(3);
 arma::vec armadillo_vec = v;  // ERROR: type mismatch
 
 // Correct:
-arma::vec armadillo_vec = v.vector_data();  // Explicit conversion
+arma::vec armadillo_vec = v.vector_data();  // Explicit conversion: a COPY
 ```
 
-**Solution:** Use `.vector_data()` or `.matrix_data()` for backend interop.
+**Solution:** Use `.vector_data()` or `.matrix_data()` for backend interop. Constructing an
+`arma::vec` from `vector_data()` creates a copy, so changes to one object do not affect the
+other. To access the wrapped data directly, bind a reference:
+`arma::Mat<real> & tData = v.vector_data();` (see Backend Interoperability below).
 
 ### 2. **Element-wise vs. Matrix Multiplication**
 
 ```cpp
-Matrix<real> A(3, 3), B(3, 3);
-Matrix<real> C = A * B;   // Matrix multiplication
+Matrix<real> A(3, 3, 0.0), B(3, 3, 0.0);
+Matrix<real> C( A * B );  // Matrix multiplication
 // For element-wise: use backend-specific syntax or implement wrapper
 ```
 
 **Solution:** `*` is matrix multiplication. For element-wise, access backend directly.
 
-### 3. **Initializer List Ambiguity**
+### 3. **Initializer List Ambiguity, and Size-Only Construction**
 
 ```cpp
 Vector<real> v = {3};     // Single element: v = [3]
-Vector<real> w(3);        // Three zeros: w = [0, 0, 0]
+Vector<real> w(3);        // Three entries; contents depend on the backend (see below)
 Vector<real> u = {1,2,3}; // Three elements: u = [1, 2, 3]
 ```
+
+The size-only constructors `Vector<real>(n)` and `Matrix<real>(n, m)` zero-fill under
+Armadillo but leave the entries **uninitialized** under Blaze, the default backend on Apple.
+Do not read the entries before writing them.
 
 **Solution:** Use explicit syntax: `Vector<real> v(3, 0.0)` for size+fill.
 
@@ -81,10 +88,15 @@ A.set_size(5, 5);         // row is now INVALID (dangling reference)
 ### 5. **Debug vs. Release Behavior**
 
 ```cpp
-Vector<real> v(5);
-real x = v(10);  // Debug: Assertion "Index 10 out of bounds"
-                 // Release: Undefined behavior
+Vector<real> v(5, 0.0);
+real x = v(10);  // Debug: BELFEM_ASSERT fails
+                 // Release, Blaze: undefined behavior
+                 // Release, Armadillo: throws std::out_of_range
 ```
+
+`BELFEM_ASSERT` is compiled out of release builds. Armadillo still checks bounds there,
+because BELFEM leaves its conformance checks enabled (`ARMA_NO_DEBUG` is not defined).
+Blaze does not check bounds in release.
 
 **Solution:** Test in both modes. Use static analysis for release builds.
 
@@ -106,7 +118,7 @@ Template class wrapping backend column vector (stored as n×1 matrix in Armadill
 // Empty vector
 Vector<real> v;
 
-// Size only (uninitialized)
+// Size only (zero-filled under Armadillo, uninitialized under Blaze)
 Vector<real> v(10);
 
 // Size + fill value
@@ -146,7 +158,7 @@ v.fill(1.0);                // Fill with value
 #### Arithmetic Operations
 
 ```cpp
-Vector<real> a(3), b(3), c(3);
+Vector<real> a(3, 0.0), b(3, 0.0), c(3, 0.0);
 
 // Assignment
 a = 1.0;                    // Fill with scalar
@@ -239,7 +251,7 @@ Template class wrapping backend dense matrix (column-major in both backends).
 // Empty matrix
 Matrix<real> A;
 
-// Size only (uninitialized)
+// Size only (zero-filled under Armadillo, uninitialized under Blaze)
 Matrix<real> A(3, 3);
 
 // Size + fill value
@@ -286,10 +298,11 @@ A.set_size(5, 5, 0.0);        // Resize + fill
 A.fill(1.0);                  // Fill with value
 ```
 
-> **Do not size a raw transfer from `capacity()`.** Under Blaze the columns are padded for SIMD
-> alignment, so `spacing()` — the inter-column stride — can exceed `n_rows()` and `capacity()`
-> is the padded total (`cl_BZ_Matrix.hpp:254-269`). For an MPI send of a whole matrix the
-> payload length is **`spacing() * n_cols()`**. Element access always goes through `A(i, j)`;
+> **Do not size a raw transfer from `capacity()`.** Under Blaze, columns are padded for SIMD
+> alignment, so `spacing()` — the inter-column stride — can exceed `n_rows()`. `capacity()` is
+> the allocated element count and may exceed `spacing() * n_cols()` after a resize shrinks
+> the matrix (`capacity()` and `spacing()` in `blaze/cl_BZ_Matrix.hpp`). For an MPI send of
+> the whole matrix, the payload length is **`spacing() * n_cols()`**. Element access always goes through `A(i, j)`;
 > never compute an offset from `data()`.
 
 #### Setting Rows/Columns
@@ -305,7 +318,7 @@ A.set_col(1, v);              // Set column 1 to v
 #### Arithmetic Operations
 
 ```cpp
-Matrix<real> A(3, 3), B(3, 3), C(3, 3);
+Matrix<real> A(3, 3, 0.0), B(3, 3, 0.0), C(3, 3, 0.0);
 
 // Assignment
 A = 1.0;                      // Fill with scalar
@@ -324,8 +337,10 @@ C = A + B;                    // Element-wise addition
 C = A - B;                    // Element-wise subtraction
 C = A * B;                    // Matrix multiplication
 C = A * 2.0;                  // Scalar multiplication
-C = A / 2.0;                  // Scalar division
 ```
+
+`Matrix` has no binary `operator/`. Divide by a scalar in place with `A /= 2.0`, or write
+`C = A * 0.5`. (`Vector` does have `c = a / 2.0`.)
 
 #### Matrix-Vector Multiplication
 
@@ -370,6 +385,12 @@ Vector<real> b = {4, 5, 6};
 real result = dot(a, b);    // 1*4 + 2*5 + 3*6 = 32
 ```
 
+`fn_dot.hpp` also declares `dot(Matrix, Vector)` and `dot(Vector, Matrix)`. These are **not**
+matrix-vector products: they read both operands as flat element sequences, return one
+number, and require the matrix and the vector to hold the same number of elements. They
+compile under Armadillo but not under Blaze, where `blaze::dot` has no matrix-vector form.
+Use `A * x` for a matrix-vector product.
+
 **File:** `fn_dot.hpp`
 
 ---
@@ -379,10 +400,18 @@ real result = dot(a, b);    // 1*4 + 2*5 + 3*6 = 32
 ```cpp
 Vector<real> a = {1, 0, 0};
 Vector<real> b = {0, 1, 0};
-Vector<real> c = cross(a, b);  // [0, 0, 1]
+Vector<real> c( cross(a, b) );  // [0, 0, 1]
 ```
 
 **Requirements:** Both vectors must have length 3.
+
+> **Direct-initialize from expressions.** Like most free functions and operators here,
+> `cross` returns a backend expression, not a `Vector`. Under Armadillo, `Vector` and
+> `Matrix` accept only `arma::Op` expressions (such as `trans`) in a constructor, not
+> `arma::Glue`, `arma::eGlue` or `arma::eOp` (products, sums, scaled expressions), so
+> copy-initialization (`Vector<real> c = cross(a, b);`) does not
+> compile. Blaze accepts both forms. Write `Vector<real> c( cross(a, b) );` or assign to an
+> existing object (`c = cross(a, b);`); both work on either backend.
 
 **File:** `fn_cross.hpp`
 
@@ -409,6 +438,12 @@ crossmat(n3, A3, nxA3);     // Each column is 3D cross product
 **Signature:**
 - 2D: `void crossmat(const Vector<real>& n, const Matrix<real>& A, Vector<real>& out)`
 - 3D: `void crossmat(const Vector<real>& n, const Matrix<real>& A, Matrix<real>& out)`
+- Scaled, 2D and 3D: `void crossmat(n, A, const real scale, out)` — these **add**
+  `scale * (n × A[:,k])` to `out` instead of overwriting it, so initialize `out` first.
+
+`out` must already have the correct size; this is checked only by `BELFEM_ASSERT`. Both 2D
+overloads then run a cleanup pass that sets entries whose magnitude relative to `norm(out)` is
+below `BELFEM_EPSILON` to exactly zero. The 3D overloads do not.
 
 **Use case:** FEM flux computations, boundary integrals
 
@@ -499,7 +534,8 @@ posv(A, x);                         // A overwritten, x now holds solution
 positive definite. With `AbortOnError = true` (the default) a non-zero `info` raises `BELFEM_ERROR` instead — which throws in a debug build and aborts in release.
 **Modifies:** Both `A` (Cholesky factorization) and `x` (RHS → solution)
 **Requires:** A must be symmetric positive definite
-**Faster than `gesv()` (~2× for SPD matrices)**
+**Cheaper than `gesv()`:** Cholesky factorization takes about n³/3 flops, compared with
+about 2n³/3 for LU. These are textbook operation counts, not BELFEM measurements.
 
 **File:** `src/linalg/lapack/fn_posv.hpp`
 
@@ -507,8 +543,10 @@ positive definite. With `AbortOnError = true` (the default) a non-zero `info` ra
 
 #### `eigen(A, values [, abortOnComplex])` / `eigen_sym(A, values)` - Eigenvalues
 
-Eigenvalues only (no eigenvectors). `eigen` returns the number of complex eigenvalues
-(aborts on the first one by default); `eigen_sym` reads the upper triangle and returns
+Eigenvalues only (no eigenvectors). `eigen` returns the number of complex eigenvalues.
+By default (`abortOnComplex = true`), the first complex eigenvalue raises `BELFEM_ERROR`,
+which throws in a debug build and aborts in release. Pass `false` to get the count instead;
+complex entries are then written as NaN. `eigen_sym` reads the upper triangle and returns
 ascending real eigenvalues.
 
 ```cpp
@@ -530,6 +568,9 @@ Vector<real> v = linspace(0.0, 1.0, 11);
 // v = [0.0, 0.1, 0.2, ..., 0.9, 1.0]
 ```
 
+Both endpoints are included, so `n` must be at least 2; the spacing is
+`(end - start) / (n - 1)`. The requirement is not checked.
+
 **File:** `fn_linspace.hpp`
 
 ---
@@ -542,8 +583,10 @@ Vector<real> b = {3, 4};
 append(a, b);               // a is now [1, 2, 3, 4], b unchanged
 ```
 
-**Signature:** `void append(Vector<T>& a, Vector<T>& b)`
+**Signature:** `void append(Vector<T>& a, Vector<T>& b)` (an overload takes `b` by const reference)
 **Modifies:** First argument `a` in-place
+**Requires:** `a` and `b` must be different objects. Only the Blaze path checks this, with
+`BELFEM_ASSERT` in debug builds; Armadillo does not check it at all.
 **File:** `fn_append.hpp`
 
 ---
@@ -677,6 +720,11 @@ Vector<real> p;
 polyfit(x, y, 2, p);
 ```
 
+**Requires:** `x` and `y` must have the same length, that length must exceed the degree, and
+the first and last entries of `x` must differ. Both backends scale the abscissa by
+`(n - 1) / (x(n-1) - x(0))`, so equal endpoints cause a division by zero rather than a
+diagnostic.
+
 **File:** `fn_polyfit.hpp`
 
 ---
@@ -702,25 +750,23 @@ real r2 = r2(y_pred, y_true);  // ~0.98; the exact data is the SECOND argument
 | Feature | Armadillo | Blaze |
 |---------|-----------|-------|
 | **Maturity** | Mature (10+ years) | Mature (5+ years) |
-| **Dependencies** | LAPACK/BLAS | Header-only |
+| **Dependencies** | LAPACK/BLAS | Header-only library, but BELFEM enables its BLAS mode (except under `BELFEM_NETLIB`), and `gesv`/`posv` call LAPACK on both backends |
 | **Expression Templates** | Yes | Yes (advanced) |
 | **Sparse Matrices** | Yes | Yes |
 | **Small Matrix Opt** | Good | Excellent |
 | **Large Matrix Opt** | Excellent (LAPACK) | Good |
-| **Default in BELFEM** | **Yes** | No |
-| **Ease of Installation** | Moderate (needs LAPACK) | Easy (header-only) |
+| **Default in BELFEM** | Everywhere except Apple | On Apple |
+| **Ease of Installation** | Moderate (needs LAPACK) | Moderate (headers, plus BLAS/LAPACK) |
 
 ### When to Use Which Backend
 
 **Use Armadillo (Linux default) when:**
-- Need sparse matrix support
 - Large dense matrices (> 100×100)
 - Interfacing with existing LAPACK code
 - Need mature, stable ecosystem
 
 **Use Blaze when:**
 - Small to medium matrices (< 50×50)
-- Header-only build preferred
 - Maximum performance for expression templates
 - Modern C++ template metaprogramming
 
@@ -760,12 +806,12 @@ cmake -DUSE_MATRIX_BLAZE=ON -DUSE_MATRIX_ARMADILLO=OFF ..
 
 ```cpp
 // Bad: creates temporary matrices
-Matrix<real> temp1 = A * B;
-Matrix<real> temp2 = temp1 + C;
-Matrix<real> result = temp2 * D;
+Matrix<real> temp1( A * B );
+Matrix<real> temp2( temp1 + C );
+Matrix<real> result( temp2 * D );
 
 // Good: single operation via expression templates
-Matrix<real> result = (A * B + C) * D;
+Matrix<real> result( (A * B + C) * D );
 ```
 
 ### 2. **Reserve Size When Known**
@@ -802,7 +848,7 @@ real detB = inv3(B, Binv);  // Faster than inv(B)
 // If A is symmetric positive definite
 // posv solves in place and returns LAPACK info, not the solution
 Vector<real> x = b;
-posv(A, x);                   // faster than gesv() for SPD; x now holds the solution
+posv(A, x);                   // cheaper than gesv() for SPD; x now holds the solution
 ```
 
 ### 5. **Avoid Row/Column Copies**
@@ -846,7 +892,7 @@ R(1, 0) = sin(theta);
 R(1, 1) = cos(theta);
 
 Vector<real> v = {1, 0};
-Vector<real> v_rot = R * v;  // Rotated vector
+Vector<real> v_rot( R * v );  // Rotated vector
 ```
 
 ### Pattern 3: Coordinate Transformation
@@ -855,7 +901,7 @@ Vector<real> v_rot = R * v;  // Rotated vector
 // Transform from local to global coordinates
 Matrix<real> T = compute_transformation_matrix();
 Vector<real> local_coords = {1, 2, 3};
-Vector<real> global_coords = T * local_coords;
+Vector<real> global_coords( T * local_coords );
 ```
 
 ### Pattern 4: Polynomial Interpolation
@@ -888,7 +934,7 @@ for (size_t j = 0; j < n; ++j) {
     x_minus(j) -= h;
     Vector<real> f_minus = residual(x_minus);
 
-    Vector<real> df = (f_plus - f_minus) / (2*h);
+    Vector<real> df( (f_plus - f_minus) / (2*h) );
     jacobian.set_col(j, df);
 }
 ```
@@ -899,20 +945,22 @@ for (size_t j = 0; j < n; ++j) {
 
 **Thread Safety:** Like containers, Vector and Matrix are **not thread-safe**.
 
-- **Reading:** Safe from multiple threads
+- **Reading:** `const` member functions are safe to call from several threads
 - **Writing:** Requires external synchronization
+
+BELFEM uses a single parallel model: pure MPI, with one single-threaded process per rank. If
+your code calls BELFEM from OpenMP threads, serialize those calls with `#pragma omp critical`
+(see "Thread Safety and MPI" in `doc/coding_philosophy.md`).
 
 **MPI:** Each rank has independent copies. Use `comm` module for synchronization.
 
-**Example with OpenMP:**
+When filling a matrix in a loop, use the **row** index as the inner loop. Storage is
+column-major, so each column is contiguous:
 
 ```cpp
 Matrix<real> A(100, 100);
-
-#pragma omp parallel for collapse(2)
-for (int i = 0; i < 100; ++i) {
-    for (int j = 0; j < 100; ++j) {
-        // Safe: each thread writes different element
+for (uint j = 0; j < 100; ++j) {
+    for (uint i = 0; i < 100; ++i) {
         A(i, j) = compute(i, j);
     }
 }
