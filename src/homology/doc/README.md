@@ -126,11 +126,12 @@ The points that are easy to get wrong:
 
 - Every rank constructs the `Mesh`; `Topology::run()` works on rank 0, and the collective
   `Topology::synchronize_maps()` must precede the `CutFactory` constructor.
-- Call `set_periodicity()` before `run()` (with `nullptr` when there is no periodicity): the
-  factory reads the pointer in `run()` and does not initialize it otherwise.
+- When the mesh is periodic, call `set_periodicity()` before `run()`; the pointer defaults to
+  `nullptr`, which `run()` interprets as "no periodicity".
 - Every rank calls `CutFactory::run()`, which contains barriers.
 - The results are the sidesets labelled `cut_<n>` in `Mesh::sidesets()` (one per H^1 generator)
-  and the jump DOFs in `Mesh::abstract_nodes()`. `CutFactory::cuts()` returns an empty list.
+  and the jump DOFs in `Mesh::abstract_nodes()`. The `cut_<n>` sidesets retain
+  `DomainType::Default`, so the Maxwell solver does not select them.
 
 ---
 
