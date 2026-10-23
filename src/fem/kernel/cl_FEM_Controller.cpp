@@ -3056,12 +3056,13 @@ namespace belfem
                 mPostprocesingTime = tTimer.stop();
             }
 
+            // the terminal currents first, so the row written below reports
+            // this step's FEM current rather than the previous step's
             if ( mCircuit != nullptr && mCommRank == 0)
             {
-                mCircuit->save_timestep() ;
-
                 this->compute_circuit_current() ;
 
+                mCircuit->save_timestep() ;
             }
 
             // Get the full LHS for voltage computation
