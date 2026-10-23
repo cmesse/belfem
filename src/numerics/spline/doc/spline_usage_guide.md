@@ -88,7 +88,7 @@ Important details:
 
 - It runs only on rank 0 and does not broadcast. Other ranks retain the old table.
 - It always solves with SuperLU, so the build must use `USE_SUPERLU` (ON by default). Without SuperLU, the solver constructor stops with an error.
-- It rebuilds a 4-row coefficient table and rebuilds the entropy row only when `aXref > 0`. It does not reset the spline's extra mode. If the spline had an entropy row, pass `aXref` and `aSref` again. If it had an integral row, call `create_integral()` again afterward. Otherwise, `entropy()`/`integrate()` still pass their mode check but read a fifth row that no longer exists.
+- It rebuilds the 4-row coefficient table and resets the extra mode to `None` (`Spline::create_coeffs`, `cl_Spline.cpp`). It rebuilds the entropy row only when `aXref > 0`. If the spline had an entropy row, pass `aXref` and `aSref` again. If it had an integral row, call `create_integral()` again afterward. Otherwise, `entropy()`/`integrate()` behave as on a spline without the mode: a `BELFEM_ASSERT` in a debug build and an out-of-bounds read in a release build.
 
 ### Evaluation
 
@@ -155,8 +155,7 @@ A spline holds at most one extra row. `create_integral()` requires a 4-row table
 | Fewer than four points | `BELFEM_ASSERT` in debug builds; not checked in release | Supply at least four samples |
 | Help matrix built for other end conditions | Wrong coefficients, no error | Build the help matrix with the same `SplineBC` pair as the spline |
 | Relying on out-of-range values | Silent cubic extrapolation, not clamping | Clamp/validate `x` before `eval` |
-| Calling `entropy()`/`integrate()` without the mode | `BELFEM_ASSERT` (debug) / out-of-bounds read (release) | Construct with `aXref > 0` (entropy) / call `create_integral` |
-| `update_data()` on a spline with an extra row | Extra mode kept, 5th row gone: `entropy()`/`integrate()` read out of bounds | Pass `aXref`/`aSref` again (entropy) / call `create_integral()` again (integral) |
+| Calling `entropy()`/`integrate()` without the mode, including after `update_data()` dropped the extra row | `BELFEM_ASSERT` (debug) / out-of-bounds read (release) | For entropy, construct or re-fit with `aXref > 0`; for integration, call `create_integral` again after `update_data()` |
 | Expecting coefficients on all ranks | `X`/`Y` constructors with the default `aMasterProc = gNoOwner` solve per rank; `update_data()` runs on rank 0 only and does not broadcast | Pass `aMasterProc` (other ranks: `Spline( aMasterProc )`); after `update_data()` re-create the spline |
 
 ---
@@ -180,7 +179,7 @@ BELFEM supports **2nd-order (quadratic)** and **3rd-order (cubic)** B-spline loo
 |-------|-------------|-------------|---------------------------------|-----------|
 | 1 (linear) | QUAD4 | HEX8 | 8 | C⁰ |
 | **2 (quadratic)** | **QUAD9** | **HEX27** | **27** | **C¹** |
-| 3 (cubic) | QUAD16 | HEX64 | 64 | C² intended; see the status note below |
+| 3 (cubic) | QUAD16 | HEX64 | 64 | C² |
 
 The continuity column applies to projected tables, as described in the next section.
 
@@ -205,11 +204,14 @@ For nonlinear FEM, **2nd-order tables (HEX27) are usually the better choice than
 
 **Rule of thumb:** use **2nd-order (C¹)** lookup tables for nonlinear material/fluid properties unless a specific need for continuous curvature (C²) is demonstrated.
 
-> **Status note (3rd-order construction).** The cubic T-matrix builders
+> **Test coverage (3rd-order construction).** The cubic T-matrix builders
 > (`TensorMeshFactory::compute_tmatrix_quad16` / `_hex64`, `cl_TensorMeshFactory.cpp`)
-> call the *quadratic* basis helper `bspline_quad`, which fills three of the four
-> basis entries; the cubic helper `bspline_cub` is defined but not called. Do not rely
-> on 3rd-order tables having cubic B-spline continuity; this is one more reason to
-> prefer 2nd order.
+> evaluate the uniform cubic basis `bspline_cub`, ordered left to right like
+> `bspline_quad`. `tests/mesh/test_TensorMeshBSpline.cpp` builds QUAD16 and HEX64
+> tensor meshes through `Mesh` and checks the node-to-control-point weights, which are
+> rows of the same T-matrix: partition of unity, use of every control point, and exact
+> reproduction of x, x² and x³. The test does not run the `Projector` or evaluate a
+> `Database` table, so the C² continuity of a projected cubic table follows from the
+> argument above but is not tested directly.
 
 For the full description of the database tables, see the `physics/database` module guide, `src/physics/database/doc/database_usage_guide.md`.

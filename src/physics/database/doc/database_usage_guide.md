@@ -182,18 +182,11 @@ with the stored node values. There is no mesh search; the remaining work is a fi
 shape-function contraction over the element's nodes.
 
 **Clamping to `min`/`max` is the caller's responsibility, and skipping it fails silently.**
-`TensorMeshConfig::element_ijk` (`cl_TensorMeshConfig.hpp`) converts the scaled coordinate to
-the unsigned `index_t` and then clamps that index to the grid. No error is raised, and the
-result depends on which side is out of bounds:
+`TensorMeshConfig::element_ijk` (`cl_TensorMeshConfig.hpp`) floors the scaled coordinate,
+clamps it to the grid as a real, and only then converts it to `index_t`. No error is raised:
 
 - **Above `max`**, the index clamps to the last element.
-- **Below `min` by less than one element step**, conversion truncates toward zero and produces
-  element 0.
-- **Below `min` by one element step or more**, a negative value is converted to an unsigned
-  type. C++ does not define the result of converting a negative floating-point value to an
-  unsigned integer, and the outcome is platform-dependent. arm64 saturates it to 0, so the
-  first element is used. On x86-64 it typically becomes a large index that clamps to the
-  **last** element, so evaluation uses the far end of the grid.
+- **Below `min`**, regardless of distance, the index clamps to element 0.
 
 In every case, the selected element is evaluated at a parametric coordinate outside `[-1, 1]`;
 that is, the table **extrapolates**. A polynomial extrapolated even slightly beyond its element
@@ -267,7 +260,7 @@ return std::exp( mRhoData->evaluate( theta, log10B, angle ) );            // 3. 
 | Pitfall | Symptom | Avoid by |
 |---|---|---|
 | Passing a non-tensor mesh | hard error, from `TensorMeshFactory::create_bsplines` when projecting, or from the `Database` constructor's `is_tensormesh()` check when `aProject = false` | build the grid with a `TensorMeshFactory` / `create_database_mesh`-style helper |
-| Querying outside the grid | **no error** — silent extrapolation off an edge element (far below `min`, off the opposite edge), diverging fast | clamp to `min`/`max` first — always the caller's job |
+| Querying outside the grid | **no error** — silent extrapolation off the nearest edge element, diverging fast | clamp to `min`/`max` first — always the caller's job |
 | Forgetting the value transform | resistivity off by orders of magnitude | remember tables may store a transformed quantity (`log` for rho, log₁₀ for jc/n) |
 | Assuming stored == sampled | small mismatches against a direct property call | the table is the **projection** of the samples (§3) |
 | Expecting bit-identical rebuilds | spurious "regression" on a rebuilt table | compare with a tolerance (§3) |
