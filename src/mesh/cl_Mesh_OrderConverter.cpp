@@ -89,7 +89,6 @@ namespace belfem
     {
         uint tNumBlocks = mInMesh->number_of_blocks();
 
-        Vector< uint > tOrder( tNumBlocks, 0 );
         Vector< uint > tDimension( tNumBlocks, 0 );
 
         Cell< mesh::Block * > & tBlocks = mInMesh->blocks();
@@ -98,8 +97,9 @@ namespace belfem
         {
             mesh::Element * tElement = tBlocks( b )->element( 0 );
 
-            // the linear types upgrade_type() maps; refused here, before any
-            // facet work, so the error can name the type
+            // the linear types upgrade_type() maps, which is also the check that
+            // the block is linear; refused here, before any facet work, so the
+            // error can name the type
             switch( tElement->type() )
             {
                 case( ElementType::LINE2 ) :
@@ -120,20 +120,11 @@ namespace belfem
                 }
             }
 
-            if( mesh::interpolation_order( tElement->type() )
-                == InterpolationOrder::LINEAR )
-            {
-                tOrder( b ) = 1;
-            }
-
             if( mesh::dimension( tElement->type() ) == 3 )
             {
                 tDimension( b ) = 1;
             }
         }
-
-        BELFEM_ERROR( sum( tOrder ) == tNumBlocks,
-                "All input blocks must contain linear elements only" );
 
         uint tNumberOf3DBlocks = sum( tDimension );
 
