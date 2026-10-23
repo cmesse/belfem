@@ -247,7 +247,7 @@ SpMatrix* I = field->imposition();    // I: Fixed → Fixed
 Vector<real>& f = field->rhs_vector();
 
 // The JEDI system computes "the Force":
-// J*x = f - D*y        (solve for unknowns)
+// J*x = f + D*y        (solve for unknowns; D stores -K_fd)
 // E*x + I*y = g        (compute reaction forces!)
 ```
 
@@ -320,10 +320,10 @@ The `DofManager::initialize()` method orchestrates the entire setup:
 
 **The JEDI system literally computes "the Force"** - reaction forces at constraints!
 
-**Block form:**
+**Block form** (D as stored: the negated free-fixed stiffness block, `D = -K_fd`):
 ```
-[ J  D ] [ x ]   [ f ]
-[ E  I ] [ y ] = [ g ]
+[ J  -D ] [ x ]   [ f ]
+[ E   I ] [ y ] = [ g ]
 ```
 
 Where:
@@ -331,7 +331,7 @@ Where:
 - `y` = fixed DOFs (imposed Dirichlet values)
 
 **Physical interpretation:**
-- **First equation:** `J*x = f - D*y` → Solve for unknowns
+- **First equation:** `J*x = f + D*y` → Solve for unknowns
 - **Second equation:** `E*x + I*y = g` → Compute reaction forces at constraints
 
 **Why separate matrices?**
@@ -342,7 +342,7 @@ Where:
 **Matrix dimensions:**
 ```
 J: (N_free × N_free)    - Main system to solve
-D: (N_free × N_fixed)   - Free DOF dependency on fixed
+D: (N_free × N_fixed)   - Free DOF dependency on fixed, stored negated (-K_fd)
 E: (N_fixed × N_free)   - Fixed DOF dependency on free (reaction forces)
 I: (N_fixed × N_fixed)  - Fixed DOF self-coupling
 ```

@@ -25,6 +25,8 @@
     live `compute_hn` projects onto the facet normal
   - Anisotropy section rewritten around `bn_angle` (unfolded to `[0, pi]`),
     with the Jc extrema corrected and `bn_angle` separated from `bj_angle`
+- **v1.3** (2026-10-22) - §7.5 block form shows the stored sign of D; §7.3
+  states what a late `use_jedi_force( true )` does
 
 ---
 
@@ -946,7 +948,10 @@ g = E*x + I*y
 - The code does not compute `g`; no routine multiplies E or I
 - E and I exist only if `use_jedi_force( true )` was called **before**
   `initialize()`, because `SolverData::allocate_matrices()` reads the flag
-  during allocation. Calling it after `initialize()` has no effect
+  during allocation. Setting it after `initialize()` does not allocate them. On
+  the next assembly of an element with a fixed DOF, a debug build stops at an
+  assertion in `SolverData::assemble_jacobian()`, while a release build
+  dereferences a null pointer there
 - `rhs_vector()` holds the RHS for the free DOFs, not reactions
 
 **Implementation:**
@@ -1002,10 +1007,10 @@ K*u = f
 // 3. Lose reaction force information
 ```
 
-**JEDI FEM:**
+**JEDI FEM** (D as stored, `D = -K_fd`):
 ```
-[ J  D ] [ x ]   [ f ]
-[ E  I ] [ y ] = [ g ]
+[ J  -D ] [ x ]   [ f ]
+[ E   I ] [ y ] = [ g ]
 
 // Advantages:
 // 1. Preserve full system structure
