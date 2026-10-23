@@ -15,7 +15,7 @@
 | 2026-01-16 | 1.0 | Initial documentation |
 | 2026-01-16 | 1.1 | Applied external review feedback: Added Quick-Start section; Added comprehensive Glossary (Core Concepts, Element Types, Topology, Partitioning, I/O, Fields); Updated METIS link to GitHub |
 | 2026-01-16 | 1.2 | Added Critical Contracts and Invariants section (finalize() MPI semantics, unfinalize() cache invalidation, ownership vs derived containers, connectivity invalidation rules, ID vs index stability) |
-| 2026-01-16 | 1.3 | Added complete enum reference tables: ElementType (29 types), Connectivity (36 types), InterpolationOrder (8 types), InterpolationType (11 types) with detailed descriptions and use cases |
+| 2026-01-16 | 1.3 | Added complete enum reference tables: ElementType (all enumerators), Connectivity (36 types), InterpolationOrder (8 types), InterpolationType (11 types) with detailed descriptions and use cases |
 | 2026-01-16 | 1.4 | Added ThinShell class documentation with layered structure details, usage examples, and physical context for electromagnetic simulations |
 
 ---
@@ -23,6 +23,10 @@
 ## Quick-Start
 
 **Minimal example to load, finalize, and query a mesh:**
+
+All snippets in this guide are written as if they sit inside `namespace belfem`, where all
+framework code lives. `Mesh`, `message`, and `InfoLevel` are declared there, and `cl_Mesh.hpp`
+does not open the namespace for you. Outside it, add `using namespace belfem;` or qualify the names.
 
 ```cpp
 #include "cl_Mesh.hpp"
@@ -75,7 +79,7 @@ delete tMesh;
 | **Order** | Polynomial degree of element: 1 (linear), 2 (quadratic), 3 (cubic), 4 (quartic), 5 (quintic) |
 | **Corner Nodes** | Vertices of element (e.g., 4 for TET4, 8 for HEX8) |
 | **Mid-Edge Nodes** | Nodes on element edges (quadratic+ elements only) |
-| **Face Center Nodes** | Nodes on element faces (cubic+ elements only) |
+| **Face Center Nodes** | Nodes on element faces (full quadratic elements such as QUAD9, HEX27, PENTA18, PYRA14, and higher-order elements) |
 | **Volume Center Node** | Node at element centroid (HEX27, HEX64, etc.) |
 | **Curved Element** | Element with non-linear geometry (requires higher-order integration) |
 | **Thin-Shell Element** | Special element variant for layered structures (cohomology-aware node ordering) |
@@ -116,7 +120,7 @@ delete tMesh;
 | Term | Definition |
 |------|------------|
 | **Field** | Data array associated with mesh entities (nodes, elements, edges, faces) |
-| **EntityType** | Enum specifying which entities field is defined on: NODE, ELEMENT, EDGE, FACE |
+| **EntityType** | Enum specifying which entities a field is defined on. `create_field` accepts NODE, ELEMENT, EDGE, FACE and FACET; CELL, CONTROLPOINT and UNDEFINED reach `BELFEM_ERROR( false, "Unsupported field entity")` in the `Field` constructor. Only NODE and ELEMENT fields are written by the Exodus and VTK writers |
 | **Global Variable** | Scalar mesh-level data (e.g., total current, total energy) |
 | **Time Step** | Index of current time in transient simulation |
 | **Time Stamp** | Physical time value for current time step |
@@ -190,9 +194,11 @@ tKernel.create_fields();   // Then initialize FEM
 ### 5. Parallel Mesh Ownership Confusion
 
 ```cpp
-// In MPI context
+// In MPI context: the file constructor is collective, so every rank calls it
 Mesh* tMesh = new Mesh("mesh.msh");
-tMesh->partition(comm_size());  // Partition mesh
+if (comm_size() > 1) {
+    tMesh->partition(comm_size());  // BELFEM_ERROR for fewer than 2 partitions
+}
 
 // PITFALL: Assuming partition() shrinks the containers
 for (mesh::Node* node : tMesh->nodes()) {
@@ -200,7 +206,7 @@ for (mesh::Node* node : tMesh->nodes()) {
 }
 ```
 
-**Why:** `partition()` only assigns `owner()` on the master's full mesh; `nodes()` / `elements()` still hold everything. Only after `Distributor::run()` does a rank hold a partial mesh.
+**Why:** `partition()` only assigns `owner()` on the master's full mesh; `nodes()` / `elements()` still hold everything. Only after `Distributor::run()` does a worker rank hold a partial mesh (see "Mesh Distribution (MPI)").
 
 ### 6. Element Type Confusion
 
@@ -258,32 +264,36 @@ mesh::Element* master = facet->master();  // The actual element
 ### 9. Edge/Face Creation Order (3D Elements)
 
 ```cpp
-// WRONG: Creating faces before edges (3D elements)
-tMesh->create_faces();     // May fail - needs edges first
-tMesh->create_edges();
+// INCOMPLETE: faces before edges (3D elements)
+tMesh->create_faces();     // succeeds, but no face<->edge links are built
+tMesh->create_edges();     // finalize_edges() does not link existing faces
 
-// CORRECT: Edges before faces
-tMesh->finalize();         // Finalize main mesh first
-tMesh->create_edges();     // Create edges
-tMesh->finalize_edges();   // Finalize edge connectivity
-tMesh->create_faces();     // Then faces (depend on edges)
-tMesh->finalize_faces();   // Finalize face connectivity
+// CORRECT: edges before faces
+tMesh->create_edges();     // calls finalize_edges() internally
+tMesh->create_faces();     // calls finalize_faces(), which links faces and edges
 ```
 
-**Why:** Face DOFs often reference edge DOFs in Nédélec H(curl) and H(div) elements. Edge containers must exist before face creation.
+**Why:** `create_faces()` does not need edges, so it succeeds even when no edges exist. However,
+`finalize_faces()` builds face-to-edge and edge-to-face connectivity only when
+`Connectivity::Compute` is set and edges already exist (`Mesh::finalize_faces`).
+`finalize_edges()` never builds this connectivity.
+
+If you create faces first, those links remain missing, and nothing reports the problem.
+Both `create_edges()` and `create_faces()` run only on the master rank and call their own
+`finalize_edges()` / `finalize_faces()`.
 
 ### 10. Storing Indices Across Operations
 
 ```cpp
-// WRONG: Storing indices across finalize/partition
+// WRONG: Storing indices across distribution
 Cell<index_t> nodeIndices;
 for (mesh::Node* node : tMesh->nodes()) {
     if (node->x() > 0.0) {
         nodeIndices.push(node->index());
     }
 }
-tMesh->partition(comm_size());  // REORDERS INDICES!
-// nodeIndices now points to wrong nodes
+// ... Distributor::run() builds a new partial mesh on each worker rank,
+// with its own indices; nodeIndices means nothing there
 
 // CORRECT: Store IDs (permanent)
 Cell<id_t> nodeIDs;
@@ -292,11 +302,16 @@ for (mesh::Node* node : tMesh->nodes()) {
         nodeIDs.push(node->id());  // ID is stable
     }
 }
-tMesh->partition(comm_size());
-// nodeIDs still valid - access via tMesh->node(id)
+// nodeIDs remain valid - access via tMesh->node(id)
 ```
 
-**Why:** Indices are reordered by `finalize()`, `partition()`, and `Distributor::run()`. IDs are permanent identifiers that remain stable across all operations.
+**Why:** Indices are assigned by `finalize()`, the `update_*_indices()` calls, and each worker mesh
+that `Distributor::run()` creates. Callers that reorder nodes, such as the bandwidth reordering in
+the Maxwell factory (`mesh::symrcm`), also change them.
+
+`partition()` alone leaves node and element indices unchanged: the partitioner re-stamps element
+indices in their current container order, while `update_ownerships()` changes only the owners.
+IDs are permanent identifiers and remain stable through all of these operations.
 
 ---
 
@@ -332,7 +347,9 @@ else {
 - Minimal setup (entity counts, basic properties)
 - Full finalization occurs AFTER the distributor has run and `partial_mesh()` has handed the rank its local mesh
 
-**Rule:** call `finalize()` after mesh loading. After distribution, only the **root** needs it — `Distributor::run()` finalizes each worker's mesh itself (`cl_Mesh_Distributor.cpp:248`).
+**Rule:** Call `finalize()` after building or modifying a mesh by hand. File readers finalize the
+meshes they load. `Distributor::run()` finalizes each worker's partial mesh. The root keeps its
+full mesh, which was finalized when it was loaded.
 
 ### unfinalize() Is Cache Invalidation, Not Rollback
 
@@ -344,15 +361,20 @@ tMesh->unfinalize();    // Clears caches, resets flags
 // Mesh is now in PARTIALLY INCONSISTENT state
 ```
 
-**What unfinalize() DOES:**
-- Resets the Node*/Edge*/Face* connectivity flags (ElementToNode is kept)
-- Resets `mIsFinalized` flag
-- Invalidates cached data
+**What unfinalize() DOES (master rank only; other ranks only reset the flag):**
+
+- Clears the derived `elements()` and `facets()` lists. They remain empty until the next `finalize()` collects them from the blocks and sidesets.
+- Frees the adjacency arrays for every node, edge, and face, and empties each sideset's node list.
+- Resets the `NodeTo*` and `EdgeTo*` connectivity flags, except `EdgeToNode`, and resets `FaceToFacet`.
+- Clears the ID→entity maps.
+- Resets the `mIsFinalized` flag.
 
 **What unfinalize() DOES NOT DO:**
-- Restore original indices (indices remain modified)
-- Reset the element-to-element and facet-to-facet links (kept because they are expensive to recompute; see the commented-out block in `Mesh::unfinalize()`). Node/edge/face adjacency arrays ARE freed.
-- Undo facet orientation (orientations remain)
+
+- Restore original indices. Indices remain modified.
+- Reset element-to-element and facet-to-facet links. They are kept because they are expensive to recompute; see the commented-out block in `Mesh::unfinalize()`.
+- Reset `ElementToNode`, the other `FaceTo*` flags, the `FacetTo*` flags, or `ElementToEdge` / `ElementToFace` / `ElementToFacet`, even though the node, edge, and face adjacency arrays behind some of them have been freed.
+- Undo facet orientation. Orientations remain.
 
 **Use case:** Modifying mesh topology (adding elements, repartitioning) requires `unfinalize()` → modify → `finalize()`.
 
@@ -407,7 +429,7 @@ delete tMesh;  // Proper cleanup chain
 | `create_edges()` | Edge-related connectivities | New edge entities created |
 | `create_faces()` | Face-related connectivities | New face entities created |
 | `Node::add_duplicate()` | NodeToElement | Node connectivity changes |
-| `unfinalize()` | Node*/Edge*/Face* connectivities (selective; ElementToNode kept) | Cache invalidation |
+| `unfinalize()` | `NodeTo*`, most `EdgeTo*`, `FaceToFacet`; empties `elements()` / `facets()` (ElementToNode kept) | Cache invalidation |
 
 **Safe operations (do NOT invalidate connectivity):**
 - `node->set_coords()` - Geometric change only
@@ -435,30 +457,32 @@ tMesh->finalize();              // Recompute everything
 **IDs are permanent, indices are NOT:**
 
 ```cpp
-// Load mesh
+// Load mesh (the reader has already finalized it)
 Mesh* tMesh = new Mesh("mesh.msh");
 mesh::Node* node = tMesh->node(12345);  // ID = 12345
 
 id_t id = node->id();           // 12345 (STABLE)
-index_t idx1 = node->index();   // e.g., 42 (UNSTABLE)
+index_t idx1 = node->index();   // its position in nodes() (UNSTABLE)
 
-// Finalize changes indices
-tMesh->finalize();
-index_t idx2 = node->index();   // NOW DIFFERENT (e.g., 5042)
-
-// Partition changes indices again
-tMesh->partition(comm_size());
-index_t idx3 = node->index();   // DIFFERENT AGAIN (e.g., 17)
+// Reordering the node container and re-indexing changes the index
+// (the Maxwell factory does this with mesh::symrcm before solving;
+// declared in fn_Mesh_symrcm_nodes.hpp)
+mesh::symrcm(tMesh->nodes());
+tMesh->update_node_indices();
+index_t idx2 = node->index();   // generally different from idx1
 
 // But ID remains stable
 BELFEM_ASSERT(node->id() == 12345, "ID changed!");  // Always passes
 ```
 
-**Operations that reorder indices:**
-1. `finalize()` - assigns continuous 0-based indices in container order (does not sort)
-2. `partition()` - Reorders by MPI rank assignment
-3. `Distributor::run()` - Reorders within local partition
-4. Any operation involving `unfinalize()` → modify → `finalize()`
+**Operations that assign or change indices:**
+
+1. `finalize()` — assigns continuous 0-based indices in container order; it does not sort. On an already finalized mesh, it leaves them unchanged.
+2. `update_node_indices()` and the other `update_*_indices()` calls, after a container has been reordered.
+3. `Distributor::run()` — each worker receives a new mesh with its own local indices.
+4. Any operation that follows the sequence `unfinalize()` → modify → `finalize()`.
+
+`partition()` is not on this list. It changes owners, not indices.
 
 **Hard rule:** **NEVER** store indices across these operations. Store IDs instead.
 
@@ -473,7 +497,7 @@ for (mesh::Node* node : tMesh->nodes()) {
     }
 }
 
-tMesh->partition(comm_size());  // INDICES NOW INVALID
+// ... reorder, re-finalize, or distribute: INDICES NOW INVALID
 
 // CORRECT: Storing IDs
 Cell<id_t> boundaryNodeIDs;
@@ -483,7 +507,7 @@ for (mesh::Node* node : tMesh->nodes()) {
     }
 }
 
-tMesh->partition(comm_size());  // IDs still valid
+// ... reorder, re-finalize, or distribute: IDs still valid
 
 // Access later via ID lookup
 for (id_t id : boundaryNodeIDs) {
@@ -513,7 +537,7 @@ The mesh module provides data structures and I/O for finite element meshes with 
 - **ID-based lookup:** Fast access via `Map<id_t, T*>` for sparse IDs
 - **Index-based iteration:** Continuous 0-based indices for containers
 - **Eager connectivity:** computed in `finalize()` when `Connectivity::Compute` is set; the bitset records which ones exist
-- **Factory pattern:** Element creation via `Element_Factory`
+- **Factory pattern:** Element creation via `ElementFactory` (`cl_Element_Factory.hpp`)
 - **Format-agnostic:** Common interface across I/O backends
 
 ---
@@ -865,8 +889,8 @@ tMesh->thin_shells().push(shell);
 **Physical context:** Used for modeling superconducting tapes, cables, and layered conductors in electromagnetic simulations. Thickness is typically orders of magnitude smaller than in-plane dimensions, justifying 2D shell approximation.
 
 **See also:**
-- Thin-shell element types: `QUAD4TS`, `QUAD9TS`, `PENTA6TS`, `PENTA18TS`
-- Advanced Features → Thin-Shell Elements section (line 1462)
+- Thin-shell element types: `QUAD4TS`, `QUAD9TS`, `HEX8TS`, `PENTA6TS`, `PENTA18TS` (and the thin-beam `HEX8TB`)
+- Advanced Features → Thin-Shell Elements section
 - Homology module documentation (cohomology cuts for shells)
 
 ---
@@ -891,19 +915,27 @@ Mesh* tMesh = new Mesh("mesh.hdf5");
 
 **Parallel mesh loading:**
 ```cpp
-#ifdef BELFEM_MPI
-// Only the master proc reads the file; the other ranks receive the
-// dimension count and stay empty until Distributor::run()
+// Collective: every rank must make this call. Only the master proc reads
+// the file; the other ranks receive the dimension count and hold an empty
+// mesh until the mesh is distributed (see "Mesh Distribution (MPI)").
 Mesh* tMesh = new Mesh("mesh.msh",
     0,       // master proc
     true,    // compute connectivities
-    true);   // parallel mode
-
-// Partition and distribute
-tMesh->partition(comm_size());
-tMesh->finalize();
-#endif
+    true);   // parallel mode (default): barrier + broadcast of the dimension
 ```
+
+With `aParallelMode = true` (the default), the file constructor is collective whenever
+`comm_size() > 1`. The master and workers each enter `comm_barrier()` and
+`broadcast( mNumberOfDimensions )`. If only some ranks construct the mesh, the run deadlocks.
+
+With `aParallelMode = false`, the read is purely local and uses no collective operation.
+
+The shipped `belfem` executable uses the second form. `MaxwellFactory::read_mesh()` reads the file only
+on rank 0 with `new Mesh( tMeshPath, 0, false, false )`. Rank 0 then broadcasts the dimension with
+its other setup data, and each worker creates an empty `new Mesh( mMeshDimension, 0 )`.
+
+Both forms end in the same state: the master has the full mesh, and every other rank has an empty
+mesh with the correct dimension. Loading alone does not distribute anything.
 
 ### Writing Mesh Files
 
@@ -962,8 +994,8 @@ Vector<index_t> numNodes = {11, 11};
 Vector<real> step = {0.1, 0.1};
 Vector<real> origin = {0.0, 0.0};
 
+// (nodes - 1) % order == 0 on every axis; the factory finalizes the mesh
 Mesh* tMesh = new Mesh(order, numNodes, step, origin);
-tMesh->finalize();
 
 // Access nodes by (i, j) index
 mesh::Node* node = tMesh->node(5, 5);
@@ -1023,13 +1055,13 @@ tMesh->finalize();    // Re-finalize
 | `LINE2` | 2 | Line | 1 | Linear line segment |
 | `LINE3` | 3 | Line | 2 | Quadratic line |
 | `LINE4` | 4 | Line | 3 | Cubic line |
-| `LINE5` | 5 | Line | 4 | Quartic line |
+| `LINE5` | 5 | Line | 4 | Quartic line — built by `ElementFactory`, but `finalize()` aborts on a mesh with a `LINE5` block (see the note below) |
 | `LINE6` | 6 | Line | 5 | Quintic line — **enum only, not built by `ElementFactory`** |
 | **2D Triangles** | | | | |
 | `TRI3` | 3 | Triangle | 1 | Linear triangle |
 | `TRI6` | 6 | Triangle | 2 | Quadratic triangle |
 | `TRI10` | 10 | Triangle | 3 | Cubic triangle |
-| `TRI15` | 15 | Triangle | 4 | Quartic triangle |
+| `TRI15` | 15 | Triangle | 4 | Quartic triangle — built by `ElementFactory`, but `finalize()` aborts on a mesh with a `TRI15` block (see the note below) |
 | `TRI21` | 21 | Triangle | 5 | Quintic triangle — **enum only, not built by `ElementFactory`** |
 | **2D Quadrilaterals** | | | | |
 | `QUAD4` | 4 | Quad | 1 | Bilinear quadrilateral |
@@ -1048,6 +1080,8 @@ tMesh->finalize();    // Re-finalize
 | `HEX20` | 20 | Hex | 2 | Serendipity triquadratic hex |
 | `HEX27` | 27 | Hex | 2 | Triquadratic hex (with center node) |
 | `HEX64` | 64 | Hex | 3 | Tricubic hexahedron |
+| `HEX8TS` | 8 | Hex | 1 | Thin-shell trilinear hexahedron |
+| `HEX8TB` | 8 | Hex | 1 | Thin-beam trilinear hexahedron |
 | **3D Prisms (Wedges)** | | | | |
 | `PENTA6` | 6 | Prism | 1 | Linear prism |
 | `PENTA15` | 15 | Prism | 2 | Serendipity quadratic prism |
@@ -1064,23 +1098,35 @@ tMesh->finalize();    // Re-finalize
 
 1. **Thin-Shell Elements (TS suffix):** Special variants for cohomology-aware layered structures. Nodes ordered with top/bottom pairs for discontinuous DOF support.
 2. **Serendipity vs Full:** Serendipity elements (QUAD8, HEX20, PENTA15, PYRA13) omit interior nodes for same polynomial order.
-3. **Gmsh Compatibility:** Most element types follow Gmsh numbering (enum values 1-30, 92); QUAD16 = 32 deviates from Gmsh's 36. Thin-shell/beam types (103, 105, 106, 110, 118, 125) are BELFEM extensions.
+3. **Gmsh Compatibility:** Most element types follow Gmsh numbering (enum values 1-30, 92); QUAD16 = 32 deviates from Gmsh's 36. The thin-shell and thin-beam types (`QUAD4TS` = 103, `HEX8TS` = 105, `PENTA6TS` = 106, `QUAD9TS` = 110, `PENTA18TS` = 118, `HEX8TB` = 125) are BELFEM extensions.
 4. **Node Ordering:** All elements follow Gmsh node ordering conventions (see Gmsh documentation for detailed node numbering).
+5. **`LINE5` and `TRI15` in a mesh:** `ElementFactory` builds both types, and the Gmsh reader maps Gmsh types 27 and 23 to them. However, `mesh::interpolation_order_numeric()` (`meshtools.cpp`) has no entry for either. Its default branch is `BELFEM_ERROR( false, "Unknown element type")`. Every `finalize()` calls it once per block through `compute_max_element_order()`, so finalizing a mesh that has a `LINE5` or `TRI15` block aborts. That includes the finalize the file reader does. `LINE6` and `TRI21` are not built at all.
 
 ### InterpolationOrder Enum
 
 **File:** `Mesh_Enums.hpp`
 
-| Enum Value | Description | Typical Elements |
-|------------|-------------|------------------|
+The table lists, for each enumerator, the element types for which `mesh::interpolation_order()`
+(`meshtools.cpp`) returns it.
+
+| Enum Value | Description | Returned for |
+|------------|-------------|--------------|
 | `CONSTANT` | Order 0 (piecewise constant) | VERTEX |
-| `LINEAR` | Order 1 (piecewise linear) | LINE2, TRI3, QUAD4, TET4, HEX8, PENTA6, PYRA5 |
-| `QUADRATIC` | Order 2 (quadratic, includes face/volume centers) | LINE3, TRI6, QUAD9, TET10, HEX27, PENTA18, PYRA14 |
-| `SERENDIPITY` | Order 2 (quadratic, edge nodes only) | QUAD8, HEX20, PENTA15, PYRA13 |
+| `LINEAR` | Order 1 (piecewise linear) | LINE2, TRI3, QUAD4, QUAD4TS, TET4, PENTA6, PENTA6TS, HEX8, HEX8TS, HEX8TB |
+| `QUADRATIC` | Order 2 (quadratic, includes face/volume centers) | LINE3, TRI6, QUAD9, QUAD9TS, TET10, PENTA18, PENTA18TS, HEX27 |
+| `SERENDIPITY` | Order 2 (quadratic, edge nodes only) | QUAD8, PENTA15, HEX20 |
 | `CUBIC` | Order 3 (cubic) | LINE4, TRI10, QUAD16, TET20, HEX64 |
-| `QUARTIC` | Order 4 (quartic) | LINE5, TRI15, TET35 |
-| `QUINTIC` | Order 5 (quintic) | LINE6, TRI21 |
-| `UNDEFINED` | Unknown/invalid order | — |
+| `QUARTIC` | Order 4 (quartic) | — (never returned) |
+| `QUINTIC` | Order 5 (quintic) | — (never returned) |
+| `UNDEFINED` | Unknown/invalid order | every other type: PYRA5, PYRA13, PYRA14, LINE5, TRI15, TET35, LINE6, TRI21, EMPTY, UNDEFINED |
+
+The numeric helper `mesh::interpolation_order_numeric()` covers a different set. It returns 1 for
+PYRA5, 2 for PYRA13 and PYRA14, and 4 for TET35. It raises `BELFEM_ERROR` for LINE5, TRI15,
+LINE6, TRI21, and UNDEFINED.
+
+The element constructor (`ElementTemplate`) sets the initial curved flag to
+`interpolation_order( type ) != InterpolationOrder::LINEAR`. Every type in the `UNDEFINED` row
+therefore starts with `is_curved() == true`, including the linear PYRA5.
 
 **Key distinction:** `SERENDIPITY` elements have the same polynomial order as `QUADRATIC` but omit interior nodes (face/volume centers), reducing DOF count while maintaining boundary accuracy.
 
@@ -1160,6 +1206,8 @@ ElementType::QUAD4TS   // Thin-shell quad (cohomology-aware)
 ElementType::QUAD9TS   // Thin-shell quad, quadratic
 ElementType::PENTA6TS  // Thin-shell prism
 ElementType::PENTA18TS // Thin-shell prism, quadratic
+ElementType::HEX8TS    // Thin-shell hexahedron
+ElementType::HEX8TB    // Thin-beam hexahedron
 ```
 
 ### Element Topology Queries
@@ -1345,10 +1393,24 @@ for (uint i = 0; i < nElems; ++i) {
 ```
 
 **Element-to-Element:**
+
+`Mesh::finalize()` does not build this connectivity. After a plain `finalize()`, the loop below
+therefore runs zero times. The connectivity is built by
+`ConnectivityCalculator::connect_elements_to_elements()`.
+
+The FEM `Kernel` calls it on the master and on each worker's partial mesh while distributing the
+mesh (`Kernel::distribute_mesh`). Standalone code calls it directly:
+
 ```cpp
+#include "cl_Mesh_ConnectivityCalculator.hpp"
+
+mesh::ConnectivityCalculator tCalculator(tMesh);
+tCalculator.connect_elements_to_elements();
+
 mesh::Element* elem = tMesh->element(elemID);
 
-// Access all connected elements (via shared nodes/edges/faces)
+// Access all elements that share a facet with elem
+// (an edge in 2D, a face in 3D)
 uint nElems = elem->number_of_elements();
 for (uint i = 0; i < nElems; ++i) {
     mesh::Element* neighbor = elem->element(i);
@@ -1380,11 +1442,21 @@ for (uint i = 0; i < nFacets; ++i) {
 
 ### Graph-Based Partitioning
 
+`Mesh::partition()` runs only on the master rank and is not collective. Every overload aborts with
+`BELFEM_ERROR` unless it is asked for more than one partition, so guard the call when the run might
+be serial.
+
+Nothing in the source tree calls `Mesh::partition()`. The FEM `Kernel` partitions with its own
+`Kernel::partition_mesh()`. That function builds an element graph and calls
+`graph::metis_partition` directly (see "Mesh Distribution (MPI)").
+
 **Using METIS (default):**
 ```cpp
 #ifdef BELFEM_METIS
 // Partition mesh into comm_size() subdomains
-tMesh->partition(comm_size());
+if (comm_size() > 1) {
+    tMesh->partition(comm_size());
+}
 
 // Each element now has owner() == MPI rank
 for (mesh::Element* elem : tMesh->elements()) {
@@ -1398,7 +1470,12 @@ for (mesh::Node* node : tMesh->nodes()) {
 #endif
 ```
 
-**Partitioning options:**
+**Partitioning options** (each call needs more than one partition; with `comm_size()` as the argument, guard it with `comm_size() > 1` as above):
+
+The default for `aForceContinuousPartitions` depends on the overload.
+`partition( n )` defaults it to `true`. The overloads that take block IDs, or block and
+sideset IDs, default it to `false`.
+
 ```cpp
 // Partition with selected blocks only
 Vector<id_t> selectedBlocks = {1, 2, 3};
@@ -1418,42 +1495,63 @@ tMesh->partition(comm_size(),
 
 ### Mesh Distribution (MPI)
 
-**After partitioning, distribute mesh to processors:**
+**The shipped path is the FEM `Kernel`.** `mesh::Distributor` has one caller in the source
+tree, `Kernel::distribute_mesh()`. The `Kernel` constructor is called on every rank and does
+the following:
+
+1. On the master, it checks the mesh (`MeshChecker`) and calls `flag_curved_elements()`.
+
+Steps 2–4 apply to a kernel that is not chained onto a parent kernel. A chained kernel reuses
+its parent's distribution.
+
+2. If `comm_size() > 1`, the master partitions the selected blocks with `Kernel::partition_mesh()`.
+   This builds its own element graph, calls `graph::metis_partition`, and then calls
+   `update_ownerships()`.
+3. The master collects the hanging basis (`collect_hanging_basis()`, `expand_hanging_basis_sources()`).
+4. `Kernel::distribute_mesh()` runs. With one rank, it only computes the element-to-element and
+   facet-to-facet connectivity. Otherwise, the master computes that connectivity first. Then
+   every rank constructs a `mesh::Distributor` on its own mesh and calls `run()`. The master keeps
+   its full mesh and takes over the communication tables. Each worker takes
+   `Distributor::partial_mesh()` as its submesh and computes the same connectivity on it.
+
+**Recipe** (the pattern of `src/fem/kernel/staticheat.cpp`):
 ```cpp
-#ifdef BELFEM_MPI
-#include "cl_Mesh_Distributor.hpp"
+#include "cl_Mesh.hpp"
+#include "cl_FEM_Kernel.hpp"
+#include "cl_FEM_KernelParameters.hpp"
 
-// Master proc (rank 0) has full mesh, others empty
-Mesh* tMesh = nullptr;
-if (comm_rank() == 0) {
-    tMesh = new Mesh("mesh.msh");
-    tMesh->partition(comm_size());
+// every rank: collective load; the workers get an empty mesh
+Mesh* tMesh = new Mesh("mesh.msh");
+{
+    // every rank: the kernel partitions on the master and distributes
+    fem::KernelParameters tParams(tMesh);   // selects all blocks by default
+    fem::Kernel tKernel(&tParams);
+
+    // the full mesh on the master, the partial mesh on every worker
+    Mesh* tLocalMesh = tKernel.mesh();
+
+    // ... create equations and fields, work with tLocalMesh ...
+    // never delete tLocalMesh: a worker's partial mesh belongs to the kernel
 }
-
-// Distribute: Each proc gets its partition + ghost layers
-mesh::Distributor distributor(tMesh);
-distributor.run();                       // every rank
-
-Mesh* localMesh = tMesh;                 // root keeps the mesh it already has
-if (comm_rank() != 0) {
-    // workers only -- partial_mesh() is a BELFEM_ERROR on root
-    localMesh = distributor.partial_mesh();
-}
-
-// Now each proc has localMesh with:
-// - Elements owned by this proc
-// - Ghost elements shared with neighbors
-// - Nodes owned or shared
-
-// run() has already finalized the worker meshes, so only the root's own
-// mesh still needs it ( cl_Mesh_Distributor.cpp:248 ).
-if (comm_rank() == 0) {
-    localMesh->finalize();
-}
-
-// Do NOT delete tMesh on root: localMesh IS tMesh there, and it is still in use.
-#endif
+// tMesh belongs to its creator on every rank; delete it after the kernel is gone
+delete tMesh;
 ```
+
+**Using the `Distributor` directly** (contract of `cl_Mesh_Distributor.hpp`):
+
+- `Distributor( Mesh * aMesh = nullptr )` must receive the full mesh on the root. Otherwise, it raises
+  `BELFEM_ERROR`. On every other rank, the argument is ignored.
+- `run()` is collective and returns immediately when `comm_size() < 2`. On the root, element owners
+  must already be set. The `Kernel` also computes element-to-element and facet-to-facet connectivity
+  on the root before calling it.
+- After `run()`, each worker builds and finalizes a new mesh. `partial_mesh()` gives that mesh to the
+  caller, who then owns it. On the root, `partial_mesh()` raises `BELFEM_ERROR`
+  ("must not be called by root proc"). The root keeps the mesh it passed in, and the `Distributor`
+  does not delete it.
+- On the root, `tables()` returns one `CommTable` per rank. The `Distributor` deletes the tables in
+  its destructor unless the caller removes them from the cell, as the `Kernel` does.
+- Nothing in the source tree calls `Mesh::partition()`, so the shipped code never runs a hand-written
+  `Mesh::partition()` → `Distributor::run()` sequence. Prefer the `Kernel`.
 
 ### Ghost Layers and Ownership
 
@@ -1464,7 +1562,7 @@ if (comm_rank() == 0) {
 
 **Checking ownership:**
 ```cpp
-for (mesh::Element* elem : localMesh->elements()) {
+for (mesh::Element* elem : tLocalMesh->elements()) {
     if (elem->owner() == comm_rank()) {
         // This element is owned by this proc
     } else {
@@ -1472,7 +1570,7 @@ for (mesh::Element* elem : localMesh->elements()) {
     }
 }
 
-for (mesh::Node* node : localMesh->nodes()) {
+for (mesh::Node* node : tLocalMesh->nodes()) {
     if (node->owner() == comm_rank()) {
         // This node is owned by this proc
     } else {
@@ -1516,15 +1614,25 @@ for (index_t i = 0; i < tMesh->number_of_elements(); ++i) {
 ```
 
 **Edge/Face fields (for Nédélec elements):**
-```cpp
-// Create edge field (for H(curl) DOFs)
-tMesh->create_edges();  // First create edges
-Vector<real>& edgeField = tMesh->create_field("EdgeFlux", EntityType::EDGE);
+An EDGE or FACE field is created with length zero. `finalize_edges()` / `finalize_faces()` set its
+length, and `create_edges()` / `create_faces()` call them themselves.
 
-// Create face field (for H(div) DOFs)
-tMesh->create_faces();  // First create faces
+Create the field first, then create the entities. If you reverse the order, the field remains
+length zero, and indexing it is out of bounds.
+
+```cpp
+// Create edge field (for H(curl) DOFs): field first, then the edges
+Vector<real>& edgeField = tMesh->create_field("EdgeFlux", EntityType::EDGE);
+tMesh->create_edges();  // finalize_edges() sizes edgeField
+
+// Create face field (for H(div) DOFs): field first, then the faces
 Vector<real>& faceField = tMesh->create_field("FaceFlux", EntityType::FACE);
+tMesh->create_faces();  // finalize_faces() sizes faceField
 ```
+
+A FACET field is sized to `number_of_facets()` when it is created. The Exodus and VTK writers
+write only NODE and ELEMENT fields. They skip EDGE, FACE, and FACET fields without reporting an
+error.
 
 ### Global Variables
 
@@ -1545,7 +1653,15 @@ if (tMesh->global_variable_exists("TotalCurrent")) {
 
 ### Field I/O
 
-**Fields are not part of the mesh file.** `Mesh::save("*.hdf5")` writes topology and enrichment only; fields, global variables and the time cursor go to the separate restart file through `Mesh::save_fields(hid_t)` / `load_fields(hid_t)` (see `bfm_file_format.md`).
+**Fields are not part of the mesh file.** `Mesh::save("*.hdf5")` writes topology and enrichment only.
+Restart state goes to a separate HDF5 file through three pairs of calls, each taking an open `hid_t`.
+
+Fields use `save_fields` / `load_fields`. Global variables use `save_globals` / `load_globals`.
+The time step and time stamp use `save_meta` / `load_meta`.
+
+`save_fields` writes only the fields. A restart that also needs the globals and time must make all
+three calls (see `bfm_file_format.md`).
+
 ```cpp
 // Create fields
 tMesh->create_field("Temperature", EntityType::NODE);
@@ -1660,14 +1776,16 @@ for (id_t blockID : {1, 2, 3}) {
 **Structured Cartesian grids:**
 
 ```cpp
-// 3D tensor mesh: 21x21x11 nodes, cubic elements (order 3)
+// 3D tensor mesh: 22x22x13 nodes, cubic elements (order 3)
+// every axis needs (nodes - 1) % order == 0, else TensorMeshConfig aborts
 uint order = 3;
-Vector<index_t> numNodes = {21, 21, 11};
+Vector<index_t> numNodes = {22, 22, 13};   // 7 x 7 x 4 elements
 Vector<real> step = {0.05, 0.05, 0.1};     // Grid spacing
 Vector<real> origin = {0.0, 0.0, 0.0};     // Origin
 
+// the tensor mesh factory finalizes the mesh; for order > 1 the
+// constructor also creates the B-splines
 Mesh* tMesh = new Mesh(order, numNodes, step, origin);
-tMesh->finalize();
 
 // Access via structured indices
 mesh::Node* node = tMesh->node(10, 10, 5);  // i, j, k
@@ -1688,29 +1806,28 @@ index_t numElemsX = config->num_elements(0);
 
 **For multiply-connected domain topological cuts:**
 
+Duplicate nodes are created by the cut machinery, for example `CutProcessor`
+(`src/homology/cl_CutProcessor.cpp`).
+
+The machinery links each copy to its original with `allocate_duplicate_container()`,
+`add_duplicate()`, and `set_original()`, then appends the copies to `tMesh->nodes()`.
+`~Mesh` deletes only the nodes in `nodes()`.
+
+A node created with `new` and linked only through `add_duplicate()` is not owned by the mesh, so
+it leaks. `tMesh->node( id )` also cannot find it. Application code normally only reads the links:
+
 ```cpp
-// Duplicate node for cohomology cut
 mesh::Node* original = tMesh->node(nodeID);
-original->allocate_duplicate_container(2);  // Prepare for 2 duplicates
-
-mesh::Node* dup1 = new mesh::Node(newID1, original->x(), original->y(), original->z());
-mesh::Node* dup2 = new mesh::Node(newID2, original->x(), original->y(), original->z());
-
-dup1->set_original(original);
-dup2->set_original(original);
-
-original->add_duplicate(dup1);
-original->add_duplicate(dup2);
 
 // Access duplicates
 uint nDups = original->number_of_duplicates();
 for (uint i = 0; i < nDups; ++i) {
     mesh::Node* dup = original->duplicate(i);
-}
 
-// Check if node is duplicate
-if (dup1->is_duplicate()) {
-    mesh::Node* orig = dup1->original();  // Points back to original
+    // each duplicate points back to its original
+    BELFEM_ASSERT(dup->is_duplicate() && dup->original() == original,
+        "duplicate %lu is not linked to node %lu",
+        (luint)dup->id(), (luint)original->id());
 }
 ```
 
@@ -1725,12 +1842,31 @@ tMesh->flag_curved_elements();
 
 for (mesh::Element* elem : tMesh->elements()) {
     if (elem->is_curved()) {
-        // Use higher-order integration
+        // flagged curved (see below for what that covers)
     } else {
-        // Linear geometry, use standard integration
+        // not flagged
     }
 }
 ```
+
+**How the flag is set** (`cl_Mesh_CurvedElementChecker.cpp`, `cl_ElementTemplate.hpp`):
+- The element constructor sets the initial flag to `interpolation_order( type ) != LINEAR`. Every
+  element whose type is not in the `LINEAR` row of the InterpolationOrder table starts with
+  `is_curved() == true`. That includes every quadratic and higher element, and the PYRA5.
+- `flag_curved_elements()` runs a geometric check on every element of every block. It calls
+  `set_curved_flag()` where the check reports curvature, and it never calls `unset_curved_flag()`
+  on a block element. A straight-sided QUAD9 or HEX27 therefore keeps `is_curved() == true`
+  after the call, and the `else` branch above runs only for elements that start unflagged.
+- For facets, it sets the facet element's flag if the master or the slave is curved, and clears
+  it otherwise.
+- A check function exists only for some block element types. In a 2D mesh these are LINE2, TRI3,
+  QUAD4, QUAD4TS, TRI6, QUAD8, QUAD9, and QUAD9TS. In a 3D mesh they are LINE2, TRI3, TRI6, QUAD4,
+  QUAD4TS, QUAD8, QUAD9, TET4, TET10, PENTA6, PENTA6TS, PENTA15, PENTA18, PENTA18TS, HEX8, HEX8TS,
+  HEX8TB, HEX20, and HEX27. Any other block type, such as a pyramid, TET20, TET35, HEX64, or
+  QUAD16, reaches `BELFEM_ERROR( false, "No check function implemented for this element type" )`.
+  So does a 1D mesh ("Invalid mesh dimension").
+- The FEM `Kernel` constructor calls `flag_curved_elements()` on the master. The `Distributor`
+  carries the flags to the workers.
 
 **Manually set curved flag:**
 ```cpp
@@ -1787,8 +1923,9 @@ for (index_t i = 0; i < nodes.size(); ++i) {
     T(i) = 300.0 + 100.0 * node->x();  // Linear temperature gradient
 }
 
-// Save to HDF5
-tMesh->save("result.hdf5");
+// Save to Exodus, which writes NODE and ELEMENT fields
+// (an .hdf5 / .bfm mesh file carries no fields)
+tMesh->save("result.exo");
 ```
 
 ### Pattern 3: Boundary Condition Application
@@ -1820,14 +1957,16 @@ tMesh->unflag_all_nodes();
 ### Pattern 4: Element Integration Loop
 
 ```cpp
-// Integrate over specific block
+// Integrate over specific block (assumes one element type per block)
 mesh::Block* block = tMesh->block(blockID);
 real integral = 0.0;
 
+// scratch sized once, outside the element loop
+uint nNodes = block->element(0)->number_of_nodes();
+Matrix<real> X(nNodes, 3);  // Node coordinates
+
 for (mesh::Element* elem : block->elements()) {
     // Get element nodes
-    uint nNodes = elem->number_of_nodes();
-    Matrix<real> X(nNodes, 3);  // Node coordinates
     for (uint i = 0; i < nNodes; ++i) {
         mesh::Node* node = elem->node(i);
         X(i, 0) = node->x();
@@ -1845,45 +1984,32 @@ message(InfoLevel::Default, "Total volume: %.6e", integral);
 
 ### Pattern 5: Parallel Mesh Loading and Distribution
 
+Every rank runs the same code. The FEM `Kernel` partitions on the master and distributes the
+mesh (see "Mesh Distribution (MPI)"). This also works on a single rank.
+
 ```cpp
-#ifdef BELFEM_MPI
-#include "cl_Mesh_Distributor.hpp"
+#include "cl_Mesh.hpp"
+#include "cl_FEM_Kernel.hpp"
+#include "cl_FEM_KernelParameters.hpp"
 
-Mesh* localMesh = nullptr;
+// collective: the master reads the file, the workers get an empty mesh
+Mesh* tMesh = new Mesh("mesh.msh");
+{
+    fem::KernelParameters tParams(tMesh);
+    fem::Kernel tKernel(&tParams);
 
-if (comm_rank() == 0) {
-    // Master proc loads and partitions the full mesh
-    Mesh* globalMesh = new Mesh("mesh.msh");
-    globalMesh->partition(comm_size());
+    // full mesh on the master, partial mesh on each worker
+    Mesh* tLocalMesh = tKernel.mesh();
 
-    mesh::Distributor distributor(globalMesh);
-    distributor.run();
+    index_t tLocalNodes = tLocalMesh->number_of_nodes();
+    index_t tLocalElems = tLocalMesh->number_of_elements();
 
-    // The root does NOT take a partition -- partial_mesh() rejects it
-    // ( BELFEM_ERROR, cl_Mesh_Distributor.cpp:2663 ). It keeps the mesh
-    // it already has, so globalMesh must NOT be deleted here.
-    localMesh = globalMesh;
-} else {
-    // Worker procs receive their partition
-    mesh::Distributor distributor(nullptr);
-    distributor.run();
-    localMesh = distributor.partial_mesh();
+    message(InfoLevel::Default, "Rank %d: %lu nodes, %lu elements",
+        (int)comm_rank(), (luint)tLocalNodes, (luint)tLocalElems);
+
+    // never delete tLocalMesh: a worker's partial mesh belongs to the kernel
 }
-
-// run() has already finalized the worker meshes; finalize the root's own
-if (comm_rank() == 0) {
-    localMesh->finalize();
-}
-
-// Work with local mesh
-index_t localNodes = localMesh->number_of_nodes();
-index_t localElems = localMesh->number_of_elements();
-
-message(InfoLevel::Default, "Rank %d: %lu nodes, %lu elements",
-    comm_rank(), (luint)localNodes, (luint)localElems);
-
-delete localMesh;
-#endif
+delete tMesh;   // every rank, after the kernel is gone
 ```
 
 ### Pattern 6: Mesh Scaling and Coordinate Modification
@@ -1933,16 +2059,18 @@ message(InfoLevel::Default, "Max element order: %u", maxOrder);
 **Memory ownership:**
 - Mesh owns all entities - DO NOT manually delete nodes/elements
 - Mesh destructor handles cleanup
-- `abstract_nodes()` is a non-owning view; the nodes themselves are appended to `nodes()` by `set_abstract_nodes()` and freed by `~Mesh`
+- `abstract_nodes()` is a non-owning view. The nodes themselves are adopted into `nodes()` by the cut processor (`CutProcessor::collect_duplicates`) and freed by `~Mesh`. `set_abstract_nodes()` would also adopt them, but nothing in the tree calls it
 
 **Memory profiling:**
 ```cpp
 size_t meshMem = tMesh->memory();
 message(InfoLevel::Default, "Total mesh memory: %.2f MB", meshMem / 1e6);
 
-// Per-entity memory
+// Mesh::memory() already includes every node's memory(), connectivity
+// arrays included; adding node->memory() on top counts the nodes twice.
+size_t nodeMem = 0;
 for (mesh::Node* node : tMesh->nodes()) {
-    meshMem += node->memory();  // Includes connectivity arrays
+    nodeMem += node->memory();  // the node share of meshMem
 }
 ```
 
@@ -1956,13 +2084,16 @@ for (mesh::Node* node : tMesh->nodes()) {
 
 **Optimize connectivity:**
 ```cpp
-// Only compute needed connectivities
+// Skip the connectivity computation in finalize()
 Mesh* tMesh = new Mesh("mesh.msh",
     0,       // master
-    false);  // don't compute all connectivities
+    false);  // don't compute connectivities
 
-// Manually trigger specific connectivity
-// (triggered implicitly by accessing node->elements(), etc.)
+// Nothing is computed on access: node->number_of_elements() only reads a
+// stored counter, so it stays 0. Build what you need explicitly with
+// mesh::ConnectivityCalculator (cl_Mesh_ConnectivityCalculator.hpp), e.g.
+mesh::ConnectivityCalculator tCalculator(tMesh);
+tCalculator.connect_nodes_to_elements();
 ```
 
 ### Partitioning Performance
@@ -2060,7 +2191,7 @@ message(InfoLevel::Verbose, "Node %lu: (%.6e, %.6e, %.6e), owner=%d, index=%lu",
 **Print element info:**
 ```cpp
 mesh::Element* elem = tMesh->element(elemID);
-elem->print();  // Prints type, nodes, connectivity
+elem->print();  // Prints the element id, its type and its node ids
 ```
 
 ### Flagging System for Debugging
