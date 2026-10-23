@@ -20,8 +20,9 @@ magnet.
 
 Numerically the module solves the circuit with **Modified Nodal Analysis (MNA)** and a
 **Newton–Raphson** loop on a sparse Jacobian (SuperLU by default — `SolverType::SUPERLU` in `cl_ElectricalCircuit.hpp`). Energy-storage
-elements (L, C) and the FEM coupling element are integrated in time with the BDF scheme
-from `numerics/ode`.
+elements (L, C) are integrated in time with the BDF scheme from `numerics/ode`. The FEM
+coupling element has no companion model: it passes the last FEM current into the circuit
+(§4.9).
 
 The module lives entirely in the `belfem::electronics` namespace. The abstract interface
 that the FEM controller talks to is `belfem::Circuit`
@@ -61,11 +62,11 @@ MaxwellFactory tMFactory( "input.conf" );
 electronics::ElectricalCircuitFactory tElFactory(
         "input.conf", tMFactory.boundary_conditions() );
 
-// 3. Create the FEM kernel and controller
+// 3. Create the FEM kernel (copies the boundary-condition list) and controller
 auto tKernel  = tMFactory.create_magnetic_kernel();
 auto tControl = tMFactory.create_controller();
 
-// 4. Hand the circuit to the controller                    belfem.cpp:204
+// 4. Hand the circuit to the controller (non-owning)       belfem.cpp:204
 tControl->set_circuit( tElFactory.circuit() );
 
 // 5. Time loop — the controller drives both the FEM and the circuit
@@ -79,13 +80,20 @@ while ( tControl->time() < tControl->simulation_time() )
 ```
 
 Important ordering detail: the `ElectricalCircuitFactory` must be constructed **before**
-`create_controller()` / the kernel runs, because constructing it appends the
-circuit-derived boundary conditions to `tMFactory.boundary_conditions()`. Those BCs are
-what the kernel later sees as `CircuitVoltage` / current BCs.
+`create_magnetic_kernel()`. Constructing it appends the circuit-derived boundary
+conditions to `tMFactory.boundary_conditions()`. Then `create_magnetic_kernel()` copies
+that list into the kernel. Later, `set_circuit()` looks for the `CircuitVoltage` /
+`CircuitCurrent` BCs in the kernel. If the factory is built after the kernel, those BCs
+are missing.
+
+Ownership: `circuit()` returns a non-owning pointer. The factory owns the
+`ElectricalCircuit` through a `std::unique_ptr` member, and the controller does not delete
+it. Therefore, the factory must outlive every controller use of the circuit. In
+`belfem.cpp`, both objects live until the end of `main`.
 
 ### Constructor flow (`ElectricalCircuitFactory`)
 
-`cl_ElectricalCircuitFactory.cpp:27`
+`cl_ElectricalCircuitFactory.cpp`, constructor
 
 1. Opens the input file (its own `InputFile`).
 2. If there is **no** `circuit{}` section, `mCircuit` stays `nullptr` and the whole
@@ -101,7 +109,11 @@ what the kernel later sees as `CircuitVoltage` / current BCs.
 
 ## 3. The input file format (`circuit{}` section)
 
-The circuit is described inside `input.conf` next to the FEM problem. Skeleton:
+The circuit is described inside `input.conf` next to the FEM problem. There are two
+modes. In **classic mode**, described in this section, the whole circuit is written in the
+deck and nodes are integer indices. In **hybrid mode** (`circuit { file : … }`, see below),
+the lumped circuit comes from an ngspice netlist and every node is referenced by its
+netlist **name**. Classic-mode skeleton:
 
 ```
 circuit
@@ -128,15 +140,39 @@ circuit
 
 - `number of nodes` counts **all** nodes including ground.
 - The **last node index** (`number of nodes - 1`) **is the ground / reference node**
-  (`cl_ElectricalCircuit.cpp:31-46`); its voltage is pinned to 0 and it is excluded from
+  (`ElectricalCircuit` constructor); its voltage is pinned to 0 and it is excluded from
   the unknowns. This differs from SPICE, where node `0` is ground; the netlist importer performs that remap for you.
-- Every component requires `node +` and `node -` (`cl_ElectricalCircuitFactory.cpp:83-89`).
-  Both must be `< number of nodes`.
+- Every component requires `node +` and `node -` (`read_circuit()` in
+  `cl_ElectricalCircuitFactory.cpp`). In classic mode both are integers `< number of nodes`.
+
+### Hybrid mode (`circuit { file : … }`)
+
+With a `file` key, `read_circuit_from_netlist()` builds the lumped circuit from the
+netlist. `number of nodes` must then be absent, and `topology{}` may contain only
+`terminal pair` sections. Every node reference in the deck — terminal-pair `node +` /
+`node -` and `output → voltages` — is a netlist node **name** (`0` and `gnd` are ground),
+resolved through the netlist's node map; raw indices are not accepted. Labels and the
+`currents` list are folded to lower case. Shortened from `examples/tapestack_circuit/input.conf`:
+
+```
+circuit
+{
+    file : tapestack.cir ;
+    topology
+    {
+        terminal pair { label : Z1 ; node + : live ; node - : 0 ;
+                        input curves : [1,2] ; output curves : [3,4] ; }
+    }
+    output { file : CircuitResults.txt ; currents : Z1, L1, Is ; voltages : live, 0 ; }
+}
+```
+
+The full hybrid grammar is in §11.1 of `doc/input_file_reference.md`.
 
 ### Per-component keys
 
 Each subsection of `topology{}` is one component. The subsection **key** selects the type
-(matched case-insensitively by `component_type()`, `Component_Enums.cpp:72`). All
+(matched case-insensitively by `component_type()` in `Component_Enums.cpp`). All
 components accept an optional `label` (used for output selection). Values are parsed with
 BELFEM's unit machinery (`get_value`/`check_unit`/`unit_to_si`), so units are required and
 checked.
@@ -145,37 +181,51 @@ See Section 4 for the per-component key tables.
 
 ### Output section
 
-`cl_ElectricalCircuitFactory.cpp:663`, `read_output()`
+`read_output()` in `cl_ElectricalCircuitFactory.cpp`
 
 - `file` (required if `output{}` is present) — output text file name.
 - `currents` — comma-separated list of component **labels**; each matching component's
   current is written.
-- `voltages` — comma-separated list of **node indices**; each node voltage is written.
-- A header row is written by `init_output_file()`; one row per saved timestep is appended
-  by `save_timestep()` (called from the controller's `finalize()`), with the leading
-  column being time.
+- `voltages` — comma-separated list of nodes; each node voltage is written. In classic
+  mode these are **node indices**; in hybrid mode they are netlist node **names**. The
+  column header is always `V<internal index>`; in hybrid mode rank 0 prints the
+  name-to-column mapping at startup.
+- A header row (`t I<label> … V<index> …`) is written by `init_output_file()`. One row per
+  accepted timestep is appended by `save_timestep()`, called from the controller's
+  `finalize()`; the leading column is time.
+- Terminal-pair column timing: `finalize()` calls `save_timestep()` **before**
+  `compute_circuit_current()` passes the new FEM current to the terminal pair. Therefore,
+  the `I<label>` column of a terminal pair contains the FEM current from the previous
+  accepted step (0 in the first row of a cold start). This is the value used by the
+  circuit solve for the current step. The time and node-voltage columns belong to the
+  current step.
 
 ---
 
 ## 4. Available components
 
-The complete component set is the `ComponentType` enum (`Component_Enums.hpp:21`). The
+The complete component set is the `ComponentType` enum (`Component_Enums.hpp`). The
 table below lists the input-file key, the required/optional keys, and the underlying
 class.
 
 | Input key | `ComponentType` | Class | Required keys | Optional keys |
 |-----------|-----------------|-------|---------------|---------------|
 | `resistor` | `RESISTOR` | `Resistor` | `value` [Ohm] | — |
-| `capacitor` | `CAPACITOR` | `Capacitor` | `value` [F] | `order` (BDF order, default 1) |
-| `inductor` | `INDUCTOR` | `Inductor` | `value` [H] | `order` (BDF order, default 1) |
+| `capacitor` | `CAPACITOR` | `Capacitor` | `value` [F] | `order` (BDF order 1–6, default 1) |
+| `inductor` | `INDUCTOR` | `Inductor` | `value` [H] | `order` (BDF order 1–6, default 1) |
 | `voltage source` | `VOLTAGESOURCE` | `VoltageSource` | `type` + source params | (see source functions) |
 | `current source` | `CURRENTSOURCE` | `CurrentSource` | `type` + source params | (see source functions) |
 | `switch` | `SWITCH` | `Switch` | `initial state` (`open`/`closed`), `switch time` [s] | — |
 | `diode` | `DIODE` | `Diode` | — | `Is` [A] (default 1e-4), `Vt` [V] (default 0.026) |
 | `superconductor` | `SUPERCONDUCTOR` | `Superconductor` | `Ic` [A], `n` [-], `Ec` [V/m], `length` [m] | — |
-| `terminal pair` | `TERMINALPAIR` | `FEMTwoTerminals` | `input terminals`/`input curves` (see §5) | `output terminals`/`output curves`; `length` required on the 2-D path (no output key — live since 2026-08-11, see the BC-type note in §7). **`order` is accepted but ignored** — see §4.9 |
+| `terminal pair` | `TERMINALPAIR` | `FEMTwoTerminals` | `input terminals`/`input curves` (see §5) | `output terminals`/`output curves`; `length` required on the 2-D path (no output key; see the BC-type note in §5). **`order` is accepted but ignored** — see §4.9 |
 
 All components additionally take `label`, `node +`, `node -`.
+
+`order` must be written with a colon (`order : 2 ;`). The classic path passes it to the
+`ode::BDF` constructor unchecked, which stops with an error for an order of 7 or more. A
+line without a colon, such as `order 1 ;`, defines a different flag key named `order 1`;
+it is never read, so the element silently keeps order 1.
 
 ### 4.1 Resistor
 
@@ -225,7 +275,7 @@ voltage source
 
 `cl_CurrentSource.cpp` — injects `I = f(t)` from a `SourceFunction`. It is **not** an
 unknown-current element; it stamps directly onto the RHS. Note: current sources are
-excluded from the nodal adjacency graph (`cl_ElectricalCircuit.cpp:471-478`) because they do
+excluded from the nodal adjacency graph (`compute_adjacency()` in `cl_ElectricalCircuit.cpp`) because they do
 not couple node voltages.
 
 ```
@@ -249,8 +299,10 @@ switch { label : S1 ; node + : 1 ; node - : 2 ; initial state : open ; switch ti
 ### 4.7 Diode
 
 `cl_Diode.cpp` — Shockley diode `I = Is·(exp((V+−V−)/Vt) − 1)`, contributing a nonlinear
-`dI/dV` to the Jacobian. Defaults `Is = 1e-4 A`, `Vt = 0.026 V` (set in
-`cl_ElectricalCircuitFactory.cpp:372-373`).
+`dI/dV` to the Jacobian. In classic mode the defaults are `Is = 1e-4 A` and
+`Vt = 0.026 V` (`read_circuit()`, `cl_ElectricalCircuitFactory.cpp`). A diode imported
+from a netlist follows SPICE instead: `Is` defaults to `1e-14 A` (`is=` on the `.model`
+card) and `Vt = n · 0.026 V` (`cl_NgspiceCircuitFactory.cpp`).
 
 ```
 diode { label : D1 ; node + : 2 ; node - : 0 ; Is : 1e-9 A ; Vt : 0.026 V ; }
@@ -272,7 +324,7 @@ superconductor
 
 ### 4.9 Terminal pair (FEM coupling) — the important one
 
-`cl_FEMTwoTerminals.cpp` + `cl_ElectricalCircuitFactory.cpp:488-660`. This is the bridge
+`cl_FEMTwoTerminals.cpp` + `read_terminal_pair()` in `cl_ElectricalCircuitFactory.cpp`. This is the bridge
 between the lumped circuit and the meshed Maxwell problem. In the circuit it behaves like
 a current source whose value is the FEM terminal current (in `compute_jacobian_and_rhs`
 it shares the RHS-only case with the current source); in the FEM it appears as a boundary
@@ -283,7 +335,7 @@ Unlike the inductor/capacitor, `FEMTwoTerminals` does **not** run a BDF companio
 it hardcodes `ShiftRegister<real>(1)` for its I/V/h history, never instantiates its
 `mBDF`, and `compute_current()` just relays the last FEM current `mIn`. Consequently the
 `order` key shown in some examples is **never read for a terminal pair** (the factory
-parses `order` only for capacitors and inductors, `cl_ElectricalCircuitFactory.cpp:128,146`)
+parses `order` only in the capacitor and inductor cases of `read_circuit()`)
 and is silently ignored — keep it if you like, but it has no effect.
 
 ```
@@ -302,7 +354,7 @@ terminal pair
 
 ### What the factory does for a `terminal pair`
 
-`cl_ElectricalCircuitFactory.cpp:488-660`, `read_terminal_pair()`
+`read_terminal_pair()` in `cl_ElectricalCircuitFactory.cpp`
 
 1. Creates an `FEMTwoTerminals` component in the circuit (`create_terminal_pair`).
 2. Reads the input geometry key. Four spellings are accepted; the *curve* forms set the
@@ -312,20 +364,18 @@ terminal pair
 3. Optionally reads matching `output terminal(s)` / `output curve(s)`.
    - If output is present (3-D problem): each `[...]` group of inputs is concatenated with
      the corresponding output group; the number of input and output groups must match
-     (`cl_ElectricalCircuitFactory.cpp:593`).
+     (hard error otherwise).
    - If output is absent (2-D problem): the output groups are filled
-     **from the input groups** (`:598`) and then concatenated with the inputs
-     (`:629-638`), so each BC's
-     domain list contains the input ids **duplicated** (`set_domains` does not deduplicate,
-     `cl_FEM_PhysicalBoundaryCondition.cpp:93`). The `1/length` scaling on this 2-D path
-     is **live** since 2026-08-11 (see the BC-type note below).
+     **from the input groups** and then concatenated with the inputs, so each BC's
+     domain list contains the input ids **duplicated** (`PhysicalBoundaryCondition::set_domains`
+     in `cl_FEM_PhysicalBoundaryCondition.cpp` does not deduplicate). This path requires
+     `length` and scales the BC by `1/length` (see the BC-type note below).
 4. It pushes **one** `fem::PhysicalBoundaryCondition` of type
    **`CircuitVoltage`** onto the shared boundary-condition list, with the
    concatenated domain ids and the thin-shell flag.
 
 Within one key, each bracketed list is a *group*: `input curves : [1,2]` is one group
-containing curves 1 and 2. **Exactly one group per terminal pair** (frozen
-2026-08-15): a terminal pair is one lumped component, and the controller pairs
+containing curves 1 and 2. **Exactly one group per terminal pair**: a terminal pair is one lumped component, and the controller pairs
 boundary conditions with components by position, so several groups on one pair
 would overrun that pairing — the factory refuses it with a hard error. Note
 that an unbracketed list (`input curves : 1,2`) parses as one group *per id*
@@ -336,8 +386,9 @@ two separate components, each with one group.
 ### How `input curves` reference the FEM mesh
 
 The curve ids are **not** mesh entity ids directly — they are the logical curve ids
-defined in the FEM side of `input.conf` under `topology{ curves{ } }`. Example from
-`tmp/examples/Circuit_Coupling/input.conf`:
+defined in the FEM side of `input.conf` under `topology{ curves{ } }`. The `topology`
+block below is from `examples/tapestack_circuit/input.conf`; the terminal pair is written
+in classic mode (the shipped deck uses hybrid mode, with node names, see §3):
 
 ```
 topology
@@ -357,51 +408,51 @@ circuit
 {
     ...
     terminal pair { label : Z1 ; node + : 0 ; node - : 1 ;
-                    input curves : [1,2] ; output curves : [3,4] ; order 1 ; }
+                    input curves : [1,2] ; output curves : [3,4] ; }
 }
 ```
 
-For a 2-D / non-thin-shell problem you instead reference sideset/domain ids directly via
-`input terminals`/`output terminals` (see `tmp/examples/RLC_Circuit/input.conf`, where
-`L1` uses `input terminals : [4]`).
+Without thin shells you reference sideset/domain ids directly via `input terminals` /
+`output terminals`. In `examples/rlc_circuit/input.conf`, the terminal pair `L1` uses
+`input terminals : [4]` and `output terminals : [4]`; because it gives an output key, it
+takes the 3-D path. A 2-D terminal pair omits the output key and must give `length`.
 
 ### The coupled solve (controller side)
 
 `src/fem/kernel/cl_FEM_Controller.cpp`
 
-- `set_circuit()` (`:5076`) splits the boundary conditions into `mCircuitCurrentBCs`
+- `set_circuit()` splits the kernel's boundary conditions into `mCircuitCurrentBCs`
   (`CircuitCurrent`) and `mCircuitVoltageBCs` (`CircuitVoltage`). **Note:** the electrical
-  factory only ever emits `CircuitVoltage` BCs (claim above), so `mCircuitCurrentBCs` stays
-  empty and the controller's `current()`-fix loop (`:268-270`, `:402-404`) is inert for the
-  standard `terminal pair` path today.
-- Each iteration the **circuit solves first on rank 0 only** (it is not distributed):
-  `set_timestep → shift → compute_MNA_matrix → solve_circuit()` (`:261-264`,
-  `:2565`). The solve is a Newton loop calling
-  `compute_jacobian_and_rhs / solve / residual` with adaptive relaxation `omega`.
-- The resulting circuit currents/voltages are `fix()`-ed into the FEM BCs
-  (`:268-274`). The circuit OK flag is broadcast to avoid MPI deadlock if rank 0 fails
-  (see comments at `:255-280`).
-- After the FEM solve, `compute_circuit_current()` (`:3029`) reads the terminal current
-  from the FEM abstract DOF and writes both current and voltage back into the
-  corresponding `FEMTwoTerminals` via `Circuit::set_current_and_voltage()` (`:3053`).
-- `save_timestep()` (circuit output) and `shift_back()` (on reset) are also called from
+  factory only ever emits `CircuitVoltage` BCs, so `mCircuitCurrentBCs` stays empty and
+  the controller's `current()`-fix loop is inert for the standard `terminal pair` path.
+- The circuit is solved **once per timestep attempt, on rank 0 only** (it is not
+  distributed), at the start of the step in `initialize_timestep()` (and in
+  `initialize_magnetic()` on the segregated path), before the FEM nonlinear loop:
+  `set_timestep → shift → compute_MNA_matrix → solve_circuit()`. `solve_circuit()` is a
+  Newton loop calling `compute_jacobian_and_rhs / solve / residual` with adaptive
+  relaxation `omega`. The circuit is not re-solved inside the FEM nonlinear iterations.
+- The resulting circuit voltages are `fix()`-ed into the FEM BCs. The circuit success flag
+  is broadcast so that all ranks take the same reset branch if the rank-0 solve fails.
+- After the FEM solve, in `finalize()`, `compute_circuit_current()` reads the terminal
+  current from the FEM abstract DOF and writes both current and voltage back into the
+  corresponding `FEMTwoTerminals` via `Circuit::set_current_and_voltage()`. The next
+  step's circuit solve uses that current.
+- `save_timestep()` (circuit output, called in `finalize()` just before
+  `compute_circuit_current()`, see §3) and `shift_back()` (on reset) are also called from
   the controller.
 
 > **Note on the BC type.** The factory always tags terminal-pair BCs as `CircuitVoltage`
-> (`cl_ElectricalCircuitFactory.cpp:535`). The 2-D `length` branch used to test plain
-> `Voltage`, which `tType` never holds, so it was unreachable and the 2-D scale silently
-> stayed `1.0`. **Fixed 2026-08-11:** the branch now tests `CircuitVoltage` and the
-> `1/length` scaling is live. Consequences: a 2-D terminal pair — one that omits the
-> output terminal/curve list — now **requires** `length` and hard-errors without it, and
-> `length` must be positive (zero would give an infinite scale, a negative value would
-> flip the sign of the imposed voltage).
+> (`read_terminal_pair()`). A 2-D terminal pair — one that omits the output
+> terminal/curve list — scales its BC by `1/length`, so it **requires** `length` and
+> stops with an error without it. `length` must also be positive (zero would give an
+> infinite scale, a negative value would flip the sign of the imposed voltage).
 
 ---
 
 ## 6. Source functions (voltage/current excitation)
 
 Voltage and current sources use a `type` key with the parameters shown below. These
-are parsed in `cl_ElectricalCircuitFactory.cpp:160-360` into a
+are parsed in `read_circuit()` (`cl_ElectricalCircuitFactory.cpp`) into a
 `belfem::SourceFunction` (`src/numerics/sources/cl_SourceFunction.hpp`).
 
 | `type` | Parameters | Formula |
@@ -413,19 +464,24 @@ are parsed in `cl_ElectricalCircuitFactory.cpp:160-360` into a
 | `square` | `amplitude`, `frequency` or `period`, opt. `phase` | ±A square wave, evaluated at `t + φ/ω` |
 | `triangle` | `amplitude`, `frequency` or `period`, opt. `phase` | triangle wave, evaluated at `t + φ/ω` |
 | `sawtooth` | `amplitude`, `frequency` or `period`, opt. `phase` | sawtooth wave, evaluated at `t + φ/ω` |
-| `userdefined` | `file`, `label`, `units` | function loaded from a shared library |
+| `userdefined` | `file`, `label`, `units` | function loaded from a shared library (see below) |
 
 A positive `phase` advances all four periodic waveforms. This follows the SPICE
 convention and uses the sign already shown in the `sine` formula above. The phase
 produces a circular shift, not a delayed start. To delay the start, use `ramp` or
 `sigmoid`, which instead take an `offset` in seconds.
 
-`expk` was removed on 2026-08-29 and a deck that still carries it is now refused.
-It had been parsed and stored for years without ever reaching the waveform, so
-**delete the key to keep the results you get today**. Do not rewrite it as
-`fuzzyness = 1/(1+expk)`: that is the equivalence `expk` was meant to express
-(`expk = 99` is `fuzzyness = 0.01`), but since the key never did anything, applying
-it would change your waveform rather than preserve it.
+A source that carries an `expk` key is refused. **Delete the key**: it never reached the
+waveform, so deleting it leaves the results unchanged. Do not rewrite it as
+`fuzzyness = 1/(1+expk)` (`expk = 99` would be `fuzzyness = 0.01`); that conversion
+would change the waveform.
+
+For `userdefined`, `SourceFunction::read_user_defined()` opens the library named by `file`
+and calls `<label>_init`. That function receives the `SourceFunction *` and sets it up. It
+is looked up by that plain name, so declare it `extern "C"`. The `units` key is checked
+against the source kind, but its unit and scale are applied to an entry in the FEM
+physical boundary-condition list, selected by an index unrelated to this source. The
+source function itself is not scaled. Do not rely on `units` for a circuit source.
 
 Units are checked against the source kind: `V` for a voltage source and `A` for a
 current source. Use `s` for `period`, `Hz` for `frequency`, and `rad` for `phase`
@@ -437,28 +493,27 @@ current source. Use `s` for `period`, `Hz` for `frequency`, and `rad` for `phase
 
 ### Modified Nodal Analysis
 
-`compute_MNA_matrix()` (`cl_ElectricalCircuit.cpp:610`) builds the **linear** part of the
+`compute_MNA_matrix()` (`cl_ElectricalCircuit.cpp`) builds the **linear** part of the
 system (everything except the Newton nonlinearities) once the sparsity is known. It is
 not time-*invariant*: it re-stamps the L/C companion conductances, which change whenever
 the timestep changes, so it must be recomputed on every Δt change (both the FEM controller and the
-standalone runner recompute it at the top of every attempt):
+test helper in `tests/circuit/test_ElectricalCircuit.cpp` recompute it at the top of every attempt):
 
 - The unknown vector is `[ node voltages (N−1) ; unknown branch currents ]`. Unknown-current
-  elements are voltage sources and switches (`mComponentsUnknown`,
-  `cl_ElectricalCircuit.cpp:298-333`).
+  elements are voltage sources and switches (`mComponentsUnknown`, filled by
+  `create_voltage_source()` and `create_switch()`).
 - R, L, C stamp conductances (L/C use their *discretized* resistance) into the nodal
   block. Voltage sources stamp the ±1 incidence entries linking their branch-current
   unknown to the two nodes.
 - The ground node (last index) is never assembled.
 
-`compute_jacobian_and_rhs()` (`:749`) builds the Newton residual/Jacobian each iteration:
+`compute_jacobian_and_rhs()` builds the Newton residual/Jacobian each iteration:
 nonlinear stamps (diode, superconductor `dI/dV`), source RHS contributions, switch
-logic, and the L/C history sources; then it adds the constant MNA matrix into the Jacobian
-(`:938-942`).
+logic, and the L/C history sources; then it adds the constant MNA matrix into the Jacobian.
 
-`solve()` (`:948`) does one Newton update `x −= ω·J⁻¹·r` (SuperLU), pushes voltages to
+`solve()` does one Newton update `x −= ω·J⁻¹·r` (SuperLU), pushes voltages to
 nodes and currents to components, then recomputes a true RHS norm for the residual.
-`residual()` (`:998`) returns `‖r‖ / ‖RHS‖`.
+`residual()` returns `‖r‖ / ‖RHS‖`.
 
 ### Time integration
 
@@ -482,11 +537,13 @@ interface.
 
 ---
 
-## 8. Worked example: the Circuit_Coupling case
+## 8. Worked example: a tape stack driven by a current source
 
-`tmp/examples/Circuit_Coupling/input.conf` — a current source `Is` (sine, 500 A, 10 Hz)
-in parallel with two FEM tapes (`Z1`, `Z2`), a dump inductor `L` and a filter capacitor
-`C`, all between circuit nodes 0 and 1 (node 1 is ground):
+A current source `Is` (sine, 500 A, 10 Hz) is in parallel with two FEM tapes (`Z1`, `Z2`),
+a dump inductor `L1` and a filter capacitor `C1`. All are connected between circuit nodes
+0 and 1; node 1 is ground. This is the classic-mode form of the circuit topology in
+`examples/tapestack_circuit`. The shipped deck writes the lumped part as the netlist
+`tapestack.cir` and uses hybrid mode, with the node named `live` (§3).
 
 ```
 circuit
@@ -497,18 +554,19 @@ circuit
         current source { label : Is ; node + : 0 ; node - : 1 ;
                          type : sine ; amplitude : 500 A ; frequency : 10 Hz ; phase : 0 deg ; }
         terminal pair  { label : Z1 ; node + : 0 ; node - : 1 ;
-                         input curves : [1,2] ; output curves : [3,4] ; order 1 ; }
+                         input curves : [1,2] ; output curves : [3,4] ; }
         terminal pair  { label : Z2 ; node + : 0 ; node - : 1 ;
-                         input curves : [5,6] ; output curves : [7,8] ; order 1 ; }
-        inductor       { label : L ; node + : 0 ; node - : 1 ; value : 2.5e-6 H ; order : 2 ; }
-        capacitor      { label : C ; node + : 0 ; node - : 1 ; value : 100 F ; order : 2 ; }
+                         input curves : [5,6] ; output curves : [7,8] ; }
+        inductor       { label : L1 ; node + : 0 ; node - : 1 ; value : 2.5e-6 H ; order : 2 ; }
+        capacitor      { label : C1 ; node + : 0 ; node - : 1 ; value : 100 F ; order : 2 ; }
     }
-    output { file : CircuitResults.txt ; currents : Z1, Z2, L, C, Is ; voltages : 0,1 ; }
+    output { file : CircuitResults.txt ; currents : Z1, Z2, L1, C1, Is ; voltages : 0,1 ; }
 }
 ```
 
-`CircuitResults.txt` then contains, per timestep:
-`t  IZ1  IZ2  IL  IC  IIs  V0  V1`.
+`CircuitResults.txt` then has the header `t IZ1 IZ2 IL1 IC1 IIs V0 V1` and one row per
+accepted timestep. The `IZ1` and `IZ2` columns hold the FEM current of the previous
+accepted step (§3, output section).
 
 ---
 
@@ -518,7 +576,7 @@ When a circuit is attached, rank 0 writes its state to the `/circuit` group in
 the memdump, alongside the field data. `load_memdump` restores this state before
 the first post-restart timestep.
 
-The v2 format, introduced on 2026-08-29, is:
+The dump layout (format version 2) is:
 
 ```
 /circuit
@@ -544,8 +602,10 @@ The following per-component datasets are present only for stateful components:
 | voltage source | `value_time` |
 | current source | `current` |
 
-Resistors, diodes, and superconductors do not store restart state. Their
-currents are recomputed from the restored node voltages.
+Resistors, diodes, and superconductors do not store restart state, and `load_state()` does
+not recompute their currents. It restores only the node voltages and the unknown branch
+currents. Until the first circuit `solve()` after the restart calls `compute_current()` on
+them, these components keep their constructed current of 0.
 
 The loader enforces the following rules. If any rule is violated, loading stops
 with a hard error. The remedy is to delete the memdump and restart with a cold
@@ -557,19 +617,14 @@ circuit.
   loader cannot detect a reordering of two components of the same type, so such
   a change silently swaps their histories. For this reason, using the same deck
   is a contract, not merely a recommendation.
-- A pre-v2 dump without `n_components` is refused. This prevents the loader from
-  silently cold-starting the reactive histories.
+- A dump without `n_components` (an older format) is refused. This prevents the
+  loader from silently cold-starting the reactive histories.
 
 After `load_state()`, callers may use either the controller sequence
 `set_timestep → shift → compute_MNA_matrix` or stamp without first calling
 `shift`. Do not call `shift_back()` before the first post-restore `shift()`,
 because there is no attempt to revert. A restored switch retains its fired
 latch and does not re-fire.
-
-The following v1 limitation is now superseded: through 2026-08-28, the dump
-carried only the four circuit-level datasets, and standalone inductor/capacitor
-state was documented as unrecoverable. The v2 component walk now restores that
-state.
 
 ## 10. Common pitfalls
 
@@ -579,9 +634,11 @@ state.
 | Using SPICE's node `0` as ground in a hand-written `topology{}` | Node 0 is a normal node here | Put ground last — or import the netlist through `circuit { file : … }`, where `NgspiceCircuitFactory` maps `0`/`gnd` to the last index automatically |
 | Missing units on a value | `check_unit` BELFEM_ERROR | Always give units (`Ohm`, `H`, `F`, `A`, `V`, `s`, `Hz`, `deg`) |
 | `terminal pair` curve ids not defined in FEM `topology{curves{}}` | Curve/terminal lookup fails downstream | Define logical curves on the FEM side first |
-| Mismatched input/output group counts on a 3-D terminal pair | BELFEM_ERROR (`:517`) | Equal number of `[...]` groups in `input` and `output` |
-| Expecting the circuit to run in parallel | Circuit solves on rank 0 only | By design. Only the success flag is broadcast (`cl_FEM_Controller.cpp:280`); the circuit-derived BC values are `fix()`-ed on rank 0 — the *FEM* solve is what is distributed |
-| Constructing the factory after the controller | Circuit BCs missing from the kernel | Build `ElectricalCircuitFactory` before `create_controller()` |
+| Mismatched input/output group counts on a 3-D terminal pair | BELFEM_ERROR in `read_terminal_pair()` | Equal number of `[...]` groups in `input` and `output` |
+| Expecting the circuit to run in parallel | Circuit solves on rank 0 only | By design. Only the success flag is broadcast (`initialize_timestep()` in `cl_FEM_Controller.cpp`); the circuit-derived BC values are `fix()`-ed on rank 0 — the *FEM* solve is what is distributed |
+| Constructing the factory after the kernel | Circuit BCs missing from the kernel | Build `ElectricalCircuitFactory` before `create_magnetic_kernel()` |
+| Destroying the factory while the controller still runs | Dangling circuit pointer | Keep `ElectricalCircuitFactory` alive as long as the controller uses `circuit()` |
+| Writing `order 2 ;` without a colon | Element silently stays at BDF order 1 | Write `order : 2 ;` |
 
 ---
 
@@ -593,11 +650,14 @@ state.
   `compute_MNA_matrix()` → Newton iterations until the residual tolerance is met. This is the
   same sequence the FEM controller runs. The transient cases in that file (resistive, switched
   RLC, diode bridge, and a netlist twin) are the circuit-only examples.
-- **SPICE/ngspice import** — **shipped**; see `todo/ngspice_parser_plan.md`. `NetlistParser` and
+- **SPICE/ngspice import** — `NetlistParser` and
   `NgspiceCircuitFactory` build an `ElectricalCircuit` from a `.cir` netlist through the same
   `create_*` calls, and the hybrid `circuit → file` key pulls the lumped topology out of the deck
   while terminal pairs stay in `input.conf` (§11.1 of `doc/input_file_reference.md`;
-  `examples/tapestack_circuit` runs from `tapestack.cir`). Still open: a standalone `circuitrun` executable,
-  and `PULSE`/`PWL` source functions, which the importer currently refuses by name.
+  `examples/tapestack_circuit` runs from `tapestack.cir`). Netlist sources may be a bare
+  value, `DC <value>`, or `SIN(...)` with zero offset, delay and damping; `PULSE`, `PWL`,
+  `EXP`, `SFFM` and `AM` are refused, as are nonzero `SIN` offset, delay or damping. The
+  full card list and refusals are in `cl_NgspiceCircuitFactory.hpp`. There is no standalone circuit
+  executable; a circuit always runs coupled inside `belfem`.
 - **Refactoring notes** — `src/circuit/doc/notes.md` (namespace cleanup, dependency
   inversion, factory split).
