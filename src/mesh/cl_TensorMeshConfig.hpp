@@ -211,11 +211,18 @@ namespace belfem
         element_ijk( const index_t i, const real x )
         {
             BELFEM_ASSERT( i < mDimension, "Invalid dimension : %u", ( unsigned int ) i );
+            BELFEM_ASSERT( ! std::isnan( x ), "coordinate is NaN" );
 
             // clamped as a real: converting a value that does not fit in
-            // index_t, such as one element or more below the origin, is undefined
+            // index_t, such as one element or more below the origin, is
+            // undefined. The first test also sends NaN to element 0, which
+            // std::clamp would pass through
             const real tS = std::floor( ( x - mOrigin( i ) ) * mInvElementSteps( i ) );
-            return ( index_t ) std::clamp( tS, 0.0, ( real ) ( mNumElementsPerDim( i ) - 1 ) );
+            if ( ! ( tS > 0.0 ) )
+            {
+                return 0 ;
+            }
+            return ( index_t ) std::min( tS, ( real ) ( mNumElementsPerDim( i ) - 1 ) );
         }
     private:
 
