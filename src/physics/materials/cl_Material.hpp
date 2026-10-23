@@ -311,10 +311,12 @@ namespace belfem
         real ( Material::*mFunctionDensity ) ( const real T )  const = nullptr ;
 
         real ( Material::*mFunctionCp ) ( const real T )  const = nullptr ;
-        real ( Material::*mFunctionLambda ) ( const real T ) const = nullptr ;
+        // not null: an unrouted lambda() or dlambdadT() must fail in release
+        // builds too
+        real ( Material::*mFunctionLambda ) ( const real T ) const = & Material::lambda_undefined ;
 
         real ( Material::*mFunctiondCpdT ) ( const real T )  const = nullptr ;
-        real ( Material::*mFunctiondLambdadT ) ( const real T ) const = nullptr ;
+        real ( Material::*mFunctiondLambdadT ) ( const real T ) const = & Material::lambda_undefined ;
 
         real ( Material::*mFunctiond2CpdT2 ) ( const real T )  const = nullptr ;
 
@@ -1424,6 +1426,9 @@ namespace belfem
 
         real
         lambda_const( const real T ) const  ;
+
+        real
+        lambda_undefined( const real T ) const  ;
 
         real
         dlambdadT_finite_difference( const real T ) const ;
