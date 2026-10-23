@@ -110,7 +110,7 @@ Cell< Protoshell * > tProtoshells ;   // empty: no thin shells
 mesh::CutFactory tFactory( tMesh, &tTopology, tProtoshells,
                            mesh::CutAlgorithm::PellikkaGeneralized,
                            false );
-tFactory.set_periodicity( nullptr );  // required, see "CutFactory - Main Entry Point"
+tFactory.set_periodicity( nullptr );  // optional: nullptr is the default
 tFactory.run();                       // collective; the work happens on the master
 ```
 
@@ -308,14 +308,14 @@ tFactory.run();
 // labelled cut_<n>, per H^1 generator
 ```
 
-The cut sidesets are now in the mesh. The abstract nodes in `Mesh::abstract_nodes()` carry the
-jump DOFs. `CutFactory::cuts()` is not the way to find the cuts (see "Result Retrieval").
+The cut sidesets are stored in the mesh and labelled `cut_<n>` in `Mesh::sidesets()`. The
+abstract nodes in `Mesh::abstract_nodes()` carry the jump DOFs (see "Result Retrieval").
 
 **Leave the cut sidesets at `DomainType::Default`.** These are thick cuts: the jump is carried by
 the abstract nodes, not by dofs on the cut surface. The Maxwell field list builds a thin-cut dof
 table for every sideset typed `DomainType::Cut` (`cl_Maxwell_FieldList.cpp`), so retyping a
 `cut_<n>` sideset would add dofs the thick-cut formulation does not use. `MaxwellFactory` does not
-retype them: its loop over `CutFactory::cuts()` runs over an empty list.
+retype them, so the Maxwell solver does not select them.
 
 ---
 
@@ -691,10 +691,10 @@ Neither of the last two arguments has a default; both are passed explicitly. `aP
 is a non-const reference, so it must be an lvalue (`{}` does not compile); pass an empty
 `Cell< Protoshell * >` when there are no thin shells.
 
-**⚠️ Call `set_periodicity()` before `run()`.** The member `mPeriodicFactory` has no
-initialiser, and the constructor does not set it. `run()` tests it against `nullptr` on the
-master. `MaxwellFactory` always calls `set_periodicity()` on the master; pass `nullptr` for a
-mesh without periodicity.
+**When the mesh is periodic, call `set_periodicity()` before `run()`.** The member
+`mPeriodicFactory` defaults to `nullptr`, which `run()` reads on the master as "no periodicity".
+When it computes the cuts, `MaxwellFactory` calls `set_periodicity()` on the master, passing its
+own factory pointer.
 
 **⚠️ Ownership:** CutFactory does **not** take ownership of aMesh or aTopology. Caller must ensure they outlive the factory.
 
@@ -725,7 +725,8 @@ are copied; they are consumed by `Homology::suggest_Homology()` during `run()`.
 void set_periodicity( PeriodicityFactory * aPeriodicFactory );
 ```
 
-Stores the periodicity factory, or `nullptr` for none. Required before `run()` (see above).
+Stores the periodicity factory, or `nullptr` when periodicity is not used (the default). Call
+it before `run()` (see above).
 On the master, `run()` calls `create_periodicity()` on a non-null factory and installs the
 result on the mesh.
 
@@ -777,13 +778,8 @@ themselves are owned by `Mesh::nodes()`.
 `DofManager::extract_abstract_dofs_from_mesh()` reads the abstract DOF data. There is no
 per-node "add abstract DOF" call.
 
-```cpp
-Cell<SideSet*>& cuts();
-```
-
-Returns the member list `mCuts`. `run()` does not fill it, so the list is **empty** after
-`run()`. The generated cut sidesets are added to the mesh by
-`CutData::add_thin_cut_sidesets_to_mesh()`, one per H^1 generator, with the label `cut_`
+**Cut sidesets.** `CutFactory` has no accessor for the cuts. `run()` adds them to the mesh
+through `CutData::add_thin_cut_sidesets_to_mesh()`, one for each H^1 generator, with the label `cut_`
 followed by a zero-padded number and domain type `Default`. Find them through
 `Mesh::sidesets()` by label, and leave the domain type at `Default` (see Quick-Start).
 
@@ -2545,8 +2541,8 @@ If still slow:
 
 **Cause:** No cuts were generated (topology is simply-connected).
 
-**Diagnosis:** count the `cut_<n>` sidesets in `Mesh::sidesets()` on the master.
-`tFactory.cuts()` is always empty and tells you nothing (see "Result Retrieval").
+**Diagnosis:** count the `cut_<n>` sidesets in `Mesh::sidesets()` on the master (see "Result
+Retrieval").
 
 **Solution:**
 - **Check mesh:** Verify domain is multiply-connected (e.g., toroid, solenoid)
@@ -2570,8 +2566,7 @@ If still slow:
 
 2. **Check abstract node count:** `CutProcessor` creates one abstract node and one `cut_<n>`
    sideset per H^1 generator. Compare `tFactory.abstract_nodes().size()` with the number of
-   `cut_<n>` sidesets in `Mesh::sidesets()`, not with `tFactory.cuts().size()`, which is
-   always zero.
+   `cut_<n>` sidesets in `Mesh::sidesets()`.
 
 **Solution:**
 - **Orientation:** Use `Homology::generators_orientation()` to ensure consistent direction
