@@ -43,7 +43,8 @@ BELFEM's I/O module provides unified interfaces for reading and writing data in 
 ### Build Configuration
 
 ```cmake
-# Enable HDF5 support (default ON; highly recommended for large datasets)
+# Enable HDF5 support (default ON; highly recommended for large datasets).
+# Requires USE_MPI=ON: configure aborts if HDF5 is on and MPI is off
 cmake -DUSE_HDF5=ON ..
 
 # Enable XML support via tinyxml2 (default OFF)
@@ -61,39 +62,51 @@ Following BELFEM's coding philosophy:
 - **Explicit control**: FileMode explicitly controls read/write intent
 - **Performance-first**: Buffering in Ascii, direct memory copy in HDF5
 - **Zero-overhead abstractions**: Template functions for type-safe I/O
-- **C-style error handling**: a failed check ends the run — abort in release, throw in debug (see Error Handling Philosophy)
+- **C-style error handling**: a failed `BELFEM_ERROR` ends the run, by aborting in release builds or throwing in debug builds; `BELFEM_ASSERT` is checked only in debug builds (see Error Handling Philosophy)
 
 ### Error Handling Philosophy
 
-**IMPORTANT:** BELFEM uses **C libraries** (HDF5, BLAS, etc.) with **abort-on-error** semantics, NOT C++ exceptions.
+**IMPORTANT:** BELFEM uses **C libraries** (HDF5, BLAS, etc.) that report failures through return codes rather than C++ exceptions.
 
 ```cpp
-// Typical BELFEM error handling pattern (hdf5_tools.hpp:596-623)
+// The vector write path (hdf5_tools.hpp, save_vector_to_file)
 T* tData = (T*) malloc(tLength * sizeof(T));     // 1. Allocate
 std::memcpy(tData, aVector.data(), ...);         // 2. Use (C function, never throws)
 aStatus = H5Dwrite(..., tData);                  // 3. C API (returns error code, never throws)
 free(tData);                                      // 4. FREE ALWAYS EXECUTES
-BELFEM_ASSERT(aStatus == 0, "...");              // 5. Abort if error (after cleanup)
+BELFEM_ASSERT(aStatus == 0, "...");              // 5. Debug builds only: fails after cleanup
 ```
 
 **Why this matters:**
 - HDF5 functions **return error codes** (`herr_t`), they **never throw exceptions**
 - `malloc`/`free` are C functions (don't throw in C++)
-- `BELFEM_ERROR` and `BELFEM_ASSERT` end the run — but **how** depends on the build: a debug
-  build **throws**, a release build calls `error_abort()` (`assert.hpp:88-93,189-192`)
-- So the "no unwinding" simplification holds for **release** builds only. In a debug build the
-  throw does unwind, and a raw `malloc` between the allocation and the check is leaked
+- The two checks differ in **when** they are active (`assert.hpp`, `BELFEM_ASSERTIONS_ACTIVE`):
+  - `BELFEM_ERROR` is always active. A failed check **throws** in a debug build and calls
+    `error_abort()` in a release build.
+  - `BELFEM_ASSERT` is active only when assertions are enabled (`NDEBUG` is not defined, or
+    `DEBUG` is defined). When active, a failed check throws like `BELFEM_ERROR`. In a release
+    build (`-DNDEBUG`) the macro expands to **nothing**: the condition is not evaluated, and
+    nothing is reported.
+- The write-status checks in `save_vector_to_file` and `save_matrix_to_file` are `BELFEM_ASSERT`.
+  **In a release build a failed `H5Dwrite` is not detected by this check.** BELFEM does not
+  silence HDF5's default error handler, which prints the library's error stack to stderr; that
+  output is then the only sign. The refusal of a duplicate dataset is a
+  `BELFEM_ERROR` and is detected in every build. To test a write yourself, read `file.status()`
+  (the `herr_t` of the last operation) after `save_data()`.
+- In a debug build the throw unwinds the stack, so a raw `malloc` that has not yet been freed when
+  a check fails is leaked. In a release build a failed `BELFEM_ERROR` aborts without unwinding.
 
 **Resource cleanup guarantees:**
 1. **Normal path:** Destructors run when objects go out of scope (RAII)
-2. **Error path:** Explicit cleanup (e.g., `free()`) runs **before** `BELFEM_ASSERT` aborts
+2. **Error path:** Explicit cleanup (e.g., `free()`) runs **before** the status check
 3. **Abort/crash:** Process terminates → OS reclaims all memory, file descriptors, handles
 
 **Implication:** in a release build, traditional C++ "exception safety" concerns (RAII wrappers,
-`unique_ptr`) do not drive the design of these error paths — the process ends after the explicit
-cleanup rather than unwinding through it. Do not read that as "BELFEM never throws": a debug run
-does, deliberately and at every rank, so that a failure can be caught under a debugger. The
-pattern above stays correct in both builds because the `free()` precedes the check.
+`unique_ptr`) do not drive the design of these error paths — a failed `BELFEM_ERROR` ends the
+process after the explicit cleanup rather than unwinding through it. Do not read that as "BELFEM
+never throws": debug builds deliberately throw at every rank so that a failure can be caught
+under a debugger. The pattern above does not leak in either build because `free()` precedes the
+check.
 
 > **Note for contributors:** If you add C++ library code that throws exceptions (e.g., `std::vector::at()`), wrap it in `try/catch` and convert to `BELFEM_ERROR`. Do NOT let exceptions propagate through C library boundaries.
 
@@ -113,8 +126,8 @@ pattern above stays correct in both builds because the `free()` precedes the che
 **These warnings DO NOT apply to BELFEM** because:
 
 1. **BELFEM uses C libraries** (HDF5, BLAS, etc.) that return error codes, not exceptions
-2. **Error handling ends the run** (`BELFEM_ERROR`/`BELFEM_ASSERT`: abort in release, throw in debug)
-3. In release there is no unwinding, so cleanup placed before the check always runs; in debug the throw unwinds, which is why the `free()` must precede the check
+2. **A failed check ends the run** (`BELFEM_ERROR`: abort in release, throw in debug; `BELFEM_ASSERT`: throw in debug, compiled out in release)
+3. In release a failed `BELFEM_ERROR` does not unwind, so cleanup placed before the check always runs; in debug the throw unwinds, which is why the `free()` must precede the check
 4. **Manual resource management is intentional** for zero-overhead performance in HPC
 
 **Example of "false positive":**
@@ -123,13 +136,15 @@ pattern above stays correct in both builds because the `free()` precedes the che
 T* tData = (T*) malloc(tLength * sizeof(T));
 aStatus = H5Dwrite(..., tData);  // C API - NEVER throws
 free(tData);  // ALWAYS executes (before BELFEM_ASSERT)
-BELFEM_ASSERT(aStatus == 0, "...");  // Aborts AFTER cleanup
+BELFEM_ASSERT(aStatus == 0, "...");  // Debug builds only; checked AFTER cleanup
 ```
 
-This is **safe in BELFEM** because:
+This does **not leak** because:
 - `H5Dwrite()` is a C function (returns error code, never throws)
 - `free()` executes before the assertion
-- If assertion fails, process aborts (OS reclaims all resources)
+- In a debug build a failed assertion throws after the buffer is freed. In a release build the
+  assertion is compiled out, so a failed write is not reported by this check (see Error Handling
+  Philosophy)
 
 **When to ignore modern C++ warnings:**
 - ✅ `malloc`/`free` with C library calls (HDF5, BLAS, etc.)
@@ -146,8 +161,10 @@ This is **safe in BELFEM** because:
 ### 1. Forgetting to Enable HDF5/XML at Build Time
 
 ```cpp
-// WRONG: Will compile but fail at runtime if BELFEM_HDF5 not enabled
-HDF5 file("data.h5", FileMode::NEW);  // May produce stubs or errors
+// WRONG: without BELFEM_HDF5 this compiles and runs, but silently writes nothing:
+// the constructor opens no file, save_data() does nothing, group calls return -1,
+// and no error is raised
+HDF5 file("data.h5", FileMode::NEW);
 
 // SOLUTION: Check CMake configuration
 #ifdef BELFEM_HDF5
@@ -177,7 +194,7 @@ string path = "checkpoint_" + std::to_string(timestep) + ".h5";
 HDF5 file(path, FileMode::NEW);
 ```
 
-**FileMode options (cl_HDF5.cpp:44-97):**
+**FileMode options (`cl_HDF5.cpp`, `HDF5::HDF5`):**
 - `NEW`: Create new file (**TRUNCATES if exists** — `H5F_ACC_TRUNC` — use with caution!)
 - `OPEN_RDONLY`: Read-only access (`H5F_ACC_RDONLY`, fails if doesn't exist)
 - `OPEN_RDONLY_PARALLEL`: **not handled by `HDF5`** — the constructor has no case for it and falls through to "unknown filemode passed". `Ascii` implements it (rank 0 reads, then broadcasts)
@@ -211,7 +228,7 @@ file.save_data("GlobalMetadata", metadata);  // Writes to /GlobalMetadata
 }  // File and the active group closed by destructor
 ```
 
-**HDF5 Group Navigation Invariant (cl_HDF5.cpp:78-239):**
+**HDF5 Group Navigation Invariant (`cl_HDF5.cpp`, `create_group` / `select_group` / `close_active_group`):**
 
 > **Critical Rule:** HDF5 maintains exactly **one active group** at any time.
 > All `save_data()` and `load_data()` calls operate **relative to the currently active group**.
@@ -233,7 +250,7 @@ file.save_data("GlobalMetadata", metadata);  // Writes to /GlobalMetadata
 ### 4. InputFile Section Hierarchy Confusion
 
 ```cpp
-// Config file: Section { subsection { key = value } }
+// Config file: section { subsection { key : value ; } }
 
 // WRONG: Trying to access nested section directly
 const input::Section* sec = input_file.section("subsection");  // BELFEM_ERROR: "Section ... does not exist"
@@ -273,23 +290,31 @@ Hierarchical data format interface for saving/loading scalars, vectors, matrices
 
 ```cpp
 HDF5(const string & aPath,
-     const enum FileMode aMode,
+     const enum FileMode aMode = FileMode::NEW,
      const bool aParallelMode = false);
 ```
 
 **Parameters:**
 - `aPath`: File path (`.h5` or `.hdf5` extension recommended)
-- `aMode`: File access mode (`NEW`, `OPEN_RDONLY`, `OPEN_RDWR`; `OPEN_RDONLY_PARALLEL` is **not** handled by `HDF5` — see the FileMode table)
+- `aMode`: File access mode (`NEW`, `OPEN_RDONLY`, `OPEN_RDWR`; `OPEN_RDONLY_PARALLEL` is **not** handled by `HDF5` — see the FileMode table). **The default is `NEW`, which truncates an existing file**: `HDF5 file("results.h5");` erases `results.h5`
 - `aParallelMode`: write **one file per rank** — the path is rewritten through `make_path_parallel()`. This is not PHDF5 and nothing about it is collective
+- With `aParallelMode = false` (the default) **only rank 0 opens the file**; on every other rank the
+  object holds no open file. The single-file examples in this guide assume a serial run, or code
+  executed on rank 0 only
 
 #### Group Operations
 
 ```cpp
 // Create and navigate hierarchical structure
 hid_t create_group(const string & aLabel);  // returns the new active group
+hid_t create_group(const string & aLabel,
+                   const hid_t aParent);    // aParent must be the active group (checked)
 hid_t select_group(const string & aLabel);
 void close_active_group();
 ```
+
+`create_group()` raises a `BELFEM_ERROR` if a group of that name already exists under the active
+group; use `select_group()` to reopen it.
 
 **Example:**
 ```cpp
@@ -321,11 +346,12 @@ void save_data(const string & aLabel, const Vector<uint> & aVector);
 void save_data(const string & aLabel, const Vector<luint> & aVector);
 void save_data(const string & aLabel, const Vector<real> & aVector);
 
-// Matrices
-void save_data(const string & aLabel, const Matrix<sint> & aMatrix);
-void save_data(const string & aLabel, const Matrix<uint> & aMatrix);
-void save_data(const string & aLabel, const Matrix<luint> & aMatrix);
-void save_data(const string & aLabel, const Matrix<real> & aMatrix);
+// Matrices (template on T; aTranspose writes the transpose)
+void save_data(const string & aLabel, const Matrix<T> & aMatrix,
+               const bool aTranspose = false);
+
+// Raw arrays (template on T)
+void save_data(const string & aLabel, const T * aArray, const index_t aMemorySize);
 
 // String arrays
 void save_data(const string & aLabel, const Cell<string> & aStrings);
@@ -349,11 +375,13 @@ void load_data(const string & aLabel, Vector<uint> & aVector);
 void load_data(const string & aLabel, Vector<luint> & aVector);
 void load_data(const string & aLabel, Vector<real> & aVector);
 
-// Matrices (auto-resizes to file data size)
-void load_data(const string & aLabel, Matrix<sint> & aMatrix);
-void load_data(const string & aLabel, Matrix<uint> & aMatrix);
-void load_data(const string & aLabel, Matrix<luint> & aMatrix);
-void load_data(const string & aLabel, Matrix<real> & aMatrix);
+// Matrices (template on T; auto-resizes to file data size;
+// aTranspose reads the transpose)
+void load_data(const string & aLabel, Matrix<T> & aMatrix,
+               const bool aTranspose = false);
+
+// Raw arrays (template on T; aMemorySize must be known in advance)
+void load_data(const string & aLabel, T * aArray, const index_t aMemorySize);
 
 // String arrays
 void load_data(const string & aLabel, Cell<string> & aStrings);
@@ -407,12 +435,22 @@ string & line(index_t aLineNumber);  // Mutable access
 // Number of lines
 index_t length() const;
 
-// Append line to buffer (cl_Ascii.cpp:135)
+// Append line to buffer (cl_Ascii.cpp, Ascii::print)
 void print(const string & aLine);
 
-// Write buffer to file (cl_Ascii.cpp:76)
+// Write buffer to file (cl_Ascii.cpp, Ascii::save); returns false
 bool save();
 ```
+
+`save()` always returns `false`: it clears the unsaved-changes flag and then returns that flag. A
+failure to open the file is a `BELFEM_ERROR`, not a return value. `save()` refuses only
+`OPEN_RDONLY`; it does not refuse a buffer opened with `OPEN_RDONLY_PARALLEL`. Every rank holds the
+same path in that mode, so calling `save()` on every rank makes each rank truncate and write the
+same file.
+
+Only `print()` marks the buffer as changed. Editing a line through the mutable `line(i)` does not
+update that flag, so the destructor's unsaved-changes check does not catch such edits; call
+`save()` yourself.
 
 #### Usage Patterns
 
@@ -430,7 +468,7 @@ for (index_t i = 0; i < file.length(); ++i) {
 }
 ```
 
-**Write text file (cl_Ascii.cpp:135-140):**
+**Write text file (cl_Ascii.cpp, `Ascii::print`):**
 ```cpp
 Ascii output("results.txt", FileMode::NEW);
 
@@ -451,7 +489,7 @@ output.save();
 - Entire file loaded into memory (`Cell<string>` buffer)
 - Efficient for moderate-sized text files (< 10 MB)
 - For large files (> 100 MB), consider streaming with standard library
-- **Destructor:** raises a `BELFEM_ERROR` (always active) if the buffer changed but was never saved (`mChangedSinceLastSave`)
+- **Destructor:** raises a `BELFEM_ERROR` (always active) if `print()` added lines that were never saved (`mChangedSinceLastSave`); edits made through `line(i)` are not tracked
 
 ### CsvFile Class
 
@@ -492,8 +530,11 @@ CsvFile tsv("data.tsv", '\t');
 
 **Assumptions:**
 - All data is numeric (`real` type)
-- Rectangular data (all rows same length)
-- Non-numeric content will cause parsing errors
+- Rectangular data: the column count is taken from the first row only
+- A non-numeric token makes `std::stod` throw (`std::invalid_argument`)
+- A row shorter than the first row is not checked in a release build: the `Cell` bounds check is
+  a `BELFEM_ASSERT`, so the read past the row's end is undefined behaviour. In a debug build the
+  assertion fails and throws
 
 ### InputFile and Input_Section Classes
 
@@ -541,7 +582,17 @@ material : aluminum
 ```
 
 Every key line ends with `;`; a line without one is not a key. Keys, section types and labels
-are folded to lower case by the parser.
+are folded to lower case by the parser; values are stored as written. A key keeps its inner
+spaces: `max iterations` is looked up as `"max iterations"`, never as `"max_iterations"`.
+
+Two more parser rules:
+- A `;`-terminated line without `:` is a flag: `verbose ;` stores the string `"true"` under
+  `verbose`.
+- Two sections with the same type and no label are both kept in file order (reachable through
+  `section(index)`), but lookup by name returns only the later one.
+
+The authoritative description of the syntax, and of every key BELFEM reads, is
+`doc/input_file_reference.md`.
 
 #### InputFile Class
 
@@ -558,7 +609,7 @@ bool section_exists(const string & aSection) const;
 index_t num_sections() const;
 
 // Debug
-void print();  // Print entire structure
+void print();  // Print the comment-stripped line buffer, numbered
 ```
 
 #### Input_Section Class
@@ -600,7 +651,8 @@ const string & key(const index_t aIndex) const;
 // Hierarchy
 int level() const;                   // Nesting depth
 const Section * parent() const;
-string tree() const;                 // Full path, joined with "->" (e.g., "input.conf->solver->preconditioner")
+string tree() const;                 // Path joined with "->" (e.g., "input.conf->solver->preconditioner");
+                                     // parents appear as type:label, the section itself by type only
 ```
 
 #### Usage Example
@@ -614,14 +666,14 @@ if (config.section_exists("Solver")) {
     const input::Section* solver = config.section("Solver");
 
     // Get values with type conversion
-    string solver_type = solver->get_string("type");        // "MUMPS"
+    string solver_type = solver->get_string("type");        // "mumps" (values keep their case)
     real tol = solver->get_real("tolerance");               // 1e-6
-    int max_iter = solver->get_int("max_iterations");       // 1000
+    int max_iter = solver->get_int("max iterations");       // 1000
 
     // Navigate to sub-section
     if (solver->section_exists("Preconditioner")) {
         const input::Section* precond = solver->section("Preconditioner");
-        string precond_type = precond->get_string("type");  // "ILU"
+        string precond_type = precond->get_string("type");  // "ilu"
     }
 }
 
@@ -633,7 +685,7 @@ if (config.section_exists("material:steel")) {
 
     // Get value with unit conversion
     value rho = steel->get_value("density", "kg/m^3");       // Converted to base units
-    value E = steel->get_value("youngs_modulus", "Pa");
+    value E = steel->get_value("youngs modulus", "Pa");
 }
 
 // Iterate over all materials
@@ -659,15 +711,15 @@ The `get_value()` method automatically converts from file units to BELFEM base u
 **General units:** Uses `unit_to_si()` from physics module for automatic SI conversion:
 ```cpp
 // Example conversions (from input file → BELFEM internal units)
-density = 7.85 g/cm^3    → 7850 kg/m³
-pressure = 100 MPa       → 1e8 Pa
-length = 25.4 mm         → 0.0254 m
-energy = 1 kJ            → 1000 J
+density : 7.85 g/cm^3 ;    → 7850 kg/m³
+pressure : 100 MPa ;       → 1e8 Pa
+length : 25.4 mm ;         → 0.0254 m
+energy : 1 kJ ;            → 1000 J
 ```
 
 **Usage:**
 ```cpp
-// File contains: temperature = 300 C
+// File contains: temperature : 300 C ;
 value T = section->get_value("temperature", "C");
 // T automatically converted to 573.15 K (BELFEM base unit)
 
@@ -696,6 +748,10 @@ XML document interface using TinyXML2 backend.
 ```cpp
 XML(const string & aPath, const FileMode aMode = FileMode::OPEN_RDONLY);
 ```
+
+The `aMode` parameter is accepted but ignored: every mode loads the existing file at `aPath`, so
+`XML` is a reader only and `FileMode::NEW` does not create a file. Without `BELFEM_XML`, the
+constructor raises `BELFEM_ERROR` ("XML support not compiled in").
 
 #### Interface
 
@@ -777,7 +833,7 @@ enum class FileMode
 ### Free Functions
 
 ```cpp
-// Check file existence (filetools.cpp:23)
+// Check file existence (filetools.cpp, `file_exists`)
 bool file_exists(const string & aPath);
 
 // Extract file extension — lives in src/core/stringtools.hpp, not in filetools
@@ -785,6 +841,11 @@ string filetype(const string & aPath);
 
 // Create MPI-safe file paths (make_path_parallel, filetools.cpp)
 string make_path_parallel(const string & aPath);
+
+// Resolve a data file named in an input file: the run directory first, then
+// below aSubDirectory of the shared data directory (gBelfemDataPath);
+// returns aFile unchanged if nothing is found (filetools.hpp)
+string search_data_file(const string & aFile, const string & aSubDirectory);
 ```
 
 **Usage:**
@@ -849,28 +910,28 @@ void load_checkpoint(Vector<real> & aState, real & aTime, int & aTimestep) {
 ### Pattern 2: Configuration-Driven Simulation
 
 ```cpp
-void setup_solver_from_config(const string & aConfigPath) {
-    InputFile config(aConfigPath);
+void solve_from_config(const string & aConfigPath) {
+    InputFile tConfig(aConfigPath);
 
-    // Get solver parameters
-    const input::Section* solver_sec = config.section("Solver");
-    string solver_type = solver_sec->get_string("type");
-    real tolerance = solver_sec->get_real("tolerance");
+    // SolverParameters reads its own keys from the section
+    // (library, relative tolerance, max iterations, ...)
+    const input::Section * tSolverSection = tConfig.section("solver");
+    SolverParameters tParams(tSolverSection);
 
-    // Create solver based on config
-    SolverType type = string_to_solver_type(solver_type);
-    Solver solver(type);
-
-    SolverParameters params;
-    params.set_tolerance(tolerance);
-
-    if (solver_sec->key_exists("max_iterations")) {
-        params.set_max_iterations(solver_sec->get_int("max_iterations"));
+    // a key the parameters do not read is queried directly
+    if (tSolverSection->key_exists("my extra key")) {
+        real tExtra = tSolverSection->get_real("my extra key");
+        // ...
     }
 
-    solver.set_parameters(params);
+    // collective: every rank must construct the Solver together
+    Solver tSolver(tParams);
+    // ... assemble and solve with tSolver
 }
 ```
+
+The keys that `SolverParameters( const input::Section * )` reads are listed in
+`doc/input_file_reference.md`.
 
 ### Pattern 3: Time-Series Data Storage
 
@@ -1012,7 +1073,7 @@ Ascii file("huge_data.csv", FileMode::OPEN_RDONLY);
 
 **BELFEM has no parallel-HDF5 support.** `BELFEM_PHDF5` is defined nowhere in the tree, and
 `H5Pset_fapl_mpio` is never called — every HDF5 file is opened with `H5P_DEFAULT`
-(`cl_HDF5.cpp:47-51,67-71`). The per-rank pattern is not a fallback; it is the only pattern.
+(`cl_HDF5.cpp`, `HDF5::HDF5`). The per-rank pattern is not a fallback; it is the only pattern.
 
 ```cpp
 // Each rank writes its own file: pass aParallelMode.
@@ -1020,7 +1081,7 @@ HDF5 file("output.h5", FileMode::NEW, true);   // -> output_<size>.<rank>.h5
 ```
 
 **Do not hand-roll it with `make_path_parallel()` alone.** The open is gated on
-`( aParallelMode || gComm.rank() == 0 )` (`cl_HDF5.cpp:40`), so passing a per-rank path without
+`( aParallelMode || gComm.rank() == 0 )` (`cl_HDF5.cpp`, `HDF5::HDF5`), so passing a per-rank path without
 the flag still leaves every non-root rank with no open file at all.
 
 ---
@@ -1046,13 +1107,14 @@ the flag still leaves every non-root rank with no open file at all.
 ### File Naming Conventions
 
 ```cpp
-// Serial job (comm_size() == 1)
+// Serial job (comm_size() == 1). Without aParallelMode only rank 0 opens
+// the file, so in an MPI job this line serves rank 0 alone
 HDF5 file("output.h5", FileMode::NEW);
 
 // MPI job: each rank writes its own file.
 // Pass aParallelMode -- do NOT hand-roll the path, because the open is gated
 // on ( aParallelMode || rank == 0 ) and a per-rank path alone leaves every
-// non-root rank with no open file ( cl_HDF5.cpp:40 ).
+// non-root rank with no open file ( cl_HDF5.cpp, HDF5::HDF5 ).
 if (comm_size() > 1) {
     HDF5 file("output.h5", FileMode::NEW, true);
     // rank 0 -> "output_4.0.h5", rank 1 -> "output_4.1.h5", ...
@@ -1062,22 +1124,22 @@ if (comm_size() > 1) {
 ### Master-Rank I/O Pattern
 
 ```cpp
-// Only rank 0 writes global configuration
-if (comm_rank() == 0) {
-    InputFile config("solver.input");
-    // Parse configuration
-}
-
-// Broadcast to all ranks (using comm module)
-// ... MPI_Bcast or BELFEM comm::broadcast
+// Every rank constructs the InputFile: it opens with FileMode::OPEN_RDONLY,
+// so each rank reads and parses the file itself; no broadcast is involved
+InputFile tConfig("solver.input");
+const input::Section * tSolver = tConfig.section("solver");
 ```
+
+`InputFile` does not use `OPEN_RDONLY_PARALLEL`, so the file must be readable from every rank.
+Constructing it on rank 0 alone leaves the other ranks without the configuration; they would
+then need it sent explicitly (comm module).
 
 ### Per-rank HDF5 output (`aParallelMode`)
 
 > **`aParallelMode` is one file per rank, not cooperative PHDF5.** The third constructor
-> argument rewrites the path through `make_path_parallel()` (`cl_HDF5.cpp:31-40`) and opens that
+> argument rewrites the path through `make_path_parallel()` (`cl_HDF5.cpp`, `HDF5::HDF5`) and opens that
 > per-rank file with `H5P_DEFAULT` — no MPI access property list is ever set
-> (`cl_HDF5.cpp:47-51,67-71`). Nothing is collective, so there is no cooperative write and no
+> (`H5Fcreate` / `H5Fopen` in the same constructor). Nothing is collective, so there is no cooperative write and no
 > collective close to synchronize.
 
 ```cpp
@@ -1099,21 +1161,27 @@ itself.
 
 ### HDF5 Thread Safety
 
-- **Not thread-safe** by default (HDF5 library limitation)
+- **Not thread-safe**: the SCLS HDF5 is built without the thread-safe option
+  (`H5_HAVE_THREADSAFE` is undefined in its `H5pubconf.h`), and the `HDF5` wrapper adds no lock
+- Two threads must not call such a library concurrently, **even for separate files**: one file
+  per thread does not make concurrent calls safe
 - HDF5 output here is per-rank and process-level; there is no threaded or collective path
-- **Solution:** Use OpenMP critical sections or one file per thread
+- **Solution:** call `HDF5` from one thread only, or serialize every HDF5 call, including the
+  constructor and the destructor, in a single critical section
 
 ```cpp
 #pragma omp parallel
 {
-    int tid = omp_get_thread_num();
+    // ... thread-parallel compute ...
 
-    // One file per thread
-    string path = "thread_" + std::to_string(tid) + "_output.h5";
-    HDF5 file(path, FileMode::NEW);
-
-    // Thread-local writes
-    file.save_data("data", thread_local_data);
+    #pragma omp critical(belfem_hdf5)
+    {
+        // open, write and close entirely inside the critical section;
+        // without aParallelMode only rank 0 opens a file in an MPI job
+        int tThread = omp_get_thread_num();
+        HDF5 tFile("thread_" + std::to_string(tThread) + "_output.h5", FileMode::NEW);
+        tFile.save_data("data", tThreadLocalData);
+    }
 }
 ```
 
@@ -1156,7 +1224,7 @@ const input::Section* solver = config.section("Solver");
 
 All I/O classes use **RAII** (Resource Acquisition Is Initialization) — resources are automatically released in destructors.
 
-> **Error Handling Reminder:** BELFEM ends the run on error (abort in release, throw in debug). Resources are cleaned up explicitly before abort, or reclaimed by OS on process termination. See "Error Handling Philosophy" section above for details.
+> **Error Handling Reminder:** a failed `BELFEM_ERROR` ends the run (abort in release, throw in debug); `BELFEM_ASSERT` is checked in debug builds only. Resources are cleaned up explicitly before the check, or reclaimed by the OS on process termination. See "Error Handling Philosophy" section above for details.
 
 | Class | Resource Owned | Ownership Model | Lifetime Rules |
 |-------|----------------|-----------------|----------------|
@@ -1179,7 +1247,8 @@ All I/O classes use **RAII** (Resource Acquisition Is Initialization) — resour
     HDF5 file("data.h5", FileMode::NEW);
     file.create_group("Results");
     // ... operations ...
-}  // Destructor closes all groups + file automatically
+}  // Destructor closes the active group ("Results") and the file;
+   // with deeper nesting, close the other groups or call close_tree() first
 ```
 
 **InputFile:**
@@ -1214,8 +1283,9 @@ file.save();       // Ascii has save(), not save_data() -- MUST call before
 // HDF5 errors printed to stderr automatically
 // Check BELFEM_ERROR and BELFEM_ASSERT messages for details
 
-// Example error:
-// "Dataset 'Results/Temperature' of type Matrix<real> does already exist."
+// Example error (the label only, without the group path; the type name
+// comes from datatype_string<T>()):
+// "Dataset Temperature of type Matrix<double> does already exist."
 ```
 
 ### 2. Check File Existence Before Opening
@@ -1245,7 +1315,7 @@ file.close_active_group();  // Back to /
 
 ```cpp
 InputFile config("complex.input");
-config.print();  // Prints entire hierarchical structure to stdout
+config.print();  // Prints the numbered, comment-stripped line buffer to stdout
 ```
 
 ### 5. Validate Input File Sections
@@ -1283,9 +1353,13 @@ hdfview data.h5
 try {
     CsvFile csv("data.csv");
 } catch (...) {
-    BELFEM_ERROR(false, "Failed to parse CSV. Check for non-numeric data or irregular rows.");
+    BELFEM_ERROR(false, "Failed to parse CSV. Check for non-numeric data.");
 }
 ```
+
+This catches a non-numeric token (`std::stod` throws). It does **not** catch a short row in a
+release build: that read is unchecked undefined behaviour, not an exception (see CsvFile
+Assumptions). If the file may be ragged, check the row lengths yourself by reading it with `Ascii`.
 
 ---
 
@@ -1311,7 +1385,7 @@ enum class FileMode
 |------|----------|----------------|--------------|-------------------|
 | `NEW` | Creating output files | No | Yes | **TRUNCATES** (data loss!) |
 | `OPEN_RDONLY` | Reading input files | Yes | No | Opens existing |
-| `OPEN_RDONLY_PARALLEL` | `Ascii` only — rank 0 reads the file and broadcasts the buffer to the others (`cl_Ascii.cpp:46-49`, `load_buffer(true)`). **`HDF5` has no case for this mode** and reaches its "unknown filemode passed" error (`cl_HDF5.cpp:42-103`) | Yes | No | Opens existing |
+| `OPEN_RDONLY_PARALLEL` | `Ascii` only — rank 0 reads the file and broadcasts the buffer to the others (`cl_Ascii.cpp`, `load_buffer(true)`). `Ascii::save()` does not refuse this mode; see the Ascii Interface notes. **`HDF5` has no case for this mode** and reaches its "unknown filemode passed" error (`cl_HDF5.cpp`, `HDF5::HDF5`) | Yes | Not intended; `Ascii::save()` does not block it | Opens existing |
 | `OPEN_RDWR` | Appending/modifying | Yes | Yes | Opens existing |
 
 > **Critical:** `FileMode::NEW` uses `H5F_ACC_TRUNC` — existing files are **silently overwritten**.
