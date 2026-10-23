@@ -856,10 +856,9 @@ namespace belfem::graph {
 **Parameters:**
 - `aNumPartitions` — Number of top-level domains before nested dissection
 
-**One partition:** the wrapper has no special case for `aNumPartitions < 2`. The redirect to
-`metis_nd()` in `fn_Graph_METIS.cpp` is commented out. A call with `aNumPartitions == 1`
-therefore reaches `METIS_NodeNDP` with `npes = 1` and a sizes array of one entry. On a single
-rank, `parmetis_nd()` takes this path: `metis_ndp( aGraph, comm_size() )`.
+**One partition:** a call with `aNumPartitions == 1` goes to `METIS_NodeNDP` with `npes = 1` and a
+sizes array of one entry. METIS accepts this and returns the same permutation as `METIS_NodeND`. On
+a single rank, `parmetis_nd()` takes this path: `metis_ndp( aGraph, comm_size() )`.
 
 **STRUMPACK Note:** Documentation suggests `--sp_enable_METIS_NodeNDP` may work better than NodeND for certain problem types.
 

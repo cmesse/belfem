@@ -192,9 +192,10 @@ Need gas properties?
 
 **Root selection in the cubic models:** when Cardano's formula returns three real roots,
 `EoS_Cubic::v` takes the smallest root above the covolume if `Gas::is_liquid()` is true and the
-largest (vapour) root otherwise. Only the Helmholtz EoS writes that flag. `set_liquid_flag` is
-public, but nothing in the module calls it for SRK or PR, so a cubic-EoS `Gas` always returns the
-vapour root.
+largest (vapour) root otherwise. Only the Helmholtz EoS writes that flag; nothing in the module
+sets it for SRK or PR. A cubic-EoS `Gas` therefore returns the vapour root unless the caller calls
+`set_liquid_flag( true )`. The flag belongs to the whole `Gas` object, not to a state point: once set,
+every subsequent evaluation on that object takes the liquid root until it is cleared.
 
 ### Comparison Table
 
