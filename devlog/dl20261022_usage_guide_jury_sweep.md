@@ -263,6 +263,37 @@ over the always-empty `cuts()` is dead code; deleting it is an optional cleanup 
 Left as is: closing "Revision History" lines in linalg and container that credit reviews (history,
 Christian's call); a pseudo-code block in the homology guide labelled as such.
 
+## Guides brought in line with the defect fixes
+
+belfem-46 landed 28 one-defect commits (e55aee3..1109752). Ten fixer agents (brief: commit diff
+plus current source, Codex luna/medium sweep over changed passages) rewrote every passage those
+commits made false; each diff was reviewed against source before commit:
+1eebaf6 tensor (cyclic nu23/nu31/nu12, trap, example_udfiber numbers), 904879a sparse (rcond = SPD
+Cholesky of A, BELFEM_ERROR cases, indexing restored, direct thresholds), dd73c0d circuit (terminal
+columns same-step, userdefined units via set_user_scale), c4d137c homology (cuts() gone, find
+cut_<n> by label, set_periodicity optional), f75a069 core+container (rand [0,1) with LWG 2524
+caveat, clean_string no-op cases), 72c9728 io (HDF5 status checks always-on, Ascii save refuses
+both read-only modes), c1819d8 spline+database (bspline_cub used, test coverage stated narrowly,
+element_ijk clamps before converting, update_data resets extra mode), 82455a1 mesh (pyramid and
+quartic orders, OrderConverter refusal), 71e162d materials (have(lambda), buffer name, jc_custom),
+371547b maxwell (segregated loop outputs, Cut row), 5384f20 dof_manager (D stored as -K_fd, late
+use_jedi_force), 2192f84 graph (Vertex non-copyable), 8199d24 gastables (POLY reads synthesized
+spline). Reviewed, not verified; no probe needed (no example code changed beyond identifiers).
+
+Residuals the fixers reported (not acted on):
+- Terminology, for Christian: the homology guide calls the `cut_<n>` sidesets thick cuts, but they
+  are made by `CutData::add_thin_cut_sidesets_to_mesh` and `cl_CutProcessor.cpp` reports thick cuts
+  as not implemented. Medium confidence it is an inconsistency.
+- clean_string: a one-character string that needs cleaning (" ", "#") comes back unchanged
+  (`tLength > 1` branch, stringtools.cpp).
+- Genome::inherit: mutation index can still reach N*B on an LWG-2524 library in MPI builds.
+- element_ijk with a NaN coordinate: clamp passes NaN, the cast is still UB.
+- OrderConverter::check_input_mesh: the all-linear check is now unreachable.
+- hdf5_tools.hpp comments near check_read_datatype carry history wording.
+- doc/README.md:47 still says Nickel's E carries the ΔE dip (retired in materials guide rev 2.1).
+- Header Version lines lag their revision tables in the materials (2.0 vs 2.2) and dof_manager
+  (1.0 vs 1.3) guides.
+
 ## Open
 
 - The code defects (with belfem-46) and the design questions above. When a fix changes behaviour
