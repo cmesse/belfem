@@ -32,12 +32,13 @@ Before diving into details, understand these fundamental design contracts:
 6. [Type System](#type-system)
 7. [String Utilities](#string-utilities)
 8. [Error Handling](#error-handling)
-9. [Hashing](#hashing)
-10. [Random Number Generation](#random-number-generation)
-11. [Global Variables](#global-variables)
-12. [Thread Safety and MPI](#thread-safety-and-mpi)
-13. [Common Pitfalls](#common-pitfalls)
-14. [Usage Examples](#usage-examples)
+9. [Available Memory](#available-memory)
+10. [Hashing](#hashing)
+11. [Random Number Generation](#random-number-generation)
+12. [Global Variables](#global-variables)
+13. [Thread Safety and MPI](#thread-safety-and-mpi)
+14. [Common Pitfalls](#common-pitfalls)
+15. [Usage Examples](#usage-examples)
 
 ---
 
@@ -46,7 +47,7 @@ Before diving into details, understand these fundamental design contracts:
 The `core` module provides fundamental utilities and infrastructure used throughout the BELFEM framework. It establishes the type system, provides logging and debugging facilities, and implements common utilities for string manipulation, timing, profiling, and command-line processing.
 
 **Key Design Principles:**
-- **Lightweight dependencies**: Core depends only on the C++ standard library, the `containers` module (`Cell`) and the `comm` layer (`gComm`, `comm_abort`) — never on FEM, mesh or numerics
+- **Lightweight dependencies**: Core depends only on the C++ standard library, the `containers` module (`Cell`), the `comm` layer (`gComm`, `comm_abort`) and, in `banner.cpp`, the `io` module's `filetools.hpp` (`file_exists`) — never on FEM, mesh or numerics
 - **Cross-platform compatibility**: Works on Linux and Darwin (macOS)
 - **Compiler agnostic**: Supports GCC, Clang, and Intel compilers with appropriate pragmas
 - **MPI-aware**: Some utilities (random, logging) adapt to MPI environments
@@ -105,7 +106,9 @@ The core module is self-contained with minimal external dependencies:
 
 - **C++ Standard Library**: `<chrono>`, `<string>`, `<cstdio>`, `<random>`, etc.
 - **Container library**: `cl_Cell.hpp` (BELFEM's dynamic array)
-- **MPI** (optional): For `cl_Communicator` in random number generation
+- **Communicator**: `cl_Communicator.hpp` (`gComm`), used by the random numbers, the banner and the error reaction
+- **IO module**: `filetools.hpp` (`src/io`), included by `banner.cpp`
+- **OpenMP** (optional, `OMP` define): `banner.cpp` reports the thread count
 
 ---
 
@@ -140,7 +143,7 @@ enum class InfoLevel
 
 #### Implementation Details
 
-**Location:** `cl_Logger.hpp:43-108`
+**Location:** `cl_Logger.hpp` (`class Logger`)
 
 ```cpp
 class Logger
@@ -149,12 +152,23 @@ class Logger
     std::FILE* mStream;
     bool       mWriteToAscii = false;
 
+    // non-copyable, non-movable (owns the FILE handle in ASCII mode)
+    Logger(const Logger &) = delete;
+    Logger & operator=(const Logger &) = delete;
+    Logger(Logger &&) = delete;
+    Logger & operator=(Logger &&) = delete;
+
 public:
-    Logger(const InfoLevel aInfoLevel);
+    Logger(const uint aInfoLevel);       // legacy constructor, stdout
+    Logger(const InfoLevel aInfoLevel);  // stdout
     Logger(const InfoLevel aInfoLevel, const std::string & aPath);
     ~Logger();
 
     uint info_level() const;
+
+    // change the level at runtime (Arguments uses this for -v / --verbose)
+    void set_info_level(const uint aInfoLevel);
+    void set_info_level(const InfoLevel aInfoLevel);
 
     template <typename ... Args>
     void message(const InfoLevel aInfoLevel,
@@ -176,7 +190,7 @@ void message(const belfem::InfoLevel aInfoLevel,
 
 #### Logger Lifecycle
 
-**Critical:** The global `gLog` must be constructed **once** at application start, before any module code executes. Core and all modules assume `gLog` is already initialized. Reassigning or reinitializing `gLog` mid-run is undefined behavior.
+**Critical:** The global `gLog` must be constructed **once** at application start, before any module code executes. Core and all modules assume `gLog` is already initialized. `Logger` cannot be copied or moved, so reassigning `gLog` does not compile; change its verbosity at runtime with `gLog.set_info_level()`.
 
 ```cpp
 // In main.cpp - construct once at program start
@@ -252,9 +266,11 @@ bar.finish();
 
 **⚠️ Thread Safety:** `Progressbar` is **not thread-safe**. Use only from a single thread (typically rank 0 / master in MPI applications).
 
-**Output buffering.** The bar redraws in place with `\r` and never writes a
-newline, so nothing in the C library flushes it on its own. Every frame is
-therefore followed by an explicit `std::fflush`. This matters most under
+**Output buffering.** The bar redraws in place with `\r`. While it runs it
+writes no newline, so nothing in the C library flushes it on its own (the only
+newlines come from `reset()` and `finish()`, and only when the info level of
+`gLog` is above 1). Every frame is therefore followed by an explicit
+`std::fflush`. This matters most under
 `mpirun`: there `stdout` is a pipe rather than a terminal, so it is fully
 buffered in 4 KiB blocks, and a short bar would otherwise reach the user in a
 single burst when the program exits. Flushing per frame also emits each frame
@@ -463,7 +479,13 @@ construction itself:
 | `-v 3`, `-v3`, `--verbose 3`, `--verbose=3` | info level 3 |
 
 Levels follow `InfoLevel` in `cl_Logger.hpp` (0 = silent … 5 = everything,
-including third-party library output). Subclasses must not reuse `-v` or
+including third-party library output). The value is passed to
+`gLog.set_info_level()` unchanged; it is not clamped to 0–5. An invalid
+`--verbose=` value triggers `BELFEM_ERROR`. A non-integer argument after `-v` or
+`--verbose` selects maximum verbosity, and that argument remains in
+`mArguments`. The
+verbosity arguments stay in `mArguments`, so a subclass that parses its own
+flags sees them and must skip them. Subclasses must not reuse `-v` or
 `--verbose`; a version flag follows the GNU convention `-V` / `--version`
 (see `gastables::Arguments`).
 
@@ -528,6 +550,7 @@ typedef std::string         string;
 typedef int                      sint;
 typedef long int                 lsint;
 typedef unsigned int             uint;
+typedef unsigned char            uchar;
 typedef short unsigned int       suint;
 typedef long unsigned int        luint;
 typedef long long unsigned int   lluint;
@@ -538,7 +561,7 @@ typedef std::complex<real>       cplx;
 
 #### Framework-Specific Types
 
-**Location:** `typedefs.hpp:40-52`
+**Location:** `typedefs.hpp:41-53`
 
 ```cpp
 typedef unsigned int             id_t;      // Entity IDs
@@ -555,7 +578,7 @@ typedef __uint128_t              key128_t;  // Hash keys (128-bit)
 #endif
 ```
 
-**Rationale:** The `index_t` type can be compiled in 32-bit or 64-bit mode depending on mesh size requirements. Most problems use 32-bit indices for memory efficiency.
+**Rationale:** The `index_t` type can be compiled in 32-bit or 64-bit mode. The 64-bit mode (`BELFEM_INT64`) is set only by the CMake option `USE_MKL_64BIT_API` (default `OFF`), the switch for MKL's 64-bit integer interface; there is no separate mesh-size switch. The default build uses 32-bit indices.
 
 **⚠️ Portability Note:** `key128_t` uses `__uint128_t`, a GCC/Clang extension not available in all compilers (e.g., MSVC). Code using 128-bit keys may not be portable to non-GNU toolchains.
 
@@ -563,7 +586,7 @@ typedef __uint128_t              key128_t;  // Hash keys (128-bit)
 
 #### Sentinel Values
 
-**Location:** `typedefs.hpp:56-62`
+**Location:** `typedefs.hpp:57-68`
 
 ```cpp
 constexpr index_t gNoIndex = std::numeric_limits<index_t>::max();
@@ -573,11 +596,17 @@ constexpr proc_t  gNoOwner = std::numeric_limits<proc_t>::max();
 constexpr real    gTfreeze = 273.15;  // K
 constexpr real    gTref    = 288.15;  // K (15°C)
 constexpr real    gTroom   = 293.15;  // K (20°C)
+constexpr real    gTmin    = 1.0;     // K
+
+// finite-difference step sizes
+constexpr real    gFinDiffDeltaT     = 0.001;
+constexpr real    gFinDiffDeltaB     = 0.001;
+constexpr real    gFinDiffDeltaAngle = 1.74532925199433e-3;  // 0.1° in rad
 ```
 
 #### Unit System
 
-**Location:** `typedefs.hpp:65-68`
+**Location:** `typedefs.hpp:70-73`
 
 ```cpp
 // L, M, T, I, theta, N, J (Length, Mass, Time, Current, Temperature, Amount, Luminosity)
@@ -593,10 +622,12 @@ The `unit` type represents physical dimensions as a 7-element array following th
 
 #### Limits and Special Values
 
-**Location:** `typedefs.hpp:72-85`
+**Location:** `typedefs.hpp:76-91`
 
 ```cpp
+#define BELFEM_UCHAR_MAX     std::numeric_limits<uchar>::max()
 #define BELFEM_SINT_MAX      std::numeric_limits<sint>::max()
+#define BELFEM_SUINT_MAX     std::numeric_limits<suint>::max()
 #define BELFEM_UINT_MAX      std::numeric_limits<uint>::max()
 #define BELFEM_REAL_MAX      std::numeric_limits<real>::max()
 #define BELFEM_REAL_MIN      std::numeric_limits<real>::min()
@@ -615,7 +646,7 @@ constexpr real BELFEM_MESH_EPSILON = 1e-9;
 **Usage notes:**
 - `BELFEM_EPSILON`: Used for general floating-point comparisons (≈ 2.22e-15)
 - `BELFEM_EPS`: Machine epsilon (≈ 2.22e-16)
-- `BELFEM_MESH_EPSILON`: Geometric tolerance for mesh operations (1 nm)
+- `BELFEM_MESH_EPSILON`: Geometric tolerance for mesh operations, `1e-9` in mesh coordinate units (1 nm if the coordinates are in metres)
 
 **⚠️ Critical Distinction:** Use `BELFEM_EPSILON` for mathematical/algorithmic comparisons (convergence, residuals). Use `BELFEM_MESH_EPSILON` for spatial/geometric tolerances (node coincidence, element validity). Mixing these can cause topological errors in mesh operations.
 
@@ -680,6 +711,16 @@ const real L0     = std::pow(pi * kB / e, 2) / 3.0;            // Lorenz number 
 const real g0       = 9.80665;           // Standard gravity [m/s²]
 const real mu_earth = 3.986004418e14;    // Earth gravity parameter [m³/s²]
 const real R_earth  = std::sqrt(mu_earth / g0);  // Earth reference radius [m]
+```
+
+#### Astronomy and Reference State
+
+```cpp
+const real y2k = 2451544.5;        // Julian day number of 01/01/2000 00:00 UT
+const real AU  = 149597870700.;    // astronomical unit [m]
+
+#define BELFEM_TREF 298.15         // reference temperature [K], a macro outside the namespace
+#define BELFEM_PREF 100000.0       // reference pressure [Pa]
 ```
 
 ---
@@ -747,7 +788,7 @@ Generic string-to-enum converter using template metaprogramming.
 
 #### Key Features
 
-- **Generic**: Works with any enum that defines `UNDEFINED` sentinel
+- **Generic**: Works with any enum whose enumerators are numbered 0, 1, 2, … without gaps and end with an `UNDEFINED` sentinel
 - **Case-insensitive**: Uses `string_to_lower()`
 - **Safe**: Returns `UNDEFINED` if no match found
 
@@ -779,7 +820,8 @@ void to_enum(const string & aString, T & aEnum)
 
 **Requirements:** The enum type `T` must:
 1. Have an `UNDEFINED` member as the last entry
-2. Provide a `to_string(T)` overload
+2. Number its other enumerators contiguously from 0 (the loop casts every integer from 0 to `UNDEFINED - 1` to `T`, so an enum with explicit or gapped values is searched wrongly)
+3. Provide a `to_string(T)` overload
 
 ---
 
@@ -813,15 +855,19 @@ Returns human-readable type names for debugging and serialization.
 std::string basename(const std::string & aFilePath);   // e.g., "/path/to/file.txt" → "file.txt"
 std::string dirname(const std::string & aFilePath);    // e.g., "/path/to/file.txt" → "/path/to"
 std::string filetype(const std::string & aFilePath);   // e.g., "file.txt" → "txt"
-std::string filename(const std::string & aFilePath);   // e.g., "/path/to/file.txt" → "file"
+std::string filename(const std::string & aFilePath);   // e.g., "/path/to/file.txt" → "file.txt"
 ```
+
+`filename()` keeps the extension; it differs from `basename()` only in that it
+splits at `/` alone, while `basename()` and `dirname()` also split at `\`.
+`filetype()` returns the whole string when it contains no `.`.
 
 #### String Processing
 
 **Location:** `stringtools.hpp:169-217`
 
 ```cpp
-std::string clean_string(const std::string & aString);  // Trim whitespace
+std::string clean_string(const std::string & aString);  // Tidy a line of input, see below
 
 string first_word(const std::string & aString, const char aDelimiter = ' ');
 
@@ -836,27 +882,43 @@ std::string string_to_lower(const std::string & aString);
 std::string string_to_upper(const std::string & aString);
 ```
 
+`clean_string()` does more than trim: it removes leading whitespace, collapses
+runs of spaces, tabs, CR and LF into one space, and removes a trailing space.
+Whitespace inside double quotes is kept as is, and the quotes stay in the
+result. Everything from the first `#` on is dropped as a comment — also a `#`
+inside quotes — and a blank just before that `#` is kept.
+
 #### Type Conversion
 
 **Location:** `stringtools.hpp:220-230`
 
 ```cpp
 bool string_to_bool(const std::string & aString);  // Accepts: 1, on, true, yes
-real to_real(const std::string & aString);          // Returns NAN if invalid
+real to_real(const std::string & aString);          // strtod; NaN only if no number can be read
 value unit_to_si(const string & aString);           // Parse unit strings
 
 bool is_integer(const string & aString);
 ```
+
+`to_real()` wraps `std::strtod`: it reads the longest numeric prefix and
+ignores the rest, so `"12abc"` returns `12`. It returns `BELFEM_QUIET_NAN` only
+when `std::strtod` reads no characters.
 
 #### Formatting
 
 **Location:** `stringtools.hpp:234-245`
 
 ```cpp
-string format_with_leading_zeros(const uint aNumber);  // e.g., 42 → "0042"
+string format_with_leading_zeros(const uint aNumber);  // printf format with as many digits as aNumber, e.g., 42 → "%02u"
 
 size_t utf8_character_count(const string & aString);   // Counts UTF-8 characters
 ```
+
+`format_with_leading_zeros()` does not format `aNumber`; it returns a `printf`
+format string whose zero-padded width matches the number of decimal digits of
+`aNumber` (`"%01u"` through `9`, `"%04u"` through `9999`, and so on). From 10⁹
+on it returns `"%10u"`, a minimum width of 10 without zero padding. Pass the largest index to
+get a width that fits every index, then use the string with `sprint()`.
 
 #### Advanced Parsing
 
@@ -874,6 +936,22 @@ Parses complex numeric expressions into a `Cell<T>`:
 - **Mixed format**: `"1, 3:5, 7"` → `{1, 3, 4, 5, 7}`
 - **Braces ignored**: `"{1, 2, 3}"` → `{1, 2, 3}`
 - **Semicolon terminator**: `"1, 2 ; ignored"` and `"1,2;ignored"` both → `{1, 2}` (the parser pads `;` into its own token)
+
+`string_to_cell()` **appends** to `aValues`; it does not clear the cell first.
+Call `aValues.clear()` before parsing into a reused `Cell`. Each token is read
+with `std::stoll`, so a token that does not begin with an integer (`"1, x"`)
+throws `std::invalid_argument` or `std::out_of_range` instead of raising
+`BELFEM_ERROR`. Trailing characters are ignored (`"1.5"` reads as `1`).
+
+```cpp
+template <typename T>
+void to_pair(const std::string & aString,
+             Cell<std::pair<std::string, T>> & aResult);
+```
+
+`to_pair()` clears `aResult`, then collects every run of letters followed
+directly by digits as a label/value pair: `"Pb37Sn63"` → `{("Pb", 37), ("Sn", 63)}`.
+The digits are read with `std::stoi` and converted to `T`.
 
 ---
 
@@ -926,11 +1004,13 @@ Custom assertion framework with formatted error messages and ASCII art dragon.
 
 #### Macros
 
-**Location:** `assert.hpp:243-275`
+**Location:** `assert.hpp` (`BELFEM_ASSERTIONS_ACTIVE`, `BELFEM_ASSERT`, `BELFEM_ERROR`)
 
 ```cpp
+// BELFEM_ASSERTIONS_ACTIVE is 1 if !defined(NDEBUG) || defined(DEBUG), else 0
+
 // Debug-only assertions (disabled in release builds)
-#if !defined(NDEBUG) || defined(DEBUG)
+#if BELFEM_ASSERTIONS_ACTIVE
 #define BELFEM_ASSERT(aCheck, ...) \
     do { \
         if (!(aCheck)) { \
@@ -955,6 +1035,11 @@ Custom assertion framework with formatted error messages and ASCII art dragon.
 **Difference:**
 - `BELFEM_ASSERT`: Compiled out in release builds (`NDEBUG` defined)
 - `BELFEM_ERROR`: Always active, for critical runtime checks
+
+A failed `BELFEM_ERROR` throws in a debug build and aborts in a release build
+(`MPI_Abort` under MPI, `std::abort` otherwise). A failed `BELFEM_ASSERT` throws
+in a debug build; in a release build the check does not exist. Test executables can
+switch release builds to throwing as well; see the reaction switch below.
 
 #### Error Formatting and Reaction
 
@@ -1017,8 +1102,8 @@ does not exist there. On macOS the messages are not guaranteed to reach
 
 Each event carries the **MPI rank** in the payload — `LOG_PID` only
 identifies local processes, and rank-local checks fire on a single rank
-that is usually *not* rank 0. Errors raised before `gComm.init()` log
-`rank ?`. Multi-line messages are written one syslog line per message
+that is usually *not* rank 0. In an MPI build, errors raised before
+`gComm.init()` log `rank ?`; a serial build always logs `rank 0`. Multi-line messages are written one syslog line per message
 line, so nothing is lost to the ~1 KiB per-call truncation.
 
 Two properties worth knowing:
@@ -1026,10 +1111,11 @@ Two properties worth knowing:
 - The write happens **before** the reaction branch. This is deliberate:
   debug builds *throw* by default, and a hook on the abort path only
   would never fire in exactly the builds developers run daily.
-- Test binaries that exercise error paths on purpose disable it
-  (`belfem::assert::set_syslog_on_error(false)`, set in every test main
-  beside `set_throw_on_error(true)`), so `make check` does not spam the
-  journal.
+- Test binaries that exercise error paths on purpose disable it with
+  `belfem::assert::set_syslog_on_error(false)`, so `make check` does not
+  spam the journal. Most test mains pair it with `set_throw_on_error(true)`;
+  the MPI test mains (`test_commmpi_main.cpp`, `test_sparsempi_main.cpp`)
+  turn off only the syslog write and keep the build's default reaction.
 
 `log_to_syslog()` runs in normal control flow only — `syslog()` is not
 async-signal-safe, so it must never be called from a signal handler.
@@ -1038,19 +1124,23 @@ async-signal-safe, so it must never be called from a signal handler.
 
 **Location:** `assert.cpp` (implementation in `hatch_dragon()`)
 
-When an error occurs, BELFEM prints a decorative error box with an ASCII dragon character, making errors visually distinctive:
+When an error occurs, `print_errorbox()` writes a framed error box to `stderr`. The upper part shows a plain ASCII-art dragon (no emoji) with the error summary beside it; the lower part holds the formatted message. Schematically:
 
 ```
-╔═══════════════════════════════════════════════════════╗
-║                      🐉 ERROR 🐉                     ║
-╠═══════════════════════════════════════════════════════╣
-║ Location: my_file.cpp (line 42)                      ║
-║ Task: complete call to function my_function()        ║
-║ Check: Assertion index < size failed.                ║
-║                                                       ║
-║ Index 100 exceeds array size 50                      ║
-╚═══════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════╗
+║  <ASCII dragon>    ERROR:                    ║
+║                    Unable to <task>.         ║
+║                    REASON:                   ║
+║                    <check>                   ║
+║                    WHERE:                    ║
+║                    <location>                ║
+╠══════════════════════════════════════════════╣
+║ <formatted message, wrapped to the box>      ║
+║ This error occured on proc <rank>            ║
+╚══════════════════════════════════════════════╝
 ```
+
+The `proc` line appears only in MPI runs with more than one rank.
 
 #### Helper Functions
 
@@ -1078,6 +1168,24 @@ BELFEM_ASSERT(index < size,
 BELFEM_ERROR(file.is_open(),
              "Failed to open file: %s", filename.c_str());
 ```
+
+---
+
+## Available Memory
+
+**File:** `fn_available_memory.{hpp,cpp}`
+
+```cpp
+std::size_t available_memory();   // bytes, or 0 if unknown
+```
+
+Returns an estimate of how many bytes a new allocation by this process can
+claim without swapping. On Linux it uses the kernel's `MemAvailable` estimate
+from `/proc/meminfo`, limited by the remaining headroom under the tightest
+cgroup memory limit above the process (the limit a batch scheduler enforces). On Darwin it is the free plus inactive
+pages from the Mach host statistics. Other platforms return 0. It never aborts;
+callers treat 0 as "unknown". It reads files, so call it during setup, not in a
+hot loop.
 
 ---
 
@@ -1174,11 +1282,11 @@ MPI-aware random number generation.
 
 #### Seeding
 
-**Location:** `random.hpp:26-72`
+**Location:** `random.hpp` (both `random_seed` overloads)
 
 ```cpp
 #ifndef BELFEM_MPI
-template <typename T>
+template <typename T>   // T must be an unsigned integer type (static_assert)
 void random_seed(T & aSeed)
 {
     std::ifstream tStream("/dev/urandom", std::ios::binary);
@@ -1187,13 +1295,18 @@ void random_seed(T & aSeed)
     {
         char tMemblock[sizeof(T)];
         tStream.read(tMemblock, sizeof(T));
+        const bool tOk = tStream.gcount() == std::streamsize(sizeof(T));
         tStream.close();
-        aSeed = *reinterpret_cast<T*>(tMemblock);
+
+        if (tOk)
+        {
+            std::memcpy(&aSeed, tMemblock, sizeof(T));
+            return;
+        }
     }
-    else
-    {
-        aSeed = (T) time(NULL);  // Fallback to system clock
-    }
+
+    // no random device, or a short read: use the clock
+    aSeed = (T) time(NULL);
 }
 #endif
 
@@ -1205,13 +1318,14 @@ inline void random_seed()
 #else
     unsigned int tSeed;
     random_seed(tSeed);
+    std::srand(tSeed);
 #endif
 }
 ```
 
 #### Random Number Generation
 
-**Location:** `random.hpp:80-89`
+**Location:** `random.hpp` (`rand()`)
 
 ```cpp
 inline real rand()
@@ -1236,16 +1350,19 @@ random_seed();
 // Generate random numbers
 for (int i = 0; i < 1000; ++i)
 {
-    real value = rand();  // Uniform distribution [0, 1)
+    real value = rand();  // in [0, 1], see below
 }
 ```
 
-**MPI considerations:** In MPI builds, each process has its own independent random stream via `gComm.random()`, ensuring reproducibility and avoiding correlation between processes.
+**Range:** In MPI builds, `rand()` draws from `std::uniform_real_distribution<real>(0.0, 1.0)`, nominally `[0, 1)`. In serial builds it returns `std::rand() / RAND_MAX`, a value in `[0, 1]`: it is exactly `1.0` when `std::rand()` returns `RAND_MAX`. Code that must exclude 1 has to handle that case itself.
+
+**MPI considerations:** In MPI builds, each rank uses its own `std::mt19937` engine, `gComm.random()`. `gComm.init()` seeds it with a `std::random_device` value plus the rank, and `random_seed()` reseeds it with a fresh `std::random_device` value. The ranks therefore use different sequences, but the streams are not guaranteed to be statistically independent.
 
 **⚠️ Reproducibility:**
-- MPI builds guarantee **independent streams per rank**, not identical sequences across ranks
-- For deterministic reproducibility across runs, use explicit seeding via communicator logic with a fixed seed
-- Serial builds are random run to run as well once `random_seed()` has been called; without that call `std::rand()` keeps its default seed
+- Neither build reproduces a sequence from run to run: the MPI engines are seeded from `std::random_device`, and serial `random_seed()` reads `/dev/urandom` (or the clock)
+- Do not expect identical sequences across MPI ranks
+- For a reproducible sequence, seed the engine with a fixed value yourself, e.g. `gComm.random().seed(aSeed)` in an MPI build or `std::srand(aSeed)` in a serial build
+- In a serial build without a call to `random_seed()`, `std::rand()` keeps its default seed and repeats the same sequence every run
 
 ---
 
@@ -1259,7 +1376,7 @@ Framework for managing global variables with MPI synchronization.
 
 #### Macro Magic
 
-**Location:** `globals.hpp:18-22`
+**Location:** `globals.hpp:18-24`
 
 ```cpp
 #ifdef BELFEM_INITIALIZE_GLOBALS  // Only set from within Communicator
@@ -1273,13 +1390,15 @@ Framework for managing global variables with MPI synchronization.
 
 **Rationale:** This pattern ensures global variables are:
 1. **Declared** as `extern` in normal includes (no storage allocated)
-2. **Defined** only when `Communicator::set_globals()` is called
+2. **Defined** once, in `cl_Communicator.cpp`, which defines `BELFEM_INITIALIZE_GLOBALS` at file scope before it includes `globals.hpp`
+
+`Communicator::set_globals()` only assigns the initial values; `gComm.init()` calls it.
 
 This avoids multiple definition errors while allowing global access.
 
 #### Current Globals
 
-**Location:** `globals.hpp:41-53`
+**Location:** `globals.hpp` (`namespace belfem` block)
 
 ```cpp
 namespace belfem
@@ -1287,9 +1406,20 @@ namespace belfem
     greal   gTbulk;          // bulk temperature in K when no thermal kernel is chosen; BELFEM_QUIET_NAN until set
     greal   gRhoMin;         // minimum resistivity in Ohm*m, default 0
     greal   gRhoMax;         // maximum resistivity in Ohm*m, default 1e10
-    gstring gBelfemDataPath; // data path, from $BELFEM_DATA, else the installed share directory
+    gstring gBelfemDataPath; // path to the BELFEM data files, see below
 }
 ```
+
+**Precondition:** `gRhoMin < gRhoMax` must hold whenever either is written. The
+resistivity clamp passes both to `std::clamp`, whose behavior is undefined on an
+inverted window, and does not check the ordering.
+
+**`gBelfemDataPath`** is set by `set_globals()` from `$BELFEM_DATA` when that
+variable is set and not empty. Otherwise it is set to the share directory of
+the install prefix (`BELFEM_INSTALL_DATADIR`, compiled into the `comm` module),
+but only if that directory exists. If neither applies, it stays empty; code that needs a
+data file may then set it itself, and the readers fall back to paths relative to
+the working directory.
 
 #### Usage Guidelines
 
@@ -1311,7 +1441,7 @@ From the source code comments (`globals.hpp:24-38`):
    - **Justify the need** - is this truly a framework-wide physical constant?
 
 2. **MPI synchronization:**
-   - The `BELFEM_INITIALIZE_GLOBALS` macro must **only** be defined inside `Communicator::set_globals()`
+   - The `BELFEM_INITIALIZE_GLOBALS` macro must **only** be defined in `cl_Communicator.cpp`
    - Defining it elsewhere causes multiple-definition linker errors
    - If value is set only on master process, it is the developer's responsibility to broadcast:
      ```cpp
@@ -1328,9 +1458,10 @@ namespace belfem
     extern real gTbulk;  // Declared (via macro)
 }
 
-// In Communicator::set_globals()
+// In cl_Communicator.cpp, at file scope
 #define BELFEM_INITIALIZE_GLOBALS
 #include "globals.hpp"
+#undef BELFEM_INITIALIZE_GLOBALS
 
 void Communicator::set_globals()
 {
@@ -1414,15 +1545,9 @@ if you need it again.
 
 ###  Timer and Profiling
 
-**Pitfall:** Using `Timer::next()` for long-running timers (>49 days) causes truncation
-
-```cpp
-// Bad: Truncates after 49 days
-uint64_t elapsed = timer.next();
-
-// Good: Use stop() for long durations
-uint64_t elapsed = timer.stop();
-```
+**Pitfall:** Using `Timer` for intervals longer than ~49.7 days. Both `next()` and `stop()` cast the
+millisecond count to `unsigned int`, so either one wraps past 2³² ms. Measure such intervals from an
+external clock (see the Timer limitation above).
 
 **Pitfall:** Forgetting to enable profiler at build time - `Profiler::start()/stop()` do nothing without `-DUSE_PROFILER=ON`
 
@@ -1431,14 +1556,15 @@ uint64_t elapsed = timer.stop();
 **Pitfall:** Range endpoints are parsed with `std::stoll` and cast to `T`
 ```cpp
 string_to_cell("5:1", nodes);   // {5, 4, 3, 2, 1} — decreasing ranges are fine
-string_to_cell("-1:1", nodes);  // a negative endpoint in an unsigned Cell<index_t> wraps silently
+string_to_cell("-1:1", nodes);  // 32-bit Cell<index_t>: -1 becomes 2^32-1, so the "range" runs
+                                //   down from 4294967295 to 1 and pushes ~4.3e9 entries
 ```
 
 ### Random Numbers
 
-**Pitfall:** Not seeding RNG leads to deterministic sequences
+**Pitfall:** Not seeding the RNG in a serial build leads to the same sequence every run (MPI builds are seeded in `gComm.init()`)
 ```cpp
-// Bad: Forgot to seed
+// Bad (serial build): Forgot to seed
 for (int i = 0; i < 100; ++i) {
     real r = belfem::rand();  // Same sequence every run!
 }
@@ -1446,11 +1572,11 @@ for (int i = 0; i < 100; ++i) {
 // Good: Seed at program start
 belfem::random_seed();
 for (int i = 0; i < 100; ++i) {
-    real r = belfem::rand();  // Different each run in an MPI build; serial std::rand() stays unseeded
+    real r = belfem::rand();  // Different each run
 }
 ```
 
-**Pitfall:** Assuming identical random sequences across MPI ranks - each rank has independent stream
+**Pitfall:** Assuming identical random sequences across MPI ranks - each rank has its own engine with its own seed
 
 ### Type System
 
@@ -1464,10 +1590,11 @@ if (distance < BELFEM_EPSILON) { /* coincident */ }  // Wrong! Too strict
 if (distance < BELFEM_MESH_EPSILON) { /* coincident */ }
 ```
 
-**Pitfall:** Progressbar constructor type mismatch on 64-bit builds
+**Pitfall:** The `Progressbar` constructor takes `const uint aNumSteps`, so a step count above
+`BELFEM_UINT_MAX` is truncated at the call, on every build. Storing it in the `index_t` member does not
+help.
 ```cpp
-// Potential issue: aNumSteps is uint, but mNumSteps is index_t
-Progressbar bar(very_large_mesh_size);  // May truncate on BELFEM_INT64 builds
+Progressbar bar(very_large_count);  // a 64-bit count is truncated to uint here
 ```
 
 ### Error Handling
@@ -1492,7 +1619,7 @@ BELFEM_ERROR(false, "Value: %.3f", some_double);
 
 ### Global Variables
 
-**Pitfall:** Defining `BELFEM_INITIALIZE_GLOBALS` outside `Communicator::set_globals()` causes linker errors
+**Pitfall:** Defining `BELFEM_INITIALIZE_GLOBALS` anywhere but `cl_Communicator.cpp` causes multiple-definition linker errors
 
 **Pitfall:** Using globals for algorithm state creates hidden dependencies and breaks modularity
 
@@ -1515,37 +1642,49 @@ broadcast(gTbulk);   // free function from commtools.hpp, collective, root = 0
 
 ## Usage Examples
 
+Functions used but not defined in these examples (`assemble_element()`,
+`process_node()`, `apply_pressure()`, …) represent application code.
+
 ### Example 1: Basic Application Setup
 
 ```cpp
+#include "cl_Communicator.hpp"
 #include "cl_Logger.hpp"
 #include "cl_Timer.hpp"
 #include "banner.hpp"
 #include "cl_Arguments.hpp"
 
-belfem::Logger gLog(belfem::InfoLevel::Default);   // file scope, as in src/executables/belfem.cpp
+using namespace belfem;
 
-int main(int argc, char * argv[])
+// The executable defines both globals at file scope, as src/executables/belfem.cpp does
+Communicator gComm;
+Logger       gLog( InfoLevel::Default );
+
+int main( int argc, char * argv[] )
 {
-    // Parse command line ( may raise gLog's level via -v, so the logger must exist first )
-    belfem::Arguments args(argc, argv);
+    // sets up MPI, the rank that print_banner() checks, and the globals
+    gComm.init( argc, argv );
 
-    // Print banner
-    belfem::print_banner("MyApp");
+    // may raise gLog's level via -v, so the logger must exist first
+    Arguments tArguments( argc, argv );
 
-    // Time the application
-    belfem::Timer timer;
+    // printed by rank 0 only; before gComm.init() no rank prints it
+    print_banner( "MyApp" );
 
-    message(belfem::InfoLevel::Default, "Starting computation...");
+    Timer tTimer;
+
+    message( InfoLevel::Default, "Starting computation..." );
 
     // ... work ...
 
-    uint64_t elapsed = timer.stop();
-    message(belfem::InfoLevel::Default, "Completed in %lu ms", elapsed);
+    message( InfoLevel::Default, "Completed in %lu ms", ( long unsigned int ) tTimer.stop() );
 
-    return 0;
+    return gComm.finalize();
 }
 ```
+
+`belfem.cpp` picks the logger level by build type: `InfoLevel::Detailed` in a
+debug build, `InfoLevel::Default` in a release build.
 
 ---
 
@@ -1554,20 +1693,21 @@ int main(int argc, char * argv[])
 ```cpp
 #include "cl_Profiler.hpp"
 #include "cl_Timer.hpp"
+#include "cl_Logger.hpp"
 
 void optimize_mesh()
 {
-    belfem::Profiler profiler("mesh_optimization.log");
-    belfem::Timer timer;
+    belfem::Profiler tProfiler( "mesh_optimization.log" );
+    belfem::Timer    tTimer;
 
-    profiler.start();
+    tProfiler.start();
 
     // ... expensive mesh optimization ...
 
-    profiler.stop();
+    tProfiler.stop();
 
-    message(belfem::InfoLevel::Verbose,
-            "Mesh optimization: %lu ms", timer.stop());
+    message( belfem::InfoLevel::Verbose,
+             "Mesh optimization: %lu ms", ( long unsigned int ) tTimer.stop() );
 
     // Analyze with: callgrind_annotate mesh_optimization.callgrind
 }
@@ -1579,22 +1719,24 @@ void optimize_mesh()
 
 ```cpp
 #include "cl_Progressbar.hpp"
+#include "cl_Logger.hpp"
 
-void assemble_system(uint num_elements)
+void assemble_element( const belfem::uint aIndex );   // application code
+
+void assemble_system( const belfem::uint aNumElements )
 {
-    belfem::Progressbar bar(num_elements);
+    belfem::Progressbar tBar( aNumElements );
 
-    message(belfem::InfoLevel::Default, "Assembling system matrix...");
+    message( belfem::InfoLevel::Default, "Assembling system matrix..." );
 
-    for (uint e = 0; e < num_elements; ++e)
+    for ( belfem::uint e = 0; e < aNumElements; ++e )
     {
-        // Assemble element contribution
-        assemble_element(e);
+        assemble_element( e );
 
-        bar.step();
+        tBar.step();
     }
 
-    bar.finish();
+    tBar.finish();
 }
 ```
 
@@ -1604,19 +1746,24 @@ void assemble_system(uint num_elements)
 
 ```cpp
 #include "assert.hpp"
+#include "cl_Matrix.hpp"
+#include "fn_det.hpp"
 
-void compute_jacobian(const Matrix & J)
+void check_jacobian( const belfem::Matrix< belfem::real > & aJ )
 {
-    real det = J.determinant();
+    const belfem::real tDet = belfem::det( aJ );
 
-    BELFEM_ERROR(det > BELFEM_MESH_EPSILON,
-                 "Singular Jacobian detected: det(J) = %.3e", det);
+    BELFEM_ERROR( tDet > 0.0,
+                  "Singular or inverted Jacobian detected: det(J) = %.3e", tDet );
 
-    real inv_det = 1.0 / det;
+    const belfem::real tInvDet = 1.0 / tDet;
 
-    // ... use inv_det ...
+    // ... use tInvDet ...
 }
 ```
+
+`Matrix` is a class template, and the determinant is the free function `det()`
+from `fn_det.hpp`, not a member.
 
 ---
 
@@ -1625,17 +1772,19 @@ void compute_jacobian(const Matrix & J)
 ```cpp
 #include "stringtools.hpp"
 
-void parse_node_list(const string & input)
+void process_node( const belfem::index_t aNodeID );   // application code
+
+void parse_node_list( const belfem::string & aInput )
 {
     // Input: "1:5, 10, 15:17"
     // Output: {1, 2, 3, 4, 5, 10, 15, 16, 17}
 
-    Cell<index_t> nodes;
-    string_to_cell(input, nodes);
+    belfem::Cell< belfem::index_t > tNodes;
+    belfem::string_to_cell( aInput, tNodes );
 
-    for (index_t node_id : nodes)
+    for ( belfem::index_t tNodeID : tNodes )
     {
-        process_node(node_id);
+        process_node( tNodeID );
     }
 }
 ```
@@ -1646,52 +1795,73 @@ void parse_node_list(const string & input)
 
 ```cpp
 #include "cl_Hash.hpp"
+#include "cl_Map.hpp"
+#include "cl_Matrix.hpp"
+#include "cl_Element.hpp"
 
-std::size_t compute_element_signature(const Element * element)
+using namespace belfem;
+
+std::size_t
+compute_element_signature( const mesh::Element * aElement )
 {
-    belfem::Hash hash;
+    Hash tHash;
 
-    // Hash element type
-    hash += static_cast<uint>(element->type());
+    // element type
+    tHash += static_cast< uint >( aElement->type() );
 
-    // Hash node IDs
-    for (uint i = 0; i < element->number_of_nodes(); ++i)
+    // node IDs
+    for ( uint k = 0; k < aElement->number_of_nodes(); ++k )
     {
-        hash += element->node(i)->id();
+        tHash += aElement->node( k )->id();
     }
 
-    return hash.value();
+    return tHash.value();
 }
 
-// Use as cache key
-std::unordered_map<std::size_t, Matrix> shape_function_cache;
+void compute_shape_functions( const mesh::Element * aElement, Matrix< real > & aN );   // application code
 
-if (shape_function_cache.find(signature) == shape_function_cache.end())
+// Map, not std::unordered_map, per the container rules in doc/coding_philosophy.md
+void
+cache_shape_functions( const mesh::Element * aElement,
+                       Map< std::size_t, Matrix< real > > & aCache )
 {
-    // Compute and cache shape functions
-    shape_function_cache[signature] = compute_shape_functions();
+    const std::size_t tSignature = compute_element_signature( aElement );
+
+    if ( ! aCache.key_exists( tSignature ) )
+    {
+        compute_shape_functions( aElement, aCache[ tSignature ] );
+    }
 }
 ```
+
+A signature is a hash, not a unique key: two different elements can collide
+(see the collision note under Hashing).
 
 ---
 
 ### Example 7: Unit Conversion
 
 ```cpp
+#include <cmath>
+#include "assert.hpp"
 #include "units.hpp"
 #include "constants.hpp"
 
+void apply_pressure( const belfem::real aPressure );   // application code
+
 void set_pressure_boundary_condition()
 {
+    using namespace belfem;
     using namespace belfem::constant;
 
-    real pressure_psi = 14.7;  // Standard atmosphere in psi
-    real pressure_si = pressure_psi * psi;  // Convert to Pa
+    const real tPressurePsi = 14.7;                // standard atmosphere in psi
+    const real tPressure    = tPressurePsi * psi;  // 101352.9 Pa
 
-    BELFEM_ASSERT(std::abs(pressure_si - atm) < 1.0,
-                  "Conversion error: expected %f Pa, got %f Pa", atm, pressure_si);
+    // 14.7 psi matches 1 atm only to about 0.03 %, so compare relatively
+    BELFEM_ASSERT( std::abs( tPressure - atm ) < 1e-3 * atm,
+                   "Conversion error: expected %f Pa, got %f Pa", atm, tPressure );
 
-    apply_pressure(pressure_si);
+    apply_pressure( tPressure );
 }
 ```
 
@@ -1701,28 +1871,35 @@ void set_pressure_boundary_condition()
 
 ```cpp
 #include "random.hpp"
+#include "cl_Mesh.hpp"
 
-void perturb_mesh(Mesh * mesh, real amplitude)
+using namespace belfem;
+
+void perturb_mesh( Mesh * aMesh, const real aAmplitude )
 {
-    belfem::random_seed();
+    random_seed();
 
-    for (uint n = 0; n < mesh->number_of_nodes(); ++n)
+    // the mesh owns its nodes; callers never delete them
+    Cell< mesh::Node * > & tNodes = aMesh->nodes();
+
+    for ( mesh::Node * tNode : tNodes )
     {
-        Node * node = mesh->node(n);
+        // random perturbation in [-aAmplitude, +aAmplitude]
+        const real tDx = aAmplitude * ( 2.0 * belfem::rand() - 1.0 );
+        const real tDy = aAmplitude * ( 2.0 * belfem::rand() - 1.0 );
+        const real tDz = aAmplitude * ( 2.0 * belfem::rand() - 1.0 );
 
-        // Random perturbation in [-amplitude, +amplitude]
-        real dx = amplitude * (2.0 * belfem::rand() - 1.0);
-        real dy = amplitude * (2.0 * belfem::rand() - 1.0);
-        real dz = amplitude * (2.0 * belfem::rand() - 1.0);
-
-        node->x() += dx;
-        node->y() += dy;
-        node->z() += dz;
+        // x(), y(), z() return copies; set_coords() moves the node
+        tNode->set_coords( tNode->x() + tDx, tNode->y() + tDy, tNode->z() + tDz );
     }
 }
 ```
 
+`Mesh::node( aID )` looks a node up by its ID, not by its position in the list,
+so loop over `nodes()` to visit every node.
+
 ---
+
 
 ## Summary
 
@@ -1756,5 +1933,5 @@ The `core` module provides essential infrastructure for BELFEM applications:
 ---
 
 **Document version:** 1.0
-**Last updated:** 2026-01-16
+**Last updated:** 2026-10-22
 **Author:** Claude Code (claude.ai/code)
