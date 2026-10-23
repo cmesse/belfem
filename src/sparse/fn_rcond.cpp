@@ -22,10 +22,28 @@ namespace belfem
     {
 #ifdef _OPENMP
 #ifdef BELFEM_SUITESPARSE
-        // make sure that matrix uses zero-based indexing
+        // a matrix of undefined type exposes no compressed index array
+        BELFEM_ERROR( aMatrix.type() == SpMatrixType::CSC || aMatrix.type() == SpMatrixType::CSR,
+            "rcond needs a CSC or CSR matrix" );
+
+        BELFEM_ERROR( aMatrix.n_rows() == aMatrix.n_cols(),
+            "rcond needs a square matrix, got %lu x %lu",
+            ( long unsigned int ) aMatrix.n_rows(), ( long unsigned int ) aMatrix.n_cols() );
+
+        // the view below hands int_t arrays to CHOLMOD as CHOLMOD_INT
+        BELFEM_ERROR( sizeof( int_t ) == sizeof( int ),
+            "rcond calls the 32-bit CHOLMOD interface, but int_t is %lu bytes",
+            ( long unsigned int ) sizeof( int_t ) );
+
+        // CHOLMOD reads zero-based indices; the caller's base is restored below
+        const SpMatrixIndexingBase tBase = aMatrix.indexing_base() == 0
+                ? SpMatrixIndexingBase::Cpp : SpMatrixIndexingBase::Fortran ;
         aMatrix.set_indexing_base( SpMatrixIndexingBase::Cpp );
 
-        // create a cholmod data object
+        // stype = 1: symmetric, CHOLMOD reads the upper triangle of a CSC
+        // matrix. A CSR matrix seen as CSC is its transpose, so CHOLMOD then
+        // reads its lower triangle: CSC needs the upper triangle, CSR needs
+        // the lower one, and a matrix with both stored works either way
         cholmod_sparse tMatrix ;
         tMatrix.nrow = aMatrix.n_rows();
         tMatrix.ncol = aMatrix.n_cols();
@@ -33,27 +51,51 @@ namespace belfem
         tMatrix.p = aMatrix.pointers();
         tMatrix.i = aMatrix.indices();
         tMatrix.x = aMatrix.data();
-        tMatrix.stype = 0 ;
+        tMatrix.nz = nullptr ;
+        tMatrix.z = nullptr ;
+        tMatrix.stype = 1 ;
         tMatrix.itype = CHOLMOD_INT ;
         tMatrix.xtype = CHOLMOD_REAL ;
         tMatrix.dtype = CHOLMOD_DOUBLE ;
         tMatrix.sorted = 1;
         tMatrix.packed = 1;
 
-        // the parameter object
         cholmod_common tCommon ;
-
-        // launch cholmod
         cholmod_start (&tCommon) ;
 
-        // create the LU-factorization
+        // Cholesky factorization: negative status is an error, NOT_POSDEF
+        // means A is not SPD, DSMALL is only a warning about a tiny pivot
         cholmod_factor * tFactor = cholmod_analyze( &tMatrix, &tCommon) ;
-        cholmod_factorize( &tMatrix, tFactor, &tCommon );
 
-        real aCond = cholmod_rcond( tFactor, &tCommon );
+        bool tOk = tFactor != nullptr && tCommon.status >= CHOLMOD_OK ;
 
-        cholmod_free_factor ( &tFactor, &tCommon) ;
+        if ( tOk )
+        {
+            cholmod_factorize( &tMatrix, tFactor, &tCommon );
+            tOk = tCommon.status >= CHOLMOD_OK && tCommon.status != CHOLMOD_NOT_POSDEF ;
+        }
+
+        const int tStatus = tCommon.status ;
+
+        // CHOLMOD's rough estimate from the diagonal of the factor, not a
+        // 1-norm condition estimate
+        const real aCond = tOk ? cholmod_rcond( tFactor, &tCommon ) : BELFEM_QUIET_NAN ;
+
+        if ( tFactor != nullptr )
+        {
+            cholmod_free_factor ( &tFactor, &tCommon) ;
+        }
         cholmod_finish (&tCommon);
+
+        aMatrix.set_indexing_base( tBase );
+
+        BELFEM_ERROR( tOk,
+            "rcond: CHOLMOD could not factorize the matrix ( status %i: %s )",
+            tStatus,
+            tStatus == CHOLMOD_NOT_POSDEF ? "not positive definite"
+            : tStatus == CHOLMOD_OUT_OF_MEMORY ? "out of memory"
+            : tStatus == CHOLMOD_INVALID ? "invalid input"
+            : "CHOLMOD error" );
 
         return aCond ;
 #else

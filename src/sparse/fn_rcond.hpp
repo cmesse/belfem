@@ -16,6 +16,16 @@
 
 namespace belfem
 {
+    /**
+     * rough reciprocal condition estimate of a symmetric positive definite
+     * matrix, from CHOLMOD's Cholesky factor ( cholmod_rcond ).
+     *
+     * CSC needs the upper triangle, CSR the lower one; storing both always
+     * works. A matrix that is not SPD, not square, not CSC/CSR, or a build
+     * with 64-bit int_t is refused with an error. The indexing
+     * base is switched to C++ for the call and restored afterwards.
+     * Needs SuiteSparse and OpenMP.
+     */
     real
     rcond( SpMatrix & aMatrix );
 }
