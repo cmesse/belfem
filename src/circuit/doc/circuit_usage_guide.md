@@ -193,12 +193,13 @@ See Section 4 for the per-component key tables.
 - A header row (`t I<label> … V<index> …`) is written by `init_output_file()`. One row per
   accepted timestep is appended by `save_timestep()`, called from the controller's
   `finalize()`; the leading column is time.
-- Terminal-pair column timing: `finalize()` calls `save_timestep()` **before**
-  `compute_circuit_current()` passes the new FEM current to the terminal pair. Therefore,
-  the `I<label>` column of a terminal pair contains the FEM current from the previous
-  accepted step (0 in the first row of a cold start). This is the value used by the
-  circuit solve for the current step. The time and node-voltage columns belong to the
-  current step.
+- Terminal-pair column timing: `finalize()` calls `compute_circuit_current()`, which
+  passes the FEM terminal current for the accepted step to the terminal pair before
+  `save_timestep()` writes the row. Every column, including a terminal pair's `I<label>`
+  column, therefore belongs to the same accepted step. The circuit solve at the start of
+  that step used the terminal current from the preceding accepted step (the initial state
+  on a cold start), so the row's `I<label>` value is the current used to start the
+  following step's circuit solve.
 
 ---
 
@@ -437,7 +438,7 @@ takes the 3-D path. A 2-D terminal pair omits the output key and must give `leng
   current from the FEM abstract DOF and writes both current and voltage back into the
   corresponding `FEMTwoTerminals` via `Circuit::set_current_and_voltage()`. The next
   step's circuit solve uses that current.
-- `save_timestep()` (circuit output, called in `finalize()` just before
+- `save_timestep()` (circuit output, called in `finalize()` right after
   `compute_circuit_current()`, see §3) and `shift_back()` (on reset) are also called from
   the controller.
 
@@ -477,11 +478,12 @@ waveform, so deleting it leaves the results unchanged. Do not rewrite it as
 would change the waveform.
 
 For `userdefined`, `SourceFunction::read_user_defined()` opens the library named by `file`
-and calls `<label>_init`. That function receives the `SourceFunction *` and sets it up. It
-is looked up by that plain name, so declare it `extern "C"`. The `units` key is checked
-against the source kind, but its unit and scale are applied to an entry in the FEM
-physical boundary-condition list, selected by an index unrelated to this source. The
-source function itself is not scaled. Do not rely on `units` for a circuit source.
+and calls `<label>_init`. That function receives the `SourceFunction *` and configures it.
+Because the function is looked up by its plain name, declare it `extern "C"`. The `units`
+key specifies the unit of the value returned by the plugin. BELFEM checks it against the
+source kind and passes its SI factor to `SourceFunction::set_user_scale()`, which
+multiplies every value returned by the plugin. A plugin that returns kA with
+`units : kA` therefore drives the circuit in A.
 
 Units are checked against the source kind: `V` for a voltage source and `A` for a
 current source. Use `s` for `period`, `Hz` for `frequency`, and `rad` for `phase`
@@ -564,9 +566,9 @@ circuit
 }
 ```
 
-`CircuitResults.txt` then has the header `t IZ1 IZ2 IL1 IC1 IIs V0 V1` and one row per
-accepted timestep. The `IZ1` and `IZ2` columns hold the FEM current of the previous
-accepted step (§3, output section).
+`CircuitResults.txt` then has the header `t IZ1 IZ2 IL1 IC1 IIs V0 V1` and one row for
+each accepted timestep. The `IZ1` and `IZ2` columns contain the FEM terminal current from
+that same timestep (§3, output section).
 
 ---
 
