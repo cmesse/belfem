@@ -300,7 +300,7 @@ int main( int    argc,
                 tControl->finalize( true ) ;
 
                 tControl->save_IV( "iv_results.csv" );
-                tControl->save( "hphi_results.e-s");
+                tControl->save( tExodusFile );
                 tControl->save_memdump( "memdump.hdf5" );
             }
             else

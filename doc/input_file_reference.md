@@ -133,8 +133,8 @@ A one-word numeric value is taken as already-SI and dimensionless.
 
 There is no `output` or `visualization` section; the result file names come
 from the executable, not the deck. `belfem` names the Exodus file after the
-mesh (`belfem.cpp:210`), except on the segregated coupled path, which writes a
-fixed `hphi_results.e-s` (`belfem.cpp:303`). The only `output` subsection
+mesh (`belfem.cpp:210`) on every coupling path, including the segregated one.
+The only `output` subsection
 lives under `circuit`. The other outputs have fixed names:
 `memdump.hdf5`, written next to the results and read back at startup; see
 `timestep → restart` (§4.4).
