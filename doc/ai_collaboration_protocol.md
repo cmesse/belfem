@@ -172,7 +172,7 @@ Literature routing is **not required** for:
 - Documentation edits that don't touch algorithmic content
 
 **When literature is used:**
-1. Claude consults the routing tables (`literature/papers/fem/index.md`, `literature/books/index.md`, or `doc/literature_references.md` as fallback)
+1. Claude consults the routing tables (`literature/papers/fem/index.md`, `literature/books/<shelf>/index.md`, or `doc/literature_references.md` as fallback)
 2. Codex verifies that Claude's citations are correct and that the implementation matches the cited equations/sections
 3. Both AIs use the citation format defined in `CLAUDE.md`: "Author et al. YYYY, Section X" or "Bathe, §X.Y". The old `paperN` aliases are retired — do not write new ones; `doc/literature_references.md` decodes the ones in older records.
 

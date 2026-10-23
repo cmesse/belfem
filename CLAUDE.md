@@ -736,7 +736,8 @@ than rebuilding the chain from this table.
 
 **Step 2: use the index files** (when `./literature/` is present). `literature/README.md` holds the
 master decision flowcharts; `papers/fem/index.md`, `papers/fvm/index.md`, `papers/topology/index.md`,
-`books/index.md`, and `lectures/index.md` hold the detailed per-topic routing tables.
+`books/<shelf>/index.md` (`fem`, `math`, `coding`, `magnets`, `control` — one per shelf, no
+top-level books index), and `lectures/index.md` hold the detailed per-topic routing tables.
 
 **Step 3: search the source text.** Each index file names the `.txt` extraction for the work it
 routes you to. Search it with `rg -n` (or the equivalent search tool, keeping file+line output).
@@ -825,9 +826,9 @@ ones. `doc/literature_references.md` keeps the alias → work mapping so those r
 BELFEM-specific (HTS, h-φ, thin-shell, cuts)? → literature/papers/fem/index.md
 FVM / MPFA?                                   → literature/papers/fvm/index.md
 Cuts, cohomology, topology?                   → literature/papers/topology/index.md
-General FEM theory?                           → literature/books/index.md
+General FEM theory?                           → literature/books/fem/index.md
 Functional-analysis foundations?              → literature/lectures/index.md
-Formula lookup?                               → literature/books/index.md (Bronshtein)
+Formula lookup?                               → literature/books/math/index.md (Bronshtein)
 No literature/ available?                     → doc/literature_references.md
 ```
 
