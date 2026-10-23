@@ -12,6 +12,8 @@
 #ifndef BELFEM_CL_FEM_POSTPROCESSOR_HPP
 #define BELFEM_CL_FEM_POSTPROCESSOR_HPP
 
+#include <type_traits>
+
 #include "typedefs.hpp"
 #include "cl_Mesh.hpp"
 #include "cl_FEM_Kernel.hpp"
@@ -76,18 +78,28 @@ namespace belfem
 
             // the local frame the fit of one node is written in: origin and
             // in-plane scale for every postprocessor; shell normal, tangents
-            // and thickness scale only in shell mode
+            // and thickness scale only in shell mode. Fixed-size geometry,
+            // not linear algebra: a loop that pairs a component with mesh
+            // data runs to mNumDimensions, and the components beyond it stay
+            // zero. The 3D tangent construction writes only two components
+            // of T1 and relies on the third being zero
             struct NodeFrame
             {
-                Vector< real > Origin ;
-                Vector< real > Normal ;
-                Vector< real > T1 ;
-                Vector< real > T2 ;
+                real Origin[ 3 ] = { 0.0, 0.0, 0.0 };
+                real Normal[ 3 ] = { 0.0, 0.0, 0.0 };
+                real T1[ 3 ]     = { 0.0, 0.0, 0.0 };
+                real T2[ 3 ]     = { 0.0, 0.0, 0.0 };
                 real H   = 1.0 ;
                 real Tau = 1.0 ;
             };
 
-            Map< mesh::Node * , NodeFrame * > mNodeFrames ;
+            // one frame per selected node, held from one build of the node
+            // matrices to the next; a Vector member would put a backend
+            // object and its heap buffers into every node
+            static_assert( std::is_trivially_copyable< NodeFrame >::value,
+                "NodeFrame must stay plain data" );
+
+            Map< mesh::Node * , NodeFrame > mNodeFrames ;
 
             uint mNumCoefficients = 0 ;
 
