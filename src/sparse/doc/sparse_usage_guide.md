@@ -758,22 +758,32 @@ sparse::create_graph_from_matrix(A, graph_out);  // A must be 0-based; graph_out
 Returns CHOLMOD's rough reciprocal-condition estimate (requires `USE_SUITESPARSE=ON`,
 default OFF, and an OpenMP-enabled build; aborts otherwise).
 
-What it measures: `rcond` hands the matrix to CHOLMOD as unsymmetric (`stype = 0`), and
-CHOLMOD then factorizes `A*A'` with a Cholesky factorization, not `A` itself (CHOLMOD
-reads the arrays as CSC, so for a CSR matrix the product is `A'*A`). The value returned
-is therefore an estimate for that product, which is about `rcond(A)^2`. Compare it
-against a squared threshold: a matrix with `rcond(A)` near `1e-8` already returns a
-value near `1e-16`.
+What it measures: `rcond` factorizes `A` directly with a sparse Cholesky factorization
+(CHOLMOD, `stype = 1`) and returns `cholmod_rcond` for that factor. This is a rough
+estimate of `rcond(A)`, derived from the factor's diagonal. It is not a 1-norm condition
+estimate, so treat it as an order of magnitude; the thresholds below are heuristics.
 
-Side effect: `rcond` changes the matrix to C++ (0-based) indexing and leaves it there.
+Contract: `A` must be symmetric positive definite. A CSC matrix must store its upper
+triangle; a CSR matrix must store its lower triangle. A matrix that stores both triangles
+works with either type. `rcond` stops with `BELFEM_ERROR` (it does not return NaN) when:
+
+- the matrix is neither CSC nor CSR, or is not square;
+- the build uses a 64-bit `int_t` (the call goes through CHOLMOD's 32-bit interface);
+- CHOLMOD cannot factorize it. The message names the CHOLMOD status, for example
+  "not positive definite". A tiny pivot (`CHOLMOD_DSMALL`) is only a warning, and the
+  estimate is still returned.
+
+Indexing: CHOLMOD reads zero-based indices, so `rcond` switches the matrix to C++
+indexing for the call, then restores the caller's indexing base before it returns or
+raises an error.
 
 ```cpp
 SpMatrix A(graph, SpMatrixType::CSR);
-// ... assemble A ...
+// ... assemble the SPD matrix A, lower triangle at least ...
 
-real rc = rcond(A);   // estimate for A*A', about rcond(A)^2
+real rc = rcond(A);   // rough estimate of rcond(A)
 // rc close to 1.0: well-conditioned
-// rc near machine epsilon: rcond(A) is already near 1e-8
+// rc near machine epsilon (about 1e-16): numerically singular
 ```
 
 **Note:** Expensive operation (requires factorization). Use for diagnostics only.
@@ -1313,12 +1323,12 @@ message(InfoLevel::Default,
 ### 3. **Check Conditioning**
 
 ```cpp
-// rcond() estimates for A*A' (about rcond(A)^2) and leaves A in C++ indexing;
+// rcond() requires an SPD matrix and stops with an error otherwise;
 // see the rcond section above
 real rc = rcond(A);
-if (rc < 1e-16) {   // rcond(A) below about 1e-8
+if (rc < 1e-12) {   // about four digits left of double precision
     message(InfoLevel::Minimal,
-            "Matrix is ill-conditioned (rcond(A*A') = %e)", rc);
+            "Matrix is ill-conditioned (rcond(A) = %e)", rc);
 }
 ```
 
