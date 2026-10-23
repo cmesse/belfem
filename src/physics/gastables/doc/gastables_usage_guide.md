@@ -180,7 +180,8 @@ real d2lambda_dT2 = gas->d2lambdadT2(T);  // ∂²λ/∂T² (W/(m·K³))
 delete gas;
 ```
 
-A species with no transport record returns zero from these accessors rather than raising. Check
+A species with no `trans.inp` record gets synthesized transport if its critical data are complete.
+Otherwise these accessors return zero rather than raising (see Handling Missing Data). Check
 `has_viscosity()` and `has_conductivity()` separately; the two flags are independent.
 
 **Common error:**
@@ -257,11 +258,12 @@ delete gas;
   tabulated intervals these are the NASA CEA 9-coefficient polynomials; outside them they are the
   glue and extrapolation polynomials the factory synthesized
 - `set_mode()` only rebinds pointers in either direction; nothing is rebuilt
-- **Synthesized transport is spline-only.** If the factory synthesized a species' viscosity or
-  conductivity from critical-point data because `trans.inp` has no record for it, those values
-  exist only in the splines; the polynomial list contains an empty placeholder. In POLY mode the matching accessor
-  (`mu()` or `lambda()`) and its derivatives therefore return 0, while `has_viscosity()` or
-  `has_conductivity()` still returns `true` (`RefGas::create_splines`, `TransportPolyEmpty`).
+- **Synthesized transport always reads the spline.** If the factory synthesized a species' viscosity
+  or conductivity from critical-point data because `trans.inp` has no record for it, those values
+  exist only in the splines; the polynomial list contains an empty placeholder. `set_mode( POLY )`
+  therefore binds the matching accessor (`mu()` or `lambda()`) and its derivatives to the spline, so
+  both modes return the same synthesized values (`RefGas::set_mode`, `mViscositySynthesized`,
+  `mConductivitySynthesized`).
 
 To compare the two modes on your machine (`Timer::stop()` returns milliseconds):
 
@@ -421,7 +423,7 @@ if (gas->has_conductivity()) {
 delete gas;
 ```
 
-Synthesized transport is available only in SPLINE mode (see Polynomial vs Spline Mode).
+Synthesized transport is evaluated from its spline in both modes (see Polynomial vs Spline Mode).
 
 ### Cryogenic Temperature Handling
 
@@ -769,15 +771,14 @@ mu(T) or lambda(T) returned 0
 ```
 
 The species has no record for that property in `trans.inp` and no complete critical point to
-synthesize one from — or the gas is in POLY mode and its transport was synthesized (see
-Polynomial vs Spline Mode).
+synthesize one from. The mode does not matter: synthesized transport is evaluated from its spline
+in POLY mode as well.
 
 **Solution:**
 1. Check with `gas->has_viscosity()` before calling `mu(T)` and with `gas->has_conductivity()`
    before calling `lambda(T)`
-2. Keep the gas in SPLINE mode if its transport was synthesized
-3. Use estimation methods (Chapman-Enskog, etc.) for missing data
-4. Add transport data to `trans.inp` if available from literature
+2. Use estimation methods (Chapman-Enskog, etc.) for missing data
+3. Add transport data to `trans.inp` if available from literature
 
 ### Issue: Slow Performance
 
