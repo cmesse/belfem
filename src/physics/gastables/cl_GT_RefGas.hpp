@@ -101,6 +101,12 @@ namespace belfem
             // flag telling if this gas has conductivity data
             bool mHaveConductivity = false;
 
+            // viscosity / conductivity synthesized from critical data into the
+            // spline only: the polynomial list holds just the empty placeholder,
+            // so POLY mode must read the spline for them
+            bool mViscositySynthesized = false;
+            bool mConductivitySynthesized = false;
+
             // flag telling if this is a liquid polynomial according to CEA
             bool mLiquidFlag = false;
 

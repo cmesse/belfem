@@ -838,12 +838,31 @@ namespace belfem
                 mFunctionH            = & RefGas::poly_H;
                 mFunctionS            = & RefGas::poly_S;
                 mFunctiondSdT         = & RefGas::poly_dSdT;
-                mFunctionMu           = & RefGas::poly_Mu;
-                mFunctiondMudT        = & RefGas::poly_dMudT;
-                mFunctiond2MudT2      = & RefGas::poly_d2MudT2;
-                mFunctionLambda       = & RefGas::poly_Lambda;
-                mFunctiondLambdadT    = & RefGas::poly_dLambdadT;
-                mFunctiond2LambdadT2  = & RefGas::poly_d2LambdadT2;
+                if ( mViscositySynthesized )
+                {
+                    mFunctionMu           = & RefGas::spline_Mu;
+                    mFunctiondMudT        = & RefGas::spline_dMudT;
+                    mFunctiond2MudT2      = & RefGas::spline_d2MudT2;
+                }
+                else
+                {
+                    mFunctionMu           = & RefGas::poly_Mu;
+                    mFunctiondMudT        = & RefGas::poly_dMudT;
+                    mFunctiond2MudT2      = & RefGas::poly_d2MudT2;
+                }
+
+                if ( mConductivitySynthesized )
+                {
+                    mFunctionLambda       = & RefGas::spline_Lambda;
+                    mFunctiondLambdadT    = & RefGas::spline_dLambdadT;
+                    mFunctiond2LambdadT2  = & RefGas::spline_d2LambdadT2;
+                }
+                else
+                {
+                    mFunctionLambda       = & RefGas::poly_Lambda;
+                    mFunctiondLambdadT    = & RefGas::poly_dLambdadT;
+                    mFunctiond2LambdadT2  = & RefGas::poly_d2LambdadT2;
+                }
             }
             else if ( aMode == RefGasMode::SPLINE )
             {
@@ -1248,6 +1267,7 @@ namespace belfem
 
                 mViscositySpline.initialize( T, tValues, aHelpMatrix );
                 mHaveViscosity = true;
+                mViscositySynthesized = true;
             }
             // Conductiviity
             if( this->has_conductivity() )
@@ -1274,6 +1294,7 @@ namespace belfem
 
                 mConductivitySpline.initialize( T, tValues, aHelpMatrix );
                 mHaveConductivity = true;
+                mConductivitySynthesized = true;
             }
 
             this->set_mode(  RefGasMode::SPLINE );
