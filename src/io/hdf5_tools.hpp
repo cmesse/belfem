@@ -318,7 +318,7 @@ namespace belfem
             H5Tclose( tDataType );
             H5Dclose( tDataSet );
 
-            BELFEM_ASSERT( aStatus == 0,
+            BELFEM_ERROR( aStatus >= 0,
                     "Something went wrong while trying to store scalar %s of type %s",
                        aLabel.c_str(),
                        datatype_string<T>().c_str());
@@ -365,7 +365,7 @@ namespace belfem
                     H5P_DEFAULT,
                     &aValue );
 
-            BELFEM_ASSERT( aStatus == 0,
+            BELFEM_ERROR( aStatus >= 0,
                        "Something went wrong while trying to load scalar %s of type %s",
                        aLabel.c_str(),
                        datatype_string<T>().c_str() );
@@ -448,6 +448,17 @@ namespace belfem
                     H5P_DEFAULT,
                     H5P_DEFAULT );
 
+            // an empty object skips the write, so its status cannot report a
+            // failed create; the open handles are closed before the error
+            if ( tDataSet < 0 )
+            {
+                H5Sclose( tDataSpace );
+                H5Tclose( tDataType );
+                BELFEM_ERROR( false, "Could not create dataset %s", aLabel.c_str() );
+            }
+
+            aStatus = 0 ;
+
             if( aLength > 0 )
             {
                 aStatus = H5Dwrite(
@@ -463,7 +474,7 @@ namespace belfem
             H5Tclose( tDataType );
             H5Dclose( tDataSet );
 
-            BELFEM_ASSERT( aStatus == 0,
+            BELFEM_ERROR( aStatus >= 0,
                         "Something went wrong while trying to store vector %s of type %s",
                         aLabel.c_str(),
                         datatype_string<T>().c_str() );
@@ -540,7 +551,7 @@ namespace belfem
                 aStatus = 0;
             }
 
-            BELFEM_ASSERT( aStatus == 0,
+            BELFEM_ERROR( aStatus >= 0,
                         "Something went wrong while trying to load vector %s of type %s",
                         aLabel.c_str(),
                         datatype_string<T>().c_str() );
@@ -588,6 +599,17 @@ namespace belfem
                     H5P_DEFAULT,
                     H5P_DEFAULT );
 
+            // an empty object skips the write, so its status cannot report a
+            // failed create; the open handles are closed before the error
+            if ( tDataSet < 0 )
+            {
+                H5Sclose( tDataSpace );
+                H5Tclose( tDataType );
+                BELFEM_ERROR( false, "Could not create dataset %s", aLabel.c_str() );
+            }
+
+            aStatus = 0 ;
+
             if( tLength > 0 )
             {
                 T* tData = ( T* ) malloc( tLength * sizeof( T ) );
@@ -612,7 +634,7 @@ namespace belfem
             H5Tclose( tDataType );
             H5Dclose( tDataSet );
 
-            BELFEM_ASSERT( aStatus == 0,
+            BELFEM_ERROR( aStatus >= 0,
                         "Something went wrong while trying to store vector %s of type %s",
                         aLabel.c_str(),
                         datatype_string<T>().c_str() );
@@ -690,7 +712,7 @@ namespace belfem
                 aStatus = 0;
             }
 
-            BELFEM_ASSERT( aStatus == 0,
+            BELFEM_ERROR( aStatus >= 0,
                         "Something went wrong while trying to load vector %s of type %s",
                         aLabel.c_str(),
                         datatype_string<T>().c_str() );
@@ -748,6 +770,17 @@ namespace belfem
                     H5P_DEFAULT,
                     H5P_DEFAULT );
 
+            // an empty object skips the write, so its status cannot report a
+            // failed create; the open handles are closed before the error
+            if ( tDataSet < 0 )
+            {
+                H5Sclose( tDataSpace );
+                H5Tclose( tDataType );
+                BELFEM_ERROR( false, "Could not create dataset %s", aLabel.c_str() );
+            }
+
+            aStatus = 0 ;
+
             if( tDims[ 0 ]*tDims[ 1 ] > 0 )
             {
                 T** tData = ( T** ) malloc( tDims[ 0 ] * sizeof( T * ) );
@@ -794,7 +827,7 @@ namespace belfem
             H5Tclose( tDataType );
             H5Dclose( tDataSet );
 
-            BELFEM_ASSERT( aStatus == 0,
+            BELFEM_ERROR( aStatus >= 0,
                        "Something went wrong while trying to store matrix %s of type %s",
                        aLabel.c_str(),
                        datatype_string<T>().c_str() );
@@ -899,7 +932,7 @@ namespace belfem
                 aStatus = 0;
             }
 
-            BELFEM_ASSERT( aStatus == 0,
+            BELFEM_ERROR( aStatus >= 0,
                         "Something went wrong while trying to load matrix %s of type %s",
                         aLabel.c_str(),
                         datatype_string<T>().c_str() );

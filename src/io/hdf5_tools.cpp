@@ -62,7 +62,7 @@ namespace belfem
             H5Tclose(tDataType);
             H5Dclose(tDataSet);
 
-            BELFEM_ASSERT( aStatus == 0,
+            BELFEM_ERROR( aStatus >= 0,
                       "Something went wrong while trying to store variable %s of type %s",
                       aLabel.c_str(),
                       datatype_string<bool>().c_str());
@@ -108,7 +108,7 @@ namespace belfem
 
             aValue = ( bool ) tValue;
 
-            BELFEM_ASSERT( aStatus == 0,
+            BELFEM_ERROR( aStatus >= 0,
                        "Something went wrong while trying to load variable %s of type %s",
                        aLabel.c_str(),
                        datatype_string<bool>().c_str());
@@ -166,7 +166,7 @@ namespace belfem
             H5Tclose( tDataType );
             H5Dclose( tDataSet );
 
-            BELFEM_ASSERT(aStatus == 0,
+            BELFEM_ERROR( aStatus >= 0,
                       "Something went wrong while trying to store string %s.",
                       aLabel.c_str() );
 #endif
@@ -211,7 +211,7 @@ namespace belfem
 
             free( tBuffer );
 
-            BELFEM_ASSERT( aStatus == 0,
+            BELFEM_ERROR( aStatus >= 0,
                       "Something went wrong while trying to load string %s.",
                       aLabel.c_str() );
 #endif
