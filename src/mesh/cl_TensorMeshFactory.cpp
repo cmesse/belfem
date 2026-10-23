@@ -781,8 +781,8 @@ namespace belfem
                 tElement->insert_control_point( aPoints( bidx(  p+3, q+3 ) ), 2 );
                 tElement->insert_control_point( aPoints( bidx(  p  , q+3 ) ), 3 );
 
-                tElement->insert_control_point( aPoints( bidx(  p  , q+1 ) ), 4 );
-                tElement->insert_control_point( aPoints( bidx(  p  , q+2 ) ), 5 );
+                tElement->insert_control_point( aPoints( bidx(  p+1, q   ) ), 4 );
+                tElement->insert_control_point( aPoints( bidx(  p+2, q   ) ), 5 );
 
                 tElement->insert_control_point( aPoints( bidx(  p+3, q+1 ) ), 6 );
                 tElement->insert_control_point( aPoints( bidx(  p+3, q+2 ) ), 7 );
