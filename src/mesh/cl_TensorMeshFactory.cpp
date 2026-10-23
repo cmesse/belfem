@@ -1182,6 +1182,9 @@ namespace belfem
         {
             tBitset.reset();
 
+            // the pairs of this node only; the container is reused
+            tPairs.clear();
+
             // loop over all elements connected to this node
             for ( uint e=0; e<tNode->number_of_elements(); ++e )
             {
