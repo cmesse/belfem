@@ -58,47 +58,51 @@
 
 ⚠️ **Critical bugs and common mistakes to avoid:**
 
-### 1.1 FIXED: `number_of_hanging_dofs()` copy-paste accessor (historical)
+### 1.1 Count Accessors Must Return Their Own Member
 
-An earlier revision of `cl_FEM_DofMgr_DofData.hpp` returned
-`mNumberOfFixedDofs` from `number_of_hanging_dofs()`. **The accessor is
-fixed** — it returns `mNumberOfHangingDofs` — so both
-`number_of_hanging_dofs()` and `my_number_of_hanging_dofs()` are safe to use.
-The entry is kept only as a reminder that the count accessors in this header
-are copy-paste-prone; when adding one, check the returned member matches the
-name.
+`DofData::number_of_hanging_dofs()` returns `mNumberOfHangingDofs`, and
+`my_number_of_hanging_dofs()` returns the per-rank count
+(`cl_FEM_DofMgr_DofData.hpp`). These one-line accessors have nearly identical
+names. When adding one, check that it returns the member named by the accessor.
 
 ---
 
-### 1.2 Forgetting to Call `initialize()`
+### 1.2 Forgetting to Call `set_solver()`
+
+You do not need to call `initialize()` yourself. On first use,
+`compute_jacobian()` and `compute_jacobian_and_rhs()` call it. If the manager is
+already initialized, it returns immediately. `initialize()` requires a solver.
 
 **The Mistake:**
 ```cpp
-DofManager* field = kernel.create_field(iwg);
-field->sideset(1)->impose_dirichlet(300.0);
+DofManager * tField = tKernel.create_field( tIWG );
+tField->sideset( 1 )->impose_dirichlet( 300.0 );
 
-// ❌ Forgot to initialize!
-field->compute_jacobian_and_rhs();  // CRASH! Matrices are nullptr
+// ❌ No solver set
+tField->compute_jacobian_and_rhs();  // calls initialize(), which needs the solver
 ```
 
 **Correct Pattern:**
 ```cpp
-DofManager* field = kernel.create_field(iwg);
-field->sideset(1)->impose_dirichlet(300.0);
+DofManager * tField = tKernel.create_field( tIWG );
+tField->set_solver( SolverType::MUMPS );       // ✅ before initialize() and the first assembly
+tField->sideset( 1 )->impose_dirichlet( 300.0 );
 
-field->initialize();  // ✅ Allocates DOFs and matrices
-
-field->compute_jacobian_and_rhs();  // Works correctly
+tField->compute_jacobian_and_rhs();  // initializes on first use
+tField->solve();
 ```
 
 **Why This Happens:**
-- `initialize()` orchestrates DOF creation, graph extraction, matrix allocation
-- Without it, all internal pointers are `nullptr`
-- Assembly functions will dereference null pointers → segfault
+- `initialize()` creates the mesh fields, seeds the DOF values, allocates the
+  calculators, reorders the DOFs, and allocates the matrices
+- It starts with `BELFEM_ASSERT( mSolverData->solver() != nullptr, "set solver first" )`
+  (`DofManager::initialize` in `cl_FEM_DofManager.cpp`)
+- `BELFEM_ASSERT` is compiled out in release builds, so a release build does
+  not catch the missing solver at that point
 
 **Detection:**
 ```cpp
-BELFEM_ERROR(field->solver() != nullptr, "Call initialize() first!");
+BELFEM_ERROR( tField->solver() != nullptr, "call set_solver() before the first assembly" );
 ```
 
 ---
@@ -138,30 +142,39 @@ field->compute_jacobian_and_rhs(true);
 
 **The Mistake:**
 ```cpp
-DofManager* field = kernel.create_field(iwg);
+DofManager * tField = tKernel.create_field( tIWG );
 
-SpMatrix* J = field->system_matrix();  // nullptr!
-J->set_value(0, 0, 1.0);  // CRASH!
+SpMatrix * A = tField->system_matrix();  // nullptr: not initialized yet
+A->fill( 0.0 );                          // CRASH!
 ```
 
 **Correct Pattern:**
 ```cpp
-DofManager* field = kernel.create_field(iwg);
-field->initialize();  // ✅ Allocates matrices
+DofManager * tField = tKernel.create_field( tIWG );
+tField->set_solver( SolverType::MUMPS );
+tField->initialize();  // ✅ Allocates matrices
 
-SpMatrix* J = field->system_matrix();  // Valid pointer
-BELFEM_ASSERT(J != nullptr, "Jacobian should be allocated");
+SpMatrix * A = tField->system_matrix();  // Valid pointer
+BELFEM_ASSERT( A != nullptr, "system matrix should be allocated" );
 ```
 
 **All JEDI Matrices:**
 ```cpp
-SpMatrix* A = field->system_matrix(); // A: Free → Free
-SpMatrix* D = field->dirichlet();     // D: Free → Fixed
-SpMatrix* E = field->enforcement();   // E: Fixed → Free
-SpMatrix* I = field->imposition();    // I: Fixed → Fixed
+SpMatrix * A = tField->system_matrix(); // A: Free → Free
+SpMatrix * D = tField->dirichlet();     // D: Free → Fixed
+SpMatrix * E = tField->enforcement();   // E: Fixed → Free
+SpMatrix * I = tField->imposition();    // I: Fixed → Fixed
 ```
 
-All are `nullptr` until `initialize()` is called.
+The labels give the row set first and the column set second. D has one row per
+free DOF and one column per fixed DOF.
+
+A and D are `nullptr` until `initialize()` has run. E and I remain `nullptr`
+after `initialize()` unless `tField->solver_data()->use_jedi_force( true )` was
+called beforehand. `mUseJediForce` defaults to `false` in
+`cl_FEM_DofMgr_SolverData.hpp`.
+The Newton tangent J is a separate matrix with the same pattern as A:
+`tField->solver_data()->matrix( dofmgr::Jacobian )`.
 
 ---
 
@@ -174,8 +187,8 @@ for (Element* elem : block->elements()) {
     iwg->compute_jacobian(elem, K);
 
     // ❌ WRONG: Modifying DOF values during assembly
-    for (Dof* dof : elem->dofs()) {
-        dof->set_value(some_new_value);  // Race condition in parallel!
+    for (uint k = 0; k < elem->number_of_dofs(); ++k) {
+        elem->dof(k)->value() = some_new_value;  // later elements see the changed value
     }
 
     solver_data->assemble_jacobian(elem, K);
@@ -203,25 +216,35 @@ for (Dof* dof : field->dofs()) {
 
 ---
 
-### 1.6 Not Synchronizing Fields in MPI
+### 1.6 Not Synchronizing Fields You Changed Yourself
+
+`solve()` already distributes the solution. After the linear solve, it calls
+`mFieldData->distribute( mIWG->all_fields() )`. Every field of the equation is
+therefore current on every rank when `solve()` returns (`DofManager::solve` in
+`cl_FEM_DofManager.cpp`; `solve_from_residual()` does the same). You do not
+need to call `synchronize_fields()` after `solve()`.
+
+Synchronization is needed when your own code writes a mesh field on only some
+ranks, such as an initial condition set on the master.
 
 **The Mistake:**
 ```cpp
-// Parallel run (MPI)
-field->solve();  // Master solves, workers have stale data
+// Parallel run (MPI): the master changes a field outside solve()
+if ( comm_rank() == 0 )
+{
+    tMesh->field_data( "T" ).fill( 300.0 );
+}
 
-// ❌ Workers access stale field values!
-mesh.field("T")->data()[node_index];  // Wrong on workers!
+// ❌ Workers still hold their old values of "T"
 ```
 
 **Correct Pattern:**
 ```cpp
-// After solve, synchronize fields
-field->solve();
-field->synchronize_fields({"T", "q"});  // Collect then distribute
-
-// Now all procs have updated values
-mesh.field("T")->data()[node_index];  // Correct on all procs
+if ( comm_rank() == 0 )
+{
+    tMesh->field_data( "T" ).fill( 300.0 );
+}
+tField->distribute_fields( { "T" } );  // collective: every rank calls it
 ```
 
 **Field Synchronization Methods:**
@@ -237,36 +260,42 @@ field->synchronize_fields({"T"});  // Round-trip (collect + distribute)
 
 **The Mistake:**
 ```cpp
-IWG* iwg = factory.create_iwg(...);
-DofManager* field = kernel.create_field(iwg);
+IwgFactory tFactory( tMesh );
+IWG * tIWG = tFactory.create_iwg( IwgType::Poisson, ModelDimensionality::ThreeD );
+DofManager * tField = tKernel.create_field( tIWG );
 
-delete iwg;  // ❌ WRONG: DofManager still holds pointer!
+delete tIWG;  // ❌ WRONG: the DofManager still holds the pointer!
 
-field->compute_jacobian_and_rhs();  // Dangling pointer access!
+tField->compute_jacobian_and_rhs();  // Dangling pointer access!
 ```
 
-**Correct Pattern 1: Let Kernel Manage Lifetime**
+**Correct Pattern 1: Let the Kernel Create the Equation**
 ```cpp
-// Kernel owns both IWG and DofManager
-Kernel kernel(&params);
-IWG* iwg = kernel.create_equation(...);
-DofManager* field = kernel.create_field(iwg);
+// the kernel owns both the IWG and the DofManager
+Kernel tKernel( &tParams );
+IWG * tIWG = tKernel.create_equation( IwgType::Poisson );
+DofManager * tField = tKernel.create_field( tIWG );
 
-// ... use field ...
+// ... use tField ...
 
-// Kernel destructor cleans up both
+// the Kernel destructor deletes the DofManager, then the IWG
 ```
 
-**Correct Pattern 2: Manual Management**
+**Correct Pattern 2: Hand an Equation You Built to the Kernel**
+
+This is what the physics factories do (`ThermalFactory::create_thermal_kernel`):
+they build the IWG, give it to the kernel with `add_equation()`, and then link it
+with `create_field()`. `create_field()` alone only links the equation; it does
+not take ownership.
 ```cpp
-IWG* iwg = factory.create_iwg(...);
-DofManager* field = new DofManager(&kernel, 0);
-field->set_equation(iwg);
+IwgFactory tFactory( tMesh );
+IWG * tIWG = tFactory.create_iwg( IwgType::Poisson, ModelDimensionality::ThreeD );
+tIWG->select_blocks( { 1 } );
 
-// ... use field ...
+tKernel.add_equation( tIWG );                     // the kernel now owns tIWG
+DofManager * tField = tKernel.create_field( tIWG );
 
-delete field;  // Delete DofManager first
-delete iwg;    // Then delete IWG
+// never delete tIWG or tField: the Kernel destructor does
 ```
 
 **See:** [Section 13: Ownership and Lifetime](#13-ownership-and-lifetime)
@@ -328,6 +357,7 @@ for (Element* elem : block->elements()) {
 ```cpp
 // ✅ Create once, use many times:
 DofManager* field = kernel.create_field(iwg);
+field->set_solver( SolverType::MUMPS );
 field->initialize();  // Once
 
 for (Element* elem : block->elements()) {
@@ -341,76 +371,68 @@ for (Element* elem : block->elements()) {
 
 ## 2. Safe Defaults Quick Start
 
-Minimal working example with safe defaults:
+This is a minimal, complete program. It follows `src/fem/kernel/poisson.cpp`,
+which is built under `USE_EXAMPLES`:
 
 ```cpp
+#include "typedefs.hpp"
+#include "cl_Communicator.hpp"
+#include "cl_Logger.hpp"
+#include "cl_Mesh.hpp"
 #include "cl_FEM_Kernel.hpp"
-#include "cl_IwgFactory.hpp"
+#include "cl_FEM_KernelParameters.hpp"
+#include "cl_FEM_DofManager.hpp"
+#include "cl_IWG.hpp"
 
-int main()
+using namespace belfem;
+using namespace fem;
+
+Communicator gComm;
+Logger       gLog( 3 );
+
+int main( int argc, char * argv[] )
 {
-    // 1. Load the mesh first -- KernelParameters is built around it.
-    //    There is no default KernelParameters and no Kernel::import_mesh().
-    Mesh* mesh = new Mesh("mesh.exo");
+    // 1. MPI first: the Mesh and Kernel constructors are collective
+    gComm.init( argc, argv );
 
-    KernelParameters params(mesh);
-    Kernel kernel(&params);
+    {
+        // 2. Every rank constructs the mesh; only the master reads the file.
+        //    Declared before the kernel, so it is destroyed after it.
+        Mesh tMesh( "mesh.exo" );
 
-    // 2. Create equation (heat conduction example)
-    IWG* iwg = kernel.create_equation(
-        IwgType::TransientHeatConduction,  // ✅ Well-tested physics
-        ModelDimensionality::ThreeD
-    );
+        // 3. The kernel borrows both the parameters and the mesh;
+        //    both must outlive it
+        KernelParameters tParams( tMesh );
+        Kernel tKernel( &tParams );   // collective: partitions and distributes the mesh
 
-    // Configure time-stepping (SAFE choices)
-    iwg->select_blocks({1, 2, 3});
-    iwg->set_timestepping_method(EulerMethod::BackwardDifference2);  // ✅ BDF2: stable, 2nd order
-    iwg->set_algorithm(SolverAlgorithm::NewtonRaphson);
-    iwg->set_omega(0.9);  // Line search relaxation
+        // 4. Equation: the kernel creates and owns it
+        IWG * tIWG = tKernel.create_equation( IwgType::Poisson );
+        tIWG->select_blocks( { 1 } );
+        tIWG->select_sidesets( { 1, 2 } );
 
-    // 3. Create field (DofManager)
-    DofManager* field = kernel.create_field(iwg);
+        // 5. Field (DofManager): the kernel owns it, never delete it
+        DofManager * tField = tKernel.create_field( tIWG );
 
-    // 4. Set boundary conditions (block 1 = Dirichlet, block 2 = Neumann)
-    field->sideset(1)->impose_dirichlet(300.0);  // T = 300K
-    field->sideset(2)->impose_neumann(1000.0);   // q = 1000 W/m²
+        // 6. Solver, before the first assembly
+        SolverParameters tSolverParams( SolverType::MUMPS );
+        tSolverParams.set_reordering_method( ReorderingMethod::METIS );
+        tField->set_solver( tSolverParams );
 
-    // 5. Set solver (SAFE choices)
-    SolverParameters solver_params( SolverType::MUMPS );  // ✅ Robust, parallel-ready; the type is fixed at construction
-    solver_params.set_reordering_method( ReorderingMethod::METIS );  // ✅ Nested dissection
-    field->set_solver( solver_params );
+        // 7. Boundary conditions
+        tField->sideset( 1 )->impose_dirichlet( 0.0 );
+        tField->sideset( 2 )->impose_dirichlet( 1.0 );
 
-    // 6. Initialize (CRITICAL STEP - allocates DOFs and matrices)
-    field->initialize();
+        // 8. Assemble and solve. The first assembly calls initialize();
+        //    solve() distributes the solution to every rank
+        tField->compute_jacobian_and_rhs();
+        tField->solve();
 
-    // 7. Time-stepping loop
-    real dt = 0.01;  // Time step
-    real t = 0.0;
-    real t_end = 1.0;
+        // 9. Output: master only, a no-op on the other ranks
+        tMesh.save( "result.exo" );
 
-    while (t < t_end) {
-        // Assembly (aReset=true by default - safe)
-        field->compute_jacobian_and_rhs(true);
+    }   // tKernel is destroyed here, before tMesh: dof managers, IWGs, materials, BCs
 
-        // Solve
-        field->solve();
-
-        // Postprocess (L2 projection of secondary fields)
-        field->postprocess();
-
-        // Synchronize fields for MPI (safe even in serial)
-        field->synchronize_fields({"T"});
-
-        // Export results
-        if (comm_rank() == 0) {
-            mesh->save("output_" + std::to_string(t) + ".exo");
-        }
-
-        t += dt;
-    }
-
-    // 8. Cleanup handled by Kernel destructor
-    return 0;
+    return gComm.finalize();
 }
 ```
 
@@ -418,13 +440,49 @@ int main()
 
 | Choice | Reason |
 |--------|--------|
-| `BDF2` | A-stable, 2nd order accuracy, well-tested |
-| `MUMPS` | Robust, parallel-ready, handles ill-conditioned systems |
-| `METIS` | Optimal fill-minimization for sparse factorization |
-| `NewtonRaphson` | Full Jacobian, quadratic convergence |
-| `aReset=true` | Prevents accumulation bugs |
-| `synchronize_fields()` | Safe in both serial and parallel |
-| `postprocess()` | Ensures secondary fields are up-to-date |
+| Mesh on the stack, declared before the `Kernel` | The kernel's destructor still reaches into the mesh, so the mesh must be destroyed after the kernel. The kernel does not delete a mesh it borrows |
+| Inner scope before `gComm.finalize()` | The kernel and mesh are destroyed while MPI is still running |
+| `create_equation()` + `create_field()` | The kernel owns both; nothing to delete |
+| `set_solver()` before assembly | `initialize()` needs the solver; see §1.2 |
+| `MUMPS` | Robust direct solver, works in serial and in parallel |
+| `METIS` | Nested-dissection ordering for the factorization |
+| `compute_jacobian_and_rhs()` with the default `aReset=true` | Prevents accumulation bugs; see §1.3 |
+
+### 2.1 Adding Time Stepping
+
+For a transient equation (an `IWG_Timestep`), each step must pass the step size
+to the equation and rotate the field history before assembly. This is the order
+used by `fem::Controller`: `shift_fields()` first, then `delta_time()`.
+
+Without a `delta_time()` assignment, the equation keeps its default step size of
+`1.0` (`mDeltaTime` in `cl_IWG.hpp`).
+
+```cpp
+IWG * tIWG = tKernel.create_equation( IwgType::TransientHeatConduction );
+tIWG->set_timestepping_method( EulerMethod::BackwardDifference2 );
+DofManager * tField = tKernel.create_field( tIWG );
+tField->set_solver( SolverType::MUMPS );
+tField->sideset( 1 )->impose_dirichlet( 300.0 );
+
+const real tDeltaTime = 0.01;
+const uint tNumSteps  = 100;
+
+for ( uint tStep = 0; tStep < tNumSteps; ++tStep )
+{
+    tIWG->shift_fields();                // rotate T(n) into the history first
+    tIWG->delta_time() = tDeltaTime;     // then the size of the upcoming step
+
+    tField->compute_jacobian_and_rhs();
+    tField->solve();                     // one solve; iterate this pair for a nonlinear equation
+}
+```
+
+Production transient runs use `fem::Controller`. It adds nonlinear iteration,
+adaptive step control, and step rejection around this loop.
+
+`IWG_TransientHeatConduction` is suited only for exercising the loop. It
+assembles a unit mass coefficient and a constant conductivity of `111.0`,
+independent of the block material (`IWG_TransientHeatConduction::compute_mkf`).
 
 ---
 
@@ -472,7 +530,7 @@ The **FEM Kernel** module is the **core orchestration layer** that connects:
 
 **Central Class:** `DofManager` - orchestrates all DOF operations.
 
-**Top-Level Class:** `Kernel` - owns mesh, materials, boundary conditions, and multiple DofManagers.
+**Top-Level Class:** `Kernel` - borrows the mesh (unless a factory hands it over with `claim_mesh_ownership()`); owns the materials, boundary conditions, equations (IWGs) and DofManagers.
 
 ---
 
@@ -517,10 +575,20 @@ DofManager (Central orchestrator)
 | **SolverData** | `cl_FEM_DofMgr_SolverData` | Matrix assembly, solver interface, JEDI system |
 | **EigenValues** | `cl_FEM_DofMgr_EigenValues` | Eigenvalue problem setup |
 
-**Each manager is:**
-- Created in `DofManager` constructor
-- Initialized in `DofManager::initialize()`
-- Deleted in `DofManager` destructor
+**The `DofManager` constructor creates each manager, and its destructor deletes
+each one.** Setup is split between the two calls that link and prepare the
+equation (§6.1):
+
+| Manager | Set up in `set_equation()` | Set up in `initialize()` |
+|---------|----------------------------|--------------------------|
+| **Parameters** | — (complete after construction) | — |
+| **DofData** | `create_dofs()`, `collect_hanging_dofs()` | `init_dof_values()`, `split_dof_container()`, `reorder_dofs()`, `disconnect_dofs_from_mesh()` |
+| **BlockData** | `create_blocks()` | calculators allocated by `init_work()` |
+| **SideSetData** | `create_sidesets()` (if sidesets were selected) | `collect_wetted_sidesets()`, `count_wetted_nodes()`, `create_alpha_fields()`; calculators allocated by `init_work()` |
+| **BearingData** | `create_bearings()` | — |
+| **FieldData** | `collect_node_owners()`, `collect_element_owners()` | `update_field_indices()`, field `distribute()` / `collect()` |
+| **SolverData** | — (the solver comes from `set_solver()`) | `extract_graph_from_mesh()`, `allocate_matrices()`, `create_assembly_tables()` |
+| **EigenValues** | — | — (sets itself up on first use) |
 
 **User interacts primarily with `DofManager`**, which forwards calls to appropriate managers.
 
@@ -581,14 +649,14 @@ Understanding DofManager requires understanding **four core concepts**:
 ### Pillar 3: JEDI Matrix System
 
 **Process:**
-1. SolverData allocates 4 sparse matrices (J, D, E, I)
+1. SolverData allocates A, J and D; E and I only if `use_jedi_force( true )` was set before `initialize()`
 2. SolverData creates assembly tables for MPI distribution
 3. Element loop: IWG computes local matrices
-4. SolverData assembles into global JEDI matrices
-5. Solver solves `J*x = f - D*y` for free DOFs
-6. SolverData computes reaction forces `g = E*x + I*y`
+4. SolverData assembles into the global matrices
+5. Solver solves for the free DOFs. In direct mode this is `A*x = f + D*y`, where the stored D holds the *negated* free-fixed block; Newton iterations factor J instead (§7.3)
+6. If E and I were allocated, they are assembled too; the code does not form the reactions `g = E*x + I*y` itself
 
-**Result:** Solution vector + reaction forces at constraints
+**Result:** Solution vector; optionally the E and I blocks for computing reactions
 
 ---
 
@@ -605,7 +673,7 @@ Understanding DofManager requires understanding **four core concepts**:
 
 ---
 
-These four pillars execute sequentially in `DofManager::initialize()` (Pillar 1-2) and `DofManager::solve()` (Pillar 3-4).
+Pillar 1 runs in `DofManager::set_equation()`, which `Kernel::create_field()` calls. Pillar 2 and the matrix allocation run in `DofManager::initialize()`. Assembly runs in `compute_jacobian()` / `compute_jacobian_and_rhs()`, and the solve and field distribution run in `DofManager::solve()`.
 
 ---
 
@@ -613,54 +681,52 @@ These four pillars execute sequentially in `DofManager::initialize()` (Pillar 1-
 
 ### 6.1 DOF Creation Workflow
 
-The `DofManager::initialize()` method triggers DOF creation:
+DOF creation happens when the equation is linked, in `DofManager::set_equation()`.
+`initialize()` runs later and builds the fields, the graph and the matrices:
 
 ```cpp
-DofManager::initialize()
-├── init_dofs()
-│   └── DofData::create_dofs(IWG*)
-│       ├── 1. Query IWG for DOF requirements
-│       │   ├── IWG::number_of_dofs_per_node()
-│       │   ├── IWG::number_of_dofs_per_edge()
-│       │   ├── IWG::number_of_dofs_per_face()
-│       │   ├── IWG::number_of_dofs_per_cell()
-│       │   └── IWG::number_of_lambda_dofs()
-│       │
-│       ├── 2. Count DOFs per entity type
-│       │   ├── count_node_dofs()
-│       │   ├── count_edge_dofs()
-│       │   ├── count_face_dofs()
-│       │   ├── count_cell_dofs()
-│       │   └── count_lambda_dofs()
-│       │
-│       ├── 3. Compute ID offsets
-│       │   └── compute_dof_offsets(IWG*)
-│       │       ├── mEdgeDofOffset = max_node_id * num_dof_types
-│       │       ├── mFaceDofOffset = mEdgeDofOffset + max_edge_id * num_dof_types
-│       │       ├── mCellDofOffset = mFaceDofOffset + max_face_id * num_dof_types
-│       │       └── mLambdaDofOffset = mCellDofOffset + max_cell_id * num_dof_types
-│       │
-│       ├── 4. Allocate DOF objects
-│       │   ├── Create Dof objects (one per DOF)
-│       │   ├── Link to mesh::Basis (Node, Edge, Face, Element, Facet)
-│       │   └── Set DOF ID (unique global identifier)
-│       │
-│       └── 5. Create DOF map
-│           └── create_dof_map()
-│               └── mDofMap( dof_id ) = dof_pointer
-│
-├── init_work()
-│   └── SolverData::extract_graph_from_mesh()
-│       ├── compute_element_dof_connectivity()
-│       ├── compute_dof_element_connectivity()
-│       └── compute_dof_dof_connectivity()
-│
-└── init_matrices()
-    └── SolverData::allocate_matrices()
-        ├── Reorder DOFs (symrcm)
-        ├── Allocate sparse matrices (J, D, E, I)
-        ├── Create assembly tables
-        └── Initialize solver
+Kernel::create_field(IWG*)
+├── IWG::initialize()
+├── new DofManager( kernel, index )
+└── DofManager::set_equation(IWG*)
+    ├── DofData::create_dofs(IWG*)
+    │   ├── 1. compute_dof_offsets(IWG*)            (master computes, then shares)
+    │   │   ├── compute_max_ids()
+    │   │   ├── mEdgeDofOffset   = (max_node_id + 1) * num_dof_types
+    │   │   ├── mFaceDofOffset   = mEdgeDofOffset + (max_edge_id + 1) * num_dof_types
+    │   │   ├── mCellDofOffset   = mFaceDofOffset + (max_face_id + 1) * num_dof_types
+    │   │   └── mLambdaDofOffset = mCellDofOffset + (max_cell_id + 1) * num_dof_types
+    │   │
+    │   ├── 2. Count DOFs per entity type; the IWG is asked per block or sideset
+    │   │   ├── count_node_dofs()     ← IWG::number_of_dofs_per_node( aBlockID )
+    │   │   ├── count_edge_dofs()     ← IWG::number_of_dofs_per_edge( aBlockID )
+    │   │   ├── count_face_dofs()     ← IWG::number_of_dofs_per_face( aBlockID )
+    │   │   ├── count_cell_dofs()     ← IWG::number_of_dofs_per_cell( aBlockID )
+    │   │   └── count_lambda_dofs()   ← IWG::number_of_lambda_dofs( aSideSetID )
+    │   │
+    │   ├── 3. Allocate Dof objects (one per DOF, linked to its mesh::Basis, ID set)
+    │   │
+    │   └── 4. create_dof_map()   (mDofMap( dof_id ) = dof_pointer)
+    │
+    ├── BlockData::create_blocks(), create_element_map()
+    ├── SideSetData::create_sidesets()               (only if sidesets were selected)
+    ├── BearingData::create_bearings()
+    ├── DofData::collect_hanging_dofs()
+    └── consolidate_dofs()
+
+DofManager::initialize()          (called by the first compute_jacobian*() if you do not call it)
+├── create_fields(IWG*)
+├── init_dofs()                   distribute fields, create alpha fields, seed DOF values
+├── init_work()                   allocate the block and sideset calculators
+├── init_matrices()
+│   ├── SolverData::extract_graph_from_mesh()
+│   ├── DofData::split_dof_container()
+│   ├── DofData::reorder_dofs()
+│   ├── SolverData::allocate_matrices()          (A, J, D; E and I only with use_jedi_force)
+│   └── SolverData::create_assembly_tables()
+├── auto_set_materials()
+├── DofData::disconnect_dofs_from_mesh()
+└── initialize_postprocessors()
 ```
 
 ---
@@ -670,16 +736,16 @@ DofManager::initialize()
 **Contiguous ID ranges with offsets:**
 
 ```cpp
-// Node DOFs: [0, max_node_id * num_dof_types)
+// Node DOFs: [0, (max_node_id + 1) * num_dof_types)
 node_dof_id = nodeID * mNumDofTypes + dofType
 
-// Edge DOFs: [edge_offset, edge_offset + max_edge_id * num_dof_types)
+// Edge DOFs: [edge_offset, edge_offset + (max_edge_id + 1) * num_dof_types)
 edge_dof_id = mEdgeDofOffset + edgeID * mNumDofTypes + dofType
 
-// Face DOFs: [face_offset, face_offset + max_face_id * num_dof_types)
+// Face DOFs: [face_offset, face_offset + (max_face_id + 1) * num_dof_types)
 face_dof_id = mFaceDofOffset + faceID * mNumDofTypes + dofType
 
-// Cell DOFs: [cell_offset, cell_offset + max_cell_id * num_dof_types)
+// Cell DOFs: [cell_offset, cell_offset + (max_cell_id + 1) * num_dof_types)
 cell_dof_id = mCellDofOffset + cellID * mNumDofTypes + dofType
 
 // Lambda DOFs: [lambda_offset, lambda_offset + max_facet_id * num_dof_types)
@@ -695,7 +761,7 @@ lambda_dof_id = mLambdaDofOffset + facetID * mNumDofTypes + dofType
 - Edge 100, type 1 (Ay): DOF ID = edge_offset + 100 * 3 + 1
 - Edge 100, type 2 (Az): DOF ID = edge_offset + 100 * 3 + 2
 
-**Implementation:** `cl_FEM_DofMgr_DofData.hpp:428-474`
+**Implementation:** `cl_FEM_DofMgr_DofData.hpp:441-486` (`DofData::node_dof_id` … `DofData::lambda_dof_id`)
 
 ---
 
@@ -707,31 +773,29 @@ lambda_dof_id = mLambdaDofOffset + facetID * mNumDofTypes + dofType
 - Sparse (gaps in numbering)
 - Never changes
 
-**DOF Index** (reordered, dense, local):
-- Position in reordered array [0, num_dofs)
+**DOF Index** (reordered, dense):
+- Position among the free DOFs, `[0, num_free_dofs)`, or among the fixed DOFs, `[0, num_fixed_dofs)`
 - Dense (no gaps)
-- Changes after reordering (RCM, METIS)
+- Assigned by the RCM reordering in `initialize()`; nested dissection is left to the solver
 - Used for sparse matrix indexing
+- `my_index()` is the corresponding per-rank index
 
-**Workflow:**
+**Where each number comes from:**
+1. `DofData::create_dofs()` constructs every `Dof` with its ID
+   (`new Dof( tNodeDofIDs( k ), ... )`). The ID never changes.
+2. `DofData::reorder_dofs()`, called from `initialize()`, numbers the free and
+   the fixed DOFs separately on the master (`set_index()`), then calls
+   `graph::symrcm( aFreeDofs )` and `graph::symrcm( aFixedDofs )`, which
+   reassign the indices in place.
+3. Assembly uses the index, never the ID:
+
 ```cpp
-// 1. Initial numbering (ID-based)
-Dof* dof = new Dof();
-dof->set_id(node_dof_id);          // ID from mesh entity
-dof->set_index(dof->id());         // Initially index = ID
+Dof * tDof = tField->dof( tDofID );   // look up by ID
+index_t tIndex = tDof->index();       // position in the free or fixed set
 
-// 2. Reordering (index updated)
-Graph free_dofs;  // Create connectivity graph
-symrcm(free_dofs);  // bandwidth reduction; nested dissection is solver-internal
-
-for (index_t i = 0; i < free_dofs.size(); ++i) {
-    Dof* dof = (Dof*) free_dofs(i);
-    dof->set_index(i);  // New index in [0, num_free_dofs)
-}
-
-// 3. Matrix assembly uses index, not ID
-SpMatrix* J = new SpMatrix(num_free_dofs, num_free_dofs);
-J->set_value(dof_i->index(), dof_j->index(), value);  // ✅ Use index
+// as in SolverData::assemble_jacobian, for two free DOFs:
+SpMatrix & A = *tField->system_matrix();
+A( tDofI->index(), tDofJ->index() ) += tValue;
 ```
 
 ---
@@ -754,14 +818,14 @@ DofData::split_dof_container(free_dofs, fixed_dofs)
 
 **Free DOFs:**
 - Unknowns to solve for
-- Form the main system `J*x = f - D*y`
+- Form the main system `A*x = f + D*y` (D stores `-K_fd`, §7.3)
 - Numbered [0, num_free_dofs)
 
 **Fixed DOFs:**
 - Constrained by Dirichlet BCs
 - Known values (imposed)
 - Numbered [0, num_fixed_dofs)
-- Used to compute reaction forces `g = E*x + I*y`
+- Can be used to compute reaction forces `g = E*x + I*y` (E and I only with `use_jedi_force( true )`, §7.3)
 
 **Hanging DOFs:**
 - NOT free or fixed
@@ -813,8 +877,8 @@ Element::relink_dofs()
 └── T-matrix transforms element DOFs to free DOFs
 ```
 
-**Note:** the historical `number_of_hanging_dofs()` accessor bug (§1.1, fixed)
-never affected the hanging-node elimination logic — that uses T-matrices.
+**Note:** Hanging-node elimination does not use the count accessors (§1.1).
+It uses the T-matrices.
 
 ---
 
@@ -835,10 +899,10 @@ A block matrix system that **separates free and fixed DOFs** to enable:
 
 ### 7.2 Block Matrix Structure
 
-**Full system:**
+**Full system**, written with the element-stiffness blocks `K`:
 ```
-[ J  D ] [ x ]   [ f ]
-[ E  I ] [ y ] = [ g ]
+[ K_ff  K_fd ] [ x ]   [ f ]
+[ K_df  K_dd ] [ y ] = [ g ]
 ```
 
 Where:
@@ -847,45 +911,55 @@ Where:
 - `f` = RHS for free DOFs
 - `g` = RHS for fixed DOFs (reaction forces)
 
-**Matrix meanings:**
+**What the code stores.** The labels give the row set first and the column set
+second, as in the accessor comments in `cl_FEM_DofManager.hpp`:
 
-| Matrix | Dimension | Meaning | Physical Interpretation |
-|--------|-----------|---------|-------------------------|
-| **J** | (N_free × N_free) | Free → Free coupling | Stiffness/Jacobian for unknowns |
-| **D** | (N_free × N_fixed) | Fixed → Free dependency | How imposed BCs affect free DOFs |
-| **E** | (N_fixed × N_free) | Free → Fixed enforcement | **Reaction forces** at constraints |
-| **I** | (N_fixed × N_fixed) | Fixed → Fixed self-coupling | BC self-interaction |
+| Matrix | Dimension | Label | Stored content | Allocated |
+|--------|-----------|-------|----------------|-----------|
+| **A** (`system_matrix()`) | (N_free × N_free) | Free → Free | `K_ff` | always |
+| **J** (`matrix( dofmgr::Jacobian )`) | (N_free × N_free) | Free → Free | `K_ff` plus the Newton term from `assemble_newton()` | always |
+| **D** (`dirichlet()`) | (N_free × N_fixed) | Free → Fixed | **`-K_fd`** (stored negated) | always |
+| **E** (`enforcement()`) | (N_fixed × N_free) | Fixed → Free | `K_df` | only with `use_jedi_force( true )` |
+| **I** (`imposition()`) | (N_fixed × N_fixed) | Fixed → Fixed | `K_dd` | only with `use_jedi_force( true )` |
 
 ---
 
 ### 7.3 Solving the JEDI System
 
-**Step 1: Solve for free DOFs**
+**Step 1: Solve for the free DOFs**
 ```
-J*x = f - D*y
+A*x = f + D*y        ( = f - K_fd*y, because D = -K_fd )
 ```
 
-- `y` is known (imposed Dirichlet values)
-- `D*y` term moves fixed DOF effects to RHS
-- Solve for `x` using sparse solver (UMFPACK, MUMPS, STRUMPACK, etc.)
+- `y` is known: it holds the current values of the fixed DOFs
+- `SolverData::solve()` adds `D*y` to the RHS vector with
+  `mDirichletMatrix->multiply( tFixedValues, mRhsVector, 1.0, 1.0 )`
+- In direct mode (`IwgMode::Direct`), the solver factors A. In Newton
+  iterations (`SolverAlgorithm::NewtonRaphson`, iterative mode), it factors J
+  (`SolverData::solve_from_residual`)
 
-**Step 2: Compute reaction forces (optional)**
+**Step 2: Reaction forces (optional, formed by the caller)**
 ```
 g = E*x + I*y
 ```
 
-- `x` is now known (from Step 1)
-- `g` contains reaction forces at Dirichlet boundaries
-- In structural mechanics, this is literally "the Force" at supports!
+- The code does not compute `g`; no routine multiplies E or I
+- E and I exist only if `use_jedi_force( true )` was called **before**
+  `initialize()`, because `SolverData::allocate_matrices()` reads the flag
+  during allocation. Calling it after `initialize()` has no effect
+- `rhs_vector()` holds the RHS for the free DOFs, not reactions
 
 **Implementation:**
 ```cpp
-// Step 1: Solve for free DOFs
-field->solve();  // Internally solves J*x = f - D*y
+DofManager * tField = tKernel.create_field( tIWG );
+tField->set_solver( SolverType::MUMPS );
+tField->solver_data()->use_jedi_force( true );  // before initialize()
 
-// Step 2: Access reaction forces (if needed)
-solver_data->use_jedi_force(true);  // Enable reaction force computation
-Vector<real>& g = solver_data->rhs_vector();  // Contains reaction forces
+tField->compute_jacobian_and_rhs();  // initializes, allocates and assembles E and I
+tField->solve();                     // solves A*x = f + D*y
+
+SpMatrix * E = tField->enforcement();  // form g = E*x + I*y from these
+SpMatrix * I = tField->imposition();
 ```
 
 ---
@@ -894,21 +968,21 @@ Vector<real>& g = solver_data->rhs_vector();  // Contains reaction forces
 
 **Element stiffness matrix K_e maps element DOFs to element DOFs.**
 
-**Split contributions based on free/fixed status:**
+**Split contributions based on free/fixed status** (`SolverData::assemble_jacobian()`):
 
 ```cpp
 for each (dof_i, dof_j) in K_e:
 
     if (dof_i.is_free() && dof_j.is_free()):
-        J[i_free, j_free] += K_e[i, j]      // Free → Free
+        A[i_free, j_free] += K_e[i, j]      // Free → Free (J gets the same entry)
 
     elif (dof_i.is_free() && dof_j.is_fixed()):
-        D[i_free, j_fixed] += K_e[i, j]     // Fixed → Free
+        D[i_free, j_fixed] -= K_e[i, j]     // Free → Fixed, stored negated
 
-    elif (dof_i.is_fixed() && dof_j.is_free()):
-        E[i_fixed, j_free] += K_e[i, j]     // Free → Fixed
+    elif (dof_i.is_fixed() && dof_j.is_free()):     // only with use_jedi_force
+        E[i_fixed, j_free] += K_e[i, j]     // Fixed → Free
 
-    elif (dof_i.is_fixed() && dof_j.is_fixed()):
+    elif (dof_i.is_fixed() && dof_j.is_fixed()):    // only with use_jedi_force
         I[i_fixed, j_fixed] += K_e[i, j]    // Fixed → Fixed
 ```
 
@@ -956,7 +1030,8 @@ K*u = f
 ### 7.6 Accessing JEDI Matrices
 
 ```cpp
-// After initialize()
+// E and I need use_jedi_force( true ) before initialize()
+field->solver_data()->use_jedi_force( true );
 field->initialize();
 
 // Access JEDI matrices
@@ -966,13 +1041,16 @@ SpMatrix* E = field->enforcement();   // E: Fixed → Free
 SpMatrix* I = field->imposition();    // I: Fixed → Fixed
 
 // Check dimensions
-BELFEM_ASSERT(J->n_rows() == num_free_dofs, "J should be square");
-BELFEM_ASSERT(D->n_cols() == num_fixed_dofs, "D columns = fixed DOFs");
-BELFEM_ASSERT(E->n_rows() == num_fixed_dofs, "E rows = fixed DOFs");
-BELFEM_ASSERT(I->n_rows() == num_fixed_dofs, "I should be square");
+const index_t tNumFree  = field->solver_data()->number_of_free_dofs();
+const index_t tNumFixed = field->solver_data()->number_of_fixed_dofs();
+BELFEM_ASSERT(A->n_rows() == tNumFree,  "A rows = free DOFs");
+BELFEM_ASSERT(D->n_cols() == tNumFixed, "D columns = fixed DOFs");
+BELFEM_ASSERT(E->n_rows() == tNumFixed, "E rows = fixed DOFs");
+BELFEM_ASSERT(I->n_rows() == tNumFixed, "I rows = fixed DOFs");
 ```
 
-**All matrices are `nullptr` until `initialize()` is called!**
+**A and D are `nullptr` until `initialize()` has run; E and I stay `nullptr`
+unless `use_jedi_force( true )` was set before it.**
 
 ---
 
@@ -1039,24 +1117,36 @@ DofData::create_dofs(IWG*)
 ### 8.4 Matrix Assembly in Parallel
 
 **Assembly pattern:**
+This is condensed from `DofManager::compute_jacobian_and_rhs()` (elements
+without a T-matrix; see §11.5 for the projected case):
 ```cpp
-// Each proc assembles local contributions
-for (Block* block : blocks) {
-    for (Element* elem : block->owned_elements()) {
-        // Compute local matrices
-        iwg->compute_jacobian(elem, K_e);
-        iwg->compute_rhs(elem, f_e);
+dofmgr::SolverData * tSolverData = tField->solver_data();
 
-        // Assemble into local matrices
-        solver_data->assemble_jacobian(elem, K_e);
-        solver_data->assemble_rhs(elem, f_e);
+// each proc assembles the contributions of its own elements
+for ( Block * tBlock : tField->blocks() )
+{
+    uint tN = tElementDofCount;          // DOFs per element of this block
+    Matrix< real > tJ( tN, tN );
+    Vector< real > tB( tN );
+
+    tIWG->link_to_group( tBlock );
+    for ( Element * tElement : tBlock->elements() )   // aura elements: tBlock->aura_elements()
+    {
+        tIWG->compute_jacobian_and_rhs( tElement, tJ, tB );
+
+        tSolverData->assemble_jacobian( tElement, tJ );
+        tSolverData->assemble_rhs( tElement, tB );
     }
 }
 
-// Collect contributions from all procs
-solver_data->collect_matrices();
-solver_data->collect_rhs_vector();
+// collect the contributions of all procs on the master
+tSolverData->collect_matrices();
+tSolverData->collect_rhs_vector();
 ```
+
+Call `tField->compute_jacobian_and_rhs()` instead of writing this loop. It also
+adds the Newton term (`assemble_newton()`), the sideset and convection
+contributions, and the T-matrix projection.
 
 **Assembly tables:**
 ```cpp
@@ -1112,9 +1202,13 @@ field->synchronize_fields({"T", "q"});
 ```
 
 **When to synchronize:**
-- **After solve:** Solution computed on master, must distribute to workers
-- **Before postprocessing:** Workers need full solution for L2 projection
-- **Before output:** All procs need consistent data for VTK/Exodus export
+- **Not after `solve()`:** `solve()` and `solve_from_residual()` already
+  distribute every field of the equation (`mIWG->all_fields()`)
+- **Not before `postprocess()`:** it distributes its own source fields first
+- **Not before output:** `Mesh::save()` writes on the master only, and the
+  master's mesh holds the full solution
+- **After your own code writes a field** on only some ranks, such as an
+  initial condition or a custom postprocessing result
 
 **Implementation:**
 ```cpp
@@ -1128,7 +1222,7 @@ void DofManager::synchronize_fields(const Cell<string>& labels)
 }
 ```
 
-**⚠️ Common Pitfall:** Forgetting to synchronize after solve → workers have stale data!
+**⚠️ Common Pitfall:** changing a field on one rank outside `solve()` and not distributing it → the other ranks keep the old values.
 
 ---
 
@@ -1173,7 +1267,7 @@ The **Calculator** is the element-level computation engine. It computes:
 - **dS**: Differential surface (for boundary integrals)
 - **Normals**: Outward normal vectors
 
-**File:** `cl_FEM_Calculator.{hpp,cpp}` (1742 lines - largest file in kernel!)
+**File:** `cl_FEM_Calculator.{hpp,cpp}` (about 4200 + 3100 lines, the largest in the kernel)
 
 ---
 
@@ -1189,7 +1283,8 @@ for (Element* elem : block->elements()) {
     calc->link(elem);
 
     // Access integration points
-    uint num_gauss = elem->number_of_integration_points();
+    const Vector<real>& w = calc->integration()->weights();
+    uint num_gauss = calc->num_intpoints();
 
     for (uint g = 0; g < num_gauss; ++g) {
         // Shape functions N (interpolation)
@@ -1201,9 +1296,9 @@ for (Element* elem : block->elements()) {
         // Differential volume
         real dV = calc->dV(g);
 
-        // Compute element matrix K_e
-        // K_e += B^T * D * B * dV  (for diffusion/elasticity)
-        K_e += trans(B) * material_D * B * dV;
+        // Compute element matrix K_e; dV() excludes the quadrature weight
+        // K_e += w * B^T * D * B * dV  (for diffusion/elasticity)
+        K_e += w(g) * trans(B) * material_D * B * dV;
     }
 
     // Assemble into global system
@@ -1431,8 +1526,8 @@ dof->index();         // Index in fixed DOF array
 
 **Effect on JEDI system:**
 - DOF moved from free to fixed container
-- Contributes to D, E, I matrices (not J)
-- RHS modified: `f -= D*y` where `y[i] = 300.0`
+- Contributes to D (and to E and I under `use_jedi_force( true )`), not to A or J
+- RHS modified: `f += D*y` where `y[i] = 300.0`; D stores the negated free-fixed block, so this subtracts `K_fd*y`
 
 ---
 
@@ -1485,13 +1580,13 @@ sideset->impose_alpha(h, T_inf);
 
 for (Element* facet_elem : sideset->elements()) {
     calc->link(facet_elem);
-    const Vector<real>& tTinf = mesh->field_data( "Tinf" );  // written by impose_alpha()
+    const Vector<real>& tTinf = mesh->field_data( "Tinf" );  // created by the first impose_alpha()
 
     for (uint g = 0; g < num_gauss; ++g) {
         const Matrix<real>& N = calc->N(g);
         real dS = calc->dS(g);
         real h = sideset->bc_value( 0 );   // alpha, stored by impose_alpha()
-        real T_inf = tTinf( facet_elem->element()->node( 0 )->index() );  // impose_alpha() writes T_inf per node into the "Tinf" mesh field
+        real T_inf = tTinf( facet_elem->element()->node( 0 )->index() );  // node value of the "Tinf" field
 
         K_e += trans(N) * h * N * dS;         // Jacobian
         f_e += trans(N) * h * T_inf * dS;     // RHS
@@ -1503,6 +1598,18 @@ for (Element* facet_elem : sideset->elements()) {
 ```
 
 **Modifies both Jacobian and RHS.**
+
+**How `impose_alpha()` stores T_inf** (`SideSet::impose_alpha` in
+`cl_FEM_SideSet.cpp`): it stores alpha as the sideset's BC value and T_inf in
+the sideset (`BELFEM_TREF` if T_inf is not given). If the mesh does not yet have
+a `"Tinf"` field, it creates one and fills it at every node with this T_inf.
+
+A later `impose_alpha()` call on another sideset finds the field already present
+and leaves it unchanged. `SideSet::set_boundary_conditions()` would write each
+sideset's alpha and T_inf to that sideset's nodes, but nothing calls it: its
+only caller, `SideSetData::set_boundary_conditions()`, is itself never called.
+The `"Tinf"` field therefore holds the T_inf from the first call everywhere,
+even when the sidesets use different T_inf values.
 
 ---
 
@@ -1612,9 +1719,9 @@ T = [ 1   0   0   ... ]  (row 1: u1 = u_free[1])
     [ w1  w2  w3  ... ]  (row 4: u_h = w1*u1 + w2*u2 + w3*u3)
 ```
 
-**Element matrix transformation:**
+**Element matrix transformation** (`Tmatrix::project`, `B_il = T_ji * A_jk * T_kl`):
 ```
-K_elem = T^T * K_free * T
+K_cond = T^T * K_elem * T
 ```
 
 This eliminates hanging DOFs from the element matrix before assembly.
@@ -1677,13 +1784,12 @@ if (elem->has_t_matrix()) {
 
 ---
 
-### 11.6 Hanging-Node Counts vs. Elimination (historical note)
+### 11.6 Hanging-Node Counts vs. Elimination
 
-The `number_of_hanging_dofs()` accessor bug (§1.1) is **fixed**; both count
-accessors are safe. Even while it was live it never affected the hanging-node
-*elimination* — assembly, solving and solution accuracy all go through the
-T-matrix mechanism, which computes its maps independently of the count
-accessors. Only logging and user queries ever saw the wrong number.
+The count accessors `number_of_hanging_dofs()` and `my_number_of_hanging_dofs()`
+are for logging and queries only. Assembly, solving, and solution accuracy use
+the T-matrix mechanism, which builds its maps independently of these
+counts.
 
 ---
 
@@ -1734,7 +1840,7 @@ field->postprocess()
 │   │   (M is mass matrix, precomputed during initialize_postprocessors())
 │   │
 │   └── 4. Store nodal values in mesh field
-│       └── mesh->field("q")->set_value(node_index, q_value)
+│       └── mesh->field("q")->value(node_index) = q_value
 │
 └── Synchronize projected fields (MPI)
 ```
@@ -1747,8 +1853,8 @@ field->postprocess()
 // Automatic creation based on IWG requirements
 field->initialize_postprocessors();
 
-// IWG specifies secondary fields via:
-IWG::create_fields(DofManager*)
+// The IWG names its fields; DofManager::create_fields( IWG * ) creates the
+// mesh fields that do not exist yet. Conceptually:
 {
     // Create mesh fields for secondary quantities
     // (fields are scalar per label — one field per component)
@@ -1780,9 +1886,9 @@ for (mesh::Node* node : mesh->nodes()) {
     real qx = q_field->value(node->index());
 }
 
-// Or direct access to data array
+// Or direct access to data array: one scalar per node for this label
 Vector<real>& q_data = q_field->data();
-// q_data = [qx0, qy0, qz0, qx1, qy1, qz1, ...]
+// q_data = [qx0, qx1, qx2, ...]; the y and z components are separate fields
 ```
 
 ---
@@ -1818,7 +1924,7 @@ q[i] = f[i] / M_lumped[i,i]
 
 ```
 Kernel (top-level owner)
-├── borrows → Mesh* (the caller who did `new Mesh` deletes it; `mOwnMesh` is not set by any constructor)
+├── borrows → Mesh* (by default; `mOwnMesh` starts `false`. A factory that built the mesh hands it over with `claim_mesh_ownership()`, and on worker ranks a kernel chained onto a parent kernel owns its own placeholder mesh)
 ├── owns → Materials
 ├── owns → BoundaryConditions
 ├── owns → Cell<IWG*>
@@ -1854,75 +1960,86 @@ DofData
 
 ### 13.2 Lifetime Management Patterns
 
-**Pattern 1: Kernel Manages Everything (RECOMMENDED)**
+**Pattern 1: Kernel Manages Everything Downstream of the Mesh (RECOMMENDED)**
 
 ```cpp
-int main() {
-    Mesh* mesh = new Mesh("mesh.exo");
+int main( int argc, char * argv[] )
+{
+    gComm.init( argc, argv );
+    {
+        // declared first, destroyed last: the Kernel destructor still
+        // reaches into the mesh when it deletes the dof managers
+        Mesh tMesh( "mesh.exo" );
 
-    // Kernel owns everything downstream of the parameters
-    KernelParameters params(mesh);
-    Kernel kernel(&params);
+        KernelParameters tParams( tMesh );   // borrowed by the kernel
+        Kernel tKernel( &tParams );
 
-    // Kernel creates and owns
-    IWG* iwg = kernel.create_equation(...);
-    DofManager* field = kernel.create_field(iwg);
+        // the kernel creates and owns
+        IWG * tIWG = tKernel.create_equation( IwgType::Poisson );
+        DofManager * tField = tKernel.create_field( tIWG );
 
-    // ... use field ...
+        // ... use tField ...
 
-    // Kernel destructor deletes:
-    //   - DofManager (which deletes 8 data managers)
-    //   - IWG
-    //   - Materials
-    //   - BoundaryConditions
-
-    delete mesh;  // the mesh stays ours
-
-    return 0;
+        // leaving the scope destroys, in this order:
+        //   tKernel: DofManagers (and their data managers), IWGs,
+        //            materials, boundary conditions
+        //   tParams
+        //   tMesh
+    }
+    return gComm.finalize();
 }
 ```
 
-**Pattern 2: Manual Management (ADVANCED)**
+A heap-allocated mesh works the same way as long as `delete` runs after the
+kernel is destroyed. Deleting the mesh while the kernel is still alive causes a
+use-after-free: the kernel destructor deletes each DofManager, and its DOF data
+dereferences the mesh bases in `DofData::disconnect_dofs_from_mesh()`.
 
 ```cpp
-// Create kernel
-Kernel* kernel = new Kernel(&params);
-
-// Create IWG
-IwgFactory factory(mesh);
-IWG* iwg = factory.create_iwg(...);
-
-// Create DofManager
-DofManager* field = new DofManager(kernel, 0);
-field->set_equation(iwg);
-
-// ... use field ...
-
-// Manual cleanup (CORRECT ORDER!)
-delete field;   // 1. Delete DofManager first
-delete iwg;     // 2. Then delete IWG
-delete kernel;  // 3. Finally delete Kernel
-
-// ❌ WRONG ORDER:
-// delete iwg;     // DofManager still holds pointer!
-// delete field;   // Dangling pointer access!
+Mesh * tMesh = new Mesh( "mesh.exo" );
+{
+    KernelParameters tParams( tMesh );
+    Kernel tKernel( &tParams );
+    // ...
+}               // tKernel destroyed here
+delete tMesh;   // ✅ after the kernel
 ```
 
-**Pattern 3: DofManager Owns IWG (ALTERNATIVE)**
+**Pattern 2: Equation Built Outside the Kernel (FACTORY STYLE)**
+
+This is the lifecycle used by `ThermalFactory::create_thermal_kernel()`: the
+factory builds the IWG, gives it to the kernel, and then links it.
 
 ```cpp
-IwgFactory factory(mesh);
-IWG* iwg = factory.create_iwg(...);
+IwgFactory tFactory( tMesh );
+IWG * tIWG = tFactory.create_iwg( IwgType::Poisson, ModelDimensionality::ThreeD );
+tIWG->select_blocks( { 1 } );
 
-DofManager* field = kernel.create_field(iwg);
+tKernel.add_equation( tIWG );                       // ownership passes to the kernel
+DofManager * tField = tKernel.create_field( tIWG ); // links; the kernel owns tField
 
-// ⚠️ If DofManager created via factory pattern,
-// it may take ownership of IWG!
-// Check implementation or header comments.
+// ... use tField ...
 
-delete field;  // May delete IWG automatically
-// DO NOT: delete iwg;  // Potential double-free!
+// nothing to delete: the Kernel destructor deletes tField, then tIWG
 ```
+
+**Pattern 3: `create_field()` Does Not Adopt the Equation**
+
+```cpp
+IwgFactory tFactory( tMesh );
+IWG * tIWG = tFactory.create_iwg( IwgType::Poisson, ModelDimensionality::ThreeD );
+
+DofManager * tField = tKernel.create_field( tIWG );
+
+// ❌ delete tField;   double free: the kernel deletes it again in its destructor
+// ❌ (nothing)        tIWG leaks: create_field() links the equation but does not adopt it
+
+tKernel.add_equation( tIWG );  // ✅ hand it over; add_equation() may come before or after create_field()
+```
+
+The header states this contract (`Kernel::create_field` in `cl_FEM_Kernel.hpp`):
+the kernel owns and destroys the returned dof manager, while the equation is
+linked, not adopted.
 
 **⚠️ CRITICAL:** Always check header comments for ownership documentation!
 
@@ -1943,10 +2060,10 @@ delete iwg;  // ❌ WRONG: Kernel still owns it!
 **Mistake 2: Dangling Pointer**
 ```cpp
 IWG* iwg = factory.create_iwg(...);
-DofManager* field = new DofManager(&kernel, 0);
-field->set_equation(iwg);
+kernel.add_equation(iwg);
+DofManager* field = kernel.create_field(iwg);
 
-delete iwg;  // ❌ WRONG: DofManager still holds pointer!
+delete iwg;  // ❌ WRONG: the DofManager still holds the pointer, and the kernel deletes it again!
 
 field->compute_jacobian_and_rhs();  // Dangling pointer access!
 ```
@@ -1962,11 +2079,14 @@ for (int i = 0; i < 100; ++i) {
 **Mistake 4: Deleting Borrowed Pointer**
 ```cpp
 DofManager* field = kernel.create_field(iwg);
-Mesh* mesh = field->mesh();  // Borrowed from Kernel
+Mesh* mesh = field->mesh();  // borrowed
 
-delete mesh;  // ❌ WRONG: Kernel owns mesh!
+delete mesh;  // ❌ WRONG while the kernel is alive
 
-// Later: kernel destructor tries to delete mesh → CRASH!
+// master: this is the caller's mesh; the kernel destructor still dereferences
+//         it through the DOFs → use-after-free
+// worker: this is the submesh owned by the kernel (or by the parent kernel
+//         it is chained onto) → deleted a second time
 ```
 
 ---
@@ -2097,8 +2217,7 @@ Total JEDI: ~700 MB (dominated by J)
 for (int step = 0; step < n_steps; ++step) {
     DofManager* field = kernel.create_field(iwg);  // Expensive!
     field->initialize();
-    // ...
-    delete field;
+    // ... and every field stays alive until the Kernel destructor deletes it
 }
 
 // ✅ GOOD: Create once, reuse
@@ -2134,21 +2253,20 @@ SolverParameters params( SolverType::STRUMPACK );  // ~2× faster than MUMPS (if
 SolverParameters params( SolverType::PETSc );    // Iterative, scales to millions of DOFs
 ```
 
-**4. Minimize Field Synchronization:**
+**4. Do Not Add Synchronization After `solve()`:**
 ```cpp
-// ❌ BAD: Synchronize every iteration
+// ❌ BAD: solve() has already distributed every field of the equation
 for (int iter = 0; iter < max_iter; ++iter) {
     field->compute_jacobian_and_rhs();
     field->solve();
-    field->synchronize_fields({"T"});  // Expensive MPI call!
+    field->synchronize_fields({"T"});  // Redundant MPI round-trip
 }
 
-// ✅ GOOD: Synchronize only when needed
+// ✅ GOOD
 for (int iter = 0; iter < max_iter; ++iter) {
     field->compute_jacobian_and_rhs();
-    field->solve();
+    field->solve();                    // distributes mIWG->all_fields()
 }
-field->synchronize_fields({"T"});  // Once at end
 ```
 
 **5. Preallocate Work Arrays:**
@@ -2220,18 +2338,22 @@ message(InfoLevel::Verbose, "Solve: %u ms", (uint) timer.stop());
 
 **Example: OpenMP with BELFEM**
 ```cpp
+Cell< Element * > & tElements = block->elements();
+
 // ❌ WRONG: Race condition
 #pragma omp parallel for
-for (int i = 0; i < n_elements; ++i) {
-    field->compute_jacobian(elem[i]);  // Multiple threads accessing same DofManager!
+for (index_t i = 0; i < tElements.size(); ++i) {
+    iwg->compute_jacobian(tElements(i), K);           // shared IWG scratch and K
+    solver_data->assemble_jacobian(tElements(i), K);  // shared sparse matrix
 }
 
 // ✅ CORRECT: Protect with critical section
 #pragma omp parallel for
-for (int i = 0; i < n_elements; ++i) {
+for (index_t i = 0; i < tElements.size(); ++i) {
     #pragma omp critical
     {
-        field->compute_jacobian(elem[i]);
+        iwg->compute_jacobian(tElements(i), K);
+        solver_data->assemble_jacobian(tElements(i), K);
     }
 }
 
@@ -2327,7 +2449,7 @@ comm_barrier();
 Two things worth knowing before you reach for something that is not there:
 
 - **There is no global-sum helper.** `allreduce()` exists but is fixed to `MPI_MAX`
-  (`commtools.hpp:234-250`). A global sum has to be written with `MPI_Allreduce` directly; if
+  (`allreduce` in `commtools.hpp`), and its sibling `allreduce_min()` to `MPI_MIN`. A global sum has to be written with `MPI_Allreduce` directly; if
   you need one more than once, add it to `commtools.hpp` rather than open-coding it at the call
   site.
 - **`share`/`receive` and `distribute`/`collect` are not collective.** They are asymmetric
@@ -2339,115 +2461,38 @@ Two things worth knowing before you reach for something that is not there:
 ### 15.4 MPI-Safe Field Access
 
 ```cpp
-// After solve, synchronize before accessing field values
-field->solve();
-field->synchronize_fields({"T"});
+field->solve();  // distributes the fields of the equation to every rank
 
-// Now safe to access on all procs
-for (mesh::Node* node : mesh->owned_nodes()) {
-    real T = mesh->field("T")->value(node->index());
+Mesh * tMesh = field->mesh();            // master: full mesh; worker: its submesh
+Vector< real > & tT = tMesh->field_data( "T" );
+
+for ( mesh::Node * tNode : tMesh->nodes() )
+{
+    real T = tT( tNode->index() );
     // ... use T ...
 }
-
-// ⚠️ Aura nodes may have stale data without synchronization!
-for (mesh::Node* node : mesh->aura_nodes()) {
-    real T = mesh->field("T")->value(node->index());  // May be stale!
-}
 ```
+
+`Mesh` has no `owned_nodes()` or `aura_nodes()` accessor. Ownership is a
+per-entity property: `owner()`, inherited from `graph::Vertex`, which the
+partitioner sets in a parallel run. Filter on `owner()` when each node must be
+counted on only one rank, such as in a global sum.
 
 ---
 
 ## 16. Known Issues and Bugs
 
-### 16.1 FIXED: `number_of_hanging_dofs()` (reported 2026-01-20)
+### 16.1 Solver Checks Are Debug-Only
 
-The accessor once returned `mNumberOfFixedDofs`; it now returns
-`mNumberOfHangingDofs` (`cl_FEM_DofMgr_DofData.hpp`). No open issue remains.
-Kept as the record of the report; the standing lesson is in §1.1.
-
----
-
-### 16.2 (retracted)
-
-An earlier revision of this guide reported a typo in the `assemble_rhs()`
-method name; the report itself was garbled (it showed the same spelling on
-both sides) and the method exists as `assemble_rhs()` in
-`cl_FEM_DofMgr_SolverData.hpp`. Nothing to work around.
+`DofManager::initialize()` asserts `"set solver first"`, and
+`SolverData::solve()` and `SolverData::solve_from_residual()` assert
+`"no solver was set"`. These are `BELFEM_ASSERT`s, so release builds do not
+check for a missing solver. Call `set_solver()` before the first assembly
+(§1.2).
 
 ---
 
-### 16.3 CBorg False Positives (Verified Not Bugs)
-
-During AI-assisted code review, CBorg (having access only to `.hpp` header files, not `.cpp` implementations) flagged **7 issues** that were verified to be **false positives**:
-
-**❌ FALSE POSITIVE #1: DOF offsets not initialized before use**
-- **Claim:** `mEdgeDofOffset`, `mFaceDofOffset`, etc. are `gNoID` and never set
-- **Reality:** `compute_dof_offsets(aIWG)` is called at the START of `create_dofs()` (before any DOF ID calculations)
-- **Evidence:** `compute_dof_offsets()` call at the top of `DofData::create_dofs()` in `cl_FEM_DofMgr_DofData.cpp`
-
-**❌ FALSE POSITIVE #2: `create_dofwise_t_matrices_master()` declared but not defined**
-- **Claim:** Function is declared in header but never implemented
-- **Reality:** Full ~100-line implementation exists
-- **Evidence:** `DofData::create_dofwise_t_matrices_master()` in `cl_FEM_DofMgr_DofData.cpp`
-
-**❌ FALSE POSITIVE #3: Destructor order issues**
-- **Claim:** DofManager destructor deletes in wrong order or misses objects
-- **Reality:** Destructor correctly deletes all 8 owned data managers in proper order
-- **Evidence:** `DofManager::~DofManager()` in `cl_FEM_DofManager.cpp`
-
-**❌ FALSE POSITIVE #4: `node_dof_id()` formula breaks for sparse meshes**
-- **Claim:** Formula `nodeID * mNumDofTypes + dofType` causes collisions with sparse node IDs
-- **Reality:** Offset system ensures non-overlapping ranges (nodes, edges, faces, cells, lambdas each have separate ranges)
-- **Explanation:** May waste ID space but cannot cause collisions. Even node ID 1,000,000 produces valid ID in node range.
-
-**❌ FALSE POSITIVE #5: `EigenValues::mSolver` not initialized**
-- **Claim:** `mSolver` pointer is never set before use
-- **Reality:** Lazy initialization pattern using `mFirstRun` flag
-- **Evidence:** `EigenValues::mFirstRun` in `cl_FEM_DofMgr_EigenValues.cpp` - `mSolver` created on first use
-
-**❌ FALSE POSITIVE #6: `bearing(id)` returns nullptr**
-- **Claim:** `mEmptyBearing` is nullptr, causing crash
-- **Reality:** `mEmptyBearing = new Bearing(mParent)` is always allocated in `create_bearings()`
-- **Evidence:** `BearingData::create_bearings()` in `cl_FEM_DofMgr_BearingData.cpp` - Returns valid (empty) Bearing, not nullptr
-
-**❌ FALSE POSITIVE #7: Calculator function pointers null before allocation**
-- **Claim:** Function pointers (`mFunN`, `mFunB`, etc.) can be null when accessed
-- **Reality:** Guard exists in `link()` method: `BELFEM_ERROR(mIsAllocated, "calculator is not allocated")`
-- **Evidence:** `Calculator::link()` in `cl_FEM_Calculator.cpp` - Must call `link()` before any accessor, `link()` checks allocation
-
----
-
-**⚠️ PARTIALLY VALID (Defensive Programming Recommendations):**
-
-1. **`solve()` has no explicit solver null check**
-   - No explicit null check for `mSolver` before `mSolver->solve()` (line 17893)
-   - Normal usage always calls `set_solver()` first, so unlikely to occur
-   - **Recommendation:** Add `BELFEM_ASSERT(mSolver != nullptr, "Solver not set")` for safety
-
-2. **Calculator accessors could have explicit allocation checks**
-   - Guard exists in `link()` but not in individual accessors (`N()`, `B()`, etc.)
-   - Since `link()` must be called before any accessor, current design is safe
-   - **Recommendation:** Could add `BELFEM_ASSERT(mIsAllocated, ...)` to individual accessors for extra safety
-
----
-
-**Lesson Learned:**
-
-Header-only review (`.hpp` files) can identify:
-- ✅ Interface design issues
-- ✅ Declaration/definition mismatches (when both are in headers)
-- ✅ Inconsistent naming
-
-But may **incorrectly assume** missing functionality that actually exists in `.cpp` implementation files:
-- ❌ Missing initializations (may be in constructors)
-- ❌ Missing function definitions (may be in .cpp)
-- ❌ Incorrect execution order (may be correct in implementation)
-
-**Verification Method:** Always check `.cpp` implementation files before concluding that functionality is missing!
-
----
-
-### 16.4 Debugging Tips
+### 16.2 Debugging Tips
 
 **Enable verbose logging:**
 ```cpp
@@ -2483,23 +2528,24 @@ index_t n_free = field->solver_data()->number_of_free_dofs();
 BELFEM_ASSERT(A->n_rows() == n_free, "A should be square");
 BELFEM_ASSERT(A->n_cols() == n_free, "A should be square");
 
-message(InfoLevel::Info, "J: %lu × %lu, nnz = %lu",
-    J->n_rows(), J->n_cols(), J->number_of_nonzeros());
+message(InfoLevel::Default, "A: %lu × %lu, nnz = %lu",
+    (long unsigned int) A->n_rows(), (long unsigned int) A->n_cols(),
+    (long unsigned int) A->number_of_nonzeros());
 ```
 
 **Check DOF connectivity:**
 ```cpp
 Dof* dof = field->dof(dof_id);
 
-message(InfoLevel::Info, "DOF %lu:", dof->id());
-message(InfoLevel::Info, "  Index: %lu", dof->index());
-message(InfoLevel::Info, "  Fixed: %s", dof->is_fixed() ? "yes" : "no");
-message(InfoLevel::Info, "  Hanging: %s", dof->is_hanging() ? "yes" : "no");
-message(InfoLevel::Info, "  Connectivity: %u neighbors", dof->number_of_vertices());
+message(InfoLevel::Default, "DOF %lu:", dof->id());
+message(InfoLevel::Default, "  Index: %lu", dof->index());
+message(InfoLevel::Default, "  Fixed: %s", dof->is_fixed() ? "yes" : "no");
+message(InfoLevel::Default, "  Hanging: %s", dof->is_hanging() ? "yes" : "no");
+message(InfoLevel::Default, "  Connectivity: %u neighbors", dof->number_of_vertices());
 
 for (uint i = 0; i < dof->number_of_vertices(); ++i) {
     Dof* neighbor = (Dof*) dof->vertex(i);
-    message(InfoLevel::Info, "    Neighbor %u: DOF %lu", i, neighbor->id());
+    message(InfoLevel::Default, "    Neighbor %u: DOF %lu", i, neighbor->id());
 }
 ```
 
@@ -2593,7 +2639,7 @@ To add new entity type (e.g., "Volumes" for 3D interior DOFs):
    void compute_dof_offsets(IWG* aIWG)
    {
        // ... existing offsets ...
-       mVolumeDofOffset = mCellDofOffset + max_cell_id * mNumDofTypes;
+       mVolumeDofOffset = mCellDofOffset + ( max_cell_id + 1 ) * mNumDofTypes;
    }
 
    id_t DofData::volume_dof_id(const id_t aVolumeID, const uint aDofType) const
@@ -2905,7 +2951,7 @@ In electromagnetic problems, hanging DOFs arise from enforcing **current boundar
 3. **Duplicated nodes** → hanging DOFs (φ⁺)
 4. **T-matrix** enforces: φ⁺ = φ⁻ + I
 
-**Creation:** `MaxwellFactory::create_hanging_edges_and_facets()` at line 1008 in `cl_MaxwellFactory.cpp`
+**Creation:** `MaxwellFactory::create_hanging_edges_and_facets()` in `cl_MaxwellFactory.cpp`
 
 **Collection:** `DofData::collect_hanging_dofs()` in `cl_FEM_DofMgr_DofData.cpp`
 
@@ -3495,7 +3541,7 @@ class Calculator {
 
 Elements can query their master/slave neighbors and facet information:
 
-**Reference:** `cl_FEM_Element.hpp:244-264`
+**Reference:** `cl_FEM_Element.hpp` — `master()`, `slave()`, `facet()`, `has_t_matrix()`, `t_matrix()`
 
 ```cpp
 class Element {
@@ -3517,9 +3563,7 @@ aura neighbor has no DOF objects at all; the mesh fields are.
 
 ### 21.4 Matrix Function File Organization
 
-The matrix kernels live in `src/fem/maxwell/matrices/` (they moved there in
-the maxwell kernel split; the layout below is the current one, not the
-pre-split single-file layout this guide originally described):
+The matrix kernels live in `src/fem/maxwell/matrices/`:
 
 | File | Purpose | Functions |
 |------|---------|-----------|
@@ -3527,10 +3571,10 @@ pre-split single-file layout this guide originally described):
 | `mt_maxwell_h.hpp/cpp` | H-formulation matrices | `h_picard`, `h_newton_mu0`, `h_newton_mu`, `h_ghost`, `h_side_connector`, `h_side_connector_newton` |
 | `mt_maxwell_background.hpp/cpp`, `mt_maxwell_symmetry.hpp/cpp`, `mt_maxwell_l2_*.hpp/cpp` | Background field, symmetry, L2 projections | see headers |
 
-**Note:** the old `h_ts_*` thin-shell kernel family and the
-`mt_maxwell_thinshell.hpp/cpp` stub are gone — thin shells are handled through
-the layer-block machinery, and the stub file was removed as this guide once
-recommended.
+**Note:** There is no separate thin-shell kernel file. Thin shells use the same
+`h_picard`, `h_newton_mu0` and `h_newton_mu` kernels as bulk conductors; the
+thin-shell specifics are selected in the `calculator::MaxwellData` constructor
+dispatch (§20).
 
 ---
 
@@ -3540,7 +3584,7 @@ recommended.
 - Formulation enum: `en_Maxwell_Formulations.hpp:22-29`
 - Domain types: `src/mesh/en_DomainType.hpp`
 - Field assignments: `cl_IWG_Maxwell.cpp:51-62`
-- Matrix function routing: `cl_IWG_Maxwell.cpp:165-350`
+- Matrix function routing: the `switch ( aGroup->domain_type() )` in `IWG_Maxwell::link_to_group` (`cl_IWG_Maxwell.cpp`)
 
 #### Thin Shells
 - Field list construction: `cl_Maxwell_FieldList.cpp:116-156`
@@ -3549,7 +3593,7 @@ recommended.
 - Thermal coupling: `src/fem/thermal/matrices/mt_thermal_h.cpp` (the `M += Nᵀ ρ cp N dV` consumer)
 
 #### Maxwell Factory
-- Hanging edge creation: `cl_MaxwellFactory.cpp:1008+`
+- Hanging edge creation: `MaxwellFactory::create_hanging_edges_and_facets()` in `cl_MaxwellFactory.cpp`
 - Cohomology cuts and condensation: See `hanging_dofs_static_condensation.md`
 - Thin shell design: See `../../maxwell/doc/README.md` and `../../maxwell/doc/maxwell_usage_guide.md`
 
@@ -3575,7 +3619,7 @@ recommended.
 | **Stability** | "inf-sup", "hierarchical", "oscillations" | Dular et al. 2021, Messe et al. 2023 |
 | **Solver Performance** | "MUMPS", "STRUMPACK", "computation time" | Messe et al. 2023, Arsenault et al. 2021 |
 
-**Paper Locations:** `/home/christian/codes/belfem/literature/papers/fem` as `dular2021.txt` through `schnaubelt2023.txt`
+**Paper Locations:** `literature/papers/fem/` (the separate, proprietary literature repository, when present), one `.txt` extraction per paper, e.g. `dular2021.txt`, `schnaubelt2023.txt`
 
 **FEM Textbook References** (for foundational theory):
 
@@ -3661,4 +3705,4 @@ The BELFEM framework implements a sophisticated **H-Phi mixed formulation** for 
 
 **Report bugs to:** christian.messe@lbl.gov
 
-**Last updated:** 2026-08-28
+**Last updated:** 2026-10-22
