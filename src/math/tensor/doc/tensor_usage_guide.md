@@ -30,7 +30,7 @@ The primary production consumer is self-consistent alloy homogenization
 |--------|---------------|----------|
 | **Internal storage** | **Full 3x3x3x3** (81 entries), not Voigt-only/Mandel | capacity = `i*j*k*l`; index `L*27 + K*9 + J*3 + I` (`cl_Tensor.hpp:66-78`, `:441`) |
 | **Index order** | `i` fastest (column-major-consistent with BELFEM matrices) | `mOffsetJ=3, mOffsetK=9, mOffsetL=27` (`cl_Tensor.hpp:74-76`) |
-| **Matrix boundary** | **Engineering Voigt 6x6**, order `{11, 22, 33, 23, 31, 12}` | `ten_to_mat`/`mat_to_ten` maps; `compliance_matrix` puts `1/G23,1/G31,1/G12` on rows 3,4,5 (`fn_TR_ten_to_mat.hpp:74-109`, `fn_compliance_matrix.hpp:36-50`) |
+| **Matrix boundary** | **Engineering Voigt 6x6**, order `{11, 22, 33, 23, 31, 12}` | `ten_to_mat`/`mat_to_ten` maps; `compliance_matrix` puts `1/G23,1/G31,1/G12` on rows 3,4,5 (`fn_TR_ten_to_mat.hpp:74-109`, `fn_compliance_matrix.hpp`, `compliance_matrix`) |
 | **Shear factors** | **No Mandel `sqrt(2)`**; stiffness needs no Voigt factor | direct assignment in conversion tables; tests pin `C44=C55=C66=mu` (`tests/math/test_Tensor.cpp`, `IsotropicTensorToVoigtMatrix`) |
 | **Symmetries** | Minor `C_ijkl=C_jikl=C_ijlk` imposed by the 6x6 conversion; major `C_ijkl=C_klij` holds when the 6x6 is symmetric | `mat_to_ten` duplicates minor pairs; `compliance_matrix` is symmetric (`fn_TR_mat_to_ten.hpp:120-200`) |
 
@@ -73,7 +73,7 @@ released with `free`, so no constructor or destructor of `T` ever runs
 | `A.fill(value)` | uniform fill |
 | `A.fill(a, b)` | isotropic: `A_ijkl = a d_ij d_kl + b(d_ik d_jl + d_il d_jk - 2/3 d_ij d_kl)` |
 | `C.fill_isotropic_elasticity(E, nu)` | computes `K=E/(3(1-2nu))`, `G=E/(2(1+nu))`, then `fill(K,G)` |
-| `C.fill_orthotropic_elasticity(E1,E2,E3, nu23,nu13,nu12, G23,G31,G12)` | builds compliance, inverts, converts; allocates two 6x6 matrices per call. See the Poisson-ratio convention below |
+| `C.fill_orthotropic_elasticity(E1,E2,E3, nu23,nu31,nu12, G23,G31,G12)` | builds compliance, inverts, converts; allocates two 6x6 matrices per call. See the Poisson-ratio convention below |
 
 ### Access
 
@@ -147,7 +147,7 @@ Note the **true** tensor strain: for pure shear use `eps_12 = eps_21 = gamma/2`
 
 ```cpp
 Tensor< real > C( 3, 3, 3, 3 );
-C.fill_orthotropic_elasticity( E1,E2,E3, nu23,nu13,nu12, G23,G31,G12 );
+C.fill_orthotropic_elasticity( E1,E2,E3, nu23,nu31,nu12, G23,G31,G12 );
 
 Matrix< real > tC6( 6, 6 );
 C.to_matrix( tC6 );                              // engineering-Voigt stiffness
@@ -155,24 +155,27 @@ Tensor< real > C2( tC6 );                        // back to a tensor (minor-symm
 ```
 
 **Poisson-ratio convention.** In textbook notation, `nu_ij = -eps_j / eps_i`
-under uniaxial stress in direction `i`. This gives
+when uniaxial stress is applied in direction `i`. This gives
 `eps_j = -nu_ij sigma_i / E_i`, and therefore `S_ji = -nu_ij / E_i`. Because
 `S` is symmetric, `nu_ij / E_i = nu_ji / E_j`; either form gives the same
 off-diagonal entry. `compliance_matrix` (called by
-`fill_orthotropic_elasticity`) sets these one-based entries:
+`fill_orthotropic_elasticity`) takes the cyclic set `nu23, nu31, nu12`, which
+matches the shear moduli `G23, G31, G12`, and sets these one-based entries:
 
-- `S_21 = -nu12 / E2`, so the argument `nu12` is the textbook `nu_21`;
-- `S_31 = -nu13 / E3`, so the argument `nu13` is the textbook `nu_31`;
-- `S_32 = -nu23 / E2`, so the argument `nu23` is the textbook `nu_23`
-  (`= nu_32 E2 / E3`).
+- `S_21 = -nu12 / E1`, so the argument `nu12` is the textbook `nu_12`;
+- `S_31 = -nu31 / E3`, so the argument `nu31` is the textbook `nu_31`;
+- `S_32 = -nu23 / E2`, so the argument `nu23` is the textbook `nu_23`.
 
-Thus the `nu12` and `nu13` arguments expect the ratio whose load is in the
-second index, whereas `nu23` expects the ratio whose load is in the first. For a
-fiber with its axis along 1, `nu12` is the minor ratio. To use a datasheet major
-ratio `nu_12`, pass `nu_12 * E2 / E1`. `example_udfiber.cpp` passes the minor
-ratio `nu12 = 0.013` with `E1 = 235`, `E2 = 20`, and reports the major ratio
-`-S(1,0) * E1` of the homogenized result (`fn_compliance_matrix.hpp`,
-`example_udfiber.cpp`).
+Each argument is the ratio whose load is applied in its first-index direction.
+
+**Trap:** the cyclic set mixes major and minor ratios. For a fiber along axis 1,
+`nu12` is the major ratio, but `nu31` is the minor one. A datasheet usually
+gives `nu13`; convert it with `nu31 = nu13 * E3 / E1`. Under transverse
+isotropy (`E3 = E2`, `nu13 = nu12`), this gives `nu31 = nu21 = nu12 * E2 / E1`.
+`example_udfiber.cpp` starts from the minor ratio `nu21 = 0.013`, with
+`E1 = 235` and `E2 = E3 = 20`. It passes `nu12 = nu21 * E1 / E2 = 0.15275` and
+`nu31 = nu21 = 0.013`, then reports the homogenized major ratio as
+`-S(1,0) * E1` (`fn_compliance_matrix.hpp`, `example_udfiber.cpp`).
 
 ### Invert a stiffness tensor to compliance
 
