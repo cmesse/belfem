@@ -184,7 +184,9 @@ namespace belfem
             size_t tSplit = size_t( rand() * real( tNumBits ) );
 
             // random bit to mutate
-            size_t tMutate = size_t( rand() * real( tNumBits ) );
+            // rand() < 1, but rand() * tNumBits can still round up to
+            // tNumBits for a draw just below 1, one past the last bit
+            size_t tMutate = std::min( size_t( rand() * real( tNumBits ) ), tNumBits - 1 );
 
             // start with a clean slate
             mDNA.reset();
