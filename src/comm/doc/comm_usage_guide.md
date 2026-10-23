@@ -14,10 +14,10 @@
 
 **Read this first:** The BELFEM communication module has strict semantic contracts:
 
-- **All operations are blocking and synchronous** at the BELFEM API level, even when implemented using non-blocking MPI internally
+- **All operations are blocking** at the BELFEM API level. Internally, they post non-blocking MPI calls and wait for them immediately. A `send` returns when its buffer may be reused. This is local completion, not MPI synchronous-mode completion: it does not wait for the matching receive to start (see the caveat under Pattern 4). A `receive` returns when the data has arrived
 - **Message matching is deterministic and explicit** (rank + automatically generated tag)
 - **No function is thread-safe** unless explicitly stated
-- **Non-MPI builds compile the comm calls to no-ops** — `broadcast`/`send`/`receive` are semantically neutral in serial, `collect` is not (see Non-MPI Builds)
+- **Non-MPI builds compile most comm calls to no-ops.** `broadcast`/`send` are semantically neutral in serial; `collect` is not, `receive( string& )` empties its string, and `allreduce`/`allreduce_min` copy their input to their output (see Non-MPI Builds)
 - **Collective operations require consistent participation** by all ranks with matching parameters
 
 > **Rule:** Calling any comm function before `gComm.init()` or after `gComm.finalize()` is undefined behavior.
@@ -47,7 +47,7 @@ The `src/comm` module provides a **compile-time abstraction** over MPI (Message 
 > **Important Limitations:**
 > - **Thread Safety:** The comm module is **not** thread-safe. However, when compiled with `BELFEM_STRUMPACK`, MPI is initialized with `MPI_THREAD_MULTIPLE`. Concurrent calls from multiple threads still require external synchronization.
 > - **Process Count:** Maximum ~32,768 processes at a typical `MPI_TAG_UB`, set by the `comm_tag()` algorithm (see Process Count Limitation section).
-> - **Message Size:** Individual message chunks limited to `int` range (~2GB) even on 64-bit builds.
+> - **Message Size:** `send`, `receive` and `share` move payloads in chunks of 65 536 elements, so their size is not bounded by MPI's `int` count. Container `broadcast` is unchunked: the whole payload goes in one `MPI_Ibcast`, whose count is an MPI `int`. `broadcast( Matrix<T>& )` checks that the count fits and stops with `BELFEM_ERROR` if it does not; `broadcast( Cell<T>& )` and `broadcast( Vector<T>& )` pass the size to MPI without that check.
 
 ---
 
@@ -93,7 +93,9 @@ int main(int argc, char** argv) {
 ```cpp
 // WRONG: Cell size doesn't match comm_size()
 Cell<int> data(5, 0);  // But we have 4 processes
-distribute(data);      // Assertion failure!
+distribute(data);      // Assertion failure in a debug build. Release builds skip the
+                       // check and send whatever data(p) holds -- past the end of
+                       // the Cell when it is too short.
 
 // ALSO WRONG, and less obvious: the one-argument Cell constructor only
 // RESERVES. size() is still 0, so this trips the same assertion.
@@ -144,13 +146,20 @@ real time = timer.stop();  // Consistent measurement
 
 ### `gComm` - Global Communicator Instance
 
-**File:** Defined in `cl_Communicator.hpp`, declared `extern`
+**File:** declared `extern belfem::Communicator gComm;` in `cl_Communicator.hpp`
 
-The framework provides a single global `Communicator` instance that manages all MPI state.
+The framework uses one global `Communicator` instance to manage all MPI state. The library only
+**declares** it. Every executable must **define** it once, at global scope. Otherwise, linking
+fails with an undefined `gComm` (see `src/executables/belfem.cpp` and
+`tests/comm/test_comm_main.cpp`).
 
 #### Initialization
 
 ```cpp
+#include "cl_Communicator.hpp"
+
+belfem::Communicator gComm;   // the one definition, at global scope
+
 int main(int argc, char** argv) {
     // Initialize MPI and parse arguments
     gComm.init(argc, argv);
@@ -171,6 +180,9 @@ proc_t rank = gComm.rank();
 // Get total number of processes
 proc_t size = gComm.size();
 
+// Number of ranks on this node (MPI_COMM_TYPE_SHARED split at init)
+proc_t node_ranks = gComm.node_size();
+
 // Get MPI_Comm handle (MPI builds only)
 MPI_Comm& world = gComm.world();
 
@@ -190,7 +202,7 @@ std::mt19937& rng = gComm.random();
 int max_tag = gComm.max_tag();
 ```
 
-**See:** `cl_Communicator.hpp:53`
+**See:** `cl_Communicator.hpp`, class `Communicator`
 
 ---
 
@@ -248,7 +260,7 @@ Due to the `comm_tag()` algorithm, BELFEM has a maximum process limit based on y
 max_procs ≈ 0.5 × (√(2 × MPI_TAG_UB + 1) + 1)
 ```
 
-For a typical `MPI_TAG_UB ≈ 2³¹` this gives approximately **32,768 processes**. Exceeding it is a `BELFEM_ERROR` at initialization (`cl_Communicator.cpp:219-224`). (An earlier revision of this page said 46,340, which is `√(2³¹)` — the square root of the tag ceiling rather than the formula above applied to it.)
+For a typical `MPI_TAG_UB ≈ 2³¹` this gives approximately **32,768 processes**. Exceeding it is a `BELFEM_ERROR` at initialization (`cl_Communicator.cpp`, search `tMaxRank`).
 
 **Tag Generation Formula:** For source rank `s` and target rank `t`, the tag is computed as:
 ```
@@ -282,7 +294,9 @@ public:
 };
 ```
 
-Objects are automatically registered with `gComm.objects()` upon construction and cleaned up when `gComm.finalize()` is called. This prevents MPI resource leaks in parallel environments.
+Objects are automatically registered with `gComm.objects()` upon construction. `gComm.finalize()` calls `free()` on every object still registered, which prevents MPI resource leaks in parallel environments.
+
+Registration is undone only by `CommunicationObject::free()`, which clears the object's slot. The base-class destructor does nothing. If an object is destroyed before `gComm.finalize()` without calling `CommunicationObject::free()`, it remains registered, and `finalize()` later calls `free()` through a dangling pointer. If an object can go out of scope early, release it (and so unregister it) before destruction.
 
 ---
 
@@ -317,6 +331,11 @@ Template function that returns the MPI datatype for C++ type `T`.
 | `std::complex<double>` | MPI_CXX_DOUBLE_COMPLEX |
 | `std::complex<long double>` | MPI_CXX_LONG_DOUBLE_COMPLEX |
 
+The three complex mappings exist only when the MPI library defines the matching
+`MPI_CXX_*_COMPLEX` macro (Open MPI does). In an MPI build, any type without a mapping falls
+through to the generic `comm_type<T>()`, which stops with `BELFEM_ERROR` "Unknown datatype" at
+run time, not at compile time.
+
 #### Usage
 
 ```cpp
@@ -344,7 +363,7 @@ proc_t size = comm_size();  // Returns gComm.size()
 
 **Returns:** Total number of MPI processes (1 in non-MPI builds)
 
-**File:** `commtools.hpp:53`
+**File:** `commtools.hpp`
 
 ---
 
@@ -356,7 +375,7 @@ proc_t rank = comm_rank();  // Returns gComm.rank()
 
 **Returns:** Rank of current process (0 to size-1), always 0 in non-MPI builds
 
-**File:** `commtools.hpp:62`
+**File:** `commtools.hpp`
 
 ---
 
@@ -368,7 +387,7 @@ comm_barrier();  // All processes wait here until all arrive
 
 **Use case:** Synchronize before timing, I/O, or phase transitions
 
-**File:** `commtools.hpp:80`
+**File:** `commtools.hpp`
 
 ---
 
@@ -380,7 +399,7 @@ int tag = comm_tag(0, 5);  // Unique tag for communication from rank 0 to 5
 
 **Use case:** Internal use by send/receive to avoid message confusion
 
-**File:** `commtools.hpp:124`
+**File:** `commtools.hpp`
 
 ---
 
@@ -415,7 +434,7 @@ with no exchange in flight. Current call sites: `DofManager::solve`,
   invisible to it. A clean pass is therefore not proof of a clean fabric,
   although a reported stray is always a real one.
 
-**File:** `commtools.hpp:113`
+**File:** `commtools.hpp`
 
 ---
 
@@ -431,7 +450,36 @@ Cell<int> chunks = comm_split(100000);  // Splits into chunks of ≤ 65 536 elem
 
 > **Rationale:** Chunking avoids implementation-dependent MPI limits on message size and improves robustness on older interconnects and debug builds. The 65 536-element limit balances message overhead with reliability.
 
-**File:** `commtools.hpp:134`
+**File:** `commtools.hpp`
+
+---
+
+### `allreduce` / `allreduce_min` - Small Reductions Visible on Every Rank
+
+```cpp
+int tLocalFail = solver_failed ? 1 : 0;
+int tAnyFail   = 0;
+allreduce( &tLocalFail, &tAnyFail, 1 );        // MPI_MAX: worst rank wins
+
+real tLocalBudget = measured_budget();
+real tBudget      = 0.0;
+allreduce_min( &tLocalBudget, &tBudget, 1 );   // MPI_MIN: most constrained rank wins
+```
+
+**Signatures:**
+- `void allreduce(const T* aSend, T* aRecv, const int aCount)` — reduction with `MPI_MAX`
+- `void allreduce_min(const T* aSend, T* aRecv, const int aCount)` — reduction with `MPI_MIN`
+
+**Contract:**
+
+- Collective over `gComm.world()`: every rank must call it.
+- The operation is fixed by the function name. There is no `MPI_Op` parameter and no SUM variant.
+- `T` must be arithmetic; complex types are rejected at compile time.
+- The count is MPI's own `int`. These functions are meant for a few elements; bulk data goes
+  through `share`/`receive`.
+- Non-MPI builds copy `aSend` into `aRecv`, which is the result of a one-rank reduction.
+
+**File:** `commtools.hpp`
 
 ---
 
@@ -485,7 +533,7 @@ broadcast(cell, 0);  // Non-root ranks automatically resized to 5 elements
 
 **Signature:** `void broadcast(Cell<T>& aData, proc_t aRoot = 0)`
 
-**File:** `commtools.hpp:748`
+**File:** `commtools.hpp`
 
 ---
 
@@ -501,7 +549,7 @@ broadcast(vec, 0);  // All ranks receive 3-element vector
 
 **Signature:** `void broadcast(Vector<T>& aData, proc_t aRoot = 0)`
 
-**File:** `commtools.hpp:1076`
+**File:** `commtools.hpp`
 
 ---
 
@@ -518,13 +566,19 @@ broadcast(mat, 0);  // All ranks receive 3×3 matrix
 
 **Signature:** `void broadcast(Matrix<T>& aData, proc_t aRoot = 0)`
 
-**File:** `commtools.hpp:1879`
+**File:** `commtools.hpp`
 
 ---
 
 ## Point-to-Point Communication
 
 > **Warning:** Do not mix raw `MPI_Send`/`MPI_Recv` calls with BELFEM comm functions unless you manage tags explicitly. BELFEM assumes exclusive control of tag generation via `comm_tag()`, and mixing can cause extremely hard-to-debug message mismatches.
+
+> **Silent no-ops.** Every `send` overload returns without doing anything when the target is the
+> calling rank, and every `receive` overload does the same when the source is the calling rank.
+> The scalar and raw-array overloads also return silently when the target or source is out of
+> range (`>= comm_size()`). The container overloads do not check the range and pass the rank to
+> MPI.
 
 ### `send(data, target)` - Send Data to Specific Process
 
@@ -539,7 +593,7 @@ if (comm_rank() == 0) {
 
 **Signature:** `void send(const T aData, proc_t aTarget = 0)`
 
-**File:** `commtools.hpp:314`
+**File:** `commtools.hpp`
 
 ---
 
@@ -555,7 +609,7 @@ if (comm_rank() == 0) {
 
 **Signature:** `void send(T* aData, index_t aLength, proc_t aTarget)`
 
-**File:** `commtools.hpp:401`
+**File:** `commtools.hpp`
 
 ---
 
@@ -570,7 +624,7 @@ if (comm_rank() == 0) {
 
 **Signature:** `void send(Cell<T>& aData, proc_t aTarget = 0)`
 
-**File:** `commtools.hpp:587`
+**File:** `commtools.hpp`
 
 ---
 
@@ -585,7 +639,7 @@ if (comm_rank() == 0) {
 
 **Signature:** `void send(Vector<T>& aData, proc_t aTarget = 0)`
 
-**File:** `commtools.hpp:915`
+**File:** `commtools.hpp`
 
 ---
 
@@ -601,7 +655,7 @@ if (comm_rank() == 0) {
 
 **Signature:** `void send(Matrix<T>& aData, proc_t aTarget = 0)`
 
-**File:** `commtools.hpp:1949`
+**File:** `commtools.hpp`
 
 ---
 
@@ -618,7 +672,7 @@ if (comm_rank() == 1) {
 
 **Signature:** `void receive(T& aData, proc_t aSource = 0)`
 
-**File:** `commtools.hpp:351`
+**File:** `commtools.hpp`
 
 ---
 
@@ -636,7 +690,7 @@ if (comm_rank() == 1) {
 
 **Important:** `aLength` is both input (allocated size) and output (received size)
 
-**File:** `commtools.hpp:491`
+**File:** `commtools.hpp`
 
 ---
 
@@ -651,7 +705,7 @@ if (comm_rank() == 1) {
 
 **Signature:** `void receive(Cell<T>& aData, proc_t aSource = 0)`
 
-**File:** `commtools.hpp:672`
+**File:** `commtools.hpp`
 
 ---
 
@@ -666,7 +720,7 @@ if (comm_rank() == 1) {
 
 **Signature:** `void receive(Vector<T>& aData, proc_t aSource = 0)`
 
-**File:** `commtools.hpp:1000`
+**File:** `commtools.hpp`
 
 ---
 
@@ -681,7 +735,7 @@ if (comm_rank() == 1) {
 
 **Signature:** `void receive(Matrix<T>& aData, proc_t aSource = 0)`
 
-**File:** `commtools.hpp:2047`
+**File:** `commtools.hpp`
 
 ---
 
@@ -712,7 +766,7 @@ container it is given and delivers nothing unless someone is receiving.
 >
 > An unmatched transfer is not harmless. The send may block, or it may sit queued and be picked
 > up by a **later** exchange between the same rank pair, which share a tag. The **`distribute`
-> side** must supply a container of size `comm_size()` (`commtools.hpp:813`); a receiver using
+> side** must supply a container of size `comm_size()` (asserted in debug builds); a receiver using
 > the scalar `receive` supplies only its own variable.
 
 > **Size caveat on the all-to-all form.** `distribute` waits in `MPI_Waitall` before it returns,
@@ -720,7 +774,7 @@ container it is given and delivers nothing unless someone is receiving.
 > only works while the sends complete into eager buffers. For `distribute( Cell<T> )` — one
 > element of `T` per peer — every MPI implementation in practice buffers that eagerly, though
 > **the standard guarantees nothing**, which is why the shipped test
-> (`tests/comm/test_CommMPI.cpp`, `DistributeCollectScalar` around line 581) passes. The `Cell<Vector<T>>`, `Cell<Cell<T>>` and
+> (`tests/comm/test_CommMPI.cpp`, `DistributeCollectScalar`) passes. The `Cell<Vector<T>>`, `Cell<Cell<T>>` and
 > `Cell<Matrix<T>>` overloads move arbitrary payloads and can exceed the rendezvous threshold,
 > where `distribute(); collect()` on every rank deadlocks. Use a root-centred pairing for those,
 > or post receives before sends with raw MPI.
@@ -748,7 +802,7 @@ Note that the received values land in the `collect` container, **not** back in t
 
 **Requires:** `aData.size() == comm_size()`
 
-**File:** `commtools.hpp:804`
+**File:** `commtools.hpp`
 
 ---
 
@@ -767,7 +821,7 @@ distribute(data);
 
 **Signature:** `void distribute(Vector<T>& aData)`
 
-**File:** `commtools.hpp:1131`
+**File:** `commtools.hpp`
 
 ---
 
@@ -787,7 +841,7 @@ distribute(data);
 
 **Signature:** `void distribute(Cell<Vector<T>>& aData)`
 
-**File:** `commtools.hpp:1239`
+**File:** `commtools.hpp`
 
 ---
 
@@ -801,7 +855,7 @@ distribute(data);
 
 **Signature:** `void distribute(Cell<Cell<T>>& aData)`
 
-**File:** `commtools.hpp:1325`
+**File:** `commtools.hpp`
 
 ---
 
@@ -820,7 +874,7 @@ distribute(data);
 
 **Signature:** `void distribute(Cell<Matrix<T>>& aData)`
 
-**File:** `commtools.hpp:2144`
+**File:** `commtools.hpp`
 
 ---
 
@@ -828,16 +882,19 @@ distribute(data);
 
 ```cpp
 Vector<int> offsets(comm_size() + 1);
-// offsets[i] = start index for rank i
+// rank p gets the half-open slice [ offsets(p), offsets(p+1) )
 const real* data = ...;  // Pre-allocated array
 distribute(data, offsets);
 ```
 
 **Signature:** `void distribute(const T* aData, const Vector<U>& aOffsets)`
 
-**Requires:** `aOffsets.length() == comm_size() + 1`
+**Requires:** `aOffsets.length() == comm_size() + 1` (asserted in debug builds), with
+**nondecreasing** entries. The slice length for rank `p` is computed as
+`aOffsets(p+1) - aOffsets(p)` into an unsigned `index_t`, so a decreasing pair wraps around to
+a huge length rather than raising an error.
 
-**File:** `commtools.hpp:1414`
+**File:** `commtools.hpp`
 
 ---
 
@@ -851,7 +908,7 @@ nobody sending, is a hang rather than a gather.
 
 **Signature:** `void collect(Cell<T>& aData, const T aMyValue = 0)`
 
-**File:** `commtools.hpp:859`
+**File:** `commtools.hpp`
 
 ---
 
@@ -859,7 +916,7 @@ The overloads below share the semantics above: each is **receive-only**, and nee
 rank to be sending — through `distribute`, or through an ordinary `send( data, root )` of the
 matching type. The one exception is `collect( T*, offsets )`, which is a narrower shape: it
 gathers sizes from everyone but receives payloads only from ranks `1 … N-1`, taking its own
-offset from `aOffsets(0)` (`commtools.hpp:1494-1565`).
+offset from `aOffsets(0)`. Call it on rank 0 only.
 
 #### Collect Scalars into Vector
 
@@ -871,7 +928,7 @@ collect(all_values, my_value);   // requires every other rank in a matching dist
 
 **Signature:** `void collect(Vector<T>& aData, const T aMyValue = 0)`
 
-**File:** `commtools.hpp:1186`
+**File:** `commtools.hpp`
 
 ---
 
@@ -889,7 +946,7 @@ collect(all_vecs, my_vec);
 
 **Signature:** `void collect(Cell<Vector<T>>& aData, Vector<T> aMyData = {})`
 
-**File:** `commtools.hpp:1577`
+**File:** `commtools.hpp`
 
 ---
 
@@ -903,21 +960,27 @@ collect(all_matrices);
 
 **Signature:** `void collect(Cell<Matrix<T>>& aData)`
 
-**File:** `commtools.hpp:2287`
+**File:** `commtools.hpp`
 
 ---
 
 #### Collect Raw Array with Offsets
 
 ```cpp
-real* data = ...;  // Pre-allocated
-Vector<int> offsets(comm_size() + 1);
-collect(data, offsets);
+if (comm_rank() == 0) {
+    real* data = ...;  // Pre-allocated; rank 0's own block is already in place
+    Vector<int> offsets(comm_size() + 1);
+    // rank p's block lands at data + offsets(p)
+    collect(data, offsets);
+}
 ```
 
 **Signature:** `void collect(T* aData, const Vector<U>& aOffsets)`
 
-**File:** `commtools.hpp:1494`
+**Rank 0 only, receive only.** Senders provide the block sizes; `aOffsets` supplies only the
+destination offsets. Every other rank must send its block.
+
+**File:** `commtools.hpp`
 
 ---
 
@@ -927,7 +990,7 @@ collect(data, offsets);
 posts sends only, so the ranks that are meant to get the data must call `receive`. Keep the
 `if/else` rank guard below — a rank that calls `share` when it should be receiving leaves every
 other rank waiting on data that never comes. (`receive` on the sender is harmless: it returns
-immediately when `comm_rank() == aSource`, `commtools.hpp:1007-1008`.)
+immediately when `comm_rank() == aSource`; see `receive( Vector<T>& )` in `commtools.hpp`.)
 
 ```cpp
 Vector<real> data;
@@ -944,10 +1007,12 @@ else
 
 Use this rather than `broadcast` for large or variable-size `Vector<T>` and `Cell<T>` payloads:
 container `broadcast` moves the whole payload in a single unchunked `MPI_Ibcast` after a second
-one carrying the size (`commtools.hpp:1076-1120`), which this project has observed to fail on
+one carrying the size (`broadcast( Cell<T>& )` and `broadcast( Vector<T>& )` in `commtools.hpp`), which this project has observed to fail on
 large datasets (see `doc/coding_philosophy.md`). There is no `share` overload for scalars — use `broadcast(T&)` for those.
 
-**Signature:** `void share(Vector<T>& aData)`
+**Signatures:**
+- `void share(Vector<T>& aData)`
+- `void share(Cell<T>& aData)` — same contract; the receivers call `receive( Cell<T>&, sender )`
 
 ---
 
@@ -963,9 +1028,11 @@ if (comm_rank() == 0) {
 }
 broadcast(messages, 0);
 
-// Send string
+// Send string -- pass a string object. A string literal deduces the scalar
+// send<const char*> template instead, which fails at run time with "Unknown datatype".
 if (comm_rank() == 0) {
-    send("Hello from rank 0", 1);
+    string message = "Hello from rank 0";
+    send(message, 1);
 }
 
 // Receive string
@@ -980,7 +1047,7 @@ if (comm_rank() == 1) {
 - `void send(const string& aMessage, proc_t aTarget = 0)`
 - `void receive(string& aMessage, proc_t aSource = 0)`
 
-**File:** `commtools.hpp:2443-2450` (implementation in `commtools.cpp`)
+**File:** `commtools.hpp` (implementation in `commtools.cpp`)
 
 ---
 
@@ -1085,7 +1152,7 @@ for (proc_t neighbor : neighbors) {
 ```
 
 > **Caveat, unresolved.** `send( Vector<T> )` completes its own `MPI_Waitall` before returning
-> (`commtools.hpp:983`). Two ranks that are each other's neighbors are therefore both inside
+> (`send( Vector<T>& )` in `commtools.hpp`). Two ranks that are each other's neighbors are therefore both inside
 > the send loop before either reaches its receive loop. For payloads small enough to be sent
 > eagerly this is fine, and it is what the code does today; for payloads over the MPI
 > implementation's rendezvous threshold it can deadlock. Whether any BELFEM ghost exchange
@@ -1117,15 +1184,20 @@ if (comm_rank() == 0) {
 
 ## Non-MPI Builds
 
-When compiled without `BELFEM_MPI`, all communication functions compile to no-ops:
+When compiled without `BELFEM_MPI`, most communication functions compile to no-ops:
 
 - `comm_size()` returns 1
 - `comm_rank()` returns 0
-- `broadcast()`, `send()`, `receive()` do nothing
-- `distribute()` and `collect()` do nothing either — `collect()` does **not** resize the container or store `myValue`, so code that reads `data(comm_rank())` after `collect` must handle the serial case itself
-- `comm_barrier()` does nothing
+- `broadcast()` and `send()` do nothing
+- `receive()` does nothing for scalars, raw arrays and containers: the argument keeps whatever it
+  held. The exception is `receive( string& )`, which receives into an empty buffer and so
+  **replaces the string with an empty one**
+- `distribute()`, `share()` and `collect()` do nothing — `collect()` does **not** resize the container or store `myValue`, so code that reads `data(comm_rank())` after `collect` must handle the serial case itself
+- `allreduce()` and `allreduce_min()` are **not** no-ops: they copy `aSend` into `aRecv`, the
+  result of a one-rank reduction
+- `comm_barrier()` and `comm_drain_check()` do nothing
 
-> **Guarantee:** Non-MPI builds compile to no-ops, not to serial equivalents — `collect()` leaves its container untouched. Use non-MPI builds for serial debugging, not for performance benchmarking.
+> **Guarantee:** Apart from `allreduce`/`allreduce_min`, non-MPI builds compile to no-ops, not to serial equivalents — `collect()` leaves its container untouched. Use non-MPI builds for serial debugging, not for performance benchmarking.
 
 This allows writing parallel code that degrades to serial execution, provided the caller sizes what `collect()` would have filled.
 
@@ -1158,12 +1230,22 @@ are not cache entries and setting them on the command line does nothing):
 ```bash
 # Default build already has MPI + STRUMPACK + PETSc
 
-# Non-MPI build (serial fallback)
-cmake -DUSE_MPI=OFF ..
+# Non-MPI build (serial fallback): every MPI-dependent package must be off too
+cmake -DUSE_MPI=OFF -DUSE_PARPACK=OFF -DUSE_MUMPS=OFF -DUSE_STRUMPACK=OFF \
+      -DUSE_PETSC=OFF -DUSE_HDF5=OFF -DUSE_EXODUS=OFF ..
 
 # MPI without STRUMPACK
 cmake -DUSE_STRUMPACK=OFF ..
 ```
+
+`-DUSE_MPI=OFF` alone does not configure. `USE_PARPACK`, `USE_MUMPS`, `USE_STRUMPACK`,
+`USE_PETSC` and `USE_HDF5` default to ON, and each package's config file stops the configure with
+a `FATAL_ERROR` when MPI is off. PARPACK is reached first: "Turn on MPI if you want to
+link against PARPACK" (`config/linalg/config_parpack.cmake`; the same guard is in
+`config_mumps.cmake`, `config_strumpack.cmake`, `config_petsc.cmake` and
+`config/io/config_hdf5.cmake`). Turning HDF5 off also requires `USE_EXODUS=OFF`, because
+`config/io/config_exodus.cmake` refuses ExodusII without HDF5. The serial configuration is not
+part of the nightly CI matrix, which builds with MPI.
 
 ---
 
@@ -1278,71 +1360,32 @@ BELFEM's thread support depends on compile-time configuration:
 
 **Why?** Every rank pair shares exactly two tags on `gComm.world()` (`comm_tag()` is symmetric in source and target) and MPI matches per (source, tag) in FIFO order, so two threads issuing BELFEM comm calls to the same peer interleave their size/payload messages and each consumes the other's. The per-call request buffers themselves are `malloc`ed per call and private.
 
-**Safe threading approaches:**
+**BELFEM's own parallelism is MPI only.** Its C++ sources contain no OpenMP pragmas, and all of
+its own MPI traffic happens on the main thread. Threads inside a rank come from third-party
+libraries (threaded BLAS, STRUMPACK, the matrix backends), which do not call BELFEM's comm
+functions. See `doc/parallel_execution.md`.
 
-1. **MPI_THREAD_FUNNELED** — Only master thread calls MPI:
-
-```cpp
-#ifdef OMP   // the define the compiler config sets under USE_OPENMP
-#pragma omp parallel
-{
-    // Compute in parallel
-    Vector<real> local_result = compute();
-
-    #pragma omp master
-    {
-        // Only master thread communicates
-        send(local_result, 0);
-    }
-}
-#endif
-```
-
-2. **MPI_THREAD_SERIALIZED** — Serialize MPI calls with mutex:
+If your own code adds threads, keep comm calls out of the threaded region: let the threads
+compute, then communicate from the main thread after the region ends. This is correct at any MPI
+thread level.
 
 ```cpp
-std::mutex mpi_mutex;
+Vector<real> tResult( tN );
 
-#pragma omp parallel
+#pragma omp parallel for
+for ( index_t k = 0; k < tN; ++k )
 {
-    // Compute in parallel
-    Vector<real> result = compute();
-
-    // Serialize MPI calls
-    {
-        std::lock_guard<std::mutex> lock(mpi_mutex);
-        send(result, 0);
-    }
+    tResult( k ) = compute( k );   // threads compute; no comm calls in here
 }
+
+send( tResult, 0 );                // main thread, after the parallel region
 ```
 
-3. **Thread-local buffers** — Each thread uses separate data:
-
-```cpp
-#pragma omp parallel
-{
-    int tid = omp_get_thread_num();
-
-    // Each thread computes independently
-    Vector<real> my_result = compute(tid);
-
-    // Master collects from all threads sequentially
-    #pragma omp master
-    {
-        Cell<Vector<real>> thread_results(omp_get_num_threads(), Vector<real>());   // size it: Cell(n) only reserves
-        thread_results(0) = my_result;
-
-        #pragma omp barrier
-
-        for (int t = 1; t < omp_get_num_threads(); ++t) {
-            // Collect from other threads (thread-safe via barrier)
-        }
-
-        // Now send combined result via MPI
-        send_combined(thread_results);
-    }
-}
-```
+If a comm call cannot be moved out of the threaded region, serialize it with
+`#pragma omp critical`, as `doc/coding_philosophy.md` shows for BELFEM calls in general. This
+needs MPI to have been initialized at `MPI_THREAD_SERIALIZED` or above. In BELFEM that is the
+case only in STRUMPACK builds. Plain `MPI_Init()` is, by the MPI standard, a request for
+`MPI_THREAD_SINGLE`, under which only the main thread may call MPI.
 
 > **Warning:** Even with `MPI_THREAD_MULTIPLE`, BELFEM's comm functions are **not internally synchronized**. External synchronization is always required for concurrent access.
 
@@ -1352,7 +1395,7 @@ std::mutex mpi_mutex;
 
 ### 1. **Enable MPI Error Checking**
 
-All BELFEM comm functions route the MPI return code through `comm_check(error_code)`, a `BELFEM_ERROR` that reports the implementation's error string — it throws in a debug build and aborts the job in release (see `assert.hpp`, `throw_on_error()`).
+The BELFEM comm functions route MPI return codes through `comm_check(error_code)`. A failed check produces a `BELFEM_ERROR` that reports the implementation's error string: it throws in a debug build and aborts the job in release (see `assert.hpp`, `throw_on_error()`). The exception is `comm_barrier()`, which discards the return code from `MPI_Barrier`.
 
 ---
 
