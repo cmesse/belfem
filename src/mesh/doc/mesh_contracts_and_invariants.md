@@ -93,7 +93,7 @@ void Mesh::unfinalize() {
 tMesh->finalize();
 // ... use mesh ...
 tMesh->unfinalize();  // Does NOT restore original state!
-tMesh->partition(comm_size());   // May fail - expects specific state
+tMesh->partition(comm_size());   // mesh->elements() is now empty: no element gets an owner
 ```
 
 **Safe example:**
@@ -155,26 +155,42 @@ tMesh->finalize();     // Invalidates container
 ### 4. Indices are NOT Stable Across Operations
 
 > **Rule:**
-> Never store indices across `finalize()`, `partition()`, or `Distributor::run()`.
+> Never store indices across `finalize()`, `Distributor::run()`, or a graph algorithm.
 > IDs are stable; indices are not.
 
-**Why:** Indices are reordered by:
-- `finalize()` — assigns continuous 0-based indices
-- `partition()` — reorders by MPI ownership
-- `Distributor::run()` — creates new local ordering
-- Graph algorithms (RCM, METIS) — bandwidth/partitioning reordering
+**Why:** Indices are reassigned by:
+- `finalize()` on an unfinalized mesh: it numbers nodes, elements, vertices, control points and
+  facets 0, 1, 2, … in container order (`Mesh::update_node_indices()` and its siblings).
+- `Distributor::run()`: each worker builds a new mesh. Nodes and elements keep their global IDs,
+  while `finalize()` assigns them new local indices. The root keeps its full mesh.
+- Graph functions in `src/math/graph` (`symrcm`, `bfs`, `find_connected_partitions`): they call
+  `set_index()` on every vertex they visit, and a mesh entity's vertex index is its mesh index.
+
+`partition()` does not reorder the entity containers. It runs only on the master. While building
+the graph, it overwrites element indices, then resets each element index to its position in
+`elements()` (`Partitioner::run_metis()`). On a finalized mesh, that is the value `finalize()`
+assigned. It leaves node indices and all IDs unchanged.
+
+What `partition()` changes is `owner()`: with `aSetProcOwners = true` (the default), it updates
+the owners of elements, facets, nodes, edges, faces, control points and vertices
+(`Partitioner::set_element_owners()`, `Mesh::update_ownerships()`). The FEM `Kernel`'s own
+partitioner (`Kernel::partition_mesh()`) ends the same way, with `update_element_indices()` and
+`update_facet_indices()`.
 
 **Safe pattern:**
 ```cpp
 // Store IDs (permanent)
 Vector<id_t> importantNodeIDs = {100, 200, 300};
 
-tMesh->partition(comm_size());  // Reorders indices
-tMesh->finalize();               // Rebuilds indices
+// element owners must already be set on the root
+mesh::Distributor tDistributor(tMesh);
+tDistributor.run();              // every rank; workers get a new mesh
+Mesh* tLocal = comm_rank() == 0 ? tMesh : tDistributor.partial_mesh();
 
 // Access by ID (stable)
 for (id_t nodeID : importantNodeIDs) {
-    mesh::Node* node = tMesh->node(nodeID);  // ID lookup always works
+    // an ID lookup is valid on any rank that holds the node (Mesh::node asserts it)
+    mesh::Node* node = tLocal->node(nodeID);
 }
 ```
 
@@ -188,11 +204,13 @@ for (mesh::Node* node : tMesh->nodes()) {
     }
 }
 
-tMesh->partition(comm_size());  // INVALIDATES INDICES
+mesh::Distributor tDistributor(tMesh);
+tDistributor.run();              // every rank; workers get a new mesh
+Mesh* tLocal = comm_rank() == 0 ? tMesh : tDistributor.partial_mesh();
 
 // These indices now point to wrong nodes!
 for (index_t idx : nodeIndices) {
-    // mesh::Node* node = tMesh->nodes()(idx);  // WRONG NODE!
+    // mesh::Node* node = tLocal->nodes()(idx);  // WRONG NODE on a worker!
 }
 ```
 
@@ -211,7 +229,7 @@ for (index_t idx : nodeIndices) {
 | `create_faces()` | Node↔Face, Face↔Element, Element↔Face |
 | `scale_mesh()` | nothing in the mesh; only node/control-point coordinates change |
 | Node duplication | Node↔Element, Node↔Node, Element↔Node |
-| `partition()` | **All** ownership & adjacency |
+| `partition()` | No connectivity. With the defaults it rewrites `owner()` for every entity (`aSetProcOwners = true`) and clears the elements' graph-vertex containers (`aResetVertexContainers = true`) |
 | `Distributor::run()` | **All** (creates new mesh) |
 | `unfinalize()` | Node*/Edge*/Face* connectivities (selective; ElementToNode kept) |
 
@@ -384,9 +402,9 @@ tMesh->create_edges();    // TOO LATE
 ### 9. Ghost Layer Completeness After Distribution
 
 > **`partial_mesh()` is worker-only.** It carries
-> `BELFEM_ERROR( mCommRank > 0, ... )` (`cl_Mesh_Distributor.cpp:2663`), so the root rank must
+> `BELFEM_ERROR( mCommRank > 0, ... )` (`cl_Mesh_Distributor.cpp`, `Distributor::partial_mesh()`), so the root rank must
 > not call it — the root keeps the mesh it started with and takes the communication tables
-> instead (`cl_FEM_Kernel.cpp:688-708`).
+> instead (`cl_FEM_Kernel.cpp`, `Kernel::distribute_mesh()`).
 >
 > **Guarantees after `Distributor::run()` / `partial_mesh()`:**
 >
@@ -478,7 +496,7 @@ node->set_coords(newX, newY, newZ);
 1. ✓ Treat `finalize()` as establishing mesh invariants; do not access topology before it.
 2. ✓ Do not assume non-master MPI ranks have valid topology before distribution.
 3. ✓ Treat `unfinalize()` as cache invalidation, not rollback.
-4. ✓ Never store indices across `finalize()`, `partition()`, or `Distributor::run()`.
+4. ✓ Never store indices across `finalize()`, `Distributor::run()`, or a graph algorithm.
 5. ✓ Assume blocks may be heterogeneous unless explicitly checked.
 6. ✓ Treat facets as views into elements, never standalone entities.
 7. ✓ Assume connectivities can be invalidated by topology changes.

@@ -195,41 +195,34 @@ See `Connectivity` enum in `Mesh_Enums.hpp` for complete list.
 
 ## Parallel Mesh Workflow
 
+Every rank executes the same code. The file constructor is collective: the master reads the file,
+while each worker receives an empty mesh with the correct dimension. The FEM `Kernel` constructor
+then partitions the mesh on the master (`Kernel::partition_mesh()`, which calls
+`graph::metis_partition`) and runs the `Distributor` on every rank. Nothing in `src/` calls
+`Mesh::partition()`, and `partition()` has no effect on non-master ranks. See
+"Mesh Distribution (MPI)" in `mesh_usage_guide.md` for the workflow and the contract for using
+the `Distributor` directly.
+
 ```cpp
-#ifdef BELFEM_MPI
-#include "cl_Mesh_Distributor.hpp"
+#include "cl_Mesh.hpp"
+#include "cl_FEM_Kernel.hpp"
+#include "cl_FEM_KernelParameters.hpp"
 
-// 1. Master proc loads mesh
-Mesh* globalMesh = nullptr;
-if (comm_rank() == 0) {
-    globalMesh = new Mesh("mesh.msh");
-    globalMesh->partition(comm_size());  // METIS partitioning
+// 1. Every rank: collective load; the workers get an empty mesh
+Mesh* tMesh = new Mesh("mesh.msh");
+{
+    // 2. Every rank: the kernel partitions on the master and distributes
+    fem::KernelParameters tParams(tMesh);   // selects all blocks by default
+    fem::Kernel tKernel(&tParams);
+
+    // 3. The full mesh on the master, the partial mesh on every worker
+    Mesh* tLocalMesh = tKernel.mesh();
+
+    // ... work with tLocalMesh ...
+    // never delete tLocalMesh: a worker's partial mesh belongs to the kernel
 }
-
-// 2. Distribute to all procs
-mesh::Distributor distributor(globalMesh);
-distributor.run();                       // every rank
-Mesh* localMesh = globalMesh;            // root keeps the full mesh
-if (comm_rank() != 0) {
-    localMesh = distributor.partial_mesh();   // workers only -- root aborts here
-}
-
-// 3. Finalize. run() has already finalized the worker meshes
-//    ( cl_Mesh_Distributor.cpp:248 ), so this is the root's own.
-if (comm_rank() == 0) {
-    localMesh->finalize();
-}
-
-// 4. Work with local partition
-// Each proc has elements with owner() == comm_rank()
-// Plus ghost elements for communication
-
-// 5. Cleanup
-if (comm_rank() == 0) {
-    delete globalMesh;
-}
-delete localMesh;
-#endif
+// 4. Every rank, after the kernel is gone
+delete tMesh;
 ```
 
 ---
@@ -336,11 +329,14 @@ Use `cl_Profiler` and `cl_Timer`:
 ```cpp
 Timer tTimer;
 
-tMesh->partition(comm_size());
-message(InfoLevel::Verbose, "Partitioning: %u ms", (uint)tTimer.stop());
+// partition() needs more than one partition and runs only on the master
+if (comm_size() > 1) {
+    tMesh->partition(comm_size());
+    message(InfoLevel::Verbose, "Partitioning: %u ms", (uint)tTimer.next());
+}
 
-tMesh->finalize();
-message(InfoLevel::Verbose, "Finalization: %u ms", (uint)tTimer.stop());
+tMesh->finalize();   // no-op on a mesh that is already finalized
+message(InfoLevel::Verbose, "Finalization: %u ms", (uint)tTimer.next());
 ```
 
 ---

@@ -424,7 +424,7 @@ delete tMesh;  // Proper cleanup chain
 | Operation | Invalidates | Reason |
 |-----------|-------------|--------|
 | `Block::insert_element()` + re-finalize | NodeToElement, ElementToElement | New element neighbors |
-| `partition()` | All connectivities | Element ownership changes |
+| `partition()` | Element graph-neighbour lists (when `aResetVertexContainers` is true) | Built for the partition graph; ownership changes |
 | `Distributor::run()` | All connectivities | Mesh decomposition |
 | `create_edges()` | Edge-related connectivities | New edge entities created |
 | `create_faces()` | Face-related connectivities | New face entities created |
