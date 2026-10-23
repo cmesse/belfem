@@ -120,36 +120,17 @@ The `homology` module provides computational topology algorithms for computing h
 
 ## Typical Usage Pattern
 
-```cpp
-// 1. Prepare mesh and topology
-mesh::Topology tTopology(aMesh);
-tTopology.run();
+Cut generation is driven by `MaxwellFactory` (`create_cuts`); the full, compiling workflow is the
+Quick-Start and "MPI workflow" sections of [homology_usage_guide.md](homology_usage_guide.md).
+The points that are easy to get wrong:
 
-// 2. Create CutFactory
-mesh::CutFactory tFactory(
-    aMesh,                          // Mesh to process
-    &tTopology,                     // Topology analysis
-    mProtoshells,                   // Thin shell configurations
-    mesh::CutAlgorithm::PellikkaGeneralized,  // Algorithm choice
-    false                           // Use enrichment
-);
-
-// 3. Set up terminals (if needed)
-tFactory.set_terminals(mTerminals, mThinShellIndices);
-
-// 4. Run pipeline
-tFactory.run();
-
-// 5. Retrieve results
-Cell<mesh::Node*>& abstractNodes = tFactory.abstract_nodes();
-Cell<mesh::SideSet*>& cuts = tFactory.cuts();
-
-// 6. Use in FEM assembly
-for (mesh::SideSet* cut : cuts) {
-    cut->set_domain_type(mesh::DomainType::Cut);
-    // Apply discontinuity constraints in FEM system
-}
-```
+- Every rank constructs the `Mesh`; `Topology::run()` works on rank 0, and the collective
+  `Topology::synchronize_maps()` must precede the `CutFactory` constructor.
+- Call `set_periodicity()` before `run()` (with `nullptr` when there is no periodicity): the
+  factory reads the pointer in `run()` and does not initialize it otherwise.
+- Every rank calls `CutFactory::run()`, which contains barriers.
+- The results are the sidesets labelled `cut_<n>` in `Mesh::sidesets()` (one per H^1 generator)
+  and the jump DOFs in `Mesh::abstract_nodes()`. `CutFactory::cuts()` returns an empty list.
 
 ---
 
