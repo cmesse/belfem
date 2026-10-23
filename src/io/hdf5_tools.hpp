@@ -226,22 +226,17 @@ namespace belfem
         /**
          * Guard for every read: the FILE datatype must be convertible into T.
          *
-         * The loaders used to hand the file type to H5Dread as the MEMORY
-         * type as well, which tells HDF5 "no conversion" — it then copies at
-         * the FILE's element size, so an 8-byte file field read into a
-         * 4-byte object overruns it and a 4-byte field into an 8-byte object
-         * leaves the upper half uninitialized. Both silent. The exposure is
-         * a build-config mismatch, not an OS one: index_t / int_t are
-         * flag-selected ( BELFEM_INT64 ), and those are exactly the pointer
-         * and index arrays SpMatrix::save and the .bfm meshes write.
+         * The loaders pass datatype<T>() as the MEMORY type, so HDF5 converts
+         * between widths and a file written with another index width
+         * ( index_t / int_t follow BELFEM_INT64, as in SpMatrix::save and the
+         * .bfm meshes ) stays readable. Passing the file type instead would
+         * mean "no conversion": HDF5 would copy at the file's element size
+         * and overrun or half-fill the object, silently.
          *
-         * The loaders now pass datatype<T>() as the memory type, so HDF5
-         * converts widths itself and a mixed-width file stays READABLE.
-         * This function refuses the case conversion cannot fix: a different
-         * datatype CLASS ( a float dataset read into an integer, say ),
-         * where HDF5 would happily produce numerically meaningless values.
-         * Always-active tier — the old class check was a BELFEM_ASSERT and
-         * vanished in release, which is where this bites.
+         * This function refuses what conversion cannot fix: a different
+         * datatype CLASS ( a float dataset read into an integer, say ), where
+         * HDF5 would produce numerically meaningless values. Always-active
+         * tier, because the mismatch shows up in release builds.
          */
         template < typename T >
         void
