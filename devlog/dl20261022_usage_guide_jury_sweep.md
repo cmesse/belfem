@@ -249,6 +249,17 @@ README: every rank constructs the `Mesh` (the master reads), the `Kernel` constr
 the master (`partition_mesh` → `graph::metis_partition`) and runs the `Distributor` on every rank;
 nothing in `src/` calls `Mesh::partition()`. `staticheat.cpp` is not built and does not compile.
 
+Follow-ups after belfem-46's first plan round (78a3455, f50317c): `metis_ndp( g, 1 )` works
+(standalone probe against SCLS libmetis: NodeNDP with npes = 1 returns the NodeND permutation), so
+the graph guide no longer only traces the path; a cubic-EoS `Gas` takes the liquid root only after
+`set_liquid_flag( true )`, and the flag is per object (per-point phase selection filed as a design
+change, `todo/cubic_eos_phase_selection.md`). **Christian ruled that the `cut_<n>` sidesets stay
+`DomainType::Default`** so the Maxwell solver does not select them: the only reader of
+`DomainType::Cut` is `cl_Maxwell_FieldList.cpp:383` (thin-cut dof table), while thick cuts carry
+the jump through the abstract nodes. The fix round had added `set_domain_type( Cut )` to three
+homology examples; f50317c removes it and documents the reasoning. The `MaxwellFactory:1195` loop
+over the always-empty `cuts()` is dead code; deleting it is an optional cleanup for belfem-46.
+
 Left as is: closing "Revision History" lines in linalg and container that credit reviews (history,
 Christian's call); a pseudo-code block in the homology guide labelled as such.
 
