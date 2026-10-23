@@ -12,6 +12,7 @@
 The `src/sparse` module provides **sparse matrix storage** and **direct/iterative solver** interfaces for BELFEM. It wraps multiple high-performance solver libraries:
 
 - **UMFPACK** (SuiteSparse): Sequential sparse direct solver
+- **SuperLU**: Sequential sparse direct solver
 - **MUMPS**: Parallel sparse direct solver (MPI)
 - **STRUMPACK**: Parallel sparse direct/iterative solver (MPI, low-rank compression)
 - **PARDISO**: Shared-memory parallel direct solver (Intel MKL)
@@ -33,6 +34,7 @@ The abstraction allows switching solver backends at **compile time** without cha
 > options (the `BELFEM_*` spellings are the generated compile definitions,
 > not cache entries):
 > - `USE_SUITESPARSE=ON` → UMFPACK available (default OFF)
+> - `USE_SUPERLU=ON` → SuperLU available (default ON)
 > - `USE_MUMPS=ON` → MUMPS available (default ON)
 > - `USE_STRUMPACK=ON` → STRUMPACK available (preferred, default ON)
 > - `USE_PARDISO=ON` → PARDISO available (default OFF; ON under the SCLS `mkl` flavor, in parity with `USE_MKL`)
@@ -82,14 +84,16 @@ SpMatrix A_csr(graph, SpMatrixType::CSR);
 SpMatrix A(graph, preferred_matrix_format(SolverType::MUMPS));
 ```
 
-> **Note:** SpMatrix default constructor uses **CSC** format. For solvers that prefer CSR
-> (MUMPS, STRUMPACK, PARDISO, PETSc), always specify `SpMatrixType::CSR` explicitly to avoid performance loss.
+> **Note:** CSC is the default only for the **graph** constructor. The empty constructor
+> `SpMatrix()` leaves the matrix type unset until assignment or loading. For solvers that
+> prefer CSR (MUMPS, STRUMPACK, PARDISO, PETSc), explicitly pass `SpMatrixType::CSR` to
+> the graph constructor.
 
 ### 3. **COO Indices for MUMPS**
 
-MUMPS needs explicit row/column index arrays, but **the solver creates them itself** — 
-`SolverMUMPS` calls `create_coo_indices()` on the matrix before it solves
-(`cl_SolverMUMPS.cpp:716-725`). A caller does not have to:
+MUMPS needs explicit row and column index arrays, but **the solver creates them**.
+`SolverMUMPS` calls `create_coo_indices()` before solving
+(`cl_SolverMUMPS.cpp`, search `create_coo_indices`), so callers do not need to call it:
 
 ```cpp
 SpMatrix A(graph, SpMatrixType::CSR);
@@ -209,15 +213,18 @@ SpMatrix A;
 ```cpp
 SpMatrix A(graph, SpMatrixType::CSR);
 
-// Bounds-checked access (debug mode)
+// operator() needs C++ (0-based) indexing; a debug build asserts it
 real value = A(0, 0);      // Read element (0,0)
 A(2, 3) = 1.5;             // Write element (2,3)
 
-// Read returns zero if element is structurally zero
-real zero = A(1, 5);       // Returns 0.0 if not in sparsity pattern
+// Only the const overload returns zero for an entry outside the pattern
+const SpMatrix & tA = A;
+real zero = tA(1, 5);      // 0.0 if (1,5) is not in the sparsity pattern
 
-// Write requires element to exist in sparsity pattern
-// A(1, 5) = 2.0;          // ERROR if (1,5) is structurally zero
+// The non-const overload (used for reads on a non-const matrix, too) needs
+// the entry in the pattern. A debug build stops with BELFEM_ASSERT; a release
+// build writes into a spare slot behind the values, so the write is lost silently.
+// A(1, 5) = 2.0;          // (1,5) is structurally zero
 
 // Raw data access
 real* values = A.data();
@@ -356,6 +363,9 @@ Unified interface to multiple sparse direct and iterative solver libraries. Auto
 
 #### Construction
 
+Both constructors are **collective**. They synchronize solver settings from rank 0 to all
+ranks, so every rank must construct the `Solver`.
+
 ```cpp
 // Use default solver (determined at compile time)
 Solver solver;
@@ -393,7 +403,13 @@ Matrix<real> X(n, m), B(n, m);
 solver.solve(A, X, B);  // Each column is a separate RHS
 ```
 
+The `Matrix` overload is backend-dependent. PETSc and STRUMPACK abort with
+`BELFEM_ERROR` when it is called; MUMPS, used above, supports it.
+
 #### Solver-Specific Configuration
+
+The `set_petsc()` and `set_mumps_*()` setters affect only their corresponding backends.
+When called on another solver type, they do nothing and issue no warning.
 
 **PETSc (Iterative Solvers):**
 ```cpp
@@ -428,18 +444,12 @@ solver.set_mumps_reordering(
     MumpsParallelReodrdering::PARMETIS
 );
 
-// Enable block low-rank compression.
-// CAVEAT: only reliable AFTER the wrapper's initialize()
-// — a call before it gets its epsilon clobbered from SolverParameters.
-// The supported path is the deck: compression scheme : blr with a
-// compression cutoff 2-3 decades below the nonlinear tolerance; see
-// solver_memory_and_compression.md §4. 1e-4 shown here is the value
-// that silently stalled Newton on 2026-07-06 — do not copy it onto an
-// HTS deck.
-solver.set_mumps_blr(
-    MumpsBlockLowRanking::FactorizationAndSolution,
-    1e-4  // Compression tolerance (see caveat above)
-);
+// Configure block low-rank compression through SolverParameters
+// BEFORE constructing the Solver (see Performance Tip 2). Calling set_mumps_blr()
+// before the first solve preserves the BLR mode, but initialize() resets its
+// epsilon from SolverParameters to 0.0 unless those parameters also select BLR.
+// In a deck, use compression scheme : blr with a cutoff 2-3 decades below
+// the nonlinear tolerance; see solver_memory_and_compression.md §4.
 
 // Error analysis (for debugging)
 solver.set_mumps_error_analysis(MumpsErrorAnalysis::Full);
@@ -523,10 +533,10 @@ SolverParameters params2(params);
 ```cpp
 SolverParameters params(SolverType::PETSc);
 
-// Matrix format (for distributed solvers)
+// Matrix format for distributed solvers. With multiple ranks, PETSc accepts
+// only AIJ, its default. STRUMPACK accepts CSR, its default, or AIJ; any
+// other choice stops the run with BELFEM_ERROR.
 params.set_distributed_matrix_type(DistributedMatrixType::AIJ);
-// or: DistributedMatrixType::CSR
-// or: DistributedMatrixType::CSC
 
 // Reordering for fill reduction
 params.set_reordering_method(ReorderingMethod::METIS);
@@ -538,12 +548,14 @@ params.set_reordering_method(ReorderingMethod::METIS);
 
 // Compression (STRUMPACK, MUMPS)
 params.set_compression_method(CompressionMethod::BLR);  // Block low-rank
+params.set_compression_cutoff(1e-10);  // otherwise the default 1e-8 applies
 // or: CompressionMethod::OFF
 
 // Preconditioner (PETSc)
 params.set_preconditioner(Preconditioner::GAMG);
 
-// Krylov method (PETSc, STRUMPACK)
+// Krylov method: PETSc accepts every KrylovMethod. STRUMPACK accepts only
+// AUTO, PREONLY, GMRES, and BCGS; any other choice stops the run with BELFEM_ERROR.
 params.set_krylov_method(KrylovMethod::GMRES);
 
 // Relative tolerance
@@ -552,6 +564,12 @@ params.set_relative_tolerance(1e-8);
 // Use initial guess (iterative solvers)
 params.set_use_initial_guess(true);
 ```
+
+**Defaults** (`cl_SolverParameters.hpp`): reordering `AUTOMATIC`; compression
+`AUTOMATIC` (off); compression cutoff `1e-8`; preconditioner `ASM`; Krylov method `AUTO`;
+relative tolerance `1e-10`; absolute tolerance `1e-14`; matrix matching enabled; initial
+guess disabled. The distributed matrix type is `CSR`, except that the constructor selects
+`AIJ` for PETSc when more than one rank is used.
 
 #### Querying
 
@@ -589,9 +607,10 @@ params.synchronize();
 
 | Backend | Type | MPI | Shared-Mem | Compression | When to Use |
 |---------|------|-----|------------|-------------|-------------|
-| **UMFPACK** | Direct | No | No | No | Sequential, moderate size (< 100k DOFs) |
+| **UMFPACK** | Direct | No | No | No | Sequential, moderate size |
+| **SuperLU** | Direct | No | No | No | Sequential, default-ON fallback |
 | **MUMPS** | Direct | Yes | Yes | BLR | Parallel, general matrices, robust |
-| **STRUMPACK** | Direct/Iterative | Yes | Yes | BLR, HSS | Parallel, best performance, modern |
+| **STRUMPACK** | Direct/Iterative | Yes | Yes | BLR | Parallel, best performance, modern |
 | **PARDISO** | Direct | No | Yes (OpenMP) | No | Shared-memory parallel, Intel CPUs |
 | **PETSc** | Iterative | Yes | No | N/A | Very large systems, SPD matrices |
 
@@ -601,7 +620,7 @@ params.synchronize();
 - Sequential only
 - Excellent for unsymmetric matrices
 - Mature and stable
-- Best for < 100k DOFs on single node
+- Single node only
 
 **MUMPS:**
 - MPI + OpenMP hybrid parallelism
@@ -613,7 +632,7 @@ params.synchronize();
 **STRUMPACK (Recommended):**
 - MPI + OpenMP hybrid parallelism
 - Best overall performance in BELFEM
-- Low-rank compression (BLR, HSS)
+- Low-rank compression: BELFEM's own settings select BLR or none
 - Both direct and iterative solvers
 - Can be 2× faster than MUMPS (Messe et al. 2023)
 - Preferred for production runs
@@ -633,7 +652,7 @@ params.synchronize();
 
 ### Default Solver Selection
 
-The default solver is determined at compile time (see `en_SolverEnums.hpp:193-203`):
+The default solver is determined at compile time (see `en_SolverEnums.hpp`, search `gDefaultSolver`):
 
 ```cpp
 #ifdef BELFEM_STRUMPACK
@@ -646,6 +665,8 @@ The default solver is determined at compile time (see `en_SolverEnums.hpp:193-20
     gDefaultSolver = SolverType::UMFPACK;    // Sequential
 #elif BELFEM_SUPERLU
     gDefaultSolver = SolverType::SUPERLU;    // Sequential fallback
+#else
+    gDefaultSolver = SolverType::UNDEFINED;
 #endif
 ```
 
@@ -670,6 +691,7 @@ SpMatrix A(graph, preferred_matrix_format(solver));
 
 **Mapping:**
 - UMFPACK → CSC
+- SuperLU → CSC
 - MUMPS → CSR
 - STRUMPACK → CSR
 - PARDISO → CSR
@@ -731,22 +753,27 @@ sparse::create_graph_from_matrix(A, graph_out);  // A must be 0-based; graph_out
 
 ---
 
-### `rcond(A)` - Reciprocal Condition Number
+### `rcond(A)` - Reciprocal Condition Number Estimate
 
-Estimates the reciprocal condition number via CHOLMOD (requires `USE_SUITESPARSE=ON`,
+Returns CHOLMOD's rough reciprocal-condition estimate (requires `USE_SUITESPARSE=ON`,
 default OFF, and an OpenMP-enabled build; aborts otherwise).
+
+What it measures: `rcond` hands the matrix to CHOLMOD as unsymmetric (`stype = 0`), and
+CHOLMOD then factorizes `A*A'` with a Cholesky factorization, not `A` itself (CHOLMOD
+reads the arrays as CSC, so for a CSR matrix the product is `A'*A`). The value returned
+is therefore an estimate for that product, which is about `rcond(A)^2`. Compare it
+against a squared threshold: a matrix with `rcond(A)` near `1e-8` already returns a
+value near `1e-16`.
+
+Side effect: `rcond` changes the matrix to C++ (0-based) indexing and leaves it there.
 
 ```cpp
 SpMatrix A(graph, SpMatrixType::CSR);
 // ... assemble A ...
 
-real rc = rcond(A);
-// rc ≈ 1.0: well-conditioned
-// rc ≈ 1e-16: ill-conditioned (near-singular)
-
-if (rc < 1e-12) {
-    message(InfoLevel::Minimal, "Matrix is ill-conditioned");
-}
+real rc = rcond(A);   // estimate for A*A', about rcond(A)^2
+// rc close to 1.0: well-conditioned
+// rc near machine epsilon: rcond(A) is already near 1e-8
 ```
 
 **Note:** Expensive operation (requires factorization). Use for diagnostics only.
@@ -759,24 +786,30 @@ if (rc < 1e-12) {
 
 ### Pattern 1: Solving a Sparse Linear System
 
+Inside BELFEM, `SolverData` (`cl_FEM_DofMgr_SolverData.cpp`) builds the sparsity graph
+and system matrices from the mesh. This example shows only the `SpMatrix` portion; the
+graph and element matrices are supplied by the caller.
+
 ```cpp
-// Build connectivity graph from FEM mesh
-Graph graph = build_dof_graph(mesh);
-
-// Create sparse matrix
-SpMatrix K(graph, SpMatrixType::CSR);
-
-// Assemble element contributions
-for (Element* e : mesh->elements()) {
-    Matrix<real> Ke = e->stiffness();
-    Cell<index_t> dofs = e->dof_indices();
-
-    for (index_t i = 0; i < dofs.size(); ++i) {
-        for (index_t j = 0; j < dofs.size(); ++j) {
-            K(dofs(i), dofs(j)) += Ke(i, j);
+// Add an element matrix to the global matrix. aDofs contains the element's
+// global dof indices, and every (aDofs(i), aDofs(j)) pair must be in the pattern.
+void
+add_element( SpMatrix & aK, const Cell< index_t > & aDofs, const Matrix< real > & aKe )
+{
+    for ( uint j = 0; j < aDofs.size(); ++j )
+    {
+        for ( uint i = 0; i < aDofs.size(); ++i )
+        {
+            aK( aDofs( i ), aDofs( j ) ) += aKe( i, j );
         }
     }
 }
+
+// graph: the dof connectivity, built elsewhere
+SpMatrix K(graph, SpMatrixType::CSR);
+K.fill(0.0);
+
+// for each element: add_element( K, tDofs, tKe );
 
 // Create RHS vector
 Vector<real> f(n_dofs, 0.0);
@@ -807,9 +840,7 @@ solver.set_symmetry_mode(SymmetryMode::Unsymmetric);
 
 // Solve
 Vector<real> u(n), f(n);
-solver.solve(K, u, f);
-
-// Faster than general solve
+solver.solve(K, u, f);   // the general (unsymmetric) factorization
 ```
 
 ---
@@ -832,7 +863,10 @@ Vector<real> u2(n), f2(n);
 // ... set f2 ...
 solver.solve(K, u2, f2);  // REFACTORIZES: a plain second solve rebuilds the factors on every backend
 
-// To reuse them, arm the frozen scope on a wrapper that supports it (MUMPS):
+// To reuse them, arm the frozen scope on a wrapper that supports it (MUMPS).
+// The wrapper checks the matrix structure and identity, but not its values.
+// If K changes inside the scope, the solve uses the old factors and may return
+// a plausible-looking result without reporting an error. Do not assemble inside it.
 // if ( solver.wrapper()->supports_factorization_reuse() )
 // {
 //     solver.wrapper()->freeze_factorization( K );   // after a successful solve
@@ -850,16 +884,18 @@ SpMatrix A(graph, SpMatrixType::CSR);
 Vector<real> x(n), b(n);
 // ... assemble A and b ...
 
-// Configure PETSc
-Solver solver(SolverType::PETSc);
+// Configure PETSc. The values initially stored in x are used only when
+// requested by the parameters; the default is off, so PETSc starts from zero.
+SolverParameters params(SolverType::PETSc);
+params.set_use_initial_guess(true);
+Solver solver(params);
 solver.set_petsc(
     Preconditioner::GAMG,  // Algebraic multigrid for elliptic problems
     KrylovMethod::CG,      // Conjugate gradient (for SPD)
     1e-10                  // Tight tolerance
 );
 
-// Use initial guess (optional)
-x.fill(0.0);  // Zero initial guess
+// ... assign the initial guess to x ...
 
 solver.solve(A, x, b);
 ```
@@ -872,7 +908,7 @@ solver.solve(A, x, b);
 // Master rank: build and assemble the matrix; workers hold an empty shell
 SpMatrix A;
 if (gComm.rank() == 0) {
-    Graph graph = build_dof_graph(mesh);
+    // graph: the dof connectivity, built on rank 0
     A = SpMatrix(graph, SpMatrixType::CSR);
     // ... assemble A ...
 }
@@ -909,30 +945,35 @@ solver.solve(K_loaded, u, f);
 ### 1. **Choose the Right Solver**
 
 ```cpp
-// Sequential (< 100k DOFs)
+// Sequential
 Solver solver(SolverType::UMFPACK);
 
-// Parallel, general (100k - 10M DOFs)
+// Parallel, general
 Solver solver(SolverType::STRUMPACK);  // Fastest
 Solver solver(SolverType::MUMPS);      // Most robust
 
-// Parallel, very large (> 10M DOFs, SPD)
+// Parallel iterative, SPD
 Solver solver(SolverType::PETSc);
 solver.set_petsc(Preconditioner::GAMG, KrylovMethod::CG, 1e-8);
 ```
 
 ### 2. **Enable Compression for Large Systems**
 
+Select BLR in `SolverParameters` **before** constructing the `Solver`. Calling
+`set_mumps_blr()` before the first solve is insufficient because `initialize()` resets
+the compression tolerance from `SolverParameters`.
+
 ```cpp
 // MUMPS with block low-rank compression
-Solver solver(SolverType::MUMPS);
-solver.set_mumps_blr(
-    MumpsBlockLowRanking::FactorizationAndSolution,
-    1e-4  // Compression tolerance (larger = more compression, less accuracy)
-);
-
-// Can reduce memory by 50-90% for large 3D problems
+SolverParameters params(SolverType::MUMPS);
+params.set_compression_method(CompressionMethod::BLR);
+params.set_compression_cutoff(1e-10);  // larger = more compression, less accuracy
+Solver solver(params);
 ```
+
+The cutoff is a relative tolerance for STRUMPACK and the absolute `CNTL(7)` dropping
+parameter for MUMPS. Keep it 2-3 decades below the nonlinear tolerance; see
+`solver_memory_and_compression.md` §4 for the memory trade-off.
 
 ### 3. **Use Optimal Reordering**
 
@@ -943,8 +984,6 @@ solver.set_mumps_reordering(
     MumpsSerialReodrdering::METIS,
     MumpsParallelReodrdering::PARMETIS
 );
-
-// Can reduce fill-in by 10-100×
 ```
 
 ### 4. **Exploit Symmetry**
@@ -963,8 +1002,8 @@ solver.set_mumps_reordering(
 > triangle satisfies it, so an extraction may pick whichever is cheaper.
 >
 > `MUMPS::initialize()` therefore rejects any symmetric mode with an always-active error rather
-> than accepting one it cannot honor. To enable it, supply one triangle from the wrapper — see
-> `todo/mumps_symmetric_triangle_extraction.md`.
+> than accepting one it cannot honor. Enabling a symmetric mode would require the wrapper to
+> hand MUMPS one triangle.
 >
 > SuperLU is unaffected: its `SymmetricMode` is a pivoting and ordering heuristic, not a
 > triangle-storage contract, so it reads the full matrix as intended.
@@ -981,12 +1020,9 @@ solver.set_symmetry_mode(SymmetryMode::Unsymmetric);
 SolverType solver_type = SolverType::MUMPS;
 SpMatrix A(graph, preferred_matrix_format(solver_type));  // Returns CSR
 
-// Or explicit mapping:
-// UMFPACK → CSC
+// The mapping behind it:
+// UMFPACK, SuperLU → CSC
 // MUMPS, STRUMPACK, PARDISO, PETSc → CSR
-SpMatrixType format = (solver_type == SolverType::UMFPACK)
-                       ? SpMatrixType::CSC : SpMatrixType::CSR;
-SpMatrix A(graph, format);
 ```
 
 ### 6. **Minimize Matrix Copies**
@@ -1030,6 +1066,7 @@ solver.solve(A, x, b);   // collective call
 | Solver | MPI | OpenMP | Best Use Case |
 |--------|-----|--------|---------------|
 | UMFPACK | No | No | Sequential |
+| SuperLU | No | No | Sequential |
 | MUMPS | Yes | Yes | Hybrid parallel |
 | STRUMPACK | Yes | Yes | Hybrid parallel (best) |
 | PARDISO | No | Yes | Shared-memory |
@@ -1115,31 +1152,16 @@ uses an OpenMP reduction, so neither can hit this failure.
 - **Writing:** Requires external synchronization
 - **Solving:** One solve per solver instance at a time
 
-**Example with OpenMP:**
+BELFEM's own assembly is not threaded; its parallelism is MPI. A caller who assembles
+from OpenMP threads must synchronize every write into the matrix externally, for example
+around the `add_element` helper from Pattern 1:
 
 ```cpp
-SpMatrix K(graph, SpMatrixType::CSR);
-
-// Parallel assembly (each thread writes different elements)
-#pragma omp parallel for
-for (int e = 0; e < n_elements; ++e) {
-    Matrix<real> Ke = compute_element_stiffness(e);
-    Cell<index_t> dofs = get_element_dofs(e);
-
-    // Critical section: writing to sparse matrix
-    #pragma omp critical
-    {
-        for (index_t i = 0; i < dofs.size(); ++i) {
-            for (index_t j = 0; j < dofs.size(); ++j) {
-                K(dofs(i), dofs(j)) += Ke(i, j);
-            }
-        }
-    }
+// tKe, tDofs: this thread's element matrix and its global dof indices
+#pragma omp critical
+{
+    add_element( K, tDofs, tKe );
 }
-
-// Serial solve (no threading needed)
-Solver solver;
-solver.solve(K, u, f);
 ```
 
 ---
@@ -1186,28 +1208,33 @@ enum class SymmetryMode {
 ```cpp
 enum class Preconditioner {
     NONE,       // No preconditioning
+    ASM,        // Additive Schwarz (the default)
+    GASM,       // Restricted additive Schwarz (PCASM with PC_ASM_RESTRICT, not PETSc's PCGASM)
+    GAMG,       // Geometric algebraic multigrid (best for elliptic)
     JACOBI,     // Diagonal scaling
     BJACOBI,    // Block Jacobi
-    ASM,        // Additive Schwarz
-    GAMG,       // Geometric algebraic multigrid (best for elliptic)
-    ILU,        // Incomplete LU
-    ICC,        // Incomplete Cholesky (SPD only)
     LU,         // Direct solve as preconditioner
+    ICC,        // Incomplete Cholesky (SPD only)
+    ILU,        // Incomplete LU
+    HMG,        // Hybrid of PETSc preconditioners
+    SPAI,       // Sparse approximate inverse (Grote and Barnard)
     UNDEFINED
 };
 ```
 
-### KrylovMethod (PETSc, STRUMPACK)
+### KrylovMethod (PETSc; STRUMPACK accepts AUTO, PREONLY, GMRES, BCGS only)
 
 ```cpp
 enum class KrylovMethod {
     PREONLY,    // Direct solve only (no Krylov)
     CG,         // Conjugate Gradient (SPD only)
-    GMRES,      // Generalized Minimal Residual (general)
-    BCGS,       // BiConjugate Gradient Stabilized
     CGS,        // Conjugate Gradient Squared
+    IBCGS,      // Improved stabilized BiConjugate Gradient
+    GMRES,      // Generalized Minimal Residual (general)
     TFQMR,      // Transpose-Free QMR
-    AUTO,       // Let solver choose
+    BCGS,       // BiConjugate Gradient Stabilized
+    AUTO,       // the default. PETSc: PREONLY if the preconditioner is LU, else GMRES;
+                // STRUMPACK: always factorization-preconditioned GMRES
     UNDEFINED
 };
 ```
@@ -1233,8 +1260,7 @@ enum class CompressionMethod {
     OFF = 0,       // No compression
     BLR = 1,       // Block Low-Rank compression (explicit opt-in only)
     AUTOMATIC = 2, // the deck default — identical to OFF on every
-                   // library since 2026-08-16; see
-                   // solver_memory_and_compression.md
+                   // library; see solver_memory_and_compression.md
     UNDEFINED = 3
 };
 ```
@@ -1287,10 +1313,12 @@ message(InfoLevel::Default,
 ### 3. **Check Conditioning**
 
 ```cpp
+// rcond() estimates for A*A' (about rcond(A)^2) and leaves A in C++ indexing;
+// see the rcond section above
 real rc = rcond(A);
-if (rc < 1e-12) {
+if (rc < 1e-16) {   // rcond(A) below about 1e-8
     message(InfoLevel::Minimal,
-            "Matrix is ill-conditioned (rcond = %e)", rc);
+            "Matrix is ill-conditioned (rcond(A*A') = %e)", rc);
 }
 ```
 
