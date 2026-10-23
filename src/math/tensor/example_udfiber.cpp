@@ -46,8 +46,12 @@ int main( int    argc,
     real E1   = 235 ;
     real E2   = 20 ;
     real G12  = 18 ;
-    real nu12 = 0.013 ;
+    real nu21 = 0.013 ;          // minor ratio
     real nu23 = 0.25 ;
+
+    // the cyclic set of compliance_matrix(): major nu12, minor nu31 = nu21
+    real nu12 = nu21 * E1 / E2 ;
+    real nu31 = nu21 ;
 
     real G23 = E2 / ( 2.0 * ( 1.0 + nu23 ) );
 
@@ -68,7 +72,7 @@ int main( int    argc,
 
     // elasticity tensor for matrix
     Tensor< real > tLm( 3, 3, 3, 3 );
-    tLf.fill_orthotropic_elasticity( E1, E2, E2, nu23, nu12, nu12, G23, G12, G12 );
+    tLf.fill_orthotropic_elasticity( E1, E2, E2, nu23, nu31, nu12, G23, G12, G12 );
     tLf.to_matrix( tCf );
 
     tLm.fill_isotropic_elasticity( Em, num );

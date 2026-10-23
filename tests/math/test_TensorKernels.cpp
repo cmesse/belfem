@@ -561,13 +561,13 @@ TEST( TensorKernel, InvertSymmetricRoundTrip )
 {
     // C/C-SiC-like orthotropic material
     belfem::real tE1 = 60.0, tE2 = 65.0, tE3 = 20.0;
-    belfem::real tG23 = 8.0, tG13 = 8.5, tG12 = 9.0;
-    belfem::real tNu23 = 0.2, tNu13 = 0.25, tNu12 = 0.1;
+    belfem::real tG23 = 8.0, tG31 = 8.5, tG12 = 9.0;
+    belfem::real tNu23 = 0.2, tNu31 = 0.25, tNu12 = 0.1;
 
     belfem::Matrix< belfem::real > tS( 6, 6, 0.0 );
     belfem::compliance_matrix( tE1, tE2, tE3,
-                                tNu23, tNu13, tNu12,
-                                tG23, tG13, tG12, tS );
+                                tNu23, tNu31, tNu12,
+                                tG23, tG31, tG12, tS );
 
     belfem::Matrix< belfem::real > tC = belfem::inv( tS );
     belfem::Tensor< belfem::real > tT( tC );
