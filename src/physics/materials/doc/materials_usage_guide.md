@@ -60,11 +60,13 @@ real tDensity = tMaterial->density( T );        // WRONG for the mass matrix: th
 Material * tCopper = tFactory.create_material( "copper", 100.0 );
 ```
 
-`set_RRR()` fixes the residual resistivity ρ₀. Every material constant except `mu` (μ₀), `q` (1)
-and `density_correction` (1) starts as NaN, so a metal without an RRR has no ρ(T) and no λ(T). `Metal::set_RRR` also builds the field-dependent
-lookup table when tables are enabled (the factory's third argument, default `true`). A formula
-alloy takes its RRR through the same factory argument; it does not override `set_RRR`, so the
-inherited `Material::set_RRR` aborts with `BELFEM_ERROR`.
+`set_RRR()` determines the residual resistivity ρ₀. Every material constant except `mu` (μ₀), `q` (1), and `density_correction` (1) starts as NaN. Therefore, a metal without an RRR has no usable ρ(T) or λ(T).
+
+`have()` does not reveal this state. The constructor already reports `have( rho )` and `have( lambda )` as true. Without an RRR, `rho( T )` reads the NaN `rho_0` (a debug assert, NaN in release). `lambda( T )` calls an unset routing pointer because the λ spline is built only inside `set_RRR`.
+
+`Metal::set_RRR` also builds the field-dependent lookup table when tables are enabled. The factory's third argument controls this and defaults to `true`.
+
+A formula alloy receives its RRR through the same factory argument. It does not override `set_RRR`, so the inherited `Material::set_RRR` aborts with `BELFEM_ERROR`.
 
 ### 1.5 The field-dependent accessors are `( T, B, beta )`
 
@@ -80,18 +82,19 @@ exists; for an `Alloy`, they read the table and assert its presence.
 
 `MaterialDependency::angleBxJ` is the field-current angle used by the metals' Kohler channel.
 `MaterialDependency::angleNxB` is the tape-normal-field angle used by the HTS J_c channel,
-unfolded to [0, π] since 2026-08-16. The FEM calculator routes on `depends()`, so declare the
+unfolded to [0, π]. The FEM calculator routes on `depends()`, so declare the
 one you actually consume.
 
 ### 1.7 Polynomial coefficients are in descending order
 
 ```cpp
-// lambda( T ) = 0.01 T + 50
+// inside a plugin's <Label>_init( Material * mat ): lambda( T ) = 0.01 T + 50
 mat->set_user_defined_polynomial( MaterialProperty::lambda, std::vector< real >{ 0.01, 50.0 } );
 ```
 
-Highest power first (`fn_polyval.hpp`); the overloads take `Cell< real >` or
-`std::vector< real >`.
+List the coefficients from the highest power to the lowest (`fn_polyval.hpp`). The overloads accept `Cell< real >` or `std::vector< real >`.
+
+Only `UserDefinedMaterial` implements these overloads. On every other material, both base overloads abort with `BELFEM_ERROR`.
 
 ### 1.8 Check `have()` before querying a user-defined material
 
@@ -104,9 +107,9 @@ property dispatches through a null routing pointer.
 
 ### 1.9 The label `buffer` is reserved
 
-`buffer` names the thin-shell φ-formulation buffer layer; the factory maps it to `Magnesia` and
-rejects a user-defined (`usermat`) material registered under that name; a built-in section with
-that label resolves to `Magnesia` and is not checked.
+`buffer` names the thin-shell φ-formulation buffer layer. As a material type, `buffer` maps to `Magnesia`.
+
+The factory rejects the label only for a user-defined (`usermat`) material. Other section forms are not checked. A section that names another builtin (`builtin: copper`) builds that material under the key `buffer`. A section with a `curve` key builds an `Iron`.
 
 ---
 
@@ -181,7 +184,8 @@ void load_bh_curve( const BhCurve * ) ;           // takes ownership AND routes 
 void set_bh_curve( const BhCurve * ) ;            // takes ownership only — use load_bh_curve()
 
 // superconductors — see §7.3 for the full overload set
-real rho_powerlaw( normJ, T, normB, angleNxB ) ;
+real rho_powerlaw( normJ, T, normB, angleNxB ), rho_piecewise( … ), rho_riva( … ) ;   // same arguments
+void set_resistivity_law( ResistivityLaw ) ;      // PowerLaw, Piecewise or Riva
 real jc( normB, angleNxB, T ), n( normB, angleNxB, T ) ;
 void set_jc_function( JcFunction * ), set_n_function( JcFunction * ) ;   // take ownership
 
@@ -204,14 +208,19 @@ Material * create_material( const string & aLabel,
 Material * create_material( const string & aLibraryPath, const string & aLabel );   // plugin
 void       print_material_list( std::ostream & );
 BhCurve  * create_bh_curve( const string & aPath, const string & aLabel );          // HDF5 → BhSplineCurve
-JcFunction * create_jc_function( real aJc0, real aB0, real aK2, real aAlpha );       // modified Kim
+JcFunction * create_jc_function( real aJc0, real aB, real aBc, real aK );           // modified Kim: ( Jc0, B0, k², α )
 JcFunction * create_jc_function( const string & aPath, const string & aLabel );     // database
 ```
 
-Labels are case-insensitive. Anything that is not a built-in label but parses as
-`<Element><integer>…` becomes an `Alloy` (§4.6). File arguments go through
-`material::data_file()`, which searches the run directory first and `$BELFEM_DATA/material`
-second.
+Labels are case-insensitive. A label that is not builtin but parses as `<Element><integer>…` becomes an `Alloy` (§4.6).
+
+File arguments are resolved through `material::data_file()`. The search order is:
+
+1. the run directory;
+2. `<data root>/material/`;
+3. if the path contains a slash, the filename alone under `<data root>/material/`.
+
+The data root is the global `gBelfemDataPath`. It is filled from `$BELFEM_DATA`, or, for an installed tree, from the install data directory when `$BELFEM_DATA` is unset (`search_data_file` in `src/io/filetools.cpp`).
 
 ### 3.3 `BhCurve`
 
@@ -220,18 +229,19 @@ the factory builds from an HDF5 B-H database.
 
 ### 3.4 `JcFunction`
 
-`eval( B, angle )` and `eval( B, angle, T )`, each function overriding the arity that matches
-the dependencies it declares through `JcParameter`; both base versions raise an error. Three implementations:
-`JcFunctionModifiedKim` (analytic, §9.6), `JcFunctionDatabase` (tensor-mesh table over
-(T, log₁₀B, angle) with log-scaled values; T and B above the table are clamped to the table
-range, the angle is wrapped with π periodicity, and below the table's lowest field, `n` and a `jc`
-table with a measured self-field curve are continued to B = 0 with a C1 join in B and no increase
-with |B|; see `share/material/README.md`), `JcFunctionUserDefined`
-(plugin). In the shipped tables, `jc` is non-increasing in T and |B|, `n` is non-increasing in
-|B| and bounded, and the table interpolant is C1 across element faces. These are regularizations
-for the solver, not physical laws. A table that rises with |B| at its lowest field is refused at
-load time, and an edited table must be re-projected. The README explains why and how ("Why the
-tables are monotone and smooth", "Using an older or modified table").
+`eval( B, angle )` and `eval( B, angle, T )` are the two evaluation forms. Each implementation overrides the form that matches the dependencies declared through `JcParameter`. Both base versions raise an error.
+
+There are three implementations:
+
+- `JcFunctionModifiedKim` — analytic, §9.6.
+- `JcFunctionDatabase` — a tensor-mesh table over `(T, log₁₀B, angle)` with log-scaled values. T is clamped to the table range at both ends. B above the table uses the highest field. The angle window covers `[0, π]`. An angle outside that window is shifted by one period π, so every angle in `[−π, 2π]` lands inside.
+- `JcFunctionUserDefined` — plugin implementation.
+
+Below the table's lowest field, `n` and a `jc` table with a measured self-field curve continue to B = 0 with a C1 join in B and no increase with |B|. See `share/material/README.md`.
+
+In the shipped tables, `jc` is non-increasing in T and |B|. `n` is non-increasing in |B| and bounded. The table interpolant is C1 across element faces. These properties regularize the solver; they are not physical laws.
+
+A table that rises with |B| at its lowest field is refused at load time. An edited table must be re-projected. The README explains why and how in “Why the tables are monotone and smooth” and “Using an older or modified table.”
 
 ### 3.5 `Abundance`
 
@@ -244,23 +254,16 @@ metals (`M`) and by YBCO's Callaway model.
 
 ### 4.1 Pure metals — `Metal`
 
-Every metal constructor follows a fixed sequence of `create_*()` calls; Copper is the reference
-implementation. The order matters because later steps read earlier curves:
+Every metal constructor follows a fixed sequence of `create_*()` calls. Copper is the reference implementation. The order matters because later steps use curves created earlier.
 
-1. `set_constants()` — molar mass, melting point, reference density, Sommerfeld γ and Debye β
-   (writing β after M derives `debye0K`).
-2. `create_cp()` — the Sommerfeld–Debye cubic plus log-log Bézier segments (§9.3).
-3. `create_alpha()` — the ΔL/L Bézier, then `create_cryo_expansion()`, which fits the
-   cryogenic branch against c_p and builds the α spline and its integral (§9.4).
-4. Debye curve and resistivity anchor — from c_p (`compute_debye_from_cv` at 12–14 K: Copper,
-   Silver, Lead), from measured ρ(T) (`compute_debye_from_rho`: Iron, Nickel), or a fitted
-   curve (Aluminum, Chromium, Indium, WhiteTin); then `set_rho_i_ref()` for the Bloch–Grüneisen
-   amplitude.
-5. `set_lambda_coefficients()` — the Hust form of λ(T) (§9.2).
-6. `create_kohler()` — the longitudinal and transverse magnetoresistance curves (§9.5).
-7. `create_mech()` — the quasi-harmonic E(T) and ν(T) curves from the thermal strain (§9.7).
-8. `set_RRR()` if an RRR was given — fixes ρ₀ and, with tables enabled, builds
-   `<label>_RRR<n>.hdf5`.
+1. `set_constants()` sets the molar mass, melting point, reference density, Sommerfeld γ, and Debye β. Writing β after M derives `debye0K`.
+2. `create_cp()` creates the Sommerfeld–Debye cubic and the log-log Bézier segments (§9.3).
+3. `create_alpha()` creates the ΔL/L Bézier. It then calls `create_cryo_expansion()`, which fits the cryogenic branch against c_p and builds the α spline and its integral (§9.4).
+4. The Debye curve and resistivity anchor are created either from c_p (`compute_debye_from_cv` at 12–14 K for Copper, Silver, and Lead) or from a fitted curve (Aluminum, Chromium, Indium, WhiteTin, Iron, and Nickel in `create_debye_and_rho`). `set_rho_i_ref()` then sets the Bloch–Grüneisen amplitude. Iron and Nickel derive that amplitude from one measured resistivity at 295 K after removing the magnon term. `compute_debye_from_rho` exists, but no constructor calls it.
+5. `set_lambda_coefficients()` sets the Hust form of λ(T) (§9.2).
+6. `create_kohler()` creates the longitudinal and transverse magnetoresistance curves (§9.5).
+7. `create_mech()` creates the quasi-harmonic E(T) and ν(T) curves from the thermal strain (§9.7).
+8. `set_RRR()` runs if an RRR was supplied. It fixes ρ₀ and, with tables enabled, builds `<label>_RRR<n>.hdf5`.
 
 ```cpp
 Material * tCu = tFactory.create_material( "copper", 200.0 );
@@ -273,18 +276,24 @@ All nine metals provide c_p, α, E, ν, ρ(T), λ(T), θ_D(T), density, and a Ko
 
 ### 4.2 Ferromagnetic metals — `Iron`, `Nickel`
 
-Add to `Metal`: a reduced-magnetization curve (Crangle & Goodman 1971), the magnon term of the
-resistivity below the Curie point (`rho_mag`), a Debye curve inverted from measured resistivity
-with that term removed, and a Bloch–Grüneisen exponent of 4.5 instead of 5. Nickel's elastic
-moduli are those of the magnetically saturated state; the ΔE dip of demagnetized nickel is not
-represented (the class header of `cl_Material_Nickel.hpp` explains why). Neither class supplies a B-H curve of its own; assign one with `load_bh_curve()` if the magnetic
-solver needs it.
+`Iron` and `Nickel` add the following to `Metal`:
+
+- a reduced-magnetization curve from Crangle & Goodman 1971;
+- the magnon term of the resistivity below the Curie point (`rho_mag`);
+- a fitted Debye curve whose Bloch–Grüneisen amplitude is anchored at a measured resistivity after removing that term;
+- a Bloch–Grüneisen exponent of 4.5 instead of 5.
+
+Nickel's elastic moduli describe the magnetically saturated state. The ΔE dip of demagnetized nickel is not represented. The class header of `cl_Material_Nickel.hpp` explains why.
+
+Neither class supplies its own B-H curve. If the magnetic solver needs one, assign it with `load_bh_curve()`.
 
 ### 4.3 Lookup alloy — `HastelloyC276`
 
-A `Metal` of type `LookupAlloy` with its own fitted c_p, α, E, ν, ρ(T), λ(T) and magnetic
-susceptibility χ(T). No field dependence: it declares neither Kohler dependencies nor a table,
-and only the `( T )` accessors apply.
+`HastelloyC276` is a `Metal` of type `LookupAlloy`. It has its own fitted c_p, α, E, ν, ρ(T), and λ(T).
+
+A magnetic susceptibility fit χ(T) is prepared in `create_mu()`, but it is not routed. Therefore, Hastelloy C-276 reports `mu` = μ₀.
+
+The material has no field dependence. It declares neither Kohler dependencies nor a table, so only the `( T )` accessors apply.
 
 ### 4.4 High-temperature superconductor — `YBCO`
 
@@ -296,7 +305,7 @@ The superconducting resistivity is the E–J power law with J_c and n supplied a
 
 ```cpp
 Material * tYbco = tFactory.create_material( "ybco" );
-tYbco->set_jc_function( tFactory.create_jc_function( "jc_data.hdf5", "YBCO" ) );
+tYbco->set_jc_function( tFactory.create_jc_function( "superox.hdf5", "jc" ) );
 tYbco->set_constant( MaterialProperty::n, 25.0 );
 real tRho = tYbco->rho_powerlaw( tNormJ, tT, tNormB, tAngleNxB );
 ```
@@ -413,7 +422,7 @@ takes the `( T, B, beta )` path.
 `T`, `normB` (in-plane field magnitude), `angleBxJ` (field–current angle, Kohler), `angleNxB`
 (normal–field angle, HTS), `normH` (field strength, μ of ferromagnets), `normJ`, `Jc`, `rho`.
 
-`angleNxB` is unfolded to [0, π] since 2026-08-16: β = acos(n·b/|b|), where +n is the
+`angleNxB` is unfolded to [0, π]: β = acos(n·b/|b|), where +n is the
 master-side facet normal (the layer-stack direction). β < π/2 means the field has a component
 along +n. Measured jc(β) tables consume the full range; Kim-type analytic laws are even in β and
 unaffected. Despite the historical name, this is NOT the angle between current and field — that
@@ -421,45 +430,34 @@ is the metals' `angleBxJ` Kohler channel.
 
 ### 7.3 Assembly contract: the full-signature policy for J_c / n
 
-The FEM assembly path always calls the **full** T-bearing HTS overloads —
+The FEM assembly path always calls the full T-bearing HTS overloads:
 
 ```cpp
 rho_powerlaw   ( normJ, T, normB, angleNxB [, x, y, z, t] );
 rho_piecewise  ( normJ, T, normB, angleNxB [, x, y, z, t] );
-drho_powerlaw_dJ / drho_piecewise_dJ  // same argument lists
+rho_riva       ( normJ, T, normB, angleNxB [, x, y, z, t] );
+drho_powerlaw_dJ / drho_piecewise_dJ / drho_riva_dJ  // same argument lists
 ```
 
-— regardless of what a given material actually depends on. **The material, not the caller,
-decides which arguments matter:** internally, `Material::jc_eval()` and `Material::n_eval()`
-route on the declared dependencies of the attached `JcFunction` / n-function
-(`depends_on( JcParameter::T )` selects the `eval( B, angle, T )` or `eval( B, angle )`
-override) and fall back to the plain constants (`MaterialProperty::jc` / `MaterialProperty::n`)
-when no function is attached.
+It does this regardless of which variables a material actually depends on.
+
+The material's `ResistivityLaw` selects the law. Set it with `set_resistivity_law`, or use `resistivity type` = `powerlaw`, `piecewise`, or `riva` in the input file. Riva has only these full signatures.
+
+The material, not the caller, determines which arguments matter. Internally, `Material::jc_eval()` and `Material::n_eval()` inspect the declared dependencies of the attached `JcFunction` or n-function. `depends_on( JcParameter::T )` selects `eval( B, angle, T )` or `eval( B, angle )`. If no function is attached, the code uses the plain constants `MaterialProperty::jc` and `MaterialProperty::n`.
 
 Consequences for material implementers:
 
-- Provide jc/n through a `JcFunction` (or as constants via `set_constant`). Declare the
-  dependencies truthfully — the routing, and the FEM dispatch above it, trust the `depends()` /
-  `dependencies()` flags completely.
-- Override the `eval()` arity that matches your declared T-dependence (both defaults raise
-  errors).
-- There is no T-only callback for J_c or n: registering either with the one-argument
-  `set_user_defined_function( …, MaterialDependency::T, f )` is rejected at load time. User
-  superconductors go through `JcFunction`.
-- The reduced overloads (`(normJ)`, `(normJ, T)`, `(normJ, normB, angleNxB)`, and their defect
-  twins) are not used by the assembly path, and nothing in the tree calls them. The `(normJ, T)`
-  forms read `jc_custom(T)` / `n_custom(T)`, which no registration path populates any more, so
-  they abort on every material; do not call them.
-- ρₙ (the normal-matrix branch of the parallel combination) is always evaluated at the local
-  temperature `T`; in magnetics-only problems the caller passes `T = gTbulk`, so nothing changes
-  there.
+- Provide jc and n through a `JcFunction`, or provide them as constants through `set_constant`. Declare dependencies truthfully. The routing and the FEM dispatch trust the `depends()` / `dependencies()` flags completely.
+- Override the `eval()` arity that matches the declared T-dependence. Both default implementations raise errors.
+- There is no T-only callback for J_c or n. Registering either with the one-argument `set_user_defined_function( …, MaterialDependency::T, f )` is rejected at load time. User superconductors must use `JcFunction`.
+- The reduced overloads (`(normJ)`, `(normJ, T)`, `(normJ, normB, angleNxB)`, and their defect twins) are not used by the assembly path. The `(normJ)` form needs constant `jc` and `n`, evaluates ρₙ at `gTbulk`, and is called by tests. The `(normJ, T)` forms read `jc_custom(T)` / `n_custom(T)`, but no registration path populates them. On a built-in material, the base implementation aborts with `BELFEM_ERROR`; on a `UserDefinedMaterial`, the override calls an empty (null) function slot. Do not call them.
+- ρₙ, the normal-matrix branch of the parallel combination, is always evaluated at the local temperature `T`. In magnetics-only problems, the calculator passes `gTbulk`, clamped to [`gTmin`, `T_max`] of the material when it lies outside that window.
 
 ### 7.4 Density and the undeformed mesh
 
-Real density changes with temperature — but **all BELFEM computations run on the undeformed
-mesh**, and the transport properties are already corrected for thermal expansion. The thermal
-mass matrix must therefore use the density at which the mesh is *not* deformed, which is by
-default room temperature:
+Real density changes with temperature. However, all BELFEM computations use the undeformed mesh, and the transport properties already include thermal-expansion corrections.
+
+The thermal mass matrix must therefore use the density associated with the undeformed mesh. By default, that is room temperature:
 
 ```cpp
 // CORRECT — reference density of the undeformed mesh:
@@ -471,9 +469,11 @@ real tDensity = tMaterial->have( MaterialProperty::density )
 real tDensity = tMaterial->density( T );
 ```
 
-`calculator::MaxwellData` caches this value once at construction (`density()` accessor); do not
-re-derive it per integration point. `density( T )` itself is ρ_ref / l(T)³ with l the relative
-length from the α spline's integral.
+`calculator::MaxwellData` computes this value once during construction, multiplies it by the constant `density_correction` (default 1), and returns the result from its `density()` accessor. The factor lets a meshed volume carry the mass of a thinner layer. Do not re-derive the value at each integration point.
+
+The H-formulation thermal mass (`mt_thermal_h.cpp`) uses the cached value. The φ-formulation kernel `T_phi` (`mt_thermal_phi.cpp`) calls `density( gTroom )` directly, so it applies neither `density_correction` nor the `ref_density()` fallback.
+
+`density( T )` itself is ρ_ref / l(T)³, where l is the relative length from the α spline's integral.
 
 ---
 
@@ -499,15 +499,19 @@ real tRho = tYbco->rho_powerlaw( 1e8, 77.0, 2.0, 0.5 );                        /
 **HTS with tabulated J_c and n**
 
 ```cpp
-tYbco->set_jc_function( tFactory.create_jc_function( "jc_data.hdf5", "YBCO"   ) );
-tYbco->set_n_function(  tFactory.create_jc_function( "n_data.hdf5",  "YBCO_n" ) );
+tYbco->set_jc_function( tFactory.create_jc_function( "superox.hdf5", "jc" ) );
+tYbco->set_n_function(  tFactory.create_jc_function( "superox.hdf5", "n"  ) );
 ```
+
+The label is the HDF5 group name. The shipped tables in `share/material/` store both functions in one file, in the `jc` and `n` groups.
+
+Only the label `"jc"` is read as a J_c table. Every other label is treated as an n table.
 
 **A ferromagnet with a B-H curve**
 
 ```cpp
 Material * tIron = tFactory.create_material( "iron", 30.0 );
-tIron->load_bh_curve( tFactory.create_bh_curve( "MatData/bhdata.hdf5", "Iron" ) );   // not set_bh_curve: that stores without routing
+tIron->load_bh_curve( tFactory.create_bh_curve( "bhdata.hdf5", "SAE1010" ) );   // not set_bh_curve: that stores without routing
 real tH  = tIron->H( 1.5 );      // A/m for B = 1.5 T
 real tMu = tIron->mu( 1000.0 );  // H/m at H = 1000 A/m
 ```
@@ -580,14 +584,23 @@ mesh; `Metal` evaluates the curves directly when no table exists, `Alloy` requir
 
 ### 9.6 HTS power law and the modified Kim model
 
-E = E_c (J/J_c)ⁿ  →  ρ_powerlaw = (E_c / J_c) · (J/J_c)^(n−1), with E_c = 10⁻⁴ V/m by default.
+E = E_c (J/J_c)ⁿ  →  ρ_PL = (E_c / J_c) · (J/J_c)^(n−1), with E_c = 10⁻⁴ V/m by default.
 
-`JcFunctionModifiedKim( Jc0, B0, k², α )`:
+`rho_powerlaw` returns the parallel combination with the normal-state resistivity:
+
+ρ = 1 / (1/ρₙ + 1/ρ_PL)
+
+Here, ρ_PL is floored at `mRhoMin` (default 0).
+
+`rho_riva` uses the same parallel model (Duron et al. 2004; Riva 2021, Ch. 5). It adds guards for a vanishing J_c, overflow, and n → 1. `rho_piecewise` blends the power law into the normal state.
+
+`JcFunctionModifiedKim( Jc0, B0, k², α )` uses
 
 J_c(B, θ) = Jc0 / [ 1 + √(k² sin²θ + cos²θ) · B/B0 ]^α
 
-— the anisotropic Kim–Anderson form; the factory's four arguments map to (Jc0, B0, k², α) in
-that order. Tabulated J_c and n come from `JcFunctionDatabase`.
+This is the anisotropic Kim–Anderson form. The factory's four arguments map to (Jc0, B0, k², α) in that order.
+
+Tabulated J_c and n come from `JcFunctionDatabase`.
 
 ### 9.7 Elastic moduli — quasi-harmonic K and G on the thermal strain
 
@@ -638,12 +651,12 @@ Kamm & Alers, Rayne & Chandrasekhar, Alers et al., Palmer & Lee, Kim & Ledbetter
 softening constants. Blanke's compilation cites no sources and shows no data points; it is used only to
 bound the range: where the quasi-harmonic E(T) departs from Blanke's curve by more than 5 % in shape
 (both normalized at room temperature), the material's `T_max` is lowered to that temperature — copper
-1000 K, silver 900 K, chromium 570 K, white tin 400 K. Iron (855 K) and aluminum (never beyond 10 %)
+1000 K, silver 900 K, chromium 570 K, white tin 400 K. Iron (860 K) and aluminum (never beyond 10 %)
 keep their ceilings. All served moduli are dynamic moduli made isothermal; static moduli, which an
 elastostatic calculation would prefer, are lower for metals with anelastic relaxation at low frequency;
 lead, where the difference is 50 %, is served at the static level; for the others it is a few percent.
 
-The Grüneisen parameter is no longer part of the closure. It is printed by the `material` tool as a
+The Grüneisen parameter is not part of the closure. It is printed by the `material` tool as a
 diagnostic, γ = α_V K_S/(ρ c_p) at 298.15 K, the temperature of the printed density, and retains its
 role for the expansion curve: an independent cross-check that reads about 2 for a metal whose α, c_p, ρ
 and K are mutually consistent. Evaluated along the temperature axis from the served moduli it rises
@@ -706,20 +719,21 @@ sizes the arrays. Constants and non-constant properties share the enumeration; e
 | `density_correction` | 38 | - | density scaling factor, to correct solder thickness |
 | `rho0_pure` | 39 | — | resistivity from TPCR for pure metals |
 
-Units and meanings are the header's own comments. Two of them are imprecise as of
-2026-08-25: `A_bloch_gruen` is marked dimensionless but carries Ω·m, and `rho0_pure` has no unit
+Units and meanings are the header's own comments. Two of them are imprecise:
+`A_bloch_gruen` is marked dimensionless but carries Ω·m, and `rho0_pure` has no unit
 and is a resistivity [Ω·m].
 
 The `mu` row's "defined as ∂B/∂H" is imprecise, and worth unpicking because the Newton path
 depends on it. `mu` is index 5, i.e. inside the **non-constant** range — a material may hold a
 constant permeability, or a B-H curve, or a custom `mu( H )`, and loading a curve repoints
-`mFunctionMu` at `mu_bhcurve` (`cl_Material.cpp:958-960`).
+`mFunctionMu` at `mu_bhcurve` (`Material::load_bh_curve` in `cl_Material.cpp`).
 
 - For a **constant** permeability B = μH is linear, so B/H and ∂B/∂H are the same number and the
   label is harmless. `dmudH_const()` returns a zero derivative alongside it
-  (`cl_Material.hpp:2112-2116`).
+  (`Material::dmudH_const` in `cl_Material.hpp`).
 - As soon as μ varies with H they part company. `mu` is then the **secant** permeability B/H
-  (`cl_BhCurve.hpp:31`), and `dmudH` is **dμ/dH** (`:32`, `cl_Material.hpp:1043`) — *not* the
+  (`cl_BhCurve.hpp:31`), and `dmudH` is **dμ/dH** (`cl_BhCurve.hpp:32`, `Material::dmudH` in
+  `cl_Material.hpp`) — *not* the
   differential permeability.
 
 If you need ∂B/∂H — the tangent a Newton iteration wants — build it from both. For B = μ(H)·H,
@@ -732,18 +746,11 @@ dB/dH = mu + H * dmudH
 
 ## 11. Thread Safety
 
-BELFEM parallelizes with MPI and is deliberately not thread-safe internally
-(`doc/coding_philosophy.md`). Within that policy the materials module behaves as follows:
+BELFEM parallelizes with MPI and is deliberately not thread-safe internally (`doc/coding_philosophy.md`). Within that policy, the materials module behaves as follows:
 
-- Construct and configure every material on the master thread, before any parallel region;
-  `MaterialFactory` and every `set_*()` are unsynchronized.
-- After construction the property accessors are `const` and touch no mutable state in
-  `Material`, `Metal`, `BhSplineCurve` or `JcFunction`; the lookup-table evaluation is `const`
-  as well. Concurrent read-only queries from OpenMP threads are therefore expected to be safe,
-  but this is a design intent, not a verified contract — protect the calls with
-  `#pragma omp critical` if in doubt.
-- Never mutate a material after it has been assigned to mesh blocks (see the contracts
-  document).
+- Construct and configure every material on the master thread, before entering any parallel region. `MaterialFactory` and every `set_*()` operation are unsynchronized.
+- Concurrent queries are not safe, even when they are read-only. The accessors are `const`, but lookup tables — including a metal's ρ table, an `Alloy`, and a `JcFunctionDatabase` — evaluate through `Database`. `Database` writes shape-function values into per-object scratch (`mN` in `src/physics/database/cl_Database.hpp`). Two threads querying the same material can race on that buffer. Protect calls from OpenMP threads with `#pragma omp critical`.
+- Never mutate a material after assigning it to mesh blocks (see the contracts document).
 
 ---
 
