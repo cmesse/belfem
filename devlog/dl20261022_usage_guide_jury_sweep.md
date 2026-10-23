@@ -1,0 +1,220 @@
+# Usage-guide jury sweep: all 22 module usage guides audited against the source
+
+**Date:** 2026-10-22
+**Purpose:** Overnight staleness sweep requested by Christian: run the blind two-auditor jury over
+every `src/**/doc/*usage_guide*.md`, one guide at a time, and verify every finding against the
+source before reporting. No guide edited; fixes await approval.
+**Module:** all modules with a usage guide (circuit, comm, containers, core, fem/interpolation,
+fem/iwg, fem/kernel (dof manager), fem/maxwell, homology, io, linalg (lapack, linalg),
+math/graph, math/quaternion, math/tensor, mesh, numerics/spline, physics/database,
+physics/gasmodels, physics/gastables, physics/materials, sparse)
+**AIs involved:** Claude Opus 5.5 (driver, mechanical pre-registration, verification and
+reconciliation via seven verification subagents, spot checks); Codex `gpt-5.6-terra`/high and
+Grok `grok-4.7`/high (blind jury, one round per guide)
+**Status:** AUDIT COMPLETE — 22 of 22 guides audited by both seats and verified; no guide or
+source file changed
+**Verification:** source trace for every finding (each citation re-opened at HEAD e9670bc /
+76918d0); one compile-only probe (`clang++ -fsyntax-only` against the real linalg headers, both
+`-DBELFEM_ARMADILLO` and `-DBELFEM_BLAZE`) for linalg F1/F3/F4; installed `cholmod.h` for sparse
+F21. No build, no test, no reproducer. Every finding below is **reviewed**, not verified
+**Exchange:** `tmp/ai_exchange/review_<stem>_usage_guide.md` (22 files: pre-registration, CODEX,
+GROK, verification, reconciliation); driver and subjects in `tmp/ai_exchange/usage_guide_sweep/`
+
+## Summary
+
+Every usage guide has drifted from the code, most of them badly. The common shape: the guides were
+written against an older API, so their examples call methods that no longer exist or have
+changed arity, and several examples have ownership errors (double free, use-after-free, leaks)
+or MPI recipes that deadlock. About 131 confirmed P1 findings (following the guide gives wrong
+behaviour, an abort, or code that does not compile) across 21 guides; `database` has none.
+Roughly 25 auditor claims were refuted outright, among them five auditor P1s. The sweep also
+surfaced about a dozen defects in the **source**, not the docs; those are routed to Christian.
+None of the fixes touches the cohomology core.
+
+## Process
+
+- Driver `usage_guide_sweep/run_sweep.sh`, sequential. Per guide: a mechanical `# CLAUDE`
+  pre-registration (`mech_check.py`: every cited path and `file:line` exists), a staleness
+  brief (`subject_<stem>.md`: APIs and signatures, behaviour, citations, CMake and input keys,
+  omissions; P1/P2 with confidence), then `cross_review.sh --jury`.
+- Quota: the first night stopped at `io` with both seats out (Codex usage limit, Grok 402). The
+  driver was fixed to skip a guide only when a non-failed CODEX entry exists and to stop when
+  both legs fail; the 13 failed files were moved to `failed_quota/`. The rerun from 01:46 audited
+  the remaining 13; Codex ran out again on `sparse`, and its leg was rerun blind at 06:48 under a
+  temp slug (`rerun_sparse_codex.sh`), so it did not see Grok's entry.
+- Verification: seven subagents, each finding labelled CONFIRMED/REFUTED/UNVERIFIABLE with quoted
+  evidence, severity re-graded where warranted, reconciliation table appended per file. Claude
+  spot-checked at least two P1s per batch against the source; none failed.
+
+## Counts (from the reconciliation tables)
+
+| guide | findings | confirmed | refuted (whole or part) | confirmed P1 |
+|---|---|---|---|---|
+| circuit | 13 | 13 | 0 | 4 |
+| comm | 20 | 16 | 5 | 4 |
+| container | 16 | 14 | 2 | 2 |
+| core | 32 | 30 | 1 | 9 |
+| database | 12 | 10 | 1 | 0 |
+| dof_manager | 27 | 26 | 1 | 13 |
+| gasmodels | 21 | 20 | 1 | 7 |
+| gastables | 23 | 19 | 4 | 6 |
+| graph | 28 | 24 | 2 | 8 |
+| homology | 26 | 25 | 1 | 18 |
+| interpolation | 34 | 32 | 1 | 5 |
+| io | 20 | 20 | 0 | 5 |
+| iwg | 27 | 26 | 0 | 12 |
+| lapack | 13 | 13 | 0 | 3 |
+| linalg | 17 | 16 | 1 | 3 |
+| materials | 18 | 17 | 1 | 3 |
+| maxwell | 18 | 18 | 1 | 10 |
+| mesh | 24 | 24 | 0 | 10 |
+| quaternion | 9 | 9 | 1 | 1 |
+| sparse | 21 | 20 | 0 (4 partial) | 5 |
+| spline | 13 | 13 | 0 | 3 |
+| tensor | 13 | 12 | 2 | 1 |
+
+Counts are greps over the tables, so they are approximate where a row carries a mixed verdict.
+
+## Confirmed P1s, per guide (detail and evidence in each exchange file)
+
+- **circuit:** hybrid decks take node names, not indices; `CircuitResults.txt` IZ lags one step;
+  the pitfall row has the build order wrong (factory before kernel); `userdefined` writes to
+  `BC(tCount-i)`.
+- **comm:** `send("literal",1)` binds the scalar overload and aborts; `-DUSE_MPI=OFF` fails to
+  configure; `omp barrier` inside `omp master`; `gComm` is not defined by the header.
+- **container:** GA workflow null dereference and leak; `Cell<int>(100)` only reserves.
+- **core:** serial `rand()` can return 1.0; Timer pitfall recommends `stop()`; `filename()` and
+  `format_with_leading_zeros` examples wrong (the latter returns a format string,
+  `stringtools.cpp:1147-1149`); Example 4 `determinant()`; Example 7 assert fires; Example 1
+  `gComm`; `message()` undeclared; `x() +=` on a by-value accessor.
+- **dof_manager:** initialize/set_solver pitfall; E/I matrices null by default; D stored negated;
+  `SpMatrix::set_value` missing; `owned_elements`, `number_of_integration_points`,
+  `compute_jacobian(Element*)`, `owned_nodes`/`aura_nodes`, `InfoLevel::Info` do not exist; the
+  `heat_flux_x` layout is interleaved; Pattern 1 use-after-free, Pattern 3 double free; the
+  quick start is not a transient.
+- **gasmodels:** equilibrium example passes a fresh vector as the element inventory
+  (`cl_Gas.cpp:1896`); the formation table is normalized, not atom counts; `remix(x,false,false)`
+  leaves state stale; HELMHOLTZ aborts above `mPmax`; the Mach snippet redeclares `M`;
+  `dα_dδ`/`dα_dτ` do not exist; a cubic EoS never selects the liquid root.
+- **gastables:** reserve-only `Cell` indexed (twice) and `Cell::length()`; the missing-species
+  fallback is unreachable; Pattern 5 reaction enthalpy wrong under the per-species H shift;
+  `heat_spline->deval` is molar Cp; POLY mode zeroes synthesized transport.
+- **graph:** two-pass pattern dereferences null; one-argument `bfs` and the pseudo-peripheral
+  search assume indices that are never set; `InfoLevel::Warning` and
+  `DofManager::apply_permutation` do not exist; tagged `send`/`receive` arity; ordering wrappers
+  turn a leftover flag into a self-loop; METIS debug loop indexes unset owners.
+- **homology (18):** `CutFactory` arity and `{}` temporary; rank-0-only workflow deadlocks;
+  `mPeriodicFactory` uninitialized; Topology/DomainType, Protoshell, CutProcessor, CutData APIs;
+  `thin_shell_facets` cleared by `run()`; `save_debug_meshes`, `add_abstract_dof` absent;
+  terminal ids vs indices; `run()` overwrites index and phi; double frees; Smith s/t labels and the
+  Betti example. All doc-side or outside the cohomology core.
+- **interpolation:** `Map::contains/count`; SideSet/Facet methods; Hermite example at ξ=0;
+  `compute_facet_orientation` absent; `cout << Matrix`.
+- **io:** `BELFEM_ASSERT` described as aborting in release; `temperature = 300 C` without `;`
+  creates no key; `max iterations` vs `max_iterations`; one HDF5 file per thread on a
+  non-thread-safe HDF5 (`H5pubconf.h:347`); Pattern 2 solver API does not compile.
+- **iwg (12):** `set_omega` before `create_field`; `compute_mkf` on StaticHeat; per-element
+  `reset_flags()`; leak and double free; nonexistent IWG types; TransientHeatConduction listed as
+  safe with 1.0/111.0 placeholders; Example 4 without a material; `Mesh(comm)`; BDF ramp off by
+  one; `rho()` used as density; conductivity tangent; braced temporary in `collect_node_data`.
+- **lapack:** `gees` hides `sort='N'` (`fn_gees.hpp:421`), a callback alone does not sort;
+  `gesvd` and `geev` take two job characters, so `(...,'A',false)` binds `false` to the second.
+- **linalg:** copy-init from an expression fails on Armadillo (probe); Blaze leaves `Vector(3)`
+  uninitialized; `Matrix / scalar` does not exist on either backend (probe).
+- **materials:** label `"YBCO"` loads the table as an n table (`cl_JcFunction_Database.hpp:148`
+  `mIsN = aLabel != "jc"`; guide `:299`); `const` evaluation writes scratch, so not thread-safe;
+  Hastelloy χ(T) not routed (μ = μ0).
+- **maxwell (10):** `IWG_MaxwellPostproc` arity and `kernel->solve()`; `set_tolerance`;
+  `create_facets`/`create_elements`; `Block::set_type`; block selection order; `set_solver` after
+  `initialize`; manual cut API; `PartitionMethod::METIS`; the §4.2 driver vs `belfem.cpp`;
+  `rho(T,B,beta)` is Kohler, not E-J.
+- **mesh (10):** MPI recipes deadlock (rank-0-only constructor); `partition` is a no-op off the
+  master (`cl_Mesh.cpp:1185`); order-3 3-D tensor example aborts; LINE5/TRI15 abort `finalize()`;
+  connectivity not computed on access; `flag_curved_elements` aborts on pyramids, TET20, HEX64;
+  fields lost in `.hdf5`; duplicate nodes leak; edge/face fields zero length; `save_fields` omits
+  globals and time.
+- **quaternion:** `constant::pi` without `constants.hpp`.
+- **sparse:** `set_mumps_blr` before initialize is clobbered (BLR at ε=0); CSR/CSC abort under
+  PETSc at >1 rank and CSC under distributed STRUMPACK; STRUMPACK rejects CG, CGS, TFQMR, IBCGS
+  although STRUMPACK is the default solver; Pattern 1 and the OpenMP example call
+  `build_dof_graph`, `compute_element_stiffness`, `get_element_dofs`, which exist nowhere;
+  `rcond()` result read as rcond(A) (see F21 below).
+- **spline:** the help matrix must also match the BCs; no `ExtraMode` constructor;
+  `update_data` keeps a stale extra mode.
+- **tensor:** orthotropic Poisson convention (provisional on Christian).
+
+## Code defects (the source, not the guide) — routed to Christian
+
+Confidence high for each unless stated; all are source traces.
+
+1. `cl_ElectricalCircuitFactory.cpp:65,301-302` — `userdefined` writes to
+   `mPhysicalBoundaryConditions( tCount-i )`; `read_circuit` pushes no BC, so i==0 is out of
+   range and other i hit the wrong BC.
+2. `src/homology/cl_CutFactory.hpp:45` — `mPeriodicFactory` never initialized; latent (only
+   non-root ranks skip `set_periodicity`, and the read is master-guarded).
+3. `core/random.hpp:92` — `std::rand()/RAND_MAX` can return 1.0 (fix code or doc).
+4. `IWG_TransientHeatConduction` — hard-coded 1.0/111.0 placeholders.
+5. `src/sparse/fn_rcond.cpp:36` — `stype = 0` makes CHOLMOD factor A·A' (`cholmod.h:845`), so
+   `rcond` returns ≈ rcond(A)²; the "LU" comment is wrong too.
+6. `src/io/hdf5_tools.hpp:615,797` — HDF5 write status checked by `BELFEM_ASSERT` (silent in
+   release); should likely be `BELFEM_ERROR`.
+7. `src/io/cl_Ascii.cpp:88,94` — write guard rejects only `OPEN_RDONLY`; a parallel `save()`
+   truncates one shared file from every rank.
+8. `meshtools.cpp:322` — `interpolation_order_numeric` has no LINE5/TRI15 arm though the factory
+   and Gmsh map build both; `interpolation_order()` lacks PYRA*, LINE5, TRI15, TET35, so a linear
+   PYRA5 starts flagged curved.
+9. `cl_Spline.cpp:599` / `cl_Spline.hpp:606` — `update_data` builds 4 rows without resetting
+   `mExtraMode`; `integrate()` then reads row 4 (no caller hits it today); comment at
+   `cl_Spline.hpp:223` false. `compute_tmatrix_quad16/hex64` call `bspline_quad`, which fills 3 of
+   4 entries (`cl_TensorMeshFactory.cpp:1006-1017`).
+10. `cl_TensorMeshConfig.hpp:212-213` — `element_ijk` casts a possibly negative value to unsigned
+    before clamping.
+11. gastables POLY mode — synthesized viscosity/conductivity evaluate to 0
+    (`cl_GT_TransportPolyEmpty.cpp:57-59`) while `has_viscosity()` stays true (medium: the
+    binding was spot-checked, the full chain was not).
+12. materials — `buffer` reservation enforced only for `usermat` (`cl_MaterialFactory.cpp:336`);
+    `UserDefinedMaterial::jc_custom`/`n_custom` call null slots; `have(lambda)` true with a null
+    routing pointer; `mt_thermal_phi.cpp:28` ignores `density_correction`.
+13. graph — `metis_ndp(g,1)` reaches `METIS_NodeNDP` because the redirect at
+    `fn_Graph_METIS.cpp:111-115` is commented out (failure unproven); `Vertex` breaks the Rule of
+    Five.
+
+## Physics and design questions — Christian, not settled by vote
+
+- circuit: is the one-step IZ lag intended (`cl_FEM_Controller.cpp:3061-3063`, save before
+  compute)? is solving the circuit once per attempt (not per iteration) intended?
+- core: `rand` range — code or doc?
+- iwg: `impose_alpha` T_inf; BDF ramp off-by-one; conductivity tangent; `rho` as density.
+- maxwell: quasi-Newton literature claim; μ0-only conductor equation; XFEM naming.
+- homology: `CutSet::test`.
+- tensor: Poisson-ratio naming convention in `fn_compliance_matrix.hpp:37-42` (ν12/ν13 mean the
+  textbook ν21/ν31, ν23 means ν23).
+- gasmodels: should a cubic `Gas` set its own liquid flag?; two-phase wording.
+- gastables: correct reaction-enthalpy recipe under the hybrid enthalpy convention.
+- materials: route Hastelloy χ?; iron ceiling 860 K; Debye-curve provenance.
+- sparse: keep, cite or drop the solver size bands, "50–90 %" BLR memory, "10–100×" fill numbers.
+- io: should mutable `line()` mark the buffer changed; should HDF5 in a no-HDF5 build refuse like
+  `XML`; `Ascii::save()` always returns false.
+- quaternion: `inv()` refuses norms below ~4.7e-8 that `normalize()` accepts.
+- linalg: should the Armadillo wrapper gain the expression constructors Blaze has; should
+  `Matrix / scalar` exist.
+- lapack: only `gesvd` floors the `lwork` query and refuses to shrink Work.
+
+## Side findings
+
+- `literature/books/index.md` does not exist, but `CLAUDE.md` routes to it in three places
+  (papers/* and lectures indexes do exist). Fix belongs in the literature repo or `CLAUDE.md`.
+- `scripts/cross_review.sh` stops cleanly on quota; the sweep driver now distinguishes a failed leg
+  from an audited guide.
+
+## Open
+
+- Fixing the guides: ~131 P1 plus the P2s. Proposal: one guide per commit, each fix read against
+  the code, Codex language sweep per guide, code defects as separate `/code-with-jury` changes.
+  Awaiting Christian's approval and ordering.
+- The code defects and design questions above.
+
+## Files Updated
+
+- `devlog/dl20261022_usage_guide_jury_sweep.md` (this file), `devlog/README.md` index line.
+  Nothing else in the tree; all other artifacts are in `tmp/ai_exchange/`.
