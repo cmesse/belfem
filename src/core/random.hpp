@@ -79,7 +79,7 @@ namespace belfem
 //------------------------------------------------------------------------------
 
     /**
-     * a random number between 0 and 1
+     * a uniform random number in [ 0, 1 ), like std::uniform_real_distribution
      * must call seed first
      */
     inline real
@@ -87,9 +87,9 @@ namespace belfem
     {
 #ifdef BELFEM_MPI
         std::uniform_real_distribution<real> distribution(0.0, 1.0);
-        return distribution( gComm.random() ); // Generates a real number between 0 and 1
+        return distribution( gComm.random() );
 #else
-        return ( ( real ) std::rand() )/ RAND_MAX ;
+        return ( ( real ) std::rand() ) / ( ( real ) RAND_MAX + 1.0 ) ;
 #endif
     }
 
