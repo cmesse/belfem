@@ -11,8 +11,8 @@ physics/gasmodels, physics/gastables, physics/materials, sparse)
 **AIs involved:** Claude Opus 5.5 (driver, mechanical pre-registration, verification and
 reconciliation via seven verification subagents, spot checks); Codex `gpt-5.6-terra`/high and
 Grok `grok-4.7`/high (blind jury, one round per guide)
-**Status:** AUDIT COMPLETE — 22 of 22 guides audited by both seats and verified; no guide or
-source file changed
+**Status:** COMPLETE — 22 of 22 guides audited, verified, and fixed (one commit per guide,
+3ce9e6c … 31a5a64); source defects handed to a parallel session
 **Verification:** source trace for every finding (each citation re-opened at HEAD e9670bc /
 76918d0); one compile-only probe (`clang++ -fsyntax-only` against the real linalg headers, both
 `-DBELFEM_ARMADILLO` and `-DBELFEM_BLAZE`) for linalg F1/F3/F4; installed `cholmod.h` for sparse
@@ -207,14 +207,59 @@ Confidence high for each unless stated; all are source traces.
 - `scripts/cross_review.sh` stops cleanly on quota; the sweep driver now distinguishes a failed leg
   from an audited guide.
 
+## Fix round (same day)
+
+Christian approved fixing the guides; source defects went to a parallel session (belfem-46) under
+plan+jury, and the CLAUDE.md drift found on the way went to a third (belfem-f1: a610b15, fde2ba5).
+One fixer subagent per guide applied every CONFIRMED finding, re-checked each edit against the
+source, stated Christian-routed items as current behaviour without a ruling, ran a
+`clang++ -fsyntax-only` probe of the examples against the real headers where code changed (both
+backends for most guides), and ran a Codex `gpt-5.6-luna`/medium language sweep over the changed
+sections. Claude read every diff, spot-checked the load-bearing claims, and committed one guide per
+commit: 3ce9e6c quaternion, a63bf82 lapack, eeaec33 spline, 676f129 linalg, 3b441b3 tensor,
+c0056b8 database, e77300a materials, 32bc757 io, aff9a49 gasmodels, 6df029d gastables,
+a7ade12 graph, a4b84fd container, d99ed12 comm, d4411ca circuit, 382506e core, b3c49cc sparse,
+183492a interpolation, 126d239 + 06da4bb mesh, 4df4d3a iwg, fc236d3 maxwell, 9d00f9d homology,
+31a5a64 dof_manager; plus 1b3d7de (mesh README and contracts) and 46e2e20/b433677 (homology
+README), which repeated the same stale recipes.
+
+Verdicts the fix round overturned (each re-traced in source):
+
+- iwg W15: no BDF off-by-one under `FEM::Controller`, which calls `shift_fields()` at the start of
+  a step; only the guide's own loops shifted late. Removed from Christian's list.
+- linalg F10: `dot(Matrix, Vector)` compiles only under Armadillo (probe).
+- core C29: the MPI RNG is seeded per rank in `gComm.init()` (`random_device + rank`), not
+  identical until seeded.
+- graph F17: `parmetis_nd`/`ptscotch_nd` unflag first; only the serial wrappers turn a flag into a
+  self-loop.
+- container F12 (refuted as "UB"): a locked-bitset write runs in release and leaves the hash stale.
+- A fixer's new claim that Helmholtz `dcpdT()` returns entropy was refuted (central difference of
+  `cp`, at HEAD and in the tree).
+
+New source defects found while fixing, forwarded to belfem-46: `clean_string("")` calls
+`front()`/`back()` on an empty string (`stringtools.cpp:98`, confirmed); `CutFactory::cuts()` is
+always empty because `mCuts` is never filled, so the `set_domain_type(Cut)` loop at
+`cl_MaxwellFactory.cpp:1195` never runs (confirmed); `SolverData::assemble_jacobian` binds null
+E/I pointers to references and the `cl_FEM_DofManager.hpp` comment has the D sign wrong (both
+unverified). For Christian: `belfem`'s segregated thermal loop saves to a fixed
+`hphi_results.e-s` (`belfem.cpp:303`) while the normal path uses `label()`.
+
+The parallel mesh path, established while fixing mesh and reused in maxwell, homology and the mesh
+README: every rank constructs the `Mesh` (the master reads), the `Kernel` constructor partitions on
+the master (`partition_mesh` → `graph::metis_partition`) and runs the `Distributor` on every rank;
+nothing in `src/` calls `Mesh::partition()`. `staticheat.cpp` is not built and does not compile.
+
+Left as is: closing "Revision History" lines in linalg and container that credit reviews (history,
+Christian's call); a pseudo-code block in the homology guide labelled as such.
+
 ## Open
 
-- Fixing the guides: ~131 P1 plus the P2s. Proposal: one guide per commit, each fix read against
-  the code, Codex language sweep per guide, code defects as separate `/code-with-jury` changes.
-  Awaiting Christian's approval and ordering.
-- The code defects and design questions above.
+- The code defects (with belfem-46) and the design questions above. When a fix changes behaviour
+  a guide documents (rand range, rcond, Ascii parallel save, LINE5/TRI15, circuit lag, cuts()),
+  the guide is updated to match.
 
 ## Files Updated
 
-- `devlog/dl20261022_usage_guide_jury_sweep.md` (this file), `devlog/README.md` index line.
-  Nothing else in the tree; all other artifacts are in `tmp/ai_exchange/`.
+- All 22 `src/**/doc/*usage_guide*.md`, `src/mesh/doc/README.md`,
+  `src/mesh/doc/mesh_contracts_and_invariants.md`, `src/homology/doc/README.md` (commits above)
+- `devlog/dl20261022_usage_guide_jury_sweep.md` (this file), `devlog/README.md` index line
