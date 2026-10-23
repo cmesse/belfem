@@ -3,7 +3,7 @@
 **Module:** `src/math/graph`
 **Purpose:** Graph algorithms and external partitioning library integrations for FEM mesh ordering and domain decomposition
 **Date:** January 16, 2026
-**Last Updated:** January 16, 2026
+**Last Updated:** 2026-10-22
 
 ---
 
@@ -20,6 +20,8 @@
    - [Depth-First Search (DFS)](#depth-first-search-dfs)
    - [Reverse Cuthill-McKee (RCM)](#reverse-cuthill-mckee-rcm)
    - [Pseudo-Peripheral Vertex Finding](#pseudo-peripheral-vertex-finding)
+   - [Multi-Source BFS](#multi-source-bfs)
+   - [Difference Constraints (SPFA)](#difference-constraints-spfa)
    - [Connected Partitions](#connected-partitions)
 6. [External Library Integrations](#external-library-integrations)
    - [METIS](#metis-integration)
@@ -70,8 +72,8 @@
 
 | Type | Definition | Purpose |
 |------|------------|---------|
-| `metis_t` | `idx_t` (from METIS) | METIS integer type (32 or 64-bit) |
-| `scotch_t` | `SCOTCH_Num` (from SCOTCH) | SCOTCH integer type |
+| `metis_t` | `idx_t` (from METIS) when `BELFEM_METIS` is defined, otherwise `int` | METIS integer type (32 or 64-bit) |
+| `scotch_t` | `SCOTCH_Num` (from SCOTCH) when `BELFEM_SCOTCH` is defined, otherwise `int` | SCOTCH integer type |
 
 ### Naming Conventions (from `doc/coding_philosophy.md`)
 
@@ -103,9 +105,9 @@ The `graph` module provides graph algorithms and partitioning tools for finite e
 
 ### Design Philosophy
 
-The graph module follows BELFEM's coding philosophy (see `doc/coding_philosophy.md`):
+The graph module follows most of BELFEM's coding philosophy (see `doc/coding_philosophy.md`):
 
-- **Manual memory management**: Vertex adjacency lists use raw pointers (`malloc`/`free`) for contiguous storage
+- **Manual memory management**: Vertex adjacency lists use raw pointers (`malloc`/`free`) for contiguous storage. `Vertex` does not declare or delete its copy and move members, so it does not meet the philosophy's rule for classes that own raw memory; see [Memory Management](#memory-management)
 - **Zero-overhead abstraction**: Graph algorithms operate directly on `Cell<Vertex*>` with minimal indirection
 - **External library isolation**: Conditional compilation (`#ifdef BELFEM_METIS`) allows building without external dependencies
 - **Prefix naming**: Temporary variables `t`, arguments `a`, members `m` (Vertex class)
@@ -125,10 +127,12 @@ src/math/graph/
 ├── fn_Graph_bfs.{hpp,cpp}                 # Breadth-first search
 ├── fn_Graph_dfs.{hpp,cpp}                 # Depth-first search
 ├── fn_Graph_symrcm.{hpp,cpp}              # Reverse Cuthill-McKee ordering
+├── fn_Graph_multibfs.{hpp,cpp}            # Multi-source BFS from flagged vertices
 ├── fn_Graph_find_pseudo_peripheral_vertex.{hpp,cpp}
 ├── fn_Graph_find_pseudo_peripheral_node.{hpp,cpp}
 ├── fn_Graph_find_connected_partitions.{hpp,cpp}
 ├── fn_Graph_sort.{hpp,cpp}                # Graph sorting by vertex properties
+├── fn_Graph_spfa.{hpp,cpp}                # Difference-constraint solver (SPFA)
 │
 ├── fn_Graph_METIS.{hpp,cpp}               # METIS nested dissection & partitioning
 ├── fn_Graph_ParMETIS.{hpp,cpp}            # Parallel METIS integration
@@ -154,6 +158,11 @@ src/math/graph/
 - **ParMETIS** — Parallel nested dissection (ordering) (`BELFEM_PARMETIS`)
 - **SCOTCH** — Alternative serial partitioning (`BELFEM_SCOTCH`)
 - **PT-SCOTCH** — Parallel SCOTCH (`BELFEM_PTSCOTCH`)
+
+METIS and ParMETIS use the same CMake option, `USE_METIS`: `config/linalg/config_metis.cmake`
+defines both `BELFEM_METIS` and `BELFEM_PARMETIS` and requires both `metis.h` and `parmetis.h`.
+Likewise `USE_SCOTCH` (`config/linalg/config_scotch.cmake`) defines both `BELFEM_SCOTCH` and
+`BELFEM_PTSCOTCH`. There is no separate `USE_PARMETIS` or `USE_PTSCOTCH`.
 
 ---
 
@@ -187,24 +196,22 @@ namespace belfem::graph {
 | `mOwner` | `proc_t` | MPI rank (partitioning) | `gNoOwner` (`cl_Graph_Vertex.hpp:42`) — see the note below on the `comm_size()` convention |
 | `mLevel` | `index_t` | Traversal depth (BFS/DFS) | `0` (`cl_Graph_Vertex.hpp:45`) |
 | `mFlags` | `uint8_t` | Bitset of marking flags (`cl_Graph_Vertex.hpp:48`) | `0` |
-| `mVertexCounter` | `uint` | Degree (number of neighbors) | 0 |
+| `mVertexCounter` | `uint32_t` | Degree (number of neighbors) | 0 |
 | `mVertices` | `Vertex**` | Adjacency list | `nullptr` |
 
 > **`mOwner` initializes to `gNoOwner`** (`cl_Graph_Vertex.hpp:42`), which is
-> `numeric_limits<proc_t>::max()`. Until 2026-08-31 it was initialized to `gNoID` — a different
-> type and a different value (`numeric_limits<id_t>::max()` over `unsigned int`) — which narrowed
-> to an out-of-range `proc_t` and made `owner() == gNoOwner` false on a fresh vertex.
+> `numeric_limits<proc_t>::max()`, so `owner() == gNoOwner` holds on a fresh vertex.
 >
-> That the corrected value is the intended one is visible in the algorithms rather than argued
-> from naming: `fn_Graph_dfs.cpp:32` resets with `set_owner( gNoOwner )`, and the `std::min`
-> ownership sweeps in `cl_Mesh_Partitioner.cpp:253-260` and `cl_FEM_Kernel.cpp:427` only work if
-> the sentinel behaves as **+∞** — under the old value it was an absorbing element and every
-> facet would have ended unassigned.
+> The algorithms rely on this value: `dfs()` (`fn_Graph_dfs.cpp`) resets with
+> `set_owner( gNoOwner )`, and the `std::min` ownership sweeps in `cl_Mesh_Partitioner.cpp` and in
+> the facet loop of `cl_FEM_Kernel.cpp` (the `std::min( tFacet->owner(), … )` block) only work
+> because the sentinel behaves as **+∞**.
 >
 > **`gNoOwner` is not `comm_size()`.** A separate convention marks a deliberately unassigned
-> entity with `owner() == comm_size()` (`cl_FEM_Kernel.cpp:195,203`), and that is what the guard
-> at `graphtools.hpp:142` tests. The two mean different things: "never set" versus "set, and
-> known to have no home". Do not conflate them.
+> entity with `owner() == comm_size()` (`cl_FEM_Kernel.cpp`, the `set_owner( mCommSize )` calls
+> for elements and facets). The two mean different things: "never set" versus "set, and known to
+> have no home". Do not conflate them. `build_pargraph_adjacency()` (`graphtools.hpp`, the guard
+> `tOwner == tCommSize || tOwner == gNoOwner`) accepts both and maps them to rank 0.
 
 ### Key Methods
 
@@ -222,9 +229,10 @@ proc_t   owner() const;
 void     set_level(index_t aLevel);
 index_t  level() const;
 
-void     flag();
-void     unflag();
-bool     is_flagged() const;
+// Eight flag bits; aIndex < 8 is checked by BELFEM_ASSERT (debug only)
+void     flag(uint8_t aIndex = 0);
+void     unflag(uint8_t aIndex = 0);
+bool     is_flagged(uint8_t aIndex = 0) const;
 
 // Adjacency list management
 void     increment_vertex_counter();                // Count neighbors first
@@ -236,6 +244,11 @@ void     insert_vertex(Vertex* aVertex);            // Add neighbor
 uint     number_of_vertices() const;                // Get degree
 Vertex*  vertex(uint aIndex);                       // Access neighbor
 void     sort_vertices();                           // Sort by index
+void     reverse_vertices();                        // Reverse neighbor order
+
+// Present for interface compatibility; both always raise BELFEM_ERROR on graph::Vertex
+void     init_element_container();
+void     reset_element_container();
 ```
 
 ### Memory Management
@@ -264,11 +277,18 @@ Vertex::~Vertex() {
 - **Exact sizing**: No over-allocation like `std::vector` growth strategy
 - **Zero overhead**: No smart pointer bookkeeping or atomic reference counting
 
+**Do not copy a `Vertex`.** The class declares a destructor but no copy or move constructor or
+assignment, and it does not delete them. An implicit copy duplicates the `mVertices` pointer, so
+both destructors then free the same block. Hold vertices by pointer, as `Graph` does.
+
 ### Typical Construction Pattern
 
 ```cpp
 // Two-pass construction (common in mesh algorithms)
-Graph tGraph(num_vertices, nullptr);
+Graph tGraph(tNumVertices, nullptr);
+for (index_t i = 0; i < tNumVertices; ++i) {
+    tGraph(i) = new Vertex();   // released later with graph::clear(tGraph)
+}
 
 // Pass 1: Count neighbors
 for (Vertex* v : tGraph) {
@@ -323,19 +343,29 @@ namespace belfem::graph {
 
 **Return Value:** Maximum level width (largest number of vertices at any single level).
 
-**Side Effects:**
+**Side Effects of `bfs(aGraph, aStart)`:**
+- Sets `vertex->index()` to continuous values `[0, N)` in graph order
 - Sets `vertex->level()` to distance from start vertex (0 = start, 1 = neighbors, etc.)
-- Unvisited vertices have `level() == gNoIndex`
-- Sets `vertex->index()` to continuous values `[0, N)`
+- Vertices not reachable from `aStart` have `level() == gNoIndex`
+
+**Side Effects of `bfs(aGraph)`:**
+- Sets `vertex->level()` to the distance from the first vertex of its component (in graph order)
+- Does **not** write `index()` and does not reset levels to `gNoIndex` first
+
+**Precondition of `bfs(aGraph)`:** every `vertex->index()` must equal the vertex's position in
+`aGraph`. The overload tests its visited bitset by position when it picks a new component, but by
+`index()` when it traverses. `symrcm()` sets dense indices before it calls this overload. On a
+fresh graph (`index() == gNoIndex`), set the indices yourself first (see
+[Pitfall 1](#1-forgetting-to-set-continuous-indices)).
 
 **Algorithm:**
 
-1. Initialize all vertices to `level = gNoIndex`
+1. Two-argument overload: set `index()` to `[0, N)` and every `level` to `gNoIndex`
 2. Set start vertex to `level = 0`
 3. Use two queues (`tCurrentLevel`, `tNextLevel`) for level-synchronous traversal
 4. For each vertex at current level, visit all unvisited neighbors → add to next level
 5. Track maximum width across all levels
-6. For disconnected variant: Repeat for each unvisited component
+6. One-argument overload: repeat from each vertex whose position is not yet marked visited
 
 **Example:**
 
@@ -530,7 +560,13 @@ namespace belfem::graph {
 - `aGraph` — Input graph
 - `aStart` — Initial guess (if `nullptr`, uses first vertex)
 
-**Return Value:** Pointer to a pseudo-peripheral vertex.
+**Return Value:** Pointer to a pseudo-peripheral vertex of the component that contains the start
+vertex; `nullptr` for an empty graph.
+
+**Precondition:** every `vertex->index()` must be dense in `[0, N)`. The function sizes its
+visited bitset to `aGraph.size()` and indexes it by `index()`, but never assigns indices itself.
+`symrcm()` sets them before calling it; a direct call on a fresh graph must set them first (see
+[Pitfall 1](#1-forgetting-to-set-continuous-indices)).
 
 **Algorithm:**
 
@@ -552,6 +588,12 @@ namespace belfem::graph {
 ```cpp
 Graph tGraph = /* construct graph */;
 
+// dense indices are a precondition
+index_t tCount = 0;
+for (Vertex* tVertex : tGraph) {
+    tVertex->set_index(tCount++);
+}
+
 Vertex* tPeripheral = find_pseudo_peripheral_vertex(tGraph);
 
 std::cout << "Pseudo-peripheral vertex: ID = " << tPeripheral->id()
@@ -564,6 +606,76 @@ symrcm(tGraph, tPeripheral);
 **Time Complexity:** O(k(V + E)) where k = number of iterations (typically k ≈ 3)
 
 **Literature:** Gibbs, Poole, Stockmeyer (1976) — standard heuristic for RCM start vertex
+
+#### Variant: `find_pseudo_peripheral_node`
+
+**Files:** `fn_Graph_find_pseudo_peripheral_node.{hpp,cpp}`
+
+```cpp
+namespace belfem::graph {
+    Vertex* find_pseudo_peripheral_node(Graph& aGraph, Vertex* aStart = nullptr);
+}
+```
+
+This is a second heuristic with the same purpose. It runs the two-argument `bfs()`, which sets
+dense indices itself, so it has no index precondition. At the farthest level it keeps a vertex of
+**maximum** degree; `find_pseudo_peripheral_vertex()` keeps one of minimum degree. `symrcm()`
+uses `find_pseudo_peripheral_vertex()`.
+
+---
+
+### Multi-Source BFS
+
+**Files:** `fn_Graph_multibfs.{hpp,cpp}`
+
+```cpp
+namespace belfem::graph {
+    Vertex* multibfs(Cell<Vertex*>& aGraph, const proc_t aOwnerSubset = gNoOwner);
+}
+```
+
+This function computes distances from a set of seeds. The seeds are the **flagged** vertices
+(flag bit 0). They start at `level() == 1`; every other vertex starts at `0`. The BFS writes
+parent level + 1, so afterwards `level() - 1` is the graph distance to the nearest seed, and
+`level() == 0` means the vertex was not reached. With `aOwnerSubset != gNoOwner` the search starts from all seeds but only
+enters vertices with `owner() == aOwnerSubset`, and the result is chosen from that subset.
+
+**Return Value:** the vertex with the largest level, ties broken by the smallest `id()`;
+`nullptr` for an empty graph. The result's level describes what was found:
+
+- `0` — no vertex in the subset is a seed or was reached
+- `1` — the deepest vertex is a seed; no non-seed vertex was reached
+- `>= 2` — an interior vertex
+
+The function reads the flags but does not clear them, and it does not use `index()`.
+
+---
+
+### Difference Constraints (SPFA)
+
+**Files:** `fn_Graph_spfa.{hpp,cpp}`
+
+```cpp
+namespace belfem::graph {
+    bool spfa_difference_constraints(
+        const index_t           aNumVertices,
+        const Cell<index_t>&    aArcTails,
+        const Cell<index_t>&    aArcHeads,
+        const Cell<int64_t>&    aArcWeights,
+        Cell<int64_t>&          aTheta,
+        Cell<index_t>&          aNegativeCycle);
+}
+```
+
+Finds integer potentials `aTheta` with `theta(head(a)) - theta(tail(a)) <= weight(a)` for every
+arc `a`. It uses the queue-based Bellman-Ford-Moore algorithm (SPFA), warm-started from a BFS
+spanning forest. It does not use `Vertex` or `Graph`: vertices are plain indices in
+`[0, aNumVertices)`, and arcs are given as three parallel `Cell`s.
+
+**Return Value:** `true` if the system is feasible. `aTheta` then holds one feasible solution;
+the constraints are shift-invariant, so these are not distances from a source. Vertices in no arc
+stay at `0`. On `false`, `aNegativeCycle` holds the arc indices of one negative cycle, in cycle
+order, and `aTheta` is not valid.
 
 ---
 
@@ -629,12 +741,17 @@ for (Vertex* v : tGraph) {
 }
 ```
 
-**Time Complexity:** O(V + E + P log P) where P = number of components
+**Time Complexity:** O(V + E + V log V). The DFS is O(V + E), and sorting the components is
+O(P log P). The final `sort( aGraph, opVertexOwner )` runs over all V vertices.
+
+**Leaves every vertex flagged.** The DFS flags each vertex it visits, and
+`find_connected_partitions()` does not clear the flags. Clear them before you pass the graph to an
+ordering wrapper; see [Flags and the ordering wrappers](#flags-and-the-ordering-wrappers).
 
 **Use Cases:**
 - Detecting mesh quality issues (disconnected elements)
 - Separating main domain from boundary layer islands
-- Validating mesh connectivity before partitioning
+- Validating mesh connectivity before partitioning (clear the flags afterwards)
 
 ---
 
@@ -644,9 +761,37 @@ for (Vertex* v : tGraph) {
 
 **Files:** `fn_Graph_METIS.{hpp,cpp}`
 
-**Compilation Flag:** `BELFEM_METIS`, set by `USE_METIS` (default **ON**, `CMakeLists.txt:106`). METIS is found directly by `config/linalg/config_metis.cmake` — it is **not** linked through SuiteSparse, whose own option defaults OFF.
+**Compilation Flag:** `BELFEM_METIS`. `USE_METIS` (default **ON**, `CMakeLists.txt`) sets it.
+`USE_SUPERLU` (`config/linalg/config_superlu.cmake`) also appends `BELFEM_METIS` on its own.
+METIS is found directly by `config/linalg/config_metis.cmake` — it is **not** linked through
+SuiteSparse, whose own option defaults OFF.
 
 **Type Definition:** `graph_typedefs.hpp` defines `metis_t` as METIS's `idx_t` integer type
+(`int` when `BELFEM_METIS` is not defined)
+
+**Status strings:** `string metis_status( const int aStatus )` turns a METIS return code into a
+readable message; the wrappers use it in their error output.
+
+#### Flags and the ordering wrappers
+
+Every ordering wrapper — `metis_nd`, `metis_ndp`, `scotch_nd`, `parmetis_nd`, `ptscotch_nd` —
+finishes with `apply_graph_permutation()` (`graphtools.hpp`). That template does more than set
+`index()` and sort the graph: it **rebuilds every adjacency list** from a bitset in the new index
+order. Neighbor lists come out sorted by index, duplicate entries collapse to one, existing
+self-loops are kept, and a vertex that **is flagged** (bit 0) gets itself added as a neighbor.
+
+`parmetis_nd` and `ptscotch_nd` on two or more ranks clear the flags first
+(`build_pargraph_adjacency()` calls `unflag()` on every vertex). `metis_nd`, `metis_ndp`,
+`scotch_nd`, and the one-rank paths of the parallel wrappers do not. `dfs()` and
+`find_connected_partitions()` leave every vertex flagged, so unflag the graph before ordering it
+after either of them:
+
+```cpp
+for (Vertex* tVertex : tGraph) {
+    tVertex->unflag();
+}
+metis_nd(tGraph);
+```
 
 #### Nested Dissection (NodeND)
 
@@ -662,6 +807,7 @@ namespace belfem::graph {
 - Reorders `aGraph` in-place using METIS nested dissection
 - Sets `vertex->index()` to new position in ND ordering
 - Sorts `aGraph` by new indices
+- Rebuilds every adjacency list (see [Flags and the ordering wrappers](#flags-and-the-ordering-wrappers))
 
 **METIS Options Used:**
 - `METIS_OPTION_NUMBERING = 0` (zero-based indexing)
@@ -710,6 +856,11 @@ namespace belfem::graph {
 **Parameters:**
 - `aNumPartitions` — Number of top-level domains before nested dissection
 
+**One partition:** the wrapper has no special case for `aNumPartitions < 2`. The redirect to
+`metis_nd()` in `fn_Graph_METIS.cpp` is commented out. A call with `aNumPartitions == 1`
+therefore reaches `METIS_NodeNDP` with `npes = 1` and a sizes array of one entry. On a single
+rank, `parmetis_nd()` takes this path: `metis_ndp( aGraph, comm_size() )`.
+
 **STRUMPACK Note:** Documentation suggests `--sp_enable_METIS_NodeNDP` may work better than NodeND for certain problem types.
 
 **Algorithm:** METIS_NodeNDP:
@@ -752,7 +903,15 @@ namespace belfem::graph {
 
 **Side Effects:**
 - Sets `vertex->owner()` to partition ID (0, 1, ..., aNumPartitions-1)
-- If `aPartitions` provided, stores partition IDs there instead
+- If `aPartitions` provided, stores partition IDs there instead and leaves `owner()` untouched
+
+**Edge cases with `aPartitions`:**
+- With `aNumPartitions < 2` and `aPartitions == nullptr`, every owner is set to 0 and METIS is
+  not called. With `aPartitions != nullptr`, the vector is sized and zeroed, and the call then
+  continues into `METIS_PartGraphKway` with `nparts = 1`.
+- In a `DEBUG` build the function ends by counting vertices per `owner()` into a vector of length
+  `aNumPartitions`. On the `aPartitions` path the owners are not written, so this count needs
+  every `owner()` to already lie in `[0, aNumPartitions)`; a fresh vertex has `gNoOwner`.
 
 **METIS Options:**
 - `METIS_OPTION_CONTIG` — Forces continuous partitions
@@ -794,7 +953,7 @@ namespace belfem::graph {
 
 **Input model — note this is not the usual ParMETIS contract.** BELFEM's wrapper does *not* take
 an already-distributed graph. The **complete** graph must be on rank 0: `build_pargraph_adjacency()`
-asserts `comm_rank() == 0` (`graphtools.hpp:171`), builds every rank's CSR slice there, and
+asserts `comm_rank() == 0` (`graphtools.hpp`, debug-only `BELFEM_ASSERT`), builds every rank's CSR slice there, and
 distributes them from within `parmetis_nd()` (`fn_Graph_ParMETIS.cpp:57-99`, root branch). The public entry
 point is `parmetis_nd( Graph & )`, and it is **collective**: every rank calls it, non-root ranks
 with an empty `Graph`.
@@ -853,20 +1012,30 @@ void build_pargraph_adjacency(
 
 **Compilation Flags:** `BELFEM_SCOTCH` (serial), `BELFEM_PTSCOTCH` (parallel)
 
-**Type Definition:** `scotch_t` as `SCOTCH_Num` (SCOTCH integer type)
+**Type Definition:** `scotch_t` as `SCOTCH_Num` (SCOTCH integer type; `int` when `BELFEM_SCOTCH`
+is not defined)
 
-**Purpose:** Alternative to METIS for graph partitioning and ordering, often used in European HPC codes.
+**Purpose:** Alternative to METIS for graph partitioning and ordering.
 
-**Features:**
-- `fn_Graph_SCOTCH.cpp` — Serial SCOTCH partitioning
-- `fn_Graph_PTSCOTCH.cpp` — Parallel PT-SCOTCH
+```cpp
+namespace belfem::graph {
+    void scotch_nd(Graph& aGraph);                                  // fn_Graph_SCOTCH.hpp
+    void scotch_partition(Graph& aGraph, const uint aNumPartitions); // fn_Graph_SCOTCH.hpp
+    void ptscotch_nd(Graph& aGraph);                                // fn_Graph_PTSCOTCH.hpp
+}
+```
 
-**Differences from METIS:**
-- Different algorithm (spectral methods + greedy refinement)
-- Sometimes produces better partitions for specific graph types
-- Used when METIS license restrictions apply
+- `scotch_nd()` — serial nested-dissection ordering with the SCOTCH strategy string `"n"`
+  (`SCOTCH_stratGraphOrder`). It ends in `apply_graph_permutation()`, like `metis_nd()`.
+- `scotch_partition()` — partitioning with the mapping strategy `"r"` (`SCOTCH_stratGraphMap`,
+  then `SCOTCH_graphPart`); writes the result into `vertex->owner()`. Unlike
+  `metis_partition()` it has no contiguity flag and no output vector. With
+  `aNumPartitions < 2` it sets every owner to 0.
+- `ptscotch_nd()` — parallel ordering; same calling contract as `parmetis_nd()` (see
+  [MPI Awareness](#mpi-awareness)). On one rank it calls `scotch_nd()`.
 
-**Typical Usage:** Similar API to METIS functions (implementation details in `.cpp` files).
+SCOTCH is built on dual recursive bipartitioning (see the SCOTCH entry under
+[Literature References](#literature-references)).
 
 ---
 
@@ -1040,6 +1209,11 @@ build_graph_adjacency(tGraph, tVertices, tEdges);
 
 ## Usage Examples
 
+The snippets here and in the sections above are fragments. They omit the enclosing namespaces:
+`Graph` is declared in `belfem`, while `Vertex` and the algorithms are in `belfem::graph`. Read
+them as if `using namespace belfem;` and `using namespace belfem::graph;` were in effect. Names
+such as `mNodeReordering` or `mLocalNodes` stand for the caller's own members.
+
 ### Example 1: Bandwidth Reduction for Direct Solver
 
 ```cpp
@@ -1047,9 +1221,9 @@ build_graph_adjacency(tGraph, tVertices, tEdges);
 #include "fn_Graph_symrcm.hpp"
 
 // Build mesh connectivity graph
-Graph tGraph(num_nodes, nullptr);
+Graph tGraph(tNumNodes, nullptr);
 
-// ... populate graph with element adjacencies ...
+// ... create the vertices and populate them with element adjacencies ...
 
 // Apply RCM reordering
 symrcm(tGraph);
@@ -1089,8 +1263,8 @@ for (Vertex* v : tGraph) {
         tPermutation(tOldIndex) = tNewIndex;
     }
 
-    // Apply to DOF manager
-    mDofManager->apply_permutation(tPermutation);
+    // tPermutation maps original index -> new position; hand it to the code
+    // that numbers the unknowns
 #else
     // Fallback to RCM if METIS unavailable
     symrcm(tGraph);
@@ -1133,12 +1307,12 @@ if (comm_rank() == 0) {
         if (p == 0) {
             mLocalNodes = tLocalIDs;
         } else {
-            send(tLocalIDs, p, TAG_NODE_DISTRIBUTION);
+            send(tLocalIDs, p);   // point-to-point, matched by one receive() on rank p
         }
     }
 } else {
     // Receive local node IDs
-    receive(mLocalNodes, 0, TAG_NODE_DISTRIBUTION);
+    receive(mLocalNodes, 0);
 }
 ```
 
@@ -1163,10 +1337,9 @@ for (Vertex* v : tGraph) {
 }
 
 if (tIsolatedVertices.size() > 0) {
-    message(InfoLevel::Warning,
-            "Found %u vertices in %d disconnected components",
-            (uint) tIsolatedVertices.size(),
-            (int) (/* max owner ID */ + 1));
+    message(InfoLevel::Default,
+            "Found %u vertices outside the main component",
+            (uint) tIsolatedVertices.size());
 
     // Option 1: Remove isolated vertices
     // Option 2: Add connectivity constraints
@@ -1187,10 +1360,19 @@ if (tIsolatedVertices.size() > 0) {
 index_t find_graph_diameter(Graph& aGraph) {
     index_t tDiameter = 0;
 
+    // the visited bitset is indexed by index(): make the indices dense
+    index_t tCount = 0;
+    for (Vertex* tVertex : aGraph) {
+        tVertex->set_index(tCount++);
+    }
+
+    // allocated once, reused for every start vertex
+    DynamicBitset tVisited(aGraph.size());
+    Queue<Vertex*> tQueue;
+
     for (Vertex* tStart : aGraph) {
         // BFS from each vertex
-        DynamicBitset tVisited(aGraph.size());
-        Queue<Vertex*> tQueue;
+        tVisited.reset();
 
         tStart->set_level(0);
         tQueue.push(tStart);
@@ -1199,15 +1381,15 @@ index_t find_graph_diameter(Graph& aGraph) {
         index_t tMaxDist = 0;
 
         while (!tQueue.empty()) {
-            Vertex* v = tQueue.pop();
-            tMaxDist = std::max(tMaxDist, v->level());
+            Vertex* tVertex = tQueue.pop();
+            tMaxDist = std::max(tMaxDist, tVertex->level());
 
-            for (uint k = 0; k < v->number_of_vertices(); ++k) {
-                Vertex* neighbor = v->vertex(k);
-                if (!tVisited.test(neighbor->index())) {
-                    neighbor->set_level(v->level() + 1);
-                    tQueue.push(neighbor);
-                    tVisited.set(neighbor->index());
+            for (uint k = 0; k < tVertex->number_of_vertices(); ++k) {
+                Vertex* tNeighbor = tVertex->vertex(k);
+                if (!tVisited.test(tNeighbor->index())) {
+                    tNeighbor->set_level(tVertex->level() + 1);
+                    tQueue.push(tNeighbor);
+                    tVisited.set(tNeighbor->index());
                 }
             }
         }
@@ -1230,28 +1412,15 @@ index_t find_graph_diameter(Graph& aGraph) {
 | **Vertex class** | ❌ No | Adjacency list modification not atomic |
 | **BFS/DFS** | ❌ No | Uses vertex flags and level (shared state) |
 | **RCM** | ❌ No | Modifies vertex indices in-place |
-| **METIS** | ⚠️ Partial | METIS_NodeND thread-safe, PartGraph uses OpenMP internally |
+| **METIS wrappers** | ❌ No | Modify vertex indices and adjacency; the wrappers set no METIS thread count, and the thread behavior of the linked METIS is not documented here |
 | **Graph sorting** | ❌ No | Reorders Cell in-place |
-| **CSR building** | ✅ Yes | If each thread builds separate graph |
+| **CSR building** | ❌ No | Writes `vertex->index()` |
 
 **General Rule:** Graph algorithms are **not thread-safe** because they modify vertex properties (`level`, `index`, `owner`, `flag`) as side effects.
 
-**Safe Patterns:**
-
-```cpp
-// ✅ GOOD: Each thread works on separate graph
-#pragma omp parallel
-{
-    Graph tLocalGraph = /* thread-local construction */;
-    symrcm(tLocalGraph);
-}
-
-// ❌ BAD: Multiple threads modifying shared graph
-#pragma omp parallel for
-for (index_t i = 0; i < tGraph.size(); ++i) {
-    bfs(tGraph, tGraph(i));  // Race condition on level/flag
-}
-```
+BELFEM's own parallelism is MPI, and application code is single-threaded (see
+`doc/coding_philosophy.md`). Run graph algorithms from one thread per rank. If you call them from
+an OpenMP region of your own, serialize the calls externally with `#pragma omp critical`.
 
 ### MPI Awareness
 
@@ -1305,8 +1474,9 @@ enter the barrier.
 ❌ **Bad:**
 
 ```cpp
-Graph tGraph = /* vertices with arbitrary IDs */;
-symrcm(tGraph);  // May fail if indices not set
+Graph tGraph = /* fresh vertices: index() == gNoIndex */;
+bfs(tGraph);                                         // indexes a bitset by index()
+Vertex* tStart = find_pseudo_peripheral_vertex(tGraph);  // same
 ```
 
 ✅ **Good:**
@@ -1316,14 +1486,19 @@ Graph tGraph = /* construct graph */;
 
 // Ensure continuous indices before algorithms
 index_t tCount = 0;
-for (Vertex* v : tGraph) {
-    v->set_index(tCount++);
+for (Vertex* tVertex : tGraph) {
+    tVertex->set_index(tCount++);
 }
 
-symrcm(tGraph);  // Now safe
+bfs(tGraph);                                         // Now safe
+Vertex* tStart = find_pseudo_peripheral_vertex(tGraph);
 ```
 
-**Why:** Bitsets, arrays indexed by `vertex->index()` require dense `[0, N)` range.
+**Why:** these functions index a bitset of size `aGraph.size()` by `vertex->index()` and do not
+assign the indices themselves. A debug build stops on the bounds assertion; a release build
+writes out of range. Functions that set dense indices on entry need no preparation: the
+two-argument `bfs()`, `symrcm()`, `find_connected_partitions()`, `find_pseudo_peripheral_node()`,
+and the CSR builders behind the METIS and SCOTCH wrappers.
 
 ---
 
@@ -1402,28 +1577,30 @@ for (Element* e : mesh.elements()) {
 
 ### 4. Assuming Connected Graphs
 
-**Problem:** Mesh graphs may have disconnected components (isolated elements, floating nodes).
+**Problem:** Mesh graphs may contain disconnected components, such as isolated elements or
+floating nodes. Some functions see only the component that contains their start vertex. The
+two-argument `bfs()` leaves other components at `level() == gNoIndex`, and
+`find_pseudo_peripheral_vertex()` returns a vertex from the start vertex's component.
 
-❌ **Bad:**
+`symrcm()` is not affected: with or without `aStart`, it orders every component.
 
-```cpp
-Vertex* tStart = find_pseudo_peripheral_vertex(tGraph);
-symrcm(tGraph, tStart);  // Only reorders component containing tStart
-```
-
-✅ **Good:**
+✅ **Check connectivity when it matters:**
 
 ```cpp
-// Check connectivity first
 index_t tMainSize = find_connected_partitions(tGraph);
 
 if (tMainSize < tGraph.size()) {
-    message(InfoLevel::Warning,
+    message(InfoLevel::Default,
             "Mesh has disconnected components: %u / %u vertices in main domain",
             (uint) tMainSize, (uint) tGraph.size());
 }
 
-// RCM handles disconnected graphs automatically
+// find_connected_partitions() leaves every vertex flagged; clear the flags
+// before any ordering wrapper (see "Flags and the ordering wrappers")
+for (Vertex* tVertex : tGraph) {
+    tVertex->unflag();
+}
+
 symrcm(tGraph);  // Processes all components
 ```
 
@@ -1436,7 +1613,7 @@ symrcm(tGraph);  // Processes all components
 ❌ **Bad:**
 
 ```cpp
-metis_nd(tGraph);  // Crashes if BELFEM_METIS not defined
+metis_nd(tGraph);  // BELFEM_ERROR if BELFEM_METIS is not defined
 ```
 
 ✅ **Good:**
@@ -1445,7 +1622,7 @@ metis_nd(tGraph);  // Crashes if BELFEM_METIS not defined
 #ifdef BELFEM_METIS
     metis_nd(tGraph);
 #else
-    message(InfoLevel::Warning, "METIS unavailable, using RCM fallback");
+    message(InfoLevel::Default, "METIS unavailable, using RCM fallback");
     symrcm(tGraph);
 #endif
 ```
@@ -1458,7 +1635,7 @@ after `set_throw_on_error( true )`; a release build aborts before the `catch`. P
 try {
     metis_nd(tGraph);  // BELFEM_ERROR if unavailable: throws in debug, aborts in release
 } catch (...) {
-    message(InfoLevel::Warning, "METIS failed, falling back to RCM");
+    message(InfoLevel::Default, "METIS failed, falling back to RCM");
     symrcm(tGraph);
 }
 ```
@@ -1571,7 +1748,7 @@ symrcm(tGraph, tStart);
 |-----------|----------------------|----------|-------|
 | **Bandwidth reduction** | `symrcm()` | Manual ordering | Fast, works well for banded solvers |
 | **Fill-in minimization** | `metis_nd()` | `symrcm()` | Best for direct solvers (MUMPS, STRUMPACK) |
-| **Parallel factorization** | `metis_ndp()` | `metis_nd()` | Use `aNumPartitions = comm_size()` |
+| **Parallel factorization** | `metis_ndp()` | `metis_nd()` | Use `aNumPartitions = comm_size()`; see the one-partition note under NodeNDP |
 | **Domain decomposition** | `metis_partition()` | `scotch_partition()` | Balances load, minimizes edge cuts |
 | **Parallel nested-dissection ordering** | `parmetis_nd()` / `ptscotch_nd()` | `metis_nd()` | Full graph on rank 0; the wrapper distributes the CSR slices |
 | **Connected components** | `find_connected_partitions()` | `dfs()` | Also sorts by size |
@@ -1592,7 +1769,7 @@ symrcm(tGraph, tStart);
 **Vertex Adjacency:**
 - Per vertex: `sizeof(Vertex*) * degree` bytes for adjacency list
 - Typical mesh: average degree ≈ 6-8 for 3D elements
-- Example: 1M vertices, degree 8 → 8MB for adjacency lists (64-bit pointers)
+- Example: 1M vertices, degree 8 → 1M × 8 × 8 B = 64 MB for adjacency lists (64-bit pointers)
 
 **CSR Adjacency:**
 - `(V + 1) * sizeof(metis_t)` for vertex array
@@ -1607,15 +1784,16 @@ symrcm(tGraph, tStart);
 
 1. **Minimize graph construction overhead:**
    - Use two-pass pattern (count, then allocate) to avoid reallocation
-   - Pre-sort vertices by index before CSR building
+   - Do not pre-sort vertices for CSR building: the builder renumbers indices in graph order
 
 2. **Cache efficiency:**
    - RCM improves locality for subsequent matrix operations
    - Sort vertices by index after reordering
 
-3. **Parallel partitioning:**
-   - Use ParMETIS for > 5M elements on distributed memory
-   - Use METIS with OpenMP for < 5M elements on shared memory
+3. **Parallel ordering:**
+   - `parmetis_nd()` / `ptscotch_nd()` distribute the ordering computation across MPI ranks; they
+     do not reduce rank-0 memory, and they do not partition. Partitioning is serial:
+     `metis_partition()` / `scotch_partition()`
 
 4. **Reuse graphs:**
    - If mesh topology unchanged, reuse partitioning across time steps
@@ -1629,10 +1807,10 @@ symrcm(tGraph, tStart);
 
 ## See Also
 
-- **Project README**: `../../../README.md`
-- **Claude Instructions**: `../../../CLAUDE.md`
-- **Documentation Guidelines**: `../../../doc/documentation_guidelines.md`
-- **Coding Philosophy**: `../../../doc/coding_philosophy.md`
-- **General Documentation**: `../../../doc/README.md`
-- **Containers Module**: `../../../src/containers/doc/` (Cell, Queue, Bitset)
-- **Core Module**: `../../../src/core/doc/` (typedefs, Logger, Timer)
+- **Project README**: `../../../../README.md`
+- **Claude Instructions**: `../../../../CLAUDE.md`
+- **Documentation Guidelines**: `../../../../doc/documentation_guidelines.md`
+- **Coding Philosophy**: `../../../../doc/coding_philosophy.md`
+- **General Documentation**: `../../../../doc/README.md`
+- **Containers Module**: `../../../containers/doc/` (Cell, Queue, Bitset)
+- **Core Module**: `../../../core/doc/` (typedefs, Logger, Timer)
