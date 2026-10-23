@@ -250,6 +250,14 @@ namespace belfem
 
 //-----------------------------------------------------------------------------
 
+    void
+    SourceFunction::set_user_scale( const real aScale )
+    {
+        mUserScale = aScale ;
+    }
+
+//-----------------------------------------------------------------------------
+
     SourceFunction::~SourceFunction()
     {
         // mUserFunction points into the plugin's text, so the mapping must

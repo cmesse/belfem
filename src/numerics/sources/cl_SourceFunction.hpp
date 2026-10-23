@@ -90,6 +90,10 @@ namespace belfem
 
         UserFunc *mUserFunction = nullptr ;
 
+        //! unit factor on the plugin's value ( set_user_scale ); rank-local,
+        //! not part of mValues, so synch() does not carry it
+        real mUserScale = 1.0 ;
+
         //! dlopen handle of the user plugin, null for the builtin waveforms.
         //! Owned: closed by the destructor, which is why the copy and move
         //! operations below are deleted
@@ -164,6 +168,16 @@ namespace belfem
         void
         read_user_defined( const string & aLibraryPath,
                             const string & aLabel ) ;
+
+//-----------------------------------------------------------------------------
+
+        /**
+         * multiply the user-defined function's value by aScale, e.g. the SI
+         * factor of the unit the plugin returns. Rank-local: every rank that
+         * evaluates this function must call it, since synch() does not.
+         */
+        void
+        set_user_scale( const real aScale ) ;
 
 //-----------------------------------------------------------------------------
 
@@ -449,7 +463,7 @@ namespace belfem
     inline real
     SourceFunction::function_userdefined( const real aTime ) const
     {
-        return mUserFunction(aTime) ;
+        return mUserScale * mUserFunction(aTime) ;
     }
 
     //-----------------------------------------------------------------------------

@@ -288,20 +288,23 @@ namespace belfem
                         else if ( tFType == "userdefined" )
                         {
 
-                            BELFEM_ERROR( tComponentSection->key_exists( "file" ), "File not defined for user-defined function in the boundary condition" ) ;
-                            BELFEM_ERROR( tComponentSection->key_exists( "label" ), "Label not defined for user-defined function in the boundary condition" ) ;
-                            BELFEM_ERROR( tComponentSection->key_exists( "units" ), "Units not defined for user-defined function in the boundary condition" ) ;
+                            BELFEM_ERROR( tComponentSection->key_exists( "file" ), "File not defined for user-defined source in the circuit" ) ;
+                            BELFEM_ERROR( tComponentSection->key_exists( "label" ), "Label not defined for user-defined source in the circuit" ) ;
+                            BELFEM_ERROR( tComponentSection->key_exists( "units" ), "Units not defined for user-defined source in the circuit" ) ;
 
                             string tUnitDef = tComponentSection->get_string( "units" );
                             value tValue = unit_to_si( tUnitDef );
                             BELFEM_ERROR(
                                     check_unit( tValue, tUnits ),
-                                    "required unit for the amplitude of the boundary condition is: %s",
+                                    "required unit for the user-defined source in the circuit is: %s",
                                     tUnits.c_str() );
-                            mPhysicalBoundaryConditions( tCount-i )->set_units( tValue.second ) ;
-                            mPhysicalBoundaryConditions( tCount-i )->scale()*=tValue.first ;
 
+                            // the plugin returns values in tUnitDef; a circuit
+                            // source has no boundary condition whose scale could
+                            // convert them, so the source function applies the
+                            // SI factor itself
                             tFunction->read_user_defined(tComponentSection->get_string( "file" ), tComponentSection->get_string( "label" )) ;
+                            tFunction->set_user_scale( tValue.first ) ;
                         }
                         else
                         {
