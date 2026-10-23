@@ -35,17 +35,25 @@ and type traits — lives in `lapacktools.hpp`.
 | Routine | Problem | Wrapper | Destroys / overwrites | Scratch |
 |---|---|---|---|---|
 | `gesv` | A·x = b, general square (LU) | `gesv( A, b\|B, Pivot [, abort] )` | A → LU factors, b → solution | Pivot ≥ n |
-| `posv` | A·x = b, SPD / Hermitian PD (Cholesky) | `posv( A, b\|B [, abort] )` | A → Cholesky factor, b → solution | — |
+| `posv` | A·x = b, SPD / Hermitian PD (Cholesky) | `posv( A, b\|B [, abort] )` | A → Cholesky factor (lower triangle read and written), b → solution | — |
 | `getrf` | LU factorization | `getrf( A, Pivot [, abort] )` | A → LU factors | Pivot (grown) |
 | `getri` | inverse from LU | `getri( A, Pivot, Work [, abort] )` | A → inverse | Work `Vector<T>` |
-| `gels` | min ‖A·x − b‖, full rank | `gels( A, b\|B, Work [, abort] )` | A → QR/LQ, b → solution | Work `Vector<T>` |
-| `gemm` | C := α·op(A)·op(B) + β·C (BLAS) | `gemm( A, B, C [, α, β, transa, transb] )` | C | — |
-| `gesvd` | A = U·diag(S)·Vᵀ | `gesvd( A, S, U, VT, Work [, jobs, abort] )` | A | Work `Vector<real_t<T>>` (carved) |
-| `geev` | A·v = λ·v, general | `geev( A, W, VL, VR, Work [, jobs, abort] )` | A | Work `Vector<real_t<T>>` (carved) |
-| `gees` | Schur A = Z·T·Zᵀ/ᴴ | `gees( A, W, VS, Work, BWork [, select, jobs, sdim, abort] )` | A → Schur form T | Work carved + BWork `Vector<int_t>` |
+| `gels` | min ‖A·x − b‖, full rank | `gels( A, b\|B, Work [, abort] )` | A → QR/LQ, b → solution in the first n entries/rows | Work `Vector<T>` |
+| `gemm` | C := α·op(A)·op(B) + β·C (BLAS) | `gemm( A, B, C [, α = 1, β = 0, transa = 'N', transb = 'N'] )` | C | — |
+| `gesvd` | A = U·diag(S)·Vᵀ | `gesvd( A, S, U, VT, Work [, jobu = 'A', jobvt = 'A', abort] )` | A | Work `Vector<real_t<T>>` (carved) |
+| `geev` | A·v = λ·v, general | `geev( A, W, VL, VR, Work [, jobvl = 'V', jobvr = 'V', abort] )`; `geev( A, W, Work [, abort] )` | A | Work `Vector<real_t<T>>` (carved) |
+| `gees` | Schur A = Z·T·Zᵀ/ᴴ | `gees( A, W, VS, Work, BWork [, select = nullptr, jobvs = 'V', sort = 'N', sdim = nullptr, abort] )` | A → Schur form T | Work carved + BWork `Vector<int_t>` |
 
-Executable examples for every routine and datatype:
-`tests/linalg/test_lapack.cpp` (typed gtest suite, 23 cases × 4 flavors).
+Executable examples for every routine and datatype are in
+`tests/linalg/test_lapack.cpp` (typed gtest suite, 27 cases × 4 flavors).
+
+Job and sort flags are uppercase only — `gesvd` accepts `'A'`/`'S'`/`'N'`,
+`geev` and `gees` accept `'V'`/`'N'`, and the `gees` `sort` flag accepts
+`'S'`/`'N'`. Only `gemm` also accepts the lowercase `'n'`/`'t'`/`'c'`.
+The flags are positional `char` parameters and precede the `bool` abort flag.
+To pass `abort`, spell out every flag first. A call such as
+`gesvd( A, S, U, VT, Work, 'A', false )` still compiles, but it binds
+`false` to `jobvt`, not to `AbortOnError`.
 
 ## Shared Contracts
 
@@ -63,10 +71,11 @@ Executable examples for every routine and datatype:
 - A suppressed **workspace-query** failure returns early with its info;
   the solve is not attempted with an invalid work size.
 - `gemm` is the one exception: it is BLAS, has no `info`, returns `void`,
-  and takes no flag.
+  and has no `AbortOnError` flag.
 
 ```cpp
-// hard failure ( default ): abort with an error box
+// hard failure ( default ): BELFEM_ERROR, which throws in a debug build
+// and aborts in a release build
 gesv( tA, tB, tPivot );
 
 // recoverable failure: react to a singular system
@@ -88,11 +97,19 @@ LAPACK integer (see Design Pillar 1). Two policies exist:
 
 ### Work buffers: three models
 
-Scratch is always caller-owned and grow-only: the wrapper computes the
-documented minimum, asks LAPACK for the optimal size (`lwork = -1` query)
-only when the provided buffer is too small, and otherwise uses the full
-buffer as-is. Reusing one Work object across calls therefore costs one
-allocation total. Three models exist:
+Scratch is always caller-owned. The wrapper computes the documented minimum and
+asks LAPACK for the optimal size (`lwork = -1` query) only when the supplied
+buffer is too small. Otherwise, it uses the full buffer as-is. Once a Work
+object covers the requirement, reusing it across calls allocates nothing.
+
+When the buffer is too small, the routines handle it differently.
+`getri`, `gels`, `geev` and `gees` first resize Work to the query-call size,
+which can shrink it, and then resize it to the optimal size returned by the
+query. The query result is used without a floor; if LAPACK returns less than
+the documented minimum, the buffer remains below the length test and every
+call repeats the query. `gesvd` never shrinks the buffer for the query and
+retains the documented minimum as a floor on the returned size. The three
+models are:
 
 **(A) No Work** — `gesv`, `posv`, `getrf`, `gemm`. The routine needs no
 workspace.
@@ -135,8 +152,9 @@ Each pillar states one contract. Enforcement lives in
 
 SCLS builds every third-party library in a given stack with a single
 integer width, so BELFEM's `int_t` and the linked LAPACK's integer
-coincide by construction. `USE_MKL_64BIT_API` switches both:
-`BELFEM_INT64` (making `int_t` 64-bit) and `MKL_ILP64`;
+coincide by construction. `USE_MKL_64BIT_API` always defines
+`BELFEM_INT64` (making `int_t` 64-bit); `MKL_ILP64` is added only when
+MKL is enabled (`config/linalg/config_mkl.cmake`);
 `blaze_config.hpp` derives `BLAZE_BLAS_IS_64BIT` from the same macro so
 Blaze's `blas_int_t` follows. **Wrong:** introducing a separate LAPACK
 integer typedef or declaring prototypes with plain `int`. **Checked
@@ -168,7 +186,8 @@ LAPACK validates the stride against, which the physical stride satisfies
 automatically. **Wrong:** passing `n_rows()` to LAPACK under Blaze
 (silent corruption once padding kicks in), or switching the stride on
 `trans` (wrong for every non-square matrix). Vectors are contiguous under
-both backends; their overload returns the logical length.
+both backends; their overload returns the logical length. Every overload
+floors the result at 1, so an empty operand still passes a valid `ld`.
 
 ### 4. One hidden Fortran length per character argument
 
@@ -177,7 +196,8 @@ Fortran compilers append a hidden by-value length argument for every
 mainstream Linux compilers (gfortran, ifort/ifx, flang) share this
 convention; only the width varies. Under Blaze, `fortran_charlen_t` is
 Blaze's own typedef (`int` for gcc ≤ 7, `size_t` since gcc 8); under
-Armadillo BELFEM uses `size_t` unconditionally (`lapacktools.hpp:97-101`).
+Armadillo BELFEM uses `size_t` unconditionally (the `fortran_charlen_t`
+typedef in `lapacktools.hpp`).
 Every prototype carries one
 `fortran_charlen_t` per char argument and every call passes `1`. LAPACK
 itself never dereferences the lengths, so this is declaration
@@ -196,52 +216,66 @@ The `const_cast` happens exactly once, inside the specializations.
 
 - **`gesv`** — A must be square and is overwritten with its LU factors.
   `info > 0` means an exactly zero pivot.
-- **`posv`** — symmetric positive definite for real `T`, **Hermitian**
-  positive definite for complex `T` (not complex symmetric). No
-  pivoting; `info > 0` names the first non-positive-definite minor.
+- **`posv`** — A is symmetric positive definite for real `T` and
+  **Hermitian** positive definite for complex `T` (not complex symmetric). The
+  wrapper passes `UPLO = 'L'`, so it reads only the lower triangle of A and
+  writes the Cholesky factor there. There is no pivoting; `info > 0` identifies
+  the first non-positive-definite minor.
 - **`getrf` / `getri`** — a pair: `getrf` factorizes (and grows the
   pivot vector), `getri` inverts in place and requires exactly the
   factorization and pivots `getrf` produced.
-- **`gels`** — full-rank least squares only (`info > 0` = rank
-  deficient; a rank-tolerant `gelsy`/`gelsd` wrapper is the natural
-  extension if a rank-deficient consumer appears). The RHS carries both
-  input and output: it must be allocated with `max( m, n )` entries/rows
-  — the underdetermined branch writes solution rows beyond `m`.
+- **`gels`** — This wrapper supports full-rank least squares only (`info > 0` =
+  rank deficient; a rank-tolerant `gelsy`/`gelsd` wrapper is the natural
+  extension if a rank-deficient consumer appears). The RHS carries both input
+  and output, so it must be allocated with `max( m, n )` entries/rows. The
+  underdetermined branch writes solution rows beyond `m`. The solution occupies
+  the first `n` entries/rows; for `m > n`, the remaining entries contain
+  residual data and are not part of the solution.
 - **`gemm`** — dimension assertions are `op()`-aware: `m`, `n`, `k`
   derive from the transposition flags ('N'/'n', 'T'/'t', 'C'/'c'). With
   `beta == 0`, C is resized to fit; otherwise it must already have the
   shape of `op(A)·op(B)`.
-- **`gesvd`** — the singular values `S` are **always real**, including for
-  complex `A` (`Vector< lapack::real_t<T> >`). The `'O'` (overwrite) job
-  flags are not supported. `U`/`VT` are sized per job flag; both `'N'`
+- **`gesvd`** — The singular values `S` are **always real**, including when
+  `A` is complex (`Vector< lapack::real_t<T> >`). The `'O'` (overwrite) job
+  flags are not supported. `jobu` and `jobvt` are separate arguments, both
+  defaulting to `'A'`. `U`/`VT` are sized according to the job flag; both `'N'`
   jobs still pass a valid `ld >= 1`.
-- **`geev`** — the eigenvalues `W` are **always complex**
-  (`Vector< lapack::cplx_t<T> >`). For real `T`, a complex conjugate
-  pair `( W(j), W(j+1) )` has its eigenvectors LAPACK-packed across
-  two consecutive columns: `v_j = VR(:,j) + i·VR(:,j+1)`,
-  `v_{j+1} = conj( v_j )`. An eigenvalues-only overload skips `VL`/`VR`.
-- **`gees`** — real flavors produce a **quasi**-triangular Schur form
-  (2×2 blocks for conjugate pairs) with `A = Z·T·Zᵀ`; complex flavors a
-  produce a triangular one with `A = Z·T·Zᴴ`. The sorting callback `select` has
-  per-flavor arity — `int_t f( const T* wr, const T* wi )` for real,
-  `int_t f( const std::complex<R>* w )` for complex — and returns
-  `int_t`, not `bool`. **Real-flavor pair semantics:** a conjugate pair
-  is selected as a whole if the callback is true for *either* member and
-  counts as *two* toward `sdim`; complex flavors select independently.
-  The complex callback pointer is bridged to the extern "C" typedef by a
-  `reinterpret_cast` — sound on the SysV ABI, formally outside ISO C++
-  (documented at the cast). `BWork` is the LOGICAL scratch
-  (`Vector<int_t>`; Fortran LOGICAL width tracks the integer width),
-  referenced only when sorting.
+- **`geev`** — The eigenvalues `W` are **always complex**
+  (`Vector< lapack::cplx_t<T> >`). For real `T`, a complex conjugate pair
+  `( W(j), W(j+1) )` has its eigenvectors packed by LAPACK across two
+  consecutive columns: `v_j = VR(:,j) + i·VR(:,j+1)`,
+  `v_{j+1} = conj( v_j )`. `jobvl` and `jobvr` are separate arguments, both
+  defaulting to `'V'`. The eigenvalues-only overload
+  `geev( A, W, Work [, abort] )` omits `VL`/`VR`.
+- **`gees`** — Real flavors produce a **quasi**-triangular Schur form
+  (2×2 blocks for conjugate pairs) with `A = Z·T·Zᵀ`; complex flavors
+  produce a triangular form with `A = Z·T·Zᴴ`. **Sorting needs both
+  arguments:** pass `sort = 'S'` together with a `select` callback;
+  `sort = 'N'` (the default) requires `select == nullptr`. A debug build
+  asserts this pairing. In a release build, a callback passed with
+  `sort = 'N'` is ignored: LAPACK returns `info == 0` and does not reorder
+  anything. The `sdim` output pointer follows `sort`, so
+  `gees( A, W, VS, Work, BWork, select, 'V', 'S', &sdim )` is the complete
+  sorting call. The sorting callback `select` has per-flavor arity —
+  `int_t f( const T* wr, const T* wi )` for real and
+  `int_t f( const std::complex<R>* w )` for complex — and returns `int_t`, not
+  `bool`. **Real-flavor pair semantics:** a conjugate pair is selected as a
+  whole if the callback is true for either member and counts as *two* toward
+  `sdim`; complex flavors select independently. The complex callback pointer
+  is bridged to the extern "C" typedef by a `reinterpret_cast` — sound on the
+  SysV ABI, but formally outside ISO C++ (documented at the cast).
+  `BWork` is the LOGICAL scratch (`Vector<int_t>`; Fortran LOGICAL width tracks
+  the integer width) and is referenced only when sorting.
 
 ## Adding a New Routine
 
 1. **Read the vendor declaration first.** If
-   `/opt/scls/gcc/include/blaze/math/lapack/clapack/<name>.h` exists,
-   your prototypes must match it exactly — argument types, real-valued
-   arrays, `rwork` presence, and the number of trailing
-   `fortran_charlen_t`. If Blaze does not declare the routine (gels,
-   gees), BELFEM owns the prototype; still follow the family rules.
+   `$SCLS/include/blaze/math/lapack/clapack/<name>.h` exists (`$SCLS` is
+   `/opt/scls/<flavor>` for the packaged flavors and `/opt/scls` on macOS),
+   make the prototypes match it exactly: argument types, real-valued arrays,
+   `rwork` presence, and the number of trailing `fortran_charlen_t`. If Blaze
+   does not declare the routine (gels, gees), BELFEM owns the prototype; still
+   follow the family rules.
 2. Count the character arguments; add one `fortran_charlen_t` per char to
    the prototypes and pass `1` per char in the specializations.
 3. Check the Netlib docs for flavor asymmetries: real-valued outputs in
@@ -276,9 +310,8 @@ The `const_cast` happens exactly once, inside the specializations.
 ## See Also
 
 - [linalg_usage_guide.md](linalg_usage_guide.md) — user-facing
-  `Vector`/`Matrix` API and solver recipes (note: its `gesv`/`posv`
-  sections predate the unified wrappers; the signatures documented here
-  are authoritative).
+  `Vector`/`Matrix` API and solver recipes, including the `gesv`/`posv`
+  signatures.
 - `tests/linalg/test_lapack.cpp` — executable examples, every routine ×
   every datatype.
 - `doc/coding_philosophy.md` — the two-tier error policy and the
