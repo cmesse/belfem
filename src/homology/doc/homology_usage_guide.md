@@ -304,22 +304,18 @@ mesh::CutFactory tFactory( tMesh, &tTopology, tProtoshells,
 tFactory.set_periodicity( nullptr );
 tFactory.run();
 
-// Use results (master)
-if ( comm_rank() == 0 )
-{
-    // one abstract node, and one cut sideset labelled cut_<n>, per H^1 generator
-    for ( mesh::SideSet * tSideSet : tMesh->sidesets() )
-    {
-        if ( tSideSet->label().rfind( "cut_", 0 ) == 0 )
-        {
-            tSideSet->set_domain_type( DomainType::Cut );
-        }
-    }
-}
+// Results (master): one abstract node in tMesh->abstract_nodes(), and one sideset
+// labelled cut_<n>, per H^1 generator
 ```
 
 The cut sidesets are now in the mesh. The abstract nodes in `Mesh::abstract_nodes()` carry the
 jump DOFs. `CutFactory::cuts()` is not the way to find the cuts (see "Result Retrieval").
+
+**Leave the cut sidesets at `DomainType::Default`.** These are thick cuts: the jump is carried by
+the abstract nodes, not by dofs on the cut surface. The Maxwell field list builds a thin-cut dof
+table for every sideset typed `DomainType::Cut` (`cl_Maxwell_FieldList.cpp`), so retyping a
+`cut_<n>` sideset would add dofs the thick-cut formulation does not use. `MaxwellFactory` does not
+retype them: its loop over `CutFactory::cuts()` runs over an empty list.
 
 ---
 
@@ -789,7 +785,7 @@ Returns the member list `mCuts`. `run()` does not fill it, so the list is **empt
 `run()`. The generated cut sidesets are added to the mesh by
 `CutData::add_thin_cut_sidesets_to_mesh()`, one per H^1 generator, with the label `cut_`
 followed by a zero-padded number and domain type `Default`. Find them through
-`Mesh::sidesets()` by label.
+`Mesh::sidesets()` by label, and leave the domain type at `Default` (see Quick-Start).
 
 ```cpp
 Cell<Node*>& orphaned_nodes();
@@ -1249,7 +1245,8 @@ for one domain type; an absent type stops with `BELFEM_ERROR`.
 - `DomainType::Air`, `DomainType::Buffer`, `DomainType::Ferro`: phi blocks (φ is solved)
 - `DomainType::Conductor`, `DomainType::Coil`: non-phi blocks
 - `DomainType::ThinShell`: thin-shell sidesets
-- `DomainType::Cut`: cut sidesets (set by the caller; see "Result Retrieval")
+- `DomainType::Cut`: thin-cut sidesets; the field list builds a thin-cut dof table on them. The
+  thick `cut_<n>` sidesets from `CutFactory` stay `Default` (see Quick-Start)
 
 The sideset interface types include `InterfaceCondAir`, `InterfaceCondFerro`,
 `InterfaceFerroAir`, `InterfaceAirCoil` and `InterfaceFerroCoil`.
@@ -2321,7 +2318,7 @@ void generate_cuts(Mesh* aMesh)
         {
             if ( tSideSet->label().rfind( "cut_", 0 ) == 0 )
             {
-                tSideSet->set_domain_type( DomainType::Cut );
+                // leave the domain type at Default (see Quick-Start)
                 message( InfoLevel::Default, "Cut %lu: %lu facets\n",
                          ( long unsigned int ) tSideSet->id(),
                          ( long unsigned int ) tSideSet->number_of_facets() );
@@ -2624,14 +2621,6 @@ void toroidal_magnet()
         message( InfoLevel::Default, "Generated %lu cuts in %lu ms\n",
                  ( long unsigned int ) tMesh->abstract_nodes().size(),
                  ( long unsigned int ) tElapsed );
-
-        for ( mesh::SideSet * tSideSet : tMesh->sidesets() )
-        {
-            if ( tSideSet->label().rfind( "cut_", 0 ) == 0 )
-            {
-                tSideSet->set_domain_type( DomainType::Cut );
-            }
-        }
     }
 
     // FEM: hand tMesh->abstract_nodes() to the equation (IWG::set_abstract_nodes),
