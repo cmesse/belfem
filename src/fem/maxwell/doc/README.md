@@ -256,7 +256,7 @@ The `FieldList` class organizes DOFs by domain type:
 | **Ferro** | `phi` | Block elements (ferromagnetic) |
 | **Coil** | (user-defined) | Block elements (coils) |
 | **ThinShell** | `edge_h`, `face_h`, `lambda` | Sideset facets |
-| **Cut** | (interface DOFs) | Sideset facets (cohomology cuts) |
+| **Cut** | (interface DOFs) | Sideset facets with `DomainType::Cut`. The cohomology `cut_<n>` sidesets keep `DomainType::Default` and are not selected |
 | **Interface** | Mix of conductor + air/ferro DOFs | Sideset facets |
 
 **Non-DOF Fields** (computed, not solved for):

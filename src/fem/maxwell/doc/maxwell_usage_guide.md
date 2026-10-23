@@ -546,7 +546,7 @@ while ( tControl->time() < tControl->simulation_time() )
 
 `belfem` runs this loop when there is no thermal kernel or when `tControl->is_fullycoupled()` is true. A thermal run that is not fully coupled uses a segregated loop instead.
 
-That loop calls `initialize_magnetic()` / `solve_magnetic()`. It then iterates `initialize_thermal()` / `solve_thermal()` until the thermal time catches up, and writes `hphi_results.e-s`. See `belfem.cpp` for the full branch.
+That loop calls `initialize_magnetic()` / `solve_magnetic()`. It then iterates `initialize_thermal()` / `solve_thermal()` until the thermal time catches up, and writes `tExodusFile` (`<label>.e-s`), `iv_results.csv` and `memdump.hdf5`, just as the loop above does. See `belfem.cpp` for the full branch.
 
 ### 4.3 Setup Without the Factory
 
