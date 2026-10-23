@@ -15,6 +15,7 @@
 | 2026-07-14 | 1.1 | Assembly contract: full-signature policy for jc/n dependency routing; undeformed-mesh density rule |
 | 2026-08-25 | 2.0 | Rewritten against the current source: real roster and API, RRR-at-construction and the cached lookup tables, cryogenic α, Wachtman moduli, per-metal Kohler curves, formula alloys; the invented `Material_Metal` sketch, `populate_rho_lambda_databases`, `debye_cp` and the textbook-only model formulas removed |
 | 2026-09-15 | 2.1 | Elastic moduli: quasi-harmonic K and G on the thermal strain replace the Wachtman E and the constant-Grüneisen ν (§9.7); served moduli are isothermal; Nickel's ΔE dip retired; polycrystalline basis stated |
+| 2026-10-22 | 2.2 | `have( lambda )` and the unrouted-λ error (§1.4, §1.8); the reserved material name `buffer` (§1.9); `jc_custom`/`n_custom` abort on every material (§7.3) |
 
 ---
 
@@ -62,7 +63,7 @@ Material * tCopper = tFactory.create_material( "copper", 100.0 );
 
 `set_RRR()` determines the residual resistivity ρ₀. Every material constant except `mu` (μ₀), `q` (1), and `density_correction` (1) starts as NaN. Therefore, a metal without an RRR has no usable ρ(T) or λ(T).
 
-`have()` does not reveal this state. The constructor already reports `have( rho )` and `have( lambda )` as true. Without an RRR, `rho( T )` reads the NaN `rho_0` (a debug assert, NaN in release). `lambda( T )` calls an unset routing pointer because the λ spline is built only inside `set_RRR`.
+`have()` reveals only half of this state. The constructor reports `have( rho )` as true, and without an RRR, `rho( T )` reads the NaN `rho_0` (a debug assert; NaN in release). `have( lambda )` stays false until `set_RRR` builds the λ spline, and becomes true only for a metal with conductivity coefficients. Until then, `lambda( T )` and `dlambdadT( T )` route to `Material::lambda_undefined`, which aborts with `BELFEM_ERROR` in release builds too.
 
 `Metal::set_RRR` also builds the field-dependent lookup table when tables are enabled. The factory's third argument controls this and defaults to `true`.
 
@@ -102,14 +103,15 @@ Only `UserDefinedMaterial` implements these overloads. On every other material, 
 if ( tCustom->have( MaterialProperty::lambda ) ) { real tK = tCustom->lambda( 300.0 ); }
 ```
 
-A user-defined material has only the properties its init function set. Querying an unset
-property dispatches through a null routing pointer.
+A user-defined material has only the properties set by its init function. An unset `lambda` or
+`dlambdadT` aborts with `BELFEM_ERROR`; any other unset property dispatches through a null
+routing pointer.
 
-### 1.9 The label `buffer` is reserved
+### 1.9 The material name `buffer` is reserved
 
-`buffer` names the thin-shell φ-formulation buffer layer. As a material type, `buffer` maps to `Magnesia`.
+`buffer` is one of `Magnesia`'s builtin type names, so a material section named `buffer` must build Magnesia, regardless of which builtin form selects it. Under that name, `MaterialFactory` rejects a b-h `curve`, a `usermat`, and any builtin other than `magnesia`/`mgo`/`buffer` with `BELFEM_ERROR`.
 
-The factory rejects the label only for a user-defined (`usermat`) material. Other section forms are not checked. A section that names another builtin (`builtin: copper`) builds that material under the key `buffer`. A section with a `curve` key builds an `Iron`.
+The name does not make a thin-shell layer a buffer layer. `ThinShellFactory::create_buffers` tags a layer whose material lacks the `rho` property, regardless of the material name.
 
 ---
 
@@ -313,7 +315,7 @@ real tRho = tYbco->rho_powerlaw( tNormJ, tT, tNormB, tAngleNxB );
 ### 4.5 Ceramic — `Magnesia`
 
 c_p, α, E, ν and λ(T); no electrical resistivity. This is the material behind the reserved
-label `buffer`. Its α, like Hastelloy's and YBCO's, follows c_p below room temperature through
+material name `buffer` (§1.9). Its α, like Hastelloy's and YBCO's, follows c_p below room temperature through
 the anchored Grüneisen branch (`thermal_expansion_from_heat_capacity.md`, §7b).
 
 ### 4.6 Formula alloys — `Alloy`
@@ -450,7 +452,7 @@ Consequences for material implementers:
 - Provide jc and n through a `JcFunction`, or provide them as constants through `set_constant`. Declare dependencies truthfully. The routing and the FEM dispatch trust the `depends()` / `dependencies()` flags completely.
 - Override the `eval()` arity that matches the declared T-dependence. Both default implementations raise errors.
 - There is no T-only callback for J_c or n. Registering either with the one-argument `set_user_defined_function( …, MaterialDependency::T, f )` is rejected at load time. User superconductors must use `JcFunction`.
-- The reduced overloads (`(normJ)`, `(normJ, T)`, `(normJ, normB, angleNxB)`, and their defect twins) are not used by the assembly path. The `(normJ)` form needs constant `jc` and `n`, evaluates ρₙ at `gTbulk`, and is called by tests. The `(normJ, T)` forms read `jc_custom(T)` / `n_custom(T)`, but no registration path populates them. On a built-in material, the base implementation aborts with `BELFEM_ERROR`; on a `UserDefinedMaterial`, the override calls an empty (null) function slot. Do not call them.
+- The reduced overloads (`(normJ)`, `(normJ, T)`, `(normJ, normB, angleNxB)`, and their defect twins) are not used by the assembly path. The `(normJ)` form requires constant `jc` and `n`, evaluates ρₙ at `gTbulk`, and is called by tests. The `(normJ, T)` forms read `jc_custom(T)` / `n_custom(T)`, which no material overrides, so the base implementation aborts with `BELFEM_ERROR` for every material, including `UserDefinedMaterial`. Do not call them.
 - ρₙ, the normal-matrix branch of the parallel combination, is always evaluated at the local temperature `T`. In magnetics-only problems, the calculator passes `gTbulk`, clamped to [`gTmin`, `T_max`] of the material when it lies outside that window.
 
 ### 7.4 Density and the undeformed mesh
