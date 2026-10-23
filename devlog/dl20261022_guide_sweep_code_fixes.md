@@ -128,3 +128,22 @@ Source and tests: see the 28 commits. Docs: `doc/getting_started.md`, `doc/input
 (language-swept). Todo: `todo/closed/guide_sweep_fixes_{framework,modules}.md`,
 `todo/cubic_eos_phase_selection.md`, `todo/tensor_mesh_control_point_coordinates.md`,
 `todo/transient_heat_conduction_iwg.md`, `todo/README.md`.
+
+## Addendum 2026-10-23: residuals from the guide fixers
+
+belfem-85 reported five residual items; Christian chose all five by quiz. One jury round (Codex
+`gpt-5.6-terra`/medium, Grok `grok-4.7`/high; exchange `review_guide_sweep_residuals.md`).
+
+- 96e5d51 `clean_string`: the `tLength > 1` guard returned a one-character string unchanged even when
+  it needed cleaning; " ", "\t", "#" now give "" (test rewritten). Behaviour change.
+- 8b60e1f `Genome::inherit`: `tMutate` clamped below N·B. The jury refuted my LWG 2524 comment (its
+  resolution keeps [0, 1)); the reachable case is `rand() * tNumBits` rounding up for a draw just below 1.
+- 5040629 `element_ijk`: both auditors showed the NaN assert vanishes in release with the cast still
+  undefined; `! ( tS > 0.0 )` now sends NaN and negatives to element 0 at no release cost.
+- c872dbc `OrderConverter`: the all-linear check was unreachable after the allow-list; removed.
+- 4be9084 `hdf5_tools.hpp`: history wording removed from the `check_read_datatype` comment (comment-only).
+- Cut naming: Christian first answered "thick is right"; shown `thick_thin_cuts_and_conjugate_edges.md`
+  and the CutProcessor error texts, he ruled the `cut_<n>` sidesets are thin cuts derived from the
+  thick cohomology cut. No code change; belfem-85 fixed the homology guide (721e9b7).
+
+Reviewed, not verified (`-fsyntax-only` only). Owed with the rest: `test_core` (StringTools.*).
