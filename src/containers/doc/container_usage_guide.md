@@ -16,10 +16,10 @@ The `src/containers` module provides custom wrapper classes around STL container
 3. **Domain-specific functionality** (e.g., genetic algorithms, shift registers, bitset operations)
 4. **Performance optimizations** for specific use cases
 
-Most containers are header-only template classes. Exceptions: `DynamicBitset` and `StringList` have separate `.cpp` implementation files.
+Most containers are header-only template classes. Three also have compiled implementations: `Cell` (`cl_Cell.cpp`, out-of-bounds error helper), `DynamicBitset` (`cl_DynamicBitset.cpp`) and `StringList` (`cl_StringList.cpp`).
 
 > **Critical: Debug vs. Release Behavior**
-> All `BELFEM_ASSERT` checks are **compiled out** in release builds (`-DNDEBUG`).
+> All `BELFEM_ASSERT` checks are **compiled out** in release builds (`NDEBUG` defined and `DEBUG` not defined).
 > - **Debug:** Bounds checking, descriptive error messages
 > - **Release:** Zero overhead, but undefined behavior on violations (mirrors STL)
 
@@ -44,11 +44,14 @@ int bad = c(10);  // Debug: Clear assertion failure
 ```cpp
 DynamicBitset bits(100);
 bits.set(5);
-bits.lock();      // Compute hash, freeze bitset
-bits.set(10);     // ERROR in debug, UB in release
+bits.lock();      // Compute and cache the hash
+bits.set(10);     // debug: assertion; release: unchecked -- the bit is written,
+                  // the cached hash goes stale, and later == results can be wrong
 ```
 
-**Solution:** Only `lock()` when finalized. Use `unlock()` to modify again.
+Per-bit writes (`set`, `reset( i )`, `flip`) check the lock only with `BELFEM_ASSERT`. The in-place operators `|=`, `&=` and `^=` reject a locked left-hand side with `BELFEM_ERROR` in every build.
+
+**Solution:** Call `lock()` only after the bitset is final. Call `unlock()` before modifying it again.
 
 ### 3. **ShiftRegister: revert() Only Works Once**
 
@@ -60,15 +63,16 @@ reg.revert();     // OK: undo push(2)
 reg.revert();     // ERROR: can only revert once per push
 ```
 
-**Solution:** Only call `revert()` immediately after a failed `push()`.
+**Solution:** Call `revert()` at most once after each `push()`, to undo that push. `fill()`, `clear()`, a capacity-changing `reserve()`, copy construction and copy assignment also disarm it; calling `revert()` afterwards raises a `BELFEM_ERROR`.
 
 ### 4. **Map: operator[] vs operator()**
 
 ```cpp
 Map<string, int> m;
 int x = m["missing"];   // OK: creates entry with default value (0)
-int y = m("missing");   // checked access: throws in a debug build,
-                        // aborts in release ( assert.hpp:88-93 )
+int y = m("missing");   // checked access: by default throws in a debug build,
+                        // aborts in release ( assert.hpp:88-93 );
+                        // set_throw_on_error() overrides the default
 ```
 
 **Solution:** Use `[]` for insert-or-access, `()` for checked read.
@@ -81,11 +85,11 @@ Genome<4, 3> genome( mins, maxs, scales );   // only 2^4 = 16 levels per paramet
 // Better: Genome<12, 3> for 4096 levels
 ```
 
-**Solution:** Choose B ≥ 10 for continuous parameters. Use log scaling for wide ranges.
+**Solution:** Choose B ≥ 10 for continuous parameters, and keep B below 32 (the encoding shifts a 32-bit `unsigned int` by B). Use log scaling for wide ranges; it requires strictly positive bounds.
 
 ### 6. **Thread Safety**
 
-All containers are **not thread-safe**. Concurrent writes require external synchronization (mutexes).
+All containers are **not thread-safe**. BELFEM's own parallelism is MPI, one process per rank, and its C++ sources contain no OpenMP pragmas. If several threads share a container, the calling code must synchronize the writes.
 
 ---
 
@@ -95,12 +99,12 @@ Different containers use different memory models:
 
 | Container | Strategy | Notes |
 |-----------|----------|-------|
-| `Cell`, `Map`, `OrderedMap`, `Set`, `Queue` | STL allocators | RAII, exception-safe |
+| `Cell`, `Map`, `OrderedMap`, `Set`, `Queue` | STL allocators | RAII, exception-safe. A `Cell<T*>` does not own its pointees: destruction, `clear()` and `set_size()` do not delete them |
 | `Bitset<N>` | Stack (compile-time size) | Minimal overhead |
-| `DynamicBitset` | `malloc`/`free` for `uint64_t` blocks | Manual deallocation in destructor |
+| `DynamicBitset` | `malloc`/`free`, three `uint64_t` blocks (data plus two summary levels) | Manual deallocation in destructor |
 | `ShiftRegister<T>` | `malloc`/`free` | +1 extra element for revert backup |
-| `StringList` | `malloc`/`free` for `char**` | C API compatibility |
-| `Genome` | Embeds `Bitset<N*B>` | Stack-based DNA |
+| `StringList` | `malloc`/`free` for `char**` | C API compatibility; not copyable, not movable |
+| `Genome` | Embeds `Bitset<N*B>` | Stack-based DNA. Holds the bounds and the scale flags **by reference**: they must outlive the genome |
 
 ---
 
@@ -131,14 +135,14 @@ Cell<int> c = {1, 2, 3, 4};          // Initializer list
 
 // Access
 int val = a(0);                       // Bounds-checked access (debug mode)
-int& first = a.first();               // First element (bounds-checked in debug)
-int& last = a.last();                 // Last element (bounds-checked in debug)
+int& first = a.first();               // First element (debug: std::vector::at, throws std::out_of_range)
+int& last = a.last();                 // Last element (debug: std::vector::at, throws std::out_of_range)
 
 // Modification
 a.push(5);                            // Add element (copy)
 a.push(std::move(temp));              // Add element (move)
 a.emplace(args...);                   // Construct in-place
-int popped = a.pop();                 // Remove and return last element
+int popped = a.pop();                 // Remove and return last element (unchecked: a must not be empty)
 
 // Memory management
 a.set_size(100);                      // Resize
@@ -147,8 +151,8 @@ a.shrink_to_fit();                    // Free unused memory
 a.clear();                            // Clear all elements
 
 // Direct STL access
-std::vector<T>& vec = a.vector_data();
-T* ptr = a.data();
+std::vector<int>& vec = a.vector_data();   // resizing through vec bypasses operator()'s checks
+int* ptr = a.data();
 
 // Iteration
 for (auto& elem : a) { /* ... */ }    // Range-based for loop
@@ -159,8 +163,11 @@ for (auto& elem : a) { /* ... */ }    // Range-based for loop
 ```cpp
 // Sorting and uniqueness
 sort(myCell);                         // Sort in ascending order
-sort(myCell, comparator);             // Sort with custom comparator
+sort(myCell, comparator);             // Sort with custom comparator (taken as C&: pass a named
+                                      // object, not a temporary lambda)
+sort(myCell, comparator, n);          // Sort only the first n elements
 unique(myCell);                       // Sort + remove duplicates (in-place)
+index_t k = find_index_in_unique_cell(myCell, value);   // Binary search in a sorted, unique Cell
 reverse(myCell);                      // Reverse order
 
 // Combining cells
@@ -195,7 +202,7 @@ swap(cellA, cellB);                   // Swap contents (noexcept)
 #### Description
 
 Provides hash-based key-value storage with:
-- Descriptive error messages for missing keys (debug mode)
+- A descriptive error when checked access meets a missing key; the check is present in every build
 - Consistent interface with other BELFEM containers
 - Two access patterns: `[]` (insert-or-access) and `()` (checked access)
 
@@ -211,7 +218,7 @@ ages["Alice"] = 30;                   // Insert or update
 ages.map_data().insert({"Bob", 25});  // STL-style insert via the exposed container
 
 // Access
-int age = ages("Alice");              // Checked access (asserts if not found)
+int age = ages("Alice");              // Checked access (BELFEM_ERROR if not found, every build)
 int& ref = ages["Charlie"];           // Insert-or-access (creates if missing)
 
 // Queries
@@ -223,13 +230,13 @@ bool empty = ages.empty();
 ages.erase_key("Alice");
 ages.clear();
 
-// Iteration
+// Iteration (const only: begin()/end() are const members)
 for (const auto& [name, age] : ages) {
     // Process key-value pairs
 }
 
-// Direct STL access
-std::unordered_map<Key, Value>& raw = ages.map_data();
+// Direct STL access (also the way to modify values while iterating)
+std::unordered_map<string, int>& raw = ages.map_data();
 ```
 
 #### Access Patterns
@@ -385,11 +392,11 @@ Queue<int> q2(myCell);               // Convert Cell to Queue
 
 // Operations
 q.push(10);                          // Add to back
-int front = q.pop();                 // Remove and return front element
+int front = q.pop();                 // Remove and return front element (unchecked: q must not be empty)
 
 // Queries
 size_t n = q.size();
-bool empty = q.empty();
+bool empty = q.empty();              // not a const member: cannot be called on a const Queue
 ```
 
 #### When to Use
@@ -431,7 +438,7 @@ index_t numSet = flags.count();      // Count true bits
 index_t size = flags.size();         // Returns N
 
 // Direct access to std::bitset
-std::bitset<N>& raw = flags.data();
+std::bitset<64>& raw = flags.data();
 ```
 
 #### When to Use
@@ -460,8 +467,8 @@ std::bitset<N>& raw = flags.data();
 
 Advanced bitset implementation with:
 - Runtime-determined size
-- Locking mechanism for immutability and fast hashing
-- Hash-based comparison (FNV-64 algorithm)
+- Locking mechanism for a cached hash (and a debug-build write guard)
+- Hash-based comparison (an FNV-1a-style hash, see below)
 - Bitwise operations (|, &, ^)
 - Efficient bit extraction
 - Serialization support
@@ -488,7 +495,7 @@ index_t mem = bits.memory();         // Number of uint64_t blocks
 
 // Extract set bit indices
 Cell<index_t> indices;
-bits.where(indices);                 // returns the set bits, ascending
+bits.where(indices);                 // replaces the contents of indices with the set bits, ascending
 bits.where(indices, true);           // the flag is accepted for source compatibility
 bits.where(indices, false);          // ... and ignored: there is only one algorithm now.
                                      // The scan skips zero data words, but still walks
@@ -496,7 +503,7 @@ bits.where(indices, false);          // ... and ignored: there is only one algor
                                      // the size of the bitset as well as the bit count
 
 // Locking mechanism (for hashing/comparison)
-bits.lock();                         // Compute FNV-64 hash, make immutable
+bits.lock();                         // Compute and cache the hash
 size_t hash = bits.hash();           // Get hash (requires lock)
 bool locked = bits.is_locked();
 bits.unlock();                       // Make writable again (resets hash)
@@ -532,8 +539,10 @@ index_t idx = bits.index();          // Retrieve index
 
 The locking mechanism serves two purposes:
 
-1. **Immutability**: Prevents modification of bitset after finalization
-2. **Fast Comparison**: Cached FNV-64 hash enables O(1) inequality checks
+1. **Write guard**: in debug builds, a per-bit write to a locked bitset triggers an assertion. `|=`, `&=` and `^=` reject a locked left-hand side in every build. In release builds, per-bit writes proceed and leave the cached hash stale.
+2. **Fast Comparison**: the cached hash rejects unequal bitsets in O(1)
+
+The hash starts from the FNV-1a offset basis and prime, then mixes in the `std::hash` of the bit count and of each `uint64_t` word; a result of 0 is remapped to 1. Call `hash()` to retrieve it; an FNV-64 computed externally over the raw words will in general differ.
 
 ```cpp
 DynamicBitset a(100), b(100);
@@ -547,11 +556,11 @@ if (a == b) {
     // Hash check first (O(1)), then bit-by-bit if hashes match (O(n))
 }
 
-// This would trigger assertion in debug:
-// a.set(5);  // ERROR: Can't modify locked bitset
+// Debug build: assertion. Release build: the write happens, the hash goes stale.
+// a.set(5);
 ```
 
-> **Note:** `reset()` (clear all bits) automatically unlocks the bitset.
+> **Note:** `reset()` (clear all bits) automatically unlocks the bitset. So does `set_from_hex()`, which calls `reset()` first.
 
 #### Serialization
 
@@ -563,13 +572,14 @@ DynamicBitset bits(128);
 
 // Hex (human-readable)
 string hex = bits.to_hex();          // "00A3F2..."
-bits.set_from_hex(hex);              // Restore
+bits.set_from_hex(hex);              // Restore (unlocks; digits beyond size() are dropped)
 
 // Binary string (visual debugging)
 string bin = bits.to_string();       // "0010101..."
 
-// Raw bytes (not shown in API, but available via data())
-const uint64_t* raw = bits.data();   // Direct access to blocks
+// Raw bytes
+string rawBytes = bits.to_raw_string();   // the uint64_t words, byte for byte
+const uint64_t* raw = bits.data();        // read-only access to the blocks
 ```
 
 #### Performance Notes
@@ -577,7 +587,7 @@ const uint64_t* raw = bits.data();   // Direct access to blocks
 - **`where()` method**: one algorithm; walks the two-level summary bitmaps, so it skips every zero data word (cost: all level-2 words + touched words + set bits). The `aAssumeSparse` flag is accepted and ignored.
 - **Bitwise operations**: Optimized with pointer arithmetic, vectorizable
 - **Hash comparison**: O(1) for inequality, O(n) for equality confirmation
-- **Storage**: Uses `uint64_t` blocks (8 bytes each), efficient for large bit arrays
+- **Storage**: `uint64_t` data words (8 bytes each) plus two summary levels, one bit per word of the level below; three separate allocations
 
 #### When to Use
 
@@ -586,26 +596,9 @@ const uint64_t* raw = bits.data();   // Direct access to blocks
 - Hash-based bitset comparisons (use in maps/sets)
 - Need to extract indices of set bits efficiently
 
-#### Lesson Learned: The where_sparse() Optimization Paradox
+#### Design Note: Bits Past size() Are Zero
 
-During development of the `where_sparse()` routine, six different AI models suggested "obvious" optimizations:
-- Hoisting bounds checks out of the inner loop
-- Loop splitting (separate fast loop for full blocks vs. partial blocks)
-- Aggressive masking to eliminate inner-loop logic
-
-**The silicon reality:** Micro-benchmarking revealed the **original, unoptimized loop was 82% faster** than the theoretically "superior" version.
-
-**Why the simple loop won:**
-
-1. **Branch Predictability**: Because unused bits in the final block are **zeroed by construction** (class invariant), the branch `if (tIndex < mNumberOfBits)` is true ~100% of the time. Modern branch predictors handle this with virtually zero clock-cycle cost.
-
-2. **Instruction Cache Density**: The simple loop resulted in smaller binary code. The "optimized" loop-splitting approach doubled the code size, increasing I-cache pressure and preventing effective compiler auto-vectorization.
-
-3. **Low-Latency Invariants**: Relying on class invariants (high bits always zero) is cheaper than enforcing them at runtime via masking.
-
-> **Silicon Guardrail Rule:** Profile before you perfect. Modern silicon is smarter than most algorithms. Keep hot loops simple and compact—more code is rarely faster code.
-
-**See also:** `doc/lessons_learned.md` for the full case study and additional performance lessons.
+Bits at positions `size()` and above in the last data word are zero by construction: the constructor zeroes the storage, `set()` and `flip( i )` assert their bounds, `flip()` masks the last word, and `set_from_hex()` skips positions past the end. The `where()` walk relies on this invariant, checking it with an assertion in debug builds, instead of masking at run time.
 
 **See:** `DynamicBitset` class in `cl_DynamicBitset.hpp` and `.cpp`
 
@@ -614,9 +607,9 @@ During development of the `where_sparse()` routine, six different AI models sugg
 ### 8. ShiftRegister<T> - Fixed-Capacity FIFO with Revert
 
 **File:** `cl_ShiftRegister.hpp`
-**STL Equivalent:** None (custom circular buffer)
+**STL Equivalent:** None (custom shifting buffer)
 
-**Purpose:** Fixed-capacity circular buffer with newest-first ordering and one-step revert capability.
+**Purpose:** Fixed-capacity buffer with newest-first ordering and one-step revert capability. `push()` shifts the stored values one slot back; there is no head index.
 
 #### Description
 
@@ -625,6 +618,8 @@ A specialized container that maintains the N most recent values, with:
 - Fixed capacity determined at construction
 - **One-step revert capability** (undo last push)
 - Efficient memory management with `malloc`/`free`
+
+**Allowed element types:** `T` must be trivially copyable, or be `Vector<T>` or `Matrix<T>`, the two owning types whitelisted through `is_shift_register_safe` in `cl_ShiftRegister.hpp`. Other types, such as `std::string`, `Cell<int>` or a non-trivial struct, fail a `static_assert` at compile time.
 
 #### Key Features
 
@@ -660,13 +655,13 @@ history.clear();                               // Remove all values
 history.fill(0.0);                             // Fill all current values with 0.0
 
 // Memory management
-history.reserve(10);                           // Change capacity (clears data)
+history.reserve(10);                           // Change capacity (clears data; same capacity: no-op)
 history.free();                                // Release memory explicitly
 ```
 
 #### Revert Capability
 
-> **Critical:** `revert()` can only be called **once** after each `push()`.
+> **Critical:** `revert()` can only be called **once** after each `push()`. `fill()`, `clear()`, a capacity-changing `reserve()` and copying disarm it as well; a disarmed `revert()` is a `BELFEM_ERROR` in every build.
 
 The shift register allocates one extra backup slot internally:
 
@@ -724,7 +719,7 @@ for (double val : data) {
 - Uses `std::malloc`/`free` for memory (not `new`/`delete`)
 - Efficient `push()`: O(capacity) using `std::move_backward`
 - Fixed capacity: no dynamic resizing overhead
-- Revert is O(capacity) but only available immediately after `push()`
+- Revert is O(capacity) and available only for the most recent `push()`
 
 **See:** `ShiftRegister` class in `cl_ShiftRegister.hpp`
 
@@ -746,6 +741,14 @@ Template class for genetic algorithm optimization:
 - Implements crossover, mutation, and fitness tracking
 
 > **Tip:** Use B ≥ 10 for continuous parameters (1024 levels). Use log scaling for parameters spanning orders of magnitude.
+
+**Constraints:**
+
+- **Lifetime.** The constructor stores *references* to the two bound vectors and to the scale `Bitset<N>`, not copies. Those three objects must outlive every genome built from them. Because the reference members delete copy assignment, hold genomes through pointers (`Cell<Genome<B, N>*>`), not by value.
+- **Bit width.** Encoding and decoding compute `( 1u << B ) - 1` on a 32-bit `unsigned int`, so B must be below 32.
+- **Log scale.** A log-scaled parameter takes `std::log` of its bounds and of the value, so both bounds must be strictly positive.
+- **Degenerate range.** A parameter whose bounds are equal (within `BELFEM_EPSILON`) is not encoded; it decodes to the lower bound.
+- **Random numbers.** `randomize()` and `inherit()` draw from `belfem::rand()`; call `random_seed()` once beforehand. In a build without `BELFEM_MPI`, `belfem::rand()` returns `std::rand() / RAND_MAX`, which can be exactly 1. In that case, with probability about 1/(`RAND_MAX`+1) per call, the mutation index in `inherit()` equals N·B and `std::bitset::flip` throws `std::out_of_range`. MPI builds draw from [0, 1).
 
 #### Key Features
 
@@ -780,59 +783,67 @@ child.inherit(&mom, &dad);                    // Single-point crossover + 1-bit 
 // Fitness tracking
 individual.set_fitness(0.042);
 real fitness = individual.fitness();
-bool alive = individual.is_alive();           // fitness != REAL_MAX
-individual.kill();                            // Set fitness to REAL_MAX
+bool alive = individual.is_alive();           // fitness != BELFEM_REAL_MAX; a new genome
+                                              // is not alive until set_fitness()
+individual.kill();                            // Clear the DNA and set fitness to BELFEM_REAL_MAX
 ```
 
 #### Genetic Algorithm Workflow
 
+The genomes are allocated once, in two pools of equal size, and deleted at the end; a `Cell<T*>` never deletes its pointees. Each generation breeds into the second pool, swaps the elite pointers across, and then swaps the pools. Because `inherit()` overwrites the whole DNA of its target, a retired genome can safely be reused as a child.
+
 ```cpp
-// Typical optimization loop
-const size_t BITS = 12;                       // 4096 levels per parameter
-const size_t PARAMS = 5;                      // 5 parameters to optimize
-const size_t POP_SIZE = 100;
+// Typical optimization loop. tMins, tMaxs, tScales, objective_function(),
+// tournament_select() and tMaxGenerations are supplied by the caller;
+// tMins, tMaxs and tScales must outlive every genome.
+constexpr size_t BITS = 12;                   // 4096 levels per parameter
+constexpr size_t PARAMS = 5;                  // 5 parameters to optimize
+const size_t tPopSize = 100;
+const size_t tNumElite = tPopSize / 10;
 
-// NOTE: Cell( n ) only RESERVES -- it does not size the container, so a
-// range-for over it here would iterate over nothing. Size it with the
-// two-argument constructor, or push each element.
-Cell<Genome<BITS, PARAMS>*> population(POP_SIZE, nullptr);
+random_seed();
 
-// Initialize population
-for (auto& genome : population) {
-    genome = new Genome<BITS, PARAMS>(mins, maxs, scales);
-    genome->randomize();
+// Cell( n ) only reserves: size the pools with the two-argument constructor
+Cell<Genome<BITS, PARAMS>*> tPopulation(tPopSize, nullptr);
+Cell<Genome<BITS, PARAMS>*> tOffspring(tPopSize, nullptr);
+
+for (size_t k = 0; k < tPopSize; ++k) {
+    tPopulation(k) = new Genome<BITS, PARAMS>(tMins, tMaxs, tScales);
+    tPopulation(k)->randomize();
+    tOffspring(k)  = new Genome<BITS, PARAMS>(tMins, tMaxs, tScales);
 }
 
-// Evolution loop
-for (size_t gen = 0; gen < MAX_GENERATIONS; ++gen) {
+opGenomeSort<BITS, PARAMS> tSorter;           // ascending fitness: best first
+Vector<real> tParams(PARAMS);                 // scratch, reused every evaluation
+
+for (size_t tGen = 0; tGen < tMaxGenerations; ++tGen) {
     // Evaluate fitness
-    for (auto& genome : population) {
-        Vector<real> params(PARAMS);
-        genome->get_values(params);
-        real fitness = objective_function(params);
-        genome->set_fitness(fitness);
+    for (Genome<BITS, PARAMS>* tGenome : tPopulation) {
+        tGenome->get_values(tParams);
+        tGenome->set_fitness(objective_function(tParams));
     }
 
-    // Sort by fitness
-    opGenomeSort<BITS, PARAMS> sorter;
-    sort(population, sorter);
+    sort(tPopulation, tSorter);
 
-    // Create next generation (elitism + breeding)
-    Cell<Genome<BITS, PARAMS>*> nextGen(POP_SIZE, nullptr);   // size it; Cell(n) only reserves
-
-    // Keep top 10% (elitism)
-    for (size_t i = 0; i < POP_SIZE/10; ++i) {
-        nextGen(i) = population(i);
+    // Breed into the retired genomes of the other pool
+    for (size_t i = tNumElite; i < tPopSize; ++i) {
+        size_t tMom = tournament_select(tPopulation);
+        size_t tDad = tournament_select(tPopulation);
+        tOffspring(i)->inherit(tPopulation(tMom), tPopulation(tDad));
     }
 
-    // Breed the rest
-    for (size_t i = POP_SIZE/10; i < POP_SIZE; ++i) {
-        size_t momIdx = tournament_select(population);
-        size_t dadIdx = tournament_select(population);
-        nextGen(i)->inherit(population(momIdx), population(dadIdx));
+    // Elitism: the best genomes move to the next generation unchanged
+    for (size_t i = 0; i < tNumElite; ++i) {
+        std::swap(tPopulation(i), tOffspring(i));
     }
 
-    population = nextGen;
+    swap(tPopulation, tOffspring);            // belfem::swap( Cell&, Cell& )
+}
+
+// Release both pools
+for (size_t k = 0; k < tPopSize; ++k) {
+    delete tPopulation(k);
+    delete tOffspring(k);
 }
 ```
 
@@ -840,6 +851,8 @@ for (size_t gen = 0; gen < MAX_GENERATIONS; ++gen) {
 
 - **Linear scale**: `value = min + (max - min) × (bits / (2^B - 1))`
 - **Log scale**: `value = exp(log(min) + (log(max) - log(min)) × (bits / (2^B - 1)))`
+
+`get_values()` clamps each decoded value to `[min, max]`, because `exp( log( max ) )` can overshoot `max` by a few ulp. `set_values()` likewise clamps an out-of-range input to the bounds instead of rejecting it.
 
 Use log scale for parameters spanning orders of magnitude (e.g., conductivity: 0.001 to 100).
 
@@ -1128,25 +1141,25 @@ reg.revert();     // OK
 ### Example 1: Mesh Node Storage
 
 ```cpp
-// src/mesh/cl_Mesh.hpp
-Cell<Node*> mNodes;                   // All nodes in mesh
+// src/mesh/cl_Mesh.hpp, class Mesh
+Cell< mesh::Node * > mNodes;          // All nodes in the mesh; ~Mesh deletes them
 
 // Efficient construction
-mNodes.reserve(nodeCount);
-for (index_t i = 0; i < nodeCount; ++i) {
-    mNodes.push(new Node(i, coords));
+mNodes.reserve(tNumNodes);
+for (index_t k = 0; k < tNumNodes; ++k) {
+    mNodes.push(new mesh::Node(tIDs(k), tX(k), tY(k), tZ(k)));
 }
 ```
 
 ### Example 2: Element-to-Node Connectivity
 
-```cpp
-// src/fem/kernel/cl_Element.hpp
-Cell<Node*> mNodes;                   // Nodes of this element
+Elements do not use a `Cell` for their nodes. `mesh::ElementTemplate` (`src/mesh/cl_ElementTemplate.hpp`) holds a fixed raw array `Node ** mNodes`, sized by the element type, and exposes it through the virtual accessor `node( k )`:
 
-// Access element node
-Node* node = mNodes(localIndex);      // Bounds-checked
+```cpp
+mesh::Node * tNode = tElement->node(k);   // tElement is a mesh::Element *
 ```
+
+The FEM-level `fem::Element` (`src/fem/kernel/cl_FEM_Element.hpp`) wraps a `mesh::Element *` and reaches its nodes through that pointer.
 
 ### Example 3: Cohomology Facet Operations
 
@@ -1173,26 +1186,16 @@ facetMap[boundary.hash()] = &boundary;
 
 **Important:** BELFEM containers are **not thread-safe** by default.
 
+BELFEM's parallelism is MPI: each rank is a separate process with its own memory, and the C++ sources contain no OpenMP pragmas. The containers do no internal locking.
+
 - **Reading**: Multiple threads can safely read from const containers
-- **Writing**: Use external synchronization (mutexes, atomics) for concurrent writes
-- **MPI**: Each rank has separate container instances (no shared memory)
-  - Use `comm` module for synchronization (e.g., all-gather for Cells)
-
-Example with OpenMP:
-
-```cpp
-Cell<int> shared(100);
-
-#pragma omp parallel for
-for (int i = 0; i < 100; ++i) {
-    // Read: safe
-    int val = shared(i);
-
-    // Write: NOT safe without synchronization
-    #pragma omp critical
-    shared(i) = compute(val);
-}
-```
+- **Writing**: Code that shares a container between threads must synchronize the writes itself (for OpenMP, `#pragma omp critical` around the call)
+- **MPI**: Each rank has its own container instances. The `comm` module moves `Cell` data between ranks (`src/comm/commtools.hpp`; contracts in `src/comm/doc/comm_usage_guide.md`):
+  - `send` / `receive`: point-to-point
+  - `broadcast( Cell& )`: collective, every rank calls it
+  - `share` / `receive`: root-only chunked send paired with `receive` on the other ranks; not collective, so the rank guard is required
+  - `distribute` / `collect`: one entry per rank; `distribute` only sends and `collect` only receives, so the other ranks must post the matching `receive`/`send`; not collective
+  - There is no all-gather for `Cell`.
 
 ---
 
