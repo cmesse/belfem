@@ -63,7 +63,7 @@ namespace belfem
             mMapper->SetInputData( mPolyData );
 
             mActor->SetMapper( mMapper );
-            mActor->GetProperty()->SetLineWidth( aLineWidth );
+            mActor->GetProperty()->SetLineWidth( static_cast< float >( aLineWidth ) );
             mActor->GetProperty()->SetLighting( false );
             mActor->GetProperty()->SetColor( 1.0, 1.0, 1.0 );
         }
