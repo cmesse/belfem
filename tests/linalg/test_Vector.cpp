@@ -13,6 +13,7 @@
 
 #include <gtest/gtest.h>
 #include <cmath>
+#include <complex>
 #include <cstdint>
 #include <limits>
 #include <string>
@@ -857,4 +858,28 @@ TEST( Vector, LinearCombination )
 
     EXPECT_NEAR( tResult( 0 ), 3.0, tEps );
     EXPECT_NEAR( tResult( 1 ), 2.0, tEps );
+}
+
+// the residual of a complex power iteration: norm of a vector expression goes to the backend
+// through argument-dependent lookup and comes back as a scalar 2-norm, never as a Vector
+TEST( Vector, ComplexExpressionNormIsTheTwoNorm )
+{
+    belfem::Vector< belfem::cplx > tY = { belfem::cplx( 1.0, 2.0 ), belfem::cplx( -3.0, 0.5 ), belfem::cplx( 0.0, -1.0 ) };
+    belfem::Vector< belfem::cplx > tZ = { belfem::cplx( 0.5, 0.0 ), belfem::cplx(  1.0, 1.0 ), belfem::cplx( 2.0,  0.0 ) };
+    const belfem::cplx tLambda( 0.75, -0.25 );
+
+    static_assert( ! std::is_same< std::decay_t< decltype( norm( tY - tLambda * tZ ) ) >,
+                                   belfem::Vector< belfem::cplx > >::value,
+                   "norm of a vector expression must be a scalar, not a materialized Vector" );
+
+    belfem::real tExpected = 0.0;
+    for ( std::size_t i = 0; i < 3; ++i )
+    {
+        tExpected += std::norm( tY( i ) - tLambda * tZ( i ) );
+    }
+    tExpected = std::sqrt( tExpected );
+
+    const belfem::cplx tResidual = norm( tY - tLambda * tZ );
+    EXPECT_NEAR( std::abs( tResidual ), tExpected, tEps );
+    EXPECT_NEAR( std::imag( tResidual ), 0.0, tEps );
 }

@@ -193,7 +193,7 @@ namespace belfem
 
                     mJ = tIntegration->dNdXi( k ) * mElX ;
 
-                    mG = inv( mJ.matrix_data() ) * tIntegration->dNdXi( k ).matrix_data() * mPhi.vector_data();
+                    mG = inv( mJ ) * tIntegration->dNdXi( k ) * mPhi;
 
                     this->compute_poly( mX );
 

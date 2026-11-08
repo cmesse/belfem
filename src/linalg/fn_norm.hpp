@@ -32,6 +32,9 @@ namespace belfem
 {
 //------------------------------------------------------------------------------
 
+// The expression overload takes a non-const reference on purpose: an rvalue backend expression
+// then binds to the backend's own norm through argument-dependent lookup, while a const reference
+// here would make the two equally good matches and the call ambiguous.
 #ifdef BELFEM_ARMADILLO
     template< typename ET >
     auto

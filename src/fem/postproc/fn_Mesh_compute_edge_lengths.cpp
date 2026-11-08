@@ -135,7 +135,7 @@ namespace belfem
                         // perform integration
                         for( uint k=0; k<tNumIntpoints; ++k )
                         {
-                            tLength += tW( k ) * norm( tNodeCoords.matrix_data() * tdNdXi( k ).matrix_data() );
+                            tLength += tW( k ) * norm( tNodeCoords * tdNdXi( k ) );
                         }
 
                         // add length to container

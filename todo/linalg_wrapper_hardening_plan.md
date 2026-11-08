@@ -12,7 +12,7 @@ gate, on **both** backends.
 `src/physics`, `src/numerics`, `src/mesh` (round D, consumers)
 **AIs involved:** Claude (plan), Codex `gpt-6-astra` (plan + code audits), Grok `grok-4.7` (third
 voice; restored 2026-11-07 after two rounds on the report without it)
-**Status:** IN PROGRESS — **rounds A, B and C VERIFIED (Christian's `make check`, Blaze and Armadillo, 2026-11-08) and committed; round D next (R4.0 hatch inventory, read-only, then per-file sub-rounds).** O-decisions as recorded below. Plan jury record: **round 2 at `xhigh` done** (Codex: 5 findings, 3 P1 — eigen status discarded, complex transpose
+**Status:** IN PROGRESS — **rounds A, B and C VERIFIED (Christian's `make check`, Blaze and Armadillo, 2026-11-08) and committed; round D: R4.0 inventory done, R4.1 (Timestep, 70 lines) and R4.2 (kernel, postproc, eigen, 12 lines) implemented, code-juried and VERIFIED 2026-11-08 (Christian's `make check`, Blaze and Armadillo), committed; R4.3 handed to the second session (belfem-5e), awaiting Christian's go there.** O-decisions as recorded below. Plan jury record: **round 2 at `xhigh` done** (Codex: 5 findings, 3 P1 — eigen status discarded, complex transpose
 semantics, stale §6 counter sketch; Grok: 4 P1 + 8 P2 — one-TU tripwire, API wording, row-view add is a transpose-add not UB, …; all
 CONFIRMED, two by run probe) and folded in (gaps #36–#37, R2.0, R3.0, O12–O13). O2a, O2b, O4, O5 **decided 2026-11-07 by Christian**
 (below). Drafted 2026-11-07, **plan jury round 1 done the same day** (Codex `gpt-6-astra`/high:
@@ -276,11 +276,11 @@ step, never inside the round that raised them.
 
 Sub-rounds, each with its own code jury:
 
-- [ ] **R4.0** Inventory (gap #19) → Appendix D. Classify each of the 110 lines: live/dead,
+- [x] **R4.0** Inventory (gap #19) → Appendix D *(2026-11-08)*. Classify each of the 110 lines: live/dead,
   workaround/convenience, replacement expression, test that covers the path. Lines that are
   *legitimate* uses of the hatch (handing the backend object to LAPACK or MPI glue,
   `commtools.hpp`, `hdf5_tools.hpp`) are marked "keep" and are not touched.
-- [ ] **R4.1 — `cl_IWG_Timestep.cpp` (79 lines).** First the BDF2–5 tests (gap #20); then, per
+- [x] **R4.1 — `cl_IWG_Timestep.cpp` (79 lines).** *(70 live lines replaced 2026-11-08; juried, no findings; `make check` green both backends)* First the BDF2–5 tests (gap #20); then, per
   method, replace `aJ.matrix_data() += M().matrix_data()` by `aJ += M()`, `aSwap.vector_data() =
   mBeta(0) * qold(0).vector_data()` by `aSwap = mBeta(0) * qold(0)`, etc. Crank–Nicolson and
   Galerkin lines stay (gap #21). Gate: the new tests, the R3.2 counter run on each replaced shape,
@@ -290,7 +290,7 @@ Sub-rounds, each with its own code jury:
   it (`cl_IWG_Maxwell`, `cl_IWG_TransientHeatConduction`, `cl_IWG_Poisson`, `cl_IWG_StaticHeatConduction`),
   the `mt_*` matrix factories, `cl_FEM_Controller`, `cl_FEM_DofMgr_EigenValues`, `test_QoldTable.cpp`
   (derives `TwoFieldIwg` from it) — their tests are in the gate.
-- [ ] **R4.2 — `src/fem/kernel` + `src/fem/postproc`** (`cl_FEM_Calculator.hpp` 9,
+- [x] **R4.2 — `src/fem/kernel` + `src/fem/postproc`** *(12 lines replaced 2026-11-08; juried, D21–D22 applied; `make check` green both backends)* (`cl_FEM_Calculator.hpp` 9,
   `cl_FEM_DofMgr_EigenValues.cpp` 1, `cl_Gradient.cpp` 1, `fn_Mesh_compute_edge_lengths.cpp` 1, …).
   The Calculator's nine lines are three assignments `mJ->matrix().matrix_data() = …` (`:1724`,
   `:1740`, `:1755`) and six `dot( phi().vector_data(), mX.col(·) )` calls (`:2233-2298`, mixed
@@ -410,6 +410,21 @@ private and CamelCase); dead `tQhist` block (D16); `dlsym` null check (D17); gui
 parity holds for every shape. Nothing built in the tree. First `make check` (Christian, Blaze release): 16/17 suites green (DR-202 has landed in that tree); `test_fem` segfaulted in the new
 `BdfAssembly` fixture, which had not called `link_to_group( tBlock )` before assembling — the kernel's own loop does (`cl_FEM_DofManager.cpp:587`).
 **D19 fixed 2026-11-08**, compile re-gated on both backends and modes; the run is Christian's. Second run: Armadillo green incl. `BdfAssembly`; Blaze `test_linalg` red on the 64×64 `*=` parity count, which is nondeterministic above Blaze's SMP product threshold under `-fopenmp` — **D20 fixed 2026-11-08** (48×48). Third run: `make check` green on Armadillo and on Blaze — **round C VERIFIED on both legs**, committed.
+
+**Round D — R4.0 inventory 2026-11-08 (Appendix D); R4.1 and R4.2 implemented and code-juried the same day (Codex `gpt-6-astra`/high + Grok
+`grok-4.7`/high, one jury per sub-round, O6).** R4.1: 70 of the 79 `cl_IWG_Timestep.cpp` hatch lines replaced by the round-C overloads, the nine
+Crank–Nicolson/Galerkin lines left dead behind their tested refusal; jury: no findings, both seats confirmed the history-buffer sequencing
+(`qold()` returns the shared `mq0`) and the BDF operation order; Grok noted the `explicit_euler` product goes through the unchecked `operator*( const A&,
+const Vector& )` catch-all — pre-existing, round-E candidate. R4.2: `cl_FEM_Calculator.hpp` ×9, `cl_Gradient.cpp:196`, `fn_Mesh_compute_edge_lengths.cpp:138`,
+`cl_FEM_DofMgr_EigenValues.cpp:1757` (the `#ifdef BELFEM_ARMADILLO` fork replaced by one `norm` call), `fn_norm.hpp` comment on why the expression overload
+is `ET &`; jury: no P0/P1; **the eigen line is a behaviour change on Blaze** — the old Blaze branch computed `sqrt( Σ|rᵢ| )`, so with `mEpsilon = 1e-4` it
+stopped at `|r| < 1e-8` while Armadillo stopped at `|r| < 1e-4`; both backends now use the 2-norm and Armadillo's stop test (Grok, confirmed; no test drives
+the power iteration). **D21** (Grok): comment carried history, trimmed to the return-type contract. **D22** (Codex): `Vector.ComplexExpressionNormIsTheTwoNorm`
+added — complex operands, modulus against the hand sum, zero imaginary part, and a `static_assert` that the expression `norm` is a scalar, not a materialized
+`Vector` (Grok's open risk). Gates: `g++ -c` with `flags.make` on every touched TU, both backends × both modes, clean; Blaze allocation parity on every R4.1
+shape (one allocation either way for `( aJ − K()*dt ) * qold()`, the backend's own materialization of the difference); Christian's `make check` on Blaze green
+with R4.1 + R4.2 (before D21/D22), then on Armadillo with D21/D22: green — **round D R4.1/R4.2 VERIFIED, committed.** R4.3 handed to belfem-5e 2026-11-08 (held there for Christian's approval); R4.4 nonfree,
+R4.5 Gregory.
 - R3.0: `tests/fem/test_BdfTimestepMethod.cpp` §7 — `SyntheticMkfIwg` (synthetic M, K, f) + `AssemblyProblem`; `Bdf1ToBdf5MatchTheHandFormula`
   and `RampRunsTheOrderTheHistorySupports` check `compute_jacobian_and_rhs` against `J = alpha M + h K`, `b = h f + M Σ(−1)^k beta_k q_k` with
   the IWG's own coefficients (§4 pins those). Compiles in both modes.
@@ -439,7 +454,7 @@ parity holds for every shape. Nothing built in the tree. First `make check` (Chr
   `fn_IF_initialize_integration_points_on_facet.cpp`, `cl_TensorMeshFactory.cpp`, `cl_Maxwell_TMatrix.cpp`, `fn_ODE_DOP853.cpp` — all clean.
   Nothing built or run beyond the two scratchpad probes.
 
-**Still unimplemented:** round D (R4.0 inventory next), round E; R0 (optional); the Codex sweep of the guide's user-facing changes (items 3, 6, pitfall 5, `dot`).
+**Still unimplemented:** round D R4.3 (second session), R4.4 (nonfree), R4.5 (Gregory); round E; R0 (optional); the Codex sweep of the guide's user-facing changes (items 3, 6, pitfall 5, `dot`).
 
 ## 5. Open Design Questions (logged, not silently decided)
 
@@ -725,8 +740,58 @@ The symmetry rule that falls out of E3: after round B the two backends agree in 
 Blaze exception, both fatal) and differ in release (Blaze throws, Armadillo computes on) — that is O2a, accepted,
 and the guide table of R2.6 states it per operation.
 
-## Appendix D — Hatch inventory (filled in R4.0)
+## Appendix D — Hatch inventory (R4.0, 2026-11-08, read-only)
 
-| file | line | expression | shape | live? | kind | replacement | covering test |
-|---|---|---|---|---|---|---|---|
-| (to be filled) | | | | | | | |
+Grep of `.matrix_data()`/`.vector_data()` outside `src/linalg`, minus the `Cell` accessor idioms. Of the 110 lines, **41 are not linalg
+hatches** and stay (incl. `cl_Material_UserDefined.*` ×3, `Cell` polynomials): `Cell::vector_data()` moves (`tetsplit.cpp:93`, `cl_CurveFactory.cpp:442`, `cl_FEM_DofMgr_DofData.cpp:3646`,
+`commtools.hpp:1282`, `cl_ThinShellFactory.cpp:284`, `cl_CutFactory.cpp:437`, `:1496`), the HDF5 string-group accessor (`hdf5_tools.hpp:191`),
+and `Spline::matrix_data()` (`cl_Spline.hpp:213`; `cl_Gas.cpp:245`, `:817`, `cl_GM_EoS_Cubic.cpp:94`, `:638`). The cohomology line
+(`cl_Cohomology.cpp:1143`) is closed to AI and reported to Gregory; the nonfree line (`cl_CN_Reaction.cpp:101`) is a `nonfree/` session's.
+
+**Sub-round R4.1 — `cl_IWG_Timestep.cpp`, 79 lines (Claude).** By method: `collect_qhist` 15, `bdf2`–`bdf5` 5 each, `bdf2_nok`–`bdf5_nok` 4
+each, `bdf1` 4, `bdf1_nok` 3, `explicit_euler` 3, `euler_no_stiffness` 3, `derivative` 2, `static_subfield` 2, `mass_matrix_only` 1,
+`stiffness_matrix_only` 1 — **live, 70 lines**; `crank_nicolson` 4 + `galerkin` 5 — **dead** behind the `BELFEM_ERROR` at `:84-94`/`:162-169`,
+left alone. Shapes: `aJ.matrix_data() += M().matrix_data()` → `aJ += M()`; `aRHS.vector_data() += f()*dt` → `aRHS += f()*dt`;
+`aRHS.vector_data() += aJ.matrix_data() * tSwap.vector_data()` → `aRHS += aJ * tSwap`; `aJ.matrix_data() *= mAlpha` → `aJ *= mAlpha`;
+`aSwap.vector_data() = b0 * qold(0).vector_data()` → `aSwap = b0 * qold(0)`, `-=`/`+=` likewise; `aRHS -= K().matrix_data() * qold().vector_data()`
+→ `aRHS -= K() * qold()`. Every target overload exists after round C on both backends. Gate: `BdfAssembly.*` (the §7 baseline), the parity counter
+on each shape, `make check`, one transient deck to tolerance.
+
+**Sub-round R4.2 — kernel and postproc (Claude).** `cl_FEM_Calculator.hpp:1724-1726`, `:1740-1741`, `:1755-1756`: `mJ->matrix().matrix_data() =
+dNdXi * X` → `mJ->matrix() = dNdXi * X` (Matrix `=` from a product); `:2233`, `:2234`, `:2253`, `:2254`, `:2284`, `:2298`: `dot( phi(k).vector_data(),
+mX.col(1) )` → `dot( phi(k), mX.col(1) )` (the `Vector, ET` overload exists on both backends). `cl_Gradient.cpp:196`: `mG = inv( mJ.matrix_data() ) *
+dNdXi(k).matrix_data() * mPhi.vector_data()` → `mG = inv( mJ ) * dNdXi(k) * mPhi` (the eager Blaze `inv` stays by design, `fn_BZ_inv.hpp:24`).
+`fn_Mesh_compute_edge_lengths.cpp:138`: `norm( tNodeCoords.matrix_data() * tdNdXi(k).matrix_data() )` → `norm( tNodeCoords * tdNdXi(k) )` (needs a
+`norm` overload for a backend expression — check `fn_norm.hpp`). `cl_FEM_DofMgr_EigenValues.cpp:1758`: `norm( mY.vector_data() - tLambda *
+mZ.vector_data() )` → `norm( mY - tLambda * mZ )` (same check). Covering tests: Gradient 4 files; edge lengths and EigenValues **none** (add or
+leave with the hatch; decide per site).
+
+**Sub-round R4.3 — physics, numerics (hand-off candidate for a second session).** `cl_Gas.cpp:1764`, `:1784`, `:1800`, `:1821`, `:1835`:
+`aHf.vector_data() -= mFormationTable * mFormationWork` → `aHf -= mFormationTable * mFormationWork` (Vector `-=`/`+=` from a matrix-vector
+product; covered by the gas-model tests, 12 files mention formation/Gibbs/enthalpy). `cl_GM_EoS_Cubic.cpp:115`: `tDeparture.matrix_data() += tY(k)
+* mDepartureCoefficients(k).matrix_data()` → `tDeparture += tY(k) * mDepartureCoefficients(k)` (5 test files). `fn_ODE_RK45.cpp:166`,
+`fn_ODE_DOP853.cpp:286`: `aY.vector_data() = ya.vector_data()` → `aY = ya` (plain copy; ODE tests plentiful). `cl_Material_UserDefined.hpp:432`,
+`:444`, `.cpp:276`: **not linalg** — `cl_Material_UserDefined.hpp:28` defines its own `polyval( const std::vector<T>&, T )` and `mPolynomials(p).vector_data()`
+is the `Cell` accessor; keep (grep record: `src/linalg/fn_dpolyval.hpp:46:    dpolyval( const Vector< T > & aCoeffs, const T aX );src/linalg/fn_polyval.hpp:49:    polyval( const Vector< T > & aCoeffs, const T aX );src/linalg/fn_polyval.hpp:68:    polyval( const Vector< T > & aCoeffs, const Vector< T > & aX, Vector< T > & aY );src/physics/materials/cl_Material_UserDefined.hpp:28:        polyval( const std::vector< T > & coeffs, const T x );`); if they take only the backend type, the hatch is legitimate and stays.
+
+| file | line(s) | expression → replacement | live? | kind | gate |
+|---|---|---|---|---|---|
+| `cl_IWG_Timestep.cpp` | 70 live lines, see above | wrapper operators | live | workaround (round-C gaps) | §7 baseline + counter + deck |
+| `cl_IWG_Timestep.cpp` | `:862-866`, `:876-881` | — | dead (`BELFEM_ERROR`) | — | leave |
+| `cl_FEM_Calculator.hpp` | `:1724`, `:1740`, `:1755` | `matrix().matrix_data() = expr` → `matrix() = expr` | live, hot | convenience | counter + `make check` |
+| `cl_FEM_Calculator.hpp` | `:2233`, `:2234`, `:2253`, `:2254`, `:2284`, `:2298` | `dot( phi().vector_data(), col )` → `dot( phi(), col )` | live, hot | convenience | counter + `make check` |
+| `cl_Gradient.cpp` | `:196` | drop three accessors | live | convenience | Gradient tests |
+| `fn_Mesh_compute_edge_lengths.cpp` | `:138` | `norm( A * B )` | live | convenience | none today |
+| `cl_FEM_DofMgr_EigenValues.cpp` | `:1758` | `norm( y - l z )` | live | convenience | none today |
+
+**Outcome 2026-11-08:** R4.1 and R4.2 rows done as listed (see the round-D paragraph above). `fn_norm.hpp` needed no new overload: an rvalue backend
+expression cannot bind `norm( ET & )` and reaches the backend's `norm` by argument-dependent lookup, which is what the hatch form called explicitly; a
+`const ET &` version was tried and made `norm( const Vector & )` ambiguous. The eigen site is the one non-mechanical replacement (Blaze stop test
+changes, now equal to Armadillo's); edge lengths and the power iteration remain without a numerical test, recorded as gaps, not closed here.
+| `cl_Gas.cpp` | `:1764`, `:1784`, `:1800`, `:1821`, `:1835` | `v -=/+= M * w` | live | workaround (Blaze Vector gap) | gas tests |
+| `cl_GM_EoS_Cubic.cpp` | `:115` | `M += s * N` | live | workaround (Armadillo Matrix gap) | EoS tests |
+| `fn_ODE_RK45.cpp`, `fn_ODE_DOP853.cpp` | `:166`, `:286` | `aY = ya` | live | convenience | ODE tests |
+| `cl_Material_UserDefined.*` | `:432`, `:444`, `:276` | — | — | not linalg (`Cell` accessor, own `polyval( std::vector )`) | keep |
+| `cl_Cohomology.cpp` | `:1143` | — | — | closed to AI | report to Gregory |
+| `cl_CN_Reaction.cpp` (nonfree) | `:101` | `aS += s * ( … )` | live | workaround | nonfree session |
+| `Cell`/`Spline`/HDF5 accessors | 38 lines | — | — | not linalg | keep |

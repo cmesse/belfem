@@ -1754,16 +1754,10 @@ namespace belfem
 
                         cplx tLambda = dot( mX, mY ) / dot( mX, mZ );
 
-#ifdef BELFEM_ARMADILLO
-                        tErr = norm(  mY.vector_data() - tLambda * mZ.vector_data() );
-#else
-                        tErr = 0.0 ;
-                        for( int_t i=0; i<mN; ++i )
-                        {
-                            tErr += std::abs( mY( i ) - tLambda * mZ( i ) );
-                        }
-                        tErr = std::sqrt( tErr );
-#endif
+                        // residual 2-norm; Blaze returns it as a complex with zero
+                        // imaginary part, Armadillo as a real
+                        const cplx tResidual = norm( mY - tLambda * mZ );
+                        tErr = std::abs( tResidual );
                         mLambdaMax = std::abs( tLambda );
                     }
 
