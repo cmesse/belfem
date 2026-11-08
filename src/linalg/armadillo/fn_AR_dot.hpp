@@ -33,31 +33,6 @@ namespace belfem
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    template< typename T >
-    auto
-    dot( const Matrix< T > & aA, const Vector< T > & aB )
-    -> decltype( arma::dot( aA.matrix_data() , aB.vector_data() ) )
-    {
-        BELFEM_ASSERT( aA.n_rows() * aA.n_cols() == aB.length(),
-                       "dot(): the matrix must hold as many elements as the vector ( %lu vs %lu )",
-                       ( unsigned long ) ( aA.n_rows() * aA.n_cols() ), ( unsigned long ) aB.length() );
-        return arma::dot( aA.matrix_data() , aB.vector_data() );
-    }
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-    template< typename T >
-    auto
-    dot( const Vector< T > & aA, const Matrix< T > & aB )
-    -> decltype( arma::dot( aA.vector_data() , aB.matrix_data() ) )
-    {
-        BELFEM_ASSERT( aA.length() == aB.n_rows() * aB.n_cols(),
-                       "dot(): the matrix must hold as many elements as the vector ( %lu vs %lu )",
-                       ( unsigned long ) aA.length(), ( unsigned long ) ( aB.n_rows() * aB.n_cols() ) );
-        return arma::dot( aA.vector_data() , aB.matrix_data() );
-    }
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     template< typename ET >
     auto
@@ -71,7 +46,7 @@ namespace belfem
 
     template< typename T, typename ET >
     auto
-     dot( Vector< T > & aA,  const ET & aB)
+    dot( const Vector< T > & aA, const ET & aB )
         ->decltype( arma::dot( aA.vector_data(), aB) )
     {
         return arma::dot( aA.vector_data(), aB );

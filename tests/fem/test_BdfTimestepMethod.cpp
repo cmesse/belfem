@@ -22,10 +22,12 @@
  * and mStepCount are private. The production writers of the step-size history
  * are shift_fields / reset_fields / restore_savepoint ( all needing an
  * initialized DofManager ) plus the validated memdump seam
- * restore_history_state ( 2026-08-15, needs none — tested in §5 below ). Nothing in the tree exercises BDF2-5 end to end —
+ * restore_history_state ( 2026-08-15, needs none — tested in §5 below ). No deck exercises BDF2-5 end to end —
  * it is opt-in, and the deck that would have done it no longer exists
- * (todo/bdf_nonlinear_mass_verification.md, V1) — so this is the only place
- * those formulas are checked at all.
+ * (todo/bdf_nonlinear_mass_verification.md, V1) — so §4 is the only place the
+ * coefficient formulas are checked, and §7 the only place the element assembly
+ * J = alpha M + h K, b = h f + M ( beta0 q0 - beta1 q1 + ... ) is checked, through
+ * compute_jacobian_and_rhs on a test IWG with synthetic M, K, f.
  */
 
 #include <gtest/gtest.h>
@@ -127,6 +129,8 @@ namespace belfem
 
             //! what an assembly does to the flag: the coefficients are current
             void mark_assembled()             { mIWG.mCoeffsDirty = false ; }
+            //! what shift_fields does to the flag: the next assembly recomputes
+            void mark_dirty()                 { mIWG.mCoeffsDirty = true ; }
 
             /**
              * The five-line rotation of shift_fields, WITHOUT the field
@@ -881,3 +885,244 @@ TEST( BdfFieldReset, HistoryLevelsEqualTheOrderInEitherCallOrder )
         }
     }
 }
+
+// =============================================================================
+// §7  the element assembly: J = alpha M + h K, b = h f + M qhist
+// =============================================================================
+// A test IWG whose M, K and f are synthetic and known, so the assembly algebra
+// of bdf1..bdf5 can be checked against the hand formula with the coefficients
+// the IWG itself computed ( §4 checks those ). This is the baseline the linalg
+// hardening plan's round C ( overload sets ) and round D ( hatch retirement )
+// are measured against; see todo/linalg_wrapper_hardening_plan.md R3.0.
+namespace
+{
+    class SyntheticMkfIwg : public IWG_Timestep
+    {
+        public:
+            SyntheticMkfIwg() :
+                IWG_Timestep( IwgType::Poisson, ModelDimensionality::TwoD, IwgMode::Direct )
+            {
+                mNumberOfDofsPerNode = 1 ;
+                mNumberOfSpatialDimensions = 2 ;
+                mNumberOfDerivativeDimensions = 2 ;
+                mDofFields = { "phi" };
+                this->initialize();
+            }
+
+            //! M( i, j ) = 1 + e + ( i == j ), K( i, j ) = ( i + 1 ) ( j + 1 ) / 10, f( i ) = i + e
+            //! with e the element id, so neighbouring elements differ
+            static real m( const index_t aElement, const uint i, const uint j )
+            {
+                return 1.0 + static_cast< real >( aElement ) + ( i == j ? 1.0 : 0.0 );
+            }
+            static real k( const uint i, const uint j )
+            {
+                return 0.1 * static_cast< real >( ( i + 1 ) * ( j + 1 ) );
+            }
+            static real f( const index_t aElement, const uint i )
+            {
+                return static_cast< real >( i ) + static_cast< real >( aElement );
+            }
+
+            void
+            compute_mkf( Element * aElement ) override
+            {
+                mGroup->calculator()->link( aElement );
+                const uint tN = aElement->number_of_local_dofs();
+                if ( mTimeStepMatrices->M().n_rows() != tN )
+                {
+                    mTimeStepMatrices->set_flag( MatrixFlag::M );
+                    mTimeStepMatrices->set_flag( MatrixFlag::K );
+                    mTimeStepMatrices->set_flag( MatrixFlag::F );
+                    mTimeStepMatrices->initialize( tN );
+                }
+                mTimeStepMatrices->reset();
+                Matrix< real > & M = mTimeStepMatrices->M();
+                Matrix< real > & K = mTimeStepMatrices->K();
+                Vector< real > & F = mTimeStepMatrices->f();
+                const index_t e = aElement->id();
+                for ( uint j = 0; j < tN; ++j )
+                {
+                    for ( uint i = 0; i < tN; ++i )
+                    {
+                        M( i, j ) = m( e, i, j );
+                        K( i, j ) = k( i, j );
+                    }
+                    F( j ) = f( e, j );
+                }
+            }
+    };
+
+    //! unit square as two TRI3, one dof field; the history levels are seeded with
+    //! one distinct value per level and node
+    class AssemblyProblem
+    {
+        public:
+            std::unique_ptr< Mesh >                mMesh ;
+            std::unique_ptr< KernelParameters >    mParams ;
+            std::unique_ptr< Kernel >              mKernel ;
+            SyntheticMkfIwg                      * mIWG ;     // owned by the kernel
+            DofManager                           * mField ;   // owned by the kernel
+
+            explicit
+            AssemblyProblem( const EulerMethod aMethod )
+            {
+                mMesh.reset( new Mesh( 2, 0, false ) );
+                mesh::ElementFactory tFactory ;
+                Cell< mesh::Node * > & tNodes = mMesh->nodes();
+                tNodes.push( new mesh::Node( 1, 0.0, 0.0 ) );
+                tNodes.push( new mesh::Node( 2, 1.0, 0.0 ) );
+                tNodes.push( new mesh::Node( 3, 1.0, 1.0 ) );
+                tNodes.push( new mesh::Node( 4, 0.0, 1.0 ) );
+                mesh::Block * tBlock = new mesh::Block( 1, 2 );
+                const uint tTriangles[ 2 ][ 3 ] = { { 0, 1, 2 }, { 0, 2, 3 } };
+                for ( uint e = 0; e < 2; ++e )
+                {
+                    mesh::Element * tTri = tFactory.create_element( ElementType::TRI3, e + 1 );
+                    for ( uint k = 0; k < 3; ++k )
+                    {
+                        tTri->insert_node( tNodes( tTriangles[ e ][ k ] ), k );
+                    }
+                    tTri->set_block_id( 1 );
+                    mMesh->elements().push( tTri );
+                    tBlock->insert_element( tTri );
+                }
+                mMesh->blocks().push( tBlock );
+                mMesh->finalize();
+                mMesh->create_field( "phi" );
+                mParams.reset( new KernelParameters( mMesh.get() ) );
+                mKernel.reset( new Kernel( mParams.get() ) );
+                mIWG = new SyntheticMkfIwg();
+                mIWG->select_blocks( { 1 } );
+                mKernel->add_equation( mIWG );
+                mIWG->set_timestepping_method( aMethod );
+                mField = mKernel->create_field( mIWG );
+                mField->set_solver( gDefaultSolver );
+                mField->initialize();
+            }
+            AssemblyProblem( const AssemblyProblem & ) = delete ;
+            AssemblyProblem( AssemblyProblem && ) = delete ;
+            AssemblyProblem & operator=( const AssemblyProblem & ) = delete ;
+            AssemblyProblem & operator=( AssemblyProblem && ) = delete ;
+
+            static real
+            history_value( const uint aLevel, const index_t aNode )
+            {
+                return 10.0 * ( aLevel + 1 ) + static_cast< real >( aNode ) ;
+            }
+
+            //! plants history_value into phi0 .. phi<aOrder-1>
+            void
+            seed( const uint aOrder )
+            {
+                for ( uint s = 0; s < aOrder; ++s )
+                {
+                    Vector< real > & tData = mMesh->field_data( "phi" + std::to_string( s ) );
+                    ASSERT_EQ( tData.length(), 4u ) << "level " << s ;
+                    for ( index_t i = 0; i < tData.length(); ++i )
+                    {
+                        tData( i ) = history_value( s, i );
+                    }
+                }
+            }
+    };
+
+    //! assembles every element of block 1 and checks J and b against the hand
+    //! formula with the probe's alpha and beta; aOrder is the order expected to run
+    void
+    expect_bdf_assembly( AssemblyProblem & aProblem, const uint aOrder )
+    {
+        BdfCoefficientProbe tProbe( *aProblem.mIWG );
+        Block * tBlock = aProblem.mField->block( 1 );
+        Calculator * tCalc = tBlock->calculator();
+        ASSERT_NE( tCalc, nullptr );
+        ASSERT_EQ( tBlock->elements().size(), 2u );
+        // what DofManager::compute_jacobian_and_rhs does before it assembles a block:
+        // the IWG learns its group, field, material and calculator from the block
+        aProblem.mIWG->link_to_group( tBlock );
+        const real tDt = tProbe.delta_time();
+        for ( Element * tElement : tBlock->elements() )
+        {
+            const uint tN = tElement->number_of_local_dofs();
+            ASSERT_EQ( tN, 3u );
+            Matrix< real > tJ( tN, tN );
+            Vector< real > tB( tN );
+            aProblem.mIWG->compute_jacobian_and_rhs( tElement, tJ, tB );
+            ASSERT_EQ( aProblem.mIWG->order_active(), aOrder ) << "element " << tElement->id();
+
+            // the calculator is still linked to this element; the history gather
+            // is the one QoldTable pins
+            const index_t e = tElement->id();
+            const real tAlpha = aOrder > 1 ? tProbe.alpha() : 1.0 ;
+            for ( uint i = 0; i < tN; ++i )
+            {
+                real tExpectB = tDt * SyntheticMkfIwg::f( e, i );
+                for ( uint j = 0; j < tN; ++j )
+                {
+                    const real tExpectJ = tAlpha * SyntheticMkfIwg::m( e, i, j ) + tDt * SyntheticMkfIwg::k( i, j );
+                    EXPECT_NEAR( tJ( i, j ), tExpectJ, 1e-12 * std::max( 1.0, std::abs( tExpectJ ) ) )
+                        << "element " << e << " J( " << i << ", " << j << " )";
+                    // b = h f + M qhist, with the unscaled M
+                    real tQj = 0.0 ;
+                    if ( aOrder > 1 )
+                    {
+                        for ( uint s = 0; s < aOrder; ++s )
+                        {
+                            const real tSign = ( s % 2 == 0 ) ? 1.0 : -1.0 ;
+                            tQj += tSign * tProbe.beta( s ) * tCalc->qold( s )( j );
+                        }
+                    }
+                    else
+                    {
+                        tQj = tCalc->qold( 0 )( j );
+                    }
+                    tExpectB += SyntheticMkfIwg::m( e, i, j ) * tQj ;
+                }
+                EXPECT_NEAR( tB( i ), tExpectB, 1e-12 * std::max( 1.0, std::abs( tExpectB ) ) )
+                    << "element " << e << " b( " << i << " )";
+            }
+        }
+    }
+}
+
+TEST( BdfAssembly, Bdf1ToBdf5MatchTheHandFormula )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+    const EulerMethod tMethods[ 5 ] = {
+        EulerMethod::BackwardDifference1,
+        EulerMethod::BackwardDifference2,
+        EulerMethod::BackwardDifference3,
+        EulerMethod::BackwardDifference4,
+        EulerMethod::BackwardDifference5 };
+    const real tH[ 4 ] = { 0.25, 0.25, 0.25, 0.25 };
+    for ( uint p = 1; p <= 5; ++p )
+    {
+        AssemblyProblem tProblem( tMethods[ p - 1 ] );
+        tProblem.seed( p );
+        BdfCoefficientProbe tProbe( *tProblem.mIWG );
+        // a constant-step history long past the startup ramp
+        tProbe.pose( 0.25, tH, 16 );
+        tProbe.mark_dirty();
+        expect_bdf_assembly( tProblem, p );
+    }
+}
+
+TEST( BdfAssembly, RampRunsTheOrderTheHistorySupports )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+    // BDF4 configured, two steps taken: the assembly must be BDF2's
+    AssemblyProblem tProblem( EulerMethod::BackwardDifference4 );
+    tProblem.seed( 4 );
+    BdfCoefficientProbe tProbe( *tProblem.mIWG );
+    const real tH[ 4 ] = { 0.25, 0.25, 0.25, 0.25 };
+    tProbe.pose( 0.25, tH, 2 );
+    tProbe.mark_dirty();
+    expect_bdf_assembly( tProblem, 2 );
+}
+

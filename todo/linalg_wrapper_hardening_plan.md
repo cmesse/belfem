@@ -12,7 +12,7 @@ gate, on **both** backends.
 `src/physics`, `src/numerics`, `src/mesh` (round D, consumers)
 **AIs involved:** Claude (plan), Codex `gpt-6-astra` (plan + code audits), Grok `grok-4.7` (third
 voice; restored 2026-11-07 after two rounds on the report without it)
-**Status:** IN PROGRESS — **rounds A and B VERIFIED 2026-11-07 (Christian's `make check`, Blaze release with VTK on + Armadillo; `test_linalg` green incl. `CheckPolicy`) and committed; round C next (R3.0 BDF baseline, R3.2 counter + numerical tests first).** O-decisions as recorded below. Plan jury record: **round 2 at `xhigh` done** (Codex: 5 findings, 3 P1 — eigen status discarded, complex transpose
+**Status:** IN PROGRESS — **rounds A, B and C VERIFIED (Christian's `make check`, Blaze and Armadillo, 2026-11-08) and committed; round D next (R4.0 hatch inventory, read-only, then per-file sub-rounds).** O-decisions as recorded below. Plan jury record: **round 2 at `xhigh` done** (Codex: 5 findings, 3 P1 — eigen status discarded, complex transpose
 semantics, stale §6 counter sketch; Grok: 4 P1 + 8 P2 — one-TU tripwire, API wording, row-view add is a transpose-add not UB, …; all
 CONFIRMED, two by run probe) and folded in (gaps #36–#37, R2.0, R3.0, O12–O13). O2a, O2b, O4, O5 **decided 2026-11-07 by Christian**
 (below). Drafted 2026-11-07, **plan jury round 1 done the same day** (Codex `gpt-6-astra`/high:
@@ -122,7 +122,7 @@ handling or a probe.
 | 32 | **One orientation contract for `+=`/`-=` of a row operand, both backends** | C | Blaze: temporary via the row ctor (#15). Armadillo: `template<ET> operator+=(const ET&)` (`cl_AR_Vector.hpp:399-405`) forwards a 1×n operand into an n×1 `arma::Mat`: with checks on, `arma_assert_same_size` (`subview_meat.hpp:1720`, `debug.hpp:648-658`) → `std::logic_error`; with round B's checks off, a **row view** takes the `n_rows == 1` fast path (`subview_meat.hpp:1727-1749`) and is a silent in-bounds **transpose-add**, other mismatches are unchecked (`:1751-1756`). The ctor `:129-131` transposes (with `arma::trans`, see #37) | (c) | Codex round 1 P1, refined by Grok round 2. **Routing fact (probed by run):** a `Base<T,ET>`-constrained template never beats the existing unconstrained `const ET&` template, for any Armadillo type — so routing can only be done by (a) a **non-template** `subview_row<T>` overload (wins over both templates) using `arma::strans`, and (b) for 1×n *expressions* (`trans(x)*s`, `A.row(0)*s`) either a runtime shape branch inside the generic `+=`/`-=` (one compare per call) or "unsupported: debug throws, release adds elementwise" — **O12**. Blaze decides at compile time (`TF`). No consumer does `+= …row(` today (grep); #33 makes the contract real |
 | 33 | **Numerical gate for every changed overload** | C | absent: `test_Vector.cpp:348` (`PlusEqualsScalar`) and `test_Matrix.cpp:336` (`RowViewReadsCorrectly`) cover scalar/wrapper operands and view reads only | (c) | Codex round 1 P1. Per changed overload: value **and** shape assertions, operands initialized independently, expected result computed before mutation, cases: expression, row view, scaled row, transposed column, column view, aliasing (`A += A*2`), matrix-expression `*=`, copy-init and direct-init construction (#12), `-=` twins of everything, **complex** operands with nonzero imaginary parts (#37), and the `DMatScalarMultExpr` column-0 overload's value if it stays, on both backends. Round D's consumer tests are too late to establish round C |
 | 34 | Build-system registration of the new TUs | C | `tests/linalg/CMakeLists.txt:6-11` is an explicit `SOURCES` list; `Add_Test.cmake:33` builds `test_<name>_main.cpp` + `SOURCES` | (a) | add the files to `SOURCES`; the `posix_memalign` interposer needs no link flag (strong symbol in the executable; `--wrap` is **not** used, it is GNU-ld only); confirm in the gate that `make check` lists and runs the new tests |
-| 35 | **Blaze runs OpenMP-parallel assignments under BELFEM's flags** | C gate, R0 | `USE_OPENMP=ON` → `-fopenmp` (`config_gcc.cmake:46-48`; present in `cmake-build-debug/…/flags.make`) → `_OPENMP` → `BLAZE_OPENMP_PARALLEL_MODE 1` (`blaze/system/SMP.h:65-66`, `config/SMP.h:58`) | (c) | Found while settling my round-2 pre-registration. Effect on this plan: the counter's `thread_local` count is complete only below Blaze's SMP thresholds — vectors < 38000 elements, dense mat-vec < 330 rows (`config/Thresholds.h:461-726`); the test sizes (≤ 256, 64×64) are far below, stated in the test. R0 timings on large global vectors are OpenMP-affected and need `OMP_NUM_THREADS=1` for a like-for-like. **Side finding, out of scope:** every `Vector<real>` operation above those thresholds already runs on `OMP_NUM_THREADS` threads under Blaze — `doc/parallel_execution.md`/CLAUDE.md say BELFEM's own parallelism is MPI only; logged as **O11** for Christian, not changed here |
+| 35 | **Blaze runs OpenMP-parallel assignments under BELFEM's flags** | C gate, R0 | `USE_OPENMP=ON` → `-fopenmp` (`config_gcc.cmake:46-48`; present in `cmake-build-debug/…/flags.make`) → `_OPENMP` → `BLAZE_OPENMP_PARALLEL_MODE 1` (`blaze/system/SMP.h:65-66`, `config/SMP.h:58`) | (c) | Found while settling my round-2 pre-registration. Effect on this plan: the counter's `thread_local` count is complete only below Blaze's SMP thresholds — vectors < 38000 elements, dense mat-vec < 330 rows (`config/Thresholds.h:461-726`); the matrix sizes must stay below `BLAZE_SMP_DMATDMATMULT_THRESHOLD` (3025 target elements, `Thresholds.h:1632`) — 64×64 is not (D20: nondeterministic counts under the full `ctest` run on 16 cores); the test uses 8×8 and 48×48, vectors 32/256, stated in the test. R0 timings on large global vectors are OpenMP-affected and need `OMP_NUM_THREADS=1` for a like-for-like. **Side finding, out of scope:** every `Vector<real>` operation above those thresholds already runs on `OMP_NUM_THREADS` threads under Blaze — `doc/parallel_execution.md`/CLAUDE.md say BELFEM's own parallelism is MPI only; logged as **O11** for Christian, not changed here |
 | 36 | **Discarded backend status becomes an unchecked index after round B** | B prerequisite | `fn_AR_eigen.hpp:33` ignores `arma::eig_gen`'s `bool`; on nonfinite input or `geev` failure the eigenvalues are `soft_reset()` (`fn_eig_gen.hpp:81-83`, `auxlib_meat.hpp:1098`, `:1131`) and `:42` indexes `tValues(k)` — today `std::out_of_range` (`Mat_meat.hpp:6901`), after round B an out-of-bounds read. `fn_BZ_eigen.hpp:34` relies on `blaze::eigen` throwing | (c) | Codex round 2 P1. **R2.0**: audit every `fn_AR_*`/`fn_BZ_*` for a discarded status before any check is removed; failure is an expected algorithmic outcome → status or `BELFEM_ERROR`, never an index into an emptied result (`coding_philosophy.md:643`) |
 | 37 | **Complex transpose semantics differ between the backends today** | C | `arma::trans` is the conjugate transpose (`op_htrans`, `op_htrans_meat.hpp:277`); Blaze `trans` copies values (`DVecTransExpr.h:182-184`). `belfem::trans` already uses `arma::strans` (`src/linalg/fn_trans.hpp:28-33`), but the Armadillo row ctor `cl_AR_Vector.hpp:129-131` uses `arma::trans`: a `Vector<cplx>` built from a row is conjugated on Armadillo, not on Blaze (`cl_BZ_Vector.hpp:127-136`). Three `cplx` wrapper uses outside `src/linalg` | (c) | Codex round 2 P1. Round C: `strans` in every new overload **and** in the ctor; complex tests with nonzero imaginary parts (`test_lapack.cpp:246` already instantiates complex types) |
 
@@ -218,10 +218,10 @@ step, never inside the round that raised them.
 
 ### Round C — complete the overload sets (R3; `src/linalg` class headers + one new test)
 
-- [ ] **R3.0** (prerequisite, gap #20, moved here from R4.1 by Codex round 2) Element-level assembly tests
+- [x] **R3.0** (prerequisite, gap #20, moved here from R4.1 by Codex round 2) Element-level assembly tests
   for `bdf2`–`bdf5`, `bdf*_nok`, `collect_qhist`, `derivative*`, `static_subfield` against the hand
   formula, on both backends — the baseline that round C's rebinding is measured against.
-- [ ] **R3.1** Inventory matrix (shape × class × backend): which overload each expression reaches
+- [x] **R3.1** Inventory matrix (shape × class × backend): which overload each expression reaches
   and whether a temporary is constructed — from source trace first, then confirmed by R3.2's counter.
   Shapes: `C = B*dt`, `Matrix C(B*dt)`, `A += B*dt`, `A -= B*dt`, `A *= s`, `y = x*dt`,
   `Vector y(x*dt)`, `y += x*dt`, `y -= x*dt`, `y += A.row(0)`, `y += A.col(0)`, `y += A.col(k) / s`
@@ -232,22 +232,22 @@ step, never inside the round that raised them.
   `Matrix<real> C = B*dt` is **rejected today** (two user-defined conversions; probed) while
   direct-initialization `Matrix<real> C( B*dt )` goes through the temporary — after R3.3 both compile
   and both are in #33.
-- [ ] **R3.2** The allocation-counter test (gap #18) **and** the numerical tests (gap #33), written
+- [x] **R3.2** The allocation-counter test (gap #18) **and** the numerical tests (gap #33), written
   **first** so the counter fails on the gaps before R3.3 closes them (the test is the reproducer) and
   the numerical tests pin the values the new overloads must reproduce. Registered per gap #34.
-- [ ] **R3.3** Armadillo `Matrix`: constrained expression constructor and `+=`/`-=`/`*=` (gaps #12,
+- [x] **R3.3** Armadillo `Matrix`: constrained expression constructor and `+=`/`-=`/`*=` (gaps #12,
   #13), and the same constructor for the Armadillo `Vector` (gap #27). Constraint `const arma::Base<T, ET> &`; probe ambiguity against `MatrixType`, `Matrix<T>`,
   `T`, `arma::Op<ET,OP>` (`:80-81` may become redundant — remove only if the counter and the
   compile of `tests/linalg` say so).
-- [ ] **R3.4** Blaze `Vector`: `+=`/`-=` for `blaze::DenseVector<VT,false>` and the transposing
+- [x] **R3.4** Blaze `Vector`: `+=`/`-=` for `blaze::DenseVector<VT,false>` and the transposing
   `DenseVector<VT,true>` (gaps #14, #15); the Armadillo `Vector` gets the **non-template**
   `subview_row<T>` overloads with `arma::strans`, the row ctor `:129-131` switches to `strans` (gap #37),
   and the 1×n-expression case follows O12 (gap #32); the `DMatScalarMultExpr` overloads
   (`:468-474`, `:519-525`) stay unless a caller search and a by-value probe show them unused. Delete the commented-out generic forms
   (`:441`, `:460`, `:501`, `:511`) — commenting guideline: no dead code.
-- [ ] **R3.5** Trace the Blaze construction case (gap #17) and the Blaze `Matrix` set (gap #16) with
+- [x] **R3.5** Trace the Blaze construction case (gap #17) and the Blaze `Matrix` set (gap #16) with
   the counter; close or open rows accordingly.
-- [ ] **R3.7** Lift the three `#ifdef BELFEM_GCC` guards in `cl_BZ_Matrix.hpp` (gap #16) so the
+- [x] **R3.7** Lift the three `#ifdef BELFEM_GCC` guards in `cl_BZ_Matrix.hpp` (gap #16) so the
   overload set is the same on every compiler. Syntax gate with SCLS `g++` **and** Apple clang, the
   exact command being
   `/usr/bin/clang++ -std=gnu++17 -fsyntax-only -DBELFEM_BLAZE -DBELFEM_CLANG -DBELFEM_MPI -DOMP -DBELFEM_NETLIB -DNDEBUG -I src/core -I src/comm -I src/containers -I src/linalg -I src/linalg/lapack -I src/linalg/operators -I src/linalg/blaze -I <build>/generated -isystem /opt/scls/include <tu>`
@@ -255,9 +255,9 @@ step, never inside the round that raised them.
   binary with Clang against GCC-built SCLS libraries is not attempted. Also one R3.1 row per compiler for
   the ranking of the `MatrixType` non-template overloads against the `blaze::Matrix<MT,SO>` templates. If a
   supported compiler rejects the unguarded set, the fallback is a per-compiler path, recorded here.
-- [ ] **R3.8** Retire `dot( Matrix, Vector )` and `dot( Vector, Matrix )` on both backends with their `fn_dot.hpp`
+- [x] **R3.8** Retire `dot( Matrix, Vector )` and `dot( Vector, Matrix )` on both backends with their `fn_dot.hpp`
   doc (O14); a compile-fails test pins their absence.
-- [ ] **R3.6** Guide: the overload-set contract — "for the supported expression set, the wrapper adds
+- [x] **R3.6** Guide: the overload-set contract — "for the supported expression set, the wrapper adds
   **no materialization beyond the backend's own** for ctor, `+=`, `-=`, `*=`" (`=` already forwards);
   not "temporary-free": Armadillo's plain in-place product `*=` **always** materializes
   (`glue_times_meat.hpp:586-597`), and `+=` of a product does so on alias or outer product (`:612`).
@@ -321,7 +321,24 @@ Sub-rounds, each with its own code jury:
   hatch retirement must not introduce a direct backend call outside `src/linalg`).
 - [ ] **R5.4** Move the investigation report and this plan to `todo/closed/` with DONE summaries.
 
-### 4.0 Implementation Progress (updated 2026-11-07)
+### 4.0 Implementation Progress (updated 2026-11-07, evening: round C probes)
+
+**Round C — R3.2 counter design probed (2026-11-07, `counter/probe.cpp`, strong `extern "C" posix_memalign` + `dlsym(RTLD_NEXT)`, thread-local count,
+positive control):**
+- **Blaze (GCC, this Mac):** instrumentation works (positive control 1). Executed counts, wrapper / backend: `A += B*dt` 0/0, `A -= B*dt` 0/0,
+  `C = B*dt + A` 0/0, `A += trans(B)` 0, `Matrix D( B*dt )` **1/1** (8×8 and 64×64); `y += x*dt` **1/0**, `y -= x*dt` 1, `y += x + z` 1,
+  `y += A.col(0)` 1, `y += A*x` **1/0** (32 and 256). So **gap #17 closes** (Blaze construction has parity; the report's "2+2 vs 1+1" was a static
+  count) and the Blaze `Vector` gaps #14/#15 are confirmed as executed allocations.
+- **Armadillo on macOS:** the SDK defines `_POSIX_ADVISORY_INFO` as −1, so `ARMA_HAVE_POSIX_MEMALIGN` is never set here and `memory::acquire`
+  falls back to `std::malloc` (`compiler_setup.hpp:106-109`, `memory.hpp:92-95`); the `posix_memalign` hook counts nothing (positive control 0),
+  dyld `__interpose` sections are honoured only in dylibs, and a strong `malloc` with `dlsym` inside is unsafe. **Decision for #18:** the test hooks
+  `posix_memalign`, runs its positive control first, and `GTEST_SKIP`s with a message on a platform where the control counts 0 — i.e. Armadillo
+  on macOS is not a counted configuration; Armadillo on Linux (glibc, `posix_memalign`) and Blaze everywhere are. Stated in the test and here.
+- **Armadillo compile fact for gap #13:** `A += trans( B )` does **not compile** today — ambiguous between `operator+=( const Matrix<T> & )`
+  (via the `arma::Op` constructor `:80-81`) and `operator+=( const MatrixType & )` (via `Mat(const Op&)`). The gap is a compile error, not only a
+  temporary; R3.3's `Base`-constrained overloads resolve it (exact template match beats both conversions).
+- `belfem::trans` on Armadillo returns `Op<Mat, op_htrans>` for real types because `arma::strans` itself does; for complex it is the plain
+  transpose (probed: `(5,6)`, same as Blaze). No finding.
 
 **Approved 2026-11-07 (Christian):** plan v3, source edits, O12 (ii). Debt row **DR-200** opened.
 
@@ -382,7 +399,47 @@ mode, so a `BELFEM_ASSERT` in each dispatch header keeps debug symmetric; (E4) e
 `info` (`fn_gees/geev/gels/gesv/gesvd/getrf/getri/posv.hpp`), nothing to do. Round B's diff therefore also
 carries E1–E3.
 
-**Still unimplemented:** rounds C, D, E; R0 (optional); the Codex sweep of guide pitfall 5.
+**Round C — implemented 2026-11-07, code-juried (Codex `gpt-6-astra`/high + Grok `grok-4.7`/high), D11–D18 applied 2026-11-08 with
+approval, gate not run (Christian).** Jury: two P1s — `v += 1` stopped compiling on Armadillo (the unconstrained template beat the scalar overload
+and instantiated `arma::Proxy<int>`; D11 constrains on `is_arma_type`) and `Vector( trans(x) )` stayed 1×n (the old `arma::Op` constructor beat
+the `Base` one; D13 deletes the `Op` constructors of both classes) — plus: my O14 slice had taken Blaze's generic `dot(ET1,ET2)` and `dot(Rows,ET)`
+with it (D12, restored); a generic `Op` operand was evaluated twice by the shape branch (D14: branch only for `eOp`/`eGlue`/`mtOp`/`mtGlue`/transpose
+Ops, everything else forwarded; D15: products, `arma::Row`, `submat` views are documented as not oriented, debug assert on a row result, trait
+private and CamelCase); dead `tQhist` block (D16); `dlsym` null check (D17); guide `dot` paragraph (D18). Re-gated: seven linalg test TUs,
+`test_BdfTimestepMethod.cpp`, twelve consumer TUs, both backends × both modes, clean; value probes pass on both backends; Blaze allocation
+parity holds for every shape. Nothing built in the tree. First `make check` (Christian, Blaze release): 16/17 suites green (DR-202 has landed in that tree); `test_fem` segfaulted in the new
+`BdfAssembly` fixture, which had not called `link_to_group( tBlock )` before assembling — the kernel's own loop does (`cl_FEM_DofManager.cpp:587`).
+**D19 fixed 2026-11-08**, compile re-gated on both backends and modes; the run is Christian's. Second run: Armadillo green incl. `BdfAssembly`; Blaze `test_linalg` red on the 64×64 `*=` parity count, which is nondeterministic above Blaze's SMP product threshold under `-fopenmp` — **D20 fixed 2026-11-08** (48×48). Third run: `make check` green on Armadillo and on Blaze — **round C VERIFIED on both legs**, committed.
+- R3.0: `tests/fem/test_BdfTimestepMethod.cpp` §7 — `SyntheticMkfIwg` (synthetic M, K, f) + `AssemblyProblem`; `Bdf1ToBdf5MatchTheHandFormula`
+  and `RampRunsTheOrderTheHistorySupports` check `compute_jacobian_and_rhs` against `J = alpha M + h K`, `b = h f + M Σ(−1)^k beta_k q_k` with
+  the IWG's own coefficients (§4 pins those). Compiles in both modes.
+- R3.2/#18: `tests/linalg/test_LinalgAllocations.cpp` — strong `extern "C" posix_memalign` forwarding via `dlsym(RTLD_NEXT)`, thread-local event
+  count, positive control → `GTEST_SKIP` where the hook is blind (Armadillo on macOS: `std::malloc`). Shapes: matrix `+=`/`-=`/`*=`/`=`/ctor/copy-init/
+  aliased, vector `+=`/`-=` scaled, sum, column, mat-vec, ctor, and the row operand against the explicit transposing backend form. Probe with the
+  new headers on Blaze: every former `1/0` is now `0/0`.
+- #33: `tests/linalg/test_OverloadSets.cpp` — values and shapes for every new overload, both backends, incl. aliasing, `*=` product, copy-init,
+  integer instantiation, complex row (not conjugated), transposed column, and the Blaze `DMatScalarMultExpr` column-0 semantics. Run probe of the
+  same cases on both backends: all pass.
+- R3.3/#12/#13: `cl_AR_Matrix.hpp` — `template<ET> Matrix( const arma::Base<T,ET>& )` and `+=`/`-=`/`*=` for `const arma::Base<T,ET>&`
+  (`A += trans(B)` was a compile error before: ambiguous between the `Matrix` and `MatrixType` conversions).
+- #27/#32/#37 (O12 ii): `cl_AR_Vector.hpp` — `Vector( const arma::Base<T,ET>& )`, non-template `subview_row` overloads for `=`/`+=`/`-=` with
+  `arma::strans`, the row ctor on `strans`, and `assign/plus/minus_oriented`: products, `Mat` and views go to the backend unchanged; every other
+  expression asks a `Proxy` for its shape (lazy for element-wise expressions and `trans`) and is wrapped in `strans` when it is 1×n.
+- R3.4/#14/#15: `cl_BZ_Vector.hpp` — `+=`/`-=` for `DenseVector<VT,false>` (as is) and `DenseVector<VT,true>` (`blaze::trans`); the generic
+  `operator=` transposes a row expression (`if constexpr IsRowVector_v`); the four commented-out blocks are gone; the `DMatScalarMultExpr`
+  overloads stay (pinned by test).
+- R3.7/#16: the three `#ifdef BELFEM_GCC` guards in `cl_BZ_Matrix.hpp` lifted; the expression `*=` now forms the product in a temporary and moves it,
+  as Blaze's own operator does (the old body did not compile for an expression operand).
+- R3.8/O14: `dot( Matrix, Vector )` and `dot( Vector, Matrix )` retired on both backends with their `fn_dot.hpp` doc; the Armadillo mixed `dot`
+  takes `const Vector<T>&` now (it took a non-const reference, the D8 wart again).
+- R3.5/#17: closed — the Blaze construction case has parity (1/1 at every size, executed).
+- R3.6: guide Key Features item 6 (expression operands, orientation contract, no matrix `dot`). Codex sweep owed with pitfall 5.
+- Gate so far: `-c` under the build's `flags.make`, both backends × both modes: the five linalg test TUs, `test_BdfTimestepMethod.cpp`, and the
+  consumer TUs `cl_IWG_Timestep.cpp`, `cl_FEM_Calculator.cpp`, `mt_maxwell_phi.cpp`, `cl_ThinShellFactory.cpp`, `cl_Gradient.cpp`,
+  `fn_IF_initialize_integration_points_on_facet.cpp`, `cl_TensorMeshFactory.cpp`, `cl_Maxwell_TMatrix.cpp`, `fn_ODE_DOP853.cpp` — all clean.
+  Nothing built or run beyond the two scratchpad probes.
+
+**Still unimplemented:** round D (R4.0 inventory next), round E; R0 (optional); the Codex sweep of the guide's user-facing changes (items 3, 6, pitfall 5, `dot`).
 
 ## 5. Open Design Questions (logged, not silently decided)
 

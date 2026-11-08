@@ -17,6 +17,7 @@
 
 #include "typedefs.hpp"
 #include "assert.hpp"
+#include <type_traits>
 #include "cl_Cell.hpp"
 
 namespace belfem
@@ -37,12 +38,103 @@ namespace belfem
 
         typedef arma::Mat <T> VectorType;
 
+
 //------------------------------------------------------------------------------
     private :
 //------------------------------------------------------------------------------
 
         // member class of underlying vector implementation
         VectorType mVector;
+
+        /**
+         * the orientation contract of a column vector: a row view, an
+         * element-wise expression or a transpose whose evaluated shape is
+         * 1 x n ( n > 1 ) is transposed into the column. Only operands whose
+         * Proxy is lazy are inspected ( eOp, eGlue, mtOp, mtGlue, the two
+         * transpose Ops ); a product, a Mat, an arma::Row or any other view
+         * is handed to the backend as it is, and in a debug build an
+         * assignment that leaves a row behind is asserted.
+         */
+        template < typename ET >
+        struct IsTransposeOp { static constexpr bool value = false; };
+
+        template < typename T1 >
+        struct IsTransposeOp< arma::Op< T1, arma::op_htrans > > { static constexpr bool value = true; };
+
+        template < typename T1 >
+        struct IsTransposeOp< arma::Op< T1, arma::op_strans > > { static constexpr bool value = true; };
+
+        template < typename ET >
+        struct IsOrientedOperand
+        {
+            static constexpr bool value =
+                arma::is_eOp< ET >::value || arma::is_eGlue< ET >::value ||
+                arma::is_mtOp< ET >::value || arma::is_mtGlue< ET >::value ||
+                IsTransposeOp< ET >::value ;
+        };
+
+        template < typename ET >
+        typename std::enable_if< ! IsOrientedOperand< ET >::value, void >::type
+        assign_oriented( const ET & aExpression )
+        {
+            mVector = aExpression;
+            BELFEM_ASSERT( mVector.n_cols == 1 || mVector.n_elem == 0,
+                           "Vector: a %lu x %lu result was assigned; products and raw views are not transposed",
+                           ( unsigned long ) mVector.n_rows, ( unsigned long ) mVector.n_cols );
+        }
+
+        template < typename ET >
+        typename std::enable_if< IsOrientedOperand< ET >::value, void >::type
+        assign_oriented( const ET & aExpression )
+        {
+            const arma::Proxy< ET > tP( aExpression );
+            if ( tP.get_n_rows() == 1 && tP.get_n_cols() > 1 )
+            {
+                mVector = arma::strans( aExpression );
+            }
+            else
+            {
+                mVector = aExpression;
+            }
+        }
+
+        template < typename ET >
+        typename std::enable_if< ! IsOrientedOperand< ET >::value, void >::type
+        plus_oriented( const ET & aExpression ) { mVector += aExpression; }
+
+        template < typename ET >
+        typename std::enable_if< IsOrientedOperand< ET >::value, void >::type
+        plus_oriented( const ET & aExpression )
+        {
+            const arma::Proxy< ET > tP( aExpression );
+            if ( tP.get_n_rows() == 1 && tP.get_n_cols() > 1 )
+            {
+                mVector += arma::strans( aExpression );
+            }
+            else
+            {
+                mVector += aExpression;
+            }
+        }
+
+        template < typename ET >
+        typename std::enable_if< ! IsOrientedOperand< ET >::value, void >::type
+        minus_oriented( const ET & aExpression ) { mVector -= aExpression; }
+
+        template < typename ET >
+        typename std::enable_if< IsOrientedOperand< ET >::value, void >::type
+        minus_oriented( const ET & aExpression )
+        {
+            const arma::Proxy< ET > tP( aExpression );
+            if ( tP.get_n_rows() == 1 && tP.get_n_cols() > 1 )
+            {
+                mVector -= arma::strans( aExpression );
+            }
+            else
+            {
+                mVector -= aExpression;
+            }
+        }
 
 //------------------------------------------------------------------------------
     public :
@@ -108,12 +200,6 @@ namespace belfem
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        template < typename ET, typename OP>
-        Vector( const arma::Op<ET,OP> & aExpression )
-                : mVector( aExpression ) {}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
         /**
         * Constructor from column
         */
@@ -127,8 +213,20 @@ namespace belfem
         * Constructor from row
         */
         Vector( const arma::subview_row< T > & aRow ) :
-                mVector( arma::trans( aRow ) )
+                mVector( arma::strans( aRow ) )
         {}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+        /**
+         * constructor from any Armadillo expression; a 1 x n result is a row
+         * and is transposed into the column, as the row-view constructor does
+         */
+        template< typename ET >
+        Vector( const arma::Base< T, ET > & aExpression )
+        {
+            this->assign_oriented( aExpression.get_ref() );
+        }
 
 //------------------------------------------------------------------------------
 
@@ -357,11 +455,21 @@ namespace belfem
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        template < typename ET >
+        template < typename ET,
+                   typename = typename std::enable_if< arma::is_arma_type< ET >::value >::type >
         Vector< T > &
         operator=( const ET & aExpression )
         {
-            mVector = aExpression;
+            this->assign_oriented( aExpression );
+            return *this;
+        }
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+        Vector< T > &
+        operator=( const arma::subview_row< T > & aRow )
+        {
+            mVector = arma::strans( aRow );
             return *this;
         }
 
@@ -396,11 +504,25 @@ namespace belfem
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        template < typename ET >
+        /**
+         * a row view is transposed into the column; strans, so complex
+         * entries are not conjugated ( the same orientation Blaze gives )
+         */
+        Vector< T > &
+        operator+=( const arma::subview_row< T > & aRow )
+        {
+            mVector += arma::strans( aRow );
+            return *this;
+        }
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+        template < typename ET,
+                   typename = typename std::enable_if< arma::is_arma_type< ET >::value >::type >
         Vector<T> &
         operator+=( const ET & aExpression )
         {
-            mVector += aExpression;
+            this->plus_oriented( aExpression );
             return *this;
         }
 
@@ -435,11 +557,21 @@ namespace belfem
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        template < typename ET >
+        Vector< T > &
+        operator-=( const arma::subview_row< T > & aRow )
+        {
+            mVector -= arma::strans( aRow );
+            return *this;
+        }
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+        template < typename ET,
+                   typename = typename std::enable_if< arma::is_arma_type< ET >::value >::type >
         Vector<T> &
         operator-=( const ET & aExpression )
         {
-            mVector -= aExpression;
+            this->minus_oriented( aExpression );
             return *this;
         }
 

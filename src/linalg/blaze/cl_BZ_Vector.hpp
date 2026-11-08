@@ -20,6 +20,7 @@
 #include <memory>
 #include <algorithm>
 #include "blaze_config.hpp"
+#include <blaze/math/typetraits/IsRowVector.h>
 #include <blaze/Blaze.h>
 
 #include "typedefs.hpp"
@@ -413,11 +414,21 @@ namespace belfem
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+        /**
+         * a row expression ( A.row( k ), trans( x ) ) is transposed into the column
+         */
         template < typename ET >
         Vector<T> &
         operator=( const ET & aExpression )
         {
-            mVector = aExpression;
+            if constexpr ( blaze::IsRowVector_v< ET > )
+            {
+                mVector = blaze::trans( aExpression );
+            }
+            else
+            {
+                mVector = aExpression;
+            }
             return *this;
         }
 
@@ -437,14 +448,6 @@ namespace belfem
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        //Vector<T> &
-        //operator+=( const VectorType & aExpression )
-       // {
-       //     mVector += aExpression;
-       //     return *this;
-       // }
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
         Vector<T> &
         operator+=( const Vector<T> & aVector )
@@ -455,13 +458,30 @@ namespace belfem
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        //template < typename ET >
-        //Vector<T> &
-        //operator+=( const ET & aExpression )
-        //{
-        //    mVector += aExpression;
-        //    return *this;
-        //}
+        /**
+         * column expression ( x * dt, x + z, A.col( k ), A * x ): the backend's
+         * own in-place path, no temporary Vector
+         */
+        template < typename VT >
+        Vector<T> &
+        operator+=( const blaze::DenseVector< VT, false > & aExpression )
+        {
+            mVector += *aExpression;
+            return *this;
+        }
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+        /**
+         * row expression ( A.row( k ), trans( x ) ): transposed into the column
+         */
+        template < typename VT >
+        Vector<T> &
+        operator+=( const blaze::DenseVector< VT, true > & aExpression )
+        {
+            mVector += blaze::trans( *aExpression );
+            return *this;
+        }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -497,22 +517,24 @@ namespace belfem
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        //Vector<T> &
-        //operator-=( const VectorType & aExpression )
-       // {
-       //     mVector -= aExpression;
-       //     return *this;
-       // }
+
+        template < typename VT >
+        Vector<T> &
+        operator-=( const blaze::DenseVector< VT, false > & aExpression )
+        {
+            mVector -= *aExpression;
+            return *this;
+        }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        //template < typename ET >
-        //Vector<T> &
-        //operator-=( const ET & aExpression )
-        //{
-        //    mVector -= aExpression;
-        //    return *this;
-        //}
+        template < typename VT >
+        Vector<T> &
+        operator-=( const blaze::DenseVector< VT, true > & aExpression )
+        {
+            mVector -= blaze::trans( *aExpression );
+            return *this;
+        }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

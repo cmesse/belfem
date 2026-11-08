@@ -77,9 +77,13 @@ namespace belfem
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        template< typename ET, typename OP >
-        Matrix( const arma::Op<ET, OP> & aExpression )
-                : mMatrix( aExpression ) {}
+        /**
+         * constructor from any Armadillo expression ( eOp, eGlue, Glue, mtOp, views ):
+         * the backend evaluates it straight into the member, no intermediate Mat
+         */
+        template< typename ET >
+        Matrix( const arma::Base< T, ET > & aExpression )
+                : mMatrix( aExpression.get_ref() ) {}
 
 //------------------------------------------------------------------------------
 
@@ -517,6 +521,21 @@ namespace belfem
             return *this;
         }
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+        /**
+         * compound assignment from any Armadillo expression, reaching the
+         * backend's in-place path; without this overload the expression
+         * materialized into a Mat first
+         */
+        template< typename ET >
+        Matrix< T > &
+        operator+=( const arma::Base< T, ET > & aExpression )
+        {
+            mMatrix += aExpression.get_ref();
+            return *this;
+        }
+
 //------------------------------------------------------------------------------
 // SUBTRACT OPERATORS
 //------------------------------------------------------------------------------
@@ -546,6 +565,16 @@ namespace belfem
             return *this;
         }
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+        template< typename ET >
+        Matrix< T > &
+        operator-=( const arma::Base< T, ET > & aExpression )
+        {
+            mMatrix -= aExpression.get_ref();
+            return *this;
+        }
+
 //------------------------------------------------------------------------------
 // MULTIPLY OPERATORS
 //------------------------------------------------------------------------------
@@ -572,6 +601,16 @@ namespace belfem
         operator*=( const MatrixType & aExpression )
         {
             mMatrix *= aExpression;
+            return *this;
+        }
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+        template< typename ET >
+        Matrix< T > &
+        operator*=( const arma::Base< T, ET > & aExpression )
+        {
+            mMatrix *= aExpression.get_ref();
             return *this;
         }
 

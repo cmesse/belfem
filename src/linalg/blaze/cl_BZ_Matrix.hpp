@@ -590,7 +590,6 @@ namespace belfem
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-#ifdef BELFEM_GCC
         template < typename MT, bool SO >
         Matrix< T > &
         operator+=( const blaze::Matrix< MT, SO > & aExpression )
@@ -598,7 +597,6 @@ namespace belfem
             mMatrix += aExpression;
             return *this;
         }
-#endif
 
 //------------------------------------------------------------------------------
 // SUBTRACT OPERATORS
@@ -622,7 +620,6 @@ namespace belfem
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-#ifdef BELFEM_GCC
        template < typename MT, bool SO >
        Matrix< T > &
        operator-=( const blaze::Matrix< MT, SO > & aExpression )
@@ -639,7 +636,6 @@ namespace belfem
            mMatrix -= aExpression;
            return *this;
        }
-#endif
 
 //------------------------------------------------------------------------------
 // MULTIPLY OPERATORS
@@ -663,12 +659,16 @@ namespace belfem
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-#ifdef BELFEM_GCC
+        /**
+         * in-place product with a matrix expression: as Blaze's own operator,
+         * the product is formed in a temporary and moved in
+         */
         template < typename MT, bool SO >
         Matrix< T > &
         operator*=( const blaze::Matrix< MT, SO > & aExpression )
         {
-            mMatrix *= aExpression;
+            MatrixType tProduct( mMatrix * ( *aExpression ) );
+            mMatrix = std::move( tProduct );
             return *this;
         }
 
@@ -680,7 +680,6 @@ namespace belfem
             mMatrix *= aExpression;
             return *this;
         }
-#endif
 
 //------------------------------------------------------------------------------
 // DIVIDE OPERATORS

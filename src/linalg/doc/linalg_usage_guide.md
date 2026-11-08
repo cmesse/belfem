@@ -23,7 +23,8 @@ The abstraction allows switching backends at **compile time** without changing u
 3. **Bounds and Shape Checking**: `BELFEM_ASSERT` and the backends' own checks follow the build mode together — on in debug, off in release — except Blaze's shape exceptions, which stay on everywhere (see pitfall 5 for the table)
 4. **Operator Overloading**: Natural mathematical syntax (`+`, `-`, `*`, `/`)
 5. **Direct Backend Access**: Escape hatch via `vector_data()` / `matrix_data()`
-6. **Value types, not base classes**: `Matrix` and `Vector` are `final` and have no virtual members. Each adds no object-size overhead over the backend object it wraps (pinned by `static_assert`s in `tests/linalg`); pass them by reference, never derive from them, and never reinterpret one as its backend type — use `matrix_data()` / `vector_data()`
+6. **Expression operands**: a backend expression (`B * dt`, `trans( B )`, `A * x`, `A.col( k )`, …) can construct a `Matrix` or `Vector` and can be the right-hand side of `=`, `+=`, `-=` and `*=` on both backends; the wrapper adds no materialization beyond the backend's own (pinned by `tests/linalg/test_LinalgAllocations.cpp`, values by `test_OverloadSets.cpp`). A row operand given to a `Vector` is transposed into the column as a plain transpose (complex entries are not conjugated) when it is a row view (`A.row( k )`), an element-wise expression (`A.row( k ) * s`) or a transpose (`trans( x )`); a product (`trans( x ) * A`), a raw `arma::Row` or a `submat` view is handed to the backend as it is, and a debug build asserts if an assignment leaves a row behind. The flat `dot( Matrix, Vector )` form does not exist on either backend
+7. **Value types, not base classes**: `Matrix` and `Vector` are `final` and have no virtual members. Each adds no object-size overhead over the backend object it wraps (pinned by `static_assert`s in `tests/linalg`); pass them by reference, never derive from them, and never reinterpret one as its backend type — use `matrix_data()` / `vector_data()`
 
 > **Critical: Backend Selection**
 > Backend is chosen at **compile time**. The CMake cache options are
@@ -402,11 +403,9 @@ Vector<real> b = {4, 5, 6};
 real result = dot(a, b);    // 1*4 + 2*5 + 3*6 = 32
 ```
 
-`fn_dot.hpp` also declares `dot(Matrix, Vector)` and `dot(Vector, Matrix)`. These are **not**
-matrix-vector products: they read both operands as flat element sequences, return one
-number, and require the matrix and the vector to hold the same number of elements. They
-compile under Armadillo but not under Blaze, where `blaze::dot` has no matrix-vector form.
-Use `A * x` for a matrix-vector product.
+`dot` takes two vectors, or two backend vector expressions such as `A.col( 0 )` and
+`A.col( 1 )`. There is no `dot(Matrix, Vector)` on either backend; use `A * x` for a
+matrix-vector product.
 
 **File:** `fn_dot.hpp`
 

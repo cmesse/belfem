@@ -19,8 +19,8 @@ Codex `gpt-6-astra`/high + Grok `grok-4.7`/high (round 1), both at `xhigh` (roun
 Codex `gpt-6-astra`/high + Grok `grok-4.7`/high. Plan jury on the O3 plan: Codex `gpt-6-astra`/high +
 Grok `grok-4.7`/high
 **Status:** investigation COMPLETE (report v6); hardening plan v3 APPROVED (O1, O2, O2a, O2b, O4, O5, O12, O14 decided);
-**rounds A and B implemented, code-juried, and VERIFIED by Christian's gates on both backends** (Blaze release here with VTK on,
-Armadillo on his tree after D10) — committed in this session; round C next. **DR-203 fixed** (tensor-mesh constructor), juried,
+**rounds A, B and C implemented, code-juried, and VERIFIED by Christian's `make check` on both backends** — committed in this
+session; round D (hatch retirement) next. **DR-203 fixed** (tensor-mesh constructor), juried,
 gated in the same runs, committed. O3 plan v2 awaits Christian's R1 profile. DR-201 and DR-202 belong to session belfem-5e
 **Literature References:** none required (protocol §5); Oliveira & Stewart 2006 §7.6 and Rouson et al.
 2011 consulted for the wrapper-interface rationale
@@ -229,6 +229,26 @@ reset by `unfinalize()`; `mEdgesAreFinalized`/`mFacesAreFinalized` true while em
 Gate: Christian's `make check` passed `test_mesh` on Blaze with VTK on, i.e. the October T-matrix commits reproduce the
 cubics once the nodes have sources.
 
+## Round C — the overload sets, their gates, and what the juries and the gate caught (night)
+
+Source: Armadillo `Matrix` gained the `arma::Base`-constrained expression constructor and `+=`/`-=`/`*=` (`A += trans(B)` had been a compile
+error, ambiguous between the `Matrix` and `MatrixType` conversions); the Armadillo `Vector` gained the expression constructor, `subview_row`
+overloads with `strans`, and the O12 orientation branch — a row view, an element-wise expression or a transpose whose shape is 1×n is transposed
+into the column, everything else (products, raw `arma::Row`, `submat`) goes to the backend unchanged with a debug assert against a row result; the
+Blaze `Vector` gained `+=`/`-=` for column and row dense-vector expressions and a row-aware `=`; the Blaze `Matrix` compound operators exist on
+every compiler, its expression `*=` written as Blaze's own; the dead `dot( Matrix, Vector )` forms are retired (O14). Tests: the allocation-parity
+counter (strong `posix_memalign`, thread-local count, positive control, skip where the hook is blind), the overload value tests, and the BDF1–5
+assembly baseline in `test_BdfTimestepMethod.cpp` §7.
+
+Code jury (Codex `gpt-6-astra`/high + Grok `grok-4.7`/high, blind): two P1s, both mine — an int scalar `v += 1` stopped compiling on Armadillo
+(the unconstrained template beat the scalar overload and instantiated `arma::Proxy<int>`), and `Vector v( trans(x) )` stayed 1×n because the old
+`arma::Op` constructor outranked the new one — plus my O14 slice had removed two live Blaze `dot` overloads, a generic `Op` operand was evaluated
+twice by the shape branch, products were silently not oriented, and three small items (D11–D18, applied with approval). Christian's gates then
+caught two more test defects a compile gate cannot see: the BDF fixture had not called `link_to_group` before assembling (segfault, D19), and the
+64×64 `*=` parity count is nondeterministic above Blaze's `BLAZE_SMP_DMATDMATMULT_THRESHOLD` (3025 target elements) under `-fopenmp` — the
+OpenMP runtime allocates on the calling thread; sizes moved to 48×48 (D20). Final `make check`: green on Armadillo and on Blaze, every suite,
+including the DR-202 fix of session belfem-5e and DR-203.
+
 ## Open Questions
 
 - O1 keep both backends; O2 `ARMA_DONT_CHECK_CONFORMANCE` (needs an inventory of what the checks catch,
@@ -246,7 +266,9 @@ cubics once the nodes have sources.
   `armadillo/armadillo.hpp`, `fn_AR_eigen.hpp`, `fn_BZ_eigen.hpp`, `fn_is_finite.hpp` (new), `fn_AR_cross.hpp`, `fn_BZ_cross.hpp`,
   `fn_AR_dot.hpp`, `fn_BZ_dot.hpp`, `fn_det.hpp`, `fn_inv.hpp`, `doc/linalg_usage_guide.md`, `tests/linalg/test_Matrix.cpp`,
   `test_Vector.cpp`, `test_CheckPolicy.cpp` (new), `CMakeLists.txt`; DR-203 — `src/mesh/cl_Mesh.hpp`, `cl_Mesh.cpp`,
-  `tests/mesh/test_Mesh.cpp`, `test_TensorMeshBSpline.cpp`. Exchange threads: `review_linalg_wrapper_hardening.md`,
+  `tests/mesh/test_Mesh.cpp`, `test_TensorMeshBSpline.cpp`; round C — the four class headers, `fn_AR_dot.hpp`, `fn_BZ_dot.hpp`,
+  `fn_dot.hpp`, the guide, `tests/linalg/CMakeLists.txt`, `test_LinalgAllocations.cpp` (new), `test_OverloadSets.cpp` (new),
+  `tests/fem/test_BdfTimestepMethod.cpp` §7. Exchange threads: `review_linalg_wrapper_hardening.md`,
   `review_dr203_tensor_mesh_connectivity.md`.
 
 
