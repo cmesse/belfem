@@ -199,13 +199,16 @@ namespace belfem
 
         /**
          * creates a tensor mesh of first, second or third order
-         * ( B-splines only for order > 1 )
+         * ( B-splines only for order > 1 ). aComputeConnectivities is the
+         * sixth argument: proc_t is an int, so a bool in the fifth position
+         * binds to aMasterProc. An order above 1 requires the connectivities.
          */
         Mesh( const uint aOrder,
               const Vector< index_t > aNumNodes,
               const Vector< real > aStep,
               const Vector< real > aOrigin = {},
-              const proc_t aMasterProc = 0 );
+              const proc_t aMasterProc = 0,
+              const bool aComputeConnectivities = true );
 
 //------------------------------------------------------------------------------
 

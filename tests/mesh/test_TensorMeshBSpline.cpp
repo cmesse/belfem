@@ -74,6 +74,12 @@ namespace
         const index_t tNumControlPoints = aMesh.number_of_control_points();
         ASSERT_EQ( tNumControlPoints, tExpected );
 
+        // the control-point connectivity is rebuilt after the control points exist
+        for ( mesh::ControlPoint * tControlPoint : aMesh.control_points() )
+        {
+            EXPECT_GE( tControlPoint->number_of_elements(), 1u ) << "control point " << tControlPoint->id() ;
+        }
+
         Cell< bool > tUsed( tNumControlPoints, false );
 
         for ( mesh::Node * tNode : aMesh.nodes() )
