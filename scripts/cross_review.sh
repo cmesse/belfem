@@ -37,7 +37,10 @@ case "${1:-}" in
     --*)     echo "cross_review.sh: unknown flag $1" >&2; exit 1 ;;
 esac
 TARGET="${1:-}"
-SLUG="${AI_EXCHANGE_SLUG:-scratch}"
+# Canonicalized exactly as the wrappers do (ask_codex.sh sanitize_slug), so the receipt paths and
+# the final exchange file built from SLUG here are the files the wrappers actually write.
+SLUG="$(printf '%s' "${AI_EXCHANGE_SLUG:-scratch}" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9_' '_' | sed 's/_\{2,\}/_/g; s/^_//; s/_$//')"
+[ -n "$SLUG" ] || SLUG="scratch"
 
 # --- Depth selection ---------------------------------------------------------
 # Resolved before the subject is built so a missing depth costs no git work and no
@@ -92,9 +95,18 @@ cap_lines() {
              printf "\n[%s truncated at %d of %d lines — read the listed files in the repository yourself for the rest]\n", label, cap, NR }'
 }
 
-SUBJECT_FILE=$(mktemp "${TMPDIR:-/tmp}/crossrev_subject_XXXXXX.md")
-PROMPT_FILE=$(mktemp "${TMPDIR:-/tmp}/crossrev_prompt_XXXXXX.md")
-trap 'rm -f "$SUBJECT_FILE" "$PROMPT_FILE"' EXIT
+# One private directory per round, so concurrent rounds never share a path. The template must
+# end in X's: BSD mktemp randomizes only trailing X's, and GNU mktemp may reject anything else.
+# The trap goes in only once the directory exists, and also releases the merge lock if this
+# round dies holding it. RUNTAG, the random suffix, makes the per-seat receipt names below unique
+# to this round; it is lowercased because the wrappers lowercase the slug they write to, and on a
+# case-sensitive filesystem a mixed-case receipt path would miss the file.
+WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/cross_review.XXXXXX")"
+LOCKDIR=""
+trap 'rm -rf "$WORKDIR"; [ -z "$LOCKDIR" ] || rmdir "$LOCKDIR" 2>/dev/null || true' EXIT
+SUBJECT_FILE="$WORKDIR/subject.md"
+PROMPT_FILE="$WORKDIR/prompt.md"
+RUNTAG="$(printf '%s' "${WORKDIR##*.}" | tr 'A-Z' 'a-z')"
 
 # --- Resolve the review subject --------------------------------------------
 if [ "$MODE" = "quick" ]; then
@@ -181,15 +193,32 @@ LOG="$EXDIR/_cross_review.log"
 case "$MODE" in
 jury)
     build_prompt "$PRIME_JURY"
-    JC="$EXDIR/${SLUG}_jury_codex.md"; JG="$EXDIR/${SLUG}_jury_grok.md"
+    JC="$EXDIR/${SLUG}_jury_codex_${RUNTAG}.md"; JG="$EXDIR/${SLUG}_jury_grok_${RUNTAG}.md"
     rm -f "$JC" "$JG"
-    run_auditor codex "${SLUG}_jury_codex" >/dev/null 2>>"$LOG" & CPID=$!
-    run_auditor grok  "${SLUG}_jury_grok"  >/dev/null 2>>"$LOG" & GPID=$!
+    run_auditor codex "${SLUG}_jury_codex_${RUNTAG}" >/dev/null 2>>"$LOG" & CPID=$!
+    run_auditor grok  "${SLUG}_jury_grok_${RUNTAG}"  >/dev/null 2>>"$LOG" & GPID=$!
     CRC=0; GRC=0
     wait "$CPID" || CRC=$?
     wait "$GPID" || GRC=$?
-    # Blind round done — merge both voices into the main thread in fixed order.
+    # Blind round done — merge both voices into the main thread in fixed order, under a mkdir lock
+    # (atomic everywhere; flock(1) is not on stock macOS) so two rounds on the same slug cannot
+    # interleave. The lock is taken before collect, because collect deletes each receipt as it
+    # reads it: until the append, the receipts are the only copy of the audits. If the lock cannot
+    # be had, fail closed and leave the receipts in place.
+    tTries=0
+    until mkdir "$EXDIR/.$SLUG.lock" 2>/dev/null; do
+        tTries=$(( tTries + 1 ))
+        if [ "$tTries" -ge 120 ]; then
+            echo "cross_review.sh: could not take $EXDIR/.$SLUG.lock within 120 s; nothing appended." >&2
+            echo "  The audits are kept in $JC and $JG." >&2
+            echo "  If no other round on this slug is running, the lock is stale: rmdir it and append them by hand." >&2
+            exit 3
+        fi
+        sleep 1
+    done
+    LOCKDIR="$EXDIR/.$SLUG.lock"
     { collect "$JC" CODEX "$CRC"; collect "$JG" GROK "$GRC"; } | tee -a "$EXDIR/$SLUG.md"
+    rmdir "$LOCKDIR"; LOCKDIR=""
     ;;
 relay)
     build_prompt "$PRIME_RELAY"
@@ -202,7 +231,7 @@ quick)
         [02468ace]) AUDITOR=codex ;;
         *)          AUDITOR=grok  ;;
     esac
-    QSLUG="autoreview_${SHA:0:12}"
+    QSLUG="autoreview_${SHA:0:12}_${RUNTAG}"
     QT="$EXDIR/$QSLUG.md"
     rm -f "$QT"
     QRC=0
@@ -217,7 +246,7 @@ quick)
     (
         flock -x 9
         { printf '\n## commit %s %s auditor=%s\n' "$SHA" "$TS" "$AUDITOR"
-          collect "$QT" "${AUDITOR^^}" "$QRC"
+          collect "$QT" "$(printf '%s' "$AUDITOR" | tr '[:lower:]' '[:upper:]')" "$QRC"
         } >&9
         if [ -n "$P0LINE" ]; then
             printf '%s %s %s: %s\n' "${SHA:0:12}" "$TS" "$AUDITOR" "$P0LINE" \
