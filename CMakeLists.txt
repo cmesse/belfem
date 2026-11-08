@@ -483,6 +483,17 @@ if( USE_TEST )
         endif()
     endforeach()
 
+    # targets of the nonfree tests: Add_Test.cmake records every suite under
+    # the nonfree tree, and a nonfree directory that registers a test without
+    # Add_Test.cmake must append its own target. Empty without USE_NONFREE.
+    # The guard is needed because add_dependencies without dependencies is an
+    # error before CMake 4.1.
+    get_property( tNonfreeTargets GLOBAL PROPERTY BELFEM_NONFREE_CHECK_TARGETS )
+    if( tNonfreeTargets )
+        add_dependencies( check ${tNonfreeTargets} )
+    endif()
+    unset( tNonfreeTargets )
+
     # 'make check-fast' builds and runs only the fast-labeled tests
     # (per-test wall time <~10 s, whole set <~3 min); includes the
     # interface/orientation regression battery when USE_MAXWELL is on

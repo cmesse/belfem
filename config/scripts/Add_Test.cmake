@@ -32,6 +32,16 @@ set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/test )
 
 add_executable( test_${TESTNAME} test_${TESTNAME}_main.cpp ${SOURCES} )
 
+# make check runs every test ctest has registered, but builds only the suites
+# the root CMakeLists.txt names, and it names no nonfree target. A suite from
+# the nonfree tree records its target here; the root check block depends on
+# this list. One entry per suite: the Tier 2 tests of a suite share its target.
+string( FIND "${CMAKE_CURRENT_SOURCE_DIR}/" "${BELFEM_NONFREE_SOURCE_DIR}/" tPos )
+if( tPos EQUAL 0 )
+    set_property( GLOBAL APPEND PROPERTY BELFEM_NONFREE_CHECK_TARGETS test_${TESTNAME} )
+endif()
+unset( tPos )
+
 # the data lookup below is pointed at the source tree's share/. Tests run with
 # CWD = their build directory, from where the CWD-relative fallbacks in the
 # library cannot reach it, and the shell's BELFEM_DATA must not decide whether a

@@ -163,7 +163,7 @@ namespace belfem
                 if( tolb < aEpsilon )
                 {
                     aT = t4;
-                    aY.vector_data() = yb.vector_data();
+                    aY = yb;
 
                     if( aStatus == Status::OK && aAutoTimestep )
                     {
