@@ -14,7 +14,11 @@ Codex `gpt-6-astra`/high + Grok `grok-4.7`/high, parallel blind (`scripts/cross_
 and Armadillo, release and debug: clean. Blaze allocation-parity probe on every R4.1 expression shape:
 wrapper form == hatch form. Christian's `make check` on Blaze with R4.1 + R4.2 in the tree: every suite
 green (before the two post-jury edits D21/D22, a comment and a new test); then on Armadillo with D21/D22
-in the tree: green. The Blaze run of the new D22 test is the one leg not yet executed.
+in the tree: green. Afterwards, executed by Claude at Christian's request (he was away): the full suite
+in the shared tree, Blaze **debug** (17/17, 09:58, the first debug-mode run since round A) and Armadillo
+**debug** after a reconfigure (`USE_MATRIX_ARMADILLO=ON`, 17/17, 12:07, log `Testing/Temporary/LastTest.log`);
+the D22 test and the `CheckPolicyDebug` cases ran and passed on both. Round D is gated on Blaze release,
+Blaze debug and Armadillo debug.
 **Exchange:** `tmp/ai_exchange/review_linalg_wrapper_hardening.md` (R4.1 and R4.2 pre-registrations,
 verifications, reconciliations; diffs `…_roundD1.diff`, `…_roundD2.diff`)
 
@@ -64,8 +68,6 @@ factor; P2 (`inv` materialization on Blaze) was not. P3 (no P0/P1) held both tim
 
 ## What is open
 
-- One Blaze run of `test_linalg` with the D22 test (it passed on Armadillo; Blaze returns the norm as a
-  complex and the test asserts its imaginary part is zero).
 - R4.3 (`cl_Gas.cpp` ×5, `cl_GM_EoS_Cubic.cpp:115`, `fn_ODE_RK45.cpp:166`, `fn_ODE_DOP853.cpp:286`): handed
   to the second session (belfem-5e) with the gate and jury instructions; it is holding until Christian
   approves source edits in that session. It also corrected me: the tooling fixes (`cross_review.sh` mktemp
