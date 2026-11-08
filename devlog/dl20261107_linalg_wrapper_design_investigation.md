@@ -29,7 +29,7 @@ gated in the same runs, committed. O3 plan v2 awaits Christian's R1 profile. DR-
 overload-ranking and instantiation probes, the O3 Jacobian-chain benchmarks. Round A: syntax gate in five
 configurations (g++ Blaze/Armadillo, Apple clang Blaze, both backends `-DDEBUG`), then **Christian's `make check`
 in `cmake-build-debug` (Blaze, release, clean rebuild): `linalg` passed with the new tripwires; 54 failures in
-io/circuit/physics/mesh/the-nonfree-python-extension all traced to pre-existing causes (DR-201 the-nonfree-python-extension extension, DR-202 VTK's
+io/circuit/physics/mesh and the nonfree Python test all traced to pre-existing causes (DR-201 nonfree Python extension, DR-202 VTK's
 mangled HDF5 in the test include order, DR-203 never-run TensorMeshBSpline tests), none to the diff.** The
 Armadillo and debug legs are owed to the Linux CI matrix — round A is *verified on one leg*, reviewed on the
 others
@@ -193,7 +193,7 @@ directory first; six test objects reference `vtkhdf5_*`, two HDF5 libraries exch
 and every HDF5 read fails with "not a datatype", class −1 (`hdf5_tools.hpp:246`) — 51 of the 54. Library
 objects are clean; `USE_VTK` is ON in this cache since Oct 26 and OFF on CI. **DR-203:** the three
 `TensorMeshBSpline` tests, added 2026-10-22 as "test not run", build their mesh in memory and fail with zero
-node sources. **DR-201** (the-nonfree-python-extension, extension not importable) is another session's (belfem-5e). Both new
+node sources. **DR-201** (the nonfree Python extension not importable) is another session's (belfem-5e). Both new
 rows filed unowned; ids coordinated with that session.
 
 ## Round B — check policy, and the four latent defects the R2.0 audit found (evening)

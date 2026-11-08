@@ -88,9 +88,9 @@ can fail silently. The visualizer sources pass no `std::` types (`SetFileName( â
 
 ## DR-201, filed, not fixed
 
-With `USE_NONFREE=ON`, ctest runs `nonfree-suite-a`, `nonfree-suite-b` and `the-nonfree-python-extension`, but the `check` target's
+With `USE_NONFREE=ON`, ctest runs the two nonfree suites and the nonfree Python test, but the `check` target's
 dependency loop lists only the open-source suites. The 2026-11-07 19:11 run therefore showed
-"Unable to find executable" for the first two and "No module named 'the-nonfree-python-extension._the-nonfree-python-extension'" for the
+"Unable to find executable" for the first two and "No module named" for the
 third. With nonfree off, none of them is registered, which is correct.
 
 Proposed fix, awaiting approval: a global property filled by `Add_Test.cmake` for test sources

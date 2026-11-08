@@ -86,7 +86,7 @@ correctness-critical refactors); plan + Codex audit were prior sessions.
   mesh, fem (incl. all 5 AndersonMixing tests, run explicitly), ode, physics,
   core, gastables (needs `BELFEM_DATA=<repo>/share` — `data_path()` appends
   `/fluidprop`, and the relative fallback misses ctest's working directory by
-  one level). Not port-related: io/nonfree-suite-a/nonfree-suite-b don't compile (see below +
+  one level). Not port-related: io and the two nonfree suites don't compile (see below +
   nonfree `typedefs.hpp` include paths), gasmodels has 6 failing Cubic/Methane
   tests — consistent with the staged gas migration (share/ data excluded,
   `f6babfb0`; Methane critical-region tables live only in
@@ -191,7 +191,7 @@ before any cut/periodic fused run: the §6 orientation gate and the
 
 ---
 
-**Addendum 2026-08-25.** The "nonfree-suite-a/nonfree-suite-b don't compile" line above described the
+**Addendum 2026-08-25.** The "nonfree suites don't compile" line above described the
 symptom correctly but not the cause, and ctest never reported them as *failed* —
 the executables did not exist, so the status was "Not Run". Cause:
 `config/scripts/Add_Test.cmake` took its `core`/`comm`/`containers`/… include paths

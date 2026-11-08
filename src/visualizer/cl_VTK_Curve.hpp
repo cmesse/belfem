@@ -24,8 +24,8 @@ namespace belfem
          * @class Curve
          * @brief A polyline VTK actor built from an ordered list of 3D points.
          *
-         * Generic and source-agnostic: it knows nothing about meshes, orbits, or
-         * nonfree-suite-a — it just turns points into a polyline. Points are a 3 x N
+         * Generic and source-agnostic: it knows nothing about meshes or orbits —
+         * it just turns points into a polyline. Points are a 3 x N
          * matrix (each column one point, contiguous in BELFEM's column-major
          * storage). Pass aClosed = true to join the last point back to the first
          * (e.g. a closed orbit ellipse). Rendered unlit so the curve reads as a
