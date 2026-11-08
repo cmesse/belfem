@@ -37,7 +37,7 @@ rationale — is in git: `git show 18e57fe:todo/README.md`.
 
 ---
 
-## Active (13)
+## Active (12)
 
 - [cubic_eos_phase_selection](cubic_eos_phase_selection.md) — a cubic-EoS `Gas` never picks the liquid root on its own (`mLiquidFlag` is written only by Helmholtz, one flag per object); design for the cubic's own saturation curve, per-point phase state with hysteresis, Gibbs selection without history; plan only
 - [dr193_usermat_table_extension](dr193_usermat_table_extension.md) — extend and source the quench deck's six short property tables (they end at 199–390 K, the hot spot reaches 1770 K, no table has a provenance line): a web-literature session with a DOI beside every number; plan only
@@ -51,7 +51,6 @@ rationale — is in git: `git show 18e57fe:todo/README.md`.
 - [test_gap_followups](test_gap_followups.md) — the rulings of the Tier 1 test-gap run turned into twelve small rows
 - [test_gap_tier2_execution](test_gap_tier2_execution.md) — Run Tier 2 of `tmp/devlog_sweep/triage.md` (§2, 48 rows) plus N-49 … N-53 reopened by the exclusion re-read (`todo/test_gap_backlog.md` §3b; N-54 stays Tier 3) through the standing loop, batched by suite: one plan per …
 - [transient_heat_conduction_iwg](transient_heat_conduction_iwg.md) — `IWG_TransientHeatConduction` has placeholder coefficients (1.0, 111.0), never sizes M/K, and `test_Pipette` relies on the unit mass; deferred by Christian 2026-10-22
-- [dr202_vtk_private_link](dr202_vtk_private_link.md) — DR-202: with `USE_VTK=ON` the PUBLIC VTK link hands VTK's bundled, renamed HDF5 headers to every test, and every HDF5 read fails; link VTK `PRIVATE` and link `visualize` against VTK link-only. v2 after plan jury round 1 (no P0), awaiting approval
 
 ## Deferred (21) — [`deferred/`](deferred/)
 
@@ -91,8 +90,9 @@ rationale — is in git: `git show 18e57fe:todo/README.md`.
 - [timestep_collapse_mitigation_design](cancelled/timestep_collapse_mitigation_design.md) — Concrete, code-level mitigation design for the Δt-collapse failure analysed in `todo/timestep_collapse_residual_floor_plan.md` (the `sidecoatings` t = 13.8762 ms abort and the `greg5` regression). Mechanism being fixed …
 - [timestep_collapse_residual_floor_plan](cancelled/timestep_collapse_residual_floor_plan.md) — Both `greg5` (2D tapestack, magnetic-only Picard) and `sidecoatings` (3D coated conductor, coupled Newton) ratchet Δt down to the deck minimum and abort. The mechanism, in one sentence: **the controller's promote/demote …
 
-## Closed (127) — [`closed/`](closed/)
+## Closed (128) — [`closed/`](closed/)
 
+- [dr202_vtk_private_link](closed/dr202_vtk_private_link.md) — DONE 2026-11-08: with `USE_VTK=ON` the PUBLIC VTK link handed VTK's bundled, symbol-renamed HDF5 headers (`VTK::vtkhdf5_src`) to every test and the solver, and every HDF5 read failed; VTK now links `PRIVATE`, `visualize` and the nonfree VTK executables link it `$<LINK_ONLY>`. Plan + code jury (Codex terra/high, Grok 4.7/high) no P0/P1; gates G1–G6 confirmed by Christian. O2 (libc++/libstdc++) and O3 (global VTK include path) left open in the plan
 - [guide_sweep_fixes_framework](closed/guide_sweep_fixes_framework.md) — DONE 2026-10-22: the usage-guide sweep's framework defects — interpolation orders for pyramids/LINE5/TRI15/TET35 (auto integration aborted on them), OrderConverter early refusal, cubic tensor-mesh basis reordered and used, QUAD16 slots 4/5 relinked, per-node `tPairs` cleared (D10, every order), `element_ijk` UB, JEDI null references, CircuitResults lag (Christian: reorder), `graph::Vertex` Rule of Five, dead NodeNDP redirect; new `TensorMeshBSpline` test. Reviewed, not verified; owed: full build incl. nonfree, `test_mesh`, `test_fem`, `examples/rlc_circuit`
 - [guide_sweep_fixes_modules](closed/guide_sweep_fixes_modules.md) — DONE 2026-10-22 (B11 deferred): circuit userdefined unit scale, `rcond` SPD contract, HDF5 always-on status checks, Ascii parallel save, Spline extra mode, `buffer` reserved for Magnesia, UserDefinedMaterial null jc/n, `have( lambda )` and release-safe λ, `T_phi` density, gastables POLY synthesized transport, `clean_string("")`, `rand()` [0,1), cyclic compliance convention, segregated Exodus name, `cuts()` removed. Reviewed, not verified; owed: `make check` with gas models, `example_udfiber`
 - [postprocessor_nodeframe_arrays](closed/postprocessor_nodeframe_arrays.md) — DONE 2026-10-22: the recovery postprocessor's per-node `NodeFrame` is four `real[3]` plus two scalars held by value in the map (was four `Vector< real >` behind a `new`, 784 B/node under Armadillo); four 2D recovery cases added; `PostprocessorRecovery.*` 15/15 on Blaze and Armadillo debug sandboxes, whole `test_fem` 337/337 on Armadillo, mutation `T1 := Normal` red on three cases. Open: O4 (`mNodeMatrices`), O5 (oblique-normal coverage), D1 (pre-existing re-`initialize()` crash after a throw)
