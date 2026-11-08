@@ -12,7 +12,7 @@ gate, on **both** backends.
 `src/physics`, `src/numerics`, `src/mesh` (round D, consumers)
 **AIs involved:** Claude (plan), Codex `gpt-6-astra` (plan + code audits), Grok `grok-4.7` (third
 voice; restored 2026-11-07 after two rounds on the report without it)
-**Status:** IN PROGRESS — **rounds A, B and C VERIFIED (Christian's `make check`, Blaze and Armadillo, 2026-11-08) and committed; round D: R4.0 inventory done, R4.1 (Timestep, 70 lines) and R4.2 (kernel, postproc, eigen, 12 lines) implemented, code-juried and VERIFIED 2026-11-08 (Christian's `make check`, Blaze and Armadillo), committed; R4.3 handed to the second session (belfem-5e), awaiting Christian's go there.** O-decisions as recorded below. Plan jury record: **round 2 at `xhigh` done** (Codex: 5 findings, 3 P1 — eigen status discarded, complex transpose
+**Status:** IN PROGRESS — **rounds A, B and C VERIFIED (Christian's `make check`, Blaze and Armadillo, 2026-11-08) and committed; round D: R4.0 inventory done, R4.1 (Timestep, 70 lines) and R4.2 (kernel, postproc, eigen, 12 lines) implemented, code-juried and VERIFIED 2026-11-08 (Christian's `make check`, Blaze and Armadillo), committed; R4.3 (physics, numerics, 8 lines) done by belfem-5e 2026-11-08, compile-gated 16/16, juried clean and VERIFIED (`make check` with `USE_GASMODELS=ON` in two scratch trees, run by belfem-5e at Christian's request: Blaze release 22/22 incl. nonfree and Python, Armadillo debug 19/19), source in the tree awaiting Christian's commit; R4.4 (the one nonfree line) done 2026-11-08, compile-gated, no test exists; R4.5 settled by ruling — the cohomology line stays. Round D complete except for the commits.** O-decisions as recorded below. Plan jury record: **round 2 at `xhigh` done** (Codex: 5 findings, 3 P1 — eigen status discarded, complex transpose
 semantics, stale §6 counter sketch; Grok: 4 P1 + 8 P2 — one-TU tripwire, API wording, row-view add is a transpose-add not UB, …; all
 CONFIRMED, two by run probe) and folded in (gaps #36–#37, R2.0, R3.0, O12–O13). O2a, O2b, O4, O5 **decided 2026-11-07 by Christian**
 (below). Drafted 2026-11-07, **plan jury round 1 done the same day** (Codex `gpt-6-astra`/high:
@@ -299,11 +299,11 @@ Sub-rounds, each with its own code jury:
   Galerkin hatch statements are `cl_IWG_Timestep.cpp:862-866` and `:876-881` (the earlier `:858`/`:872`
   were the signatures). `cl_Gradient.cpp:196` keeps
   the eager `inv()` (`fn_BZ_inv.hpp:24`, deliberate).
-- [ ] **R4.3 — `src/physics`, `src/numerics`, `src/mesh`** (`cl_Gas.cpp`, `cl_GM_EoS_Cubic.cpp`,
+- [x] **R4.3 — `src/physics`, `src/numerics`, `src/mesh`** *(8 lines replaced 2026-11-08 by belfem-5e; compile gate 16/16; juried, no findings; `make check` green 2026-11-08, run by belfem-5e at Christian's request: Blaze release 22/22 and Armadillo debug 19/19, both with `USE_GASMODELS=ON`, fresh scratch trees)* (`cl_Gas.cpp`, `cl_GM_EoS_Cubic.cpp`,
   `cl_Material_UserDefined.*`, `fn_ODE_RK45.cpp`, `fn_ODE_DOP853.cpp`, …). Gas-model tests are in
   the `check` fan-out under `-DUSE_GASMODELS=ON` (CI since 2026-09-18).
-- [ ] **R4.4** `nonfree` site — separate `nonfree/` session (gap #23).
-- [ ] **R4.5** `cl_Cohomology.cpp` — report to Gregory (gap #22).
+- [x] **R4.4** `nonfree` site — separate `nonfree/` session (gap #23). *(done 2026-11-08 in the nonfree tree, approved by Christian; compile gate both backends × both modes from a scratch `USE_COMBUSTION=ON` configure; no combustion test exists — reviewed, not verified; record in `nonfree/devlog/`)*
+- [x] ~~**R4.5** `cl_Cohomology.cpp` — report to Gregory (gap #22).~~ *(ruling 2026-11-08, Christian: the cohomology core is not touched; the line stays as the one documented hatch)*
 - **Gate per sub-round (Christian):** named numerical test of the path + R3.2 counter + `make check`
   both backends.
 - **What could break:** a replaced expression that silently picks a *different* overload (e.g. the
@@ -423,8 +423,13 @@ the power iteration). **D21** (Grok): comment carried history, trimmed to the re
 added — complex operands, modulus against the hand sum, zero imaginary part, and a `static_assert` that the expression `norm` is a scalar, not a materialized
 `Vector` (Grok's open risk). Gates: `g++ -c` with `flags.make` on every touched TU, both backends × both modes, clean; Blaze allocation parity on every R4.1
 shape (one allocation either way for `( aJ − K()*dt ) * qold()`, the backend's own materialization of the difference); Christian's `make check` on Blaze green
-with R4.1 + R4.2 (before D21/D22), then on Armadillo with D21/D22: green — **round D R4.1/R4.2 VERIFIED, committed.** R4.3 handed to belfem-5e 2026-11-08 (held there for Christian's approval); R4.4 nonfree,
-R4.5 Gregory.
+with R4.1 + R4.2 (before D21/D22), then on Armadillo with D21/D22: green — **round D R4.1/R4.2 VERIFIED, committed.** R4.3 (belfem-5e, approved by Christian in that session): eight lines — `cl_Gas.cpp` ×5 (`src/physics/gasmodels/`, not `gastables/`),
+`cl_GM_EoS_Cubic.cpp:115`, `fn_ODE_RK45.cpp:166` (`aY = yb`, the 5th-order stage; Appendix D's row said `ya`), `fn_ODE_DOP853.cpp:286` (`aY = ya`);
+compile gate 16/16 (4 TUs × both backends × both modes under a scratch `USE_GASMODELS=ON` configure, `nm` confirming each object's backend);
+jury Codex `gpt-6-astra`/high + Grok `grok-4.7`/high, no defect; Grok's test gap: the compound-assignment value tests use `M * s`, `remix()` uses
+`s * M` — same overload, untested twin (round E). **`make check` with `USE_GASMODELS=ON` green 2026-11-08 in two scratch trees (belfem-5e, at Christian's request): Blaze release with nonfree and
+Python 22/22 (2461 cases, 18 min 52 s), Armadillo debug 19/19 (14 min 9 s) — R4.3 VERIFIED; commit is Christian's call.**
+R4.4: the nonfree line is done (2026-11-08, Christian's approval; compile gate only, no combustion test — its record lives in the nonfree devlog). R4.5: not done by ruling — the cohomology core stays closed, the line remains and is listed as such in Appendix D.
 - R3.0: `tests/fem/test_BdfTimestepMethod.cpp` §7 — `SyntheticMkfIwg` (synthetic M, K, f) + `AssemblyProblem`; `Bdf1ToBdf5MatchTheHandFormula`
   and `RampRunsTheOrderTheHistorySupports` check `compute_jacobian_and_rhs` against `J = alpha M + h K`, `b = h f + M Σ(−1)^k beta_k q_k` with
   the IWG's own coefficients (§4 pins those). Compiles in both modes.
@@ -770,7 +775,7 @@ leave with the hatch; decide per site).
 `aHf.vector_data() -= mFormationTable * mFormationWork` → `aHf -= mFormationTable * mFormationWork` (Vector `-=`/`+=` from a matrix-vector
 product; covered by the gas-model tests, 12 files mention formation/Gibbs/enthalpy). `cl_GM_EoS_Cubic.cpp:115`: `tDeparture.matrix_data() += tY(k)
 * mDepartureCoefficients(k).matrix_data()` → `tDeparture += tY(k) * mDepartureCoefficients(k)` (5 test files). `fn_ODE_RK45.cpp:166`,
-`fn_ODE_DOP853.cpp:286`: `aY.vector_data() = ya.vector_data()` → `aY = ya` (plain copy; ODE tests plentiful). `cl_Material_UserDefined.hpp:432`,
+`fn_ODE_DOP853.cpp:286`: `aY.vector_data() = ya.vector_data()` → `aY = ya` (plain copy; ODE tests plentiful; RK45 copies `yb`, see the R4.3 outcome). `cl_Material_UserDefined.hpp:432`,
 `:444`, `.cpp:276`: **not linalg** — `cl_Material_UserDefined.hpp:28` defines its own `polyval( const std::vector<T>&, T )` and `mPolynomials(p).vector_data()`
 is the `Cell` accessor; keep (grep record: `src/linalg/fn_dpolyval.hpp:46:    dpolyval( const Vector< T > & aCoeffs, const T aX );src/linalg/fn_polyval.hpp:49:    polyval( const Vector< T > & aCoeffs, const T aX );src/linalg/fn_polyval.hpp:68:    polyval( const Vector< T > & aCoeffs, const Vector< T > & aX, Vector< T > & aY );src/physics/materials/cl_Material_UserDefined.hpp:28:        polyval( const std::vector< T > & coeffs, const T x );`); if they take only the backend type, the hatch is legitimate and stays.
 
@@ -788,10 +793,33 @@ is the `Cell` accessor; keep (grep record: `src/linalg/fn_dpolyval.hpp:46:    dp
 expression cannot bind `norm( ET & )` and reaches the backend's `norm` by argument-dependent lookup, which is what the hatch form called explicitly; a
 `const ET &` version was tried and made `norm( const Vector & )` ambiguous. The eigen site is the one non-mechanical replacement (Blaze stop test
 changes, now equal to Armadillo's); edge lengths and the power iteration remain without a numerical test, recorded as gaps, not closed here.
+
+**Outcome R4.3, 2026-11-08 (belfem-5e).** The eight lines are done:
+- **`cl_Gas.cpp`** ×5 (`:1764`, `:1784`, `:1800`, `:1821`, `:1835`): `aX ∓= mFormationTable * mFormationWork`. The file is
+  `src/physics/gasmodels/cl_Gas.cpp`, not `gastables/`.
+- **`cl_GM_EoS_Cubic.cpp:115`**: `tDeparture += tY( k ) * mDepartureCoefficients( k )`.
+- **`fn_ODE_RK45.cpp:166`**: `aY = yb`. This row of the table above says `= ya`, but RK45 advances with `yb`, the 5th-order stage;
+  `ya` would be the 4th.
+- **`fn_ODE_DOP853.cpp:286`**: `aY = ya`, the 8th-order stage.
+
+Each right-hand side is the backend expression the hatch already used. The gas products were already the wrapper
+`operator*( Matrix, Vector )`, so no assert was added. Only the left-hand side moved onto the round-C compound operators;
+the ODE copies go through `Vector::operator=( const Vector& )`, which resizes like the backend assignment.
+
+Gate: `g++ -c` of the four files under their targets' `flags.make` (scratch configure with `-DUSE_GASMODELS=ON`):
+- Blaze and Armadillo, release and debug, under `-Werror -pedantic-errors`: 16/16, no diagnostics.
+- `nm -C` shows each object linked against its own backend only.
+
+Code jury: Codex `gpt-6-astra`/high and Grok `grok-4.7`/high, no defect. Grok noted one test gap: the compound-assignment
+value tests use `M * s`, while `remix()` uses `s * M`. Same overload, untested twin; left for the next edit of
+`test_OverloadSets.cpp`.
+
+Remaining: Christian's `make check` on both backends with `USE_GASMODELS=ON`. `cl_Material_UserDefined.*` stays, as
+inventoried.
 | `cl_Gas.cpp` | `:1764`, `:1784`, `:1800`, `:1821`, `:1835` | `v -=/+= M * w` | live | workaround (Blaze Vector gap) | gas tests |
 | `cl_GM_EoS_Cubic.cpp` | `:115` | `M += s * N` | live | workaround (Armadillo Matrix gap) | EoS tests |
 | `fn_ODE_RK45.cpp`, `fn_ODE_DOP853.cpp` | `:166`, `:286` | `aY = ya` | live | convenience | ODE tests |
 | `cl_Material_UserDefined.*` | `:432`, `:444`, `:276` | — | — | not linalg (`Cell` accessor, own `polyval( std::vector )`) | keep |
 | `cl_Cohomology.cpp` | `:1143` | — | — | closed to AI | report to Gregory |
-| `cl_CN_Reaction.cpp` (nonfree) | `:101` | `aS += s * ( … )` | live | workaround | nonfree session |
+| `cl_CN_Reaction.cpp` (nonfree) | `:101` | `aS += s * ( … )` | live | workaround | done 2026-11-08, compile gate only (no combustion test) |
 | `Cell`/`Spline`/HDF5 accessors | 38 lines | — | — | not linalg | keep |
