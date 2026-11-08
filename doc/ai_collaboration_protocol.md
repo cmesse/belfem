@@ -58,7 +58,7 @@ These files are AI-only scratch: machine-parseable, disposable, and **never comm
 
 ### Nonfree Module Exception
 
-For work scoped to `./nonfree/` or to porting code from `./tmp/manta/` into
+For work scoped to `./nonfree/` or to porting code from `./tmp/nonfree-suite-b/` into
 `./nonfree/`, do **not** create, read, or append the AI-only exchange at all —
 suppress the AI-only tier entirely. The shared exchange is routed through
 external AI vendors and is therefore a vendor-bound leak surface; nonfree work is
@@ -197,7 +197,7 @@ See `todo/closed/periodic_thin_cut_continuity_fix.md` for the reference style (c
 
 ### Nonfree Module Exception
 
-For work scoped to `./nonfree/` or to porting code from `./tmp/manta/` into
+For work scoped to `./nonfree/` or to porting code from `./tmp/nonfree-suite-b/` into
 `./nonfree/`, write session devlogs to `./nonfree/devlog/` instead of
 `./devlog/`. Do not update `./devlog/README.md` for nonfree-only sessions.
 If `./nonfree/devlog/` has its own README or index, update that local index;

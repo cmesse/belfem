@@ -133,7 +133,7 @@ Landed after Christian's go-ahead:
 - Pivot sweep `Vector<int>` → `Vector<int_t>` at every gesv call site:
   beam-poly helpers (+ signatures), circle_from_points, `cl_BDF`,
   `cl_Gradient`, materials Copper/Silver/Iron, `test_LinalgSolvers`,
-  nonfree `cl_Gas`/`cl_CN_Scheme`, and kepler's `mHermitePivot` (found
+  nonfree `cl_Gas`/`cl_CN_Scheme`, and nonfree-suite-a's `mHermitePivot` (found
   through the changed `create_fifth_order_beam_poly` signature).
 
 **Q2 was resolved the opposite way from the auditor recommendation — by

@@ -73,7 +73,7 @@ records Christian's 2026-08-14 ruling that FVM is out of the open 1.0 release.
 So these are two open-source planning documents for a module that is now proprietary. By the same
 rule that sends nonfree devlogs to `nonfree/devlog`, they belong in **`nonfree/todo/`** — which
 already exists and already holds two FVM files (`fvm_mpfa_o_vs_fem_prompt.md`,
-`fvm_mpfa_o_vs_fem_recommendation.md`, both about the Manta spacecraft-thermal application rather
+`fvm_mpfa_o_vs_fem_recommendation.md`, both about the nonfree-suite-b spacecraft-thermal application rather
 than the HTS quench shell, so there is no duplication).
 
 **EXECUTED on Christian's ruling ("yes, move the fvm plans to nonfree/todo").** Both files were

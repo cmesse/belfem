@@ -27,7 +27,7 @@ Reviewed the pasted `BELFEM & SCLS — A Positioning Brief for Planetary Utiliti
 ## Open Questions
 
 - What is the intended business ask to Johannes: collaboration, role, pilot, legal review, acquisition/licensing, or some combination?
-- Which first pilot should the brief recommend: thermal/Manta, power/circuit, or orbit?
+- Which first pilot should the brief recommend: thermal/nonfree-suite-b, power/circuit, or orbit?
 
 ## Files Updated
 

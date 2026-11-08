@@ -129,8 +129,8 @@ The figures can be restored in one edit once the primary paper is read.
 Committing `doc/lessons_learned_evidence.md` with INC-538 and INC-539 still open would have
 published two known, trivially fixable defects as open findings. Both fixed:
 
-- **INC-539** — the dangling `dl20260520_tycho_macos_build_fix.md` link (a file that never
-  existed in this repository; tycho is a `nonfree/` module and its devlogs live there) is
+- **INC-539** — the dangling `dl20260520_nonfree-app_macos_build_fix.md` link (a file that never
+  existed in this repository; nonfree-app is a `nonfree/` module and its devlogs live there) is
   removed from `devlog/README.md`.
 - **INC-538** — the eight devlog entries on disk but absent from the index are backfilled, each
   at its chronological position, each marked *(backfilled 2026-08-20; INC-538)* so the index

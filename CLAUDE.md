@@ -11,7 +11,7 @@ This repository uses a two-AI model: **Claude Code** (primary, broad exploration
 Key points:
 - **Calibrated uncertainty:** attach confidence (high / medium / low) to non-trivial claims
 - **Exchange channel:** `./tmp/ai_exchange/<slug>.md` (AI-only, ephemeral, per-task AI-to-AI communication; distilled into the devlog before it is swept)
-- **Nonfree exception:** for work scoped to `./nonfree/` — or porting from `./tmp/manta/` into it — do **not** create, read, or append the exchange at all. It is routed through external AI vendors and is a leak surface for proprietary work; keep coordination in chat and record outcomes in `./nonfree/devlog/`.
+- **Nonfree exception:** for work scoped to `./nonfree/` — or porting from `./tmp/nonfree-suite-b/` into it — do **not** create, read, or append the exchange at all. It is routed through external AI vendors and is a leak surface for proprietary work; keep coordination in chat and record outcomes in `./nonfree/devlog/`.
 - **Session records:** `./devlog/dlYYYYMMDD_topic.md` (persistent devlogs)
 - **Edit safety:** read-only by default; source edits only with explicit user approval
 - **Literature-first:** mandatory for algorithms/formulations/validation; not for trivial fixes

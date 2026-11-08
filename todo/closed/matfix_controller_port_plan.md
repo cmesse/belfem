@@ -117,8 +117,8 @@ refresh (`cl_FEM_DofMgr_SolverData.cpp:2190-2200`) + Anderson SolverData methods
   `USE_TEST` toggled ON → suite → restored OFF). Port-relevant suites ALL PASS:
   containers, linalg, comm, math, sparse, mesh, **fem (incl. all 5 AndersonMixing
   tests)**, ode, physics, core, gastables (needs `BELFEM_DATA=<repo>/share`).
-  Not port-related: io/kepler/manta don't compile (D2 + nonfree include paths;
-  kepler/manta resolved 2026-08-25 — `Add_Test.cmake` used the undefined
+  Not port-related: io/nonfree-suite-a/nonfree-suite-b don't compile (D2 + nonfree include paths;
+  nonfree-suite-a/nonfree-suite-b resolved 2026-08-25 — `Add_Test.cmake` used the undefined
   `SSF_SRC_DIR`, so ctest reported them "Not Run", never failed),
   gasmodels has 6 failing Cubic/Methane tests (staged gas migration, share/ data
   excluded per f6babfb0 — the module didn't even compile before D1). Theory doc

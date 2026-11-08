@@ -158,7 +158,7 @@ wrap in release before the new width check sees it.
 
 Deleted on Christian's ruling: `src/fem/postproc/cl_Surface.{cpp,hpp}` was in no CMake list,
 nothing in `src/`, `tests/`, `examples/`, `nonfree/` or `archive/` included it or named
-`fem::Surface` (the `Surface` classes in `nonfree/manta` and `archive/satellite` are their own),
+`fem::Surface` (the `Surface` classes in `nonfree/nonfree-suite-b` and `archive/satellite` are their own),
 and it named a header that does not exist (`cl_Element_Penta6TS.hpp`). Last touched 2025-03-19.
 Relayed, not touched: `Element::reset_control_point_container()` frees
 the array without nulling the pointer (Grok); the destructor then frees it again if the count
