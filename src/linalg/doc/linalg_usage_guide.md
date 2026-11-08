@@ -20,9 +20,10 @@ The abstraction allows switching backends at **compile time** without changing u
 
 1. **Backend Independence**: Write once, compile with either Armadillo or Blaze
 2. **Expression Templates**: Lazy evaluation for complex expressions (e.g., `A*B + C*D`)
-3. **Bounds Checking**: Debug-mode assertions (`BELFEM_ASSERT`, compiled out in release; Armadillo keeps its own bounds check, see pitfall 5)
+3. **Bounds and Shape Checking**: `BELFEM_ASSERT` and the backends' own checks follow the build mode together — on in debug, off in release — except Blaze's shape exceptions, which stay on everywhere (see pitfall 5 for the table)
 4. **Operator Overloading**: Natural mathematical syntax (`+`, `-`, `*`, `/`)
 5. **Direct Backend Access**: Escape hatch via `vector_data()` / `matrix_data()`
+6. **Value types, not base classes**: `Matrix` and `Vector` are `final` and have no virtual members. Each adds no object-size overhead over the backend object it wraps (pinned by `static_assert`s in `tests/linalg`); pass them by reference, never derive from them, and never reinterpret one as its backend type — use `matrix_data()` / `vector_data()`
 
 > **Critical: Backend Selection**
 > Backend is chosen at **compile time**. The CMake cache options are
@@ -90,13 +91,29 @@ A.set_size(5, 5);         // row is now INVALID (dangling reference)
 ```cpp
 Vector<real> v(5, 0.0);
 real x = v(10);  // Debug: BELFEM_ASSERT fails
-                 // Release, Blaze: undefined behavior
-                 // Release, Armadillo: throws std::out_of_range
+                 // Release, either backend: undefined behavior
 ```
 
-`BELFEM_ASSERT` is compiled out of release builds. Armadillo still checks bounds there,
-because BELFEM leaves its conformance checks enabled (`ARMA_NO_DEBUG` is not defined).
-Blaze does not check bounds in release.
+`BELFEM_ASSERT` is compiled out of release builds, and so are the backends' own bounds and
+size-conformance checks: `armadillo.hpp` defines `ARMA_DONT_CHECK_CONFORMANCE` (and
+`ARMA_WARN_LEVEL 1`, which also drops Armadillo's level-2 runtime warnings) on the release side of the
+same predicate that drives `BELFEM_ASSERT`, and `blaze_config.hpp` sets `BLAZE_USER_ASSERTION 0` there.
+Two asymmetries remain: Blaze's size-conformance checks are exceptions, not assertions, and stay on in
+every build; and Armadillo's non-finite-input check (`ARMA_CHECK_NONFINITE`) stays on too, so release
+Armadillo still rejects a NaN matrix inside `eig_gen` while Blaze would compute on it — which is why
+`eigen()` checks finiteness itself before calling either backend. `tests/linalg/test_CheckPolicy.cpp`
+pins the switch at compile time and samples the rows below (one shape mismatch, `eigen` on a NaN and on a
+non-square matrix, the `dot`/`det`/`inv` asserts, the mixed `cross` overloads):
+
+| check | debug, Armadillo | debug, Blaze | release, Armadillo | release, Blaze |
+|---|---|---|---|---|
+| element bounds `A(i,j)` | `BELFEM_ASSERT` (Armadillo's own `std::out_of_range` is reached only through `matrix_data()`) | `BELFEM_ASSERT` | unchecked | unchecked |
+| shape mismatch in `+=`, `-=`, `*` (plain `=` resizes the target) | `std::logic_error` | `std::invalid_argument` | **unchecked** | `std::invalid_argument` |
+| `dot` lengths, `cross` lengths, `det`/`inv` squareness | `BELFEM_ASSERT` | `BELFEM_ASSERT` | unchecked | `std::invalid_argument` |
+| singular `inv` | `std::runtime_error` | throws | `std::runtime_error` | throws |
+| `eigen` / `eigen_sym`: non-square or non-finite input | `BELFEM_ERROR` | `BELFEM_ERROR` | `BELFEM_ERROR` | `BELFEM_ERROR` |
+| failed `eigen` / `eigen_sym` decomposition | `BELFEM_ERROR` | throws | `BELFEM_ERROR` | throws |
+| LAPACK `info != 0` in `lapack/` | `BELFEM_ERROR` while `AbortOnError` is true (the default); with `false` the wrapper returns `info` for the caller's retry path | same | same | same |
 
 **Solution:** Test in both modes. Use static analysis for release builds.
 

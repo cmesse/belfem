@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <limits>
 #include <string>
+#include <type_traits>
 
 #include "typedefs.hpp"
 #include "cl_Matrix.hpp"
@@ -43,6 +44,20 @@ namespace
 // =============================================================================
 // §2.1  Construction & Destruction  [semantic]
 // =============================================================================
+
+
+// Matrix is a value type, not a base class: final, no vtable, no size overhead over the backend object
+// it wraps. All three are compile-time contracts.
+static_assert( std::is_final< belfem::Matrix< belfem::real > >::value,
+               "belfem::Matrix must be final" );
+static_assert( ! std::is_polymorphic< belfem::Matrix< belfem::real > >::value,
+               "belfem::Matrix must not be polymorphic" );
+static_assert( ! std::is_polymorphic< belfem::Matrix< int > >::value,
+               "belfem::Matrix must not be polymorphic" );
+static_assert( sizeof( belfem::Matrix< belfem::real > ) == sizeof( belfem::Matrix< belfem::real >::MatrixType ),
+               "belfem::Matrix adds no size overhead over its backend object" );
+static_assert( sizeof( belfem::Matrix< int > ) == sizeof( belfem::Matrix< int >::MatrixType ),
+               "belfem::Matrix adds no size overhead over its backend object" );
 
 TEST( Matrix, DefaultConstructorEmpty )
 {

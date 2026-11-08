@@ -37,7 +37,7 @@ rationale — is in git: `git show 18e57fe:todo/README.md`.
 
 ---
 
-## Active (12)
+## Active (13)
 
 - [cubic_eos_phase_selection](cubic_eos_phase_selection.md) — a cubic-EoS `Gas` never picks the liquid root on its own (`mLiquidFlag` is written only by Helmholtz, one flag per object); design for the cubic's own saturation curve, per-point phase state with hysteresis, Gibbs selection without history; plan only
 - [dr193_usermat_table_extension](dr193_usermat_table_extension.md) — extend and source the quench deck's six short property tables (they end at 199–390 K, the hot spot reaches 1770 K, no table has a provenance line): a web-literature session with a DOI beside every number; plan only
@@ -51,6 +51,7 @@ rationale — is in git: `git show 18e57fe:todo/README.md`.
 - [test_gap_followups](test_gap_followups.md) — the rulings of the Tier 1 test-gap run turned into twelve small rows
 - [test_gap_tier2_execution](test_gap_tier2_execution.md) — Run Tier 2 of `tmp/devlog_sweep/triage.md` (§2, 48 rows) plus N-49 … N-53 reopened by the exclusion re-read (`todo/test_gap_backlog.md` §3b; N-54 stays Tier 3) through the standing loop, batched by suite: one plan per …
 - [transient_heat_conduction_iwg](transient_heat_conduction_iwg.md) — `IWG_TransientHeatConduction` has placeholder coefficients (1.0, 111.0), never sizes M/K, and `test_Pipette` relies on the unit mass; deferred by Christian 2026-10-22
+- [dr202_vtk_private_link](dr202_vtk_private_link.md) — DR-202: with `USE_VTK=ON` the PUBLIC VTK link hands VTK's bundled, renamed HDF5 headers to every test, and every HDF5 read fails; link VTK `PRIVATE` and link `visualize` against VTK link-only. v2 after plan jury round 1 (no P0), awaiting approval
 
 ## Deferred (21) — [`deferred/`](deferred/)
 

@@ -37,7 +37,7 @@ namespace belfem
      * @see @ref linalg_lapack_usage_guide
      */
     template< typename T >
-    class Vector
+    class Vector final
     {
 //------------------------------------------------------------------------------
     public :
@@ -205,7 +205,7 @@ namespace belfem
         /**
          * empty destructor
          */
-        virtual ~Vector() = default;
+        ~Vector() = default;
 
 //------------------------------------------------------------------------------
 // MEMORY

@@ -24,7 +24,7 @@ namespace belfem
      * @see @ref linalg_lapack_usage_guide
      */
     template< typename T >
-    class Matrix
+    class Matrix final
     {
 //------------------------------------------------------------------------------
     public :
@@ -136,7 +136,7 @@ namespace belfem
         /**
          * empty destructor
          */
-        virtual ~Matrix() = default;
+        ~Matrix() = default;
 
 //------------------------------------------------------------------------------
 // MEMORY
@@ -306,7 +306,7 @@ namespace belfem
         /**
          * access operator ( const version )
          */
-        virtual inline const T &
+        inline const T &
         operator()( const size_t aRowIndex, const size_t aColIndex ) const
         {
             BELFEM_ASSERT( aRowIndex< this->n_rows(),

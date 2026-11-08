@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <limits>
 #include <string>
+#include <type_traits>
 
 #include "typedefs.hpp"
 #include "cl_Vector.hpp"
@@ -46,6 +47,20 @@ namespace
 // =============================================================================
 // §1.1  Construction & Destruction  [semantic]
 // =============================================================================
+
+
+// Vector is a value type, not a base class: final, no vtable, no size overhead over the backend object
+// it wraps. All three are compile-time contracts.
+static_assert( std::is_final< belfem::Vector< belfem::real > >::value,
+               "belfem::Vector must be final" );
+static_assert( ! std::is_polymorphic< belfem::Vector< belfem::real > >::value,
+               "belfem::Vector must not be polymorphic" );
+static_assert( ! std::is_polymorphic< belfem::Vector< belfem::index_t > >::value,
+               "belfem::Vector must not be polymorphic" );
+static_assert( sizeof( belfem::Vector< belfem::real > ) == sizeof( belfem::Vector< belfem::real >::VectorType ),
+               "belfem::Vector adds no size overhead over its backend object" );
+static_assert( sizeof( belfem::Vector< belfem::index_t > ) == sizeof( belfem::Vector< belfem::index_t >::VectorType ),
+               "belfem::Vector adds no size overhead over its backend object" );
 
 TEST( Vector, DefaultConstructorEmpty )
 {

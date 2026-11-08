@@ -12,8 +12,7 @@ gate, on **both** backends.
 `src/physics`, `src/numerics`, `src/mesh` (round D, consumers)
 **AIs involved:** Claude (plan), Codex `gpt-6-astra` (plan + code audits), Grok `grok-4.7` (third
 voice; restored 2026-11-07 after two rounds on the report without it)
-**Status:** IN PROGRESS — **round A implemented 2026-11-07 (headers, tripwires, guide), code jury pending, gate not run**;
-v3 **approved 2026-11-07 by Christian** (plan + source edits), O12 → runtime shape branch; debt row DR-200. Plan jury record: **round 2 at `xhigh` done** (Codex: 5 findings, 3 P1 — eigen status discarded, complex transpose
+**Status:** IN PROGRESS — **rounds A and B VERIFIED 2026-11-07 (Christian's `make check`, Blaze release with VTK on + Armadillo; `test_linalg` green incl. `CheckPolicy`) and committed; round C next (R3.0 BDF baseline, R3.2 counter + numerical tests first).** O-decisions as recorded below. Plan jury record: **round 2 at `xhigh` done** (Codex: 5 findings, 3 P1 — eigen status discarded, complex transpose
 semantics, stale §6 counter sketch; Grok: 4 P1 + 8 P2 — one-TU tripwire, API wording, row-view add is a transpose-add not UB, …; all
 CONFIRMED, two by run probe) and folded in (gaps #36–#37, R2.0, R3.0, O12–O13). O2a, O2b, O4, O5 **decided 2026-11-07 by Christian**
 (below). Drafted 2026-11-07, **plan jury round 1 done the same day** (Codex `gpt-6-astra`/high:
@@ -137,6 +136,8 @@ handling or a probe.
   Linux CI matrix is green on both backends in both modes. Round B changes **release** behaviour
   only, so its gate must include a release tree on Armadillo — the debug-default workstation tree
   proves nothing about it.
+- **`-fsyntax-only` is not a build.** It skips the unused-function and codegen-time diagnostics that `-Werror` turns fatal (D10); the
+  pre-jury gate compiles each touched TU with `-c` under the build's own `flags.make`.
 - **Static counts are not evidence.** Call-site counts in assembly were mis-read twice in the
   report's history (tail-call `jmp _free`, ≤16-element local storage). Round C's gate is the
   executed counter (#18), and round D accepts a replacement only when the counter shows the wrapper
@@ -163,17 +164,17 @@ step, never inside the round that raised them.
 
 ### Round A — de-virtualize and seal (R1; `src/linalg` only)
 
-- [◐] **R1.1** Remove the six `virtual` specifiers (gap #1, #2). No signature changes. *(edited 2026-11-07; awaiting code jury + gate)*
-- [◐] **R1.2** Add `final` to the four class heads (gap #3; O4/O5 approved). *(edited 2026-11-07)*
-- [◐] **R1.3** Tripwires in `tests/linalg/test_Matrix.cpp` and `test_Vector.cpp` (gap #4, #5) *(edited 2026-11-07, via the public `MatrixType`/`VectorType` typedefs)*:
+- [x] **R1.1** Remove the six `virtual` specifiers (gap #1, #2). No signature changes. *(edited 2026-11-07; awaiting code jury + gate)*
+- [x] **R1.2** Add `final` to the four class heads (gap #3; O4/O5 approved). *(edited 2026-11-07)*
+- [x] **R1.3** Tripwires in `tests/linalg/test_Matrix.cpp` and `test_Vector.cpp` (gap #4, #5) *(edited 2026-11-07, via the public `MatrixType`/`VectorType` typedefs)*:
   `static_assert(!std::is_polymorphic<Matrix<real>>::value)` and
   `static_assert(sizeof(Matrix<real>) == sizeof(decltype(std::declval<Matrix<real>>().matrix_data())))`,
   same for `Vector`, plus one integer instantiation each (`Matrix<int>`, `Vector<index_t>`).
-- [ ] **R1.4** Compile-only probe TU for the codegen claim: the §3 kernel of the report, built with
+- [x] **R1.4** (report §3 probe re-run against the tree headers 2026-11-07; not checked in) Compile-only probe TU for the codegen claim: the §3 kernel of the report, built with
   the real flags; the acceptance is "no `call *` in the `const Matrix &` read loop" on both backends.
   Kept under `tests/linalg/probes/` as a documented manual probe, **not** in the test binary (an
   assembly grep is not a portable unit test).
-- [◐] **R1.5** Guide: `Matrix`/`Vector` are not base classes; `final` is a contract. *(edited 2026-11-07, Key Features item 6)*
+- [x] **R1.5** Guide: `Matrix`/`Vector` are not base classes; `final` is a contract. *(edited 2026-11-07, Key Features item 6)*
 - **Gate (Christian):** clean rebuild of both backends; `make check` (release) on Blaze/Apple and
   on the Linux CI matrix; rebuild of every plugin in use; R1.4 probe output attached to the devlog.
 - **What could break:** nothing in-tree derives, casts or inspects polymorphism (grep today, gap
@@ -182,28 +183,28 @@ step, never inside the round that raised them.
 
 ### Round B — check policy: debug on, release off (R2; `src/linalg/armadillo/armadillo.hpp`, docs)
 
-- [ ] **R2.0** (prerequisite, gap #36) Audit every `fn_AR_*.hpp`/`fn_BZ_*.hpp` for a backend status that is
-  discarded and then relied upon; fix each (`fn_AR_eigen.hpp:33`: check `arma::eig_gen`'s return, report
+- [x] **R2.0** (prerequisite, gap #36) Audit every `fn_AR_*.hpp`/`fn_BZ_*.hpp` for a backend status that is
+  discarded and then relied upon *(inventory 2026-11-07, Appendix E; E1 `BELFEM_ERROR` on `eig_gen`, E2 `cross` bodies, E3 `BELFEM_ASSERT`s in `fn_dot`/`fn_det`/`fn_inv` applied the same day)*; fix each (`fn_AR_eigen.hpp:33`: check `arma::eig_gen`'s return, report
   through the existing `int_t` result or `BELFEM_ERROR`, never index an emptied vector) with a test that
   feeds a nonfinite matrix. Lands before R2.1 in the same round, both backends.
-- [ ] **R2.1** In `armadillo.hpp`, before `#include <armadillo>`: the tree's debug predicate
+- [x] **R2.1** In `armadillo.hpp`, before `#include <armadillo>`: the tree's debug predicate
   (`#if !defined(NDEBUG) || defined(DEBUG)` — the same as `blaze_config.hpp:20` and `assert.hpp:26`),
   and on its `#else` side `#define ARMA_DONT_CHECK_CONFORMANCE` unless already defined (gap #6).
   `DEBUG` is defined under `USE_DEBUG` (`config_gcc.cmake:24`), so the two macros are not complements
   and the predicate, not `NDEBUG` alone, is the definition of a debug check in this tree.
-- [ ] **R2.2** The per-TU note (gap #7): `ARMA_WARN_LEVEL 1` on the release side of the same block
+- [x] **R2.2** The per-TU note (gap #7): `ARMA_WARN_LEVEL 1` on the release side of the same block
   (O2b → (ii), decided). The guide table of R2.6 states what is lost.
-- [ ] **R2.3** Blaze: **no change** (gap #8, O2a); the asymmetry — Blaze keeps size-conformance as
+- [x] **R2.3** Blaze: **no change** (gap #8, O2a); the asymmetry — Blaze keeps size-conformance as
   an always-on exception — is documented, not engineered away (Appendix B).
-- [ ] **R2.4** Compile-time policy tripwire TU in `tests/linalg` (gap #9), guarded on
+- [x] **R2.4** Compile-time policy tripwire TU in `tests/linalg` (gap #9), guarded on
   `BELFEM_ASSERTIONS_ACTIVE`, both configurations.
-- [ ] **R2.5** Debug-mode `EXPECT_THROW` tests for one shape mismatch (through `operator+=`, expecting
+- [x] **R2.5** Debug-mode `EXPECT_THROW` tests for one shape mismatch (through `operator+=`, expecting
   `std::logic_error` on Armadillo and `std::invalid_argument` on Blaze) and one backend out-of-bounds
   `matrix_data()(i,j)` (Armadillo `std::out_of_range`; Blaze has no throwing bounds check) per gap #10,
   guarded on `BELFEM_ASSERTIONS_ACTIVE`, registered per gap #34. Plus one **unguarded** test that runs in
   release too: Blaze shape mismatch throws `std::invalid_argument` in every mode (that is O2a), and the
   Armadillo twin is skipped in release (it would be unchecked).
-- [ ] **R2.6** Guide fix at `:23`, `:94` and `:97-98` (all three state that Armadillo checks bounds in
+- [x] **R2.6** *(sweep still owed)* Guide fix at `:23`, `:94` and `:97-98` (all three state that Armadillo checks bounds in
   release) and a "checks by build mode × backend" table (gap #11); Codex language sweep
   (`gpt-5.6-luna`/medium) on the touched section only.
 - **Gate (Christian):** `make check` in a **release** Armadillo tree and a debug Armadillo tree
@@ -254,6 +255,8 @@ step, never inside the round that raised them.
   binary with Clang against GCC-built SCLS libraries is not attempted. Also one R3.1 row per compiler for
   the ranking of the `MatrixType` non-template overloads against the `blaze::Matrix<MT,SO>` templates. If a
   supported compiler rejects the unguarded set, the fallback is a per-compiler path, recorded here.
+- [ ] **R3.8** Retire `dot( Matrix, Vector )` and `dot( Vector, Matrix )` on both backends with their `fn_dot.hpp`
+  doc (O14); a compile-fails test pins their absence.
 - [ ] **R3.6** Guide: the overload-set contract — "for the supported expression set, the wrapper adds
   **no materialization beyond the backend's own** for ctor, `+=`, `-=`, `*=`" (`=` already forwards);
   not "temporary-free": Armadillo's plain in-place product `*=` **always** materializes
@@ -322,7 +325,7 @@ Sub-rounds, each with its own code jury:
 
 **Approved 2026-11-07 (Christian):** plan v3, source edits, O12 (ii). Debt row **DR-200** opened.
 
-**Round A — edited, code jury done, D1/D2 fixed, gate not run (Christian).** Four headers: `final` on the class head, `virtual` removed from the
+**Round A — VERIFIED (both backends, Christian's gates) and committed with round B.** Four headers: `final` on the class head, `virtual` removed from the
 destructor (all four) and from `operator()(i,j) const` (both `Matrix` classes); no other change. Tripwires
 in `test_Matrix.cpp` / `test_Vector.cpp`: `!is_polymorphic` and `sizeof(wrapper) == sizeof(backend typedef)`
 for `real` and one integer instantiation each. Guide: Key Features item 6. R1.4 (assembly probe) is the
@@ -337,7 +340,49 @@ report's §3 probe, re-run as part of the gate, not checked in. Syntax gate and 
   **Fixed 2026-11-07** (approved by Christian; guide item 6 and both assert messages reworded).
 - No P0/P1. Rebuild rule (every TU that includes the headers, every tree, plugins that reach into linalg) restated by both auditors.
 
-**Still unimplemented:** rounds B, C, D, E; R0 (optional).
+Code jury round B, 2026-11-07 (Codex `gpt-6-astra`/high, Grok `grok-4.7`/high; A+B diff; all CONFIRMED, none refuted):
+- [x] **D3** (LOW, Codex + Grok) — guide table's LAPACK row: `BELFEM_ERROR` only when `AbortOnError` (default); otherwise `info` is returned
+  (`fn_gesv.hpp:214-216`). Fix: qualify the row.
+- [x] **D4** (LOW, Codex) — `=` is not a shape error, backend assignment resizes (`Mat_meat.hpp:920`, `DynamicMatrix.h:4891`). Fix: drop `=` from the row.
+- [x] **D5** (LOW, Grok) — element-bounds cell: debug Armadillo is `BELFEM_ASSERT` (it throws before the backend is reached); `std::out_of_range`
+  only through `matrix_data()`. Fix: the cell.
+- [x] **D6** (LOW, Grok) — "pins the table" → pins the switch and a sample of rows; "the one asymmetry" → also `ARMA_CHECK_NONFINITE` stays on in
+  release Armadillo. Fix: the two sentences.
+- [x] **D7** (**HIGH**, Grok) — `eigen`/`eigen_sym` squareness is `BELFEM_ASSERT` only; with Armadillo's own check off, a non-square release call
+  reaches `geev` (`auxlib_meat.hpp:1092` is `arma_conform_check`). Fix: `BELFEM_ERROR` for squareness in all four `eigen*` implementations
+  (setup-grade functions, one compare).
+- [x] **D8** (LOW, Grok) — `cross( Vector<T> &, const ET & )` takes a non-const `Vector` (`fn_AR_cross.hpp:33`, `fn_BZ_cross.hpp:33`), so a const
+  `Vector` falls through to the `(ET,ET)` template and fails; the two mixed overloads have no length-3 assert. Fix: `const Vector<T> &` and the
+  assert, both backends.
+- [x] **D9** (**HIGH**, Claude probe, Appendix E E7; Grok "untraced") — `blaze::eigen` on a non-finite matrix returns zero eigenvalues silently
+  (`geev.h:139-142` throws for `info > 0` only). Fix: a finiteness pre-check with `BELFEM_ERROR` in both `eigen` implementations, so the backends
+  fail the same way; the NaN test becomes backend-neutral.
+- [x] **D10** (LOW, Christian's Armadillo release gate) — `test_CheckPolicy.cpp` helper `square()` unused on Armadillo release → `-Werror=unused-function`. Fixed 2026-11-07 (helper removed). **Gate lesson:** `-fsyntax-only` does not run the unused-function pass; the syntax gate now compiles with `-c` under the build's `flags.make` (gap #31 companion).
+- **O14** (Grok confirms E5) — Blaze has no `dot(Matrix, Vector)`; the two documented overloads are dead there.
+  **RESOLVED 2026-11-07 → retire both overloads and their doc in round C (Christian)**; step R3.8.
+- D3–D9 **fixed 2026-11-07** (approved by Christian): `fn_is_finite.hpp` (new, backend-free), `BELFEM_ERROR` for squareness and finiteness in
+  all four `eigen*` implementations, `const Vector<T> &` plus length asserts in the mixed `cross` overloads, guide rows D3–D6, tests
+  extended (NaN and non-square `eigen`/`eigen_sym` in every build on both backends; const operands in the mixed `cross` test).
+
+**Round B — VERIFIED 2026-11-07: Christian's `make check` on Blaze (release, VTK on) and Armadillo (after D10) green for `test_linalg`; committed.** Earlier same evening gated on this Mac 20:13 CST (Blaze, release): `test_linalg` 289 passed incl. the four every-build `CheckPolicy` cases; the 54 other failures are exactly the DR-202/203 set (HDF5Test 30, JcDatabaseTable 10, ElectricalCircuit 9, TensorMeshBSpline 3, BfmFile 1, AlloyRRR 1), none new. Armadillo and debug legs owed to CI.** `armadillo.hpp`: `ARMA_DONT_CHECK_CONFORMANCE` +
+`ARMA_WARN_LEVEL 1` on the release side of `!defined(NDEBUG) || defined(DEBUG)` (the per-TU note is gone, probed). E1–E3
+applied. `tests/linalg/test_CheckPolicy.cpp` (new, registered): compile-time tripwire per backend; every-build tests
+(Blaze shape mismatch → `std::invalid_argument`; Armadillo failed `eigen` → `std::runtime_error`; mixed `cross` overloads by
+value); debug-only tests (`dot`/`det`/`inv` asserts; Armadillo shape mismatch → `std::logic_error`, backend bounds →
+`std::out_of_range`). Guide pitfall 5 rewritten with the checks-by-mode table (Codex language sweep owed). Syntax gate:
+g++ Blaze/Armadillo × release/debug, Armadillo with `-DNDEBUG -DDEBUG` (behaves as debug, as the predicate says), Apple
+clang Blaze — all clean. **R2.0 inventory (read-only), Appendix E.** Four findings: (E1) `fn_AR_eigen.hpp:33`
+discards `arma::eig_gen`'s status — the one real hole (callers: `tests/linalg/test_LinalgSolvers.cpp` only, 14
+lines, none in `src`/`nonfree`); (E2) `cross( ET, Vector )` has a body that calls `vector_data()` on the backend
+operand in both backends (`fn_AR_cross.hpp:44-46`, `fn_BZ_cross.hpp:44-46`) — never instantiated, a latent
+compile error; (E3) with round B, Armadillo stops checking `dot` lengths, `cross` lengths, `det`/`inv`
+squareness in release, and BELFEM's own dispatch headers assert none of these except `cross`
+(`fn_cross.hpp` 1 assert; `fn_dot.hpp`, `fn_det.hpp`, `fn_inv.hpp` 0) — Blaze throws on all of them in every
+mode, so a `BELFEM_ASSERT` in each dispatch header keeps debug symmetric; (E4) every LAPACK wrapper checks
+`info` (`fn_gees/geev/gels/gesv/gesvd/getrf/getri/posv.hpp`), nothing to do. Round B's diff therefore also
+carries E1–E3.
+
+**Still unimplemented:** rounds C, D, E; R0 (optional); the Codex sweep of guide pitfall 5.
 
 ## 5. Open Design Questions (logged, not silently decided)
 
@@ -398,6 +443,8 @@ report's §3 probe, re-run as part of the gate, not checked in. Syntax gate and 
   (`cl_BZ_Matrix.hpp:80-82` is a non-explicit template — expected, probed in R3.3). **Recommendation:
   implicit, for backend parity**; the existing `Matrix(const MatrixType&)` (`:75`) is implicit already.
   Logged, default taken unless Christian objects.
+- **O14 — the flat `dot( Matrix, Vector )` overloads exist on Armadillo only** (Appendix E, E5). **RESOLVED
+  2026-11-07 → retire on both backends in round C, with the doc (Christian).**
 - **O11 — Blaze OpenMP mode (gap #35).** Blaze parallelizes large assignments with OpenMP whenever
   `-fopenmp` is on, which BELFEM's `USE_OPENMP=ON` guarantees. Keep (free speed on large dense vectors,
   thread count already pinned by `Allrun`'s `OMP_NUM_THREADS`), or set `BLAZE_USE_SHARED_MEMORY_PARALLELIZATION 0`
@@ -600,6 +647,26 @@ and keeps scalars and wrappers on their existing overloads. On Armadillo the ana
 the ambiguity with the copy constructor and the `MatrixType` overload is the thing R3.3's probe must
 show absent (exact-match non-template overloads win over a template by the usual ranking; the probe
 confirms, the plan does not assume).
+
+## Appendix E — R2.0: backend status and conformance inventory (2026-11-07, read-only)
+
+| # | site | today (checks on) | after round B (Armadillo release) | Blaze (every mode) | action in round B |
+|---|---|---|---|---|---|
+| E1 | `fn_AR_eigen.hpp:33` `arma::eig_gen( tValues, … )`, `bool` discarded; `:42` indexes `tValues(k)` | nonfinite input / `geev` failure → `soft_reset()` → `std::out_of_range` at `:42` | out-of-bounds read | `blaze::eigen` throws (`geev.h:140,:198`) | check the status; `BELFEM_ERROR( status, … )` (setup-grade call; `eigen_sym` already does this at `:77`) |
+| E2 | `fn_AR_cross.hpp:44-46`, `fn_BZ_cross.hpp:44-46`: `cross( const ET & aA, const Vector<T> & aB )` body uses `aA.vector_data()` | ill-formed if instantiated; no caller does (39 `cross` sites, the mixed form unused) | same | same | body → `cross( aA, aB.vector_data() )` |
+| E3a | `dot` of two `Vector`s of different length (`fn_dot.hpp`, no assert) | `std::logic_error` (`op_dot_meat.hpp:284-689`) | unchecked read over the shorter operand | `std::invalid_argument` (`DVecDVecInnerExpr.h:271`) | `BELFEM_ASSERT( aA.length() == aB.length() )` in `fn_dot.hpp` |
+| E3b | `cross` with a non-3 operand | `std::logic_error` (`glue_cross_meat.hpp:37`) | unchecked | `std::invalid_argument` (`DVecDVecCrossExpr.h:806`) | already asserted (`fn_cross.hpp`, 1 assert) — confirm it covers every overload |
+| E3c | `det` of a non-square `Matrix` (`fn_det.hpp`, no assert) | `std::logic_error` (`op_det_meat.hpp:54,:101,:127`) | unchecked | Blaze throws | `BELFEM_ASSERT( n_rows == n_cols )` in `fn_det.hpp` |
+| E3d | `inv` of a non-square `Matrix` (`fn_inv.hpp`, no assert) | `std::logic_error` | unchecked | Blaze throws | `BELFEM_ASSERT` in `fn_inv.hpp`; singular stays a throw on both (`op_inv_gen_meat.hpp:36,:72`, `Inversion.h:153`) |
+| E3e | element access `A(i,j)` | Armadillo `std::out_of_range` + `BELFEM_ASSERT` | `BELFEM_ASSERT` only (compiled out) | `BELFEM_ASSERT` only | nothing — this is the decided policy |
+| E5 | `dot( Matrix, Vector )` and `dot( Vector, Matrix )`, documented in `fn_dot.hpp:38-57` as flat-sequence inner products | Armadillo: `arma::dot` accepts them | unchanged | **do not exist**: `blaze::dot` has no matrix×vector overload, the `decltype` SFINAEs both wrappers out (`fn_BZ_dot.hpp:37-49`), a call is a compile error (probed 2026-11-07); no in-tree caller, or the Apple build would not compile | round C item: either give Blaze the flat semantics explicitly (loop over `data()`… no — through `(i,j)`) or retire the two overloads and their doc on both backends. **O14** |
+| E6 | `inv` of a non-square `Matrix` on **Blaze** | `std::invalid_argument` "Invalid non-square matrix provided" from the inverse expression (`DMatInvExpr.h:410`), every mode (**probed** 2026-11-07; the `BLAZE_INTERNAL_ASSERT`s in `Inversion.h` are not the only check — a first reading of the headers said otherwise and was wrong) | — | throws | nothing beyond the new `BELFEM_ASSERT`; guide table row kept as one line |
+| E7 | **`eigen()` on a non-finite matrix under Blaze returns zero eigenvalues silently** (**probed**: `blaze::eigen` on `{{NaN,0},{0,1}}` → no throw, `w = (0,0)`, while LAPACK prints `** On entry to DGEEV parameter number 4 had an illegal value` — an `info < 0` the Blaze wrapper does not throw on: `geev.h:139-142` has an internal assertion for `info >= 0` and throws for `info > 0` only) | same today | — | silent garbage in every mode | **pending, post-jury fix (D-tracker):** a finiteness pre-check with `BELFEM_ERROR` in both `eigen()` implementations (setup-grade call, n² scan acceptable), so the two backends fail the same way; the Armadillo test of `test_CheckPolicy.cpp` then becomes backend-neutral |
+| E4 | LAPACK wrappers `fn_gees/geev/gels/gesv/gesvd/getrf/getri/posv.hpp` | every `info` checked with `BELFEM_ERROR` | unchanged (not Armadillo checks) | — | nothing |
+
+The symmetry rule that falls out of E3: after round B the two backends agree in **debug** (BELFEM assert or
+Blaze exception, both fatal) and differ in release (Blaze throws, Armadillo computes on) — that is O2a, accepted,
+and the guide table of R2.6 states it per operation.
 
 ## Appendix D — Hatch inventory (filled in R4.0)
 

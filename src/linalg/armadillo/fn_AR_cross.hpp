@@ -12,6 +12,7 @@
 #ifndef BELFEM_FN_AR_CROSS_HPP
 #define BELFEM_FN_AR_CROSS_HPP
 
+#include "assert.hpp"
 #include "cl_AR_Vector.hpp"
 
 namespace belfem
@@ -30,9 +31,10 @@ namespace belfem
 
     template< typename T, typename ET >
     auto
-    cross( Vector<T> & aA, const ET & aB )
+    cross( const Vector<T> & aA, const ET & aB )
         -> decltype( arma::cross( aA.vector_data(), aB ))
     {
+        BELFEM_ASSERT( aA.length() == 3, "cross(): the vector must have a length of 3" );
         return arma::cross( aA.vector_data(), aB );
     }
 
@@ -43,7 +45,8 @@ namespace belfem
     cross( const ET & aA, const Vector<T> & aB )
         -> decltype( arma::cross( aA, aB.vector_data()))
     {
-        return arma::cross( aA.vector_data(), aB );
+        BELFEM_ASSERT( aB.length() == 3, "cross(): the vector must have a length of 3" );
+        return arma::cross( aA, aB.vector_data() );
     }
 
 //------------------------------------------------------------------------------

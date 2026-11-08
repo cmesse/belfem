@@ -18,11 +18,10 @@ round 3** after Christian restored the CLI (15:03 CST, blind, on v5). Plan jurie
 Codex `gpt-6-astra`/high + Grok `grok-4.7`/high (round 1), both at `xhigh` (round 2). Code jury round A:
 Codex `gpt-6-astra`/high + Grok `grok-4.7`/high. Plan jury on the O3 plan: Codex `gpt-6-astra`/high +
 Grok `grok-4.7`/high
-**Status:** investigation COMPLETE (report v6); hardening plan v3 APPROVED by Christian (plan + source edits;
-O1, O2, O2a, O2b, O4, O5, O12 decided); **round A implemented, code-juried, D1/D2 applied, gated on this Mac
-(Blaze, release)**; O3 plan v2 juried, awaiting Christian's R1 profile. **The round-A source diff (7 files) is
-left uncommitted until the Linux CI confirms the Armadillo and debug legs**; this commit is the paper trail.
-Rounds 1–2 on the report had two OpenAI-hosted voices; every later round had Codex + Grok
+**Status:** investigation COMPLETE (report v6); hardening plan v3 APPROVED (O1, O2, O2a, O2b, O4, O5, O12, O14 decided);
+**rounds A and B implemented, code-juried, and VERIFIED by Christian's gates on both backends** (Blaze release here with VTK on,
+Armadillo on his tree after D10) — committed in this session; round C next. **DR-203 fixed** (tensor-mesh constructor), juried,
+gated in the same runs, committed. O3 plan v2 awaits Christian's R1 profile. DR-201 and DR-202 belong to session belfem-5e
 **Literature References:** none required (protocol §5); Oliveira & Stewart 2006 §7.6 and Rouson et al.
 2011 consulted for the wrapper-interface rationale
 **Verification:** probes (scratchpad compiles against the tree's headers and `/opt/scls/include`, `-O2
@@ -96,6 +95,8 @@ for it.
 | 1 | Copilot (reserve) | `auto`/n.a. | 4 | all CONFIRMED (tripwire is `final`, not the `static_assert`; R1 is an API break; 10 lines; probes into the record) |
 | 2 | Codex | `gpt-6-astra`/xhigh | 9 | all CONFIRMED (R2a recipe regression; call sites ≠ executions; construction gap; six count/scope corrections; CN/Galerkin disabled; plugin API backend-free; O2 scope) |
 | 2 | Copilot (reserve) | `auto`/n.a. | 6 | all CONFIRMED (two duplicate Codex; O5; guide macro; `-=` gate; per-site inventory) |
+| B (code) | Codex + Grok | `gpt-6-astra`/high + `grok-4.7`/high | 5 + 12 | no P0; P1 `eigen` squareness/finiteness (D7, D9); P2/P3 guide wording, `cross` signature (D3–D8); D10 from Christian's Armadillo build |
+| DR-203 | Codex + Grok | `gpt-6-astra`/high + `grok-4.7`/high | 2 + 4 | no P0/P1; P2 control-point connectivity before the control points exist (D1), silent opt-out (D2); P3 wording (D3) |
 | 3 | Grok | `grok-4.7`/xhigh | 10 | all CONFIRMED against source; one premise (Apple builds are Clang) REFUTED for this machine (SCLS `g++`). P1: Blaze `Matrix` expression `+=`/`-=`/`*=` exist only under `BELFEM_GCC` (`cl_BZ_Matrix.hpp:593-683`); Armadillo `Vector` ctor hole; `Vector::operator() const` not virtual; backend `+=` allocates on alias; two §9 rows lowered. Report → v6 |
 
 Nothing refuted in either round; nothing lifted past the probe rung. Stop condition met after round 2.
@@ -110,6 +111,13 @@ Nothing refuted in either round; nothing lifted past the probe rung. Stop condit
   the cause (`Not signed in`) is in `tmp/ai_exchange/_cross_review.log`.
 - The Grok seat is unavailable on this machine until `grok login --device-code` (or `XAI_API_KEY`) is
   done; the jury this session ran with two OpenAI-hosted voices.
+
+- `scripts/cross_review.sh:95-96` hands `mktemp` the template `crossrev_subject_XXXXXX.md`; BSD `mktemp` replaces trailing
+  X's only, so the name is literal and two concurrent rounds collide (`mkstemp failed … File exists`). Found by session
+  belfem-5e when its DR-202 round hit my DR-203 round; reported to Christian by that session. Workaround: `TMPDIR` per session.
+- My pre-jury syntax gate used `-fsyntax-only`, which never reaches GCC's unused-function pass; an unused test helper passed six
+  configurations and broke Christian's Armadillo release build under `-Werror` (D10). The gate now compiles with `-c` under the
+  build's `flags.make`.
 
 ## Changes Made / Proposed
 
@@ -188,6 +196,39 @@ objects are clean; `USE_VTK` is ON in this cache since Oct 26 and OFF on CI. **D
 node sources. **DR-201** (the-nonfree-python-extension, extension not importable) is another session's (belfem-5e). Both new
 rows filed unowned; ids coordinated with that session.
 
+## Round B — check policy, and the four latent defects the R2.0 audit found (evening)
+
+`armadillo.hpp` now defines `ARMA_DONT_CHECK_CONFORMANCE` and `ARMA_WARN_LEVEL 1` on the release side of the tree's own
+debug predicate (`!defined(NDEBUG) || defined(DEBUG)`, as `assert.hpp` and `blaze_config.hpp`); the per-translation-unit
+`#pragma message` is gone. The read-only R2.0 audit (plan Appendix E) found: `fn_AR_eigen.hpp` discarded `arma::eig_gen`'s
+status and indexed the emptied result (an out-of-bounds read once the checks are off); `blaze::eigen` on a NaN matrix returns
+zero eigenvalues silently (probed: the Blaze wrapper throws for `info > 0` only, `geev.h:139-142`); the mixed
+`cross( backend, Vector )` overloads had bodies that could not compile and took a non-const `Vector`; `dot`, `det`, `inv` had no
+size assertions of their own; Blaze has no `dot( matrix, vector )`, so two documented overloads exist on Armadillo only (O14 →
+retire in round C). Fixes: `BELFEM_ERROR` for squareness and finiteness in all four `eigen*` implementations through a new
+backend-free `fn_is_finite.hpp`, `const Vector<T> &` plus length asserts in the mixed `cross` overloads, `BELFEM_ASSERT`s in
+`fn_dot`/`fn_det`/`fn_inv`. `tests/linalg/test_CheckPolicy.cpp` (new) pins the switch at compile time per backend and samples the
+policy in both modes; guide pitfall 5 carries the checks-by-mode table. Code jury (Codex `gpt-6-astra`/high + Grok
+`grok-4.7`/high, blind): no P0; the two P1s were the `eigen` items above; five P2/P3s on the guide wording and the `cross`
+signature — all applied with approval (D3–D9). Christian's Armadillo release build then failed on an unused test helper
+(D10) that my `-fsyntax-only` gate could not see — the gate now compiles with `-c` under the build's `flags.make`.
+
+## DR-203 — the tensor-mesh constructor never computed its connectivities (evening)
+
+Christian asked why `test_mesh` still failed. `TensorMeshBSpline.*` reported zero node sources because
+`Mesh::Mesh( aOrder, aNumNodes, aStep, aOrigin )` never set `Connectivity::Compute`, unlike its two siblings, so the
+`finalize()` inside `populate_tensor_mesh` skipped `connect_nodes_to_elements()` and `connect_nodes_to_bsplines` found no
+control points to weight; `test_Mesh.cpp` §6 had documented the gap in October and re-finalized by hand. Fix (own files,
+`cl_Mesh.hpp`, `cl_Mesh.cpp`, `test_Mesh.cpp`, `test_TensorMeshBSpline.cpp`): the constructor gets the siblings'
+`aComputeConnectivities = true` parameter and sets the flag before the factory runs; an order above 1 without connectivities is
+refused at construction; after `create_bsplines` the two control-point connectivities are rebuilt, because the `finalize()` in
+the factory had computed them on empty containers. Jury (Codex `gpt-6-astra`/high + Grok `grok-4.7`/high, blind): no P0/P1;
+the control-point and opt-out items were theirs (D1, D2), applied with approval. Grok also recorded three pre-existing
+bookkeeping gaps now reachable for tensor meshes as for file meshes (`FacetToElement` set on an empty facet loop and never
+reset by `unfinalize()`; `mEdgesAreFinalized`/`mFacesAreFinalized` true while empty) — logged in the register row, not fixed.
+Gate: Christian's `make check` passed `test_mesh` on Blaze with VTK on, i.e. the October T-matrix commits reproduce the
+cubics once the nodes have sources.
+
 ## Open Questions
 
 - O1 keep both backends; O2 `ARMA_DONT_CHECK_CONFORMANCE` (needs an inventory of what the checks catch,
@@ -201,8 +242,12 @@ rows filed unowned; ids coordinated with that session.
   `todo/debt_register.md` (DR-200 opened; DR-202, DR-203 filed), `todo/README.md` (three index lines; investigation line corrected),
   `tmp/ai_exchange/review_linalg_wrapper_hardening.md` (new thread), `tmp/ai_exchange/review_linalg_wrapper_design.md`
   (Grok round 3 + verification), `tmp/ai_exchange/review_linalg_small_matrices.md` (new), this devlog.
-  **Uncommitted on purpose until CI:** `src/linalg/{armadillo,blaze}/cl_{AR,BZ}_{Matrix,Vector}.hpp`,
-  `tests/linalg/test_Matrix.cpp`, `test_Vector.cpp`, `src/linalg/doc/linalg_usage_guide.md` (round A).
+  Source, committed after the gates: rounds A+B — `src/linalg/{armadillo,blaze}/cl_{AR,BZ}_{Matrix,Vector}.hpp`,
+  `armadillo/armadillo.hpp`, `fn_AR_eigen.hpp`, `fn_BZ_eigen.hpp`, `fn_is_finite.hpp` (new), `fn_AR_cross.hpp`, `fn_BZ_cross.hpp`,
+  `fn_AR_dot.hpp`, `fn_BZ_dot.hpp`, `fn_det.hpp`, `fn_inv.hpp`, `doc/linalg_usage_guide.md`, `tests/linalg/test_Matrix.cpp`,
+  `test_Vector.cpp`, `test_CheckPolicy.cpp` (new), `CMakeLists.txt`; DR-203 — `src/mesh/cl_Mesh.hpp`, `cl_Mesh.cpp`,
+  `tests/mesh/test_Mesh.cpp`, `test_TensorMeshBSpline.cpp`. Exchange threads: `review_linalg_wrapper_hardening.md`,
+  `review_dr203_tensor_mesh_connectivity.md`.
 
 
 - todo/linalg_wrapper_design_investigation.md (new)

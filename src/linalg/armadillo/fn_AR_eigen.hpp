@@ -13,6 +13,7 @@
 #define BELFEM_FN_AR_EIGEN_HPP
 #include "typedefs.hpp"
 #include "assert.hpp"
+#include "fn_is_finite.hpp"
 #include "cl_AR_Vector.hpp"
 #include "cl_AR_Matrix.hpp"
 
@@ -25,12 +26,20 @@ namespace belfem
            Vector< real > & aValues,
            const bool aAbortOnComplex = true )
     {
-        BELFEM_ASSERT( aMatrix.n_cols() == aMatrix.n_rows(),
-                      "Matrix must be quadratic");
+        // setup-grade call: the backend's own square check is off in release ( armadillo.hpp ),
+        // and a non-finite entry makes the decomposition fail silently on one backend
+        BELFEM_ERROR( aMatrix.n_cols() == aMatrix.n_rows(),
+                      "eigen(): matrix must be square ( %lu x %lu )",
+                      ( unsigned long ) aMatrix.n_rows(), ( unsigned long ) aMatrix.n_cols() );
+        BELFEM_ERROR( is_finite( aMatrix ),
+                      "eigen(): matrix has non-finite entries" );
 
         arma::cx_vec tValues ;
 
-        arma::eig_gen( tValues, aMatrix.matrix_data()  );
+        // arma::eig_gen reports failure ( non-finite input, no convergence ) by emptying
+        // tValues; indexing it afterwards would read out of bounds
+        BELFEM_ERROR( arma::eig_gen( tValues, aMatrix.matrix_data() ),
+                      "eigen(): the eigenvalue decomposition failed ( non-finite entries or no convergence )" );
 
         size_t tN = aMatrix.n_cols() ;
         aValues.set_size( aMatrix.n_cols() );
@@ -67,8 +76,13 @@ namespace belfem
     eigen_sym( const Matrix< real > & aMatrix,
                Vector< real > & aValues )
     {
-        BELFEM_ASSERT( aMatrix.n_cols() == aMatrix.n_rows(),
-                      "Matrix must be quadratic");
+        // setup-grade call: the backend's own square check is off in release ( armadillo.hpp ),
+        // and a non-finite entry makes the decomposition fail silently on one backend
+        BELFEM_ERROR( aMatrix.n_cols() == aMatrix.n_rows(),
+                      "eigen_sym(): matrix must be square ( %lu x %lu )",
+                      ( unsigned long ) aMatrix.n_rows(), ( unsigned long ) aMatrix.n_cols() );
+        BELFEM_ERROR( is_finite( aMatrix ),
+                      "eigen_sym(): matrix has non-finite entries" );
 
         // arma::eig_sym writes into an arma::Col, but Vector< T > is backed by an
         // arma::Mat, so the eigenvalues are collected in a local and copied out
