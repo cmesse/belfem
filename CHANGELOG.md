@@ -4,6 +4,123 @@ All notable changes to BELFEM are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and version numbers follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.4] — 2026-11-14
+
+This is a maintenance release. It fixes about thirty defects found while checking every module
+usage guide against the source, brings the 22 usage guides in line with the code, hardens the
+linear algebra wrapper on both backends, and corrects the build so that tests and the solver
+compile against one HDF5. Results change where a defect was fixed: circuit terminal-current
+columns and `userdefined` circuit sources, the thermal mass in T-φ runs, orthotropic compliance,
+cubic tensor meshes, gas transport in `POLY` mode, `rcond`, and the largest-eigenvalue estimate
+on Blaze. Code that links against BELFEM must be recompiled.
+
+### Added
+
+- Guide `src/physics/materials/doc/hts_jc_table_construction.md`: building a jc / n HDF5 table
+  for an HTS tape or cable so that its B-spline mapping holds.
+- `share/material/README.md` explains why the jc tables are monotone and C¹ and how to
+  re-project an edited table.
+- `SourceFunction::set_user_scale()`; a user-defined source value is multiplied by it.
+- The tensor-mesh constructor of `Mesh` takes a sixth argument, `aComputeConnectivities`
+  (default `true`).
+
+### Changed
+
+- The circuit results file reports each step's own terminal current. The terminal-pair
+  current and voltage columns used to lag one accepted step.
+- A circuit `userdefined` source multiplies its values by the SI factor of its `units`. In
+  0.9.3 that factor was written into a Maxwell boundary condition instead: an unrelated one, or
+  one past the end of the list for the first source. Its error messages now say "user-defined
+  source in the circuit".
+- The segregated thermal loop writes its Exodus file as `<mesh basename>.e-s` (for example
+  `helix.e-s`), like the other paths, instead of the fixed name `hphi_results.e-s`.
+- In a 3D mesh, 2D blocks (TRI, QUAD) are written to Exodus as `trishell` and `shell` instead
+  of `tri` and `quad`. A sideset whose facets lie on such a 2D element in a 3D mesh is refused
+  when the Exodus file is written, after the solve, because shell side numbering is not
+  implemented (known issue, see below).
+- Orthotropic compliance (`compliance_matrix`, `fill_orthotropic_elasticity`) takes the cyclic
+  Poisson-ratio set ν₂₃, ν₃₁, ν₁₂. S(1,0) and its mirror S(0,1) are now −ν₁₂/E₁; the third
+  argument is ν₃₁ (it was named ν₁₃). The shipped `example_udfiber` was remapped and gives the
+  same numbers; other callers must pass the cyclic set.
+- The T-φ thermal mass uses the same reference density as the Maxwell data (density correction
+  and the `ref_density` fallback), so T-φ thermal results change for materials that use either.
+- `rcond` estimates the condition of A itself, factored as symmetric positive definite, instead
+  of A·Aᵀ, which gave about rcond(A)². It refuses non-square, non-CSC/CSR or non-SPD matrices and
+  64-bit `int_t` builds with an error, and restores the caller's indexing base.
+- HDF5 read, write and dataset-creation failures stop the run in release builds too; before,
+  they were checked only in debug builds.
+- `examples/scripts/Allrun` exports `MKL_NUM_THREADS` and `OPENBLAS_NUM_THREADS` as `$NTHREADS`
+  beside `OMP_NUM_THREADS`, and prints a NOTE when it overrides an inherited value that differs.
+  An inherited `MKL_NUM_THREADS` could otherwise oversubscribe the node. `doc/parallel_execution.md`
+  describes the variables.
+- A material named `buffer` must be the builtin Magnesia buffer; any other definition under
+  that name is refused. Whether a thin-shell layer is a buffer layer is decided by its missing
+  `rho`, not by its name (`doc/input_file_reference.md`).
+- Calling `lambda()` or `dlambdadT()` on a material without thermal conductivity stops with an
+  error in release builds too.
+- Linear algebra wrapper (API for code that links against BELFEM):
+  - `Matrix` and `Vector` are `final` value types without virtual members; code built
+    against 0.9.3 must be recompiled.
+  - Expression overloads (`+=`, `-=`, `*=`, construction from expressions, `trans`) work
+    on both Armadillo and Blaze; on Blaze they were available only with GCC.
+  - A `Vector` assigned a row expression transposes it in. On Armadillo this covers element-wise
+    and transpose expressions only; a 1×n product is caught by an assert in debug builds.
+  - The flat `dot( Matrix, Vector )` and `dot( Vector, Matrix )` forms are removed; `cross` and
+    `dot` take `const Vector &`.
+  - `eigen` and `eigen_sym` refuse non-square or non-finite input in release builds, and the
+    Armadillo `eigen` stops with an error when the decomposition fails. `cross`, `dot`, `det` and
+    `inv` assert their contracts in debug builds.
+- Release builds on Armadillo no longer check index bounds or operand sizes
+  (`ARMA_DONT_CHECK_CONFORMANCE`, `ARMA_WARN_LEVEL 1`), as Blaze release builds already did.
+  Debug builds keep every check. A size mismatch that stopped a 0.9.3 release run with an
+  Armadillo error now goes undetected in release; reproduce such problems with a debug build.
+- On Blaze, the power iteration in `compute_lambda_max()` uses the 2-norm of the residual, as on
+  Armadillo, so the largest-eigenvalue and condition estimates on Blaze change slightly.
+- With `USE_VTK=ON`, VTK is linked privately, so tests and the solver compile against the SCLS
+  HDF5 instead of VTK's renamed copy.
+- `make check` also builds the nonfree test suites when `USE_NONFREE=ON`.
+- Nodal recovery in the postprocessor holds its per-node frames by value (no heap allocation per
+  node) and computes norms as a plain sum of squares instead of BLAS `dnrm2`, so recovered values
+  can differ at round-off level. 2D recovery is now tested.
+- The 22 module usage guides were checked against the source and corrected.
+
+### Fixed
+
+- Cubic tensor meshes: the QUAD16/HEX64 T-matrices used the quadratic B-spline basis (the fourth
+  entry was uninitialized); control points 4 and 5 of every QUAD16 element were linked to the
+  wrong slots; each node accumulated the control-point weights of all earlier nodes (every
+  order); and the tensor-mesh constructor did not compute connectivities, so no node had
+  B-spline weights. A tensor mesh of order > 1 built without connectivities is now refused.
+- Pyramids (PYRA5/13/14), LINE5, TRI15 and TET35 get an interpolation order, so automatic
+  integration no longer refuses them. `OrderConverter` refuses a block it cannot upgrade before
+  any facet work, naming the block and type.
+- Materials: a pure metal without RRR no longer reports a thermal conductivity it cannot
+  evaluate; the `jc_custom`/`n_custom` user-material overrides, which could only crash, are gone.
+- Gas models: in `POLY` mode, species with synthesized transport return their viscosity and
+  conductivity instead of 0.
+- `Ascii::save()` refuses the parallel read-only mode as well as the serial one.
+- `rand()` in serial builds returns [0, 1) as in MPI builds; the genetic-algorithm mutation
+  index can no longer run one past the end.
+- `clean_string` handles empty and one-character strings.
+- `TensorMeshConfig::element_ijk` no longer performs an undefined conversion for points below
+  the origin; NaN coordinates go to element 0 (and assert in debug builds).
+- Rebuilding a spline's coefficients clears its extra-row (entropy or integral) mode.
+- `graph::Vertex` can no longer be copied or moved (an implicit copy freed twice).
+- Undefined behaviour removed: the JEDI matrices are bound only when JEDI is on, and
+  `CutFactory`'s periodicity pointer starts as null, so a caller that skips
+  `set_periodicity()` (as the 0.9.3 homology README example did) no longer reads an
+  uninitialized pointer.
+
+### Removed
+
+- `CutFactory::cuts()`, which always returned an empty list, and the Maxwell loop that retyped
+  its entries. The `cut_<n>` sidesets keep `DomainType::Default`.
+
+### Known issues
+
+- A 3D mesh with a sideset on a 2D (TRI or QUAD) element stops when the Exodus output is
+  written, after the solve (see Changed). No shipped example deck is known to be affected.
+
 ## [0.9.3] — 2026-10-10
 
 This release corrects thin-shell and interface results of 0.9.2: one shared conductor-side
