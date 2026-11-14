@@ -17,12 +17,12 @@ root `CMakeLists.txt` builds the `banner` executable at directory scope
 (line ~283) *before* `add_subdirectory( tests )` (line ~302), and
 `Add_Executable.cmake`'s `include_directories` calls leak into every
 subdirectory added afterwards. `nonfree/tests` is added at line ~272 —
-before the leak — so `test_kepler` and `test_manta` saw only the dead
+before the leak — so the two nonfree test suites saw only the dead
 paths and died on `cl_Communicator.hpp: No such file or directory`.
 
 ctest therefore listed both suites (tests #1 and #2 of 14) but reported
 them **"Not Run"** — the executables did not exist. They never *failed*;
-the 2026-08-06 devlog/todo line "kepler/manta don't compile (nonfree
+the 2026-08-06 devlog/todo line "nonfree suites don't compile (nonfree
 include paths)" was an accurate symptom without a cause. Both records
 carry an addendum pointing here.
 
@@ -36,8 +36,8 @@ paths as before (they inherited these already); nothing else changed.
 
 ## Executable gate
 
-`make test_kepler test_manta` builds both. `ctest -R "kepler|manta"`:
-kepler passes; manta 5/6 — `MantaSurface.ScaleRobustness` fails an
-inverse-map round-trip by ~1e-3 (`nonfree/tests/manta/test_Surface.cpp:300`).
+`make` of both nonfree suites builds them. Running the two through ctest:
+one passes; the other 5/6 — a surface scale-robustness case fails an
+inverse-map round-trip by ~1e-3 (its `test_Surface.cpp:300` under `nonfree/tests/`).
 That is a module finding, recorded in `nonfree/devlog`, not a build issue.
 `scripts/check_doc_claims.py`: 34/34 hold.

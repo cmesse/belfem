@@ -261,8 +261,9 @@ trap 'rm -f "$TMPOUT" "$TMPERR" "$PROMPT_FILE" "$FINISH_FILE" "$META_FILE"' EXIT
 printf '%s\n' "$FULL_PROMPT" > "$PROMPT_FILE"
 printf '%s\n' "$FINISH_PROMPT" > "$FINISH_FILE"
 
-# Always set now that GROK_EFFORT is defaulted rather than left empty. Kept as an array
-# for symmetry with PERM_ARGS and because "${arr[@]}" is the set -u-safe expansion.
+# Always set now that GROK_EFFORT is defaulted rather than left empty; kept as an array for
+# symmetry with PERM_ARGS. An array that can be empty (PERM_ARGS, tDisallow) is expanded as
+# ${arr[@]+"${arr[@]}"}: under set -u, bash < 4.4 treats an empty "${arr[@]}" as unbound.
 EFFORT_ARGS=(--effort "$GROK_EFFORT")
 
 PERM_ARGS=()
@@ -421,13 +422,13 @@ run_grok() {
         --model "$GROK_MODEL" \
         --sandbox "$GROK_SANDBOX" \
         --tools "$GROK_TOOLS" \
-        "${tDisallow[@]}" \
+        ${tDisallow[@]+"${tDisallow[@]}"} \
         --no-memory \
         --no-subagents \
         --max-turns "$GROK_MAX_TURNS" \
         --output-format json \
         --verbatim \
-        "${PERM_ARGS[@]}" \
+        ${PERM_ARGS[@]+"${PERM_ARGS[@]}"} \
         "${EFFORT_ARGS[@]}" \
         > "$TMPOUT" 2> "$TMPERR"
     local tExit=$?

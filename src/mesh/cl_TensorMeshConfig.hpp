@@ -12,6 +12,9 @@
 #ifndef BELFEM_CL_TENSORMESHCONFIG_HPP
 #define BELFEM_CL_TENSORMESHCONFIG_HPP
 
+#include <algorithm>
+#include <cmath>
+
 #include "typedefs.hpp"
 #include "cl_Vector.hpp"
 #include "Mesh_Enums.hpp"
@@ -208,9 +211,18 @@ namespace belfem
         element_ijk( const index_t i, const real x )
         {
             BELFEM_ASSERT( i < mDimension, "Invalid dimension : %u", ( unsigned int ) i );
+            BELFEM_ASSERT( ! std::isnan( x ), "coordinate is NaN" );
 
-            return std::clamp( ( index_t ) ( ( x - mOrigin( i ) ) * mInvElementSteps( i ) ),
-                ( index_t ) 0, mNumElementsPerDim( i ) -1);
+            // clamped as a real: converting a value that does not fit in
+            // index_t, such as one element or more below the origin, is
+            // undefined. The first test also sends NaN to element 0, which
+            // std::clamp would pass through
+            const real tS = std::floor( ( x - mOrigin( i ) ) * mInvElementSteps( i ) );
+            if ( ! ( tS > 0.0 ) )
+            {
+                return 0 ;
+            }
+            return ( index_t ) std::min( tS, ( real ) ( mNumElementsPerDim( i ) - 1 ) );
         }
     private:
 

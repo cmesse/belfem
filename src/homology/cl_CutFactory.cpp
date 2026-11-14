@@ -2375,14 +2375,6 @@ namespace belfem
 
 //-----------------------------------------------------------------------------
 
-        Cell< SideSet * > &
-        CutFactory::cuts()
-        {
-            return mCuts ;
-        }
-
-//-----------------------------------------------------------------------------
-
         void
         CutFactory::link_node_duplicates_and_originals()
         {

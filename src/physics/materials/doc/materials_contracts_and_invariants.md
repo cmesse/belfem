@@ -88,7 +88,10 @@ once at construction.
 
 Most material constants default to NaN — the exceptions set in the constructor are `mu`
 (to μ₀), `q` (to 1) and `density_correction` (`cl_Material.cpp:164-170`).
-So a metal without an RRR has no ρ(T) and no λ(T). Nothing asserts that; the NaN propagates.
+So a metal without an RRR has neither ρ(T) nor λ(T). For ρ, only a debug assert detects this; in release
+builds, the NaN propagates. For λ, `have( lambda )` stays false because `set_RRR` raises it only where it
+builds the spline, and `lambda()` / `dlambdadT()` route to `Material::lambda_undefined`, which raises a
+`BELFEM_ERROR` in every build.
 
 ---
 
@@ -139,8 +142,9 @@ timings that had no source. Measure before planning around a number.
 
 ### 10. Check `have()` before querying a property that may be absent
 
-> `have( MaterialProperty )` is the only availability check. Querying an unset property
-> dispatches through a null routing pointer.
+> `have( MaterialProperty )` is the only availability check. Querying an unset `lambda` or
+> `dlambdadT` raises a `BELFEM_ERROR`; any other unset property dispatches through a null routing
+> pointer.
 
 Built-in materials set everything they list; user-defined materials have exactly what their
 init function sets; `Magnesia` has no resistivity; `HastelloyC276` has no field dependence.
@@ -185,11 +189,13 @@ mid-simulation `set_RRR` would also try to rebuild the lookup table collectively
 mat->set_user_defined_polynomial( MaterialProperty::lambda, std::vector< real >{ 0.01, 50.0 } );
 ```
 
-### 15. The label `buffer` is reserved
+### 15. The material name `buffer` is reserved
 
-> The factory rejects a user-defined (`usermat`) material registered under `buffer`; the
-> label names the thin-shell φ-formulation buffer layer and resolves to `Magnesia`. A built-in
-> section with that label is not checked and also resolves to `Magnesia`.
+> The material name `buffer` is reserved for builtin `Magnesia`, because `buffer` is one of
+> Magnesia's builtin type names. A material section of that name must build Magnesia: the factory rejects a
+> `usermat`, a b-h `curve`, or any builtin other than Magnesia. The name does not determine
+> which thin-shell layers become buffer layers; `ThinShellFactory::create_buffers` tags layers
+> whose materials do not have the `rho` property.
 
 ### 16. Thread safety is a design intent, not a verified contract
 

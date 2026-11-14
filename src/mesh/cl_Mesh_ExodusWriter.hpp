@@ -23,6 +23,9 @@ namespace belfem
     {
         class ExodusWriter
         {
+            // outside the guard: element_string_from_type reads it in stub builds too
+            int64_t mNumDim = 0;
+
 #ifdef BELFEM_EXODUS
             // pointer to mesh
             Mesh * mMesh;
@@ -40,7 +43,6 @@ namespace belfem
 
             int mIoWordSize;
 
-            int64_t mNumDim = 0;
             int64_t mNumNodes = 0;
             int64_t mNumElements = 0;
 

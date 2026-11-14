@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ask_copilot.sh — request an independent audit from GitHub Copilot CLI and record it in the
 # AI-only exchange. Third seat: a substitute for a Codex or Grok seat that is at its usage
 # limit, never a replacement for both.
@@ -166,7 +166,7 @@ READ_TOOLS=(
 "$COPILOT" \
     -C "$BELFEM" \
     --model "$COPILOT_MODEL" \
-    "${EFFORT_ARGS[@]}" \
+    ${EFFORT_ARGS[@]+"${EFFORT_ARGS[@]}"} \
     -s \
     --no-auto-update \
     --disable-builtin-mcps \

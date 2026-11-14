@@ -11,11 +11,18 @@
 `Quaternion<T>` is a small, header-only value type for 3D rotations. It is used
 to compose rotations, interpolate orientations (slerp), rotate vectors, and
 convert to/from 3x3 rotation matrices. It is a *plain value type*: four inline
-components, trivially copyable, no heap allocation, safe to `memcpy` /
-MPI-transfer (`cl_Quaternion.hpp:34-39`, `cl_Quaternion.hpp:87-89`).
+components, no heap allocation (`cl_Quaternion.hpp:34-39`, `:87-89`). For an
+arithmetic `T` it is trivially copyable and safe to `memcpy` / MPI-transfer; the
+template does not constrain `T`, and the test `ValueTypeIsTriviallyCopyable` in
+`tests/math/test_Quaternion.cpp` locks the property for `Quaternion<real>` only.
 
 The module is header-only; its `CMakeLists.txt` declares no library target
-(`src/math/quaternion/CMakeLists.txt:1`).
+(`src/math/quaternion/CMakeLists.txt:1`). The directory is not on the default
+include path (`config/scripts/Add_Library.cmake`); only the test target adds it
+(`tests/math/CMakeLists.txt`). A `src/` module that includes these headers must
+add `include_directories( ${BELFEM_SOURCE_DIR}/math/quaternion )` to its own
+`CMakeLists.txt`, as `src/physics/materials/CMakeLists.txt` does for
+`math/tensor`.
 
 ---
 
@@ -49,24 +56,25 @@ separate DIN-9300 Euler helper exists outside this module
 | Default | `Quaternion()` | all zeros |
 | Components | `Quaternion(a,b,c,d)` | `(w,x,y,z)` |
 | Pure quaternion | `Quaternion(const Vector<T>&)` | length-3 vector -> `(0,v)` |
-| Rotation | `Quaternion(const Vector<T>& axis, T angle)` | axis normalized internally; angle in radians |
+| Rotation | `Quaternion(const Vector<T>& axis, T angle)` | length-3, non-zero axis, normalized internally; angle in radians. Both checks are `BELFEM_ASSERT`: in release a zero axis gives NaN components for floating-point `T` |
 | Identity | `static Quaternion identity()` | `(1,0,0,0)` |
 | Accessors | `a() b() c() d()`, `data()`, `begin()/end()` | `a` is the scalar |
 | Norm | `T norm()` | Euclidean 4-norm |
 | Conjugate | `Quaternion conj()` | negates vector part |
-| Inverse | `Quaternion inv()` | `conj()/|q|^2`; **errors** on zero |
-| Normalize | `Quaternion& normalize()` | in place; **errors** on zero |
-| Rotate vector | `Vector<T> rotate(const Vector<T>&)` | requires unit quaternion |
+| Inverse | `Quaternion inv()` | `conj()` divided by the squared norm; **errors** if the squared norm is `<= BELFEM_EPSILON` |
+| Normalize | `Quaternion& normalize()` | in place; **errors** if `norm() <= BELFEM_EPSILON` |
+| Rotate vector | `Vector<T> rotate(const Vector<T>&)` | requires unit quaternion and length-3 vector |
 
 ### Operators and free functions
 
 | Expression | Meaning |
 |------------|---------|
-| `q1 * q2` | Hamilton product (also `*=`) |
-| `q + q2`, `q - q2`, `s*q`, `q*s`, `q/s` | componentwise / scalar |
+| `q1 * q2` | Hamilton product (also `q1 *= q2`) |
+| `q + q2`, `q - q2`, `s*q`, `q*s`, `q/s` | componentwise / scalar (also `+=`, `-=`, `q *= s`, `q /= s`) |
+| `q = { w, x, y, z }` | assign from a 4-entry initializer list (length asserted) |
 | `q1 == q2`, `q1 != q2` | componentwise within `BELFEM_EPSILON` (does **not** treat `q` and `-q` as equal) |
 | `dot(q1,q2)`, `cross(q1,q2)` | 4-vector dot; vector-part cross as pure quaternion |
-| `slerp(q1,q2,t)` | shortest-arc spherical interpolation |
+| `slerp(q1,q2,t)` | shortest-arc spherical interpolation; `t` in `[0, 1]` (not checked or clamped) |
 | `quaternion_to_rotation_matrix(q, R)` | `R` is a pre-allocated 3x3 (`fn_quaternion_to_rotation_matrix.hpp`) |
 | `quaternion_from_rotation_matrix(R) -> q` | Shepperd's method (`fn_quaternion_from_rotation_matrix.hpp`) |
 | `quaternion_rotate_vector(q, in, out)` | allocation-free `v + 2w(uxv) + 2 ux(uxv)`, equals `q v q*` (`fn_quaternion_rotate_vector.hpp`) |
@@ -79,6 +87,7 @@ separate DIN-9300 Euler helper exists outside this module
 
 ```cpp
 #include "cl_Quaternion.hpp"
+#include "constants.hpp"
 
 Vector< real > tAxis( 3 );
 tAxis( 0 ) = 0.0; tAxis( 1 ) = 0.0; tAxis( 2 ) = 1.0;   // +z
@@ -119,6 +128,9 @@ tQ.normalize();                        // renormalize after repeated products
 Quaternion< real > tQ = slerp( tStart, tEnd, 0.5 );      // unit inputs expected
 ```
 
+The header documents `t` as lying in `[0, 1]`. `slerp()` neither checks nor clamps it, so
+a value outside that range extrapolates along the arc.
+
 ### Matrix round trip
 
 ```cpp
@@ -141,14 +153,23 @@ Quaternion< real > tBack = quaternion_from_rotation_matrix( tR );  // == +/- tQ
   `fn_quaternion_rotate_vector.hpp:42-45`;
   `fn_quaternion_to_rotation_matrix.hpp:41-45`). Renormalize after long product
   chains to keep these satisfied.
-- **Always-active checks** (`BELFEM_ERROR`) guard the genuinely singular cases:
-  division by zero scalar, `inv()` of a zero quaternion, and `normalize()` of a
-  zero quaternion (`cl_Quaternion.hpp:218`, `:264`, `:272`).
+- **Always-active checks** (`BELFEM_ERROR`) guard the singular cases. Each
+  uses the cutoff `BELFEM_EPSILON = 10 * numeric_limits<real>::epsilon()`
+  (about 2.2e-15, `src/core/typedefs.hpp`): `q / s` and `q /= s` require
+  `|s| > BELFEM_EPSILON`, `normalize()` requires `|q| > BELFEM_EPSILON`, and
+  `inv()` requires `|q|^2 > BELFEM_EPSILON` (`cl_Quaternion.hpp:218`, `:264`,
+  `:272`). Because `inv()` tests the squared norm, it rejects quaternions
+  with `|q|` below about 4.7e-8, while `normalize()` still accepts them.
+- **Axis-angle constructor:** the length-3 and non-zero-axis checks are
+  `BELFEM_ASSERT`s (`cl_Quaternion.hpp:72`, `:76`). In a release build a zero
+  axis divides by zero and, for floating-point `T`, produces NaN components
+  without raising an error.
 - **`quaternion_from_rotation_matrix`** uses the trace-first variant of
   Shepperd's method: when `trace > 0` it recovers `w` from the trace, otherwise
   it picks the largest of `{r00, r11, r22}` to avoid dividing by a small number,
-  then normalizes the result. It asserts `det == +1` but **does not** check
-  orthogonality (`fn_quaternion_from_rotation_matrix.hpp:49-98`).
+  then normalizes the result. A debug-only `BELFEM_ASSERT` requires
+  `|det(R) - 1| < 100 * BELFEM_EPSILON`; orthogonality is **not** checked
+  (`fn_quaternion_from_rotation_matrix.hpp:51-100`).
 - **`slerp`** negates the second quaternion on a negative dot product (shortest
   arc) and falls back to normalized linear interpolation when the inputs are
   nearly parallel, avoiding division by `sin(theta) -> 0`
@@ -162,11 +183,10 @@ Quaternion< real > tBack = quaternion_from_rotation_matrix( tR );  // == +/- tQ
   checkout are `tests/math/test_Quaternion.cpp`. No `src/` module currently
   rotates geometry, frames, or material orientation with `Quaternion`. The
   helper is implemented and unit-tested but awaits a first production user.
-- **The borrowed-buffer mode is gone, and the suite already says so.**
-  `Quaternion` was once able to alias an external buffer; it is now a plain
-  inline value type, trivially copyable. `tests/math/test_Quaternion.cpp:117-125`
-  records the removal and notes that the old borrowed-mode cases targeted an API
-  that no longer exists — so there is nothing stale left to work around here.
+- **`Quaternion` always owns its four components.** It has no constructor
+  that aliases an external buffer. The test section "Value-Type Contract" in
+  `tests/math/test_Quaternion.cpp` (`ValueTypeIsTriviallyCopyable`) locks the
+  trivially-copyable property for `Quaternion<real>`.
 - **`q` and `-q` are the same rotation** but compare unequal under `operator==`
   (it compares 4-vectors). Use `slerp`/rotation output if you need
   rotation-equivalence rather than component equality.

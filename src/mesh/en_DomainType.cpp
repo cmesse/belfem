@@ -125,10 +125,10 @@ namespace belfem
             return DomainType::Air;
         }
         // NOTE: "cut" is deliberately NOT accepted as an input section type.
-        // DomainType::Cut is still live for cuts generated internally from the
-        // cohomology, but no parser path ever reads a topology { cut { } }
-        // section, so accepting the string here only produced a section that
-        // parsed and then did nothing. Let it fail loudly below instead.
+        // No parser path reads a topology { cut { } } section, and the
+        // cohomology's cut_<n> sidesets keep DomainType::Default on purpose so
+        // the Maxwell solver does not select them; accepting the string here
+        // only produced a section that parsed and then did nothing.
         else if ( tString == "background field" )
         {
             return DomainType::BackgroundField;

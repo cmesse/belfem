@@ -560,6 +560,9 @@ namespace belfem
     {
         mData.set_size( 4, mNumberOfPoints );
 
+        // the extra fifth row, if any, is gone with the resize
+        mExtraMode = spline::ExtraMode::None;
+
         // current interval
         Vector< real > tX( 2 );
 
@@ -597,6 +600,9 @@ namespace belfem
         uint tN = aY.length() - 1;
 
         mData.set_size( 4, tN+1 );
+
+        // the extra fifth row, if any, is gone with the resize
+        mExtraMode = spline::ExtraMode::None;
 
         // current interval
         Vector< real > tX( 2 );

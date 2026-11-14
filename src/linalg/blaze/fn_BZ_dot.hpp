@@ -12,6 +12,7 @@
 #ifndef BELFEM_FN_BZ_DOT_HPP
 #define BELFEM_FN_BZ_DOT_HPP
 
+#include "assert.hpp"
 #include "cl_BZ_Vector.hpp"
 #include "cl_BZ_Matrix.hpp"
 
@@ -26,28 +27,14 @@ namespace belfem
     dot( const Vector< T > & aA , const Vector< T > & aB )
         -> decltype( blaze::dot( aA.vector_data() , aB.vector_data() ) )
     {
+        BELFEM_ASSERT( aA.length() == aB.length(),
+                       "dot(): vectors must have the same length ( %lu vs %lu )",
+                       ( unsigned long ) aA.length(), ( unsigned long ) aB.length() );
         return blaze::dot( aA.vector_data() , aB.vector_data() );
     }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    template< typename T >
-    auto
-    dot( const Matrix< T > & aA , const Vector< T > & aB )
-    -> decltype( blaze::dot( aA.matrix_data() , aB.vector_data() ) )
-    {
-        return blaze::dot( aA.matrix_data() , aB.vector_data() );
-    }
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-    template< typename T >
-    auto
-    dot( const Vector< T > & aA , const Matrix< T > & aB )
-    -> decltype( blaze::dot( aA.vector_data() , aB.matrix_data() ) )
-    {
-        return blaze::dot( aA.vector_data() , aB.matrix_data() );
-    }
 
 //------------------------------------------------------------------------------
 //   two Blaze expression types (Row, Column, DynamicVector, etc.)

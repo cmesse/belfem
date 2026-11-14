@@ -1761,7 +1761,7 @@ namespace belfem
             mFormationWork( tCount++ ) = tElement->H( T ) - tElement->H_ref();
         }
 
-        aHf.vector_data() -= mFormationTable * mFormationWork;
+        aHf -= mFormationTable * mFormationWork;
     }
 
 //------------------------------------------------------------------------------
@@ -1781,7 +1781,7 @@ namespace belfem
             mFormationWork( tCount++ ) = tElement->S( T );
         }
 
-        aGibbs.vector_data() += mFormationTable * mFormationWork;
+        aGibbs += mFormationTable * mFormationWork;
 
         aGibbs *= T;
 
@@ -1797,7 +1797,7 @@ namespace belfem
             mFormationWork( tCount++ ) = tElement->H( T ) - tElement->H_ref();
         }
 
-        aGibbs.vector_data() -= mFormationTable * mFormationWork;
+        aGibbs -= mFormationTable * mFormationWork;
     }
 
 //------------------------------------------------------------------------------
@@ -1818,7 +1818,7 @@ namespace belfem
             mFormationWork( tCount++ ) = tElement->S( T ) + T * tElement->dSdT( T );
         }
 
-        aGibbs.vector_data() += mFormationTable * mFormationWork;
+        aGibbs += mFormationTable * mFormationWork;
 
         tCount = 0;
         for ( gastables::RefGas * tSpecie: mComponents )
@@ -1832,7 +1832,7 @@ namespace belfem
             mFormationWork( tCount++ ) = tElement->Cp( T );
         }
 
-        aGibbs.vector_data() -= mFormationTable * mFormationWork;
+        aGibbs -= mFormationTable * mFormationWork;
     }
 
 //------------------------------------------------------------------------------

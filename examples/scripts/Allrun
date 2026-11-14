@@ -393,7 +393,19 @@ fi
 
 ensure_mesh
 
+# An inherited MKL_NUM_THREADS (Intel setvars.sh, module files, site profiles)
+# wins over OMP_NUM_THREADS for MKL, and ranks x MKL threads then bypasses the
+# oversubscription guard. OPENBLAS_NUM_THREADS plays the same role for a
+# pthreads OpenBLAS, such as a distribution's; an OpenMP build, which is how
+# SCLS builds it, ignores it for the thread count and follows OMP_NUM_THREADS.
 export OMP_NUM_THREADS="$NTHREADS"
+for blas_var in MKL_NUM_THREADS OPENBLAS_NUM_THREADS; do
+    inherited="${!blas_var:-}"
+    if [ -n "$inherited" ] && [ "$inherited" != "$NTHREADS" ]; then
+        echo "NOTE: overriding inherited $blas_var=$inherited with $NTHREADS"
+    fi
+    export "$blas_var=$NTHREADS"
+done
 : "${MALLOC_ARENA_MAX:=2}"          # see doc/parallel_execution.md
 export MALLOC_ARENA_MAX
 

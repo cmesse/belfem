@@ -22,6 +22,7 @@
 | [materials_usage_guide.md](materials_usage_guide.md) | You call the API: factory, accessors, dependencies, user-defined materials, the physical models behind each curve, thread safety |
 | [materials_contracts_and_invariants.md](materials_contracts_and_invariants.md) | You hand objects around: ownership, lifetime, the lookup-table build, immutability during a simulation |
 | [resistivity_laws.md](resistivity_laws.md) | You choose or debug an HTS E-J law: what `powerlaw`, `piecewise` and `riva` compute, their tangents, degenerate windows, and which to use |
+| [hts_jc_table_construction.md](hts_jc_table_construction.md) | You build a jc / n HDF5 table for a new HTS tape or cable: file format, grid rules, the B-spline projection that makes it C¹, verification, cable-specific pitfalls |
 | [alloy_homogenization.md](alloy_homogenization.md) | Building a material from a formula: what is mixed, how it is mixed, and which alloy results can be trusted |
 | [thermal_expansion_from_heat_capacity.md](thermal_expansion_from_heat_capacity.md) | You fit or debug a cryogenic α(T): the Grüneisen branch, its guards, the c_p representation it rests on |
 | [callaway_thermal_conductivity.md](callaway_thermal_conductivity.md) | You wire the Callaway phonon-conductivity kernel (YBCO's λ_ph) or read its 20-parameter interface |

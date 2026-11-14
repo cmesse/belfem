@@ -98,13 +98,23 @@ namespace belfem
           const Vector< index_t > aNumNodes,
           const Vector< real > aStep,
           const Vector< real > aOrigin,
-          const proc_t aMasterProc ):
+          const proc_t aMasterProc,
+          const bool aComputeConnectivities ):
         mMasterProc(  aMasterProc < comm_size() ? aMasterProc : 0 ),
         mCommRank( comm_rank() ),
         mCommSize( comm_size() ),
         mNumberOfDimensions( aNumNodes.length() ),
         mTensorConfig( new TensorMeshConfig( aOrder, aNumNodes, aStep, aOrigin ) )
     {
+        // the B-spline weights are assembled from the node-to-element links,
+        // which Mesh::finalize() builds only under this flag
+        BELFEM_ERROR( aOrder <= 1 || aComputeConnectivities,
+            "a tensor mesh of order %u needs its connectivities for the B-spline weights",
+            ( unsigned int ) aOrder );
+
+        if ( aComputeConnectivities )
+            this->set_connectivity( Connectivity::Compute );
+
         TensorMeshFactory tFactory ;
         tFactory.populate_tensor_mesh( mTensorConfig, this, mMasterProc );
 
@@ -113,6 +123,16 @@ namespace belfem
         if ( aOrder > 1 )
         {
             tFactory.create_bsplines( this );
+
+            // the control points exist only now; the finalize() inside
+            // populate_tensor_mesh ran its control-point passes on empty
+            // containers. Non-master ranks hold an empty mesh and skip this
+            if ( this->number_of_elements() > 0 )
+            {
+                mesh::ConnectivityCalculator tCalc( this );
+                tCalc.connect_control_points_to_elements();
+                tCalc.connect_control_points_to_control_points();
+            }
         }
     }
 

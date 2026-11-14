@@ -597,6 +597,23 @@ TEST( TensorConversion, ComplianceMatrixSymmetric )
     }
 }
 
+TEST( TensorConversion, ComplianceMatrixCyclicPoissonConvention )
+{
+    // unequal moduli, so a ratio divided by the wrong modulus shows:
+    // S(1,0) = -nu12/E1, S(2,0) = -nu31/E3, S(2,1) = -nu23/E2
+    const belfem::real tE1 = 60.0, tE2 = 65.0, tE3 = 20.0;
+    const belfem::real tNu23 = 0.2, tNu31 = 0.25, tNu12 = 0.1;
+
+    belfem::Matrix< belfem::real > tS( 6, 6, 0.0 );
+    belfem::compliance_matrix( tE1, tE2, tE3,
+                                tNu23, tNu31, tNu12,
+                                8.0, 8.5, 9.0, tS );
+
+    EXPECT_NEAR( tS( 1, 0 ), -tNu12 / tE1, tTol );
+    EXPECT_NEAR( tS( 2, 0 ), -tNu31 / tE3, tTol );
+    EXPECT_NEAR( tS( 2, 1 ), -tNu23 / tE2, tTol );
+}
+
 TEST( TensorConversion, StiffnessTimesComplianceIsIdentity )
 {
     // (idea from ChatGPT) — inv(S) * S ≈ I(6×6)

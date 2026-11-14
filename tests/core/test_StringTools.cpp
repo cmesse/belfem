@@ -65,11 +65,16 @@ TEST( StringTools, CleanStringPreservesSpacesInsideQuotes )
                "key \"two  spaces\" tail" );
 }
 
-TEST( StringTools, CleanStringSingleCharacterPassesThrough )
+TEST( StringTools, CleanStringShortStrings )
 {
-    // strings of length <= 1 are returned unchanged
-    EXPECT_EQ( clean_string( " " ), " " );
+    // a single character is cleaned like any other string
+    EXPECT_EQ( clean_string( " " ), "" );
+    EXPECT_EQ( clean_string( "\t" ), "" );
+    EXPECT_EQ( clean_string( "#" ), "" );
     EXPECT_EQ( clean_string( "x" ), "x" );
+
+    // nothing to scan, so the empty string takes the fast path
+    EXPECT_EQ( clean_string( "" ), "" );
 }
 
 //------------------------------------------------------------------------------

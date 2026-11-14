@@ -1192,10 +1192,6 @@ namespace belfem
             comm_barrier();
             tFactory.run();
 
-            for ( mesh::SideSet *tCut : tFactory.cuts() )
-            {
-                tCut->set_domain_type( DomainType::Cut );
-            }
             this->set_block_and_sideset_names();
 
             comm_barrier();

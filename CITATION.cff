@@ -14,8 +14,8 @@ authors:
   - family-names: Messe
     given-names: Christian
     affiliation: Lawrence Berkeley National Laboratory
-version: 0.9.3
-date-released: "2026-10-10"
+version: 0.9.4
+date-released: "2026-11-14"
 preferred-citation:
   type: article
   title: >-

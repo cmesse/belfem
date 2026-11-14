@@ -106,14 +106,6 @@ namespace belfem
                 return;
             }
 
-            // METIS_NodeNDP requires at least 2 partitions
-            // For single partition, use standard nested dissection instead
-            /*if( aNumPartitions < 2 )
-            {
-                metis_nd( aGraph );
-                return;
-            }*/
-
 #ifdef BELFEM_METIS
 
             metis_t tNumVertices = static_cast< metis_t >( aGraph.size() );

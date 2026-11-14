@@ -271,16 +271,17 @@ namespace belfem
 
 //------------------------------------------------------------------------------
 
+        // Poisson ratios in the cyclic convention of compliance_matrix()
         void
         fill_orthotropic_elasticity(
                 const T aYoung1,
                 const T aYoung2,
                 const T aYoung3,
                 const T aPoisson23,
-                const T aPoisson13,
+                const T aPoisson31,
                 const T aPoisson12,
                 const T aShear23,
-                const T aShear13,
+                const T aShear31,
                 const T aShear12
                 )
         {
@@ -289,8 +290,8 @@ namespace belfem
             // compliance matrix
             Matrix< T > tS( 6, 6 );
             compliance_matrix( aYoung1, aYoung2, aYoung3,
-                               aPoisson23, aPoisson13, aPoisson12,
-                               aShear23, aShear13, aShear12, tS );
+                               aPoisson23, aPoisson31, aPoisson12,
+                               aShear23, aShear31, aShear12, tS );
 
             // elasticity matrix
             Matrix< T > tC = inv( tS );

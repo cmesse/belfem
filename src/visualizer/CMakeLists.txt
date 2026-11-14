@@ -29,3 +29,11 @@ set( EXECNAME visualize )
 set( MAIN     visualize.cpp )
 include( ${BELFEM_CONFIG_DIR}/scripts/Add_Executable.cmake )
 
+# VTK's libraries without its usage requirements: visualize.cpp includes
+# <hdf5.h> through cl_Mesh.hpp and must see the same HDF5 headers as the
+# library; the VTK headers come from the vtk-* directory in BELFEM_INCLUDES.
+# Plain signature, because Add_Executable.cmake links without a keyword.
+foreach( tVtkLib ${VTK_LIBRARIES} )
+    target_link_libraries( visualize $<LINK_ONLY:${tVtkLib}> )
+endforeach()
+

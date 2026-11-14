@@ -11,7 +11,7 @@ This repository uses a two-AI model: **Claude Code** (primary, broad exploration
 Key points:
 - **Calibrated uncertainty:** attach confidence (high / medium / low) to non-trivial claims
 - **Exchange channel:** `./tmp/ai_exchange/<slug>.md` (AI-only, ephemeral, per-task AI-to-AI communication; distilled into the devlog before it is swept)
-- **Nonfree exception:** for work scoped to `./nonfree/` — or porting from `./tmp/manta/` into it — do **not** create, read, or append the exchange at all. It is routed through external AI vendors and is a leak surface for proprietary work; keep coordination in chat and record outcomes in `./nonfree/devlog/`.
+- **Nonfree exception:** for work scoped to `./nonfree/` — or porting proprietary code from a staging tree under `./tmp/` into it — do **not** create, read, or append the exchange at all. It is routed through external AI vendors and is a leak surface for proprietary work; keep coordination in chat and record outcomes in `./nonfree/devlog/`.
 - **Session records:** `./devlog/dlYYYYMMDD_topic.md` (persistent devlogs)
 - **Edit safety:** read-only by default; source edits only with explicit user approval
 - **Literature-first:** mandatory for algorithms/formulations/validation; not for trivial fixes
@@ -197,11 +197,12 @@ The `nonfree/` directory is a separate, non-open-source repository (boundary lay
 debug/release × Armadillo/Blaze matrix, so `make check` on a workstation is no longer the only thing
 that ever executes the suite. `make check` includes the Tier 2 MPI suites (`commmpi`, `sparsempi`),
 each registered at 2 and 4 ranks; the runner has two cores, so the 4-rank cases run oversubscribed,
-which is a correctness run and not a timing one. Four limits still hold. The pipeline definition,
+which is a correctness run and not a timing one. Since 2026-09-18 the job configures with
+`-DUSE_GASMODELS=ON`, so the gas-table and gas-model tests, most of the physics test code by line
+count, are built and in the `check` fan-out; whether they fit the job's 1 h timeout at `-j2` is for
+the scheduled runs to show (DR-157). Three limits still hold. The pipeline definition,
 `.gitlab-ci.yml` at the repository root, runs only on a scheduled or manually started pipeline and on
-a runner tagged `belfem-local`, so a clone carries the definition but cannot reproduce the run. The
-job configures without `-DUSE_GASMODELS=ON`, so the gas-table and gas-model tests, most of the
-physics test code by line count, have never run there (DR-157). There is still no sanitizer
+a runner tagged `belfem-local`, so a clone carries the definition but cannot reproduce the run. There is still no sanitizer
 configuration (`-fsanitize` appears in no CMake file), and Valgrind is run by hand. And a nightly
 that passes says only that the suite passed: of 539 cataloged incidents (the locked catalog; addenda run to INC-564), 38 were closed by adding a test, so the
 suite is not yet what finds our defects. `USE_TEST` defaults ON, so a fresh tree builds it.
@@ -735,7 +736,8 @@ than rebuilding the chain from this table.
 
 **Step 2: use the index files** (when `./literature/` is present). `literature/README.md` holds the
 master decision flowcharts; `papers/fem/index.md`, `papers/fvm/index.md`, `papers/topology/index.md`,
-`books/index.md`, and `lectures/index.md` hold the detailed per-topic routing tables.
+`books/<shelf>/index.md` (`fem`, `math`, `coding`, `magnets`, `control` — one per shelf, no
+top-level books index), and `lectures/index.md` hold the detailed per-topic routing tables.
 
 **Step 3: search the source text.** Each index file names the `.txt` extraction for the work it
 routes you to. Search it with `rg -n` (or the equivalent search tool, keeping file+line output).
@@ -824,9 +826,9 @@ ones. `doc/literature_references.md` keeps the alias → work mapping so those r
 BELFEM-specific (HTS, h-φ, thin-shell, cuts)? → literature/papers/fem/index.md
 FVM / MPFA?                                   → literature/papers/fvm/index.md
 Cuts, cohomology, topology?                   → literature/papers/topology/index.md
-General FEM theory?                           → literature/books/index.md
+General FEM theory?                           → literature/books/fem/index.md
 Functional-analysis foundations?              → literature/lectures/index.md
-Formula lookup?                               → literature/books/index.md (Bronshtein)
+Formula lookup?                               → literature/books/math/index.md (Bronshtein)
 No literature/ available?                     → doc/literature_references.md
 ```
 

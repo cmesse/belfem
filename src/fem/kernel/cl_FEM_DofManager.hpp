@@ -387,9 +387,10 @@ namespace belfem
 //-----------------------------------------------------------------------------
             /**
              * Block form of the assembled system, x = free dofs, y = fixed dofs:
-             *   [ J  D ] [ x ]   [ f ]
-             *   [ E  I ] [ y ] = [ g ]
-             * The reduced system J x = f - D y solves for the unknowns; E x + I y = g
+             *   [ J  -D ] [ x ]   [ f ]
+             *   [ E   I ] [ y ] = [ g ]
+             * D is stored with its sign flipped ( D = -K_fd ), so the reduced system
+             * J x = f + D y solves for the unknowns; E x + I y = g
              * gives the reactions at the fixed dofs. The four accessors below hand
              * out the blocks, borrowed from the solver data and invalidated by the
              * next initialize().

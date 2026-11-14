@@ -42,7 +42,7 @@ namespace belfem
             id_t mMaxID = 0 ;
 
             Topology * mTopology ;
-            PeriodicityFactory * mPeriodicFactory ;
+            PeriodicityFactory * mPeriodicFactory = nullptr ;
             const Vector< id_t > & mThinShellSidesets ;
 
             Cell< Node * > & mAbstractNodes ;
@@ -55,7 +55,6 @@ namespace belfem
             Vector< id_t > mThinShellBoundaryIDs ;
 
             Cell< SideSet * > mThinShellBoundaries ;
-            Cell< SideSet * > mCuts ;
 
             // owned: each holds the original facets of a thin-shell sideset
             // between duplicate_and_relink_facets() and the restore, and
@@ -139,11 +138,6 @@ namespace belfem
             // returns the orphaned nodes if they exist
             Cell< Node * > &
             orphaned_nodes();
-
-//-----------------------------------------------------------------------------
-
-            Cell< SideSet * > &
-            cuts();
 
 //-----------------------------------------------------------------------------
 

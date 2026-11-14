@@ -14,13 +14,27 @@
 #include "cl_Matrix.hpp"
 namespace belfem
 {
+    /**
+     * orthotropic compliance matrix in Voigt order 11, 22, 33, 23, 31, 12.
+     *
+     * Poisson convention: nu_ij = -eps_j / eps_i under uniaxial stress along
+     * i, with the reciprocity nu_ij / E_i = nu_ji / E_j. The three ratios are
+     * the cyclic set nu23, nu31, nu12, matching G23, G31, G12:
+     *
+     *   S(1,0) = -nu12 / E1,  S(2,0) = -nu31 / E3,  S(2,1) = -nu23 / E2
+     *
+     * Trap: the cyclic set mixes major and minor ratios. For a fibre along
+     * axis 1, nu12 is the major ratio ( ~0.2-0.3 for carbon ) but nu31 is the
+     * minor one, equal to nu21 = nu12 * E2 / E1 under transverse isotropy. A
+     * datasheet's nu13 = nu12 must be converted to nu31 = nu13 * E3 / E1.
+     */
     template< typename T >
     inline void
     compliance_matrix( const T & aE1,
                        const T & aE2,
                        const T & aE3,
                        const T & aNu23,
-                       const T & aNu13,
+                       const T & aNu31,
                        const T & aNu12,
                        const T & aG23,
                        const T & aG31,
@@ -34,8 +48,8 @@ namespace belfem
         aS.fill( 0.0 );
 
         aS( 0, 0 ) = 1.0    / aE1 ;
-        aS( 1, 0 ) = -aNu12 / aE2 ;
-        aS( 2, 0 ) = -aNu13 / aE3 ;
+        aS( 1, 0 ) = -aNu12 / aE1 ;
+        aS( 2, 0 ) = -aNu31 / aE3 ;
 
         aS( 0, 1 ) = aS( 1, 0 ) ;
         aS( 1, 1 ) = 1.0 / aE2 ;

@@ -16,6 +16,7 @@
 
 #include <gtest/gtest.h>
 #include <cmath>
+#include <stdexcept>
 
 #include "typedefs.hpp"
 #include "cl_Mesh.hpp"
@@ -246,10 +247,8 @@ TEST( MeshMaps, BlockMapConsistent )
 
 // =============================================================================
 // §6  Connectivity on Tensor Mesh  [semantic]
-// The tensor mesh constructor calls finalize() but does NOT set the
-// Connectivity::Compute flag. Without it, finalize() skips node-to-element
-// connectivity. We must explicitly enable it.
-// (Caught by Gemini and ChatGPT during review)
+// The tensor mesh constructor sets Connectivity::Compute before its finalize(),
+// so node-to-element links exist as soon as the mesh is built.
 // =============================================================================
 
 TEST( MeshConnectivity, CornerNodeConnectivity )
@@ -258,11 +257,6 @@ TEST( MeshConnectivity, CornerNodeConnectivity )
     belfem::Mesh tMesh( 1,
         belfem::Vector< belfem::index_t >( { 4, 4 } ),
         belfem::Vector< belfem::real >( { 1.0, 1.0 } ) );
-
-    // enable connectivity and re-finalize
-    tMesh.unfinalize();
-    tMesh.set_connectivity( belfem::Connectivity::Compute );
-    tMesh.finalize();
 
     // corner node (0,0) should be connected to exactly 1 element
     belfem::mesh::Node * tCorner = tMesh.node( 0, 0 );
@@ -275,10 +269,6 @@ TEST( MeshConnectivity, InteriorNodeConnectivity )
         belfem::Vector< belfem::index_t >( { 4, 4 } ),
         belfem::Vector< belfem::real >( { 1.0, 1.0 } ) );
 
-    tMesh.unfinalize();
-    tMesh.set_connectivity( belfem::Connectivity::Compute );
-    tMesh.finalize();
-
     // interior node (1,1) should be connected to 4 elements
     belfem::mesh::Node * tInterior = tMesh.node( 1, 1 );
     EXPECT_EQ( tInterior->number_of_elements(), 4u );
@@ -290,25 +280,29 @@ TEST( MeshConnectivity, EdgeNodeConnectivity )
         belfem::Vector< belfem::index_t >( { 4, 4 } ),
         belfem::Vector< belfem::real >( { 1.0, 1.0 } ) );
 
-    tMesh.unfinalize();
-    tMesh.set_connectivity( belfem::Connectivity::Compute );
-    tMesh.finalize();
-
     // edge node (1,0) — not corner, on boundary → 2 elements
     belfem::mesh::Node * tEdge = tMesh.node( 1, 0 );
     EXPECT_EQ( tEdge->number_of_elements(), 2u );
 }
 
+TEST( MeshConnectivity, HigherOrderWithoutConnectivitiesIsRefused )
+{
+    // the B-spline weights need the node-to-element links; a cubic tensor mesh
+    // built without them would silently get no weights. The flag is the sixth
+    // argument ( proc_t is an int, a bool in the fifth position is the rank )
+    EXPECT_THROW( belfem::Mesh( 3,
+        belfem::Vector< belfem::index_t >( { 4, 4 } ),
+        belfem::Vector< belfem::real >( { 1.0, 1.0 } ),
+        belfem::Vector< belfem::real >( { 0.0, 0.0 } ),
+        0, false ), std::runtime_error );
+}
+
 TEST( MeshConnectivity, EdgesDoNotExistAfterConnectivity )
 {
-    // Edges are lazy — finalize() with connectivity does NOT create them
+    // Edges are lazy — the constructor's finalize() with connectivity does NOT create them
     belfem::Mesh tMesh( 1,
         belfem::Vector< belfem::index_t >( { 4, 4 } ),
         belfem::Vector< belfem::real >( { 1.0, 1.0 } ) );
-
-    tMesh.unfinalize();
-    tMesh.set_connectivity( belfem::Connectivity::Compute );
-    tMesh.finalize();
 
     EXPECT_FALSE( tMesh.edges_exist() );
 }
@@ -318,10 +312,6 @@ TEST( MeshEdges, EdgesExistAfterCreateEdges )
     belfem::Mesh tMesh( 1,
         belfem::Vector< belfem::index_t >( { 4, 4 } ),
         belfem::Vector< belfem::real >( { 1.0, 1.0 } ) );
-
-    tMesh.unfinalize();
-    tMesh.set_connectivity( belfem::Connectivity::Compute );
-    tMesh.finalize();
 
     EXPECT_FALSE( tMesh.edges_exist() );
 

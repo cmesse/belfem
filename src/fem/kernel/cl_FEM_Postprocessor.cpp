@@ -689,13 +689,12 @@ namespace belfem
             {
                 mesh::Node * tNode = tNodes( i );
 
-                // the maps own the objects from the moment they exist
-                NodeFrame * tFrame = new NodeFrame();
-                mNodeFrames[ tNode ] = tFrame ;
-                this->compute_node_frame( tNode, *tFrame );
+                // the frame map holds its values; the matrix map owns its pointers
+                NodeFrame & tFrame = mNodeFrames[ tNode ];
+                this->compute_node_frame( tNode, tFrame );
 
                 mVandermonde.fill( 0.0 );
-                this->add_node_gram( tNode, *tFrame );
+                this->add_node_gram( tNode, tFrame );
 
                 Matrix< real > * tInv = new Matrix< real >( mNumCoefficients, mNumCoefficients, 0.0 );
                 mNodeMatrices[ tNode ] = tInv ;
@@ -724,10 +723,6 @@ namespace belfem
             }
             mNodeMatrices.clear();
 
-            for ( auto tPair : mNodeFrames )
-            {
-                delete tPair.second ;
-            }
             mNodeFrames.clear();
         }
 
@@ -921,15 +916,20 @@ namespace belfem
         void
         Postprocessor::compute_node_frame( mesh::Node * aNode, NodeFrame & aFrame )
         {
-            aFrame.Origin.set_size( mNumDimensions );
             for ( uint d=0; d<mNumDimensions; ++d )
             {
-                aFrame.Origin( d ) = aNode->x( d );
+                aFrame.Origin[ d ] = aNode->x( d );
             }
 
             if ( mShellLocal )
             {
-                aFrame.Normal.set_size( mNumDimensions, 0.0 );
+                // a refilled slot must not carry a stale axis component
+                for ( uint d=0; d<3; ++d )
+                {
+                    aFrame.Normal[ d ] = 0.0 ;
+                    aFrame.T1[ d ]     = 0.0 ;
+                    aFrame.T2[ d ]     = 0.0 ;
+                }
             }
 
             real tH = 0.0 ;
@@ -956,7 +956,7 @@ namespace belfem
                         real tDistance = 0.0 ;
                         for ( uint i=0; i<mNumDimensions; ++i )
                         {
-                            const real tDelta = mIntPoints( k, i ) - aFrame.Origin( i );
+                            const real tDelta = mIntPoints( k, i ) - aFrame.Origin[ i ];
                             tDistance += tDelta * tDelta ;
                         }
                         // std::max keeps the running value against a NaN, so
@@ -974,7 +974,10 @@ namespace belfem
 
                     if ( mShellLocal )
                     {
-                        aFrame.Normal += mShellDirection ;
+                        for ( uint i=0; i<mNumDimensions; ++i )
+                        {
+                            aFrame.Normal[ i ] += mShellDirection( i );
+                        }
                     }
                 }
             }
@@ -989,17 +992,24 @@ namespace belfem
 
             if ( mShellLocal )
             {
-                const real tLength = norm( aFrame.Normal );
+                real tLength = 0.0 ;
+                for ( uint i=0; i<mNumDimensions; ++i )
+                {
+                    tLength += aFrame.Normal[ i ] * aFrame.Normal[ i ];
+                }
+                tLength = std::sqrt( tLength );
                 BELFEM_ERROR( tLength > 0.0,
                     "thin shell elements around node %lu point in opposing stack directions",
                     ( long unsigned int ) aNode->id() );
-                aFrame.Normal /= tLength ;
+                for ( uint i=0; i<mNumDimensions; ++i )
+                {
+                    aFrame.Normal[ i ] /= tLength ;
+                }
 
-                aFrame.T1.set_size( mNumDimensions, 0.0 );
                 if ( mNumDimensions == 2 )
                 {
-                    aFrame.T1( 0 ) = -aFrame.Normal( 1 );
-                    aFrame.T1( 1 ) =  aFrame.Normal( 0 );
+                    aFrame.T1[ 0 ] = -aFrame.Normal[ 1 ];
+                    aFrame.T1[ 1 ] =  aFrame.Normal[ 0 ];
                 }
                 else
                 {
@@ -1007,7 +1017,7 @@ namespace belfem
                     uint tAxis = 0 ;
                     for ( uint i=1; i<3; ++i )
                     {
-                        if ( std::abs( aFrame.Normal( i ) ) < std::abs( aFrame.Normal( tAxis ) ) )
+                        if ( std::abs( aFrame.Normal[ i ] ) < std::abs( aFrame.Normal[ tAxis ] ) )
                         {
                             tAxis = i ;
                         }
@@ -1015,16 +1025,18 @@ namespace belfem
                     const uint tA = ( tAxis + 1 ) % 3 ;
                     const uint tB = ( tAxis + 2 ) % 3 ;
 
-                    // T1 = e_axis x n
-                    aFrame.T1( tA ) = -aFrame.Normal( tB );
-                    aFrame.T1( tB ) =  aFrame.Normal( tA );
-                    aFrame.T1 /= norm( aFrame.T1 );
+                    // T1 = e_axis x n, the tAxis component stays zero
+                    aFrame.T1[ tA ] = -aFrame.Normal[ tB ];
+                    aFrame.T1[ tB ] =  aFrame.Normal[ tA ];
+                    const real tT1 = std::sqrt( aFrame.T1[ tA ] * aFrame.T1[ tA ]
+                                              + aFrame.T1[ tB ] * aFrame.T1[ tB ] );
+                    aFrame.T1[ tA ] /= tT1 ;
+                    aFrame.T1[ tB ] /= tT1 ;
 
                     // T2 = n x T1
-                    aFrame.T2.set_size( 3 );
-                    aFrame.T2( 0 ) = aFrame.Normal( 1 ) * aFrame.T1( 2 ) - aFrame.Normal( 2 ) * aFrame.T1( 1 );
-                    aFrame.T2( 1 ) = aFrame.Normal( 2 ) * aFrame.T1( 0 ) - aFrame.Normal( 0 ) * aFrame.T1( 2 );
-                    aFrame.T2( 2 ) = aFrame.Normal( 0 ) * aFrame.T1( 1 ) - aFrame.Normal( 1 ) * aFrame.T1( 0 );
+                    aFrame.T2[ 0 ] = aFrame.Normal[ 1 ] * aFrame.T1[ 2 ] - aFrame.Normal[ 2 ] * aFrame.T1[ 1 ];
+                    aFrame.T2[ 1 ] = aFrame.Normal[ 2 ] * aFrame.T1[ 0 ] - aFrame.Normal[ 0 ] * aFrame.T1[ 2 ];
+                    aFrame.T2[ 2 ] = aFrame.Normal[ 0 ] * aFrame.T1[ 1 ] - aFrame.Normal[ 1 ] * aFrame.T1[ 0 ];
                 }
             }
         }
@@ -1072,16 +1084,25 @@ namespace belfem
         {
             for ( uint d=0; d<mNumDimensions; ++d )
             {
-                mOffset( d ) = mIntPoints( aK, d ) - aFrame.Origin( d );
+                mOffset( d ) = mIntPoints( aK, d ) - aFrame.Origin[ d ];
             }
 
             if ( mShellLocal )
             {
+                // s1 = offset . T1, s2 = offset . T2
+                real tS1 = 0.0 ;
+                real tS2 = 0.0 ;
+                for ( uint d=0; d<mNumDimensions; ++d )
+                {
+                    tS1 += mOffset( d ) * aFrame.T1[ d ];
+                    tS2 += mOffset( d ) * aFrame.T2[ d ];
+                }
+
                 mPoly( 0, 0 ) = 1.0 ;
-                mPoly( 1, 0 ) = dot( mOffset, aFrame.T1 ) / aFrame.H ;
+                mPoly( 1, 0 ) = tS1 / aFrame.H ;
                 if ( mNumDimensions == 3 )
                 {
-                    mPoly( 2, 0 ) = dot( mOffset, aFrame.T2 ) / aFrame.H ;
+                    mPoly( 2, 0 ) = tS2 / aFrame.H ;
                 }
                 mPoly( mNumDimensions, 0 ) = this->shell_offset( aLocalNode, aK ) / aFrame.Tau ;
             }
@@ -1122,7 +1143,7 @@ namespace belfem
             BELFEM_ASSERT( mNodeFrames.key_exists( aTarget ),
                 "node %lu has no recovery frame", ( long unsigned int ) aTarget->id() );
 
-            const NodeFrame & tFrame = *mNodeFrames( aTarget );
+            const NodeFrame & tFrame = mNodeFrames( aTarget );
 
             mNodeRhs.fill( 0.0 );
             for ( uint k=0; k<mIntPoints.n_rows(); ++k )

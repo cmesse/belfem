@@ -1721,7 +1721,7 @@ namespace belfem
             if ( aIndex != mJ->index() )
             {
                 mJ->set_index( aIndex );
-                mJ->matrix().matrix_data() = mIsCurved ?
+                mJ->matrix() = mIsCurved ?
                         mDomainIntegration->dNdXi( aIndex ) * mX :
                         mLinearIntegration->dNdXi( aIndex ) * mXc ;
             }
@@ -1737,7 +1737,7 @@ namespace belfem
             if ( aIndex != mJm->index() )
             {
                 mJm->set_index( aIndex );
-                mJm->matrix().matrix_data() =
+                mJm->matrix() =
                         mMasterIntegration->dNdXi( aIndex ) * mXm ;
             }
 
@@ -1752,7 +1752,7 @@ namespace belfem
             if ( aIndex != mJs->index() )
             {
                 mJs->set_index( aIndex );
-                mJs->matrix().matrix_data() =
+                mJs->matrix() =
                         mSlaveIntegration->dNdXi( aIndex ) * mXs ;
             }
 
@@ -2230,8 +2230,8 @@ namespace belfem
 
                 // radius contribution
                 mDetJ = mIsCurved ? dot(
-                        mDomainIntegration->phi( aIndex ).vector_data(), mX.col( 1 ) ) :
-                        dot( mLinearIntegration->phi( aIndex ).vector_data(), mXc.col( 1 ) );
+                        mDomainIntegration->phi( aIndex ), mX.col( 1 ) ) :
+                        dot( mLinearIntegration->phi( aIndex ), mXc.col( 1 ) );
 
                 mDetJ *= det( this->J( aIndex ) ) * 2.0 * constant::pi ;
             }
@@ -2250,8 +2250,8 @@ namespace belfem
 
                 // radius contribution
                 mDetJ = mIsCurved ? dot(
-                        mDomainIntegration->phi( aIndex ).vector_data(), mX.col( 0 ) ) :
-                        dot( mLinearIntegration->phi( aIndex ).vector_data(), mXc.col( 0 ) );
+                        mDomainIntegration->phi( aIndex ), mX.col( 0 ) ) :
+                        dot( mLinearIntegration->phi( aIndex ), mXc.col( 0 ) );
 
                 mDetJ *= det( this->J( aIndex ) ) * 2.0 * constant::pi ;
             }
@@ -2281,7 +2281,7 @@ namespace belfem
             // compute the normal if it hasn't been computed so far
             ( this->*mFunNormal ) ( aIndex );
 
-            return dot( mMasterIntegration->phi( aIndex ).vector_data(),
+            return dot( mMasterIntegration->phi( aIndex ),
                         mXm.col( 1 ) )
                     * mSurfaceIncrement  * 2.0 * constant::pi ;
 
@@ -2295,7 +2295,7 @@ namespace belfem
             // compute the normal if it hasn't been computed so far
             ( this->*mFunNormal ) ( aIndex );
 
-            return dot( mMasterIntegration->phi( aIndex ).vector_data(),
+            return dot( mMasterIntegration->phi( aIndex ),
                         mXm.col( 0 ) )
                    * mSurfaceIncrement * 2.0 * constant::pi ;
 

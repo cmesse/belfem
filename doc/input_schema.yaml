@@ -985,6 +985,12 @@ sections:
           not accepted as free text. A validator needs both the enum list and
           that pattern; neither alone is correct.
         case_sensitive: false
+        note: >
+          The material name `buffer` (the subsection type, not its label) is
+          reserved for magnesia: whichever builtin form selects it, the
+          resolved type must be magnesia, mgo or buffer; a curve, a usermat or
+          any other builtin under that name is fatal. Thin-shell buffer layers
+          are chosen by the material lacking rho, not by this name.
         values: [aluminum, aluminium, al, chromium, cr, copper, cu,
                  nickel, ni, silver, ag, indium, in, lead, pb, tin, sn,
                  hastelloy, hastelloyc276, ybco, magnesia, mgo, buffer,
@@ -1153,8 +1159,8 @@ sections:
           label: {type: string, required: true, anchor: '"label"'}
         note: >
           User material plugins are ABI-fragile — vtable slots and enum values
-          are baked into the .so with no version guard. The name `buffer` is
-          reserved (fatal).
+          are baked into the .so with no version guard. A usermat under the
+          material name `buffer` is fatal (see the builtin note).
 
   # -------------------------------------------------------------------------
   layers:

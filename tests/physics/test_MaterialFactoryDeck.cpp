@@ -633,6 +633,41 @@ TEST( CurveShape, KnownNonIronBuiltinBesideACurveIsRefused )
 }
 
 //------------------------------------------------------------------------------
+// the label "buffer" is reserved for the builtin Magnesia
+//------------------------------------------------------------------------------
+
+TEST( BufferLabel, MagnesiaIsAccepted )
+{
+    for ( const char * tType : { "magnesia", "mgo", "buffer" } )
+    {
+        const std::string tMessage = refusal( std::string( "buffer_" ) + tType,
+            std::string( "    buffer\n    {\n        builtin : " ) + tType + " ;\n    }" );
+        EXPECT_TRUE( tMessage.empty() ) << tType << ": " << tMessage ;
+    }
+}
+
+TEST( BufferLabel, OtherShapesAreRefused )
+{
+    const std::string tReserved = "reserved for the builtin Magnesia" ;
+
+    std::string tMessage = refusal( "buffer_copper",
+        "    buffer\n    {\n        builtin : copper ;\n    }" );
+    EXPECT_TRUE( contains( tMessage, tReserved ) ) << tMessage ;
+    EXPECT_TRUE( contains( tMessage, "'copper'" ) ) << tMessage ;
+
+    // refused before the curve database is opened
+    tMessage = refusal( "buffer_curve",
+        "    buffer\n    {\n        curve : RoxieIron ;\n    }" );
+    EXPECT_TRUE( contains( tMessage, tReserved ) ) << tMessage ;
+
+    // refused before the plugin is loaded
+    tMessage = refusal( "buffer_usermat",
+        "    buffer\n    {\n        usermat\n        {\n            file : missing.so ;\n"
+        "            label : nothing ;\n        }\n    }" );
+    EXPECT_TRUE( contains( tMessage, tReserved ) ) << tMessage ;
+}
+
+//------------------------------------------------------------------------------
 // R5: constant jc and n
 //------------------------------------------------------------------------------
 

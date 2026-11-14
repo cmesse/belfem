@@ -16,6 +16,7 @@ set( SOURCES
         test_FacetTables.cpp
         test_CurveFactory.cpp
         test_BfmFile.cpp
+        test_TensorMeshBSpline.cpp
         )
 
 set( LIBLIST graph bezier interpolation integration mesh )

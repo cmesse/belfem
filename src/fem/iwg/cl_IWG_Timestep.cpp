@@ -752,38 +752,38 @@
             {
                 case( 2 ) :
                 {
-                    aSwap.vector_data()  = mBeta( 0 ) * mCalc->qold(0).vector_data();
-                    aSwap.vector_data() -= mBeta( 1 ) * mCalc->qold(1).vector_data();
+                    aSwap  = mBeta( 0 ) * mCalc->qold(0);
+                    aSwap -= mBeta( 1 ) * mCalc->qold(1);
                     break ;
                 }
                 case( 3 ) :
                 {
-                    aSwap.vector_data()  = mBeta( 0 ) * mCalc->qold(0).vector_data();
-                    aSwap.vector_data() -= mBeta( 1 ) * mCalc->qold(1).vector_data();
-                    aSwap.vector_data() += mBeta( 2 ) * mCalc->qold(2).vector_data();
+                    aSwap  = mBeta( 0 ) * mCalc->qold(0);
+                    aSwap -= mBeta( 1 ) * mCalc->qold(1);
+                    aSwap += mBeta( 2 ) * mCalc->qold(2);
                     break ;
                 }
                 case( 4 ) :
                 {
-                    aSwap.vector_data()  = mBeta( 0 ) * mCalc->qold(0).vector_data();
-                    aSwap.vector_data() -= mBeta( 1 ) * mCalc->qold(1).vector_data();
-                    aSwap.vector_data() += mBeta( 2 ) * mCalc->qold(2).vector_data();
-                    aSwap.vector_data() -= mBeta( 3 ) * mCalc->qold(3).vector_data();
+                    aSwap  = mBeta( 0 ) * mCalc->qold(0);
+                    aSwap -= mBeta( 1 ) * mCalc->qold(1);
+                    aSwap += mBeta( 2 ) * mCalc->qold(2);
+                    aSwap -= mBeta( 3 ) * mCalc->qold(3);
                     break ;
                 }
                 case( 5 ) :
                 {
-                    aSwap.vector_data()  = mBeta( 0 ) * mCalc->qold(0).vector_data();
-                    aSwap.vector_data() -= mBeta( 1 ) * mCalc->qold(1).vector_data();
-                    aSwap.vector_data() += mBeta( 2 ) * mCalc->qold(2).vector_data();
-                    aSwap.vector_data() -= mBeta( 3 ) * mCalc->qold(3).vector_data();
-                    aSwap.vector_data() += mBeta( 4 ) * mCalc->qold(4).vector_data();
+                    aSwap  = mBeta( 0 ) * mCalc->qold(0);
+                    aSwap -= mBeta( 1 ) * mCalc->qold(1);
+                    aSwap += mBeta( 2 ) * mCalc->qold(2);
+                    aSwap -= mBeta( 3 ) * mCalc->qold(3);
+                    aSwap += mBeta( 4 ) * mCalc->qold(4);
                     break ;
                 }
                 default :
                 {
                     // order <= 1 : the history is the last step
-                    aSwap.vector_data() = mCalc->qold(0).vector_data();
+                    aSwap = mCalc->qold(0);
                     break ;
                 }
             }
@@ -847,9 +847,9 @@
         IWG_Timestep::explicit_euler( Matrix< real > & aJ,
                                       Vector< real > & aRHS  )
         {
-            aRHS.vector_data() += mTimeStepMatrices->f()*mDeltaTime ;
-            aJ.matrix_data() += mTimeStepMatrices->M().matrix_data();
-            aRHS.vector_data() += ( aJ.matrix_data() - mTimeStepMatrices->K().matrix_data()*mDeltaTime ) * mCalc->qold();
+            aRHS += mTimeStepMatrices->f()*mDeltaTime ;
+            aJ += mTimeStepMatrices->M();
+            aRHS += ( aJ - mTimeStepMatrices->K()*mDeltaTime ) * mCalc->qold();
         }
 
 //------------------------------------------------------------------------------
@@ -888,7 +888,7 @@
             Matrix< real > & aJ,
             Vector< real > & aRHS  )
         {
-            aJ.matrix_data() += mTimeStepMatrices->M().matrix_data();
+            aJ += mTimeStepMatrices->M();
             aRHS.fill(0.0) ;
         }
 
@@ -899,7 +899,7 @@
             Matrix< real > & aJ,
             Vector< real > & aRHS  )
         {
-            aJ.matrix_data() += mTimeStepMatrices->K().matrix_data();
+            aJ += mTimeStepMatrices->K();
             aRHS.fill(0.0) ;
         }
 
@@ -911,14 +911,14 @@
             Vector< real > & aRHS  )
         {
 
-            aJ.matrix_data() += mTimeStepMatrices->M().matrix_data();
-            aRHS.vector_data() += mTimeStepMatrices->f()*mDeltaTime ;
+            aJ += mTimeStepMatrices->M();
+            aRHS += mTimeStepMatrices->f()*mDeltaTime ;
 
             // Update b: b = h * f + M * q0
-            aRHS.vector_data() += aJ.matrix_data() * mCalc->qold().vector_data() ;
+            aRHS += aJ * mCalc->qold() ;
 
             // Update A: A = M + h * K
-            aJ.matrix_data() += mTimeStepMatrices->K().matrix_data()*mDeltaTime ;
+            aJ += mTimeStepMatrices->K()*mDeltaTime ;
         }
 
 //------------------------------------------------------------------------------
@@ -928,20 +928,20 @@
             Matrix< real > & aJ,
             Vector< real > & aRHS  )
         {
-            aJ.matrix_data() += mTimeStepMatrices->M().matrix_data();
+            aJ += mTimeStepMatrices->M();
 
-            aRHS.vector_data() += mTimeStepMatrices->f()*mDeltaTime ;
+            aRHS += mTimeStepMatrices->f()*mDeltaTime ;
 
             // beta-weighted history ( beta0*q0 - beta1*q1 ), single source
             // of truth shared with the nonlinear-mass producers
             const Vector<real> &tSwap = this->collect_qhist();
 
             // b = h*f + M * ( beta0*q0  - beta1*q1 )
-            aRHS.vector_data() += aJ.matrix_data() * tSwap.vector_data();
+            aRHS += aJ * tSwap;
 
             // M = alpha * M + h * K
-            aJ.matrix_data() *= mAlpha ;
-            aJ += mTimeStepMatrices->K().matrix_data()*mDeltaTime ;
+            aJ *= mAlpha ;
+            aJ += mTimeStepMatrices->K()*mDeltaTime ;
         }
 
 //------------------------------------------------------------------------------
@@ -951,19 +951,19 @@
             Matrix< real > & aJ,
             Vector< real > & aRHS  )
         {
-            aJ.matrix_data() += mTimeStepMatrices->M().matrix_data();
+            aJ += mTimeStepMatrices->M();
 
-            aRHS.vector_data() += mTimeStepMatrices->f()*mDeltaTime ;
+            aRHS += mTimeStepMatrices->f()*mDeltaTime ;
 
             // beta-weighted history, single source of truth
             const Vector<real> & tSwap = this->collect_qhist();
 
             // b = h*f + M * ( beta0*q0  - beta1*q1 + beta2 * q2 )
-            aRHS.vector_data() += aJ.matrix_data() * tSwap.vector_data();
+            aRHS += aJ * tSwap;
 
             // M = alpha * M + h * K
-            aJ.matrix_data() *= mAlpha ;
-            aJ += mTimeStepMatrices->K().matrix_data()*mDeltaTime ;
+            aJ *= mAlpha ;
+            aJ += mTimeStepMatrices->K()*mDeltaTime ;
         }
 
 //------------------------------------------------------------------------------
@@ -973,19 +973,19 @@
             Matrix< real > & aJ,
             Vector< real > & aRHS  )
         {
-            aJ.matrix_data() += mTimeStepMatrices->M().matrix_data();
+            aJ += mTimeStepMatrices->M();
 
-            aRHS.vector_data() += mTimeStepMatrices->f()*mDeltaTime ;
+            aRHS += mTimeStepMatrices->f()*mDeltaTime ;
 
             // beta-weighted history, single source of truth
             const Vector<real> & tSwap = this->collect_qhist();
 
             // b = h*f + M * ( beta0*q0  - beta1*q1 + beta2 * q2 - beta3 * q3 )
-            aRHS.vector_data() += aJ.matrix_data() * tSwap.vector_data();
+            aRHS += aJ * tSwap;
 
             // M = alpha * M + h * K
-            aJ.matrix_data() *= mAlpha ;
-            aJ += mTimeStepMatrices->K().matrix_data()*mDeltaTime ;
+            aJ *= mAlpha ;
+            aJ += mTimeStepMatrices->K()*mDeltaTime ;
         }
 
 //------------------------------------------------------------------------------
@@ -996,19 +996,19 @@
             Vector< real > & aRHS  )
         {
             // Scale stiffness matrix K and forcing vector f by h
-            aJ.matrix_data() += mTimeStepMatrices->M().matrix_data();
+            aJ += mTimeStepMatrices->M();
 
-            aRHS.vector_data() += mTimeStepMatrices->f()*mDeltaTime ;
+            aRHS += mTimeStepMatrices->f()*mDeltaTime ;
 
             // beta-weighted history, single source of truth
             const Vector<real> & tSwap = this->collect_qhist();
 
             // b = h*f + M * ( beta0*q0  - beta1*q1 + beta2 * q2 - beta3 * q3 + beta4 * q4 )
-            aRHS.vector_data() += aJ.matrix_data() * tSwap.vector_data();
+            aRHS += aJ * tSwap;
 
             // M = alpha * M + h * K
-            aJ.matrix_data() *= mAlpha ;
-            aJ += mTimeStepMatrices->K().matrix_data()*mDeltaTime ;
+            aJ *= mAlpha ;
+            aJ += mTimeStepMatrices->K()*mDeltaTime ;
         }
 
  //------------------------------------------------------------------------------
@@ -1020,12 +1020,12 @@
         {
 
             // Scaling forcing terms by h
-            aJ.matrix_data() += mTimeStepMatrices->M().matrix_data();
+            aJ += mTimeStepMatrices->M();
 
-            aRHS.vector_data() += mTimeStepMatrices->f()*mDeltaTime ;
+            aRHS += mTimeStepMatrices->f()*mDeltaTime ;
 
             // Update b: b = h * f + M * q0
-            aRHS.vector_data() += aJ.matrix_data() * mCalc->qold().vector_data() ;
+            aRHS += aJ * mCalc->qold() ;
         }
 
 //------------------------------------------------------------------------------
@@ -1036,19 +1036,19 @@
             Vector< real > & aRHS  )
         {
             // Scaling forcing terms by * h
-            aJ.matrix_data() += mTimeStepMatrices->M().matrix_data();
+            aJ += mTimeStepMatrices->M();
 
-            aRHS.vector_data() += mTimeStepMatrices->f()*mDeltaTime ;
+            aRHS += mTimeStepMatrices->f()*mDeltaTime ;
 
             // beta-weighted history ( beta0*q0 - beta1*q1 ), single source
             // of truth shared with the nonlinear-mass producers
             const Vector<real> &tSwap = this->collect_qhist();
 
             // b = h*f + M * ( beta0*q0  - beta1*q1 )
-            aRHS.vector_data() += aJ.matrix_data() * tSwap.vector_data();
+            aRHS += aJ * tSwap;
 
             // M = alpha * M
-            aJ.matrix_data() *= mAlpha ;
+            aJ *= mAlpha ;
         }
 
 //------------------------------------------------------------------------------
@@ -1059,18 +1059,18 @@
             Vector< real > & aRHS  )
         {
             // Scale stiffness matrix K and forcing vector f by h
-            aJ.matrix_data() += mTimeStepMatrices->M().matrix_data();
+            aJ += mTimeStepMatrices->M();
 
-            aRHS.vector_data() += mTimeStepMatrices->f()*mDeltaTime ;
+            aRHS += mTimeStepMatrices->f()*mDeltaTime ;
 
             // beta-weighted history, single source of truth
             const Vector<real> & tSwap = this->collect_qhist();
 
             // b = h*f + M * ( beta0*q0  - beta1*q1 + beta2 * q2 )
-            aRHS.vector_data() += aJ.matrix_data() * tSwap.vector_data();
+            aRHS += aJ * tSwap;
 
             // A = alpha * M
-            aJ.matrix_data() *= mAlpha ;
+            aJ *= mAlpha ;
         }
 
 //------------------------------------------------------------------------------
@@ -1081,18 +1081,18 @@
             Vector< real > & aRHS  )
         {
             // Scale stiffness matrix K and forcing vector f h
-            aJ.matrix_data() += mTimeStepMatrices->M().matrix_data();
+            aJ += mTimeStepMatrices->M();
 
-            aRHS.vector_data() += mTimeStepMatrices->f()*mDeltaTime ;
+            aRHS += mTimeStepMatrices->f()*mDeltaTime ;
 
             // beta-weighted history, single source of truth
             const Vector<real> & tSwap = this->collect_qhist();
 
             // b = h*f + M * ( beta0*q0  - beta1*q1 + beta2 * q2 - beta3 * q3 )
-            aRHS.vector_data() += aJ.matrix_data() * tSwap.vector_data();
+            aRHS += aJ * tSwap;
 
             // A = alpha * M
-            aJ.matrix_data() *= mAlpha ;
+            aJ *= mAlpha ;
         }
 
 //------------------------------------------------------------------------------
@@ -1103,18 +1103,18 @@
             Vector< real > & aRHS  )
         {
             // Scale stiffness matrix K and forcing vector f by h
-            aJ.matrix_data() += mTimeStepMatrices->M().matrix_data();
+            aJ += mTimeStepMatrices->M();
 
-            aRHS.vector_data() += mTimeStepMatrices->f()*mDeltaTime ;
+            aRHS += mTimeStepMatrices->f()*mDeltaTime ;
 
             // beta-weighted history, single source of truth
             const Vector<real> & tSwap = this->collect_qhist();
 
             // b = h*f + M * ( beta0*q0  - beta1*q1 + beta2 * q2 - beta3 * q3 + beta4 * q4 )
-            aRHS.vector_data() += aJ.matrix_data() * tSwap.vector_data();
+            aRHS += aJ * tSwap;
 
             // A = alpha * M
-            aJ.matrix_data() *= mAlpha ;
+            aJ *= mAlpha ;
         }
 
 
@@ -1124,9 +1124,9 @@
         IWG_Timestep::derivative( Matrix< real > & aJ,
                                   Vector< real > & aRHS  )
         {
-            aJ.matrix_data() += mTimeStepMatrices->M().matrix_data();
+            aJ += mTimeStepMatrices->M();
 
-            aRHS -= mTimeStepMatrices->K().matrix_data() * mCalc->qold().vector_data() ;
+            aRHS -= mTimeStepMatrices->K() * mCalc->qold() ;
         }
 
 //------------------------------------------------------------------------------
@@ -1135,10 +1135,10 @@
         IWG_Timestep::euler_no_stiffness( Matrix< real > & aJ,
                                           Vector< real > & aRHS )
         {
-            aJ.matrix_data() += mTimeStepMatrices->M().matrix_data();
+            aJ += mTimeStepMatrices->M();
 
-            aRHS.vector_data() += mTimeStepMatrices->f()*mDeltaTime ;
-            aRHS.vector_data() += aJ.matrix_data() * mCalc->qold().vector_data() ;
+            aRHS += mTimeStepMatrices->f()*mDeltaTime ;
+            aRHS += aJ * mCalc->qold() ;
         }
 
 //------------------------------------------------------------------------------
@@ -1157,9 +1157,9 @@
                                        Vector< real > & aRHS )
         {
 
-            aRHS.vector_data() += mTimeStepMatrices->f()*mDeltaTime ;
+            aRHS += mTimeStepMatrices->f()*mDeltaTime ;
 
-            aJ.matrix_data() = mTimeStepMatrices->K().matrix_data() * mDeltaTime ;
+            aJ = mTimeStepMatrices->K() * mDeltaTime ;
         }
 
 

@@ -199,7 +199,8 @@ namespace
         RecoveryFixture( const RecoveryFixture & ) = delete ;
         RecoveryFixture & operator=( const RecoveryFixture & ) = delete ;
 
-        //! kernel, equation and dof manager for the given block types
+        //! kernel, equation and dof manager for the given block types;
+        //! the equation takes the dimensionality of the mesh
         void
         create_field( const Cell< DomainType > & aBlockTypes )
         {
@@ -208,7 +209,8 @@ namespace
 
             mIWG = new fem::IWG_Maxwell(
                     fem::maxwell::Formulation::HPhi,
-                    ModelDimensionality::ThreeD,
+                    mMesh->number_of_dimensions() == 3 ?
+                        ModelDimensionality::ThreeD : ModelDimensionality::TwoD,
                     false, false );
             mIWG->set_blocks( mBlockIDs, aBlockTypes );
             mKernel->add_equation( mIWG );
@@ -571,6 +573,217 @@ namespace
             // Mesh( 3, 0, false ) skips the connectivity in finalize() so that
             // the mesh checker can run before edges exist; the recovery walks
             // node -> element
+            {
+                mesh::ConnectivityCalculator tConnect( mMesh );
+                tConnect.connect_nodes_to_elements();
+            }
+
+            mBlockIDs.set_size( 1, 1 );
+            this->create_field( Cell< DomainType >( 1, DomainType::Air ) );
+        }
+    };
+
+//------------------------------------------------------------------------------
+
+    constexpr real gLength2D = 0.2 ;
+
+    //! F5: two QUAD4TS layers ( blocks 1, 2 ) in 2D. Curved: an arc of
+    //! radius R around the origin, node rows at r = R - t, R, R + t, extruded
+    //! along the radius. Flat: a straight tape along x, rows at y = -t, 0, t.
+    //! The tape facets ( LINE2 ) sit on the middle row. Node order per
+    //! element follows the ThinShellFactory convention: nodes 0, 1 are the
+    //! bottom edge along +tape, node 2 above node 1, node 3 above node 0.
+    //! That order is what the postprocessor reads the bottom face from; the
+    //! winding is immaterial, the layer measure and dV are magnitudes
+    class Shell2D : public RecoveryFixture
+    {
+    public:
+
+        //! node ( station, radial level 0 .. 2 )
+        Cell< mesh::Node * > mGrid ;
+
+        mesh::Node *
+        node( const uint aStation, const uint aLevel )
+        {
+            return mGrid( aLevel * gStations + aStation );
+        }
+
+        explicit Shell2D( const bool aCurved )
+        {
+            mMesh = new Mesh( 2, 0, false );
+            mesh::ElementFactory tFactory ;
+
+            Cell< mesh::Node * > & tNodes = mMesh->nodes();
+            id_t tNodeID = 1 ;
+            const real tRadii[ 3 ] = { gRadius - gThickness, gRadius, gRadius + gThickness };
+            for ( uint l = 0; l < 3; ++l )
+            {
+                for ( uint s = 0; s < gStations; ++s )
+                {
+                    mesh::Node * tNode = nullptr ;
+                    if ( aCurved )
+                    {
+                        const real tPhi = ( 0.5 * gSpanDeg - gSpanDeg * s / ( gStations - 1 ) )
+                                * constant::pi / 180.0 ;
+                        tNode = new mesh::Node( tNodeID++,
+                                tRadii[ l ] * std::cos( tPhi ),
+                                tRadii[ l ] * std::sin( tPhi ) );
+                    }
+                    else
+                    {
+                        tNode = new mesh::Node( tNodeID++,
+                                gLength2D * s / ( gStations - 1 ),
+                                ( ( real ) l - 1.0 ) * gThickness );
+                    }
+                    tNodes.push( tNode );
+                    mGrid.push( tNode );
+                }
+            }
+
+            mesh::SideSet * tTapeSet = new mesh::SideSet( 10, gStations - 1 );
+            tTapeSet->set_domain_type( DomainType::ThinShell );
+
+            mesh::Block * tBlocks[ 2 ] = {
+                    new mesh::Block( 1, gStations - 1 ),
+                    new mesh::Block( 2, gStations - 1 ) };
+            for ( uint l = 0; l < 2; ++l )
+            {
+                tBlocks[ l ]->set_thickness( gThickness );
+                tBlocks[ l ]->set_domain_type( DomainType::ThinShell );
+            }
+
+            Cell< mesh::Element * > & tElements = mMesh->elements();
+
+            // layer 0 first, then layer 1, in station order: ids are
+            // consecutive per block and follow the facets
+            id_t tElementID = 1 ;
+            for ( uint l = 0; l < 2; ++l )
+            {
+                for ( uint s = 0; s + 1 < gStations; ++s )
+                {
+                    mesh::Element * tQuad = tFactory.create_element( ElementType::QUAD4TS, tElementID++ );
+                    tQuad->insert_node( this->node( s,     l     ), 0 );
+                    tQuad->insert_node( this->node( s + 1, l     ), 1 );
+                    tQuad->insert_node( this->node( s + 1, l + 1 ), 2 );
+                    tQuad->insert_node( this->node( s,     l + 1 ), 3 );
+                    tQuad->set_block_id( l + 1 );
+                    tElements.push( tQuad );
+                    tBlocks[ l ]->insert_element( tQuad );
+                }
+            }
+
+            id_t tFacetID = 1000 ;
+            for ( uint s = 0; s + 1 < gStations; ++s )
+            {
+                mesh::Element * tLine = tFactory.create_element( ElementType::LINE2, tFacetID++ );
+                tLine->insert_node( this->node( s,     1 ), 0 );
+                tLine->insert_node( this->node( s + 1, 1 ), 1 );
+                mesh::Facet * tFacet = new mesh::Facet( tLine );
+                tFacet->set_sideset_id( 10 );
+                tTapeSet->insert_facet( tFacet );
+            }
+            mMesh->sidesets().push( tTapeSet );
+
+            mesh::ThinShell * tShell = new mesh::ThinShell( tTapeSet, nullptr );
+            tShell->blocks().push( tBlocks[ 0 ] );
+            tShell->blocks().push( tBlocks[ 1 ] );
+            {
+                Vector< real > tThicknesses( 2, gThickness );
+                tShell->set_thicknesses( tThicknesses );
+            }
+            mMesh->thin_shells().push( tShell );
+
+            mMesh->blocks().push( tBlocks[ 0 ] );
+            mMesh->blocks().push( tBlocks[ 1 ] );
+            mMesh->finalize();
+
+            {
+                MeshChecker tCheck( mMesh );
+            }
+
+            // Mesh( 2, 0, false ) skips the connectivity in finalize() so that
+            // the mesh checker can run before edges exist; the recovery walks
+            // node -> element
+            {
+                mesh::ConnectivityCalculator tConnect( mMesh );
+                tConnect.connect_nodes_to_elements();
+            }
+
+            create_unique_edges( mMesh, mMesh->elements() );
+
+            mBlockIDs.set_size( 2 );
+            mBlockIDs( 0 ) = 1 ;
+            mBlockIDs( 1 ) = 2 ;
+            this->create_field( Cell< DomainType >( 2, DomainType::ThinShell ) );
+        }
+    };
+
+//------------------------------------------------------------------------------
+
+    //! F6: 2 x 2 squares of edge h = 1e-3, two TRI3 each, one Air block, 1e3
+    //! from the origin in 2D
+    class FarTriPatch : public RecoveryFixture
+    {
+    public:
+
+        Cell< mesh::Node * > mVertices ;   // 3 x 3 grid
+
+        FarTriPatch()
+        {
+            mMesh = new Mesh( 2, 0, false );
+            mesh::ElementFactory tFactory ;
+            Cell< mesh::Node * > & tNodes = mMesh->nodes();
+            id_t tNodeID = 1 ;
+
+            for ( uint j = 0; j < 3; ++j )
+            {
+                for ( uint i = 0; i < 3; ++i )
+                {
+                    mesh::Node * tNode = new mesh::Node( tNodeID++,
+                            gOrigin[ 0 ] + gCell * i,
+                            gOrigin[ 1 ] + gCell * j );
+                    tNodes.push( tNode );
+                    mVertices.push( tNode );
+                }
+            }
+
+            mesh::Block * tBlock = new mesh::Block( 1, 8 );
+            tBlock->set_domain_type( DomainType::Air );
+            Cell< mesh::Element * > & tElements = mMesh->elements();
+            id_t tElementID = 1 ;
+
+            for ( uint cj = 0; cj < 2; ++cj )
+            {
+                for ( uint ci = 0; ci < 2; ++ci )
+                {
+                    mesh::Node * tCorner[ 4 ] = {
+                            mVertices( cj * 3 + ci ),
+                            mVertices( cj * 3 + ci + 1 ),
+                            mVertices( ( cj + 1 ) * 3 + ci + 1 ),
+                            mVertices( ( cj + 1 ) * 3 + ci ) };
+
+                    // both triangles counterclockwise
+                    const uint tTris[ 2 ][ 3 ] = { { 0, 1, 2 }, { 0, 2, 3 } };
+                    for ( uint t = 0; t < 2; ++t )
+                    {
+                        mesh::Element * tTri = tFactory.create_element( ElementType::TRI3, tElementID++ );
+                        for ( uint v = 0; v < 3; ++v )
+                        {
+                            tTri->insert_node( tCorner[ tTris[ t ][ v ] ], v );
+                        }
+                        tTri->set_block_id( 1 );
+                        tElements.push( tTri );
+                        tBlock->insert_element( tTri );
+                    }
+                }
+            }
+
+            mMesh->blocks().push( tBlock );
+            mMesh->finalize();
+            {
+                MeshChecker tCheck( mMesh );
+            }
+
             {
                 mesh::ConnectivityCalculator tConnect( mMesh );
                 tConnect.connect_nodes_to_elements();
@@ -981,4 +1194,121 @@ TEST( PostprocessorRecovery, BlockInverseDropsSchurRoundOff )
         tConstant += tInverse( 0, k ) * tRhs( k );
     }
     EXPECT_NEAR( tConstant, f, 1.0e-12 * f );
+}
+
+//------------------------------------------------------------------------------
+
+// the 2D shell basis is [ 1, s/h, eta/tau ]. The thickness ramp through the
+// two-layer arc is linear in eta at every node, so each node row comes back
+// exactly. The truncation count is the guard on the tangent: a T1 parallel
+// to the normal makes s collinear with eta and the fit drops a direction
+TEST( PostprocessorRecovery, ThicknessJumpSurvivesCurvature2D )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    Shell2D tArc( true );
+
+    const real tHalfAngle = 0.5 * gSpanDeg / ( gStations - 1 ) * 2.0 * constant::pi / 180.0 ;
+    const real tSagitta = gRadius * ( 1.0 - std::cos( tHalfAngle ) );
+    ASSERT_GT( tSagitta, 5.0 * gThickness );
+
+    index_t tTruncated = 0 ;
+    const Vector< real > & tF = tArc.recover(
+            []( const Vector< real > &, const real aZeta, const id_t aBlock ) -> real
+            {
+                return 0.5 * ( 1.0 + aZeta ) * gThickness + ( aBlock - 1 ) * gThickness ;
+            }, tTruncated );
+
+    EXPECT_EQ( tTruncated, 0u );
+    for ( uint l = 0; l < 3; ++l )
+    {
+        for ( uint s = 0; s < gStations; ++s )
+        {
+            const mesh::Node * tNode = tArc.node( s, l );
+            EXPECT_NEAR( tF( tNode->index() ), l * gThickness, 1.0e-12 * gThickness )
+                << "node row " << l << ", station " << s ;
+        }
+    }
+}
+
+//------------------------------------------------------------------------------
+
+TEST( PostprocessorRecovery, ConstantReproducedOnCurvedShell2D )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    Shell2D tArc( true );
+    index_t tTruncated = 0 ;
+    const Vector< real > & tF = tArc.recover(
+            []( const Vector< real > &, const real, const id_t ) -> real { return 3.7 ; },
+            tTruncated );
+
+    EXPECT_EQ( tTruncated, 0u );
+    for ( mesh::Node * tNode : tArc.mGrid )
+    {
+        EXPECT_NEAR( tF( tNode->index() ), 3.7, 1.0e-13 * 3.7 );
+    }
+}
+
+//------------------------------------------------------------------------------
+
+// on a flat tape the tangent coordinate s is the offset along x up to its
+// sign, so a field linear in x lies in the shell basis. The fit is exact for
+// any tangent with an x component: this rejects a zero or a normal-parallel
+// T1, not a tilted one
+TEST( PostprocessorRecovery, TangentLinearFieldReproducedOnFlatShell2D )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    Shell2D tTape( false );
+    index_t tTruncated = 0 ;
+    const Vector< real > & tF = tTape.recover(
+            []( const Vector< real > & aX, const real, const id_t ) -> real { return 2.0 + 5.0 * aX( 0 ); },
+            tTruncated );
+
+    EXPECT_EQ( tTruncated, 0u );
+    for ( mesh::Node * tNode : tTape.mGrid )
+    {
+        EXPECT_NEAR( tF( tNode->index() ), 2.0 + 5.0 * tNode->x(), 1.0e-12 * 3.0 )
+            << "node at x = " << tNode->x() << ", y = " << tNode->y() ;
+    }
+}
+
+//------------------------------------------------------------------------------
+
+// the non-shell frame in 2D: origin and scale only, a linear field exact at
+// every node 1e3 from the origin
+TEST( PostprocessorRecovery, LinearFieldFarFromOrigin2D )
+{
+    if ( comm_size() != 1 )
+    {
+        GTEST_SKIP() << "serial-only fixture" ;
+    }
+
+    FarTriPatch tPatch ;
+    index_t tTruncated = 0 ;
+    auto tLinear = []( const real aX, const real aY ) -> real
+    {
+        return 1.0 + 2.0e3 * ( aX - gOrigin[ 0 ] ) - 3.0e3 * ( aY - gOrigin[ 1 ] );
+    };
+    const Vector< real > & tF = tPatch.recover(
+            [ & ]( const Vector< real > & aX, const real, const id_t ) -> real
+            {
+                return tLinear( aX( 0 ), aX( 1 ) );
+            }, tTruncated );
+
+    EXPECT_EQ( tTruncated, 0u );
+    for ( mesh::Node * tNode : tPatch.mVertices )
+    {
+        EXPECT_NEAR( tF( tNode->index() ), tLinear( tNode->x(), tNode->y() ), 1.0e-10 * 20.0 );
+    }
 }

@@ -577,6 +577,13 @@ namespace belfem
         return BELFEM_QUIET_NAN ;
     }
 
+    real
+    Material::lambda_undefined( const real T ) const
+    {
+        BELFEM_ERROR( false, "Material %s has no thermal conductivity", mLabel.c_str() );
+        return BELFEM_QUIET_NAN ;
+    }
+
     inline real
     Material::jc_custom( const real T ) const
     {

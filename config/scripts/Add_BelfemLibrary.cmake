@@ -37,8 +37,13 @@ target_link_libraries( ${LIBTARGET} PUBLIC
         ${BELFEM_FORTRANLIBS}
         ${BELFEM_OPENMPLIBS} )
 
+# PRIVATE: only the VTK-based modules need VTK. A PUBLIC link would hand
+# every consumer VTK's interface include directories, among them the bundled,
+# symbol-renamed HDF5 (VTK::vtkhdf5_src), ahead of the HDF5 the library was
+# compiled against. A static library still passes the VTK libraries on to the
+# consumer's link line.
 if( USE_VTK )
-    target_link_libraries( ${LIBTARGET} PUBLIC ${VTK_LIBRARIES} )
+    target_link_libraries( ${LIBTARGET} PRIVATE ${VTK_LIBRARIES} )
 endif()
 
 if( APPLE )

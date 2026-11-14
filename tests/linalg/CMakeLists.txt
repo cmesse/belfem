@@ -8,6 +8,9 @@ set( SOURCES
         test_Matrix.cpp
         test_LinalgSolvers.cpp
         test_lapack.cpp
+        test_CheckPolicy.cpp
+        test_OverloadSets.cpp
+        test_LinalgAllocations.cpp
         )
 
 # add the test

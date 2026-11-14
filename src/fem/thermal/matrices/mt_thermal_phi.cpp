@@ -25,7 +25,20 @@ namespace belfem
             // grab the material
             Material * tMaterial = aCalc->group()->material();
 
-            real rho = tMaterial->density( gTroom );
+            // the same reference density as MaxwellData: density at gTroom,
+            // else ref_density, scaled by density_correction
+            real rho = BELFEM_QUIET_NAN ;
+            if ( tMaterial->have( MaterialProperty::density ) )
+            {
+                rho = tMaterial->density( gTroom );
+            }
+            else if ( tMaterial->have( MaterialProperty::ref_density ) )
+            {
+                rho = tMaterial->ref_density();
+            }
+            BELFEM_ASSERT( ! std::isnan( rho ), "material %s has no density",
+                tMaterial->label().c_str() );
+            rho *= tMaterial->constant_property( MaterialProperty::density_correction );
 
             for( uint k=0 ; k<aCalc->num_intpoints() ; ++k )
             {

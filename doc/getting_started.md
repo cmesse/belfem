@@ -119,10 +119,9 @@ h-ɸ/T problem, otherwise the run is magnetic-only. It announces the choice at
 startup, so there is nothing to pass on the command line. It reads
 `input.conf` from the working directory and writes the field solution to an
 Exodus file, the current/voltage history to `iv_results.csv`, and a restart
-dump to `memdump.hdf5`. The Exodus file is named after the mesh — `helix.msh`
-gives `helix.e-s`, viewable in ParaView — except on the segregated coupled
-path (`coupling : segregated`), which still writes a fixed
-`hphi_results.e-s`.
+dump to `memdump.hdf5`. The Exodus file is named after the mesh, so `helix.msh`
+gives `helix.e-s`, which you can open in ParaView. This applies to every
+coupling path, including `coupling : segregated`.
 
 Three things first-time users trip over:
 

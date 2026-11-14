@@ -63,6 +63,12 @@ namespace belfem
 
             Vertex() = default;
 
+            // owns mVertices: a copy would free it twice
+            Vertex( const Vertex & ) = delete;
+            Vertex( Vertex && ) = delete;
+            Vertex & operator=( const Vertex & ) = delete;
+            Vertex & operator=( Vertex && ) = delete;
+
 //------------------------------------------------------------------------------
 
             virtual ~Vertex();

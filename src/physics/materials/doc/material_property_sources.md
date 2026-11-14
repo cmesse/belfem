@@ -78,6 +78,7 @@ construction.
 | Clausecker 1969 | K. Clausecker | 1969 | Z. Physik | 10.1007/BF02422537 |
 | Strom-Olsen 1967 | J. O. Strom-Olsen | 1967 | Proc. R. Soc. A | jstor.org/stable/2415889 |
 | Desai 1984 | P. D. Desai et al. | 1984 | J. Phys. Chem. Ref. Data | 10.1063/1.555725 |
+| Wee 2013 | S. H. Wee, Y. L. Zuev, C. Cantoni, A. Goyal | 2013 | Sci. Rep. 3, 2310 | 10.1038/srep02310 |
 | Cook 1975 | J. G. Cook et al. | 1975 | ORNL-5079 report | ORNL-5079 |
 | Luethi 1960 | B. Luethi | 1960 | Dissertation, ETH Zuerich (Widerstandsaenderung von Metallen in hohen Magnetfeldern) | thesis |
 | Fickett 1972 | F. R. Fickett | 1972 | FNAL report (Magnetoresistivity of Copper and Aluminum at Cryogenic Temperatures) | report |

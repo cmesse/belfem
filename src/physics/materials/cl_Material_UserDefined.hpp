@@ -376,20 +376,6 @@ namespace belfem
                 return ( * mUserRhoFunction ) (this, T, normB, angle );
             }
 
-            //! @brief Custom jc evaluation (temperature only) - calls user function
-            real
-            jc_custom(const real T) const override
-            {
-                return mUserFunctions( static_cast<size_t>(MaterialProperty::jc))( this, T );
-            }
-
-            //! @brief Custom n evaluation (temperature only) - calls user function
-            real
-            n_custom(const real T) const override
-            {
-                return mUserFunctions( static_cast<size_t>(MaterialProperty::n))( this, T );
-            }
-
             //! @brief Custom thermal expansion coefficient evaluation - calls user function
             real
             alpha_custom(const real T) const override

@@ -58,7 +58,7 @@ These files are AI-only scratch: machine-parseable, disposable, and **never comm
 
 ### Nonfree Module Exception
 
-For work scoped to `./nonfree/` or to porting code from `./tmp/manta/` into
+For work scoped to `./nonfree/` or to porting proprietary code from a staging tree under `./tmp/` into
 `./nonfree/`, do **not** create, read, or append the AI-only exchange at all —
 suppress the AI-only tier entirely. The shared exchange is routed through
 external AI vendors and is therefore a vendor-bound leak surface; nonfree work is
@@ -172,7 +172,7 @@ Literature routing is **not required** for:
 - Documentation edits that don't touch algorithmic content
 
 **When literature is used:**
-1. Claude consults the routing tables (`literature/papers/fem/index.md`, `literature/books/index.md`, or `doc/literature_references.md` as fallback)
+1. Claude consults the routing tables (`literature/papers/fem/index.md`, `literature/books/<shelf>/index.md`, or `doc/literature_references.md` as fallback)
 2. Codex verifies that Claude's citations are correct and that the implementation matches the cited equations/sections
 3. Both AIs use the citation format defined in `CLAUDE.md`: "Author et al. YYYY, Section X" or "Bathe, §X.Y". The old `paperN` aliases are retired — do not write new ones; `doc/literature_references.md` decodes the ones in older records.
 
@@ -197,7 +197,7 @@ See `todo/closed/periodic_thin_cut_continuity_fix.md` for the reference style (c
 
 ### Nonfree Module Exception
 
-For work scoped to `./nonfree/` or to porting code from `./tmp/manta/` into
+For work scoped to `./nonfree/` or to porting proprietary code from a staging tree under `./tmp/` into
 `./nonfree/`, write session devlogs to `./nonfree/devlog/` instead of
 `./devlog/`. Do not update `./devlog/README.md` for nonfree-only sessions.
 If `./nonfree/devlog/` has its own README or index, update that local index;

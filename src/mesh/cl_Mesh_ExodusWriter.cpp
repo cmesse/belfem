@@ -358,11 +358,11 @@ namespace belfem
                 }
                 case( GeometryType::TRI ):
                 {
-                    return "tri";
+                    return mNumDim == 3 ? "trishell" : "tri";
                 }
                 case( GeometryType::QUAD ):
                 {
-                    return "quad";
+                    return mNumDim == 3 ? "shell" : "quad";
                 }
                 case( GeometryType::TET ):
                 {
@@ -492,7 +492,16 @@ namespace belfem
 
                 for ( int64_t i = 0; i < tNumFacets; ++i )
                 {
-                    tSideSetIDs[ i ] = tSideSet->facet_by_index( i )->index_on_master() + 1;
+                    Facet * tFacet = tSideSet->facet_by_index( i );
+
+                    // a 2D master in a 3D file is written as a shell, whose sides 1-2 are the
+                    // faces and whose edges start at 3; refused until a reader confirms that table
+                    BELFEM_ERROR( mNumDim != 3 || ( geometry_type( tFacet->master()->type() ) != GeometryType::TRI
+                                    && geometry_type( tFacet->master()->type() ) != GeometryType::QUAD ),
+                                  "sideset %lu has a facet on a 2D element in a 3D mesh, which is written as a shell; shell side numbering is not implemented",
+                                  ( long unsigned int ) tSideSet->id() );
+
+                    tSideSetIDs[ i ] = tFacet->index_on_master() + 1;
                 }
 
                 mError = ex_put_set(

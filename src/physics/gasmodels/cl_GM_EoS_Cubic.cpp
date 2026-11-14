@@ -112,7 +112,7 @@ namespace belfem
 
             for( uint k=0; k<mParent.number_of_components(); ++k )
             {
-                tDeparture.matrix_data() += tY( k ) * mDepartureCoefficients( k ).matrix_data();
+                tDeparture += tY( k ) * mDepartureCoefficients( k );
             }
         }
 

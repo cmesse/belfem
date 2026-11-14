@@ -272,8 +272,12 @@ namespace belfem
 
             this->set_constant( MaterialProperty::rho_0, x );
 
-            if ( this->have( MaterialProperty::lambda ) )
+            // lambda exists only for a metal with conductivity coefficients;
+            // the flag is raised here, where the routing spline is built
+            if ( mLambdaCoefficients.length() > 0 )
             {
+                this->set_have( MaterialProperty::lambda );
+
                 // start tangent: lambda -> L0 * T / rho_0 as T -> 0, so the
                 // slope at the origin is L0 / rho_0, not its reciprocal
                 this->create_spline( MaterialProperty::lambda,
@@ -290,7 +294,6 @@ namespace belfem
 
 
             this->set_have( MaterialProperty::rho );
-            this->set_have( MaterialProperty::lambda );
 
             // set_spline() resets the lambda dependencies to T-only, which
             // drops the field flags create_kohler() registered before this
@@ -639,8 +642,9 @@ namespace belfem
         Metal::set_lambda_coefficients( const Vector< real > & aCoeffs )
         {
             BELFEM_ERROR( this->type() == MaterialType::PureMetal, "lambda coefficients can only be used in conjuction with pure metals" );
+            // have( lambda ) waits for set_RRR(), which builds the spline
+            // that lambda() routes through; a metal without RRR has no lambda
             mLambdaCoefficients = aCoeffs ;
-            this->set_have( MaterialProperty::lambda );
 
         }
 

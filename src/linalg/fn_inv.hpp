@@ -30,6 +30,7 @@
 #ifndef BELFEM_FN_INV_HPP
 #define BELFEM_FN_INV_HPP
 
+#include "assert.hpp"
 #ifdef BELFEM_ARMADILLO
 #include "fn_AR_inv.hpp"
 #elif  BELFEM_BLAZE
@@ -45,6 +46,9 @@ namespace belfem
     inv( const Matrix< T > & aA )
     -> decltype( inv( aA.matrix_data())) const
     {
+        BELFEM_ASSERT( aA.n_rows() == aA.n_cols(),
+                       "inv(): matrix must be square ( %lu x %lu )",
+                       ( unsigned long ) aA.n_rows(), ( unsigned long ) aA.n_cols() );
         return inv( aA.matrix_data());
     }
 
@@ -55,6 +59,9 @@ namespace belfem
     inv( Matrix< T > & aA )
     -> decltype( inv( aA.matrix_data() ) )
     {
+        BELFEM_ASSERT( aA.n_rows() == aA.n_cols(),
+                       "inv(): matrix must be square ( %lu x %lu )",
+                       ( unsigned long ) aA.n_rows(), ( unsigned long ) aA.n_cols() );
         return inv( aA.matrix_data() );
     }
 

@@ -781,8 +781,8 @@ namespace belfem
                 tElement->insert_control_point( aPoints( bidx(  p+3, q+3 ) ), 2 );
                 tElement->insert_control_point( aPoints( bidx(  p  , q+3 ) ), 3 );
 
-                tElement->insert_control_point( aPoints( bidx(  p  , q+1 ) ), 4 );
-                tElement->insert_control_point( aPoints( bidx(  p  , q+2 ) ), 5 );
+                tElement->insert_control_point( aPoints( bidx(  p+1, q   ) ), 4 );
+                tElement->insert_control_point( aPoints( bidx(  p+2, q   ) ), 5 );
 
                 tElement->insert_control_point( aPoints( bidx(  p+3, q+1 ) ), 6 );
                 tElement->insert_control_point( aPoints( bidx(  p+3, q+2 ) ), 7 );
@@ -1013,8 +1013,8 @@ namespace belfem
             real eta = ( idx(1,i )*2. - 3. ) / 3. ;
 
             // evaluate 1D shape functions
-            this->bspline_quad( xi, Nxi );
-            this->bspline_quad( eta, Neta );
+            this->bspline_cub( xi, Nxi );
+            this->bspline_cub( eta, Neta );
 
             // assemble matrix
             for ( index_t j=0; j<16; ++j )
@@ -1114,9 +1114,9 @@ namespace belfem
             real zeta = ( idx(2,i )*2. - 3. ) / 3. ;
 
             // evaluate 1D shape functions
-            this->bspline_quad( xi, Nxi );
-            this->bspline_quad( eta, Neta );
-            this->bspline_quad( zeta, Nzeta );
+            this->bspline_cub( xi, Nxi );
+            this->bspline_cub( eta, Neta );
+            this->bspline_cub( zeta, Nzeta );
 
             // assemble matrix
             for ( index_t j=0; j<64; ++j )
@@ -1138,13 +1138,17 @@ namespace belfem
         aResult( 2 ) = 0.125*(xi+1)*(xi+1.);
     }
 
+    // uniform cubic B-spline basis on one element, xi in [ -1, 1 ], ordered
+    // left to right like bspline_quad: the Cox-de Boor recursion
+    // ( Zienkiewicz et al. 2013, Eq. 17.4 ) evaluated for uniform knots,
+    // in the span parameter t = ( xi + 1 ) / 2
     void
     TensorMeshFactory::bspline_cub( const real xi, Vector< real > & aResult )
     {
-        aResult( 0 ) = xi*(xi*(xi + 3.) + 3.) + 1.;
-        aResult( 1 ) = xi * ( 15. - xi * ( 3.*xi + 3. )) +23. ;
-        aResult( 2 ) = xi*(xi*(3*xi - 3) - 15. )+23. ;
-        aResult( 3 ) = 1. + xi * ( xi * ( 3. -xi)  - 3. );
+        aResult( 0 ) = 1. + xi * ( xi * ( 3. -xi)  - 3. );
+        aResult( 1 ) = xi*(xi*(3*xi - 3) - 15. )+23. ;
+        aResult( 2 ) = xi * ( 15. - xi * ( 3.*xi + 3. )) +23. ;
+        aResult( 3 ) = xi*(xi*(xi + 3.) + 3.) + 1.;
         aResult /= 48. ;
     }
 
@@ -1177,6 +1181,9 @@ namespace belfem
         for ( mesh::Node * tNode : tNodes )
         {
             tBitset.reset();
+
+            // the pairs of this node only; the container is reused
+            tPairs.clear();
 
             // loop over all elements connected to this node
             for ( uint e=0; e<tNode->number_of_elements(); ++e )
