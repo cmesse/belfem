@@ -420,14 +420,14 @@ Choose the depth first — see §9.1. These recipes carry it; an invocation with
 but is recorded as `[defaulted]`.
 
 ```bash
-CODEX_MODEL=gpt-5.6-terra CODEX_EFFORT=medium .claude/scripts/ask_codex.sh "Your audit prompt here"
+CODEX_MODEL=gpt-6.1-terra CODEX_EFFORT=medium .claude/scripts/ask_codex.sh "Your audit prompt here"
 ```
 
 Or pipe a longer prompt:
 
 ```bash
 echo "Audit cl_CutProcessor.cpp:420-486 for sign-blind admission correctness..." \
-  | CODEX_MODEL=gpt-5.6-terra CODEX_EFFORT=medium .claude/scripts/ask_codex.sh -
+  | CODEX_MODEL=gpt-6.1-terra CODEX_EFFORT=medium .claude/scripts/ask_codex.sh -
 ```
 
 The script:
@@ -453,28 +453,34 @@ resolution applies to `ask_grok.sh`.
 
 Both wrappers take a model and a reasoning effort, and stamp both into the exchange entry. Choose
 them before dispatch; do not let them default. The defaults exist so a bare invocation still works,
-not as a tier — they were chosen to reproduce what the vendor configs gave on the day the wrappers
-pinned them, and an unchosen knob is marked `[defaulted]` in the record precisely so it is not
-mistaken for a choice. That correspondence is an observation of a local config, not something this
-repository can check; if the vendor config drifts, the wrapper defaults stay put.
+not as a tier, and an unchosen knob is marked `[defaulted]` in the record precisely so it is not
+mistaken for a choice. The Codex model default is the round-1 terra model of the table below; it is
+not read from the vendor config and need not match it. The Grok model default is the latest
+allowlisted grok (below). The effort defaults were chosen to reproduce what the vendor configs
+gave on the day the wrappers pinned them. That is an observation of a local config, not something
+this repository can check; if the vendor config drifts, the wrapper defaults stay put.
 
 | Subject | Codex | Grok |
 |---|---|---|
-| Prose sweep of an ordinary guide or README; citation and doc-claim mechanics | `gpt-5.6-luna`, `medium` | not used |
-| Prose sweep of a dense technical document (the input reference, the coding philosophy) | `gpt-5.6-terra`, `medium` | not used |
-| Single narrow claim, round 1 | `gpt-5.6-terra`, `medium` | `high` |
-| Plan audit or code-diff audit, round 1 | `gpt-5.6-terra`, `high` | `high` |
-| Round ≥ 2, a round-1 split verdict, or a safety-boundary subject (ownership, lifetime, MPI collectives, ABI) | `gpt-5.6-terra`, `xhigh` | `xhigh` |
+| Prose sweep of an ordinary guide or README; citation and doc-claim mechanics | `gpt-6-luna`, `medium` | not used |
+| Prose sweep of a dense technical document (the input reference, the coding philosophy) | `gpt-6.1-terra`, `medium` | not used |
+| Single narrow claim, round 1 | `gpt-6.1-terra`, `medium` | `high` |
+| Plan audit or code-diff audit, round 1 | `gpt-6.1-terra`, `high` | `high` |
+| Round ≥ 2, a round-1 split verdict, or a safety-boundary subject (ownership, lifetime, MPI collectives, ABI) | `gpt-6.1-terra`, `xhigh` | `xhigh` |
 | Critical framework code — `src/mesh`, `src/fem/kernel`, dof manager, sidesets, blocks, calculator, basis, distributor, `src/fem/maxwell` factories | `gpt-6-astra`, `high` (`xhigh` for round ≥ 2) | `high` |
-| Unattended post-commit `--quick` | `gpt-5.6-luna`, `medium` | `grok-4.7`, `medium` |
+| Unattended post-commit `--quick` | `gpt-6-luna`, `medium` | `grok-4.7`, `medium` |
 
-**Allowlisted but named by no row (by design):** `gpt-5.6-sol`
+**Allowlisted but named by no row (by design):** `gpt-6.1-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.6-sol`
 
 That line is the *only* declaration of a deliberate exception, and it is anchored so a checker can
 read it without interpreting prose. Everything else in this section is free to describe a defect,
 name a stale model, or quote a wrapper — a model mentioned in the discussion below is not thereby
 excused. Add to the line when a model is deliberately withheld from the tiers; never infer an
-exception from a sentence.
+exception from a sentence. A model a row has retired goes on the line too: the `gpt-5.6` ids left
+the tiers on 2026-11-15 and stay allowlisted only so an earlier round can be reproduced. Unlike an
+older grok, which the checker excuses in a record but flags in a row or a default, an id on this line
+is excused everywhere, so nothing mechanical stops a row from naming a retired Codex model again.
+Do not.
 
 **The Grok seat is always the latest allowlisted `grok`** — today `grok-4.7`. That is why most rows
 above carry an effort and no model: the model follows a standing policy, not the subject, and naming
@@ -485,7 +491,7 @@ one. **A wrapper default or a depth row that names an older grok is a defect**, 
 table does not. The wrapper default is `grok-4.7`.
 
 ```bash
-CODEX_MODEL=gpt-5.6-terra CODEX_EFFORT=high AI_EXCHANGE_SLUG=<slug> .claude/scripts/ask_codex.sh - < prompt.md
+CODEX_MODEL=gpt-6.1-terra CODEX_EFFORT=high AI_EXCHANGE_SLUG=<slug> .claude/scripts/ask_codex.sh - < prompt.md
 GROK_MODEL=grok-4.7 GROK_EFFORT=high        AI_EXCHANGE_SLUG=<slug> .claude/scripts/ask_grok.sh  - < prompt.md
 ```
 
@@ -495,7 +501,7 @@ Four things the table encodes, each of which cost something to learn:
   audit.** The claim's confidence is the thing being tested; ordering a cheap round because you feel
   sure is exactly backwards when you are confidently wrong.
 - **The second rung raises effort, not model.** Moving both knobs at once makes it impossible to
-  learn which one helped. `gpt-5.6-sol` is allowlisted as an escape hatch but is named by no row,
+  learn which one helped. `gpt-6.1-sol` is allowlisted as an escape hatch but is named by no row,
   pending a measured comparison on a real BELFEM diff.
 - **Effort is capped at `xhigh`.** This is a cost-and-conservatism policy, not a proven
   constraint: `max` has shown no measured benefit here, and `ultra` is documented by the vendor as

@@ -17,9 +17,9 @@ Follow these steps IN ORDER — the ordering is the protocol (`doc/ai_collaborat
 
    | Subject | Codex | Grok |
    |---|---|---|
-   | single narrow claim, round 1 | `gpt-5.6-terra` / `medium` | `grok-4.7` / `high` |
-   | plan or code-diff audit, round 1 | `gpt-5.6-terra` / `high` | `grok-4.7` / `high` |
-   | round ≥ 2, a split verdict, or a safety-boundary subject (ownership, lifetime, MPI collectives, ABI) | `gpt-5.6-terra` / `xhigh` | `grok-4.7` / `xhigh` |
+   | single narrow claim, round 1 | `gpt-6.1-terra` / `medium` | `grok-4.7` / `high` |
+   | plan or code-diff audit, round 1 | `gpt-6.1-terra` / `high` | `grok-4.7` / `high` |
+   | round ≥ 2, a split verdict, or a safety-boundary subject (ownership, lifetime, MPI collectives, ABI) | `gpt-6.1-terra` / `xhigh` | `grok-4.7` / `xhigh` |
    | critical framework code (`src/mesh`, `src/fem/kernel`, dof manager, sidesets, blocks, calculator, basis, distributor, `src/fem/maxwell` factories) | `gpt-6-astra` / `high` (`xhigh` for round ≥ 2) | `grok-4.7` / `high` |
 
    Only these four rows apply here. A jury round always runs **both** auditors, so the
@@ -27,7 +27,7 @@ Follow these steps IN ORDER — the ordering is the protocol (`doc/ai_collaborat
    `ask_codex.sh` directly when you want a one-voice prose pass.
 
    Run as its own single background Bash command (never nested in a compound/piped command) and wait for it to finish:
-   `CODEX_MODEL=gpt-5.6-terra CODEX_EFFORT=high GROK_MODEL=grok-4.7 GROK_EFFORT=high AI_EXCHANGE_SLUG=<slug> scripts/cross_review.sh --jury [path]` (or `--relay`).
+   `CODEX_MODEL=gpt-6.1-terra CODEX_EFFORT=high GROK_MODEL=grok-4.7 GROK_EFFORT=high AI_EXCHANGE_SLUG=<slug> scripts/cross_review.sh --jury [path]` (or `--relay`).
    The auditors run headless and read-only via the existing `ask_codex.sh` / `ask_grok.sh` wrappers and append their entries to the exchange file themselves, each stamped with the model and effort that produced it.
 
 4. **Verification pass.** Read the auditor entries from the exchange file. Re-check EVERY file:line citation against the actual source. Label each finding CONFIRMED / REFUTED / UNVERIFIABLE, quoting the evidence line under each label. Append this as a new `# CLAUDE <timestamp>` entry with a `## Verification` section.

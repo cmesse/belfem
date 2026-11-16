@@ -9,19 +9,20 @@
 #   CODEX_BIN=/path/to/codex ask_codex.sh "..."             # override the CLI location
 #
 # Depth selection (doc/ai_collaboration_protocol.md, "Depth Selection"):
-#   CODEX_MODEL   gpt-6-astra|gpt-5.6-sol|gpt-5.6-terra|gpt-5.6-luna|gpt-5.5|gpt-5.4|gpt-5.4-mini
-#                 (default gpt-5.6-terra). Only terra and luna are named by the depth table.
-#                 gpt-5.6-sol and everything below luna are escape hatches, not tiers — sol in
-#                 particular is allowlisted but deliberately unnamed, pending a measured
-#                 comparison against terra.
+#   CODEX_MODEL   gpt-6-astra|gpt-6.1-sol|gpt-6.1-terra|gpt-6-luna|gpt-5.6-sol|gpt-5.6-terra|gpt-5.6-luna|gpt-5.5|gpt-5.4|gpt-5.4-mini
+#                 (default gpt-6.1-terra). Only astra, gpt-6.1-terra and gpt-6-luna are named by
+#                 the depth table. gpt-6.1-sol is an escape hatch, not a tier: allowlisted but
+#                 deliberately unnamed, pending a measured comparison against terra. The gpt-5.6
+#                 ids stay allowlisted only so an earlier round can be reproduced.
 #   CODEX_EFFORT  low|medium|high|xhigh (default medium)
 #
-#   CODEX_MODEL=gpt-5.6-terra CODEX_EFFORT=high ask_codex.sh "..."
+#   CODEX_MODEL=gpt-6.1-terra CODEX_EFFORT=high ask_codex.sh "..."
 #
-# The defaults were chosen to reproduce what ~/.codex/config.toml gave on 2026-08-30, before
-# this wrapper pinned anything, so that turning the knobs on changed the record and not the
-# depth. That is an observation of one machine's config on one day, not a guarantee: if the
-# vendor config drifts, the defaults here stay put and the two simply diverge. Leaving either unset still works,
+# The model default is the round-1 terra model the depth table names. check_practice_drift.py
+# (P2c) only checks that it is allowlisted and named somewhere in the Codex column. It is not
+# read from, and need not match, ~/.codex/config.toml. The
+# effort default reproduces what that config gave on 2026-08-30, before this wrapper pinned
+# anything, an observation of one machine's config on one day, not a guarantee. Leaving either unset still works,
 # but the entry is stamped [defaulted] and a warning goes to stderr — an unchosen tier must be
 # visible in the record, because "the jury agreed" means little without knowing how hard it looked.
 #
@@ -56,14 +57,14 @@ BELFEM="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # by different mechanisms below.
 CODEX_MODEL_CHOSEN=1
 CODEX_EFFORT_CHOSEN=1
-if [ -z "${CODEX_MODEL:-}" ]; then CODEX_MODEL="gpt-5.6-terra"; CODEX_MODEL_CHOSEN=0; fi
+if [ -z "${CODEX_MODEL:-}" ]; then CODEX_MODEL="gpt-6.1-terra"; CODEX_MODEL_CHOSEN=0; fi
 if [ -z "${CODEX_EFFORT:-}" ]; then CODEX_EFFORT="medium";      CODEX_EFFORT_CHOSEN=0; fi
 
 case "$CODEX_MODEL" in
-    gpt-6-astra|gpt-5.6-sol|gpt-5.6-terra|gpt-5.6-luna|gpt-5.5|gpt-5.4|gpt-5.4-mini) ;;
+    gpt-6-astra|gpt-6.1-sol|gpt-6.1-terra|gpt-6-luna|gpt-5.6-sol|gpt-5.6-terra|gpt-5.6-luna|gpt-5.5|gpt-5.4|gpt-5.4-mini) ;;
     *)
         echo "ask_codex.sh: unknown CODEX_MODEL '$CODEX_MODEL'" >&2
-        echo "Allowed: gpt-6-astra gpt-5.6-sol gpt-5.6-terra gpt-5.6-luna gpt-5.5 gpt-5.4 gpt-5.4-mini" >&2
+        echo "Allowed: gpt-6-astra gpt-6.1-sol gpt-6.1-terra gpt-6-luna gpt-5.6-sol gpt-5.6-terra gpt-5.6-luna gpt-5.5 gpt-5.4 gpt-5.4-mini" >&2
         exit 1
         ;;
 esac

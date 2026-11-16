@@ -50,7 +50,7 @@ SLUG="$(printf '%s' "${AI_EXCHANGE_SLUG:-scratch}" | tr 'A-Z' 'a-z' | tr -c 'a-z
 if [ "$MODE" = "quick" ]; then
     # Unattended, per-commit, and paid for on every commit — the cheap rung, pinned here
     # rather than left to the wrapper defaults, which are tuned for interactive audits.
-    CODEX_MODEL="gpt-5.6-luna"; CODEX_EFFORT="medium"
+    CODEX_MODEL="gpt-6-luna"; CODEX_EFFORT="medium"
     GROK_MODEL="grok-4.7";      GROK_EFFORT="medium"
 else
     MISSING=""
@@ -61,7 +61,7 @@ else
         echo "cross_review.sh: --$MODE needs an explicit depth. Unset:$MISSING" >&2
         echo "A jury round without a recorded depth cannot be compared to any other round." >&2
         echo "Pick a row from the depth-selection table in doc/ai_collaboration_protocol.md, e.g." >&2
-        echo "  CODEX_MODEL=gpt-5.6-terra CODEX_EFFORT=high GROK_MODEL=grok-4.7 GROK_EFFORT=high \\" >&2
+        echo "  CODEX_MODEL=gpt-6.1-terra CODEX_EFFORT=high GROK_MODEL=grok-4.7 GROK_EFFORT=high \\" >&2
         echo "  AI_EXCHANGE_SLUG=$SLUG scripts/cross_review.sh --$MODE${TARGET:+ $TARGET}" >&2
         exit 1
     fi
@@ -71,7 +71,7 @@ else
     # the round exiting 0 with a synthetic "Audit FAILED" entry that reads like a vendor
     # outage. Refuse the whole round here instead, before anything is dispatched.
     case "$CODEX_MODEL" in
-        gpt-6-astra|gpt-5.6-sol|gpt-5.6-terra|gpt-5.6-luna|gpt-5.5|gpt-5.4|gpt-5.4-mini) ;;
+        gpt-6-astra|gpt-6.1-sol|gpt-6.1-terra|gpt-6-luna|gpt-5.6-sol|gpt-5.6-terra|gpt-5.6-luna|gpt-5.5|gpt-5.4|gpt-5.4-mini) ;;
         *) echo "cross_review.sh: bad CODEX_MODEL '$CODEX_MODEL' (see the depth table)" >&2; exit 1 ;;
     esac
     case "$GROK_MODEL" in

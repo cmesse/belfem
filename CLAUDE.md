@@ -602,7 +602,7 @@ Codex is markedly better at plain-language editing than at the audit work it is 
 here, and the drafts it improves are usually accurate but denser than they need to be.
 
 ```bash
-CODEX_MODEL=gpt-5.6-luna CODEX_EFFORT=medium AI_EXCHANGE_SLUG=<slug> .claude/scripts/ask_codex.sh - < prompt.md
+CODEX_MODEL=gpt-6-luna CODEX_EFFORT=medium AI_EXCHANGE_SLUG=<slug> .claude/scripts/ask_codex.sh - < prompt.md
 ```
 
 Pick the depth from the table in `doc/ai_collaboration_protocol.md` §9.1 — luna for an ordinary
