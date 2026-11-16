@@ -48,11 +48,13 @@ contains
             g0 = 0._QP
             h0 = 0._QP
         case default
-            f1 = x                      ! P0
-            f0 = 0.5_QP*(3._QP*x**2-1._QP) ! P1
+            ! seeds of the recurrence; the derivatives are overwritten below,
+            ! and every caller in this module passes n >= 3
+            f1 = x                      ! P1
+            f0 = 0.5_QP*(3._QP*x**2-1._QP) ! P2
 
-            g0 = 3._QP*x                 ! dP1dx
-            h0 = 2._QP                   ! d2P1dx2
+            g0 = 3._QP*x                 ! dP2dx
+            h0 = 2._QP
 
             if(n .gt. 2) then
 
@@ -159,9 +161,9 @@ contains
             xi(1) = -sqrt(1._QP/3._QP)
             xi(2) =  sqrt(1._QP/3._QP)
         case(3)
-            w(1)  =  5_QP/9_QP
-            w(2)  =  8_QP/9_QP
-            w(3)  =  5_QP/9_QP
+            w(1)  =  5._QP/9._QP
+            w(2)  =  8._QP/9._QP
+            w(3)  =  5._QP/9._QP
             xi(1) = -sqrt(0.6_QP)
             xi(2) =  0_QP
             xi(3) =  sqrt(0.6_QP)
@@ -204,7 +206,7 @@ contains
         xi = 0D0
         xi(1) = -1D0
         xi(n) = 1D0
-        w(1) = 2D0/dble(n*(n-1))
+        w(1) = 2D0/(dble(n)*dble(n-1))
         w(n) = w(1)
 
         if(n .gt. 3) then
@@ -224,11 +226,11 @@ contains
                 end do
                 xi(k) = dble(xi1)
                 xi(n-k+1) = -xi(k)
-                w(k) = 2D0/(dble(real(n*(n-1),quadruple)*P**2))
+                w(k) = 2D0/(dble(real(n,quadruple)*real(n-1,quadruple)*P**2))
                 w(n-k+1) = w(k)
             end do
             if(mod(n, 2) .eq. 1) w(m+1) = 2D0-sum(w)
-        else
+        else if(n .eq. 3) then
             w(2) = 4D0/3D0
         end if
     end subroutine intpoints_lobatto

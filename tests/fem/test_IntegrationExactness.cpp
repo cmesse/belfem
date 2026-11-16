@@ -16,6 +16,7 @@
 #include "typedefs.hpp"
 #include "cl_Vector.hpp"
 #include "cl_Matrix.hpp"
+#include "cl_Cell.hpp"
 #include "Mesh_Enums.hpp"
 #include "fn_intpoints.hpp"
 #include "fn_intpoints_gauss_tet10.hpp"
@@ -150,20 +151,51 @@ namespace
 
     // the rule the dispatch returns for a requested order
     void
-    check_exactness( const GeometryType aGeometry, const uint aOrder )
+    check_exactness( const GeometryType aGeometry, const uint aOrder,
+                     const IntegrationScheme aScheme )
     {
+        SCOPED_TRACE( "scheme " + to_string( aScheme ) );
         Vector< real > tW ;
         Matrix< real > tP ;
-        intpoints( IntegrationScheme::GAUSS, aGeometry, aOrder, tW, tP );
+        intpoints( aScheme, aGeometry, aOrder, tW, tP );
         check_moments( aGeometry, aOrder, tW, tP );
     }
 
     void
-    check_all_orders( const GeometryType aGeometry, const uint aMaxOrder )
+    check_all_orders( const GeometryType aGeometry, const uint aMaxOrder,
+                      const IntegrationScheme aScheme = IntegrationScheme::GAUSS )
     {
         for( uint p = 0; p <= aMaxOrder; ++p )
         {
-            check_exactness( aGeometry, p );
+            check_exactness( aGeometry, p, aScheme );
+        }
+    }
+
+    // the line rule the dispatch returns must have exactly the reference nodes
+    // and weights, each node carrying its own weight. The moment test cannot
+    // show this: a different rule of the same size and degree passes it
+    void
+    check_line_rule( const IntegrationScheme aScheme, const uint aOrder,
+                     const Vector< real > & aNodes, const Vector< real > & aWeights )
+    {
+        Vector< real > tW ;
+        Matrix< real > tP ;
+        intpoints( aScheme, GeometryType::LINE, aOrder, tW, tP );
+
+        const uint tN = aNodes.length();
+        ASSERT_EQ( tW.length(), tN ) << "order " << aOrder ;
+        ASSERT_EQ( tP.n_cols(), tN ) << "order " << aOrder ;
+
+        // one permutation, sorting by node, applied to nodes and weights alike
+        Cell< uint > tPerm( tN, 0 );
+        for( uint k = 0; k < tN; ++k ) tPerm( k ) = k ;
+        std::sort( tPerm.begin(), tPerm.end(),
+                   [ &tP ]( const uint a, const uint b ){ return tP( 0, a ) < tP( 0, b ); } );
+
+        for( uint k = 0; k < tN; ++k )
+        {
+            EXPECT_NEAR( tP( 0, tPerm( k ) ), aNodes( k ),   1e-14 ) << "order " << aOrder << " node " << k ;
+            EXPECT_NEAR( tW( tPerm( k ) ),    aWeights( k ), 1e-14 ) << "order " << aOrder << " weight " << k ;
         }
     }
 }
@@ -177,6 +209,43 @@ TEST( IntegrationExactness, TET   ) { check_all_orders( GeometryType::TET,   14 
 TEST( IntegrationExactness, HEX   ) { check_all_orders( GeometryType::HEX,   20 ); }
 TEST( IntegrationExactness, PENTA ) { check_all_orders( GeometryType::PENTA,  9 ); }
 TEST( IntegrationExactness, PYRA  ) { check_all_orders( GeometryType::PYRA,   9 ); }
+
+// LOBATTO is LINE only; order 20 is 12 points
+TEST( IntegrationExactness, LINE_LOBATTO )
+{
+    check_all_orders( GeometryType::LINE, 20, IntegrationScheme::LOBATTO );
+}
+
+// GAUSSCLASSIC is the tensor-product rule; GAUSS replaces it with dedicated
+// tables at QUAD orders 4-13 and HEX orders 3-7, so the sweeps above miss it there
+TEST( IntegrationExactness, QUAD_GAUSSCLASSIC )
+{
+    check_all_orders( GeometryType::QUAD, 20, IntegrationScheme::GAUSSCLASSIC );
+}
+
+TEST( IntegrationExactness, HEX_GAUSSCLASSIC )
+{
+    check_all_orders( GeometryType::HEX, 20, IntegrationScheme::GAUSSCLASSIC );
+}
+
+// Lobatto rules with 2, 3 and 4 points: the trapezoid rule ( Bronshtein,
+// Eq. 19.75 with h = 2 ), Simpson's rule ( Eq. 19.84a ) and Eq. 19.84b
+TEST( IntegrationExactness, LOBATTO_reference_rules )
+{
+    const real tR5 = 1.0 / std::sqrt( 5.0 );
+
+    const Vector< real > tX2( { -1.0, 1.0 } );
+    const Vector< real > tW2( {  1.0, 1.0 } );
+    check_line_rule( IntegrationScheme::LOBATTO, 1, tX2, tW2 );
+
+    const Vector< real > tX3( { -1.0,       0.0,       1.0 } );
+    const Vector< real > tW3( {  1.0 / 3.0, 4.0 / 3.0, 1.0 / 3.0 } );
+    check_line_rule( IntegrationScheme::LOBATTO, 3, tX3, tW3 );
+
+    const Vector< real > tX4( { -1.0,       -tR5,      tR5,       1.0 } );
+    const Vector< real > tW4( {  1.0 / 6.0, 5.0 / 6.0, 5.0 / 6.0, 1.0 / 6.0 } );
+    check_line_rule( IntegrationScheme::LOBATTO, 5, tX4, tW4 );
+}
 
 // the Shunn and Ham 10-point tetrahedron table is not dispatched, so the
 // loop above never sees it; lock it directly at its degree ( 3 )

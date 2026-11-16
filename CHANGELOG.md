@@ -4,6 +4,19 @@ All notable changes to BELFEM are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and version numbers follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Two-point Gauss–Lobatto rule: `IntegrationScheme::LOBATTO` at integration order 0 or 1 returned
+  weights of {1, 4/3} instead of {1, 1}, so it did not integrate even a constant correctly. Rules
+  with three or more points were correct. No shipped code path or input key selects LOBATTO.
+- Three-point Gauss rule in `intpoints_gauss_quadruple`: integer division made all the weights 0.
+  The routine's only caller, the Debye integrals, requests 7 and 10 points, so no material model
+  was affected.
+- Lobatto rule size is now computed using integer arithmetic. If the requested order is too large
+  for the Fortran routine, it is rejected instead of wrapping to a rule with fewer than two points.
+
 ## [0.9.4] — 2026-11-14
 
 This is a maintenance release. It fixes about thirty defects found while checking every module

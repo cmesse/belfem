@@ -10,6 +10,7 @@
  */
 
 #include <cmath>
+#include <limits>
 
 #include "assert.hpp"
 #include "fn_intpoints.hpp"
@@ -543,13 +544,20 @@ namespace belfem
                 {
                     case ( GeometryType::LINE ) :
                     {
-                        int tN = static_cast< int >( std::ceil( 0.5 * ( aOrder + 3 ) ) );
+                        // N Lobatto points are exact to degree 2N-3; the smallest N is
+                        // ceil( ( aOrder + 3 ) / 2 ), written in integers so it cannot
+                        // wrap and is >= 2, which the endpoint formula requires
+                        const uint tN = aOrder / 2 + 2 ;
+                        BELFEM_ERROR( tN <= static_cast< uint >( std::numeric_limits< int >::max() ),
+                                      "Lobatto integration order %u is too large", aOrder );
+                        int tNi = static_cast< int >( tN );
+
                         aWeights.set_size( tN );
                         aPoints.set_size( 1, tN );
                         Vector< real > tPoints( tN );
 
-                        intpoints_lobatto( &tN, aWeights.data(), tPoints.data() );
-                        for( int k=0; k<tN; ++k )
+                        intpoints_lobatto( &tNi, aWeights.data(), tPoints.data() );
+                        for( uint k=0; k<tN; ++k )
                         {
                             aPoints( 0, k ) = tPoints( k );
                         }
